@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulsedock
+      POSTGRES_PASSWORD: pulsedock
+      POSTGRES_DB: pulsedock
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      - pd_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsedock"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pulsedock
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "0.0.0.0:6379:6379"
+    volumes:
+      - pd_redis:/data
+    networks:
+      - pulsedock
+
+volumes:
+  pd_pg:
+  pd_redis:
+
+networks:
+  pulsedock:
+    driver: bridge

@@ -1,0 +1,32 @@
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  color: #e5f6ee;
+  background:
+    radial-gradient(1200px 520px at 10% -20%, rgba(16, 185, 129, 0.18), transparent),
+    radial-gradient(1000px 620px at 95% 0%, rgba(34, 197, 94, 0.12), transparent),
+    #08120f;
+}
+
+.landing-cinematic-wrap {
+  height: 180vh;
+  margin-top: 8px;
+}
+
+.landing-cinematic-sticky {
+  position: sticky;
+  top: 16px;
+  height: 72vh;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.landing-cinematic-video,
+.landing-cinematic-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

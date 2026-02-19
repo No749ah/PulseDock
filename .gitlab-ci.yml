@@ -1,0 +1,25 @@
+stages:
+  - lint
+  - build
+
+default:
+  image: node:22
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+      - .npm/
+
+before_script:
+  - npm ci
+
+lint:
+  stage: lint
+  script:
+    - npm run build -w @pulsedock/api --if-present
+    - npm run build -w @pulsedock/web --if-present
+
+build:
+  stage: build
+  script:
+    - npm run build

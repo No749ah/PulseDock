@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  user
+}
+
+enum MonitorType {
+  HTTP
+  GIT_RELEASE
+  DOCKER_IMAGE
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  passwordHash       String
+  role               Role           @default(user)
+  isActive           Boolean        @default(true)
+  mustChangePassword Boolean        @default(false)
+  failedLoginCount   Int            @default(0)
+  lockedUntil        DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  sessions        Session[]
+  folders         Folder[]
+  monitors        Monitor[]
+  monitorRuns     MonitorRun[]
+  alertChannels   AlertChannel[]
+  sentInvites     InviteToken[]    @relation("invitedBy")
+  actorAuditLogs  AuditLog[]       @relation("audit_actor")
+  targetAuditLogs AuditLog[]       @relation("audit_target")
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors Monitor[]
+}
+
+model Monitor {
+  id            String      @id @default(cuid())
+  userId        String
+  folderId      String?
+  name          String
+  type          MonitorType
+  target        String
+  intervalSec   Int         @default(60)
+  timeoutMs     Int         @default(5000)
+  enabled       Boolean     @default(true)
+  configJson    Json?
+  createdAt     DateTime    @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  runs          MonitorRun[]
+  monitorAlerts MonitorAlert[]
+}
+
+model MonitorRun {
+  id        String   @id @default(cuid())
+  monitorId String
+  userId    String
+  level     String
+  ok        Boolean
+  status    Int
+  latencyMs Int?
+  message   String
+  checkedAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, checkedAt])
+}
+
+model AlertChannel {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  type       String
+  configJson Json
+  createdAt  DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorAlerts MonitorAlert[]
+}
+
+model MonitorAlert {
+  monitorId      String
+  alertChannelId String
+
+  monitor      Monitor      @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+
+  @@id([monitorId, alertChannelId])
+}
+
+model InviteToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  email       String
+  role        Role      @default(user)
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  invitedBy User @relation("invitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+}
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  action       String
+  actorUserId  String?
+  targetUserId String?
+  metaJson     Json?
+  createdAt    DateTime  @default(now())
+
+  actorUser  User? @relation("audit_actor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("audit_target", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([actorUserId])
+  @@index([targetUserId])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  email      String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}

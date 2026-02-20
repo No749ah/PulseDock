@@ -162,7 +162,7 @@ export default function LoginPage() {
             return void login();
           }}
         >
-          <Text fw={800} size="2rem">PulseDock</Text>
+          <Text fw={800} style={{ fontSize: 'clamp(1.5rem, 6vw, 2rem)' }}>PulseDock</Text>
           <Text c="dimmed">{subtitle}</Text>
 
           <TextInput label="Email" value={email} disabled={inInviteFlow || inResetFlow} onChange={(e) => setEmail(e.currentTarget.value)} />
@@ -181,7 +181,7 @@ export default function LoginPage() {
           {error ? <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert> : null}
           {info ? <Alert color="teal">{info}</Alert> : null}
 
-          <Group grow>
+          <Group grow wrap="wrap">
             {inInviteFlow ? (
               <Button type="submit" color="teal" loading={loading || inviteLoading} disabled={inviteLoading}>Accept Invite</Button>
             ) : inResetFlow ? (

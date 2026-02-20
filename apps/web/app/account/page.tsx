@@ -142,14 +142,14 @@ export default function AccountPage() {
         </Card>
 
         <Card withBorder>
-          <Group justify="space-between">
+          <Group justify="space-between" wrap="wrap">
             <Text fw={700}>Sessions / Tokens</Text>
-            <Button size="xs" variant="light" color="red" onClick={revokeAllSessions}>Revoke all sessions</Button>
+            <Button size="xs" variant="light" color="red" onClick={revokeAllSessions} style={{ width: '100%', maxWidth: 220 }}>Revoke all sessions</Button>
           </Group>
           {sessions.filter((s) => !s.revokedAt).map((s) => (
             <Card key={s.id} mt="sm" withBorder>
-              <Text size="xs" c="dimmed">{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
-              <Text size="xs" c="dimmed">{s.userAgent ?? 'unknown agent'}</Text>
+              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
+              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{s.userAgent ?? 'unknown agent'}</Text>
               <Button mt="xs" size="xs" variant="light" color="red" disabled={Boolean(s.revokedAt)} onClick={() => revokeSession(s.id)}>{s.revokedAt ? 'Revoked' : 'Revoke'}</Button>
             </Card>
           ))}

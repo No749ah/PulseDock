@@ -121,7 +121,7 @@ export default function AccountPage() {
         </form>
       </Modal>
 
-      <Stack>
+      <Stack gap="md">
         <Card withBorder>
           <form onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}>
             <Text fw={700}>Profile</Text>
@@ -148,8 +148,8 @@ export default function AccountPage() {
           </Group>
           {sessions.filter((s) => !s.revokedAt).map((s) => (
             <Card key={s.id} mt="sm" withBorder>
-              <Text size="xs" c="dimmed">{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
-              <Text size="xs" c="dimmed">{s.userAgent ?? 'unknown agent'}</Text>
+              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
+              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{s.userAgent ?? 'unknown agent'}</Text>
               <Button mt="xs" size="xs" variant="light" color="red" disabled={Boolean(s.revokedAt)} onClick={() => revokeSession(s.id)}>{s.revokedAt ? 'Revoked' : 'Revoke'}</Button>
             </Card>
           ))}

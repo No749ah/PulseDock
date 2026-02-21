@@ -150,8 +150,8 @@ export default function LoginPage() {
         : 'Sign in to your monitoring workspace';
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
-      <Card withBorder shadow="xl" radius="lg" p="xl" style={{ width: '100%', maxWidth: 560, background: 'rgba(10,24,19,0.86)', backdropFilter: 'blur(8px)' }}>
+    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 'clamp(12px, 3vw, 16px)' }}>
+      <Card withBorder shadow="xl" radius="lg" p="clamp(16px, 4vw, 24px)" style={{ width: '100%', maxWidth: 560, background: 'rgba(10,24,19,0.86)', backdropFilter: 'blur(8px)' }}>
         <Stack
           component="form"
           onSubmit={(e) => {
@@ -162,7 +162,7 @@ export default function LoginPage() {
             return void login();
           }}
         >
-          <Text fw={800} size="2rem">PulseDock</Text>
+          <Text fw={800} style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)' }}>PulseDock</Text>
           <Text c="dimmed">{subtitle}</Text>
 
           <TextInput label="Email" value={email} disabled={inInviteFlow || inResetFlow} onChange={(e) => setEmail(e.currentTarget.value)} />
@@ -172,7 +172,7 @@ export default function LoginPage() {
 
           {!inInviteFlow && !inResetFlow && !forgotMode ? (
             <Checkbox
-              label="Benutzer merken"
+              label="Remember user"
               checked={rememberUser}
               onChange={(e) => setRememberUser(e.currentTarget.checked)}
             />

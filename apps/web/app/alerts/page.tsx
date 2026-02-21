@@ -166,7 +166,7 @@ export default function AlertsPage() {
           </>
         ) : null}
 
-        <Group justify="space-between" mt="md">
+        <Group justify="space-between" mt="md" wrap="wrap" gap="xs">
           <Button variant="default" onClick={back} disabled={wizardStep === 0}>Back</Button>
           {wizardStep < 2 ? <Button onClick={next}>Next</Button> : <Button color="teal" onClick={createChannel}>Create channel</Button>}
         </Group>
@@ -219,9 +219,9 @@ export default function AlertsPage() {
             ))}
           </Table.Tbody>
         </Table>
-        <Group justify="space-between" mt="md">
+        <Group justify="space-between" mt="md" wrap="wrap" gap="xs">
           <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
+          <Group gap="xs" wrap="nowrap">
             <Text size="sm" c="dimmed">Rows per page</Text>
             <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
           </Group>

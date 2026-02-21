@@ -199,27 +199,29 @@ export default function AlertsPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Created</Table.Th><Table.Th>Config</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((c) => (
-              <Table.Tr key={c.id}>
-                <Table.Td>{c.name}</Table.Td>
-                <Table.Td>{c.type}</Table.Td>
-                <Table.Td>{new Date(c.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td><Badge variant="light">{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge></Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Button size="xs" variant="light" onClick={() => testChannel(c.id)}>Test</Button>
-                    <Button size="xs" variant="light" onClick={() => openEdit(c)}>Edit</Button>
-                    <Button size="xs" variant="light" color="red" onClick={() => openDelete(c)}>Delete</Button>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-        <Group justify="space-between" mt="md">
+        <div style={{ overflowX: 'auto' }}>
+          <Table withTableBorder withColumnBorders>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Created</Table.Th><Table.Th>Config</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((c) => (
+                <Table.Tr key={c.id}>
+                  <Table.Td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</Table.Td>
+                  <Table.Td>{c.type}</Table.Td>
+                  <Table.Td style={{ minWidth: 180 }}>{new Date(c.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td><Badge variant="light">{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge></Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" spacing="xs">
+                      <Button size="xs" variant="light" onClick={() => testChannel(c.id)}>Test</Button>
+                      <Button size="xs" variant="light" onClick={() => openEdit(c)}>Edit</Button>
+                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(c)}>Delete</Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </div>
+        <Group justify="space-between" mt="md" direction="row">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">
             <Text size="sm" c="dimmed">Rows per page</Text>

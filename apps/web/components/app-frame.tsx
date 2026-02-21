@@ -47,7 +47,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
     <AppShell
       header={{ height: 72 }}
       navbar={{ width: 280, breakpoint: 'sm' }}
-      padding="lg"
+      padding={{ base: 'sm', sm: 'lg' }}
       styles={{
         main: { background: 'transparent' },
         navbar: { background: 'rgba(10,24,19,0.84)', borderRight: '1px solid rgba(52, 211, 153, 0.22)', backdropFilter: 'blur(12px)' },
@@ -58,7 +58,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <img src="/brand/pulsedock-logo.svg" alt="PulseDock" width={28} height={28} style={{ borderRadius: 8 }} />
-            <Text fw={700} size="lg">PulseDock</Text>
+            <Text fw={700} size="lg" visibleFrom="xs">PulseDock</Text>
           </Group>
 
           <Menu shadow="md" width={220} position="bottom-end">

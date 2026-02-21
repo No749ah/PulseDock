@@ -13,6 +13,8 @@
     "api": "npm run dev:api",
     "dev:web": "npm run dev -w @pulsedock/web",
     "dev:api": "npm run dev -w @pulsedock/api",
+    "dev:check": "node ./scripts/dev-check.js",
+    "smoke:test": "node ./scripts/smoke-test.js",
     "build": "npm run build -w @pulsedock/web && npm run build -w @pulsedock/api",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"

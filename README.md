@@ -15,6 +15,9 @@ Open-source platform for uptime checks, version monitoring, and status pages.
 npm install --include=dev
 cp .env.example .env
 
+# Optional sanity check — ensures canonical ports (3000,4000) are free before starting dev servers
+npm run dev:check || echo "Ports in use — if intentional, update .env.example and README to match."
+
 docker compose up -d postgres redis
 npm run api
 npm run web
@@ -24,6 +27,10 @@ npm run web
 - API: http://localhost:4000
 - Swagger: http://localhost:4000/docs
 - Version endpoint: http://localhost:4000/version
+
+Notes
+- Ensure NEXT_PUBLIC_API_BASE_URL is set in your .env so the web frontend targets the correct API host for browser requests. By default .env.example sets NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+- If your local environment intentionally runs the API on a different port (e.g., :4001), update .env and README accordingly so dev:check matches your setup.
 
 ## Default first login
 

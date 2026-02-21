@@ -1,0 +1,59 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches: [ main, heartbeat/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install
+        run: npm ci
+        working-directory: ./projects/PulseDock
+      - name: Run smoke tests
+        env:
+          API_BASE: http://127.0.0.1:4000
+        run: |
+          set -euo pipefail
+          CI_ROOT=projects/PulseDock
+          # Start services (assumes docker-compose is available in CI runner)
+          docker compose -f $CI_ROOT/docker-compose.yml up -d postgres redis || true
+          # Start API in background and capture logs
+          nohup npm run dev:api --prefix $CI_ROOT > $CI_ROOT/api.log 2>&1 &
+          API_PID=$!
+          # Start web in background and capture logs
+          nohup npm run dev:web --prefix $CI_ROOT > $CI_ROOT/web.log 2>&1 &
+          WEB_PID=$!
+
+          echo "Waiting for API /health..."
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:4000/health >/dev/null 2>&1; then
+              echo "API is up"
+              break
+            fi
+            echo "API not ready yet, waiting... ($i)"
+            sleep 2
+            if [ $i -eq 30 ]; then
+              echo "API failed to become ready. Dumping logs:" >&2
+              echo "--- API log ---" >&2; tail -n +1 $CI_ROOT/api.log >&2 || true
+              echo "--- Web log ---" >&2; tail -n +1 $CI_ROOT/web.log >&2 || true
+              kill $API_PID || true
+              kill $WEB_PID || true
+              exit 1
+            fi
+          done
+
+          echo "Running smoke tests"
+          npm run smoke:test --prefix $CI_ROOT || (echo "Smoke test failed, dumping logs" && tail -n 200 $CI_ROOT/api.log && tail -n 200 $CI_ROOT/web.log && exit 1)
+          echo "Smoke tests passed"
+          # Cleanup
+          kill $API_PID || true
+          kill $WEB_PID || true

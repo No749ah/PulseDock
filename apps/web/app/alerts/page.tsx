@@ -221,7 +221,7 @@ export default function AlertsPage() {
             </Table.Tbody>
           </Table>
         </div>
-        <Group justify="space-between" mt="md" direction="row">
+        <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">
             <Text size="sm" c="dimmed">Rows per page</Text>

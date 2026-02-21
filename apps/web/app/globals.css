@@ -23,6 +23,18 @@ body {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
+@media (max-width: 768px) {
+  .landing-cinematic-wrap {
+    height: 120vh;
+  }
+
+  .landing-cinematic-sticky {
+    top: 8px;
+    height: 48vh;
+    border-radius: 14px;
+  }
+}
+
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   width: 100%;

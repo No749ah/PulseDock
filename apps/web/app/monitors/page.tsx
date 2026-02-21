@@ -246,7 +246,7 @@ export default function MonitorsPage() {
                     <Table.Td>{m.intervalSec}s</Table.Td>
                     <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
                     <Table.Td>
-                      <Group gap="xs" spacing="xs">
+                      <Group gap="xs">
                         <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
                         <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
                         <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
@@ -258,7 +258,7 @@ export default function MonitorsPage() {
             </Table.Tbody>
           </Table>
         </div>
-        <Group justify="space-between" mt="md" direction="row">
+        <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">
             <Text size="sm" c="dimmed">Rows per page</Text>

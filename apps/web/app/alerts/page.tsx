@@ -210,7 +210,7 @@ export default function AlertsPage() {
                   <Table.Td style={{ minWidth: 180 }}>{new Date(c.createdAt).toLocaleString()}</Table.Td>
                   <Table.Td><Badge variant="light">{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge></Table.Td>
                   <Table.Td>
-                    <Group gap="xs" spacing="xs">
+                    <Group gap="xs">
                       <Button size="xs" variant="light" onClick={() => testChannel(c.id)}>Test</Button>
                       <Button size="xs" variant="light" onClick={() => openEdit(c)}>Edit</Button>
                       <Button size="xs" variant="light" color="red" onClick={() => openDelete(c)}>Delete</Button>

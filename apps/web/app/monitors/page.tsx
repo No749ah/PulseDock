@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Select, Switch, Table, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, ScrollArea, Select, Switch, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -196,20 +196,22 @@ export default function MonitorsPage() {
       />
 
       <AppModal opened={historyOpen} onClose={() => setHistoryOpen(false)} title={`Run history · ${selected?.name ?? ''}`} size="xl">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {historyRows.map((r) => (
-              <Table.Tr key={r.id}>
-                <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                <Table.Td>{r.statusCode}</Table.Td>
-                <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                <Table.Td>{r.message}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={720}>
+            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {historyRows.map((r) => (
+                <Table.Tr key={r.id}>
+                  <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
+                  <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
+                  <Table.Td>{r.statusCode}</Table.Td>
+                  <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
+                  <Table.Td>{r.message}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </AppModal>
 
       <Card withBorder radius="md" mb="md">
@@ -231,31 +233,33 @@ export default function MonitorsPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((m) => {
-              const latest = runs.find((r) => r.monitorId === m.id);
-              const level = latest?.level ?? 'green';
-              return (
-                <Table.Tr key={m.id}>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
-                  <Table.Td>{m.type}</Table.Td>
-                  <Table.Td>{m.target}</Table.Td>
-                  <Table.Td>{m.intervalSec}s</Table.Td>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
-                      <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
-                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={860}>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((m) => {
+                const latest = runs.find((r) => r.monitorId === m.id);
+                const level = latest?.level ?? 'green';
+                return (
+                  <Table.Tr key={m.id}>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
+                    <Table.Td>{m.type}</Table.Td>
+                    <Table.Td>{m.target}</Table.Td>
+                    <Table.Td>{m.intervalSec}s</Table.Td>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
+                        <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
+                        <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

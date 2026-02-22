@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Alert, Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Progress, Select, Table, Text, TextInput, ThemeIcon, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Progress, ScrollArea, Select, Table, Text, TextInput, ThemeIcon, Tooltip } from '@mantine/core';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { IconAlertCircle, IconCheck, IconInfoCircle, IconPencil, IconTrash, IconX } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
@@ -576,113 +576,117 @@ export default function VersionsPage() {
       </Card>
 
       <Card withBorder>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Type</Table.Th>
-              <Table.Th>Target</Table.Th>
-              <Table.Th>Current</Table.Th>
-              <Table.Th>Latest</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Last check</Table.Th>
-              <Table.Th>Interval</Table.Th>
-              <Table.Th>Action</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {visible.map((item) => {
-              const runs = runsByMonitor[item.id] ?? [];
-              const stats = runs.reduce((acc, r) => {
-                acc.total += 1;
-                if (r.level === 'green') acc.green += 1;
-                else if (r.level === 'yellow') acc.yellow += 1;
-                else acc.red += 1;
-                return acc;
-              }, { total: 0, green: 0, yellow: 0, red: 0 });
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={1120}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Type</Table.Th>
+                <Table.Th>Target</Table.Th>
+                <Table.Th>Current</Table.Th>
+                <Table.Th>Latest</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Last check</Table.Th>
+                <Table.Th>Interval</Table.Th>
+                <Table.Th>Action</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {visible.map((item) => {
+                const runs = runsByMonitor[item.id] ?? [];
+                const stats = runs.reduce((acc, r) => {
+                  acc.total += 1;
+                  if (r.level === 'green') acc.green += 1;
+                  else if (r.level === 'yellow') acc.yellow += 1;
+                  else acc.red += 1;
+                  return acc;
+                }, { total: 0, green: 0, yellow: 0, red: 0 });
 
-              return (
-                <Fragment key={item.id}>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Button variant="subtle" size="compact-sm" onClick={() => toggleDetails(item.id)}>
-                        {item.name}
-                      </Button>
-                    </Table.Td>
-                    <Table.Td>{item.type}</Table.Td>
-                    <Table.Td>{item.target}</Table.Td>
-                    <Table.Td>{item.currentVersion || '—'}</Table.Td>
-                    <Table.Td><Text size="sm">{item.latestMessage}</Text></Table.Td>
-                    <Table.Td>
-                      <Badge color={item.level === 'green' ? 'green' : item.level === 'yellow' ? 'yellow' : 'red'}>
-                        {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}
-                      </Badge>
-                      <Text size="xs" c="dimmed" mt={4}>
-                        {item.level === 'green' ? 'Okay' : item.level === 'yellow' ? 'Update' : 'Critical'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</Table.Td>
-                    <Table.Td>{secondsToHuman(item.intervalSec)}</Table.Td>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Button size="xs" variant="light" loading={runningId === item.id} onClick={() => runNow(item.id)}>Run now</Button>
-                        <ActionIcon variant="light" color="blue" onClick={() => openEdit(item)} aria-label="Edit">
-                          <IconPencil size={14} />
-                        </ActionIcon>
-                        <ActionIcon variant="light" color="red" onClick={() => removeCheck(item.id)} aria-label="Delete">
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-
-                  {expandedId === item.id ? (
+                return (
+                  <Fragment key={item.id}>
                     <Table.Tr>
-                      <Table.Td colSpan={9}>
-                        {runsLoadingId === item.id ? (
-                          <Text size="sm" c="dimmed">Loading runs…</Text>
-                        ) : (
-                          <>
-                            <Group mb="xs" gap="md">
-                              <Text size="sm" fw={600}>Last runs: {stats.total}</Text>
-                              <Badge color="green">Green {stats.green}</Badge>
-                              <Badge color="yellow">Yellow {stats.yellow}</Badge>
-                              <Badge color="red">Red {stats.red}</Badge>
-                            </Group>
-                            {runs.length === 0 ? <Text size="sm" c="dimmed">No runs yet.</Text> : (
-                              <Table withTableBorder>
-                                <Table.Thead>
-                                  <Table.Tr>
-                                    <Table.Th>Time</Table.Th>
-                                    <Table.Th>Level</Table.Th>
-                                    <Table.Th>Status</Table.Th>
-                                    <Table.Th>Latency</Table.Th>
-                                    <Table.Th>Message</Table.Th>
-                                  </Table.Tr>
-                                </Table.Thead>
-                                <Table.Tbody>
-                                  {runs.slice(0, 12).map((r) => (
-                                    <Table.Tr key={r.id}>
-                                      <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                                      <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                                      <Table.Td>{r.statusCode}</Table.Td>
-                                      <Table.Td>{r.latencyMs ?? '—'} ms</Table.Td>
-                                      <Table.Td>{r.message}</Table.Td>
-                                    </Table.Tr>
-                                  ))}
-                                </Table.Tbody>
-                              </Table>
-                            )}
-                          </>
-                        )}
+                      <Table.Td>
+                        <Button variant="subtle" size="compact-sm" onClick={() => toggleDetails(item.id)}>
+                          {item.name}
+                        </Button>
+                      </Table.Td>
+                      <Table.Td>{item.type}</Table.Td>
+                      <Table.Td>{item.target}</Table.Td>
+                      <Table.Td>{item.currentVersion || '—'}</Table.Td>
+                      <Table.Td><Text size="sm">{item.latestMessage}</Text></Table.Td>
+                      <Table.Td>
+                        <Badge color={item.level === 'green' ? 'green' : item.level === 'yellow' ? 'yellow' : 'red'}>
+                          {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}
+                        </Badge>
+                        <Text size="xs" c="dimmed" mt={4}>
+                          {item.level === 'green' ? 'Okay' : item.level === 'yellow' ? 'Update' : 'Critical'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</Table.Td>
+                      <Table.Td>{secondsToHuman(item.intervalSec)}</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs" wrap="nowrap">
+                          <Button size="xs" variant="light" loading={runningId === item.id} onClick={() => runNow(item.id)}>Run now</Button>
+                          <ActionIcon variant="light" color="blue" onClick={() => openEdit(item)} aria-label="Edit">
+                            <IconPencil size={14} />
+                          </ActionIcon>
+                          <ActionIcon variant="light" color="red" onClick={() => removeCheck(item.id)} aria-label="Delete">
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
+
+                    {expandedId === item.id ? (
+                      <Table.Tr>
+                        <Table.Td colSpan={9}>
+                          {runsLoadingId === item.id ? (
+                            <Text size="sm" c="dimmed">Loading runs…</Text>
+                          ) : (
+                            <>
+                              <Group mb="xs" gap="md">
+                                <Text size="sm" fw={600}>Last runs: {stats.total}</Text>
+                                <Badge color="green">Green {stats.green}</Badge>
+                                <Badge color="yellow">Yellow {stats.yellow}</Badge>
+                                <Badge color="red">Red {stats.red}</Badge>
+                              </Group>
+                              {runs.length === 0 ? <Text size="sm" c="dimmed">No runs yet.</Text> : (
+                                <ScrollArea>
+                                  <Table withTableBorder miw={720}>
+                                    <Table.Thead>
+                                      <Table.Tr>
+                                        <Table.Th>Time</Table.Th>
+                                        <Table.Th>Level</Table.Th>
+                                        <Table.Th>Status</Table.Th>
+                                        <Table.Th>Latency</Table.Th>
+                                        <Table.Th>Message</Table.Th>
+                                      </Table.Tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                      {runs.slice(0, 12).map((r) => (
+                                        <Table.Tr key={r.id}>
+                                          <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
+                                          <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
+                                          <Table.Td>{r.statusCode}</Table.Td>
+                                          <Table.Td>{r.latencyMs ?? '—'} ms</Table.Td>
+                                          <Table.Td>{r.message}</Table.Td>
+                                        </Table.Tr>
+                                      ))}
+                                    </Table.Tbody>
+                                  </Table>
+                                </ScrollArea>
+                              )}
+                            </>
+                          )}
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

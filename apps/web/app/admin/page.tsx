@@ -176,7 +176,7 @@ export default function AdminPage() {
             ))}
           </Table.Tbody>
         </Table>
-        <Group justify="space-between" mt="md">
+        <Group justify="space-between" mt="md" wrap="wrap" gap="xs">
           <Pagination value={Math.min(invitesPage, invitesPages)} onChange={setInvitesPage} total={invitesPages} />
           <Select w={90} value={pageSize} onChange={(v) => setPageSize(v || '10')} data={['10', '25', '50']} />
         </Group>

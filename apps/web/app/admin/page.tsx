@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, CopyButton, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
+import { Button, Card, CopyButton, Group, Pagination, ScrollArea, Select, SimpleGrid, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -143,10 +143,10 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mb="md">
         <Text fw={700}>Invite user</Text>
-        <Group mt="sm" grow>
+        <SimpleGrid mt="sm" cols={{ base: 1, sm: 2 }}>
           <TextInput label="Email" placeholder="new.user@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.currentTarget.value)} />
           <Select label="Role" data={[{ value: 'user', label: 'user' }, { value: 'admin', label: 'admin' }]} value={inviteRole} onChange={(v) => setInviteRole((v as 'admin' | 'user') || 'user')} />
-        </Group>
+        </SimpleGrid>
         <Button mt="sm" color="teal" onClick={createInvite} disabled={!inviteEmail}>Create invite</Button>
 
         {latestInvite ? (
@@ -160,22 +160,24 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mb="md">
         <Text fw={700} mb="sm">Active invites</Text>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Role</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Status</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {invitesRows.map((i) => (
-              <Table.Tr key={i.id}>
-                <Table.Td>{i.email}</Table.Td>
-                <Table.Td>{i.role}</Table.Td>
-                <Table.Td>{new Date(i.expiresAt).toLocaleString()}</Table.Td>
-                <Table.Td>{i.acceptedAt ? 'accepted' : 'pending'}</Table.Td>
-                <Table.Td>
-                  <Button size="xs" variant="light" color="red" disabled={Boolean(i.acceptedAt)} onClick={() => revokeInvite(i.id)}>Revoke</Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={840}>
+            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Role</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Status</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {invitesRows.map((i) => (
+                <Table.Tr key={i.id}>
+                  <Table.Td>{i.email}</Table.Td>
+                  <Table.Td>{i.role}</Table.Td>
+                  <Table.Td>{new Date(i.expiresAt).toLocaleString()}</Table.Td>
+                  <Table.Td>{i.acceptedAt ? 'accepted' : 'pending'}</Table.Td>
+                  <Table.Td>
+                    <Button size="xs" variant="light" color="red" disabled={Boolean(i.acceptedAt)} onClick={() => revokeInvite(i.id)}>Revoke</Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={Math.min(invitesPage, invitesPages)} onChange={setInvitesPage} total={invitesPages} />
           <Select w={90} value={pageSize} onChange={(v) => setPageSize(v || '10')} data={['10', '25', '50']} />
@@ -184,24 +186,28 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mb="md">
         <Text fw={700} mb="sm">Password resets (fallback when email is not configured)</Text>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Created</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Link</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {resetRows.map((r) => (
-              <Table.Tr key={r.id}>
-                <Table.Td>{r.email}</Table.Td>
-                <Table.Td>{new Date(r.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td>{new Date(r.expiresAt).toLocaleString()}</Table.Td>
-                <Table.Td>
-                  <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy reset link'}</Button>}</CopyButton>
-                </Table.Td>
-                <Table.Td>
-                  <Button size="xs" variant="light" color="red" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={820}>
+            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Created</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Link</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {resetRows.map((r) => (
+                <Table.Tr key={r.id}>
+                  <Table.Td>{r.email}</Table.Td>
+                  <Table.Td>{new Date(r.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td>{new Date(r.expiresAt).toLocaleString()}</Table.Td>
+                  <Table.Td>
+                    <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy reset link'}</Button>}</CopyButton>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group noWrap>
+                      <Button size="xs" variant="light" color="red" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={Math.min(resetsPage, resetsPages)} onChange={setResetsPage} total={resetsPages} />
         </Group>
@@ -209,30 +215,32 @@ export default function AdminPage() {
 
       <Card withBorder radius="md">
         <Text fw={700} mb="sm">Users</Text>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Edit</Table.Th><Table.Th>Status</Table.Th><Table.Th>Role</Table.Th><Table.Th>Created</Table.Th><Table.Th>Change Role</Table.Th><Table.Th>Toggle Status</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {userRows.map((u) => (
-              <Table.Tr key={u.id}>
-                <Table.Td>{u.email}</Table.Td>
-                <Table.Td><Button size="xs" variant="light" onClick={() => openEditUser(u.id, u.email)}>Edit</Button></Table.Td>
-                <Table.Td>{u.isActive ? 'active' : 'disabled'}</Table.Td>
-                <Table.Td><Text fw={600}>{u.role}</Text></Table.Td>
-                <Table.Td>{new Date(u.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td>
-                  <Select
-                    data={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]}
-                    value={u.role}
-                    onChange={(v) => v && updateRole(u.id, v as 'admin' | 'user')}
-                  />
-                </Table.Td>
-                <Table.Td>
-                  <Button size="xs" variant="light" color={u.isActive ? 'red' : 'teal'} onClick={() => setStatus(u.id, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={1080}>
+            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Edit</Table.Th><Table.Th>Status</Table.Th><Table.Th>Role</Table.Th><Table.Th>Created</Table.Th><Table.Th>Change Role</Table.Th><Table.Th>Toggle Status</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {userRows.map((u) => (
+                <Table.Tr key={u.id}>
+                  <Table.Td>{u.email}</Table.Td>
+                  <Table.Td><Button size="xs" variant="light" onClick={() => openEditUser(u.id, u.email)}>Edit</Button></Table.Td>
+                  <Table.Td>{u.isActive ? 'active' : 'disabled'}</Table.Td>
+                  <Table.Td><Text fw={600}>{u.role}</Text></Table.Td>
+                  <Table.Td>{new Date(u.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td>
+                    <Select
+                      data={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]}
+                      value={u.role}
+                      onChange={(v) => v && updateRole(u.id, v as 'admin' | 'user')}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Button size="xs" variant="light" color={u.isActive ? 'red' : 'teal'} onClick={() => setStatus(u.id, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={Math.min(usersPage, usersPages)} onChange={setUsersPage} total={usersPages} />
         </Group>
@@ -240,19 +248,21 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mt="md">
         <Text fw={700} mb="sm">Audit logs</Text>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Action</Table.Th><Table.Th>Actor</Table.Th><Table.Th>Target</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {auditRows.map((l) => (
-              <Table.Tr key={l.id}>
-                <Table.Td>{new Date(l.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td>{l.action}</Table.Td>
-                <Table.Td>{l.actorUserId ?? '—'}</Table.Td>
-                <Table.Td>{l.targetUserId ?? '—'}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={720}>
+            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Action</Table.Th><Table.Th>Actor</Table.Th><Table.Th>Target</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {auditRows.map((l) => (
+                <Table.Tr key={l.id}>
+                  <Table.Td>{new Date(l.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td>{l.action}</Table.Td>
+                  <Table.Td>{l.actorUserId ?? '—'}</Table.Td>
+                  <Table.Td>{l.targetUserId ?? '—'}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={Math.min(auditPage, auditPages)} onChange={setAuditPage} total={auditPages} />
         </Group>

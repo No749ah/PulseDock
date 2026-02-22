@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
+import { Button, Card, Group, Pagination, ScrollArea, Select, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -122,23 +122,25 @@ export default function FoldersPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Created</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((f) => (
-              <Table.Tr key={f.id}>
-                <Table.Td>{f.name}</Table.Td>
-                <Table.Td>{new Date(f.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Button size="xs" variant="light" onClick={() => openEdit(f)}>Edit</Button>
-                    <Button size="xs" variant="light" color="red" onClick={() => openDelete(f)}>Delete</Button>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={620}>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Created</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((f) => (
+                <Table.Tr key={f.id}>
+                  <Table.Td>{f.name}</Table.Td>
+                  <Table.Td>{new Date(f.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button size="xs" variant="light" onClick={() => openEdit(f)}>Edit</Button>
+                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(f)}>Delete</Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

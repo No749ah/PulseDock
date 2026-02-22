@@ -2,10 +2,12 @@
 
 import { Button, Group, Modal, Text } from '@mantine/core';
 import type { ModalProps } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import type { ReactNode } from 'react';
 
 export function AppModal(props: ModalProps) {
-  return <Modal centered radius="md" {...props} />;
+  const mobile = useMediaQuery('(max-width: 48em)');
+  return <Modal centered radius="md" fullScreen={mobile} size={mobile ? '100%' : props.size} {...props} />;
 }
 
 export function ConfirmModal({

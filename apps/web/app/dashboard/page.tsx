@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Card, Group, Progress, SimpleGrid, Table, Text } from '@mantine/core';
+import { Badge, Card, Group, Progress, ScrollArea, SimpleGrid, Table, Text } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
@@ -89,20 +89,22 @@ export default function DashboardPage() {
           <Text fw={700}>Latest runs</Text>
           <Badge variant="light">Click a row for monitors page</Badge>
         </Group>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {overview?.latestRuns.map((r) => (
-              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
-                <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                <Table.Td>{r.ok ? 'OK' : 'FAIL'}</Table.Td>
-                <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                <Table.Td>{r.message}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={720}>
+            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {overview?.latestRuns.map((r) => (
+                <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
+                  <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
+                  <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
+                  <Table.Td>{r.ok ? 'OK' : 'FAIL'}</Table.Td>
+                  <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
+                  <Table.Td>{r.message}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Card>
       </>}
     </AppFrame>

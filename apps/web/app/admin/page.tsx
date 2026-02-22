@@ -199,7 +199,7 @@ export default function AdminPage() {
                     <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy reset link'}</Button>}</CopyButton>
                   </Table.Td>
                   <Table.Td>
-                    <Group noWrap>
+                    <Group wrap="nowrap">
                       <Button size="xs" variant="light" color="red" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
                     </Group>
                   </Table.Td>

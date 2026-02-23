@@ -1,6 +1,7 @@
 'use client';
 
-import { AppShell, Avatar, Group, Menu, NavLink, Stack, Text } from '@mantine/core';
+import { AppShell, Avatar, Burger, Group, Menu, NavLink, Stack, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { IconActivityHeartbeat, IconAlertTriangle, IconFolder, IconGauge, IconLogout, IconSettings, IconShield, IconUser, IconVersions } from '@tabler/icons-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -37,6 +38,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
   const router = useRouter();
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure(false);
 
   useEffect(() => {
     setUser(getCachedUser() ?? getUser());
@@ -46,7 +48,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
   return (
     <AppShell
       header={{ height: 72 }}
-      navbar={{ width: 280, breakpoint: 'sm' }}
+      navbar={{ width: 280, breakpoint: 'sm', collapsed: { mobile: !mobileOpened } }}
       padding="lg"
       styles={{
         main: { background: 'transparent' },
@@ -57,6 +59,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
+            <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
             <img src="/brand/pulsedock-logo.svg" alt="PulseDock" width={28} height={28} style={{ borderRadius: 8 }} />
             <Text fw={700} size="lg">PulseDock</Text>
           </Group>
@@ -98,6 +101,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
                     leftSection={<item.icon size={16} />}
                     variant="light"
                     color="teal"
+                    onClick={closeMobile}
                   />
                 ))}
               </Stack>

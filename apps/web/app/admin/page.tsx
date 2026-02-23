@@ -143,7 +143,7 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mb="md">
         <Text fw={700}>Invite user</Text>
-        <Group mt="sm" grow>
+        <Group mt="sm" grow wrap="wrap">
           <TextInput label="Email" placeholder="new.user@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.currentTarget.value)} />
           <Select label="Role" data={[{ value: 'user', label: 'user' }, { value: 'admin', label: 'admin' }]} value={inviteRole} onChange={(v) => setInviteRole((v as 'admin' | 'user') || 'user')} />
         </Group>

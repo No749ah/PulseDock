@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Select, Switch, Table, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, ScrollArea, Select, Switch, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -213,14 +213,14 @@ export default function MonitorsPage() {
       </AppModal>
 
       <Card withBorder radius="md" mb="md">
-        <Group justify="space-between">
+        <Group justify="space-between" wrap="wrap">
           <Text fw={700}>Website pings</Text>
           <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create ping</Button>
         </Group>
       </Card>
 
       <Card withBorder radius="md" mb="md">
-        <Group>
+        <Group wrap="wrap">
           <Select
             label="Filter"
             value={filter}
@@ -231,34 +231,36 @@ export default function MonitorsPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((m) => {
-              const latest = runs.find((r) => r.monitorId === m.id);
-              const level = latest?.level ?? 'green';
-              return (
-                <Table.Tr key={m.id}>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
-                  <Table.Td>{m.type}</Table.Td>
-                  <Table.Td>{m.target}</Table.Td>
-                  <Table.Td>{m.intervalSec}s</Table.Td>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
-                      <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
-                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-        <Group justify="space-between" mt="md">
+        <ScrollArea>
+          <Table withTableBorder withColumnBorders miw={860}>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((m) => {
+                const latest = runs.find((r) => r.monitorId === m.id);
+                const level = latest?.level ?? 'green';
+                return (
+                  <Table.Tr key={m.id}>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
+                    <Table.Td>{m.type}</Table.Td>
+                    <Table.Td>{m.target}</Table.Td>
+                    <Table.Td>{m.intervalSec}s</Table.Td>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
+                    <Table.Td>
+                      <Group gap="xs" wrap="wrap">
+                        <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
+                        <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
+                        <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+        <Group justify="space-between" mt="md" wrap="wrap">
           <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
+          <Group gap="xs" wrap="wrap">
             <Text size="sm" c="dimmed">Rows per page</Text>
             <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
           </Group>

@@ -8,7 +8,7 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-    <main style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+    <main style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(12px, 3vw, 24px)' }}>
       <Card withBorder radius="xl" p="xl" mb="md" style={{ background: 'rgba(14,20,40,0.75)', backdropFilter: 'blur(10px)' }}>
         <Stack gap="md">
           <Group wrap="wrap">

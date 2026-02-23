@@ -29,12 +29,14 @@ export function ConfirmModal({
   cancelLabel?: string;
   confirmColor?: string;
 }) {
+  const mobile = useMediaQuery('(max-width: 48em)');
+
   return (
     <AppModal opened={opened} onClose={onClose} title={title}>
       <Text size="sm">{message}</Text>
-      <Group mt="md" justify="flex-end">
-        <Button variant="default" onClick={onClose}>{cancelLabel}</Button>
-        <Button color={confirmColor} onClick={onConfirm}>{confirmLabel}</Button>
+      <Group mt="md" justify="flex-end" grow={mobile}>
+        <Button variant="default" onClick={onClose} fullWidth={mobile}>{cancelLabel}</Button>
+        <Button color={confirmColor} onClick={onConfirm} fullWidth={mobile}>{confirmLabel}</Button>
       </Group>
     </AppModal>
   );

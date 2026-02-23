@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Select, Switch, Table, Text, TextInput } from '@mantine/core';
+import { ResponsiveTable } from '../../components/ui/responsive-table';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -196,7 +197,7 @@ export default function MonitorsPage() {
       />
 
       <AppModal opened={historyOpen} onClose={() => setHistoryOpen(false)} title={`Run history · ${selected?.name ?? ''}`} size="xl">
-        <Table withTableBorder withColumnBorders>
+        <ResponsiveTable minWidth={720}>
           <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
           <Table.Tbody>
             {historyRows.map((r) => (
@@ -209,7 +210,7 @@ export default function MonitorsPage() {
               </Table.Tr>
             ))}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
       </AppModal>
 
       <Card withBorder radius="md" mb="md">
@@ -231,7 +232,7 @@ export default function MonitorsPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
+        <ResponsiveTable minWidth={860}>
           <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
           <Table.Tbody>
             {pageRows.map((m) => {
@@ -245,7 +246,7 @@ export default function MonitorsPage() {
                   <Table.Td>{m.intervalSec}s</Table.Td>
                   <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
                   <Table.Td>
-                    <Group gap="xs">
+                    <Group gap="xs" wrap="nowrap">
                       <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
                       <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
                       <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
@@ -255,7 +256,7 @@ export default function MonitorsPage() {
               );
             })}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

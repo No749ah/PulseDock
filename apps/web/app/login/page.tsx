@@ -181,7 +181,7 @@ export default function LoginPage() {
           {error ? <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert> : null}
           {info ? <Alert color="teal">{info}</Alert> : null}
 
-          <Group grow>
+          <Group grow wrap="wrap">
             {inInviteFlow ? (
               <Button type="submit" color="teal" loading={loading || inviteLoading} disabled={inviteLoading}>Accept Invite</Button>
             ) : inResetFlow ? (

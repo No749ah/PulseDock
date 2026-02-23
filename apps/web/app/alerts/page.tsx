@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge, Button, Card, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
+import { ResponsiveTable } from '../../components/ui/responsive-table';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -199,7 +200,7 @@ export default function AlertsPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
+        <ResponsiveTable minWidth={820}>
           <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Created</Table.Th><Table.Th>Config</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
           <Table.Tbody>
             {pageRows.map((c) => (
@@ -209,7 +210,7 @@ export default function AlertsPage() {
                 <Table.Td>{new Date(c.createdAt).toLocaleString()}</Table.Td>
                 <Table.Td><Badge variant="light">{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge></Table.Td>
                 <Table.Td>
-                  <Group gap="xs">
+                  <Group gap="xs" wrap="nowrap">
                     <Button size="xs" variant="light" onClick={() => testChannel(c.id)}>Test</Button>
                     <Button size="xs" variant="light" onClick={() => openEdit(c)}>Edit</Button>
                     <Button size="xs" variant="light" color="red" onClick={() => openDelete(c)}>Delete</Button>
@@ -218,7 +219,7 @@ export default function AlertsPage() {
               </Table.Tr>
             ))}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

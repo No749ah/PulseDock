@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import { getToken, getUser } from '../../components/auth';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
+import { ResponsiveTable } from '../../components/ui/responsive-table';
 
 type Overview = {
   stats: { totalMonitors: number; green: number; yellow: number; red: number; uptimePct: number };
@@ -89,7 +90,7 @@ export default function DashboardPage() {
           <Text fw={700}>Latest runs</Text>
           <Badge variant="light">Click a row for monitors page</Badge>
         </Group>
-        <Table withTableBorder withColumnBorders>
+        <ResponsiveTable minWidth={760}>
           <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
           <Table.Tbody>
             {overview?.latestRuns.map((r) => (
@@ -102,7 +103,7 @@ export default function DashboardPage() {
               </Table.Tr>
             ))}
           </Table.Tbody>
-        </Table>
+        </ResponsiveTable>
       </Card>
       </>}
     </AppFrame>

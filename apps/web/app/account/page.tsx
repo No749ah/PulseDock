@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Card, Group, Modal, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Card, Group, Modal, PasswordInput, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -122,24 +122,26 @@ export default function AccountPage() {
       </Modal>
 
       <Stack>
-        <Card withBorder>
-          <form onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}>
-            <Text fw={700}>Profile</Text>
-            <Text size="sm" c="dimmed">{me?.email ?? '—'} ({me?.role ?? '—'})</Text>
-            <TextInput mt="sm" label="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.currentTarget.value)} />
-            <Button type="submit" mt="sm" color="teal" variant="light">Save email</Button>
-          </form>
-        </Card>
+        <SimpleGrid cols={{ base: 1, lg: 2 }}>
+          <Card withBorder>
+            <form onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}>
+              <Text fw={700}>Profile</Text>
+              <Text size="sm" c="dimmed">{me?.email ?? '—'} ({me?.role ?? '—'})</Text>
+              <TextInput mt="sm" label="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.currentTarget.value)} />
+              <Button type="submit" mt="sm" color="teal" variant="light">Save email</Button>
+            </form>
+          </Card>
 
-        <Card withBorder>
-          <form onSubmit={(e) => { e.preventDefault(); void savePassword(); }}>
-            <Text fw={700}>Password</Text>
-            <PasswordInput mt="sm" label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.currentTarget.value)} />
-            <PasswordInput mt="sm" label="New password" value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
-            {passwordError ? <Alert mt="sm" color="red">{passwordError}</Alert> : null}
-            <Button type="submit" mt="sm" color="teal">Update password</Button>
-          </form>
-        </Card>
+          <Card withBorder>
+            <form onSubmit={(e) => { e.preventDefault(); void savePassword(); }}>
+              <Text fw={700}>Password</Text>
+              <PasswordInput mt="sm" label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.currentTarget.value)} />
+              <PasswordInput mt="sm" label="New password" value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
+              {passwordError ? <Alert mt="sm" color="red">{passwordError}</Alert> : null}
+              <Button type="submit" mt="sm" color="teal">Update password</Button>
+            </form>
+          </Card>
+        </SimpleGrid>
 
         <Card withBorder>
           <Group justify="space-between" wrap="wrap">

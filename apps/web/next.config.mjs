@@ -9,6 +9,17 @@ const nextConfig = {
     'https://oc-web-test.no749ah.com',
     'http://oc-web-test.no749ah.com',
   ],
+
+  // Proxy all /api requests to the API server (keeps frontend on / and API on /api)
+  // Strip the /api prefix so backend receives paths like /v1/... (the API mounts routes at /v1)
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:4001/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

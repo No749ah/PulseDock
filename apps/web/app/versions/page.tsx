@@ -566,7 +566,7 @@ export default function VersionsPage() {
       </Card>
 
       <Card withBorder mb="md">
-        <Group>
+        <Group wrap="wrap" gap="xs">
           <Text fw={700}>Tracked: {summary?.stats.total ?? 0}</Text>
           <Badge color="green">Up-to-date: {summary?.stats.green ?? 0}</Badge>
           <Badge color="yellow">Updates: {summary?.stats.yellow ?? 0}</Badge>
@@ -576,7 +576,8 @@ export default function VersionsPage() {
       </Card>
 
       <Card withBorder>
-        <Table withTableBorder withColumnBorders>
+        <Table.ScrollContainer minWidth={1180}>
+          <Table withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
@@ -682,7 +683,8 @@ export default function VersionsPage() {
               );
             })}
           </Table.Tbody>
-        </Table>
+          </Table>
+        </Table.ScrollContainer>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

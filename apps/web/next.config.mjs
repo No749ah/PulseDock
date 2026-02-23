@@ -9,6 +9,16 @@ const nextConfig = {
     'https://oc-web-test.no749ah.com',
     'http://oc-web-test.no749ah.com',
   ],
+
+  // Proxy all /api requests to the API server (keeps frontend on / and API on /api)
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:4000/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

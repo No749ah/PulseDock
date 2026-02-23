@@ -11,18 +11,18 @@ export default function HomePage() {
     <main style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
       <Card withBorder radius="xl" p="xl" mb="md" style={{ background: 'rgba(14,20,40,0.75)', backdropFilter: 'blur(10px)' }}>
         <Stack gap="md">
-          <Group>
+          <Group wrap="wrap">
             <Badge color="indigo" variant="light">PulseDock Enterprise</Badge>
             <Badge color="cyan" variant="light">NestJS + Next.js</Badge>
           </Group>
-          <Title order={1} style={{ fontSize: 52, lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+          <Title order={1} style={{ fontSize: 'clamp(1.9rem, 6vw, 3.25rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
             Unified uptime + update intelligence for modern operations teams.
           </Title>
           <Text c="dimmed" maw={900}>
             Track websites, release freshness, and container updates. Route alerts to Discord, Slack,
             Telegram, webhooks, and email — with public status visibility and role-based admin control.
           </Text>
-          <Group>
+          <Group wrap="wrap">
             <Button color="teal" size="md" onClick={() => router.push('/login')}>Get Started</Button>
             <Button color="teal" variant="light" size="md" onClick={() => router.push('/dashboard')}>Open Dashboard</Button>
           </Group>

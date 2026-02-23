@@ -122,23 +122,25 @@ export default function FoldersPage() {
       </Card>
 
       <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Created</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((f) => (
-              <Table.Tr key={f.id}>
-                <Table.Td>{f.name}</Table.Td>
-                <Table.Td>{new Date(f.createdAt).toLocaleString()}</Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
-                    <Button size="xs" variant="light" onClick={() => openEdit(f)}>Edit</Button>
-                    <Button size="xs" variant="light" color="red" onClick={() => openDelete(f)}>Delete</Button>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Table.ScrollContainer minWidth={700}>
+          <Table withTableBorder withColumnBorders>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Created</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((f) => (
+                <Table.Tr key={f.id}>
+                  <Table.Td>{f.name}</Table.Td>
+                  <Table.Td>{new Date(f.createdAt).toLocaleString()}</Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button size="xs" variant="light" onClick={() => openEdit(f)}>Edit</Button>
+                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(f)}>Delete</Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

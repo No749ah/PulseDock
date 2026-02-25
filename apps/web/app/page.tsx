@@ -1,125 +1,97 @@
-import Link from "next/link"
-import Image from "next/image"
+import Link from "next/link";
 
 export default function Landing() {
   return (
-    <main className="landing-root" style={{fontFamily: "Inter, system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial", color: "#0f1720"}}>
+    <main className="landing-root">
       <style>{`
-        .landing-root { background: linear-gradient(180deg,#fbfdff 0%, #f6fbff 100%); min-height:100vh; }
-        .container { max-width:1200px; margin:0 auto; padding:64px 24px; }
-        .hero { display:flex; gap:48px; align-items:center; justify-content:space-between; }
-        .hero-left { flex:1; }
-        .kicker { display:inline-block; background:#0ea5a4; color:#042f2e; padding:6px 10px; border-radius:999px; font-weight:700; font-size:13px; }
-        h1 { font-size:48px; line-height:1.02; margin:18px 0 12px; color:#071023; }
-        p.lead { color:#334155; font-size:18px; margin-bottom:20px; }
-        .features { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:20px; }
-        .feature { background:#fff; border:1px solid rgba(9,30,66,0.04); padding:16px; border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,0.04); }
-        .ctas { margin-top:28px; display:flex; gap:12px; align-items:center; }
-        .btn-primary { background:#0f1724; color:#fff; padding:12px 18px; border-radius:10px; font-weight:700; text-decoration:none; }
-        .btn-ghost { border:1px solid rgba(15,23,36,0.08); background:transparent; color:#0f1724; padding:12px 18px; border-radius:10px; text-decoration:none; }
-        .hero-right { width:460px; flex:0 0 460px; }
-        .panel { border-radius:16px; padding:18px; background:linear-gradient(180deg,#ffffff,#f8fbff); border:1px solid rgba(9,30,66,0.04); box-shadow: 0 10px 30px rgba(15,23,42,0.06);} 
-        .screenshot { width:100%; height:300px; border-radius:10px; background:linear-gradient(90deg,#e6f6f6,#eef7fb); display:flex; align-items:center; justify-content:center; color:#0f1724; font-weight:700; }
-        .section { margin-top:56px; }
-        .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-        .card { background:#fff; padding:20px; border-radius:12px; border:1px solid rgba(9,30,66,0.04); }
-        footer { margin-top:72px; padding:28px 0; text-align:center; color:#64748b; font-size:14px; }
-        @media (max-width:900px){ .hero{flex-direction:column-reverse}.hero-right{width:100%;flex:unset}.grid-3{grid-template-columns:1fr} .features{grid-template-columns:1fr} }
+        :root{--bg:#07121a;--card:#09202a;--muted:#9fb1bc;--accent:#22d3c9;--glass:rgba(255,255,255,0.03)}
+        *{box-sizing:border-box}
+        html,body{height:100%;margin:0}
+        .landing-root{min-height:100vh;background:radial-gradient(800px 400px at 10% 10%, rgba(34,211,201,0.06), transparent), radial-gradient(700px 400px at 90% 80%, rgba(99,102,241,0.06), transparent), linear-gradient(180deg,var(--bg), #031019); color:#e6f3f2; font-family:Inter, system-ui, -apple-system, 'Helvetica Neue', Arial}
+        .container{max-width:1200px;margin:0 auto;padding:64px 24px}
+        .hero{display:flex;gap:40px;align-items:center}
+        .left{flex:1}
+        .kicker{display:inline-block;background:linear-gradient(90deg,var(--accent),#60a5fa);color:#021619;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px}
+        h1{font-size:44px;line-height:1.02;margin:16px 0;color:#eafefd;text-shadow:0 6px 30px rgba(0,0,0,0.6)}
+        p.lead{color:var(--muted);font-size:17px}
+        .features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+        .feature{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:14px;border-radius:12px;backdrop-filter:blur(6px);}
+        .ctas{margin-top:26px;display:flex;gap:12px;align-items:center}
+        .btn{padding:12px 18px;border-radius:10px;font-weight:700;text-decoration:none}
+        .btn-primary{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021619}
+        .btn-ghost{border:1px solid rgba(255,255,255,0.06);color:var(--muted);background:transparent}
+        .right{width:480px;flex:0 0 480px}
+        .panel{border-radius:16px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);box-shadow: 0 20px 50px rgba(2,6,23,0.7);overflow:hidden}
+        .screenshot{width:100%;height:360px;border-radius:12px;background:linear-gradient(135deg,#051117,#0b1220);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+        .orb{position:absolute;right:18%;top:30%;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle at 30% 30%, rgba(34,211,201,0.22), rgba(34,211,201,0.08) 40%, transparent 60%);box-shadow:0 10px 40px rgba(34,211,201,0.06);filter:blur(6px);animation:float 6s ease-in-out infinite}
+        .glow-ring{position:absolute;left:12%;bottom:18%;width:120px;height:120px;border-radius:999px;border:3px solid rgba(124,58,237,0.12);box-shadow:0 0 40px rgba(124,58,237,0.12);animation:spin 14s linear infinite}
+        @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-14px)}100%{transform:translateY(0)}}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .screenshot-inner{position:relative;z-index:2;color:var(--muted);font-weight:700}
+        .section{margin-top:56px}
+        .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+        .card{background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+        footer{margin-top:64px;padding:40px 0;color:#8aa0a7;text-align:center;font-size:14px}
+        @media (max-width:920px){.hero{flex-direction:column-reverse}.right{width:100%;flex:unset}.grid3{grid-template-columns:1fr}.features{grid-template-columns:1fr}}
       `}</style>
 
       <div className="container">
         <div className="hero">
-          <div className="hero-left">
+          <div className="left">
             <span className="kicker">New — Version Intelligence</span>
-            <h1>PulseDock — Ship with confidence. Know every change.</h1>
-            <p className="lead">Understand version drift across environments, get precise changelog summaries, and publish status pages — all with enterprise reliability and delightful UX.</p>
+            <h1>PulseDock — Unified uptime & update intelligence</h1>
+            <p className="lead">Track versions, summarize changes, and publish status pages with a secure, delightful experience. Designed for teams who value clarity and control.</p>
 
             <div className="features">
-              <div className="feature">
-                <strong>Realtime monitoring</strong>
-                <div style={{marginTop:8,color:'#475569'}}>Track versions across hosts with live status and historical timelines.</div>
-              </div>
-              <div className="feature">
-                <strong>Changelog summarization</strong>
-                <div style={{marginTop:8,color:'#475569'}}>AI-assisted bullet summaries for releases and dependency updates.</div>
-              </div>
-              <div className="feature">
-                <strong>Public status pages</strong>
-                <div style={{marginTop:8,color:'#475569'}}>Share uptime and version history with stakeholders via public pages.</div>
-              </div>
-              <div className="feature">
-                <strong>Enterprise controls</strong>
-                <div style={{marginTop:8,color:'#475569'}}>Role-based access, audit logs, and single sign-on integrations.</div>
-              </div>
+              <div className="feature"><strong>Realtime monitoring</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Live status, history and alerts across fleets.</div></div>
+              <div className="feature"><strong>Changelog summaries</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Short, readable release notes powered by smart summarization.</div></div>
+              <div className="feature"><strong>Publish status pages</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Share uptime and version history with stakeholders.</div></div>
+              <div className="feature"><strong>Enterprise controls</strong><div style={{marginTop:8,color:'#9fb1bc'}}>RBAC, audit logs and SSO integrations.</div></div>
             </div>
 
             <div className="ctas">
-              <a className="btn-primary" href="/login">Get started — Sign in</a>
-              <a className="btn-ghost" href="/projects/PulseDock/docs/START.md">Read docs</a>
+              <Link href="/login"><a className="btn btn-primary">Get started — Sign in</a></Link>
+              <Link href="/projects/PulseDock/docs/START.md"><a className="btn btn-ghost">Read docs</a></Link>
             </div>
-
           </div>
 
-          <div className="hero-right">
+          <div className="right">
             <div className="panel">
               <div className="screenshot">
-                <div>PulseDock UI preview</div>
+                <div className="orb" />
+                <div className="glow-ring" />
+                <div className="screenshot-inner">Live overview • Demo data</div>
               </div>
-              <div style={{display:'flex', justifyContent:'space-between', marginTop:12}}>
-                <div style={{fontWeight:700}}>Live Overview</div>
-                <div style={{color:'#94a3b8'}}>Updated 2m ago</div>
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:12}}>
+                <div style={{fontWeight:700}}>Overview</div>
+                <div style={{color:'#94a3b8'}}>Updated now</div>
               </div>
             </div>
           </div>
         </div>
 
-        <section className="section">
-          <h2>Designed for teams — built for scale</h2>
-          <p style={{color:'#475569'}}>PulseDock balances simplicity and control: quick setup for small teams, advanced governance for large organizations.</p>
+        <div className="section">
+          <h2>Built for scale, loved by teams</h2>
+          <p style={{color:'#9fb1bc'}}>Fast setup, secure defaults, and integrations that matter — ship with confidence.</p>
 
-          <div className="grid-3" style={{marginTop:18}}>
-            <div className="card">
-              <h4>Integrations</h4>
-              <p style={{color:'#475569'}}>Connect to your CI, artifact registries, and notification channels (Slack, Email, PagerDuty).</p>
-            </div>
-            <div className="card">
-              <h4>Privacy-first</h4>
-              <p style={{color:'#475569'}}>Run self-hosted or in your cloud; data remains yours. Optional telemetry is off by default.</p>
-            </div>
-            <div className="card">
-              <h4>Extensible</h4>
-              <p style={{color:'#475569'}}>Create custom monitors and plugins with a small SDK.</p>
-            </div>
+          <div className="grid3" style={{marginTop:18}}>
+            <div className="card"><h4>Integrations</h4><p style={{color:'#9fb1bc'}}>Connect CI, registries, and notifications.</p></div>
+            <div className="card"><h4>Privacy</h4><p style={{color:'#9fb1bc'}}>Self-host or cloud; data stays yours.</p></div>
+            <div className="card"><h4>Extensible</h4><p style={{color:'#9fb1bc'}}>Plugins and SDKs for custom monitors.</p></div>
           </div>
-        </section>
+        </div>
 
-        <section className="section">
-          <h2>Why teams choose PulseDock</h2>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginTop:12}}>
-            <div className="card">
-              <strong>Fewer incident investigations</strong>
-              <p style={{color:'#475569'}}>Aggregate version telemetry and reduce mean time to resolution.</p>
-            </div>
-            <div className="card">
-              <strong>Safer upgrades</strong>
-              <p style={{color:'#475569'}}>Preview changes, run canary monitors, and rollback with context.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
+        <div className="section">
           <h3>Start in minutes</h3>
-          <ol style={{color:'#475569'}}>
-            <li>Run the Docker dependencies.</li>
-            <li>Apply database migrations (prisma).</li>
-            <li>Start API + Web using the repo wrappers.</li>
+          <ol style={{color:'#9fb1bc'}}>
+            <li>docker compose up -d postgres redis</li>
+            <li>npx prisma migrate deploy --schema=projects/PulseDock/prisma/schema.prisma</li>
+            <li>npm run start:api && npm run start:web</li>
           </ol>
-        </section>
+        </div>
 
-        <footer>
-          © {new Date().getFullYear()} PulseDock — Built with care.
-        </footer>
+        <footer>© {new Date().getFullYear()} PulseDock — built with care.</footer>
       </div>
     </main>
-  )
+  );
 }

@@ -23,8 +23,6 @@ body {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
-<<<<<<< Updated upstream
-=======
 .pd-user-label {
   max-width: 12rem;
   white-space: nowrap;
@@ -38,10 +36,6 @@ body {
   }
 }
 
-/* removed cinematic/legacy landing styles to ensure new landing styles apply */
-.landing-cinematic-wrap,
-.landing-cinematic-sticky,
->>>>>>> Stashed changes
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   width: 100%;

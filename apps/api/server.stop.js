@@ -1,7 +1,8 @@
 const io = require('socket.io-client');
 const url = process.env.CONTROL_URL || 'http://localhost';
-const PORT = process.env.PORT || process.env.API_PORT || 4000;
-const socket = io.connect(`${url}:${PORT}`, { reconnectionAttempts: 5, timeout: 2000 });
+const APP_PORT = process.env.API_PORT || process.env.PORT || process.env.APP_PORT || 4000;
+const CONTROL_PORT = process.env.CONTROL_PORT || APP_PORT;
+const socket = io.connect(`${url}:${CONTROL_PORT}`, { reconnectionAttempts: 5, timeout: 2000 });
 socket.on('connect', () => {
   console.log('Connected to api control server, sending npmStop');
   socket.emit('npmStop');

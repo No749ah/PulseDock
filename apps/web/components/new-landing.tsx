@@ -39,10 +39,10 @@ export default function NewLanding() {
               </p>
             </div>
 
-            <Group mt={24} spacing="md" className="ld-fade-up" style={{ transform: 'translateY(18px)', opacity: 0 }}>
+            <div className="ld-fade-up" style={{ display:'flex', gap:12, marginTop:24, transform:'translateY(18px)', opacity:0 }}>
               <Button size="lg" color="teal" onClick={() => router.push('/login')}>Get started</Button>
               <Button size="lg" variant="outline" onClick={() => router.push('/dashboard')}>Open dashboard</Button>
-            </Group>
+            </div>
 
             <div className="ld-fade-up" style={{ display: 'flex', gap: 12, marginTop: 28, transform: 'translateY(18px)', opacity: 0 }} aria-hidden>
               <Card radius="md" p="sm" withBorder style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.04)' }}>

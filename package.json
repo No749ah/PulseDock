@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "description": "PulseDock - Version intelligence dashboard",
-  "workspaces": ["apps/*","packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "echo \"Use: npm run web | npm run api (or dev:web/dev:api)\"",
     "web": "npm run build -w @pulsedock/web && npm run start -w @pulsedock/web",
@@ -22,6 +25,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "framer-motion": "^10.12.16",
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0"
   }

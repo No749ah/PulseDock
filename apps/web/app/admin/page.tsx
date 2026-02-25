@@ -186,11 +186,7 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mb="md">
         <Text fw={700} mb="sm">Password resets (fallback when email is not configured)</Text>
-<<<<<<< HEAD
-        <Table.ScrollContainer minWidth={980}>
-=======
         <Table.ScrollContainer minWidth={900}>
->>>>>>> origin/heartbeat/20260224-032125
           <Table withTableBorder withColumnBorders>
             <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Created</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Link</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
             <Table.Tbody>
@@ -217,11 +213,7 @@ export default function AdminPage() {
 
       <Card withBorder radius="md">
         <Text fw={700} mb="sm">Users</Text>
-<<<<<<< HEAD
-        <Table.ScrollContainer minWidth={1160}>
-=======
         <Table.ScrollContainer minWidth={1100}>
->>>>>>> origin/heartbeat/20260224-032125
           <Table withTableBorder withColumnBorders>
             <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Edit</Table.Th><Table.Th>Status</Table.Th><Table.Th>Role</Table.Th><Table.Th>Created</Table.Th><Table.Th>Change Role</Table.Th><Table.Th>Toggle Status</Table.Th></Table.Tr></Table.Thead>
             <Table.Tbody>
@@ -254,11 +246,7 @@ export default function AdminPage() {
 
       <Card withBorder radius="md" mt="md">
         <Text fw={700} mb="sm">Audit logs</Text>
-<<<<<<< HEAD
-        <Table.ScrollContainer minWidth={860}>
-=======
         <Table.ScrollContainer minWidth={800}>
->>>>>>> origin/heartbeat/20260224-032125
           <Table withTableBorder withColumnBorders>
             <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Action</Table.Th><Table.Th>Actor</Table.Th><Table.Th>Target</Table.Th></Table.Tr></Table.Thead>
             <Table.Tbody>

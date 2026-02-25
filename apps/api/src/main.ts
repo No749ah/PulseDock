@@ -64,6 +64,26 @@ async function bootstrap() {
     .build();
 
   const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
+
+  // Configure Swagger servers so client-facing docs use the proxied API path when behind a reverse proxy.
+  // Priority:
+  // 1) process.env.SWAGGER_BASE_URL (explicit full URL)
+  // 2) process.env.APP_BASE_URL (frontend origin)
+  // 3) default to relative '/api' so docs request the proxied path on the current origin
+  const explicit = process.env.SWAGGER_BASE_URL || process.env.APP_BASE_URL || '';
+  let swaggerServerUrl = '/api';
+  if (explicit) {
+    const trimmed = explicit.replace(/\/$/, '');
+    // if explicit contains a protocol, assume full origin provided
+    if (/^https?:\/\//i.test(trimmed)) swaggerServerUrl = `${trimmed}/api`;
+    else swaggerServerUrl = `${trimmed}/api`;
+  } else if (process.env.NODE_ENV === 'development') {
+    const port = Number(process.env.API_PORT ?? 4000);
+    swaggerServerUrl = `http://localhost:${port}`;
+  }
+  // attach servers entry to the swagger document
+  swaggerDoc.servers = [{ url: swaggerServerUrl }];
+
   SwaggerModule.setup('docs', app, swaggerDoc, {
     swaggerOptions: { persistAuthorization: true },
   });
@@ -71,7 +91,7 @@ async function bootstrap() {
   const port = Number(process.env.API_PORT ?? 4000);
   await app.listen(port);
   console.log(`PulseDock API (NestJS) running on http://localhost:${port}`);
-  console.log(`Swagger docs available at http://localhost:${port}/docs`);
+  console.log(`Swagger docs available at http://localhost:${port}/docs (Swagger server: ${swaggerServerUrl})`);
 }
 
 bootstrap();

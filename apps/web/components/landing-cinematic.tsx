@@ -33,6 +33,7 @@ export function LandingCinematic() {
     if (!wrap) return;
 
     let progress = 0;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const drawFallback = () => {
       const canvas = canvasRef.current;
@@ -40,7 +41,7 @@ export function LandingCinematic() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const ratio = window.devicePixelRatio || 1;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       canvas.width = Math.floor(w * ratio);
@@ -70,10 +71,14 @@ export function LandingCinematic() {
     };
 
     const sync = () => {
-      const rect = wrap.getBoundingClientRect();
-      const total = Math.max(1, wrap.offsetHeight - window.innerHeight);
-      const passed = clamp(-rect.top, 0, total);
-      progress = passed / total;
+      if (reducedMotion) {
+        progress = 0.5;
+      } else {
+        const rect = wrap.getBoundingClientRect();
+        const total = Math.max(1, wrap.offsetHeight - window.innerHeight);
+        const passed = clamp(-rect.top, 0, total);
+        progress = passed / total;
+      }
 
       const video = videoRef.current;
       if (video && hasVideo && Number.isFinite(video.duration) && video.duration > 0) {
@@ -93,11 +98,15 @@ export function LandingCinematic() {
     };
 
     sync();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    if (!reducedMotion) {
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
     window.addEventListener('resize', sync);
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      if (!reducedMotion) {
+        window.removeEventListener('scroll', onScroll);
+      }
       window.removeEventListener('resize', sync);
       cancelAnimationFrame(raf);
     };
@@ -112,7 +121,7 @@ export function LandingCinematic() {
           src="/hero-video/hero.mp4"
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           style={{ display: hasVideo ? 'block' : 'none' }}
         />
         <canvas ref={canvasRef} className="landing-cinematic-canvas" style={{ display: hasVideo ? 'none' : 'block' }} />

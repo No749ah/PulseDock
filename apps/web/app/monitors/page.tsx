@@ -231,6 +231,7 @@ export default function MonitorsPage() {
       </Card>
 
       <Card withBorder radius="md">
+<<<<<<< Updated upstream
         <Table withTableBorder withColumnBorders>
           <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
           <Table.Tbody>
@@ -256,6 +257,35 @@ export default function MonitorsPage() {
             })}
           </Table.Tbody>
         </Table>
+=======
+        <Table.ScrollContainer minWidth={980}>
+          <Table withTableBorder withColumnBorders>
+            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
+            <Table.Tbody>
+              {pageRows.map((m) => {
+                const latest = runs.find((r) => r.monitorId === m.id);
+                const level = latest?.level ?? 'green';
+                return (
+                  <Table.Tr key={m.id}>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
+                    <Table.Td>{m.type}</Table.Td>
+                    <Table.Td style={{ maxWidth: 320, overflowWrap: 'anywhere' }}>{m.target}</Table.Td>
+                    <Table.Td>{m.intervalSec}s</Table.Td>
+                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
+                        <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
+                        <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+>>>>>>> Stashed changes
         <Group justify="space-between" mt="md">
           <Pagination value={safePage} onChange={setPage} total={pages} />
           <Group gap="xs">

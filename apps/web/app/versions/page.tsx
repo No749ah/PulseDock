@@ -610,9 +610,9 @@ export default function VersionsPage() {
                       </Button>
                     </Table.Td>
                     <Table.Td>{item.type}</Table.Td>
-                    <Table.Td>{item.target}</Table.Td>
+                    <Table.Td style={{ maxWidth: 280, overflowWrap: 'anywhere' }}>{item.target}</Table.Td>
                     <Table.Td>{item.currentVersion || '—'}</Table.Td>
-                    <Table.Td><Text size="sm">{item.latestMessage}</Text></Table.Td>
+                    <Table.Td><Text size="sm" style={{ maxWidth: 280, overflowWrap: 'anywhere' }}>{item.latestMessage}</Text></Table.Td>
                     <Table.Td>
                       <Badge color={item.level === 'green' ? 'green' : item.level === 'yellow' ? 'yellow' : 'red'}>
                         {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}

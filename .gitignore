@@ -17,6 +17,8 @@ coverage/
 pulsedock_api.log
 pulsedock_web_build.log
 pulsedock_web_start.log
+projects/PulseDock/logs/
+projects/PulseDock/logs/*
 
 # OS files
 .DS_Store
@@ -30,3 +32,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignore deploy keys and workspace keys
+/projects/PulseDock/.keys
+projects/PulseDock/.keys/*

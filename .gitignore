@@ -1,0 +1,32 @@
+# Node
+node_modules/
+
+# Build outputs
+dist/
+.next/
+build/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+pulsedock_api.log
+pulsedock_web_build.log
+pulsedock_web_start.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

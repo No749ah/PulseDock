@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Button, Container, Title, Text, Card, Group } from '@mantine/core'
+import { Button, Container, Title, Card, Group } from '@mantine/core'
 import { useRouter } from 'next/navigation'
 
 export default function NewLanding() {
@@ -23,7 +23,7 @@ export default function NewLanding() {
         <div style={{display:'grid', gridTemplateColumns: '1fr', gap:24}} className="ld-grid">
           <div style={{gridColumn: '1 / -1'}}>
             <div style={{ transform: 'translateY(18px)', opacity: 0 }} className="ld-fade-up">
-              <Text size="sm" color="cyan" weight={700} style={{ letterSpacing: '0.08em' }}>PulseDock</Text>
+              <p style="margin:0;color:#6ff;letter-spacing:0.08em;font-weight:700;font-size:0.9rem">PulseDock</p>
             </div>
 
             <div style={{ transform: 'translateY(18px)', opacity: 0 }} className="ld-fade-up">
@@ -33,10 +33,10 @@ export default function NewLanding() {
             </div>
 
             <div style={{ transform: 'translateY(18px)', opacity: 0 }} className="ld-fade-up">
-              <Text color="rgba(238,246,255,0.8)" size="lg" mt={16}>
+              <p style="margin-top:16px;color:rgba(238,246,255,0.8);font-size:1.05rem">
                 Track versions, monitor health, and get fewer but smarter alerts. Opinionated defaults,
                 easy onboarding, and clear incident semantics so your team spends less time troubleshooting and more time building.
-              </Text>
+              </p>
             </div>
 
             <Group mt={24} spacing="md" className="ld-fade-up" style={{ transform: 'translateY(18px)', opacity: 0 }}>
@@ -46,16 +46,16 @@ export default function NewLanding() {
 
             <div style={{ display: 'flex', gap: 12, marginTop: 28 }} className="ld-fade-up" aria-hidden style={{ transform: 'translateY(18px)', opacity: 0 }}>
               <Card radius="md" p="sm" withBorder style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.04)' }}>
-                <Text weight={700}>99.99%</Text>
-                <Text size="xs" color="dimmed">Uptime checks</Text>
+                <p style="margin:0;font-weight:700">99.99%</p>
+                <p style="margin:0;color:rgba(255,255,255,0.6);font-size:0.85rem">Uptime checks</p>
               </Card>
               <Card radius="md" p="sm" withBorder style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.04)' }}>
-                <Text weight={700}>Auto onboarding</Text>
-                <Text size="xs" color="dimmed">Smart defaults</Text>
+                <p style="margin:0;font-weight:700">Auto onboarding</p>
+                <p style="margin:0;color:rgba(255,255,255,0.6);font-size:0.85rem">Smart defaults</p>
               </Card>
               <Card radius="md" p="sm" withBorder style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.04)' }}>
-                <Text weight={700}>Integrations</Text>
-                <Text size="xs" color="dimmed">Slack, Discord, Webhooks</Text>
+                <p style="margin:0;font-weight:700">Integrations</p>
+                <p style="margin:0;color:rgba(255,255,255,0.6);font-size:0.85rem">Slack, Discord, Webhooks</p>
               </Card>
             </div>
           </div>
@@ -64,8 +64,8 @@ export default function NewLanding() {
             <div style={{ display: 'grid', gap: 14 }}>
               <div style={{ background: 'linear-gradient(135deg,#06203a,#08334f)', borderRadius: 16, padding: 18, minHeight: 240, color: '#bfe9ff' }} className="ld-fade-up" aria-hidden>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text weight={700}>Live status</Text>
-                  <div style={{ background: '#063b2f', padding: '6px 10px', borderRadius: 999 }}><Text size='xs' color='lime'>All systems nominal</Text></div>
+                  <p style="margin:0;font-weight:700">Live status</p>
+                  <div style={{ background: '#063b2f', padding: '6px 10px', borderRadius: 999 }}><Text size='xs' color='lime'>All systems nominal</p></div>
                 </div>
                 <div style={{ marginTop: 12 }}>
                   <div style={{ height: 120, background: 'linear-gradient(90deg,#0ea5a5,transparent)', borderRadius: 8 }} />
@@ -74,12 +74,12 @@ export default function NewLanding() {
 
               <div style={{ display: 'flex', gap: 12 }} className="ld-fade-up" aria-hidden>
                 <Card radius="md" p="md" withBorder style={{ flex: 1 }}>
-                  <Text weight={700}>Version freshness</Text>
-                  <Text size="sm" color="dimmed">See which services are behind and why.</Text>
+                  <p style="margin:0;font-weight:700">Version freshness</p>
+                  <Text size="sm" color="dimmed">See which services are behind and why.</p>
                 </Card>
                 <Card radius="md" p="md" withBorder style={{ flex: 1 }}>
-                  <Text weight={700}>Alerts</Text>
-                  <Text size="sm" color="dimmed">Opinionated signals, less noise.</Text>
+                  <p style="margin:0;font-weight:700">Alerts</p>
+                  <Text size="sm" color="dimmed">Opinionated signals, less noise.</p>
                 </Card>
               </div>
 

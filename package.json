@@ -1,4 +1,18 @@
 {
+<<<<<<< HEAD
+  "name": "workspace-root",
+  "private": true,
+  "scripts": {
+    "stop:web": "npm --prefix projects/PulseDock run stop:web",
+    "stop:api": "npm --prefix projects/PulseDock run stop:api",
+    "start:web": "npm --prefix projects/PulseDock run start:web",
+    "start:api": "npm --prefix projects/PulseDock run start:api",
+    "restart:web": "npm run stop:web || true && npm run start:web",
+    "restart:api": "npm run stop:api || true && npm run start:api",
+    "stop": "echo \"Usage: npm run stop:web | npm run stop:api\" && exit 1",
+    "start": "echo \"Usage: npm run start:web | npm run start:api\" && exit 1"
+  }
+=======
   "name": "pulsedock",
   "private": true,
   "version": "0.1.0",
@@ -23,9 +37,15 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
+<<<<<<< HEAD
   "license": "Apache-2.0",
   "dependencies": {
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0"
   }
 }
+=======
+  "license": "Apache-2.0"
+>>>>>>> 79b4607e91823d9f86e37ff62f6e37e41c308b18
+}
+>>>>>>> tmp-merge-origin-dev-clean

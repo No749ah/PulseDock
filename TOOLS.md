@@ -2,6 +2,17 @@
 
 Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
 
+<<<<<<< HEAD
+=======
+## PulseDock Ports & URLs
+
+- **Frontend (web):** Port 3000 (local dev)
+  - Local: http://localhost:3000
+- **Backend (api):** NOT localhost
+  - Remote: https://oc-api-test.no749ah.com/docs
+  - Frontend must use this URL, not localhost:4000
+
+>>>>>>> tmp-merge-origin-dev-clean
 ## What Goes Here
 
 Things like:

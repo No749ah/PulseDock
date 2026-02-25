@@ -9,20 +9,43 @@ body {
 }
 
 .landing-cinematic-wrap {
-  height: 180vh;
+  height: clamp(120vh, 165vh, 180vh);
   margin-top: 8px;
 }
 
 .landing-cinematic-sticky {
   position: sticky;
-  top: 16px;
-  height: 72vh;
+  top: clamp(8px, 2vw, 16px);
+  height: min(72vh, 640px);
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid rgba(74, 222, 128, 0.28);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
+.pd-user-label {
+  max-width: 12rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 48em) {
+  .landing-cinematic-wrap {
+    height: 130vh;
+  }
+
+  .landing-cinematic-sticky {
+    height: 56vh;
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 30em) {
+  .pd-user-label {
+    display: none;
+  }
+}
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   width: 100%;

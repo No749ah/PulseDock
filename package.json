@@ -1,0 +1,14 @@
+{
+  "name": "workspace-root",
+  "private": true,
+  "scripts": {
+    "stop:web": "npm --prefix projects/PulseDock run stop:web",
+    "stop:api": "npm --prefix projects/PulseDock run stop:api",
+    "start:web": "npm --prefix projects/PulseDock run start:web",
+    "start:api": "npm --prefix projects/PulseDock run start:api",
+    "restart:web": "npm run stop:web || true && npm run start:web",
+    "restart:api": "npm run stop:api || true && npm run start:api",
+    "stop": "echo \"Usage: npm run stop:web | npm run stop:api\" && exit 1",
+    "start": "echo \"Usage: npm run start:web | npm run start:api\" && exit 1"
+  }
+}

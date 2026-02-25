@@ -2,7 +2,7 @@
 
 import { Badge, Card, Group, List, SimpleGrid, Stack, Text, Title, Button } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { LandingCinematic } from '../components/landing-cinematic';
+import NewLanding from '../components/new-landing';
 
 export default function HomePage() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function HomePage() {
         </Stack>
       </Card>
 
-      <LandingCinematic />
+      <NewLanding />
 
       <SimpleGrid cols={{ base: 1, md: 2 }} mt="md">
         <Card withBorder radius="lg">

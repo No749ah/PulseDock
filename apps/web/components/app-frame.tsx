@@ -65,7 +65,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
             <Menu.Target>
               <Group gap="xs" style={{ cursor: 'pointer' }}>
                 <Avatar color="teal" radius="xl" size="sm" suppressHydrationWarning>{mounted ? ((user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()) : 'U'}</Avatar>
-                <Text size="sm" c="dimmed" suppressHydrationWarning>{mounted ? (user?.name ?? user?.email?.split('@')[0] ?? 'user') : 'user'}</Text>
+                <Text size="sm" c="dimmed" className="pd-user-label" suppressHydrationWarning>{mounted ? (user?.name ?? user?.email?.split('@')[0] ?? 'user') : 'user'}</Text>
               </Group>
             </Menu.Target>
             <Menu.Dropdown>

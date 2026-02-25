@@ -1,12 +1,9 @@
 "use client"
 
 import Link from "next/link";
-import { motion, useAnimation } from 'framer-motion'
 import { useEffect } from 'react'
 
 export default function Landing() {
-  const controls = useAnimation()
-  useEffect(()=>{ controls.start({ opacity:1, y:0, transition:{ duration:0.6 } }) },[controls])
   return (
     <main className="landing-root">
       <style>{`
@@ -33,7 +30,8 @@ export default function Landing() {
         .glow-ring{position:absolute;left:12%;bottom:18%;width:120px;height:120px;border-radius:999px;border:3px solid rgba(124,58,237,0.12);box-shadow:0 0 40px rgba(124,58,237,0.12);animation:spin 14s linear infinite}
         @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-14px)}100%{transform:translateY(0)}}
         @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .screenshot-inner{position:relative;z-index:2;color:#e6fbf9;font-weight:700}
+        .screenshot-inner{position:relative;z-index:2;color:#e6fbf9;font-weight:700;opacity:0;transform:translateY(8px);animation:reveal 0.6s ease forwards}
+        @keyframes reveal{to{opacity:1;transform:translateY(0)}}
         .live-dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(90deg,#ff4d6d,#ff7a59);box-shadow:0 6px 24px rgba(255,77,109,0.18);display:inline-block;margin-right:8px;vertical-align:middle;animation:blink 1.6s infinite}
         @keyframes blink{0%{opacity:1}50%{opacity:0.3}100%{opacity:1}}
         .section{margin-top:56px}
@@ -68,9 +66,9 @@ export default function Landing() {
               <div className="screenshot">
                 <div className="orb" />
                 <div className="glow-ring" />
-                <motion.div initial={{opacity:0,y:8}} animate={controls} className="screenshot-inner">
+                <div className="screenshot-inner">
                   <span className="live-dot" />Live overview • <strong style={{color:'#fff'}}>Demo data</strong>
-                </motion.div>
+                </div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',marginTop:12}}>
                 <div style={{fontWeight:700}}>Overview</div>

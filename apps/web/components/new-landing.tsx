@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Button, Container, Grid, Title, Text, Card, Group } from '@mantine/core'
+import { Button, Container, Title, Text, Card, Group } from '@mantine/core'
 import { useRouter } from 'next/navigation'
 
 export default function NewLanding() {
@@ -20,8 +20,8 @@ export default function NewLanding() {
   return (
     <div style={{ background: 'linear-gradient(180deg, #0f1724 0%, #071024 60%)', color: '#eef6ff', minHeight: '80vh', padding: '48px 0' }}>
       <Container size="lg">
-        <Grid align="center">
-          <Grid.Col md={6}>
+        <div style={{display:'grid', gridTemplateColumns: '1fr', gap:24}} className="ld-grid">
+          <div style={{gridColumn: '1 / -1'}}>
             <div style={{ transform: 'translateY(18px)', opacity: 0 }} className="ld-fade-up">
               <Text size="sm" color="cyan" weight={700} style={{ letterSpacing: '0.08em' }}>PulseDock</Text>
             </div>
@@ -58,9 +58,9 @@ export default function NewLanding() {
                 <Text size="xs" color="dimmed">Slack, Discord, Webhooks</Text>
               </Card>
             </div>
-          </Grid.Col>
+          </div>
 
-          <Grid.Col md={6}>
+          <div style={{gridColumn: '1 / -1'}}>
             <div style={{ display: 'grid', gap: 14 }}>
               <div style={{ background: 'linear-gradient(135deg,#06203a,#08334f)', borderRadius: 16, padding: 18, minHeight: 240, color: '#bfe9ff' }} className="ld-fade-up" aria-hidden>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -84,8 +84,8 @@ export default function NewLanding() {
               </div>
 
             </div>
-          </Grid.Col>
-        </Grid>
+          </div>
+        </div>
       </Container>
 
       <style jsx global>{`

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Node
 node_modules/
 
@@ -36,3 +37,18 @@ yarn-error.log*
 # Ignore deploy keys and workspace keys
 /projects/PulseDock/.keys
 projects/PulseDock/.keys/*
+=======
+node_modules
+.env
+.env.*
+!.env.example
+dist
+build
+.next
+coverage
+.DS_Store
+*.log
+apps/web/public/hero-video/*.mp4
+.github/mp4/
+.keys/
+>>>>>>> 79b4607e91823d9f86e37ff62f6e37e41c308b18

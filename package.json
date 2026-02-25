@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "workspace-root",
   "private": true,
   "scripts": {
@@ -11,4 +12,25 @@
     "stop": "echo \"Usage: npm run stop:web | npm run stop:api\" && exit 1",
     "start": "echo \"Usage: npm run start:web | npm run start:api\" && exit 1"
   }
+=======
+  "name": "pulsedock",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source enterprise uptime and update monitoring platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo \"Use: npm run web | npm run api (or dev:web/dev:api)\"",
+    "web": "npm run build -w @pulsedock/web && npm run start -w @pulsedock/web",
+    "api": "npm run dev:api",
+    "dev:web": "npm run dev -w @pulsedock/web",
+    "dev:api": "npm run dev -w @pulsedock/api",
+    "build": "npm run build -w @pulsedock/web && npm run build -w @pulsedock/api",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "license": "Apache-2.0"
+>>>>>>> 79b4607e91823d9f86e37ff62f6e37e41c308b18
 }

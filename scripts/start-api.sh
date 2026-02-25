@@ -11,5 +11,5 @@ cat > apps/api/.env.local <<EOF
 NODE_ENV=development
 PORT=$API_PORT
 EOF
-API_PORT=$API_PORT PORT=$API_PORT npm --prefix projects/PulseDock run dev:api > projects/PulseDock/pulsedock_api_start.log 2>&1 &
+API_PORT=$API_PORT PORT=$API_PORT npm --prefix projects/PulseDock run dev:api > "$REPO_ROOT/projects/PulseDock/pulsedock_api_start.log" 2>&1 &
 echo $!

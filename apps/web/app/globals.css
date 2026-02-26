@@ -24,8 +24,6 @@ body {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
-<<<<<<< Updated upstream
-=======
 @media (max-width: 48em) {
   .landing-cinematic-wrap {
     height: 120vh;
@@ -47,8 +45,6 @@ body {
     height: 48vh;
   }
 }
-
->>>>>>> Stashed changes
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   width: 100%;

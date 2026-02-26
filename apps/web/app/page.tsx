@@ -2,38 +2,26 @@ import Link from "next/link";
 
 export default function Landing() {
   return (
-    <main className="landing-root">
-      <style>{`
-        :root{--bg:#07121a;--card:#09202a;--muted:#9fb1bc;--accent:#22d3c9;--glass:rgba(255,255,255,0.03)}
-        *{box-sizing:border-box}
-        html,body{height:100%;margin:0}
-        .landing-root{min-height:100vh;background:radial-gradient(800px 400px at 10% 10%, rgba(34,211,201,0.06), transparent), radial-gradient(700px 400px at 90% 80%, rgba(99,102,241,0.06), transparent), linear-gradient(180deg,var(--bg), #031019); color:#e6f3f2; font-family:Inter, system-ui, -apple-system, 'Helvetica Neue', Arial}
-        .container{max-width:1200px;margin:0 auto;padding:64px 24px}
-        .hero{display:flex;gap:40px;align-items:center}
-        .left{flex:1}
-        .kicker{display:inline-block;background:linear-gradient(90deg,var(--accent),#60a5fa);color:#021619;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px}
-        h1{font-size:44px;line-height:1.02;margin:16px 0;color:#eafefd;text-shadow:0 6px 30px rgba(0,0,0,0.6)}
-        p.lead{color:var(--muted);font-size:17px}
-        .features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
-        .feature{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:14px;border-radius:12px;backdrop-filter:blur(6px);}
-        .ctas{margin-top:26px;display:flex;gap:12px;align-items:center}
-        .btn{padding:12px 18px;border-radius:10px;font-weight:700;text-decoration:none}
-        .btn-primary{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021619}
-        .btn-ghost{border:1px solid rgba(255,255,255,0.06);color:var(--muted);background:transparent}
-        .right{width:480px;flex:0 0 480px}
-        .panel{border-radius:16px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);box-shadow: 0 20px 50px rgba(2,6,23,0.7);overflow:hidden}
-        .screenshot{width:100%;height:360px;border-radius:12px;background:linear-gradient(135deg,#051117,#0b1220);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-        .orb{position:absolute;right:18%;top:30%;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle at 30% 30%, rgba(34,211,201,0.22), rgba(34,211,201,0.08) 40%, transparent 60%);box-shadow:0 10px 40px rgba(34,211,201,0.06);filter:blur(6px);animation:float 6s ease-in-out infinite}
-        .glow-ring{position:absolute;left:12%;bottom:18%;width:120px;height:120px;border-radius:999px;border:3px solid rgba(124,58,237,0.12);box-shadow:0 0 40px rgba(124,58,237,0.12);animation:spin 14s linear infinite}
-        @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-14px)}100%{transform:translateY(0)}}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .screenshot-inner{position:relative;z-index:2;color:var(--muted);font-weight:700}
-        .section{margin-top:56px}
-        .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-        .card{background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-        footer{margin-top:64px;padding:40px 0;color:#8aa0a7;text-align:center;font-size:14px}
-        @media (max-width:920px){.hero{flex-direction:column-reverse}.right{width:100%;flex:unset}.grid3{grid-template-columns:1fr}.features{grid-template-columns:1fr}}
-      `}</style>
+    <main style={{ maxWidth: 1200, width: '100%', margin: '0 auto', padding: 'clamp(12px, 3vw, 24px)' }}>
+      <Card withBorder radius="xl" p="xl" mb="md" style={{ background: 'rgba(14,20,40,0.75)', backdropFilter: 'blur(10px)' }}>
+        <Stack gap="md">
+          <Group>
+            <Badge color="indigo" variant="light">PulseDock Enterprise</Badge>
+            <Badge color="cyan" variant="light">NestJS + Next.js</Badge>
+          </Group>
+          <Title order={1} style={{ fontSize: 'clamp(2rem, 6vw, 3.25rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+            Unified uptime + update intelligence for modern operations teams.
+          </Title>
+          <Text c="dimmed" maw={900}>
+            Track websites, release freshness, and container updates. Route alerts to Discord, Slack,
+            Telegram, webhooks, and email — with public status visibility and role-based admin control.
+          </Text>
+          <Group>
+            <Button color="teal" size="md" onClick={() => router.push('/login')}>Get Started</Button>
+            <Button color="teal" variant="light" size="md" onClick={() => router.push('/dashboard')}>Open Dashboard</Button>
+          </Group>
+        </Stack>
+      </Card>
 
       <div className="container">
         <div className="hero">

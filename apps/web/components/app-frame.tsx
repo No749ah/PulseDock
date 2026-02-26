@@ -1,6 +1,7 @@
 'use client';
 
 import { AppShell, Avatar, Burger, Group, Menu, NavLink, Stack, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { IconActivityHeartbeat, IconAlertTriangle, IconFolder, IconGauge, IconLogout, IconSettings, IconShield, IconUser, IconVersions } from '@tabler/icons-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -53,7 +54,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
     <AppShell
       header={{ height: 72 }}
       navbar={{ width: 280, breakpoint: 'sm', collapsed: { mobile: !opened } }}
-      padding="lg"
+      padding={{ base: 'md', sm: 'lg' }}
       styles={{
         main: { background: 'transparent' },
         navbar: { background: 'rgba(10,24,19,0.84)', borderRight: '1px solid rgba(52, 211, 153, 0.22)', backdropFilter: 'blur(12px)' },
@@ -72,7 +73,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
             <Menu.Target>
               <Group gap="xs" style={{ cursor: 'pointer' }}>
                 <Avatar color="teal" radius="xl" size="sm" suppressHydrationWarning>{mounted ? ((user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()) : 'U'}</Avatar>
-                <Text size="sm" c="dimmed" className="pd-user-label" suppressHydrationWarning>{mounted ? (user?.name ?? user?.email?.split('@')[0] ?? 'user') : 'user'}</Text>
+                <Text size="sm" c="dimmed" visibleFrom="xs" suppressHydrationWarning>{mounted ? (user?.name ?? user?.email?.split('@')[0] ?? 'user') : 'user'}</Text>
               </Group>
             </Menu.Target>
             <Menu.Dropdown>
@@ -105,7 +106,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
                     leftSection={<item.icon size={16} />}
                     variant="light"
                     color="teal"
-                    onClick={closeMobile}
+                    onClick={close}
                   />
                 ))}
               </Stack>

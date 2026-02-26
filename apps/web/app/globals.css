@@ -1,8 +1,12 @@
 html, body { margin: 0; padding: 0; }
 body {
   min-height: 100vh;
-  color: #0f1724;
-  background: linear-gradient(180deg,#fbfdff 0%, #f6fbff 100%);
+  color: #e5f6ee;
+  overflow-x: hidden;
+  background:
+    radial-gradient(1200px 520px at 10% -20%, rgba(16, 185, 129, 0.18), transparent),
+    radial-gradient(1000px 620px at 95% 0%, rgba(34, 197, 94, 0.12), transparent),
+    #08120f;
 }
 
 .landing-cinematic-wrap {
@@ -31,6 +35,27 @@ body {
   }
 }
 
+@media (max-width: 48em) {
+  .landing-cinematic-wrap {
+    height: 120vh;
+  }
+
+  .landing-cinematic-sticky {
+    top: 8px;
+    height: 54vh;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 30em) {
+  .landing-cinematic-wrap {
+    height: 105vh;
+  }
+
+  .landing-cinematic-sticky {
+    height: 48vh;
+  }
+}
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   display: none !important;

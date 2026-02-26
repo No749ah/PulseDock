@@ -19,35 +19,18 @@ body {
   text-overflow: ellipsis;
 }
 
-@media (max-width: 30em) {
-  .pd-user-label {
-    display: none;
-  }
-}
-
-.pd-user-label {
-  max-width: 12rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 @media (max-width: 48em) {
   .landing-cinematic-wrap {
     height: 130vh;
   }
 
   .landing-cinematic-sticky {
+    top: 8px;
     height: 56vh;
-    border-radius: 14px;
+    border-radius: 12px;
   }
 }
 
-@media (max-width: 30em) {
-  .pd-user-label {
-    display: none;
-  }
-}
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   display: none !important;

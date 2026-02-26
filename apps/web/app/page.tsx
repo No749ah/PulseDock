@@ -2,14 +2,14 @@ import Link from "next/link";
 
 export default function Landing() {
   return (
-    <main style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(12px, 3vw, 24px)' }}>
+    <main style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(12px, 2vw, 24px)' }}>
       <Card withBorder radius="xl" p="xl" mb="md" style={{ background: 'rgba(14,20,40,0.75)', backdropFilter: 'blur(10px)' }}>
         <Stack gap="md">
           <Group gap="xs" wrap="wrap">
             <Badge color="indigo" variant="light">PulseDock Enterprise</Badge>
             <Badge color="cyan" variant="light">NestJS + Next.js</Badge>
           </Group>
-          <Title order={1} style={{ fontSize: 'clamp(1.9rem, 6vw, 3.25rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
+          <Title order={1} style={{ fontSize: 'clamp(2rem, 5vw, 3.25rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
             Unified uptime + update intelligence for modern operations teams.
           </Title>
           <Text c="dimmed" maw={900}>

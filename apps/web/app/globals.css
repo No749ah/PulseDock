@@ -5,9 +5,19 @@ body {
   background: linear-gradient(180deg,#fbfdff 0%, #f6fbff 100%);
 }
 
-/* removed cinematic/legacy landing styles to ensure new landing styles apply */
-.landing-cinematic-wrap,
-.landing-cinematic-sticky,
+.pd-user-label {
+  max-width: 12rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 30em) {
+  .pd-user-label {
+    display: none;
+  }
+}
+
 .landing-cinematic-video,
 .landing-cinematic-canvas {
   display: none !important;

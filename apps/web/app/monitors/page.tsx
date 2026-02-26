@@ -244,7 +244,7 @@ export default function MonitorsPage() {
                   <Table.Tr key={m.id}>
                     <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
                     <Table.Td>{m.type}</Table.Td>
-                    <Table.Td>{m.target}</Table.Td>
+                    <Table.Td style={{ maxWidth: 320, overflowWrap: 'anywhere' }}>{m.target}</Table.Td>
                     <Table.Td>{m.intervalSec}s</Table.Td>
                     <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
                     <Table.Td>

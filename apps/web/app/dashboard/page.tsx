@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Card, Group, Progress, SimpleGrid, Table, Text } from '@mantine/core';
+import { Badge, Card, Group, Progress, ScrollArea, SimpleGrid, Table, Text } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
@@ -89,8 +89,8 @@ export default function DashboardPage() {
           <Text fw={700}>Latest runs</Text>
           <Badge variant="light">Click a row for monitors page</Badge>
         </Group>
-        <div style={{ width: '100%', overflowX: 'auto' }}>
-          <Table withTableBorder withColumnBorders miw={680}>
+        <ScrollArea type="auto" offsetScrollbars>
+          <Table withTableBorder withColumnBorders miw={760}>
             <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
             <Table.Tbody>
               {overview?.latestRuns.map((r) => (
@@ -104,7 +104,7 @@ export default function DashboardPage() {
               ))}
             </Table.Tbody>
           </Table>
-        </div>
+        </ScrollArea>
       </Card>
       </>}
     </AppFrame>

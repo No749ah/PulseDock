@@ -56,12 +56,12 @@
 - [ ] Add integration tests for API endpoints
 - [ ] Add proper API versioning strategy
 - [x] Swagger/OpenAPI docs with examples — @ApiTags/@ApiOperation/@ApiResponse on all 9 controllers, live at /docs
-- [ ] Add health check endpoint with DB/Redis connectivity status
+- [x] Add health check endpoint with DB/Redis connectivity status — /health (DB latency), /health/live, /health/ready. Returns 503 when DB down.
 - [ ] Add metrics endpoint (Prometheus-compatible)
 - [ ] WebSocket support for real-time monitor updates
 
 ### Phase 5: DevOps & Docs
-- [ ] Production Dockerfile (multi-stage, minimal image)
+- [x] Production Dockerfile (multi-stage, minimal image) — apps/api/Dockerfile + apps/web/Dockerfile + docker-compose.prod.yml
 - [ ] Docker Compose for development (app + postgres + redis)
 - [ ] Docker Compose / Kubernetes manifests for production
 - [x] GitHub Actions CI/CD — full pipeline: build + test + tsc typecheck + security audit

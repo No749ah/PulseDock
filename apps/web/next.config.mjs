@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Standalone output for minimal Docker images
+  output: 'standalone',
+
   devIndicators: false,
 
   // When dev is accessed via a public hostname/proxy, allow that origin to fetch /_next/*
@@ -13,8 +16,6 @@ const nextConfig = {
     'http://oc-dev-test.no749ah.com',
   ],
 
-  // Proxy all /api requests to the API server (keeps frontend on / and API on /api)
-  // Strip the /api prefix so backend receives paths like /v1/... (the API mounts routes at /v1)
   async headers() {
     return [
       {
@@ -40,11 +41,14 @@ const nextConfig = {
     ];
   },
 
+  // Proxy all /api requests to the API server.
+  // In dev: localhost:4321. In production Docker: set INTERNAL_API_URL=http://api:4321
   async rewrites() {
+    const apiUrl = process.env.INTERNAL_API_URL ?? 'http://localhost:4321';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:4321/:path*',
+        destination: `${apiUrl}/:path*`,
       },
     ];
   },

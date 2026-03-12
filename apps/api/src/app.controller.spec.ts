@@ -2,16 +2,41 @@ import { describe, it, expect, vi } from 'vitest';
 import { AppController } from './app.controller';
 import { MetricsService } from './common/metrics.service';
 
+const mockPrisma = {
+  $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+};
+
 describe('AppController', () => {
   const metrics = new MetricsService();
-  const controller = new AppController(metrics);
+  const controller = new AppController(metrics, mockPrisma as never);
 
   describe('health()', () => {
-    it('returns ok=true with correct service name', () => {
-      const result = controller.health();
+    it('returns ok=true with DB status when DB is up', async () => {
+      const result = await controller.health();
       expect(result.ok).toBe(true);
       expect(result.service).toBe('pulsedock-api');
       expect(result.runtime).toBe('nestjs');
+      expect(result.checks.database.status).toBe('ok');
+      expect(typeof result.uptimeMs).toBe('number');
+    });
+
+    it('throws 503 when DB is unreachable', async () => {
+      mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('connection refused'));
+      await expect(controller.health()).rejects.toThrow();
+    });
+  });
+
+  describe('liveness()', () => {
+    it('returns ok=true', () => {
+      expect(controller.liveness().ok).toBe(true);
+    });
+  });
+
+  describe('readiness()', () => {
+    it('returns ok=true when DB up', async () => {
+      mockPrisma.$queryRaw.mockResolvedValueOnce([{ '?column?': 1 }]);
+      const result = await controller.readiness();
+      expect(result.ok).toBe(true);
     });
   });
 

@@ -1,19 +1,80 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MetricsService } from './common/metrics.service';
+import { PrismaService } from './common/prisma.service';
 
 const pkg = require('../package.json');
+const startedAt = Date.now();
 
 @ApiTags('System')
 @Controller()
 export class AppController {
-  constructor(private readonly metrics: MetricsService) {}
+  constructor(
+    private readonly metrics: MetricsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get('health')
-  @ApiOperation({ summary: 'Health check', description: 'Returns service health status.' })
+  @ApiOperation({
+    summary: 'Health check',
+    description: 'Returns service health including DB connectivity and uptime.',
+  })
   @ApiResponse({ status: 200, description: 'Service is healthy.' })
-  health() {
-    return { ok: true, service: 'pulsedock-api', runtime: 'nestjs' };
+  @ApiResponse({ status: 503, description: 'Service is unhealthy (DB unreachable).' })
+  async health() {
+    const uptimeMs = Date.now() - startedAt;
+
+    let db: 'ok' | 'error' = 'error';
+    let dbLatencyMs: number | null = null;
+
+    try {
+      const t0 = Date.now();
+      await this.prisma.$queryRaw`SELECT 1`;
+      dbLatencyMs = Date.now() - t0;
+      db = 'ok';
+    } catch {
+      // db stays 'error'
+    }
+
+    const healthy = db === 'ok';
+
+    const payload = {
+      ok: healthy,
+      service: 'pulsedock-api',
+      version: String(pkg.version ?? '0.0.0'),
+      runtime: 'nestjs',
+      uptimeMs,
+      checks: {
+        database: { status: db, latencyMs: dbLatencyMs },
+      },
+    };
+
+    if (!healthy) {
+      throw new ServiceUnavailableException(payload);
+    }
+
+    return payload;
+  }
+
+  @Get('health/live')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Liveness probe', description: 'Always returns 200 if the process is alive.' })
+  @ApiResponse({ status: 200, description: 'Process is alive.' })
+  liveness() {
+    return { ok: true };
+  }
+
+  @Get('health/ready')
+  @ApiOperation({ summary: 'Readiness probe', description: 'Returns 200 only when DB is reachable.' })
+  @ApiResponse({ status: 200, description: 'Service ready.' })
+  @ApiResponse({ status: 503, description: 'Service not ready.' })
+  async readiness() {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return { ok: true, ready: true };
+    } catch {
+      throw new ServiceUnavailableException({ ok: false, ready: false, reason: 'database unreachable' });
+    }
   }
 
   @Get('metrics')

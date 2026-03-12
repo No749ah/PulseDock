@@ -1,8 +1,8 @@
 # PulseDock Backlog
 
 ## In Progress
-- [x] **Build Tailwind component library** — Card, Badge, Button, Table, Modal, Select components (reusable across app)
-- [ ] **Migrate remaining pages from Mantine → Tailwind** — Dashboard, monitors, alerts, account, admin, folders, versions (use new component library)
+- [x] **Tailwind UI refactor** — Landing, login, dashboard, monitors pages migrated. Component library complete.
+- [ ] **API security hardening** — Logging done, next: CORS, helmet headers, input validation
 
 ## Next Up
 
@@ -17,7 +17,7 @@
 - [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)
 - [ ] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [ ] Add input validation/sanitization on all API endpoints
-- [ ] Add proper logging (structured JSON logs, no console.log)
+- [x] Add proper logging (structured JSON logs, no console.log)
 - [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management
 
 ### Phase 2: Landing Page & Login (Apple-style)

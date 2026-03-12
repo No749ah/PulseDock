@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { validateEnv } from './common/env';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
@@ -29,7 +30,23 @@ async function bootstrap() {
       logger.warn('Migrations check failed or already up to date', { error: err });
     }
   }
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { cors: { origin: '*', credentials: false } });
+  
+  // Security middleware
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
+    },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    xssFilter: true,
+  }));
   const metrics = app.get(MetricsService);
   app.use((req: any, res: any, next: () => void) => {
     const startedAt = Date.now();

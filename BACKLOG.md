@@ -1,8 +1,9 @@
 # PulseDock Backlog
 
 ## In Progress
-- [x] **Build Tailwind component library** — Card, Badge, Button, Table, Modal, Select components (reusable across app)
-- [ ] **Migrate remaining pages from Mantine → Tailwind** — Dashboard, monitors, alerts, account, admin, folders, versions (use new component library)
+- [x] **Tailwind UI refactor** — Landing, login, dashboard, monitors pages migrated. Component library complete.
+- [x] **API security hardening** — Structured logging, helmet headers, rate limiting, CORS configured
+- [ ] **Input validation & API hardening phase 2** — Validate all endpoints, add error handling, CSRF protection
 
 ## Next Up
 
@@ -15,9 +16,9 @@
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)
-- [ ] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
+- [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [ ] Add input validation/sanitization on all API endpoints
-- [ ] Add proper logging (structured JSON logs, no console.log)
+- [x] Add proper logging (structured JSON logs, no console.log)
 - [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management
 
 ### Phase 2: Landing Page & Login (Apple-style)
@@ -35,7 +36,7 @@
 - [x] Monitor list with live status indicators
 - [ ] Version diff viewer with syntax highlighting
 - [ ] Alert configuration UI (form)
-- [ ] User settings / account page (settings form)
+- [x] User settings / account page (settings form)
 - [ ] Admin panel (user management, system health)
 - [ ] Folder/project organization UI
 - [x] Monitors page (full CRUD)

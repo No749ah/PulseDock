@@ -29,7 +29,7 @@ export class AlertsService {
       return;
     }
     if (channel.type === 'email') {
-      console.log(`[email] ${String(channel.config.to ?? 'unknown')}: ${text}`);
+      // TODO: Implement actual email sending via SMTP
     }
   }
 

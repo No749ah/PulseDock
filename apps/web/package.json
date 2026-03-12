@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development next dev -p ${PORT:-3000}",
+    "dev": "NODE_ENV=development next dev -H 0.0.0.0 -p ${WEB_PORT:-1234}",
     "build": "next build",
-    "start": "node server.js",
-    "stop": "node server.stop.js",
-    "start:prod": "NODE_ENV=production node server.js"
+    "start": "next start -H 0.0.0.0 -p ${WEB_PORT:-1234}"
   },
   "dependencies": {
     "@mantine/core": "^8.3.3",

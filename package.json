@@ -20,6 +20,7 @@
     "stop:api": "bash ./scripts/stop-api.sh",
     "restart:web": "bash ./scripts/stop-web.sh && bash ./scripts/start-web.sh",
     "restart:api": "bash ./scripts/stop-api.sh && bash ./scripts/start-api.sh",
+    "restart": "npm run restart:api && sleep 2 && npm run restart:web",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

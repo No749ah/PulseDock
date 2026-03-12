@@ -10,6 +10,10 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Enhanced health check** — `/health` now includes DB connectivity status + latency, service version, and uptime. New `/health/live` (liveness probe) and `/health/ready` (readiness probe) endpoints. Returns HTTP 503 when DB is unreachable.
+- **Production Dockerfiles** — Multi-stage `apps/api/Dockerfile` and `apps/web/Dockerfile` with non-root user, minimal alpine images, and built-in HEALTHCHECK instructions.
+- **`docker-compose.prod.yml`** — Full production stack (PostgreSQL + API + Web) with service healthchecks, named volume for data persistence, and `INTERNAL_API_URL` env var for container networking.
+- **Next.js standalone output** — `next.config.mjs` now builds in standalone mode for smaller, self-contained Docker images.
 - GitHub Actions CI workflow — runs full build, unit tests, TypeScript type-check, and security audit on every push/PR
 - `CHANGELOG.md` — structured changelog tracking all notable changes
 - Resolved merge conflict in `.env.example`; unified into a single clean template with all required variables

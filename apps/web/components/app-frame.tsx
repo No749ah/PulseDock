@@ -5,7 +5,6 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconActivityHeartbeat, IconAlertTriangle, IconFolder, IconGauge, IconLogout, IconSettings, IconShield, IconUser, IconVersions } from '@tabler/icons-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useDisclosure } from '@mantine/hooks';
 import type { ReactNode } from 'react';
 import { clearSession, getCachedUser, getUser } from './auth';
 

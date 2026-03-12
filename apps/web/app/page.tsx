@@ -1,105 +1,301 @@
-"use client"
+"use client";
 
 import Link from "next/link";
-import { useEffect } from 'react'
+import { motion } from "framer-motion";
+import { FadeIn } from "./components/FadeIn";
+import { GradientText } from "./components/GradientText";
+import {
+  Activity,
+  Bell,
+  GitBranch,
+  Globe,
+  Lock,
+  Monitor,
+  Package,
+  Shield,
+  Zap,
+} from "lucide-react";
 
-export default function Landing() {
+const features = [
+  {
+    icon: Activity,
+    title: "Real-time Monitoring",
+    description: "Track version changes across all your apps with live status updates and instant notifications.",
+  },
+  {
+    icon: GitBranch,
+    title: "Version Intelligence",
+    description: "Automatic changelog summaries and semantic version tracking for every dependency.",
+  },
+  {
+    icon: Bell,
+    title: "Smart Alerts",
+    description: "Get notified through email, Discord, Slack, or webhooks when critical updates land.",
+  },
+  {
+    icon: Globe,
+    title: "Public Status Pages",
+    description: "Share beautiful, real-time status pages with your team or stakeholders.",
+  },
+  {
+    icon: Shield,
+    title: "Security First",
+    description: "Detect vulnerable versions instantly. Never miss a critical security patch.",
+  },
+  {
+    icon: Package,
+    title: "Self-Hosted",
+    description: "Your data stays yours. Deploy on your infrastructure with Docker in minutes.",
+  },
+];
+
+const stats = [
+  { value: "< 1s", label: "Check latency" },
+  { value: "99.9%", label: "Uptime SLA" },
+  { value: "∞", label: "Monitors" },
+  { value: "0", label: "Vendor lock-in" },
+];
+
+export default function LandingPage() {
   return (
-    <main className="landing-root">
-      <style>{`
-        :root{--bg:#07121a;--card:#09202a;--muted:#9fb1bc;--accent:#22d3c9;--glass:rgba(255,255,255,0.03)}
-        *{box-sizing:border-box}
-        html,body{height:100%;margin:0}
-        .landing-root{min-height:100vh;background:radial-gradient(800px 400px at 10% 10%, rgba(34,211,201,0.06), transparent), radial-gradient(700px 400px at 90% 80%, rgba(99,102,241,0.06), transparent), linear-gradient(180deg,var(--bg), #031019); color:#e6f3f2; font-family:Inter, system-ui, -apple-system, 'Helvetica Neue', Arial}
-        .container{max-width:1200px;margin:0 auto;padding:64px 24px}
-        .hero{display:flex;gap:40px;align-items:center}
-        .left{flex:1}
-        .kicker{display:inline-block;background:linear-gradient(90deg,var(--accent),#60a5fa);color:#021619;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px}
-        h1{font-size:44px;line-height:1.02;margin:16px 0;color:#eafefd;text-shadow:0 6px 30px rgba(0,0,0,0.6)}
-        p.lead{color:var(--muted);font-size:17px}
-        .features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
-        .feature{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:14px;border-radius:12px;backdrop-filter:blur(6px);}
-        .ctas{margin-top:26px;display:flex;gap:12px;align-items:center}
-        .btn{padding:12px 18px;border-radius:10px;font-weight:700;text-decoration:none}
-        .btn-primary{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021619}
-        .btn-ghost{border:1px solid rgba(255,255,255,0.06);color:var(--muted);background:transparent}
-        .right{width:480px;flex:0 0 480px}
-        .panel{border-radius:16px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);box-shadow: 0 20px 50px rgba(2,6,23,0.7);overflow:hidden}
-        .screenshot{width:100%;height:360px;border-radius:12px;background:linear-gradient(135deg,#051117,#0b1220);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-        .orb{position:absolute;right:18%;top:30%;width:180px;height:180px;border-radius:999px;background:radial-gradient(circle at 30% 30%, rgba(34,211,201,0.34), rgba(34,211,201,0.12) 40%, transparent 60%);box-shadow:0 14px 50px rgba(34,211,201,0.12);filter:blur(8px);}
-        .glow-ring{position:absolute;left:12%;bottom:18%;width:120px;height:120px;border-radius:999px;border:3px solid rgba(124,58,237,0.12);box-shadow:0 0 40px rgba(124,58,237,0.12);animation:spin 14s linear infinite}
-        @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-14px)}100%{transform:translateY(0)}}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .screenshot-inner{position:relative;z-index:2;color:#e6fbf9;font-weight:700;opacity:0;transform:translateY(8px);animation:reveal 0.6s ease forwards}
-        @keyframes reveal{to{opacity:1;transform:translateY(0)}}
-        .live-dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(90deg,#ff4d6d,#ff7a59);box-shadow:0 6px 24px rgba(255,77,109,0.18);display:inline-block;margin-right:8px;vertical-align:middle;animation:blink 1.6s infinite}
-        @keyframes blink{0%{opacity:1}50%{opacity:0.3}100%{opacity:1}}
-        .section{margin-top:56px}
-        .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-        .card{background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-        footer{margin-top:64px;padding:40px 0;color:#8aa0a7;text-align:center;font-size:14px}
-        @media (max-width:920px){.hero{flex-direction:column-reverse}.right{width:100%;flex:unset}.grid3{grid-template-columns:1fr}.features{grid-template-columns:1fr}}
-      `}</style>
-
-      <div className="container">
-        <div className="hero">
-          <div className="left">
-            <span className="kicker">New — Version Intelligence</span>
-            <h1>PulseDock — Unified uptime & update intelligence</h1>
-            <p className="lead">Track versions, summarize changes, and publish status pages with a secure, delightful experience. Designed for teams who value clarity and control.</p>
-
-            <div className="features">
-              <div className="feature"><strong>Realtime monitoring</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Live status, history and alerts across fleets.</div></div>
-              <div className="feature"><strong>Changelog summaries</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Short, readable release notes powered by smart summarization.</div></div>
-              <div className="feature"><strong>Publish status pages</strong><div style={{marginTop:8,color:'#9fb1bc'}}>Share uptime and version history with stakeholders.</div></div>
-              <div className="feature"><strong>Enterprise controls</strong><div style={{marginTop:8,color:'#9fb1bc'}}>RBAC, audit logs and SSO integrations.</div></div>
-            </div>
-
-            <div className="ctas">
-              <Link href="/login"><a className="btn btn-primary">Get started — Sign in</a></Link>
-              <Link href="/projects/PulseDock/docs/START.md"><a className="btn btn-ghost">Read docs</a></Link>
-            </div>
+    <main className="min-h-screen overflow-hidden">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border backdrop-blur-xl bg-bg/70">
+        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-16">
+          <div className="flex items-center gap-2">
+            <Monitor className="w-5 h-5 text-accent" />
+            <span className="font-semibold text-lg tracking-tight">PulseDock</span>
           </div>
+          <div className="hidden md:flex items-center gap-8 text-sm text-text-secondary">
+            <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-text-primary transition-colors">How it works</a>
+            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
+              Sign in
+            </Link>
+            <Link href="/login" className="text-sm bg-accent hover:bg-accent-hover text-bg font-medium px-4 py-2 rounded-lg transition-colors">
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </nav>
 
-          <div className="right">
-            <div className="panel">
-              <div className="screenshot">
-                <div className="orb" />
-                <div className="glow-ring" />
-                <div className="screenshot-inner">
-                  <span className="live-dot" />Live overview • <strong style={{color:'#fff'}}>Demo data</strong>
+      {/* Hero */}
+      <section className="relative pt-32 pb-20 md:pt-44 md:pb-32">
+        {/* Background glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full bg-accent/5 blur-[120px]" />
+          <div className="absolute top-[-10%] right-[10%] w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[120px]" />
+        </div>
+
+        <div className="relative mx-auto max-w-4xl px-6 text-center">
+          <FadeIn>
+            <div className="inline-flex items-center gap-2 bg-surface border border-border rounded-full px-4 py-1.5 text-sm text-text-secondary mb-8">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              Open source &middot; Self-hosted &middot; Version intelligence
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
+              Know when your
+              <br />
+              apps <GradientText>need attention</GradientText>
+            </h1>
+          </FadeIn>
+
+          <FadeIn delay={0.2}>
+            <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
+              PulseDock monitors your applications for version updates, security patches, and uptime — then tells you exactly what changed and why it matters.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.3}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
+                Start monitoring →
+              </Link>
+              <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base">
+                View on GitHub
+              </a>
+            </div>
+          </FadeIn>
+
+          {/* Dashboard preview */}
+          <FadeIn delay={0.5}>
+            <div className="mt-16 md:mt-24 relative">
+              <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent z-10 pointer-events-none" />
+              <div className="rounded-2xl border border-border bg-surface p-1.5 shadow-2xl shadow-black/50">
+                <div className="rounded-xl bg-surface-elevated overflow-hidden">
+                  {/* Mock dashboard header */}
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-danger/60" />
+                      <div className="w-3 h-3 rounded-full bg-warning/60" />
+                      <div className="w-3 h-3 rounded-full bg-success/60" />
+                    </div>
+                    <div className="flex-1 text-center text-xs text-text-muted">pulsedock.app/dashboard</div>
+                  </div>
+                  {/* Mock dashboard content */}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Monitors</span>
+                      <span className="text-xs text-text-muted">Last checked: just now</span>
+                    </div>
+                    {[
+                      { name: "next@16.1.6", status: "up-to-date", color: "bg-success" },
+                      { name: "prisma@7.4.0", status: "update available", color: "bg-warning" },
+                      { name: "nestjs@11.1.6", status: "up-to-date", color: "bg-success" },
+                      { name: "react@19.2.0", status: "up-to-date", color: "bg-success" },
+                    ].map((item) => (
+                      <div key={item.name} className="flex items-center justify-between py-2 px-3 rounded-lg bg-bg/50">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                          <span className="text-sm font-mono">{item.name}</span>
+                        </div>
+                        <span className="text-xs text-text-muted">{item.status}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div style={{display:'flex',justifyContent:'space-between',marginTop:12}}>
-                <div style={{fontWeight:700}}>Overview</div>
-                <div style={{color:'#94a3b8'}}>Updated now</div>
-              </div>
             </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="py-16 border-y border-border">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat, i) => (
+              <FadeIn key={stat.label} delay={i * 0.1}>
+                <div className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-text-primary">{stat.value}</div>
+                  <div className="text-sm text-text-muted mt-1">{stat.label}</div>
+                </div>
+              </FadeIn>
+            ))}
           </div>
         </div>
+      </section>
 
-        <div className="section">
-          <h2>Built for scale, loved by teams</h2>
-          <p style={{color:'#9fb1bc'}}>Fast setup, secure defaults, and integrations that matter — ship with confidence.</p>
+      {/* Features */}
+      <section id="features" className="py-24 md:py-32">
+        <div className="mx-auto max-w-6xl px-6">
+          <FadeIn>
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+                Everything you need to
+                <br />
+                <GradientText from="#3fb950" to="#58a6ff">stay ahead</GradientText>
+              </h2>
+              <p className="text-text-secondary text-lg max-w-xl mx-auto">
+                Built for developers and ops teams who need clarity on what&apos;s running, what&apos;s changed, and what needs action.
+              </p>
+            </div>
+          </FadeIn>
 
-          <div className="grid3" style={{marginTop:18}}>
-            <div className="card"><h4>Integrations</h4><p style={{color:'#9fb1bc'}}>Connect CI, registries, and notifications.</p></div>
-            <div className="card"><h4>Privacy</h4><p style={{color:'#9fb1bc'}}>Self-host or cloud; data stays yours.</p></div>
-            <div className="card"><h4>Extensible</h4><p style={{color:'#9fb1bc'}}>Plugins and SDKs for custom monitors.</p></div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((feature, i) => (
+              <FadeIn key={feature.title} delay={i * 0.08}>
+                <div className="group p-6 rounded-2xl border border-border bg-surface hover:bg-surface-elevated hover:border-border-hover transition-all duration-300">
+                  <feature.icon className="w-10 h-10 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
+                </div>
+              </FadeIn>
+            ))}
           </div>
         </div>
+      </section>
 
-        <div className="section">
-          <h3>Start in minutes</h3>
-          <ol style={{color:'#9fb1bc'}}>
-            <li>docker compose up -d postgres redis</li>
-            <li>npx prisma migrate deploy --schema=projects/PulseDock/prisma/schema.prisma</li>
-            <li>npm run start:api && npm run start:web</li>
-          </ol>
+      {/* How it works */}
+      <section id="how-it-works" className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-4xl px-6">
+          <FadeIn>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-16">
+              Up and running in <GradientText>three steps</GradientText>
+            </h2>
+          </FadeIn>
+
+          <div className="space-y-12">
+            {[
+              {
+                step: "01",
+                title: "Deploy",
+                description: "Clone the repo, configure your .env, and run docker compose up. That's it.",
+                code: "docker compose up -d",
+              },
+              {
+                step: "02",
+                title: "Add Monitors",
+                description: "Point PulseDock at your apps — HTTP endpoints, Git repos, Docker images. Configure check intervals and alert thresholds.",
+                code: 'curl -X POST /api/v1/monitors -d \'{"name": "my-app", "type": "HTTP", "target": "https://my-app.com"}\'',
+              },
+              {
+                step: "03",
+                title: "Relax",
+                description: "PulseDock watches your stack 24/7. Get notified the moment something changes, breaks, or needs your attention.",
+                code: "# You'll get a notification. Go grab a coffee.",
+              },
+            ].map((item, i) => (
+              <FadeIn key={item.step} delay={i * 0.15}>
+                <div className="flex gap-8 items-start">
+                  <div className="text-5xl font-bold text-text-muted/30 tabular-nums select-none">{item.step}</div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                    <p className="text-text-secondary mb-4">{item.description}</p>
+                    <div className="bg-surface-elevated border border-border rounded-xl p-4 font-mono text-sm text-text-secondary overflow-x-auto">
+                      <span className="text-text-muted select-none">$ </span>{item.code}
+                    </div>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <footer>© {new Date().getFullYear()} PulseDock — built with care.</footer>
-      </div>
+      {/* CTA */}
+      <section className="py-24 md:py-32">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <FadeIn>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              Stop guessing.
+              <br />
+              <GradientText>Start monitoring.</GradientText>
+            </h2>
+            <p className="text-text-secondary text-lg mb-10 max-w-xl mx-auto">
+              PulseDock is free, open source, and ready to deploy. Your infrastructure, your data, your rules.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
+                Get started free →
+              </Link>
+              <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base flex items-center gap-2">
+                <Zap className="w-4 h-4" /> Star on GitHub
+              </a>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border py-12">
+        <div className="mx-auto max-w-6xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-text-muted text-sm">
+            <Monitor className="w-4 h-4" />
+            <span>© {new Date().getFullYear()} PulseDock</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-text-muted">
+            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
+            <Link href="/login" className="hover:text-text-primary transition-colors">Dashboard</Link>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

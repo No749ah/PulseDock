@@ -5,10 +5,10 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconActivityHeartbeat, IconAlertTriangle, IconFolder, IconGauge, IconLogout, IconSettings, IconShield, IconUser, IconVersions } from '@tabler/icons-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, ComponentType } from 'react';
 import { clearSession, getCachedUser, getUser } from './auth';
 
-type NavItem = { href: string; label: string; icon: any; adminOnly?: boolean };
+type NavItem = { href: string; label: string; icon: ComponentType<{ size: number }>; adminOnly?: boolean };
 
 const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {

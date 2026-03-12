@@ -1,11 +1,14 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compareSync, hashSync } from 'bcryptjs';
+import type ms from 'ms';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { MailerService } from '../common/mailer.service';
 import { MetricsService } from '../common/metrics.service';
+
+type AuthUser = { id: string; email: string; role: 'admin' | 'user'; mustChangePassword: boolean };
 
 @Injectable()
 export class AuthService {
@@ -34,7 +37,7 @@ export class AuthService {
       { sub: user.id, sid: sessionId, email: user.email, role: user.role, type: 'access' },
       {
         secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
-        expiresIn: (process.env.JWT_ACCESS_EXPIRES ?? '15m') as any,
+        expiresIn: (process.env.JWT_ACCESS_EXPIRES ?? '15m') as ms.StringValue,
       },
     );
   }
@@ -44,7 +47,7 @@ export class AuthService {
       { sub: user.id, sid: sessionId, email: user.email, role: user.role, type: 'refresh' },
       {
         secret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret',
-        expiresIn: (process.env.JWT_REFRESH_EXPIRES ?? '30d') as any,
+        expiresIn: (process.env.JWT_REFRESH_EXPIRES ?? '30d') as ms.StringValue,
       },
     );
   }
@@ -141,7 +144,7 @@ export class AuthService {
     });
 
     await this.audit.log('auth.login', user.id, user.id, {});
-    return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } as any };
+    return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } satisfies AuthUser };
   }
 
   async refresh(refreshToken: string, context?: { userAgent?: string | null; ipAddress?: string | null }) {
@@ -177,7 +180,7 @@ export class AuthService {
       return {
         accessToken: this.signAccessToken(payloadUser, session.id),
         refreshToken: nextRefreshToken,
-        user: { ...payloadUser, mustChangePassword: user.mustChangePassword } as any,
+        user: { ...payloadUser, mustChangePassword: user.mustChangePassword } satisfies AuthUser,
       };
     } catch {
       throw new UnauthorizedException('invalid refresh token');

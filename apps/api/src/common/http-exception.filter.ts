@@ -14,11 +14,12 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     let code = 'INTERNAL_ERROR';
 
     if (isHttp) {
-      const res = exception.getResponse() as any;
+      const res = exception.getResponse() as string | { message?: string | string[]; error?: string };
       if (typeof res === 'string') message = res;
-      else if (Array.isArray(res?.message)) message = res.message.join(', ');
+      else if (Array.isArray(res?.message)) message = (res.message as string[]).join(', ');
       else if (typeof res?.message === 'string') message = res.message;
-      code = (res?.error ?? exception.name ?? 'HTTP_ERROR').toString().toUpperCase().replace(/\s+/g, '_');
+      const errorCode = typeof res === 'object' ? res?.error : undefined;
+      code = (errorCode ?? exception.name ?? 'HTTP_ERROR').toString().toUpperCase().replace(/\s+/g, '_');
     }
 
     response.status(status).json({

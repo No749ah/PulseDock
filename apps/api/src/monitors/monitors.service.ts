@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
@@ -71,7 +72,7 @@ export class MonitorsService {
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
-        configJson: (body.config ?? {}) as any,
+        configJson: (body.config ?? {}) as Prisma.InputJsonValue,
         folderId: body.folderId ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
@@ -122,7 +123,7 @@ export class MonitorsService {
         type: body.type ?? current.type,
         intervalSec: body.intervalSec ?? current.intervalSec,
         timeoutMs: body.timeoutMs ?? current.timeoutMs,
-        configJson: mergedConfig as any,
+        configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,
       },

@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { AuthGuard } from '../common/auth.guard';
 import { AlertsService } from './alerts.service';
 import type { AlertChannelType } from '../types';
@@ -38,7 +39,7 @@ export class AlertsController {
         userId: req.user.id,
         name: body.name,
         type: body.type,
-        configJson: (body.config ?? {}) as any,
+        configJson: (body.config ?? {}) as Prisma.InputJsonValue,
       },
     });
 
@@ -64,7 +65,7 @@ export class AlertsController {
       data: {
         name: body.name ?? current.name,
         type: body.type ?? current.type,
-        configJson: (body.config ?? current.configJson) as any,
+        configJson: (body.config ?? current.configJson) as Prisma.InputJsonValue,
       },
     });
 

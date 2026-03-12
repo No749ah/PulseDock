@@ -1,8 +1,8 @@
 # PulseDock Backlog
 
 ## In Progress
-- [ ] **Migrate remaining pages from Mantine → Tailwind** — Dashboard, monitors, alerts, account, admin, folders, versions
-- [ ] **Build Tailwind component library** — Card, Badge, Button, Table, Modal, Select components (reusable across app)
+- [x] **Build Tailwind component library** — Card, Badge, Button, Table, Modal, Select components (reusable across app)
+- [ ] **Migrate remaining pages from Mantine → Tailwind** — Dashboard, monitors, alerts, account, admin, folders, versions (use new component library)
 
 ## Next Up
 
@@ -11,7 +11,7 @@
 - [x] Start replacing Mantine → Tailwind (landing + login done)
 - [ ] Remove all inline CSS from remaining pages — extract to Tailwind
 - [ ] Complete Mantine → Tailwind migration for all app pages
-- [ ] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select)
+- [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select)
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)

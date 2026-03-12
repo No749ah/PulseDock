@@ -1,7 +1,8 @@
-import { IsIn, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateAlertChannelDto {
   @IsString()
+  @MaxLength(255)
   name!: string;
 
   @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email'])
@@ -14,6 +15,7 @@ export class CreateAlertChannelDto {
 export class UpdateAlertChannelDto {
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   name?: string;
 
   @IsOptional()
@@ -27,5 +29,6 @@ export class UpdateAlertChannelDto {
 
 export class TestAlertChannelDto {
   @IsString()
+  @MaxLength(255)
   channelId!: string;
 }

@@ -1,10 +1,12 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
 
 export class CreateMonitorDto {
   @IsString()
+  @MaxLength(255)
   name!: string;
 
   @IsString()
+  @IsUrl({}, { message: 'target must be a valid URL' })
   target!: string;
 
   @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
@@ -35,10 +37,12 @@ export class CreateMonitorDto {
 export class UpdateMonitorDto {
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   name?: string;
 
   @IsOptional()
   @IsString()
+  @IsUrl({}, { message: 'target must be a valid URL' })
   target?: string;
 
   @IsOptional()
@@ -81,14 +85,17 @@ export class TestVersionConnectionDto {
   provider!: 'github' | 'gitlab' | 'docker' | 'apt';
 
   @IsString()
+  @MaxLength(1024)
   target!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1024)
   token?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   host?: string;
 }
 
@@ -97,26 +104,32 @@ export class DiscoverVersionDto {
   provider!: 'github' | 'gitlab' | 'docker' | 'apt';
 
   @IsString()
+  @MaxLength(1024)
   target!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1024)
   token?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   host?: string;
 
   @IsOptional()
   @IsString()
+  @IsUrl()
   appUrl?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1024)
   appToken?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(512)
   appVersionEndpoint?: string;
 
   @IsOptional()
@@ -125,9 +138,11 @@ export class DiscoverVersionDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   openvpnUsername?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
   openvpnPassword?: string;
 }

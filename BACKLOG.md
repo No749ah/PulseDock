@@ -3,7 +3,7 @@
 ## In Progress
 - [x] **Tailwind UI refactor** — Landing, login, dashboard, monitors pages migrated. Component library complete.
 - [x] **API security hardening** — Structured logging, helmet headers, rate limiting, CORS configured
-- [ ] **Input validation & API hardening phase 2** — Validate all endpoints, add error handling, CSRF protection
+- [ ] **Input validation & API hardening phase 2** — Enhanced DTOs with MaxLength bounds and IsUrl() validators. Next: CSRF protection, error boundaries
 
 ## Next Up
 

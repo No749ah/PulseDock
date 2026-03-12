@@ -7,8 +7,11 @@ import { validateEnv } from './common/env';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
 import { randomUUID } from 'node:crypto';
 import { MetricsService } from './common/metrics.service';
+import { createLogger } from './common/logger';
 import { execSync } from 'child_process';
 const pkg = require('../package.json');
+
+const logger = createLogger({ service: 'pulsedock-api' });
 
 async function bootstrap() {
   validateEnv();
@@ -16,14 +19,14 @@ async function bootstrap() {
   // Optional: run migrations on startup when explicitly enabled
   if ((process.env.RUN_MIGRATIONS_ON_STARTUP ?? 'false') === 'true') {
     try {
-      console.log('🔄 Running database migrations...');
+      logger.info('Running database migrations');
       execSync('npx prisma migrate deploy --schema=../../prisma/schema.prisma', {
         stdio: 'inherit',
         env: { ...process.env },
       });
-      console.log('✅ Migrations completed');
-    } catch {
-      console.warn('⚠️  Migrations check failed or already up to date');
+      logger.info('Migrations completed successfully');
+    } catch (err) {
+      logger.warn('Migrations check failed or already up to date', { error: err });
     }
   }
   const app = await NestFactory.create(AppModule, { cors: true });
@@ -39,15 +42,13 @@ async function bootstrap() {
       const ms = Date.now() - startedAt;
       metrics.inc('requestsTotal');
       if (res.statusCode >= 400) metrics.inc('errorsTotal');
-      console.log(JSON.stringify({
-        level: 'info',
-        msg: 'http_request',
+      logger.info('http_request', {
         requestId,
         method: req.method,
         path: req.url,
         status: res.statusCode,
         durationMs: ms,
-      }));
+      });
     });
 
     next();
@@ -90,8 +91,13 @@ async function bootstrap() {
 
   const port = Number(process.env.API_PORT ?? 4000);
   await app.listen(port);
-  console.log(`PulseDock API (NestJS) running on http://localhost:${port}`);
-  console.log(`Swagger docs available at http://localhost:${port}/docs (Swagger server: ${swaggerServerUrl})`);
+  logger.info('PulseDock API started', {
+    port,
+    version: pkg.version ?? '0.1.0',
+    nodeEnv: process.env.NODE_ENV,
+    swaggerServerUrl,
+  });
+  logger.info('Swagger docs available', { path: `/docs`, url: `http://localhost:${port}/docs` });
 }
 
 bootstrap();

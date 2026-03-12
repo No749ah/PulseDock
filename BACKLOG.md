@@ -2,7 +2,8 @@
 
 ## In Progress
 - [x] **Tailwind UI refactor** — Landing, login, dashboard, monitors pages migrated. Component library complete.
-- [ ] **API security hardening** — Logging done, next: CORS, helmet headers, input validation
+- [x] **API security hardening** — Structured logging, helmet headers, rate limiting, CORS configured
+- [ ] **Input validation & API hardening phase 2** — Validate all endpoints, add error handling, CSRF protection
 
 ## Next Up
 
@@ -15,7 +16,7 @@
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)
-- [ ] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
+- [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [ ] Add input validation/sanitization on all API endpoints
 - [x] Add proper logging (structured JSON logs, no console.log)
 - [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management

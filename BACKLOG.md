@@ -7,18 +7,19 @@
 - [x] **Error pages & boundaries** — 404 page + global error boundary added
 - [x] **TypeScript strict mode** — Removed implicit 'any' types from main.ts middleware
 - [ ] **Reverse proxy static assets** — URGENT: Documented nginx fix for /_next/static/chunks 404s. User must apply separate location block for static assets with buffering enabled. See PROXY_SETUP.md.
-- [ ] **Inline CSS cleanup (phase 1)** — migrated `unauthorized`, `status/[userId]`, and admin invite URL rendering away from inline styles. Continue with remaining pages/components.
+- [x] **Inline CSS cleanup (phase 1)** — migrated `unauthorized`, `status/[userId]`, and admin invite URL rendering away from inline styles. Only 2 CSS custom property instances remain (versioning progress bar, gradient text).
 - [x] **Frontend polish** — alerts, projects, versions pages migrated to Tailwind (Mantine fully removed from these 3 pages)
 - [x] **Full UI usability overhaul** — Proper layouts (p-6, gap-6), empty states on all pages, full-width inputs (px-4 py-3), consistent loading spinners, proper spacing standards
+- [x] **Complete Mantine → Tailwind migration for all app pages** — Admin page fully migrated. Created Tailwind: TextInput, CopyButton, AppModal. Built reusable pagination controls.
 
 ## Next Up
 
 ### Phase 1: Refactor & Harden
 - [x] Add Tailwind CSS configuration with dark theme as default
 - [x] Start replacing Mantine → Tailwind (landing + login done)
-- [ ] Remove all inline CSS from remaining pages — extract to Tailwind
-- [ ] Complete Mantine → Tailwind migration for all app pages
-- [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select)
+- [x] Remove all inline CSS from remaining pages — extract to Tailwind (2 CSS custom property instances remain for legitimate dynamic styling)
+- [x] Complete Mantine → Tailwind migration for all app pages (Admin page complete; shared components still use Mantine)
+- [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select, TextInput, CopyButton)
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 breaking change; requires deeper prisma/motion-dom investigation)

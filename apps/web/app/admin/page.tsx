@@ -1,6 +1,5 @@
 'use client';
 
-import { Button, Card, CopyButton, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
@@ -8,6 +7,12 @@ import { LoadingState } from '../../components/ui/loading-state';
 import { AppModal } from '../../components/ui/modal-framework';
 import { getToken, getUser } from '../../components/auth';
 import { api } from '../../lib/api';
+import { Button } from '../../app/components/Button';
+import { Card } from '../../app/components/Card';
+import { CopyButton } from '../../app/components/CopyButton';
+import { Select } from '../../app/components/Select';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../app/components/Table';
+import { TextInput } from '../../app/components/TextInput';
 
 type AdminUser = { id: string; email: string; role: 'admin' | 'user'; createdAt: string; isActive?: boolean };
 type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: string; expiresAt: string; acceptedAt?: string | null; createdAt?: string };
@@ -134,136 +139,229 @@ export default function AdminPage() {
     <AppFrame title="Admin" subtitle="Role management, secure onboarding and invite links.">
       {loading ? <LoadingState label="Loading admin data..." /> : <>
       <AppModal opened={editUserOpen} onClose={() => setEditUserOpen(false)} title="Edit user email">
-        <TextInput label="Email" value={editUserEmail} onChange={(e) => setEditUserEmail(e.currentTarget.value)} />
-        <Group mt="md" justify="flex-end">
-          <Button variant="default" onClick={() => setEditUserOpen(false)}>Cancel</Button>
-          <Button onClick={saveUserEmail}>Save</Button>
-        </Group>
+        <div className="space-y-4">
+          <TextInput label="Email" value={editUserEmail} onChange={(e) => setEditUserEmail(e.currentTarget.value)} />
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEditUserOpen(false)}>Cancel</Button>
+            <Button onClick={saveUserEmail}>Save</Button>
+          </div>
+        </div>
       </AppModal>
 
-      <Card withBorder radius="md" mb="md">
-        <Text fw={700}>Invite user</Text>
-        <Group mt="sm" grow wrap="wrap">
+      <Card>
+        <h3 className="text-lg font-bold mb-4">Invite user</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <TextInput label="Email" placeholder="new.user@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.currentTarget.value)} />
-          <Select label="Role" data={[{ value: 'user', label: 'user' }, { value: 'admin', label: 'admin' }]} value={inviteRole} onChange={(v) => setInviteRole((v as 'admin' | 'user') || 'user')} />
-        </Group>
-        <Button mt="sm" color="teal" onClick={createInvite} disabled={!inviteEmail}>Create invite</Button>
+          <Select label="Role" value={inviteRole} onChange={(v) => setInviteRole((v as 'admin' | 'user') || 'user')} options={[{ value: 'user', label: 'user' }, { value: 'admin', label: 'admin' }]} />
+        </div>
+        <Button onClick={createInvite} disabled={!inviteEmail} className="mb-4">Create invite</Button>
 
         {latestInvite ? (
-          <Card mt="sm" withBorder>
-            <Text size="sm" c="dimmed">Invite link (share directly or send per email):</Text>
-            <Text size="sm" className="break-all">{latestInvite.inviteUrl ?? '—'}</Text>
-            <CopyButton value={latestInvite.inviteUrl ?? ''}>{({ copied, copy }) => <Button mt="xs" variant="light" onClick={copy} disabled={!latestInvite.inviteUrl}>{copied ? 'Copied' : 'Copy link'}</Button>}</CopyButton>
-          </Card>
+          <div className="bg-surface-elevated border border-border rounded-lg p-4 mt-4">
+            <p className="text-sm text-text-secondary mb-2">Invite link (share directly or send per email):</p>
+            <p className="text-sm break-all text-text-primary mb-3">{latestInvite.inviteUrl ?? '—'}</p>
+            <CopyButton value={latestInvite.inviteUrl ?? ''} />
+          </div>
         ) : null}
       </Card>
 
-      <Card withBorder radius="md" mb="md">
-        <Text fw={700} mb="sm">Active invites</Text>
-        <Table.ScrollContainer minWidth={900}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Role</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Status</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
+      <Card className="mb-6">
+        <h3 className="text-lg font-bold mb-4">Active invites</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow hover={false}>
+                <TableHeader>Email</TableHeader>
+                <TableHeader>Role</TableHeader>
+                <TableHeader>Expires</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader>Action</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {invitesRows.map((i) => (
-                <Table.Tr key={i.id}>
-                  <Table.Td>{i.email}</Table.Td>
-                  <Table.Td>{i.role}</Table.Td>
-                  <Table.Td>{new Date(i.expiresAt).toLocaleString()}</Table.Td>
-                  <Table.Td>{i.acceptedAt ? 'accepted' : 'pending'}</Table.Td>
-                  <Table.Td>
-                    <Button size="xs" variant="light" color="red" disabled={Boolean(i.acceptedAt)} onClick={() => revokeInvite(i.id)}>Revoke</Button>
-                  </Table.Td>
-                </Table.Tr>
+                <TableRow key={i.id}>
+                  <TableCell>{i.email}</TableCell>
+                  <TableCell>{i.role}</TableCell>
+                  <TableCell>{new Date(i.expiresAt).toLocaleString()}</TableCell>
+                  <TableCell>{i.acceptedAt ? 'accepted' : 'pending'}</TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="secondary" disabled={Boolean(i.acceptedAt)} onClick={() => revokeInvite(i.id)}>Revoke</Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </Table.Tbody>
+            </TableBody>
           </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={Math.min(invitesPage, invitesPages)} onChange={setInvitesPage} total={invitesPages} />
-          <Select w={90} value={pageSize} onChange={(v) => setPageSize(v || '10')} data={['10', '25', '50']} />
-        </Group>
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setInvitesPage(Math.max(1, invitesPage - 1))}
+              disabled={invitesPage === 1}
+              className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <span className="px-2 py-1 text-sm">{invitesPage} / {invitesPages}</span>
+            <button
+              onClick={() => setInvitesPage(Math.min(invitesPages, invitesPage + 1))}
+              disabled={invitesPage === invitesPages}
+              className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+          <Select value={pageSize} onChange={setPageSize} options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]} className="w-20" />
+        </div>
       </Card>
 
-      <Card withBorder radius="md" mb="md">
-        <Text fw={700} mb="sm">Password resets (fallback when email is not configured)</Text>
-        <Table.ScrollContainer minWidth={900}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Created</Table.Th><Table.Th>Expires</Table.Th><Table.Th>Link</Table.Th><Table.Th>Action</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
+      <Card className="mb-6">
+        <h3 className="text-lg font-bold mb-4">Password resets (fallback when email is not configured)</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow hover={false}>
+                <TableHeader>Email</TableHeader>
+                <TableHeader>Created</TableHeader>
+                <TableHeader>Expires</TableHeader>
+                <TableHeader>Link</TableHeader>
+                <TableHeader>Action</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {resetRows.map((r) => (
-                <Table.Tr key={r.id}>
-                  <Table.Td>{r.email}</Table.Td>
-                  <Table.Td>{new Date(r.createdAt).toLocaleString()}</Table.Td>
-                  <Table.Td>{new Date(r.expiresAt).toLocaleString()}</Table.Td>
-                  <Table.Td>
-                    <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy reset link'}</Button>}</CopyButton>
-                  </Table.Td>
-                  <Table.Td>
-                    <Button size="xs" variant="light" color="red" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
-                  </Table.Td>
-                </Table.Tr>
+                <TableRow key={r.id}>
+                  <TableCell>{r.email}</TableCell>
+                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{new Date(r.expiresAt).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="sm" variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy link'}</Button>}</CopyButton>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="secondary" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </Table.Tbody>
+            </TableBody>
           </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={Math.min(resetsPage, resetsPages)} onChange={setResetsPage} total={resetsPages} />
-        </Group>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setResetsPage(Math.max(1, resetsPage - 1))}
+            disabled={resetsPage === 1}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span className="px-2 py-1 text-sm">{resetsPage} / {resetsPages}</span>
+          <button
+            onClick={() => setResetsPage(Math.min(resetsPages, resetsPage + 1))}
+            disabled={resetsPage === resetsPages}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       </Card>
 
-      <Card withBorder radius="md">
-        <Text fw={700} mb="sm">Users</Text>
-        <Table.ScrollContainer minWidth={1100}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Email</Table.Th><Table.Th>Edit</Table.Th><Table.Th>Status</Table.Th><Table.Th>Role</Table.Th><Table.Th>Created</Table.Th><Table.Th>Change Role</Table.Th><Table.Th>Toggle Status</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
+      <Card className="mb-6">
+        <h3 className="text-lg font-bold mb-4">Users</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow hover={false}>
+                <TableHeader>Email</TableHeader>
+                <TableHeader>Edit</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader>Role</TableHeader>
+                <TableHeader>Created</TableHeader>
+                <TableHeader>Change Role</TableHeader>
+                <TableHeader>Toggle Status</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {userRows.map((u) => (
-                <Table.Tr key={u.id}>
-                  <Table.Td>{u.email}</Table.Td>
-                  <Table.Td><Button size="xs" variant="light" onClick={() => openEditUser(u.id, u.email)}>Edit</Button></Table.Td>
-                  <Table.Td>{u.isActive ? 'active' : 'disabled'}</Table.Td>
-                  <Table.Td><Text fw={600}>{u.role}</Text></Table.Td>
-                  <Table.Td>{new Date(u.createdAt).toLocaleString()}</Table.Td>
-                  <Table.Td>
+                <TableRow key={u.id}>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell><Button size="sm" variant="secondary" onClick={() => openEditUser(u.id, u.email)}>Edit</Button></TableCell>
+                  <TableCell>{u.isActive ? 'active' : 'disabled'}</TableCell>
+                  <TableCell><span className="font-semibold">{u.role}</span></TableCell>
+                  <TableCell>{new Date(u.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>
                     <Select
-                      data={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]}
                       value={u.role}
                       onChange={(v) => v && updateRole(u.id, v as 'admin' | 'user')}
+                      options={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]}
                     />
-                  </Table.Td>
-                  <Table.Td>
-                    <Button size="xs" variant="light" color={u.isActive ? 'red' : 'teal'} onClick={() => setStatus(u.id, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</Button>
-                  </Table.Td>
-                </Table.Tr>
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="secondary" onClick={() => setStatus(u.id, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </Table.Tbody>
+            </TableBody>
           </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={Math.min(usersPage, usersPages)} onChange={setUsersPage} total={usersPages} />
-        </Group>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setUsersPage(Math.max(1, usersPage - 1))}
+            disabled={usersPage === 1}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span className="px-2 py-1 text-sm">{usersPage} / {usersPages}</span>
+          <button
+            onClick={() => setUsersPage(Math.min(usersPages, usersPage + 1))}
+            disabled={usersPage === usersPages}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       </Card>
 
-      <Card withBorder radius="md" mt="md">
-        <Text fw={700} mb="sm">Audit logs</Text>
-        <Table.ScrollContainer minWidth={800}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Action</Table.Th><Table.Th>Actor</Table.Th><Table.Th>Target</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
+      <Card className="mt-6">
+        <h3 className="text-lg font-bold mb-4">Audit logs</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow hover={false}>
+                <TableHeader>Time</TableHeader>
+                <TableHeader>Action</TableHeader>
+                <TableHeader>Actor</TableHeader>
+                <TableHeader>Target</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {auditRows.map((l) => (
-                <Table.Tr key={l.id}>
-                  <Table.Td>{new Date(l.createdAt).toLocaleString()}</Table.Td>
-                  <Table.Td>{l.action}</Table.Td>
-                  <Table.Td>{l.actorUserId ?? '—'}</Table.Td>
-                  <Table.Td>{l.targetUserId ?? '—'}</Table.Td>
-                </Table.Tr>
+                <TableRow key={l.id}>
+                  <TableCell>{new Date(l.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{l.action}</TableCell>
+                  <TableCell>{l.actorUserId ?? '—'}</TableCell>
+                  <TableCell>{l.targetUserId ?? '—'}</TableCell>
+                </TableRow>
               ))}
-            </Table.Tbody>
+            </TableBody>
           </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={Math.min(auditPage, auditPages)} onChange={setAuditPage} total={auditPages} />
-        </Group>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setAuditPage(Math.max(1, auditPage - 1))}
+            disabled={auditPage === 1}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <span className="px-2 py-1 text-sm">{auditPage} / {auditPages}</span>
+          <button
+            onClick={() => setAuditPage(Math.min(auditPages, auditPage + 1))}
+            disabled={auditPage === auditPages}
+            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       </Card>
       </>}
     </AppFrame>

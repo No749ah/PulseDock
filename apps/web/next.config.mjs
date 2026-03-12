@@ -8,6 +8,9 @@ const nextConfig = {
     'oc-web-test.no749ah.com',
     'https://oc-web-test.no749ah.com',
     'http://oc-web-test.no749ah.com',
+    'oc-dev-test.no749ah.com',
+    'https://oc-dev-test.no749ah.com',
+    'http://oc-dev-test.no749ah.com',
   ],
 
   // Proxy all /api requests to the API server (keeps frontend on / and API on /api)

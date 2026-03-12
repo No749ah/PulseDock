@@ -9,9 +9,14 @@ function inferApiBaseFromLocation() {
     return `${protocol}//${host.replace('oc-web-test.', 'oc-api-test.')}`;
   }
 
+  // Dev test setup: oc-dev-test.* -> same host /api proxy
+  if (host.startsWith('oc-dev-test.')) {
+    return `${protocol}//${host}/api`;
+  }
+
   // Local dev setup
   if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
-    return 'http://localhost:4000';
+    return 'http://localhost:4321';
   }
 
   return '';

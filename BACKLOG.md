@@ -52,7 +52,7 @@
 - [ ] Alerts page
 
 ### Phase 4: API & Backend
-- [ ] Add comprehensive unit tests for all services (>80% coverage)
+- [x] Add unit tests for core services — AppController, MetricsService, AuthService, MonitorsService (27 tests, vitest)
 - [ ] Add integration tests for API endpoints
 - [ ] Add proper API versioning strategy
 - [ ] Swagger/OpenAPI docs with examples

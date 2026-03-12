@@ -1,162 +1,296 @@
-'use client';
+"use client";
 
-import { Alert, Button, Card, Group, Modal, PasswordInput, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppFrame } from '../../components/app-frame';
-import { api } from '../../lib/api';
-import { clearSession, getToken, getUser } from '../../components/auth';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, LogOut, Shield, User } from "lucide-react";
+import { api } from "../../lib/api";
+import { clearSession, getUser } from "../../components/auth";
+import { AppFrame } from "../../components/app-frame";
+import { Card } from "../components/Card";
+import { Button } from "../components/Button";
+import { FadeIn } from "../components/FadeIn";
 
-type Me = { id: string; email: string; role: 'admin' | 'user'; mustChangePassword?: boolean };
-type Session = { id: string; userAgent: string | null; ipAddress: string | null; revokedAt: string | null; createdAt: string };
+interface Me {
+  id: string;
+  email: string;
+  role: "admin" | "user";
+  mustChangePassword?: boolean;
+}
+
+interface Session {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
 
 export default function AccountPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
+  const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [profileEmail, setProfileEmail] = useState(() => (typeof window !== 'undefined' ? getUser()?.email ?? '' : ''));
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-
-  const [firstLoginEmail, setFirstLoginEmail] = useState('');
-  const [firstLoginNewPassword, setFirstLoginNewPassword] = useState('');
-  const [firstLoginSaving, setFirstLoginSaving] = useState(false);
-  const [firstLoginError, setFirstLoginError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
+    const currentUser = getUser();
+    setUser(currentUser);
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
 
-  async function load() {
-    const [profile, sess] = await Promise.all([
-      api<Me>('/v1/auth/me', token),
-      api<Session[]>('/v1/auth/sessions', token),
-    ]);
-    setMe(profile);
-    setSessions(sess);
-    setProfileEmail(profile.email);
-  }
+    const userId = currentUser.id;
 
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        const [profile, sess] = await Promise.all([
+          api<Me>("/v1/auth/me", userId),
+          api<Session[]>("/v1/auth/sessions", userId),
+        ]);
+        setMe(profile);
+        setSessions(sess);
+        setEmail(profile.email);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load account");
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  useEffect(() => {
-    if (me?.mustChangePassword) setFirstLoginEmail(me.email);
-  }, [me]);
+    load();
+  }, [router]);
 
-  async function saveProfile() {
-    const updated = await api<{ id: string; email: string; role: 'admin' | 'user' }>('/v1/auth/profile', token, {
-      method: 'PATCH',
-      body: JSON.stringify({ email: profileEmail }),
-    });
-    localStorage.setItem('pulsedock_user', JSON.stringify({ ...updated, name: updated.email.split('@')[0] || 'user' }));
-    localStorage.setItem('pulsedock_remembered_user', updated.email.toLowerCase());
-    await load();
-  }
-
-  async function savePassword() {
-    setPasswordError('');
+  const handleUpdateEmail = async () => {
     try {
-      await api('/v1/auth/change-password', token, {
-        method: 'POST',
+      setError("");
+      setSuccess("");
+      await api("/v1/auth/profile", user?.id, {
+        method: "PATCH",
+        body: JSON.stringify({ email }),
+      });
+      setSuccess("Email updated successfully");
+      if (me) setMe({ ...me, email });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update email");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      setError("");
+      setSuccess("");
+
+      if (newPassword !== confirmPassword) {
+        setError("Passwords don't match");
+        return;
+      }
+
+      if (newPassword.length < 12) {
+        setError("Password must be at least 12 characters");
+        return;
+      }
+
+      await api("/v1/auth/change-password", user?.id, {
+        method: "POST",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      setCurrentPassword('');
-      setNewPassword('');
-      clearSession();
-      router.push('/login');
-    } catch (e: any) {
-      setPasswordError(String(e?.message ?? 'Password update failed'));
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setSuccess("Password changed. Please login again.");
+      setTimeout(() => {
+        clearSession();
+        router.push("/login");
+      }, 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to change password");
     }
-  }
+  };
 
-  async function revokeSession(sessionId: string) {
-    await api('/v1/auth/sessions/revoke', token, {
-      method: 'POST',
-      body: JSON.stringify({ sessionId }),
-    });
-    await load();
-  }
-
-  async function revokeAllSessions() {
-    await api('/v1/auth/sessions/revoke-all', token, { method: 'POST' });
-    await load();
-  }
-
-  async function completeFirstLoginProfile() {
-    setFirstLoginSaving(true);
-    setFirstLoginError('');
+  const handleRevokeSession = async (sessionId: string) => {
+    if (!window.confirm("Revoke this session?")) return;
     try {
-      const updated = await api<{ id: string; email: string; role: 'admin' | 'user' }>('/v1/auth/profile', token, {
-        method: 'PATCH',
-        body: JSON.stringify({ email: firstLoginEmail }),
+      await api("/v1/auth/sessions/revoke", user?.id, {
+        method: "POST",
+        body: JSON.stringify({ sessionId }),
       });
-      localStorage.setItem('pulsedock_user', JSON.stringify({ ...updated, name: updated.email.split('@')[0] || 'user' }));
-      localStorage.setItem('pulsedock_remembered_user', updated.email.toLowerCase());
-      await api('/v1/auth/change-password', token, {
-        method: 'POST',
-        body: JSON.stringify({ newPassword: firstLoginNewPassword }),
-      });
-      clearSession();
-      router.push('/login');
-    } catch (e: any) {
-      setFirstLoginError(String(e?.message ?? 'Could not complete first login setup'));
-    } finally {
-      setFirstLoginSaving(false);
+      setSessions(sessions.filter((s) => s.id !== sessionId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to revoke session");
     }
-  }
+  };
+
+  if (!user) return null;
+  if (loading)
+    return (
+      <AppFrame title="Account">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    );
 
   return (
-    <AppFrame title="Account" subtitle="Profile, password, tokens and active sessions.">
-      <Modal opened={Boolean(me?.mustChangePassword)} onClose={() => {}} closeOnClickOutside={false} closeOnEscape={false} withCloseButton={false} title="First login security setup" centered>
-        <form onSubmit={(e) => { e.preventDefault(); void completeFirstLoginProfile(); }}>
-          <Text size="sm" c="dimmed" mb="sm">You must update your account email and password before continuing.</Text>
-          <TextInput label="New account email" value={firstLoginEmail} onChange={(e) => setFirstLoginEmail(e.currentTarget.value)} />
-          <PasswordInput mt="sm" label="New password" value={firstLoginNewPassword} onChange={(e) => setFirstLoginNewPassword(e.currentTarget.value)} />
-          {firstLoginError ? <Alert mt="sm" color="red">{firstLoginError}</Alert> : null}
-          <Button type="submit" mt="md" fullWidth color="teal" loading={firstLoginSaving}>Save and continue</Button>
-        </form>
-      </Modal>
+    <AppFrame title="Account" subtitle="Manage your profile and security">
+      <div className="space-y-6 max-w-2xl">
+        {error && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
+              <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+              <span className="text-danger text-sm">{error}</span>
+            </div>
+          </FadeIn>
+        )}
 
-      <Stack>
-        <SimpleGrid cols={{ base: 1, lg: 2 }}>
-          <Card withBorder>
-            <form onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}>
-              <Text fw={700}>Profile</Text>
-              <Text size="sm" c="dimmed">{me?.email ?? '—'} ({me?.role ?? '—'})</Text>
-              <TextInput mt="sm" label="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.currentTarget.value)} />
-              <Button type="submit" mt="sm" color="teal" variant="light">Save email</Button>
-            </form>
+        {success && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-success/10 border border-success/20">
+              <span className="text-success text-sm">{success}</span>
+            </div>
+          </FadeIn>
+        )}
+
+        {/* Profile Section */}
+        <FadeIn>
+          <Card>
+            <div className="flex items-center gap-3 mb-6">
+              <User className="w-6 h-6 text-accent" />
+              <h2 className="text-xl font-bold">Profile</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              <div className="text-sm text-text-muted">
+                Role: <span className="text-text-secondary font-medium">{me?.role}</span>
+              </div>
+
+              <Button onClick={handleUpdateEmail} className="w-full">
+                Update Email
+              </Button>
+            </div>
           </Card>
+        </FadeIn>
 
-          <Card withBorder>
-            <form onSubmit={(e) => { e.preventDefault(); void savePassword(); }}>
-              <Text fw={700}>Password</Text>
-              <PasswordInput mt="sm" label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.currentTarget.value)} />
-              <PasswordInput mt="sm" label="New password" value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
-              {passwordError ? <Alert mt="sm" color="red">{passwordError}</Alert> : null}
-              <Button type="submit" mt="sm" color="teal">Update password</Button>
-            </form>
+        {/* Security Section */}
+        <FadeIn delay={0.1}>
+          <Card>
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-6 h-6 text-accent" />
+              <h2 className="text-xl font-bold">Security</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <p className="text-xs text-text-muted">
+                Password must be at least 12 characters long
+              </p>
+
+              <Button onClick={handleChangePassword} className="w-full">
+                Change Password
+              </Button>
+            </div>
           </Card>
-        </SimpleGrid>
+        </FadeIn>
 
-        <Card withBorder>
-          <Group justify="space-between" wrap="wrap">
-            <Text fw={700}>Sessions / Tokens</Text>
-            <Button size="xs" variant="light" color="red" onClick={revokeAllSessions} style={{ width: '100%', maxWidth: 220 }}>Revoke all sessions</Button>
-          </Group>
-          {sessions.filter((s) => !s.revokedAt).map((s) => (
-            <Card key={s.id} mt="sm" withBorder>
-              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
-              <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{s.userAgent ?? 'unknown agent'}</Text>
-              <Button mt="xs" size="xs" variant="light" color="red" disabled={Boolean(s.revokedAt)} onClick={() => revokeSession(s.id)}>{s.revokedAt ? 'Revoked' : 'Revoke'}</Button>
+        {/* Sessions Section */}
+        {sessions.length > 0 && (
+          <FadeIn delay={0.2}>
+            <Card>
+              <h2 className="text-xl font-bold mb-4">Active Sessions</h2>
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm text-text-secondary">
+                        {session.userAgent || "Unknown device"}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        {session.ipAddress && `IP: ${session.ipAddress} • `}
+                        {new Date(session.createdAt).toLocaleString()}
+                      </p>
+                      {session.revokedAt && (
+                        <p className="text-xs text-danger">Revoked</p>
+                      )}
+                    </div>
+                    {!session.revokedAt && (
+                      <button
+                        onClick={() => handleRevokeSession(session.id)}
+                        className="text-danger hover:text-danger/80 text-sm transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </Card>
-          ))}
-        </Card>
-      </Stack>
+          </FadeIn>
+        )}
+      </div>
     </AppFrame>
   );
 }

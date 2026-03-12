@@ -64,13 +64,13 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
-            <img src="/brand/pulsedock-logo.svg" alt="PulseDock" width={28} height={28} style={{ borderRadius: 8 }} />
+            <img src="/brand/pulsedock-logo.svg" alt="PulseDock" width={28} height={28} className="rounded-lg" />
             <Text fw={700} size="lg">PulseDock</Text>
           </Group>
 
           <Menu shadow="md" width={220} position="bottom-end">
             <Menu.Target>
-              <Group gap="xs" style={{ cursor: 'pointer' }}>
+              <Group gap="xs" className="cursor-pointer">
                 <Avatar color="teal" radius="xl" size="sm" suppressHydrationWarning>{mounted ? ((user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()) : 'U'}</Avatar>
                 <Text size="sm" c="dimmed" visibleFrom="xs" suppressHydrationWarning>{mounted ? (user?.name ?? user?.email?.split('@')[0] ?? 'user') : 'user'}</Text>
               </Group>
@@ -89,7 +89,7 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
-        <Stack gap="xs" style={{ flex: 1 }}>
+        <Stack gap="xs" className="flex-1">
           {navGroups.map((group) => {
             const items = group.items.filter((item) => !item.adminOnly || user?.role === 'admin');
             if (!items.length) return null;
@@ -116,8 +116,8 @@ export function AppFrame({ title, subtitle, children }: { title: string; subtitl
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <div style={{ maxWidth: 1220, margin: '0 auto', width: '100%', paddingTop: 6 }}>
-          <span style={{ display: 'none' }}>{title}{subtitle ? ` - ${subtitle}` : ''}</span>
+        <div className="max-w-[1220px] mx-auto w-full pt-1.5">
+          <span className="hidden">{title}{subtitle ? ` - ${subtitle}` : ''}</span>
           {children}
         </div>
       </AppShell.Main>

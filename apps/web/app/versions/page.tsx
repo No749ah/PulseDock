@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
@@ -490,7 +490,7 @@ export default function VersionsPage() {
           >
             {/* Progress bar */}
             <div className="w-full bg-surface-elevated rounded-full h-2 mb-4">
-              <div className="bg-accent h-2 rounded-full transition-all" style={{ width: `${modalProgress}%` }} />
+              <div className="bg-accent h-2 rounded-full transition-all" style={{ '--progress-width': `${modalProgress}%`, width: 'var(--progress-width)' } as CSSProperties} />
             </div>
 
             {/* Validation errors */}

@@ -117,14 +117,13 @@ export function LandingCinematic() {
       <div className="landing-cinematic-sticky">
         <video
           ref={videoRef}
-          className="landing-cinematic-video"
+          className={`landing-cinematic-video ${hasVideo ? 'block' : 'hidden'}`}
           src="/hero-video/hero.mp4"
           muted
           playsInline
           preload="metadata"
-          style={{ display: hasVideo ? 'block' : 'none' }}
         />
-        <canvas ref={canvasRef} className="landing-cinematic-canvas" style={{ display: hasVideo ? 'none' : 'block' }} />
+        <canvas ref={canvasRef} className={`landing-cinematic-canvas ${hasVideo ? 'hidden' : 'block'}`} />
       </div>
     </div>
   );

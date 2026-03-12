@@ -15,7 +15,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="brand">PulseDock</div>
         <div className="brand-sub">Enterprise Uptime Intelligence</div>
-        <div className="muted" style={{ marginBottom: 16 }}>{user?.name ?? user?.email?.split('@')[0] ?? 'user'}</div>
+        <div className="muted mb-4">{user?.name ?? user?.email?.split('@')[0] ?? 'user'}</div>
 
         <nav className="nav">
           <Link className={pathname === '/dashboard' ? 'active' : ''} href="/dashboard">Dashboard</Link>
@@ -26,8 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
 
         <button
-          style={{ marginTop: 18, width: '100%' }}
-          className="btn secondary"
+          className="btn secondary mt-[18px] w-full"
           onClick={() => {
             clearSession();
             router.push('/login');

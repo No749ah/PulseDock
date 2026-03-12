@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 interface GradientTextProps {
   children: ReactNode;
@@ -18,9 +18,7 @@ export function GradientText({
   return (
     <span
       className={`bg-clip-text text-transparent ${className}`}
-      style={{
-        backgroundImage: `linear-gradient(135deg, ${from}, ${to})`,
-      }}
+      style={{ '--grad-from': from, '--grad-to': to, backgroundImage: 'linear-gradient(135deg, var(--grad-from), var(--grad-to))' } as CSSProperties}
     >
       {children}
     </span>

@@ -21,7 +21,7 @@
 - [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select)
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
-- [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)
+- [ ] Fix all npm audit vulnerabilities (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 breaking change; requires deeper prisma/motion-dom investigation)
 - [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [ ] Add input validation/sanitization on all API endpoints
 - [x] Add proper logging (structured JSON logs, no console.log)

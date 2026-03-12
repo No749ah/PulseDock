@@ -1,13 +1,18 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { PrismaService } from '../common/prisma.service';
 
+@ApiTags('Dashboard')
+@ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('v1/dashboard')
 export class DashboardController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get('overview')
+  @ApiOperation({ summary: 'Dashboard overview', description: 'Returns aggregate monitor stats and recent check runs for the authenticated user.' })
+  @ApiResponse({ status: 200, description: 'Dashboard overview returned.' })
   async overview(@Req() req: { user: { id: string } }) {
     const monitors = await this.prisma.monitor.findMany({ where: { userId: req.user.id } });
     const runs = await this.prisma.monitorRun.findMany({ where: { userId: req.user.id }, orderBy: { checkedAt: 'desc' } });

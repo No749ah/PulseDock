@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '../common/auth.guard';
 import { AlertsService } from './alerts.service';
@@ -7,6 +8,8 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { CreateAlertChannelDto, TestAlertChannelDto, UpdateAlertChannelDto } from './alerts.dto';
 
+@ApiTags('Alerts')
+@ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('v1/alert-channels')
 export class AlertsController {
@@ -17,6 +20,8 @@ export class AlertsController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'List alert channels', description: 'Returns all configured alert channels for the authenticated user.' })
+  @ApiResponse({ status: 200, description: 'Alert channels returned.' })
   async list(@Req() req: { user: { id: string } }) {
     const channels = await this.prisma.alertChannel.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
     return channels.map((c) => ({
@@ -30,6 +35,8 @@ export class AlertsController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create alert channel', description: 'Create a new notification channel (Discord, Slack, Telegram, webhook, email).' })
+  @ApiResponse({ status: 201, description: 'Alert channel created.' })
   async create(
     @Req() req: { user: { id: string } },
     @Body() body: CreateAlertChannelDto,
@@ -56,6 +63,10 @@ export class AlertsController {
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update alert channel' })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Alert channel updated.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
   async update(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: UpdateAlertChannelDto) {
     const current = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!current) throw new NotFoundException('channel not found');
@@ -81,6 +92,10 @@ export class AlertsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete alert channel' })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Alert channel deleted.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
   async remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     const current = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!current) throw new NotFoundException('channel not found');
@@ -92,6 +107,9 @@ export class AlertsController {
   }
 
   @Post('test')
+  @ApiOperation({ summary: 'Send test notification', description: 'Send a test message through the specified alert channel to verify connectivity.' })
+  @ApiResponse({ status: 200, description: 'Test notification dispatched.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
   async test(@Req() req: { user: { id: string } }, @Body() body: TestAlertChannelDto) {
     const channel = await this.prisma.alertChannel.findFirst({ where: { id: body.channelId, userId: req.user.id } });
     if (!channel) throw new NotFoundException('channel not found');

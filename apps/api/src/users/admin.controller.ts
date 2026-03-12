@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../common/prisma.service';
 import { AuthGuard } from '../common/auth.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -6,6 +7,8 @@ import { Roles } from '../common/roles.decorator';
 import { AuditService } from '../common/audit.service';
 import { SetRoleDto, SetStatusDto, UpdateUserDto } from './admin.dto';
 
+@ApiTags('Admin')
+@ApiBearerAuth()
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('v1/admin')
 export class AdminController {
@@ -16,6 +19,9 @@ export class AdminController {
 
   @Roles('admin')
   @Get('users')
+  @ApiOperation({ summary: 'List all users', description: 'Admin only. Returns all registered users.' })
+  @ApiResponse({ status: 200, description: 'User list returned.' })
+  @ApiResponse({ status: 403, description: 'Admin role required.' })
   async users() {
     const users = await this.prisma.user.findMany({ orderBy: { createdAt: 'asc' } });
     return users.map((u) => ({ id: u.id, email: u.email, role: u.role, isActive: u.isActive, createdAt: u.createdAt.toISOString() }));
@@ -23,6 +29,8 @@ export class AdminController {
 
   @Roles('admin')
   @Patch('users/role')
+  @ApiOperation({ summary: 'Set user role', description: 'Admin only. Assign admin or user role to a user.' })
+  @ApiResponse({ status: 200, description: 'Role updated.' })
   async setRole(@Req() req: { user: { id: string } }, @Body() body: SetRoleDto) {
     const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) throw new NotFoundException('user not found');
@@ -33,6 +41,8 @@ export class AdminController {
 
   @Roles('admin')
   @Patch('users/update')
+  @ApiOperation({ summary: 'Update user', description: 'Admin only. Update email, role, or active status of any user.' })
+  @ApiResponse({ status: 200, description: 'User updated.' })
   async updateUser(@Req() req: { user: { id: string } }, @Body() body: UpdateUserDto) {
     const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) throw new NotFoundException('user not found');
@@ -54,6 +64,8 @@ export class AdminController {
 
   @Roles('admin')
   @Patch('users/status')
+  @ApiOperation({ summary: 'Set user active status', description: 'Admin only. Enable or disable a user account. Disabling revokes all sessions.' })
+  @ApiResponse({ status: 200, description: 'Status updated.' })
   async setStatus(@Req() req: { user: { id: string } }, @Body() body: SetStatusDto) {
     const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) throw new NotFoundException('user not found');
@@ -65,6 +77,8 @@ export class AdminController {
 
   @Roles('admin')
   @Get('audit-logs')
+  @ApiOperation({ summary: 'Audit logs', description: 'Admin only. Returns the last 200 audit log entries.' })
+  @ApiResponse({ status: 200, description: 'Audit logs returned.' })
   async auditLogs() {
     const logs = await this.prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
     return logs.map((l) => ({
@@ -79,6 +93,8 @@ export class AdminController {
 
   @Roles('admin')
   @Get('password-resets')
+  @ApiOperation({ summary: 'Pending password resets', description: 'Admin only. Returns all active (unconsumed, unexpired) password reset tokens.' })
+  @ApiResponse({ status: 200, description: 'Password reset tokens returned.' })
   async passwordResets() {
     const rows = await this.prisma.passwordResetToken.findMany({
       where: { consumedAt: null, expiresAt: { gt: new Date() } },
@@ -98,6 +114,9 @@ export class AdminController {
 
   @Roles('admin')
   @Delete('password-resets/:id')
+  @ApiOperation({ summary: 'Revoke password reset token', description: 'Admin only. Invalidate a specific password reset token.' })
+  @ApiParam({ name: 'id', description: 'Password reset token ID' })
+  @ApiResponse({ status: 200, description: 'Token revoked.' })
   async revokePasswordReset(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     const existing = await this.prisma.passwordResetToken.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('password reset token not found');

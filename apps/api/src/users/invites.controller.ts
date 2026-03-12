@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { randomBytes } from 'node:crypto';
 import { AuthGuard } from '../common/auth.guard';
 import { Roles } from '../common/roles.decorator';
@@ -8,6 +9,8 @@ import { AuditService } from '../common/audit.service';
 import { CreateInviteDto } from './invites.dto';
 import { MailerService } from '../common/mailer.service';
 
+@ApiTags('Admin')
+@ApiBearerAuth()
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('v1/admin/invites')
 export class InvitesController {
@@ -19,6 +22,8 @@ export class InvitesController {
 
   @Roles('admin')
   @Get()
+  @ApiOperation({ summary: 'List invites', description: 'Admin only. Returns the last 100 invite tokens.' })
+  @ApiResponse({ status: 200, description: 'Invite list returned.' })
   async list() {
     const invites = await this.prisma.inviteToken.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
     return invites.map((i) => ({
@@ -34,6 +39,8 @@ export class InvitesController {
 
   @Roles('admin')
   @Post()
+  @ApiOperation({ summary: 'Create invite', description: 'Admin only. Generate a new invite token and optionally send an invite email.' })
+  @ApiResponse({ status: 201, description: 'Invite created. Returns inviteUrl in development mode.' })
   async create(@Req() req: { user: { id: string } }, @Body() body: CreateInviteDto) {
     const token = randomBytes(24).toString('hex');
     const expiresInHours = Math.max(1, Math.min(168, Number(body.expiresInHours ?? 48)));
@@ -63,6 +70,10 @@ export class InvitesController {
 
   @Roles('admin')
   @Delete(':id')
+  @ApiOperation({ summary: 'Revoke invite', description: 'Admin only. Delete an invite token before it is accepted.' })
+  @ApiParam({ name: 'id', description: 'Invite token ID' })
+  @ApiResponse({ status: 200, description: 'Invite revoked.' })
+  @ApiResponse({ status: 404, description: 'Invite not found.' })
   async revoke(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     const invite = await this.prisma.inviteToken.findUnique({ where: { id } });
     if (!invite) throw new NotFoundException('invite not found');

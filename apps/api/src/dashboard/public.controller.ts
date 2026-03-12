@@ -1,11 +1,16 @@
 import { Controller, Get, Param } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../common/prisma.service';
 
+@ApiTags('Public')
 @Controller('v1/public')
 export class PublicDashboardController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get('overview/:userId')
+  @ApiOperation({ summary: 'Public status page data', description: 'Returns public monitor stats for a given user. No auth required — for public status pages.' })
+  @ApiParam({ name: 'userId', description: 'User ID whose public status page to fetch' })
+  @ApiResponse({ status: 200, description: 'Public overview returned.' })
   async overview(@Param('userId') userId: string) {
     const monitors = await this.prisma.monitor.findMany({ where: { userId } });
     const runs = await this.prisma.monitorRun.findMany({ where: { userId }, orderBy: { checkedAt: 'desc' } });

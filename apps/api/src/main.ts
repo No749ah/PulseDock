@@ -10,6 +10,21 @@ import { randomUUID } from 'node:crypto';
 import { MetricsService } from './common/metrics.service';
 import { createLogger } from './common/logger';
 import { execSync } from 'child_process';
+
+// Minimal request/response interface for Express middleware
+interface AppRequest {
+  headers: Record<string, string | string[] | undefined>;
+  method: string;
+  url: string;
+  requestId?: string;
+}
+
+interface AppResponse {
+  statusCode: number;
+  setHeader(key: string, value: string): void;
+  on(event: string, callback: () => void): void;
+}
+
 const pkg = require('../package.json');
 
 const logger = createLogger({ service: 'pulsedock-api' });
@@ -48,7 +63,7 @@ async function bootstrap() {
     xssFilter: true,
   }));
   const metrics = app.get(MetricsService);
-  app.use((req: any, res: any, next: () => void) => {
+  app.use((req: AppRequest, res: AppResponse, next: () => void) => {
     const startedAt = Date.now();
     const incoming = req.headers['x-request-id'];
     const requestId = typeof incoming === 'string' && incoming.trim() ? incoming : randomUUID();

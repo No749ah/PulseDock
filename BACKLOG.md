@@ -38,7 +38,7 @@
 - [ ] User settings / account page (settings form)
 - [ ] Admin panel (user management, system health)
 - [ ] Folder/project organization UI
-- [ ] Monitors page (full CRUD)
+- [x] Monitors page (full CRUD)
 - [ ] Versions page
 - [ ] Projects page
 - [ ] Alerts page

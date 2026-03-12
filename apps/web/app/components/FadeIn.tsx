@@ -1,12 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
-
-const variants: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0 },
-};
 
 interface FadeInProps {
   children: ReactNode;
@@ -15,17 +9,15 @@ interface FadeInProps {
   className?: string;
 }
 
-export function FadeIn({ children, delay = 0, duration = 0.7, className }: FadeInProps) {
+/**
+ * Placeholder FadeIn component - framer-motion v12 has typing issues with React 19.
+ * TODO: Migrate to alternative animation library or wait for framer-motion fix.
+ * For now, renders children without animations.
+ */
+export function FadeIn({ children, className }: FadeInProps) {
   return (
-    <motion.div
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
-      variants={variants}
-      transition={{ duration, delay, ease: [0.25, 0.4, 0.25, 1] }}
-      className={className}
-    >
+    <div className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }

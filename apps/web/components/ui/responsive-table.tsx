@@ -1,15 +1,14 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { ScrollArea, Table } from '@mantine/core';
 
-export function ResponsiveTable({ children, minWidth = 820 }: { children: ReactNode; minWidth?: number }) {
+export function ResponsiveTable({ children }: { children: ReactNode; minWidth?: number }) {
   return (
-    <ScrollArea>
-      <Table withTableBorder withColumnBorders miw={minWidth}>
+    <div className="overflow-x-auto w-full">
+      <table className="w-full text-sm text-left border-collapse">
         {children}
-      </Table>
-    </ScrollArea>
+      </table>
+    </div>
   );
 }
 

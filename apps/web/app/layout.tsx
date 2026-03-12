@@ -1,15 +1,18 @@
 import "./globals.css";
-import "@mantine/core/styles.css";
 import type { ReactNode } from "react";
-import type { Metadata } from "next";
-import { MantineProvider } from "@mantine/core";
+import type { Metadata, Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#050a0e',
+};
 
 export const metadata: Metadata = {
   title: "PulseDock — Version Intelligence & Uptime Monitoring",
   description:
     "Monitor your applications for version updates, security patches, and uptime. Open source, self-hosted, built for developers.",
   keywords: ["monitoring", "uptime", "version tracking", "security", "open source"],
-  viewport: "width=device-width, initial-scale=1",
   authors: [{ name: "No749ah", url: "https://github.com/No749ah" }],
   creator: "No749ah",
   alternates: {
@@ -59,11 +62,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           rel="stylesheet"
         />
         
-        {/* Theme Color */}
-        <meta name="theme-color" content="#050a0e" />
       </head>
       <body className="bg-bg text-text-primary antialiased">
-        <MantineProvider forceColorScheme="dark">{children}</MantineProvider>
+        {children}
       </body>
     </html>
   );

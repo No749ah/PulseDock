@@ -1,14 +1,10 @@
 'use client';
 
-import { Center, Loader, Stack, Text } from '@mantine/core';
-
 export function LoadingState({ label = 'Loading data...' }: { label?: string }) {
   return (
-    <Center py="xl">
-      <Stack align="center" gap="xs">
-        <Loader color="teal" />
-        <Text size="sm" c="dimmed">{label}</Text>
-      </Stack>
-    </Center>
+    <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
+      <p className="text-sm text-text-secondary">{label}</p>
+    </div>
   );
 }

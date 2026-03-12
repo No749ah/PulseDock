@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -9,10 +8,6 @@ interface ErrorBoundaryProps {
 }
 
 export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
-  useEffect(() => {
-    // Log error to console for development
-    console.error('Application error:', error);
-  }, [error]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-bg p-4">

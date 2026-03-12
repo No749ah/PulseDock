@@ -31,13 +31,17 @@
 - [ ] Implement 404 page with Tailwind
 
 ### Phase 3: Dashboard & App UI
-- [ ] Dark theme dashboard with glassmorphism cards
-- [ ] Monitor list with live status indicators
+- [x] Dark theme dashboard with glassmorphism cards
+- [x] Monitor list with live status indicators
 - [ ] Version diff viewer with syntax highlighting
-- [ ] Alert configuration UI
-- [ ] User settings / account page
+- [ ] Alert configuration UI (form)
+- [ ] User settings / account page (settings form)
 - [ ] Admin panel (user management, system health)
 - [ ] Folder/project organization UI
+- [ ] Monitors page (full CRUD)
+- [ ] Versions page
+- [ ] Projects page
+- [ ] Alerts page
 
 ### Phase 4: API & Backend
 - [ ] Add comprehensive unit tests for all services (>80% coverage)

@@ -117,7 +117,7 @@ npm run prisma:generate   # Generate Prisma client
 npm run prisma:migrate    # Run pending migrations
 
 # Testing
-npm run test         # Run all tests (add this — currently missing!)
+npm run test         # Run all tests (API unit tests + Web TypeScript check)
 npm audit            # Check for vulnerabilities
 ```
 
@@ -198,15 +198,14 @@ PulseDock/
 
 ## Testing
 
-Currently:
-- ESLint + Prettier (code style)
-- Vitest configured (unit tests)
-- TypeScript strict mode
+- ✅ Vitest — 27 unit tests for core services (Auth, Monitors, Metrics, AppController)
+- ✅ TypeScript strict mode — both apps compile cleanly under `strict: true`
+- ✅ GitHub Actions CI — runs build + tests on every push and PR
 
-TODO:
-- Add comprehensive unit tests (>80% coverage)
-- Add integration tests for API endpoints
-- Add e2e tests for critical user flows
+Roadmap:
+- Integration tests for API endpoints
+- E2E tests for critical user flows (login, monitor CRUD, alerts)
+- Coverage target: >80%
 
 ---
 

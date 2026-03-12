@@ -18,10 +18,10 @@
 - [x] Add Tailwind CSS configuration with dark theme as default
 - [x] Start replacing Mantine → Tailwind (landing + login done)
 - [x] Remove all inline CSS from remaining pages — extract to Tailwind (2 CSS custom property instances remain for legitimate dynamic styling)
-- [x] Complete Mantine → Tailwind migration for all app pages (Admin page complete; shared components still use Mantine)
+- [x] Complete Mantine → Tailwind migration for all app pages — app-frame.tsx, responsive-table, loading-state migrated. MantineProvider removed from root layout. Zero Mantine/Tabler imports remain.
 - [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select, TextInput, CopyButton)
 - [x] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns) — both apps clean under strict:true
-- [ ] Add proper error boundaries and loading states to all pages
+- [x] Add proper error boundaries and loading states to all pages — route-segment loading.tsx + error.tsx on all 8 pages; global error.tsx fixed (no console.error)
 - [ ] Fix all npm audit vulnerabilities (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 breaking change; requires deeper prisma/motion-dom investigation)
 - [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [x] Add input validation/sanitization on all API endpoints — class-validator DTOs + global ValidationPipe (whitelist+forbidNonWhitelisted)
@@ -36,7 +36,7 @@
 - [x] Responsive design (mobile-first) for landing + login
 - [ ] Add proper `<head>` metadata, OG tags, favicon
 - [x] Login page redesign — dark theme, modern inputs, animations
-- [ ] Implement 404 page with Tailwind
+- [x] Implement 404 page with Tailwind
 
 ### Phase 3: Dashboard & App UI
 - [x] Dark theme dashboard with glassmorphism cards

@@ -12,6 +12,31 @@ const nextConfig = {
 
   // Proxy all /api requests to the API server (keeps frontend on / and API on /api)
   // Strip the /api prefix so backend receives paths like /v1/... (the API mounts routes at /v1)
+  async headers() {
+    return [
+      {
+        // HTML pages must never be cached (chunk hashes change on rebuild)
+        source: '/((?!_next/static|_next/image|favicon.ico).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+      {
+        // Static assets ARE cached (content-hashed filenames = immutable)
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {

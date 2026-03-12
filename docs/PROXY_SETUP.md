@@ -57,7 +57,34 @@ server {
     # HSTS (optional but recommended)
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    # Single location block for all traffic
+    # Static assets — enable buffering for better performance
+    location ~* ^/_next/static/ {
+        proxy_pass http://pulsedock_backend;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Enable buffering for static assets
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 256 16k;
+        proxy_max_temp_file_size 2048m;
+        proxy_temp_file_write_size 32k;
+        
+        # Cache static assets for 1 year (content-hashed filenames)
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        
+        # Long timeouts for large files
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    # Single location block for all other traffic
     location / {
         proxy_pass http://pulsedock_backend;
         
@@ -72,7 +99,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         
-        # Don't buffer responses (stream them as-is)
+        # Disable buffering for dynamic content (streaming, server-sent events)
         proxy_buffering off;
         
         # Timeouts

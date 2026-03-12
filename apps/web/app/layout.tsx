@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   viewport: "width=device-width, initial-scale=1",
   authors: [{ name: "No749ah", url: "https://github.com/No749ah" }],
   creator: "No749ah",
+  alternates: {
+    canonical: "https://oc-dev-test.no749ah.com",
+  },
   openGraph: {
     title: "PulseDock — Version Intelligence & Uptime Monitoring",
     description: "Monitor your applications for version updates, security patches, and uptime.",
@@ -33,7 +36,6 @@ export const metadata: Metadata = {
     description: "Version intelligence & uptime monitoring for your stack.",
   },
   robots: "index, follow",
-  canonical: "https://oc-dev-test.no749ah.com",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

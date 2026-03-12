@@ -1,12 +1,15 @@
 'use client';
 
-import { ActionIcon, Alert, Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Progress, Select, Table, Text, TextInput, ThemeIcon, Tooltip } from '@mantine/core';
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { IconAlertCircle, IconCheck, IconInfoCircle, IconPencil, IconTrash, IconX } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal } from '../../components/ui/modal-framework';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Badge } from '../components/Badge';
+import { Modal } from '../components/Modal';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Select } from '../components/Select';
 import { getToken, getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
@@ -48,6 +51,8 @@ type Summary = {
   items: VersionItem[];
 };
 
+const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+
 function stripLeadingV(version: string) {
   return version.replace(/^v(?=\d)/i, '');
 }
@@ -57,6 +62,18 @@ function secondsToHuman(sec: number) {
   if (sec % 3600 === 0) return `${sec / 3600}h`;
   if (sec % 60 === 0) return `${sec / 60}m`;
   return `${sec}s`;
+}
+
+function levelBadgeVariant(level: string): 'success' | 'warning' | 'danger' {
+  if (level === 'green') return 'success';
+  if (level === 'yellow') return 'warning';
+  return 'danger';
+}
+
+function StatusIcon({ status }: { status: 'unknown' | 'ok' | 'fail' }) {
+  if (status === 'ok') return <Check className="w-4 h-4 text-success" />;
+  if (status === 'fail') return <X className="w-4 h-4 text-danger" />;
+  return <Info className="w-4 h-4 text-text-secondary" />;
 }
 
 export default function VersionsPage() {
@@ -211,7 +228,7 @@ export default function VersionsPage() {
     setEditToken('');
     setEditGitlabHost(String(cfg.gitlabHost ?? ''));
     setEditAppUrl(String(cfg.appUrl ?? ''));
-    setEditAppAuthType((String(cfg.appAuthType ?? 'token') as any) || 'token');
+    setEditAppAuthType((String(cfg.appAuthType ?? 'token') as 'none' | 'token' | 'openvpn') || 'token');
     setEditHasAppToken(Boolean(cfg.hasAppToken));
     setEditAppToken('');
     setEditOpenvpnUsername(String(cfg.openvpnUsername ?? ''));
@@ -434,266 +451,429 @@ export default function VersionsPage() {
   const safePage = Math.min(page, pages);
   const visible = (summary?.items ?? []).slice((safePage - 1) * size, safePage * size);
 
+  const providerOptions = [
+    { value: 'github', label: 'GitHub releases' },
+    { value: 'gitlab', label: 'GitLab releases' },
+    { value: 'docker', label: 'Docker image tags' },
+    { value: 'apt', label: 'APT package versions' },
+  ];
+
+  const authOptions = [
+    { value: 'token', label: 'Token headers' },
+    { value: 'openvpn', label: 'OpenVPN (Basic / OpenVPN headers)' },
+    { value: 'none', label: 'No auth' },
+  ];
+
   return (
     <AppFrame title="Version Center" subtitle="Track outdated releases/images and trigger checks on demand.">
-      {loading ? <LoadingState label="Loading version checks..." /> : <>
-      <AppModal opened={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title="Create version check" size="lg">
-        <Progress value={modalProgress} color="teal" mb="md" />
-        {missing.length > 0 ? (
-          <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md" title="Missing information">
-            {missing.map((m) => <Text key={m} size="sm">• {m}</Text>)}
-          </Alert>
-        ) : null}
-        {createStep === 0 ? (
-          <>
-            <Text fw={600} mb="sm">Step 1/4 · Source</Text>
-            <TextInput label="Name" value={name} onChange={(e) => setName(e.currentTarget.value)} rightSection={<Tooltip label="Example: API backend"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} />
-            <Select mt="sm" label="Provider" value={provider} onChange={(v) => {
-              const p = (v as 'github' | 'gitlab' | 'docker' | 'apt') || 'github';
-              setProvider(p);
-              setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
-              setSourceStatus('unknown');
-            }} data={[{ value: 'github', label: 'GitHub releases' }, { value: 'gitlab', label: 'GitLab releases' }, { value: 'docker', label: 'Docker image tags' }, { value: 'apt', label: 'APT package versions' }]} />
-            <TextInput mt="sm" label="Target" value={target} onChange={(e) => setTarget(e.currentTarget.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : 'owner/repo'} rightSection={<Tooltip label="Examples: GitHub=No749ah/PulseDock · GitLab=group/project (no gitlab: needed) · Docker=library/nginx · APT=openssl"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} />
-            {((provider === 'github' || provider === 'gitlab') || showTokenField) ? <TextInput mt="sm" label="Repo access token (optional/private repo)" value={tokenInput} onChange={(e) => setTokenInput(e.currentTarget.value)} rightSection={<Tooltip label="GitHub/GitLab token. Put it here in Step 1 if your repo is private or rate-limited."><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} /> : null}
-            {target ? <Text size="sm" c="dimmed" mt="xs">{latestPreviewLoading ? 'Detecting latest version…' : latestPreview || 'Latest not detected yet'}</Text> : null}
-          </>
-        ) : null}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Create Modal */}
+          <Modal
+            isOpen={createOpen}
+            onClose={() => { setCreateOpen(false); resetCreateForm(); }}
+            title="Create version check"
+            size="lg"
+            actions={
+              <div className="flex items-center justify-between w-full">
+                <Button variant="secondary" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
+                {createStep < 3
+                  ? <Button onClick={() => setCreateStep((s) => Math.min(3, s + 1))} disabled={missing.length > 0}>Next</Button>
+                  : <Button onClick={createVersionCheck} disabled={missing.length > 0}>Create check</Button>
+                }
+              </div>
+            }
+          >
+            {/* Progress bar */}
+            <div className="w-full bg-surface-elevated rounded-full h-2 mb-4">
+              <div className="bg-accent h-2 rounded-full transition-all" style={{ width: `${modalProgress}%` }} />
+            </div>
 
-        {createStep === 1 ? (
-          <>
-            <Text fw={600} mb="sm">Step 2/4 · Connection</Text>
-            {provider === 'gitlab' ? <TextInput mt="sm" label="GitLab host" value={gitlabHost} onChange={(e) => setGitlabHost(e.currentTarget.value)} rightSection={<Tooltip label="Example: gitlab.com"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} /> : null}
-            <TextInput mt="sm" label="Application URL (deployed app)" value={appUrl} onChange={(e) => { setAppUrl(e.currentTarget.value); setAppStatus('unknown'); setCurrentVersionLocked(false); setAppDetectedFrom(''); setAppTriedEndpoints([]); }} placeholder="https://app.example.com" rightSection={<Tooltip label="Used to auto-detect deployed version from common endpoints"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} />
-            {appUrl ? <Select mt="sm" label="Application auth" value={appAuthType} onChange={(v) => setAppAuthType((v as any) || 'token')} data={[{ value: 'token', label: 'Token headers' }, { value: 'openvpn', label: 'OpenVPN (Basic / OpenVPN headers)' }, { value: 'none', label: 'No auth' }]} /> : null}
-            {appUrl && appAuthType === 'token' ? <TextInput mt="sm" label="Application token (optional, required for protected app endpoints)" value={appToken} onChange={(e) => setAppToken(e.currentTarget.value)} rightSection={<Tooltip label="Will be sent as Authorization Bearer, X-API-Key and X-Access-Token."><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} /> : null}
-            {appUrl && appAuthType === 'openvpn' ? <TextInput mt="sm" label="OpenVPN username" value={openvpnUsername} onChange={(e) => setOpenvpnUsername(e.currentTarget.value)} /> : null}
-            {appUrl && appAuthType === 'openvpn' ? <TextInput mt="sm" label="OpenVPN password" value={openvpnPassword} onChange={(e) => setOpenvpnPassword(e.currentTarget.value)} /> : null}
-            {appUrl ? <TextInput mt="sm" label="Custom app version endpoint (optional)" value={appVersionEndpoint} onChange={(e) => setAppVersionEndpoint(e.currentTarget.value)} placeholder="/api/system/version" rightSection={<Tooltip label="If auto-detect fails, set your exact endpoint here (e.g. /api/system/version)"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} /> : null}
-            <Group mt="sm">
-              <Button variant="light" onClick={validateSetup}>Validate and detect versions</Button>
-            </Group>
-            {testMessage ? <Text size="sm" c="dimmed" mt="sm">{testMessage}</Text> : null}
-            {appDetectedFrom ? <Text size="xs" c="dimmed" mt="xs">App version source endpoint: {appDetectedFrom}</Text> : null}
-            {!appDetectedFrom && appTriedEndpoints.length > 0 ? <Text size="xs" c="dimmed" mt="xs">Tried: {appTriedEndpoints.join(', ')}</Text> : null}
-            {appUrl && !currentVersion && !detectTried ? <Text size="xs" c="dimmed" mt="xs">Tip: click “Validate and detect versions” to auto-read deployed app version first.</Text> : null}
-          </>
-        ) : null}
+            {/* Validation errors */}
+            {missing.length > 0 && (
+              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="w-4 h-4 text-danger" />
+                  <span className="text-sm font-semibold text-danger">Missing information</span>
+                </div>
+                {missing.map((m) => <p key={m} className="text-sm text-danger">• {m}</p>)}
+              </div>
+            )}
 
-        {createStep === 2 ? (
-          <>
-            <Text fw={600} mb="sm">Step 3/4 · Version strategy</Text>
-            <Group mb="sm" gap="md">
-              <Group gap="xs">
-                <ThemeIcon size="sm" color={sourceStatus === 'ok' ? 'green' : sourceStatus === 'fail' ? 'red' : 'gray'} variant="light">
-                  {sourceStatus === 'ok' ? <IconCheck size={14} /> : sourceStatus === 'fail' ? <IconX size={14} /> : <IconInfoCircle size={14} />}
-                </ThemeIcon>
-                <Text size="sm">Source version ({provider})</Text>
-              </Group>
-              <Group gap="xs">
-                <ThemeIcon size="sm" color={appStatus === 'ok' ? 'green' : appStatus === 'fail' ? 'red' : 'gray'} variant="light">
-                  {appStatus === 'ok' ? <IconCheck size={14} /> : appStatus === 'fail' ? <IconX size={14} /> : <IconInfoCircle size={14} />}
-                </ThemeIcon>
-                <Text size="sm">Application version</Text>
-              </Group>
-            </Group>
-            <TextInput label="Current version/tag" value={currentVersion} onChange={(e) => setCurrentVersion(e.currentTarget.value)} placeholder="v1.2.3" disabled={currentVersionLocked} rightSection={<Tooltip label="Example: v0.2.0"><ActionIcon variant="subtle" size="sm"><IconInfoCircle size={16} /></ActionIcon></Tooltip>} />
-            <Button mt="sm" variant="subtle" onClick={() => setAdvanced((v) => !v)}>{advanced ? 'Hide advanced' : 'Show advanced'}</Button>
-            <Collapse in={advanced}>
-              <NumberInput mt="sm" label="Interval (minutes)" value={Math.max(1, Math.round(intervalSec / 60))} min={1} onChange={(v) => setIntervalSec(Math.max(60, Number(v || 1) * 60))} />
-            </Collapse>
-          </>
-        ) : null}
+            {createStep === 0 && (
+              <div className="space-y-4">
+                <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
+                  <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
+                </div>
+                <Select label="Provider" value={provider} onChange={(v) => {
+                  const p = (v as 'github' | 'gitlab' | 'docker' | 'apt') || 'github';
+                  setProvider(p);
+                  setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
+                  setSourceStatus('unknown');
+                }} options={providerOptions} />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
+                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : 'owner/repo'} />
+                </div>
+                {((provider === 'github' || provider === 'gitlab') || showTokenField) && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Repo access token (optional/private repo)</label>
+                    <input className={inputClass} value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} />
+                  </div>
+                )}
+                {target && <p className="text-sm text-text-secondary">{latestPreviewLoading ? 'Detecting latest version…' : latestPreview || 'Latest not detected yet'}</p>}
+              </div>
+            )}
 
-        {createStep === 3 ? (
-          <>
-            <Text fw={600} mb="sm">Step 4/4 · Review</Text>
-            <Text size="sm">Name: <b>{name}</b></Text>
-            <Text size="sm">Provider: <b>{provider}</b></Text>
-            <Text size="sm">Target: <b>{target}</b></Text>
-            <Text size="sm">Current: <b>{currentVersion || 'not set'}</b></Text>
-            <Text size="sm">App URL: <b>{appUrl || 'not set'}</b></Text>
-            <Text size="sm">Interval: <b>{secondsToHuman(intervalSec)}</b></Text>
-          </>
-        ) : null}
+            {createStep === 1 && (
+              <div className="space-y-4">
+                <p className="font-semibold text-text-primary">Step 2/4 · Connection</p>
+                {provider === 'gitlab' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">GitLab host</label>
+                    <input className={inputClass} value={gitlabHost} onChange={(e) => setGitlabHost(e.target.value)} placeholder="gitlab.com" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Application URL (deployed app)</label>
+                  <input className={inputClass} value={appUrl} onChange={(e) => { setAppUrl(e.target.value); setAppStatus('unknown'); setCurrentVersionLocked(false); setAppDetectedFrom(''); setAppTriedEndpoints([]); }} placeholder="https://app.example.com" />
+                </div>
+                {appUrl && (
+                  <Select label="Application auth" value={appAuthType} onChange={(v) => setAppAuthType((v as 'none' | 'token' | 'openvpn') || 'token')} options={authOptions} />
+                )}
+                {appUrl && appAuthType === 'token' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Application token (optional)</label>
+                    <input className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} />
+                  </div>
+                )}
+                {appUrl && appAuthType === 'openvpn' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">OpenVPN username</label>
+                      <input className={inputClass} value={openvpnUsername} onChange={(e) => setOpenvpnUsername(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">OpenVPN password</label>
+                      <input className={inputClass} value={openvpnPassword} onChange={(e) => setOpenvpnPassword(e.target.value)} />
+                    </div>
+                  </>
+                )}
+                {appUrl && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Custom app version endpoint (optional)</label>
+                    <input className={inputClass} value={appVersionEndpoint} onChange={(e) => setAppVersionEndpoint(e.target.value)} placeholder="/api/system/version" />
+                  </div>
+                )}
+                <Button variant="secondary" onClick={validateSetup}>Validate and detect versions</Button>
+                {testMessage && <p className="text-sm text-text-secondary">{testMessage}</p>}
+                {appDetectedFrom && <p className="text-xs text-text-secondary">App version source endpoint: {appDetectedFrom}</p>}
+                {!appDetectedFrom && appTriedEndpoints.length > 0 && <p className="text-xs text-text-secondary">Tried: {appTriedEndpoints.join(', ')}</p>}
+                {appUrl && !currentVersion && !detectTried && <p className="text-xs text-text-secondary">Tip: click &quot;Validate and detect versions&quot; to auto-read deployed app version first.</p>}
+              </div>
+            )}
 
-        <Group justify="space-between" mt="md">
-          <Button variant="default" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
-          {createStep < 3 ? <Button onClick={() => setCreateStep((s) => Math.min(3, s + 1))} disabled={missing.length > 0}>Next</Button> : <Button onClick={createVersionCheck} disabled={missing.length > 0}>Create check</Button>}
-        </Group>
-      </AppModal>
+            {createStep === 2 && (
+              <div className="space-y-4">
+                <p className="font-semibold text-text-primary">Step 3/4 · Version strategy</p>
+                <div className="flex items-center gap-6 mb-2">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={sourceStatus} />
+                    <span className="text-sm text-text-primary">Source version ({provider})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={appStatus} />
+                    <span className="text-sm text-text-primary">Application version</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Current version/tag</label>
+                  <input className={inputClass} value={currentVersion} onChange={(e) => setCurrentVersion(e.target.value)} placeholder="v1.2.3" disabled={currentVersionLocked} />
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setAdvanced((v) => !v)}>{advanced ? 'Hide advanced' : 'Show advanced'}</Button>
+                {advanced && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
+                    <input type="number" className={inputClass} value={Math.max(1, Math.round(intervalSec / 60))} min={1} onChange={(e) => setIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+                  </div>
+                )}
+              </div>
+            )}
 
-      <AppModal opened={editOpen} onClose={() => setEditOpen(false)} title="Edit version check" size="lg">
-        <TextInput label="Name" value={editName} onChange={(e) => setEditName(e.currentTarget.value)} />
-        <Select mt="sm" label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as any) || 'github')} data={[{ value: 'github', label: 'GitHub releases' }, { value: 'gitlab', label: 'GitLab releases' }, { value: 'docker', label: 'Docker image tags' }, { value: 'apt', label: 'APT package versions' }]} />
-        <TextInput mt="sm" label="Target" value={editTarget} onChange={(e) => setEditTarget(e.currentTarget.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : 'owner/repo'} />
-        {(editProvider === 'github' || editProvider === 'gitlab') ? (
-          <>
-            <TextInput mt="sm" label="Repo token (stored)" value={editHasRepoToken ? '••••••••••' : 'not set'} disabled />
-            <TextInput mt="sm" label="Overwrite repo token (optional)" value={editToken} onChange={(e) => setEditToken(e.currentTarget.value)} placeholder="Enter only if you want to replace existing token" />
-          </>
-        ) : null}
-        {editProvider === 'gitlab' ? <TextInput mt="sm" label="GitLab host" value={editGitlabHost} onChange={(e) => setEditGitlabHost(e.currentTarget.value)} placeholder="gitlab.com" /> : null}
-        <TextInput mt="sm" label="Application URL (optional)" value={editAppUrl} onChange={(e) => setEditAppUrl(e.currentTarget.value)} placeholder="https://app.example.com" />
-        {editAppUrl ? <Select mt="sm" label="Application auth" value={editAppAuthType} onChange={(v) => setEditAppAuthType((v as any) || 'token')} data={[{ value: 'token', label: 'Token headers' }, { value: 'openvpn', label: 'OpenVPN (Basic / OpenVPN headers)' }, { value: 'none', label: 'No auth' }]} /> : null}
-        {editAppUrl && editAppAuthType === 'token' ? (
-          <>
-            <TextInput mt="sm" label="Application token (stored)" value={editHasAppToken ? '••••••••••' : 'not set'} disabled />
-            <TextInput mt="sm" label="Overwrite application token (optional)" value={editAppToken} onChange={(e) => setEditAppToken(e.currentTarget.value)} placeholder="Enter only if you want to replace existing token" />
-          </>
-        ) : null}
-        {editAppUrl && editAppAuthType === 'openvpn' ? (
-          <>
-            <TextInput mt="sm" label="OpenVPN username" value={editOpenvpnUsername} onChange={(e) => setEditOpenvpnUsername(e.currentTarget.value)} />
-            <TextInput mt="sm" label="OpenVPN password (stored)" value={editHasOpenvpnPassword ? '••••••••••' : 'not set'} disabled />
-            <TextInput mt="sm" label="Overwrite OpenVPN password (optional)" value={editOpenvpnPassword} onChange={(e) => setEditOpenvpnPassword(e.currentTarget.value)} />
-          </>
-        ) : null}
-        {editAppUrl ? <TextInput mt="sm" label="Custom app version endpoint (optional)" value={editAppVersionEndpoint} onChange={(e) => setEditAppVersionEndpoint(e.currentTarget.value)} placeholder="/api/system/version" /> : null}
-        <TextInput mt="sm" label="Current version" value={editCurrentVersion} onChange={(e) => setEditCurrentVersion(e.currentTarget.value)} />
-        <NumberInput mt="sm" label="Interval (minutes)" value={Math.max(1, Math.round(editIntervalSec / 60))} min={1} onChange={(v) => setEditIntervalSec(Math.max(60, Number(v || 1) * 60))} />
-        <Group justify="flex-end" mt="md">
-          <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button color="teal" loading={editSaving} onClick={saveEdit}>Save</Button>
-        </Group>
-      </AppModal>
+            {createStep === 3 && (
+              <div className="space-y-2">
+                <p className="font-semibold text-text-primary">Step 4/4 · Review</p>
+                <p className="text-sm text-text-primary">Name: <strong>{name}</strong></p>
+                <p className="text-sm text-text-primary">Provider: <strong>{provider}</strong></p>
+                <p className="text-sm text-text-primary">Target: <strong>{target}</strong></p>
+                <p className="text-sm text-text-primary">Current: <strong>{currentVersion || 'not set'}</strong></p>
+                <p className="text-sm text-text-primary">App URL: <strong>{appUrl || 'not set'}</strong></p>
+                <p className="text-sm text-text-primary">Interval: <strong>{secondsToHuman(intervalSec)}</strong></p>
+              </div>
+            )}
+          </Modal>
 
-      <Card withBorder mb="md">
-        <Group justify="space-between">
-          <Text fw={700}>Version checks</Text>
-          <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create version check</Button>
-        </Group>
-      </Card>
+          {/* Edit Modal */}
+          <Modal
+            isOpen={editOpen}
+            onClose={() => setEditOpen(false)}
+            title="Edit version check"
+            size="lg"
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button loading={editSaving} onClick={saveEdit}>Save</Button>
+              </>
+            }
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
+                <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <Select label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as 'github' | 'gitlab' | 'docker' | 'apt') || 'github')} options={providerOptions} />
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
+                <input className={inputClass} value={editTarget} onChange={(e) => setEditTarget(e.target.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : 'owner/repo'} />
+              </div>
+              {(editProvider === 'github' || editProvider === 'gitlab') && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Repo token (stored)</label>
+                    <input className={`${inputClass} opacity-50`} value={editHasRepoToken ? '••••••••••' : 'not set'} disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Overwrite repo token (optional)</label>
+                    <input className={inputClass} value={editToken} onChange={(e) => setEditToken(e.target.value)} placeholder="Enter only if you want to replace existing token" />
+                  </div>
+                </>
+              )}
+              {editProvider === 'gitlab' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">GitLab host</label>
+                  <input className={inputClass} value={editGitlabHost} onChange={(e) => setEditGitlabHost(e.target.value)} placeholder="gitlab.com" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Application URL (optional)</label>
+                <input className={inputClass} value={editAppUrl} onChange={(e) => setEditAppUrl(e.target.value)} placeholder="https://app.example.com" />
+              </div>
+              {editAppUrl && (
+                <Select label="Application auth" value={editAppAuthType} onChange={(v) => setEditAppAuthType((v as 'none' | 'token' | 'openvpn') || 'token')} options={authOptions} />
+              )}
+              {editAppUrl && editAppAuthType === 'token' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Application token (stored)</label>
+                    <input className={`${inputClass} opacity-50`} value={editHasAppToken ? '••••••••••' : 'not set'} disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Overwrite application token (optional)</label>
+                    <input className={inputClass} value={editAppToken} onChange={(e) => setEditAppToken(e.target.value)} placeholder="Enter only if you want to replace existing token" />
+                  </div>
+                </>
+              )}
+              {editAppUrl && editAppAuthType === 'openvpn' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">OpenVPN username</label>
+                    <input className={inputClass} value={editOpenvpnUsername} onChange={(e) => setEditOpenvpnUsername(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">OpenVPN password (stored)</label>
+                    <input className={`${inputClass} opacity-50`} value={editHasOpenvpnPassword ? '••••••••••' : 'not set'} disabled />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Overwrite OpenVPN password (optional)</label>
+                    <input className={inputClass} value={editOpenvpnPassword} onChange={(e) => setEditOpenvpnPassword(e.target.value)} />
+                  </div>
+                </>
+              )}
+              {editAppUrl && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Custom app version endpoint (optional)</label>
+                  <input className={inputClass} value={editAppVersionEndpoint} onChange={(e) => setEditAppVersionEndpoint(e.target.value)} placeholder="/api/system/version" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Current version</label>
+                <input className={inputClass} value={editCurrentVersion} onChange={(e) => setEditCurrentVersion(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
+                <input type="number" className={inputClass} value={Math.max(1, Math.round(editIntervalSec / 60))} min={1} onChange={(e) => setEditIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+              </div>
+            </div>
+          </Modal>
 
-      <Card withBorder mb="md">
-        <Group wrap="wrap" gap="xs">
-          <Text fw={700}>Tracked: {summary?.stats.total ?? 0}</Text>
-          <Badge color="green">Up-to-date: {summary?.stats.green ?? 0}</Badge>
-          <Badge color="yellow">Updates: {summary?.stats.yellow ?? 0}</Badge>
-          <Badge color="red">Critical: {summary?.stats.red ?? 0}</Badge>
-          <Button variant="light" onClick={() => load()}>Refresh</Button>
-        </Group>
-      </Card>
+          {/* Header */}
+          <Card className="mb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-text-primary">Version checks</h3>
+              <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }} size="sm">
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create version check</span>
+              </Button>
+            </div>
+          </Card>
 
-      <Card withBorder>
-        <Table.ScrollContainer minWidth={1180}>
-          <Table withTableBorder withColumnBorders>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Type</Table.Th>
-              <Table.Th>Target</Table.Th>
-              <Table.Th>Current</Table.Th>
-              <Table.Th>Latest</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Last check</Table.Th>
-              <Table.Th>Interval</Table.Th>
-              <Table.Th>Action</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {visible.map((item) => {
-              const runs = runsByMonitor[item.id] ?? [];
-              const stats = runs.reduce((acc, r) => {
-                acc.total += 1;
-                if (r.level === 'green') acc.green += 1;
-                else if (r.level === 'yellow') acc.yellow += 1;
-                else acc.red += 1;
-                return acc;
-              }, { total: 0, green: 0, yellow: 0, red: 0 });
+          {/* Stats */}
+          <Card className="mb-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-bold text-text-primary">Tracked: {summary?.stats.total ?? 0}</span>
+              <Badge variant="success">{`Up-to-date: ${summary?.stats.green ?? 0}`}</Badge>
+              <Badge variant="warning">{`Updates: ${summary?.stats.yellow ?? 0}`}</Badge>
+              <Badge variant="danger">{`Critical: ${summary?.stats.red ?? 0}`}</Badge>
+              <Button variant="secondary" size="sm" onClick={() => load()}>Refresh</Button>
+            </div>
+          </Card>
 
-              return (
-                <Fragment key={item.id}>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Button variant="subtle" size="compact-sm" onClick={() => toggleDetails(item.id)}>
-                        {item.name}
-                      </Button>
-                    </Table.Td>
-                    <Table.Td>{item.type}</Table.Td>
-                    <Table.Td style={{ maxWidth: 280, overflowWrap: 'anywhere' }}>{item.target}</Table.Td>
-                    <Table.Td>{item.currentVersion || '—'}</Table.Td>
-                    <Table.Td><Text size="sm" style={{ maxWidth: 280, overflowWrap: 'anywhere' }}>{item.latestMessage}</Text></Table.Td>
-                    <Table.Td>
-                      <Badge color={item.level === 'green' ? 'green' : item.level === 'yellow' ? 'yellow' : 'red'}>
-                        {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}
-                      </Badge>
-                      <Text size="xs" c="dimmed" mt={4}>
-                        {item.level === 'green' ? 'Okay' : item.level === 'yellow' ? 'Update' : 'Critical'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</Table.Td>
-                    <Table.Td>{secondsToHuman(item.intervalSec)}</Table.Td>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Button size="xs" variant="light" loading={runningId === item.id} onClick={() => runNow(item.id)}>Run now</Button>
-                        <ActionIcon variant="light" color="blue" onClick={() => openEdit(item)} aria-label="Edit">
-                          <IconPencil size={14} />
-                        </ActionIcon>
-                        <ActionIcon variant="light" color="red" onClick={() => removeCheck(item.id)} aria-label="Delete">
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
+          {/* Main Table */}
+          <Card>
+            <Table>
+              <TableHead>
+                <TableRow hover={false}>
+                  <TableHeader>Name</TableHeader>
+                  <TableHeader>Type</TableHeader>
+                  <TableHeader>Target</TableHeader>
+                  <TableHeader>Current</TableHeader>
+                  <TableHeader>Latest</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                  <TableHeader>Last check</TableHeader>
+                  <TableHeader>Interval</TableHeader>
+                  <TableHeader>Action</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {visible.map((item) => {
+                  const runs = runsByMonitor[item.id] ?? [];
+                  const stats = runs.reduce((acc, r) => {
+                    acc.total += 1;
+                    if (r.level === 'green') acc.green += 1;
+                    else if (r.level === 'yellow') acc.yellow += 1;
+                    else acc.red += 1;
+                    return acc;
+                  }, { total: 0, green: 0, yellow: 0, red: 0 });
 
-                  {expandedId === item.id ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={9}>
-                        {runsLoadingId === item.id ? (
-                          <Text size="sm" c="dimmed">Loading runs…</Text>
-                        ) : (
-                          <>
-                            <Group mb="xs" gap="md">
-                              <Text size="sm" fw={600}>Last runs: {stats.total}</Text>
-                              <Badge color="green">Green {stats.green}</Badge>
-                              <Badge color="yellow">Yellow {stats.yellow}</Badge>
-                              <Badge color="red">Red {stats.red}</Badge>
-                            </Group>
-                            {runs.length === 0 ? <Text size="sm" c="dimmed">No runs yet.</Text> : (
-                              <Table withTableBorder>
-                                <Table.Thead>
-                                  <Table.Tr>
-                                    <Table.Th>Time</Table.Th>
-                                    <Table.Th>Level</Table.Th>
-                                    <Table.Th>Status</Table.Th>
-                                    <Table.Th>Latency</Table.Th>
-                                    <Table.Th>Message</Table.Th>
-                                  </Table.Tr>
-                                </Table.Thead>
-                                <Table.Tbody>
-                                  {runs.slice(0, 12).map((r) => (
-                                    <Table.Tr key={r.id}>
-                                      <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                                      <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                                      <Table.Td>{r.statusCode}</Table.Td>
-                                      <Table.Td>{r.latencyMs ?? '—'} ms</Table.Td>
-                                      <Table.Td>{r.message}</Table.Td>
-                                    </Table.Tr>
-                                  ))}
-                                </Table.Tbody>
-                              </Table>
+                  return (
+                    <Fragment key={item.id}>
+                      <TableRow>
+                        <TableCell>
+                          <button className="text-accent hover:underline flex items-center gap-1" onClick={() => toggleDetails(item.id)}>
+                            {expandedId === item.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {item.name}
+                          </button>
+                        </TableCell>
+                        <TableCell>{item.type}</TableCell>
+                        <TableCell className="max-w-[280px] break-all">{item.target}</TableCell>
+                        <TableCell>{item.currentVersion || '—'}</TableCell>
+                        <TableCell className="max-w-[280px] break-all">{item.latestMessage}</TableCell>
+                        <TableCell>
+                          <div>
+                            <Badge variant={levelBadgeVariant(item.level)}>
+                              {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}
+                            </Badge>
+                            <p className="text-xs text-text-secondary mt-1">
+                              {item.level === 'green' ? 'Okay' : item.level === 'yellow' ? 'Update' : 'Critical'}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
+                        <TableCell>{secondsToHuman(item.intervalSec)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="secondary" size="sm" loading={runningId === item.id} onClick={() => runNow(item.id)}>
+                              <span className="flex items-center gap-1"><Play className="w-3 h-3" /> Run</span>
+                            </Button>
+                            <button className="p-1.5 rounded-lg text-accent hover:bg-surface-elevated transition-colors" onClick={() => openEdit(item)} aria-label="Edit">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button className="p-1.5 rounded-lg text-danger hover:bg-surface-elevated transition-colors" onClick={() => removeCheck(item.id)} aria-label="Delete">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+
+                      {expandedId === item.id && (
+                        <tr className="border-b border-border">
+                          <td colSpan={9} className="px-4 py-3 bg-surface-elevated">
+                            {runsLoadingId === item.id ? (
+                              <p className="text-sm text-text-secondary">Loading runs…</p>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-4 mb-3">
+                                  <span className="text-sm font-semibold text-text-primary">Last runs: {stats.total}</span>
+                                  <Badge variant="success">{`Green ${stats.green}`}</Badge>
+                                  <Badge variant="warning">{`Yellow ${stats.yellow}`}</Badge>
+                                  <Badge variant="danger">{`Red ${stats.red}`}</Badge>
+                                </div>
+                                {runs.length === 0 ? (
+                                  <p className="text-sm text-text-secondary">No runs yet.</p>
+                                ) : (
+                                  <Table>
+                                    <TableHead>
+                                      <TableRow hover={false}>
+                                        <TableHeader>Time</TableHeader>
+                                        <TableHeader>Level</TableHeader>
+                                        <TableHeader>Status</TableHeader>
+                                        <TableHeader>Latency</TableHeader>
+                                        <TableHeader>Message</TableHeader>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {runs.slice(0, 12).map((r) => (
+                                        <TableRow key={r.id}>
+                                          <TableCell>{new Date(r.checkedAt).toLocaleString()}</TableCell>
+                                          <TableCell><Badge variant={levelBadgeVariant(r.level)}>{r.level.toUpperCase()}</Badge></TableCell>
+                                          <TableCell>{r.statusCode}</TableCell>
+                                          <TableCell>{r.latencyMs ?? '—'} ms</TableCell>
+                                          <TableCell>{r.message}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                )}
+                              </>
                             )}
-                          </>
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-          </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">Rows per page</Text>
-            <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
-          </Group>
-        </Group>
-      </Card>
-      </>}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-text-secondary">Page {safePage} of {pages}</span>
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-secondary">Rows per page</span>
+                <Select
+                  value={pageSize}
+                  onChange={(v) => { setPageSize(v || '10'); setPage(1); }}
+                  options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]}
+                  className="w-20"
+                />
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </AppFrame>
   );
 }

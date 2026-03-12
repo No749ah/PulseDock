@@ -1,15 +1,20 @@
 'use client';
 
-import { Button, Card, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal, ConfirmModal } from '../../components/ui/modal-framework';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Modal } from '../components/Modal';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Select } from '../components/Select';
 import { getToken, getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
 type Folder = { id: string; name: string; createdAt: string };
+
+const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
 
 export default function FoldersPage() {
   const router = useRouter();
@@ -87,69 +92,135 @@ export default function FoldersPage() {
 
   return (
     <AppFrame title="Projects" subtitle="Group monitors by environment, product, or customer space.">
-      {loading ? <LoadingState label="Loading projects..." /> : <>
-      <AppModal opened={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title="Create project">
-        {createStep === 0 ? <TextInput label="Project name" value={name} onChange={(e) => setName(e.currentTarget.value)} /> : null}
-        {createStep === 1 ? <Text size="sm">Project name: <b>{name}</b></Text> : null}
-        <Group mt="md" justify="space-between">
-          <Button variant="default" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
-          {createStep < 1 ? <Button onClick={() => setCreateStep(1)}>Next</Button> : <Button onClick={createFolder}>Create project</Button>}
-        </Group>
-      </AppModal>
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Create Modal */}
+          <Modal
+            isOpen={createOpen}
+            onClose={() => { setCreateOpen(false); resetCreateForm(); }}
+            title="Create project"
+            actions={
+              <div className="flex items-center justify-between w-full">
+                <Button variant="secondary" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
+                {createStep < 1
+                  ? <Button onClick={() => setCreateStep(1)}>Next</Button>
+                  : <Button onClick={createFolder}>Create project</Button>
+                }
+              </div>
+            }
+          >
+            {createStep === 0 && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Project name</label>
+                <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+            )}
+            {createStep === 1 && (
+              <p className="text-sm text-text-primary">Project name: <strong>{name}</strong></p>
+            )}
+          </Modal>
 
-      <AppModal opened={editOpen} onClose={() => setEditOpen(false)} title="Edit project">
-        <TextInput label="Project name" value={editName} onChange={(e) => setEditName(e.currentTarget.value)} />
-        <Group mt="md" justify="flex-end">
-          <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={saveEdit}>Save</Button>
-        </Group>
-      </AppModal>
+          {/* Edit Modal */}
+          <Modal
+            isOpen={editOpen}
+            onClose={() => setEditOpen(false)}
+            title="Edit project"
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button onClick={saveEdit}>Save</Button>
+              </>
+            }
+          >
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">Project name</label>
+              <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+          </Modal>
 
-      <ConfirmModal
-        opened={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Delete project"
-        message={<>Delete <b>{selected?.name}</b>?</>}
-        onConfirm={confirmDelete}
-        confirmLabel="Delete"
-      />
+          {/* Delete Confirm Modal */}
+          <Modal
+            isOpen={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            title="Delete project"
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                <Button variant="primary" className="!bg-danger hover:!bg-danger/80" onClick={confirmDelete}>Delete</Button>
+              </>
+            }
+          >
+            <p className="text-text-primary">Delete <strong>{selected?.name}</strong>?</p>
+          </Modal>
 
-      <Card withBorder radius="md" mb="md">
-        <Group justify="space-between">
-          <Text fw={700}>Projects</Text>
-          <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create project</Button>
-        </Group>
-      </Card>
+          {/* Header Card */}
+          <Card className="mb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-text-primary">Projects</h3>
+              <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }} size="sm">
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create project</span>
+              </Button>
+            </div>
+          </Card>
 
-      <Card withBorder radius="md">
-        <Table.ScrollContainer minWidth={700}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Created</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
-              {pageRows.map((f) => (
-                <Table.Tr key={f.id}>
-                  <Table.Td>{f.name}</Table.Td>
-                  <Table.Td>{new Date(f.createdAt).toLocaleString()}</Table.Td>
-                  <Table.Td>
-                    <Group gap="xs" wrap="nowrap">
-                      <Button size="xs" variant="light" onClick={() => openEdit(f)}>Edit</Button>
-                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(f)}>Delete</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">Rows per page</Text>
-            <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
-          </Group>
-        </Group>
-      </Card>
-      </>}
+          {/* Table Card */}
+          <Card>
+            <Table>
+              <TableHead>
+                <TableRow hover={false}>
+                  <TableHeader>Name</TableHeader>
+                  <TableHeader>Created</TableHeader>
+                  <TableHeader>Actions</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pageRows.map((f) => (
+                  <TableRow key={f.id}>
+                    <TableCell>{f.name}</TableCell>
+                    <TableCell>{new Date(f.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(f)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openDelete(f)} className="text-danger hover:text-danger">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-text-secondary">Page {safePage} of {pages}</span>
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-secondary">Rows per page</span>
+                <Select
+                  value={pageSize}
+                  onChange={(v) => { setPageSize(v || '10'); setPage(1); }}
+                  options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]}
+                  className="w-20"
+                />
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </AppFrame>
   );
 }

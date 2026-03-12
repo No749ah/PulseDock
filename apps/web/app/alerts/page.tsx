@@ -1,11 +1,15 @@
 'use client';
 
-import { Badge, Button, Card, Group, Pagination, Select, Table, Text, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal, ConfirmModal } from '../../components/ui/modal-framework';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Badge } from '../components/Badge';
+import { Modal } from '../components/Modal';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Select } from '../components/Select';
 import { getToken, getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
@@ -18,6 +22,8 @@ type AlertChannel = {
   config: Record<string, unknown>;
   createdAt: string;
 };
+
+const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
 
 export default function AlertsPage() {
   const router = useRouter();
@@ -135,101 +141,197 @@ export default function AlertsPage() {
 
   return (
     <AppFrame title="Alerts" subtitle="Configure alert channels and verify delivery.">
-      {loading ? <LoadingState label="Loading alert channels..." /> : <>
-      <AppModal opened={wizardOpen} onClose={() => { setWizardOpen(false); resetCreateForm(); }} title="Create alert channel">
-        {wizardStep === 0 ? (
-          <>
-            <Text fw={600} mb="sm">Step 1/3 · Basics</Text>
-            <TextInput label="Channel name" value={form.name} onChange={(e) => setForm({ ...form, name: e.currentTarget.value })} />
-            <Select mt="sm" label="Platform" value={form.type} onChange={(v) => setForm({ ...form, type: (v as AlertType) || 'discord' })} data={['discord', 'webhook', 'slack', 'telegram', 'email']} />
-          </>
-        ) : null}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* Create Modal */}
+          <Modal
+            isOpen={wizardOpen}
+            onClose={() => { setWizardOpen(false); resetCreateForm(); }}
+            title="Create alert channel"
+            actions={
+              <div className="flex items-center justify-between w-full">
+                <Button variant="secondary" onClick={back} disabled={wizardStep === 0}>Back</Button>
+                {wizardStep < 2
+                  ? <Button onClick={next}>Next</Button>
+                  : <Button onClick={createChannel}>Create channel</Button>
+                }
+              </div>
+            }
+          >
+            {wizardStep === 0 && (
+              <div className="space-y-4">
+                <p className="font-semibold text-text-primary">Step 1/3 · Basics</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Channel name</label>
+                  <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <Select
+                  label="Platform"
+                  value={form.type}
+                  onChange={(v) => setForm({ ...form, type: (v as AlertType) || 'discord' })}
+                  options={[
+                    { value: 'discord', label: 'Discord' },
+                    { value: 'webhook', label: 'Webhook' },
+                    { value: 'slack', label: 'Slack' },
+                    { value: 'telegram', label: 'Telegram' },
+                    { value: 'email', label: 'Email' },
+                  ]}
+                />
+              </div>
+            )}
 
-        {wizardStep === 1 ? (
-          <>
-            <Text fw={600} mb="sm">Step 2/3 · Credentials</Text>
-            <Text size="sm" c="dimmed" mb="xs">
-              {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : 'Enter destination email.'}
-            </Text>
-            <TextInput label="Primary" value={form.a} onChange={(e) => setForm({ ...form, a: e.currentTarget.value })} />
-            {form.type === 'telegram' ? <TextInput mt="sm" label="Secondary (chat ID)" value={form.b} onChange={(e) => setForm({ ...form, b: e.currentTarget.value })} /> : null}
-          </>
-        ) : null}
+            {wizardStep === 1 && (
+              <div className="space-y-4">
+                <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
+                <p className="text-sm text-text-secondary">
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : 'Enter destination email.'}
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Primary</label>
+                  <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
+                </div>
+                {form.type === 'telegram' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Secondary (chat ID)</label>
+                    <input className={inputClass} value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                  </div>
+                )}
+              </div>
+            )}
 
-        {wizardStep === 2 ? (
-          <>
-            <Text fw={600} mb="sm">Step 3/3 · Review</Text>
-            <Text size="sm">Name: <b>{form.name}</b></Text>
-            <Text size="sm">Platform: <b>{form.type}</b></Text>
-            <Text size="sm" c="dimmed">Primary: {form.a ? 'configured' : 'missing'}</Text>
-            {form.type === 'telegram' ? <Text size="sm" c="dimmed">Secondary: {form.b ? 'configured' : 'missing'}</Text> : null}
-          </>
-        ) : null}
+            {wizardStep === 2 && (
+              <div className="space-y-2">
+                <p className="font-semibold text-text-primary">Step 3/3 · Review</p>
+                <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
+                <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
+                <p className="text-sm text-text-secondary">Primary: {form.a ? 'configured' : 'missing'}</p>
+                {form.type === 'telegram' && (
+                  <p className="text-sm text-text-secondary">Secondary: {form.b ? 'configured' : 'missing'}</p>
+                )}
+              </div>
+            )}
+          </Modal>
 
-        <Group justify="space-between" mt="md">
-          <Button variant="default" onClick={back} disabled={wizardStep === 0}>Back</Button>
-          {wizardStep < 2 ? <Button onClick={next}>Next</Button> : <Button color="teal" onClick={createChannel}>Create channel</Button>}
-        </Group>
-      </AppModal>
+          {/* Edit Modal */}
+          <Modal
+            isOpen={editOpen}
+            onClose={() => setEditOpen(false)}
+            title="Edit alert channel"
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button onClick={saveEdit}>Save</Button>
+              </>
+            }
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
+                <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Primary</label>
+                <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
+              </div>
+              {selected?.type === 'telegram' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Secondary (chat ID)</label>
+                  <input className={inputClass} value={editB} onChange={(e) => setEditB(e.target.value)} />
+                </div>
+              )}
+            </div>
+          </Modal>
 
-      <AppModal opened={editOpen} onClose={() => setEditOpen(false)} title="Edit alert channel">
-        <TextInput label="Name" value={editName} onChange={(e) => setEditName(e.currentTarget.value)} />
-        <TextInput mt="sm" label="Primary" value={editA} onChange={(e) => setEditA(e.currentTarget.value)} />
-        {selected?.type === 'telegram' ? <TextInput mt="sm" label="Secondary (chat ID)" value={editB} onChange={(e) => setEditB(e.currentTarget.value)} /> : null}
-        <Group mt="md" justify="flex-end">
-          <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={saveEdit}>Save</Button>
-        </Group>
-      </AppModal>
+          {/* Delete Confirm Modal */}
+          <Modal
+            isOpen={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            title="Delete alert channel"
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                <Button variant="primary" className="!bg-danger hover:!bg-danger/80" onClick={confirmDelete}>Delete</Button>
+              </>
+            }
+          >
+            <p className="text-text-primary">Delete <strong>{selected?.name}</strong>?</p>
+          </Modal>
 
-      <ConfirmModal
-        opened={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Delete alert channel"
-        message={<>Delete <b>{selected?.name}</b>?</>}
-        onConfirm={confirmDelete}
-        confirmLabel="Delete"
-      />
+          {/* Header Card */}
+          <Card className="mb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-text-primary">Channels</h3>
+              <Button onClick={() => { resetCreateForm(); setWizardOpen(true); }} size="sm">
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
+              </Button>
+            </div>
+          </Card>
 
-      <Card withBorder radius="md" mb="md">
-        <Group justify="space-between">
-          <Text fw={700}>Channels</Text>
-          <Button onClick={() => { resetCreateForm(); setWizardOpen(true); }}>Create channel</Button>
-        </Group>
-      </Card>
+          {/* Table Card */}
+          <Card>
+            <Table>
+              <TableHead>
+                <TableRow hover={false}>
+                  <TableHeader>Name</TableHeader>
+                  <TableHeader>Type</TableHeader>
+                  <TableHeader>Created</TableHeader>
+                  <TableHeader>Config</TableHeader>
+                  <TableHeader>Actions</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pageRows.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>{c.name}</TableCell>
+                    <TableCell>{c.type}</TableCell>
+                    <TableCell>{new Date(c.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge>{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => testChannel(c.id)}>Test</Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openDelete(c)} className="text-danger hover:text-danger">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-      <Card withBorder radius="md">
-        <Table.ScrollContainer minWidth={900}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Created</Table.Th><Table.Th>Config</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
-              {pageRows.map((c) => (
-                <Table.Tr key={c.id}>
-                  <Table.Td>{c.name}</Table.Td>
-                  <Table.Td>{c.type}</Table.Td>
-                  <Table.Td>{new Date(c.createdAt).toLocaleString()}</Table.Td>
-                  <Table.Td><Badge variant="light">{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge></Table.Td>
-                  <Table.Td>
-                    <Group gap="xs" wrap="nowrap">
-                      <Button size="xs" variant="light" onClick={() => testChannel(c.id)}>Test</Button>
-                      <Button size="xs" variant="light" onClick={() => openEdit(c)}>Edit</Button>
-                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(c)}>Delete</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">Rows per page</Text>
-            <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
-          </Group>
-        </Group>
-      </Card>
-      </>}
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-text-secondary">Page {safePage} of {pages}</span>
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-secondary">Rows per page</span>
+                <Select
+                  value={pageSize}
+                  onChange={(v) => { setPageSize(v || '10'); setPage(1); }}
+                  options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]}
+                  className="w-20"
+                />
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </AppFrame>
   );
 }

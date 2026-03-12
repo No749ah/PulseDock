@@ -36,7 +36,7 @@
 - [x] Monitor list with live status indicators
 - [ ] Version diff viewer with syntax highlighting
 - [ ] Alert configuration UI (form)
-- [ ] User settings / account page (settings form)
+- [x] User settings / account page (settings form)
 - [ ] Admin panel (user management, system health)
 - [ ] Folder/project organization UI
 - [x] Monitors page (full CRUD)

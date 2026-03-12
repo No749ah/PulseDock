@@ -1,15 +1,18 @@
-import { Card, Stack, Text, Title } from '@mantine/core';
-
 export default function UnauthorizedPage() {
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
-      <Card withBorder shadow="md" radius="lg" p="xl" style={{ maxWidth: 480, width: '100%' }}>
-        <Stack align="center">
-          <Title order={2} style={{ fontSize: 'clamp(1.4rem, 5vw, 1.9rem)', textAlign: 'center' }}>Unauthorized</Title>
-          <Text c="dimmed" ta="center">You do not have permission to access this page.</Text>
-          <a href="/dashboard" style={{ color: '#8fb0ff', fontWeight: 600, textAlign: 'center', width: '100%' }}>Back to dashboard</a>
-        </Stack>
-      </Card>
-    </div>
+    <main className="min-h-screen grid place-items-center p-4 bg-bg">
+      <section className="w-full max-w-xl rounded-2xl border border-border bg-surface p-10 shadow-2xl shadow-black/50 text-center">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-text-primary">Unauthorized</h1>
+        <p className="mt-4 text-sm sm:text-base text-text-secondary">
+          You do not have permission to access this page.
+        </p>
+        <a
+          href="/dashboard"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:bg-accent/20"
+        >
+          Back to dashboard
+        </a>
+      </section>
+    </main>
   );
 }

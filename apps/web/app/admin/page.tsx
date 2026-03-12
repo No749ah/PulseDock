@@ -152,7 +152,7 @@ export default function AdminPage() {
         {latestInvite ? (
           <Card mt="sm" withBorder>
             <Text size="sm" c="dimmed">Invite link (share directly or send per email):</Text>
-            <Text size="sm" style={{ wordBreak: 'break-all' }}>{latestInvite.inviteUrl ?? '—'}</Text>
+            <Text size="sm" className="break-all">{latestInvite.inviteUrl ?? '—'}</Text>
             <CopyButton value={latestInvite.inviteUrl ?? ''}>{({ copied, copy }) => <Button mt="xs" variant="light" onClick={copy} disabled={!latestInvite.inviteUrl}>{copied ? 'Copied' : 'Copy link'}</Button>}</CopyButton>
           </Card>
         ) : null}

@@ -7,6 +7,7 @@
 - [x] **Error pages & boundaries** — 404 page + global error boundary added
 - [x] **TypeScript strict mode** — Removed implicit 'any' types from main.ts middleware
 - [ ] **Reverse proxy static assets** — URGENT: Documented nginx fix for /_next/static/chunks 404s. User must apply separate location block for static assets with buffering enabled. See PROXY_SETUP.md.
+- [ ] **Inline CSS cleanup (phase 1)** — migrated `unauthorized`, `status/[userId]`, and admin invite URL rendering away from inline styles. Continue with remaining pages/components.
 - [x] **Frontend polish** — alerts, projects, versions pages migrated to Tailwind (Mantine fully removed from these 3 pages)
 - [x] **Full UI usability overhaul** — Proper layouts (p-6, gap-6), empty states on all pages, full-width inputs (px-4 py-3), consistent loading spinners, proper spacing standards
 
@@ -90,6 +91,7 @@
 - [x] Next.js /api proxy to backend
 - [x] SSH deploy key for GitHub
 - [x] Merged all 95 old heartbeat branches
+- [x] Added root workspace test runner (`npm run test`) with package-level TypeScript checks
 
 ## Ideas
 - Browser extension for quick monitor creation

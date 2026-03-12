@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "NODE_ENV=development next dev -H 0.0.0.0 -p ${WEB_PORT:-1234}",
     "build": "next build",
+    "test": "tsc --noEmit",
     "start": "next start -H 0.0.0.0 -p ${WEB_PORT:-1234}"
   },
   "dependencies": {

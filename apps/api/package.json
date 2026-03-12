@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "NODE_ENV=development node --env-file=../../.env -e \"require('ts-node/register/transpile-only'); require('./src/main.ts');\"",
     "build": "tsc -p tsconfig.build.json",
+    "test": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js"
   },
   "dependencies": {

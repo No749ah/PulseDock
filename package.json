@@ -14,6 +14,7 @@
     "dev:web": "npm run dev -w @pulsedock/web",
     "dev:api": "npm run dev -w @pulsedock/api",
     "build": "npm run build -w @pulsedock/web && npm run build -w @pulsedock/api",
+    "test": "npm run test -w @pulsedock/web && npm run test -w @pulsedock/api",
     "start:web": "bash ./scripts/start-web.sh",
     "start:api": "bash ./scripts/start-api.sh",
     "stop:web": "bash ./scripts/stop-web.sh",

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Node
 node_modules/
 
@@ -7,14 +6,20 @@ dist/
 .next/
 build/
 coverage/
+*.tsbuildinfo
 
 # Environment
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 pulsedock_api.log
 pulsedock_web_build.log
 pulsedock_web_start.log
@@ -29,26 +34,11 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Misc
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Ignore deploy keys and workspace keys
-/projects/PulseDock/.keys
-projects/PulseDock/.keys/*
-=======
-node_modules
-.env
-.env.*
-!.env.example
-dist
-build
-.next
-coverage
-.DS_Store
-*.log
+# Media artifacts
 apps/web/public/hero-video/*.mp4
 .github/mp4/
+
+# Keys
 .keys/
->>>>>>> 79b4607e91823d9f86e37ff62f6e37e41c308b18
+/projects/PulseDock/.keys
+projects/PulseDock/.keys/*

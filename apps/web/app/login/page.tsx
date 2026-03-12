@@ -194,7 +194,7 @@ export default function LoginPage() {
       </div>
 
       <FadeIn>
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-2xl">
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-10">
             <Monitor className="w-10 h-10 text-accent" />
@@ -202,7 +202,7 @@ export default function LoginPage() {
           </div>
 
           {/* Card */}
-          <div className="bg-surface border border-border rounded-2xl p-10 shadow-2xl shadow-black/50">
+          <div className="bg-surface border border-border rounded-2xl p-12 shadow-2xl shadow-black/50">
             <p className="text-text-secondary text-sm text-center mb-6">
               {subtitle}
             </p>

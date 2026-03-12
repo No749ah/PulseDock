@@ -1,112 +1,275 @@
-'use client';
+"use client";
 
-import { Badge, Card, Group, Progress, ScrollArea, SimpleGrid, Table, Text } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { api } from '../../lib/api';
-import { getToken, getUser } from '../../components/auth';
-import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Activity, AlertCircle, CheckCircle2, Clock, Plus, TrendingUp } from "lucide-react";
+import { api } from "../../lib/api";
+import { getUser } from "../../components/auth";
+import { AppFrame } from "../../components/app-frame";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Button } from "../components/Button";
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
+import { FadeIn } from "../components/FadeIn";
 
-type Overview = {
-  stats: { totalMonitors: number; green: number; yellow: number; red: number; uptimePct: number };
-  latestRuns: Array<{ id: string; checkedAt: string; level: 'green'|'yellow'|'red'; ok: boolean; message: string; latencyMs: number | null }>;
-};
+interface Monitor {
+  id: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+}
 
-type Health = { ok: boolean; service: string; runtime: string };
-type VersionSummary = { stats: { total: number; green: number; yellow: number; red: number } };
+interface MonitorRun {
+  id: string;
+  monitorId: string;
+  ok: boolean;
+  status: number;
+  latencyMs?: number;
+  message: string;
+  checkedAt: string;
+}
 
-type NavTile = { label: string; value: string; hint: string; to: string; color?: 'green'|'yellow'|'red'|'teal' };
+interface DashboardStats {
+  totalMonitors: number;
+  activeMonitors: number;
+  uptime: number;
+  lastCheck: string;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [health, setHealth] = useState<Health | null>(null);
-  const [versions, setVersions] = useState<VersionSummary | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
 
   useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [o, h, v] = await Promise.all([
-        api<Overview>('/v1/dashboard/overview', token),
-        api<Health>('/health'),
-        api<VersionSummary>('/v1/monitors/version-summary', token),
-      ]);
-      setOverview(o);
-      setHealth(h);
-      setVersions(v);
-    } finally {
-      setLoading(false);
+    const currentUser = getUser();
+    setUser(currentUser);
+    if (!currentUser) {
+      router.push("/login");
+      return;
     }
+
+    const userId = currentUser.id;
+
+    async function loadDashboard() {
+      try {
+        setLoading(true);
+        setError("");
+
+        // Fetch monitors
+        const monitorsData = await api<Monitor[]>("/v1/monitors", userId);
+        setMonitors(monitorsData);
+
+        // Fetch recent runs
+        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10", userId);
+        setRuns(runsData);
+
+        // Calculate stats
+        const active = monitorsData.filter((m) => m.enabled).length;
+        const upMonitors = runsData.filter((r) => r.ok).length;
+        const uptime =
+          runsData.length > 0 ? Math.round((upMonitors / runsData.length) * 100) : 100;
+
+        setStats({
+          totalMonitors: monitorsData.length,
+          activeMonitors: active,
+          uptime,
+          lastCheck: new Date().toISOString(),
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load dashboard");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, [user, router]);
+
+  if (!user) return null;
+  if (loading) {
+    return (
+      <AppFrame title="Dashboard" subtitle="Loading...">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    );
   }
 
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
-
-  const s = overview?.stats;
-  const tiles: NavTile[] = [
-    { label: 'Monitors', value: String(s?.totalMonitors ?? 0), hint: 'Create/manage checks', to: '/monitors', color: 'teal' },
-    { label: 'Alerts', value: String((s?.yellow ?? 0) + (s?.red ?? 0)), hint: 'Channels and delivery', to: '/alerts', color: (s?.red ?? 0) > 0 ? 'red' : (s?.yellow ?? 0) > 0 ? 'yellow' : 'green' },
-    { label: 'Versions', value: `${versions?.stats.yellow ?? 0} outdated`, hint: 'Daily release/image checks', to: '/versions', color: (versions?.stats.red ?? 0) > 0 ? 'red' : (versions?.stats.yellow ?? 0) > 0 ? 'yellow' : 'green' },
-    { label: 'Projects', value: 'Organize', hint: 'Group monitors by domain', to: '/projects', color: 'teal' },
-  ];
-
   return (
-    <AppFrame title="Dashboard" subtitle="">
-      {loading ? <LoadingState label="Loading dashboard..." /> : <>
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} mb="md">
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
-          <Text c="dimmed">Uptime</Text>
-          <Text fw={800} size="2rem">{s?.uptimePct ?? 0}%</Text>
-          <Progress color="teal" value={s?.uptimePct ?? 0} mt="sm" />
-        </Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}><Text c="dimmed">Healthy</Text><Text fw={800} size="2rem">{s?.green ?? 0}</Text></Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}><Text c="dimmed">At Risk</Text><Text fw={800} size="2rem">{(s?.yellow ?? 0) + (s?.red ?? 0)}</Text></Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/versions')}><Text c="dimmed">Outdated Versions</Text><Text fw={800} size="2rem">{(versions?.stats.yellow ?? 0) + (versions?.stats.red ?? 0)}</Text></Card>
-        <Card withBorder radius="md"><Text c="dimmed">API Health</Text><Text fw={800} size="2rem">{health?.ok ? 'OK' : 'DOWN'}</Text><Text size="xs" c="dimmed">{health?.runtime ?? '—'}</Text></Card>
-      </SimpleGrid>
+    <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
+      <div className="space-y-8">
+        {/* Error */}
+        {error && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
+              <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+              <span className="text-danger text-sm">{error}</span>
+            </div>
+          </FadeIn>
+        )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mb="md">
-        {tiles.map((tile) => (
-          <Card key={tile.label} withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push(tile.to)}>
-            <Group justify="space-between">
-              <Text fw={700}>{tile.label}</Text>
-              <Badge color={tile.color ?? 'teal'}>{tile.value}</Badge>
-            </Group>
-            <Text size="sm" c="dimmed" mt="xs">{tile.hint}</Text>
-          </Card>
-        ))}
-      </SimpleGrid>
+        {/* Stats Grid */}
+        {stats && (
+          <FadeIn>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="lg:col-span-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-text-muted text-sm mb-1">Total Monitors</p>
+                    <p className="text-3xl font-bold">{stats.totalMonitors}</p>
+                  </div>
+                  <Activity className="w-8 h-8 text-accent" />
+                </div>
+              </Card>
 
-      <Card withBorder radius="md">
-        <Group justify="space-between" mb="sm">
-          <Text fw={700}>Latest runs</Text>
-          <Badge variant="light">Click a row for monitors page</Badge>
-        </Group>
-        <ScrollArea type="auto" offsetScrollbars>
-          <Table withTableBorder withColumnBorders miw={760}>
-            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
-              {overview?.latestRuns.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
-                  <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                  <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                  <Table.Td>{r.ok ? 'OK' : 'FAIL'}</Table.Td>
-                  <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                  <Table.Td>{r.message}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
-      </Card>
-      </>}
+              <Card className="lg:col-span-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-text-muted text-sm mb-1">Active</p>
+                    <p className="text-3xl font-bold">{stats.activeMonitors}</p>
+                  </div>
+                  <CheckCircle2 className="w-8 h-8 text-success" />
+                </div>
+              </Card>
+
+              <Card className="lg:col-span-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-text-muted text-sm mb-1">Uptime</p>
+                    <p className="text-3xl font-bold">{stats.uptime}%</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-accent" />
+                </div>
+              </Card>
+
+              <Card className="lg:col-span-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-text-muted text-sm mb-1">Last Check</p>
+                    <p className="text-sm font-mono text-text-secondary">
+                      {new Date(stats.lastCheck).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-text-muted" />
+                </div>
+              </Card>
+            </div>
+          </FadeIn>
+        )}
+
+        {/* Monitors Section */}
+        <FadeIn delay={0.1}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Monitors</h2>
+                <p className="text-text-muted text-sm mt-1">
+                  {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
+                </p>
+              </div>
+              <Button onClick={() => router.push("/monitors")} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" /> Add Monitor
+              </Button>
+            </div>
+
+            {monitors.length === 0 ? (
+              <Card className="text-center py-12">
+                <Activity className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-50" />
+                <p className="text-text-muted mb-4">No monitors configured yet</p>
+                <Button onClick={() => router.push("/monitors")}>Create your first monitor</Button>
+              </Card>
+            ) : (
+              <Card>
+                <Table>
+                  <TableHead>
+                    <tr>
+                      <TableHeader>Name</TableHeader>
+                      <TableHeader>Type</TableHeader>
+                      <TableHeader>Status</TableHeader>
+                      <TableHeader>Last Check</TableHeader>
+                      <TableHeader>Actions</TableHeader>
+                    </tr>
+                  </TableHead>
+                  <TableBody>
+                    {monitors.map((monitor) => {
+                      const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                      return (
+                        <TableRow key={monitor.id}>
+                          <TableCell className="font-medium">{monitor.name}</TableCell>
+                          <TableCell>{monitor.type}</TableCell>
+                          <TableCell>
+                            {monitor.enabled ? (
+                              lastRun ? (
+                                <Badge variant={lastRun.ok ? "success" : "danger"}>
+                                  {lastRun.ok ? "OK" : "Failed"}
+                                </Badge>
+                              ) : (
+                                <Badge variant="default">Pending</Badge>
+                              )
+                            ) : (
+                              <Badge variant="warning">Disabled</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-text-muted text-sm">
+                            {lastRun
+                              ? new Date(lastRun.checkedAt).toLocaleDateString()
+                              : "Never"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <button
+                              onClick={() => router.push(`/monitors?id=${monitor.id}`)}
+                              className="text-accent hover:text-accent-hover text-sm transition-colors"
+                            >
+                              View
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+          </div>
+        </FadeIn>
+
+        {/* Recent Activity */}
+        {runs.length > 0 && (
+          <FadeIn delay={0.2}>
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">Recent Activity</h2>
+              <Card>
+                <div className="space-y-3">
+                  {runs.slice(0, 5).map((run) => (
+                    <div key={run.id} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
+                      <div className="flex items-center gap-3">
+                        {run.ok ? (
+                          <CheckCircle2 className="w-5 h-5 text-success" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-danger" />
+                        )}
+                        <div>
+                          <p className="font-medium">{run.message}</p>
+                          <p className="text-text-muted text-xs">
+                            {new Date(run.checkedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono text-text-muted">{run.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </FadeIn>
+        )}
+      </div>
     </AppFrame>
   );
 }

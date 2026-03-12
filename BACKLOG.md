@@ -3,8 +3,10 @@
 ## In Progress
 - [x] **Tailwind UI refactor** — Landing, login, dashboard, monitors pages migrated. Component library complete.
 - [x] **API security hardening** — Structured logging, helmet headers, rate limiting, CORS configured
-- [ ] **Input validation & API hardening phase 2** — Enhanced DTOs with MaxLength + IsUrl() validators. Added comprehensive metadata/OG tags. Next: CSRF protection, remaining Tailwind migrations
-- [ ] **Frontend polish** — OG tags complete. Still need: alerts page migration to Tailwind, versions/projects pages
+- [x] **Input validation & API hardening phase 2** — Enhanced DTOs with MaxLength + IsUrl() validators. Added comprehensive metadata/OG tags.
+- [x] **Error pages & boundaries** — 404 page + global error boundary added
+- [x] **TypeScript strict mode** — Removed implicit 'any' types from main.ts middleware
+- [ ] **Frontend polish** — Still need: alerts/versions/projects pages migration to Tailwind, remaining strict mode fixes
 
 ## Next Up
 

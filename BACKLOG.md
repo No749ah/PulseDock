@@ -55,7 +55,7 @@
 - [x] Add unit tests for core services — AppController, MetricsService, AuthService, MonitorsService (27 tests, vitest)
 - [ ] Add integration tests for API endpoints
 - [ ] Add proper API versioning strategy
-- [ ] Swagger/OpenAPI docs with examples
+- [x] Swagger/OpenAPI docs with examples — @ApiTags/@ApiOperation/@ApiResponse on all 9 controllers, live at /docs
 - [ ] Add health check endpoint with DB/Redis connectivity status
 - [ ] Add metrics endpoint (Prometheus-compatible)
 - [ ] WebSocket support for real-time monitor updates
@@ -67,8 +67,8 @@
 - [x] GitHub Actions CI/CD — full pipeline: build + test + tsc typecheck + security audit
 - [x] README.md — professional, with quick start, architecture, tech stack, testing sections
 - [x] CHANGELOG.md — semver releases initialized (v0.1.0 → v0.3.0 + Unreleased)
-- [ ] CONTRIBUTING.md — how to contribute
-- [ ] LICENSE (MIT or similar)
+- [x] CONTRIBUTING.md — how to contribute
+- [x] LICENSE (MIT)
 
 ### Phase 6: Features
 - [ ] Plugin system for custom monitor types

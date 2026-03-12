@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Folder } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -14,7 +14,7 @@ import { api } from '../../lib/api';
 
 type Folder = { id: string; name: string; createdAt: string };
 
-const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 export default function FoldersPage() {
   const router = useRouter();
@@ -93,8 +93,8 @@ export default function FoldersPage() {
   return (
     <AppFrame title="Projects" subtitle="Group monitors by environment, product, or customer space.">
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>
       ) : (
         <>
@@ -157,18 +157,35 @@ export default function FoldersPage() {
             <p className="text-text-primary">Delete <strong>{selected?.name}</strong>?</p>
           </Modal>
 
-          {/* Header Card */}
-          <Card className="mb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-text-primary">Projects</h3>
-              <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }} size="sm">
-                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create project</span>
-              </Button>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-text-primary">Projects</h2>
+              <p className="text-text-secondary text-sm mt-1">
+                {folders.length} {folders.length === 1 ? 'project' : 'projects'}
+              </p>
             </div>
-          </Card>
+            <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
+              <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create project</span>
+            </Button>
+          </div>
 
+          {folders.length === 0 ? (
+            <Card className="text-center py-16">
+              <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
+                <Folder className="w-12 h-12 text-text-secondary opacity-50" />
+              </div>
+              <p className="text-text-primary text-lg font-medium mb-2">No projects yet</p>
+              <p className="text-text-secondary text-sm mb-6">
+                Organize your monitors by environment, product, or customer space
+              </p>
+              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create your first project</Button>
+            </Card>
+          ) : (
+          <>
           {/* Table Card */}
-          <Card>
+          <Card className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHead>
                 <TableRow hover={false}>
@@ -198,7 +215,7 @@ export default function FoldersPage() {
             </Table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between p-4 border-t border-border">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
                   <ChevronLeft className="w-4 h-4" />
@@ -218,7 +235,10 @@ export default function FoldersPage() {
                 />
               </div>
             </div>
+            </div>
           </Card>
+          </>
+          )}
         </>
       )}
     </AppFrame>

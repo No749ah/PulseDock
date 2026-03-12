@@ -23,7 +23,7 @@ type AlertChannel = {
   createdAt: string;
 };
 
-const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 export default function AlertsPage() {
   const router = useRouter();
@@ -142,8 +142,8 @@ export default function AlertsPage() {
   return (
     <AppFrame title="Alerts" subtitle="Configure alert channels and verify delivery.">
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>
       ) : (
         <>
@@ -261,18 +261,35 @@ export default function AlertsPage() {
             <p className="text-text-primary">Delete <strong>{selected?.name}</strong>?</p>
           </Modal>
 
-          {/* Header Card */}
-          <Card className="mb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-text-primary">Channels</h3>
-              <Button onClick={() => { resetCreateForm(); setWizardOpen(true); }} size="sm">
-                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
-              </Button>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-text-primary">Alert Channels</h2>
+              <p className="text-text-secondary text-sm mt-1">
+                {channels.length} {channels.length === 1 ? 'channel' : 'channels'} configured
+              </p>
             </div>
-          </Card>
+            <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>
+              <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
+            </Button>
+          </div>
 
+          {channels.length === 0 ? (
+            <Card className="text-center py-16">
+              <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
+                <Plus className="w-12 h-12 text-text-secondary opacity-50" />
+              </div>
+              <p className="text-text-primary text-lg font-medium mb-2">No alert channels yet</p>
+              <p className="text-text-secondary text-sm mb-6">
+                Set up Discord, Slack, Telegram, or webhook alerts to get notified when monitors fail
+              </p>
+              <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>Create your first channel</Button>
+            </Card>
+          ) : (
+          <>
           {/* Table Card */}
-          <Card>
+          <Card className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHead>
                 <TableRow hover={false}>
@@ -309,7 +326,7 @@ export default function AlertsPage() {
             </Table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between p-4 border-t border-border">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
                   <ChevronLeft className="w-4 h-4" />
@@ -329,7 +346,10 @@ export default function AlertsPage() {
                 />
               </div>
             </div>
+            </div>
           </Card>
+          </>
+          )}
         </>
       )}
     </AppFrame>

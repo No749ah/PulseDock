@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -51,7 +51,7 @@ type Summary = {
   items: VersionItem[];
 };
 
-const inputClass = "w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent";
+const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 function stripLeadingV(version: string) {
   return version.replace(/^v(?=\d)/i, '');
@@ -467,8 +467,8 @@ export default function VersionsPage() {
   return (
     <AppFrame title="Version Center" subtitle="Track outdated releases/images and trigger checks on demand.">
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border border-accent border-t-transparent" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>
       ) : (
         <>
@@ -713,28 +713,59 @@ export default function VersionsPage() {
           </Modal>
 
           {/* Header */}
-          <Card className="mb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-text-primary">Version checks</h3>
-              <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }} size="sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-text-primary">Version Checks</h2>
+              <p className="text-text-secondary text-sm mt-1">
+                {summary?.stats.total ?? 0} tracked {(summary?.stats.total ?? 0) === 1 ? 'item' : 'items'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" onClick={() => load()}>Refresh</Button>
+              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
                 <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create version check</span>
               </Button>
             </div>
-          </Card>
+          </div>
 
           {/* Stats */}
-          <Card className="mb-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-bold text-text-primary">Tracked: {summary?.stats.total ?? 0}</span>
-              <Badge variant="success">{`Up-to-date: ${summary?.stats.green ?? 0}`}</Badge>
-              <Badge variant="warning">{`Updates: ${summary?.stats.yellow ?? 0}`}</Badge>
-              <Badge variant="danger">{`Critical: ${summary?.stats.red ?? 0}`}</Badge>
-              <Button variant="secondary" size="sm" onClick={() => load()}>Refresh</Button>
+          {(summary?.stats.total ?? 0) > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <p className="text-text-secondary text-sm mb-1">Tracked</p>
+                <p className="text-2xl font-bold text-text-primary">{summary?.stats.total ?? 0}</p>
+              </Card>
+              <Card>
+                <p className="text-text-secondary text-sm mb-1">Up-to-date</p>
+                <p className="text-2xl font-bold text-success">{summary?.stats.green ?? 0}</p>
+              </Card>
+              <Card>
+                <p className="text-text-secondary text-sm mb-1">Updates</p>
+                <p className="text-2xl font-bold text-warning">{summary?.stats.yellow ?? 0}</p>
+              </Card>
+              <Card>
+                <p className="text-text-secondary text-sm mb-1">Critical</p>
+                <p className="text-2xl font-bold text-danger">{summary?.stats.red ?? 0}</p>
+              </Card>
             </div>
-          </Card>
+          )}
 
+          {(summary?.items.length ?? 0) === 0 ? (
+            <Card className="text-center py-16">
+              <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
+                <GitBranch className="w-12 h-12 text-text-secondary opacity-50" />
+              </div>
+              <p className="text-text-primary text-lg font-medium mb-2">No version checks yet</p>
+              <p className="text-text-secondary text-sm mb-6">
+                Track GitHub releases, Docker image tags, and more to stay on top of updates
+              </p>
+              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create your first version check</Button>
+            </Card>
+          ) : (
+          <>
           {/* Main Table */}
-          <Card>
+          <Card className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHead>
                 <TableRow hover={false}>
@@ -851,7 +882,7 @@ export default function VersionsPage() {
             </Table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between p-4 border-t border-border">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
                   <ChevronLeft className="w-4 h-4" />
@@ -871,7 +902,10 @@ export default function VersionsPage() {
                 />
               </div>
             </div>
+            </div>
           </Card>
+          </>
+          )}
         </>
       )}
     </AppFrame>

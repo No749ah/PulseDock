@@ -194,15 +194,15 @@ export default function LoginPage() {
       </div>
 
       <FadeIn>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-lg">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <Monitor className="w-6 h-6 text-accent" />
-            <span className="text-2xl font-bold tracking-tight">PulseDock</span>
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <Monitor className="w-10 h-10 text-accent" />
+            <span className="text-4xl font-bold tracking-tight">PulseDock</span>
           </div>
 
           {/* Card */}
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-2xl shadow-black/50">
+          <div className="bg-surface border border-border rounded-2xl p-10 shadow-2xl shadow-black/50">
             <p className="text-text-secondary text-sm text-center mb-6">
               {subtitle}
             </p>
@@ -222,7 +222,7 @@ export default function LoginPage() {
                   value={email}
                   disabled={inInviteFlow || inResetFlow}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface-elevated border border-border rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors disabled:opacity-50"
+                  className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors disabled:opacity-50"
                   placeholder="you@example.com"
                   autoComplete="email"
                 />
@@ -244,7 +244,7 @@ export default function LoginPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-surface-elevated border border-border rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
+                    className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
                     placeholder="••••••••"
                     autoComplete={
                       inInviteFlow || inResetFlow
@@ -289,7 +289,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || inviteLoading}
-                className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-2.5 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
               >
                 {loading && (
                   <Loader2 className="w-4 h-4 animate-spin" />

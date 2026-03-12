@@ -53,17 +53,15 @@ export default function DashboardPage() {
       return;
     }
 
-    const userId = currentUser.id;
-
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
 
-        const monitorsData = await api<Monitor[]>("/v1/monitors", userId);
+        const monitorsData = await api<Monitor[]>("/v1/monitors");
         setMonitors(monitorsData);
 
-        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10", userId);
+        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10");
         setRuns(runsData);
 
         const active = monitorsData.filter((m) => m.enabled).length;

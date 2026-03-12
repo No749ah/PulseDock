@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
 import { CreateMonitorDto, DiscoverVersionDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
@@ -44,6 +44,14 @@ export class MonitorsController {
   @Post('version-discover')
   versionDiscover(@Body() body: DiscoverVersionDto) {
     return this.monitorsService.discoverCurrentVersion(body);
+  }
+
+  @Get('runs')
+  getRecentRuns(
+    @Req() req: { user: { id: string } },
+    @Query('limit') limit?: string,
+  ) {
+    return this.monitorsService.getRecentRuns(req.user.id, Number(limit) || 10);
   }
 
   @Get(':id/runs')

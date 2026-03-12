@@ -169,6 +169,25 @@ export class MonitorsService {
     });
   }
 
+  async getRecentRuns(userId: string, limit = 10) {
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitor: { userId } },
+      orderBy: { checkedAt: 'desc' },
+      take: limit,
+    });
+    return runs.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      monitorId: r.monitorId,
+      checkedAt: r.checkedAt.toISOString(),
+      ok: r.ok,
+      statusCode: r.status,
+      latencyMs: r.latencyMs,
+      message: r.message,
+      level: (r.level as 'green' | 'yellow' | 'red'),
+    }));
+  }
+
   async runs(userId: string) {
     const runs = await this.prisma.monitorRun.findMany({ where: { userId }, orderBy: { checkedAt: 'desc' }, take: 200 });
     return runs.map((r) => ({

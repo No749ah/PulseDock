@@ -7,7 +7,7 @@
 - [x] **Error pages & boundaries** — 404 page + global error boundary added
 - [x] **TypeScript strict mode** — Removed implicit 'any' types from main.ts middleware
 - [ ] **Reverse proxy static assets** — URGENT: Documented nginx fix for /_next/static/chunks 404s. User must apply separate location block for static assets with buffering enabled. See PROXY_SETUP.md.
-- [ ] **Frontend polish** — Still need: alerts/versions/projects pages migration to Tailwind, favicon generation
+- [x] **Frontend polish** — alerts, projects, versions pages migrated to Tailwind (Mantine fully removed from these 3 pages)
 
 ## Next Up
 

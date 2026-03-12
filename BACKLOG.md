@@ -20,11 +20,11 @@
 - [x] Remove all inline CSS from remaining pages — extract to Tailwind (2 CSS custom property instances remain for legitimate dynamic styling)
 - [x] Complete Mantine → Tailwind migration for all app pages (Admin page complete; shared components still use Mantine)
 - [x] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select, TextInput, CopyButton)
-- [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
+- [x] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns) — both apps clean under strict:true
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 breaking change; requires deeper prisma/motion-dom investigation)
 - [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
-- [ ] Add input validation/sanitization on all API endpoints
+- [x] Add input validation/sanitization on all API endpoints — class-validator DTOs + global ValidationPipe (whitelist+forbidNonWhitelisted)
 - [x] Add proper logging (structured JSON logs, no console.log)
 - [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management
 
@@ -64,9 +64,9 @@
 - [ ] Production Dockerfile (multi-stage, minimal image)
 - [ ] Docker Compose for development (app + postgres + redis)
 - [ ] Docker Compose / Kubernetes manifests for production
-- [ ] GitHub Actions CI/CD (lint, test, build, docker push)
-- [ ] README.md — professional, with screenshots, quick start, architecture diagram
-- [ ] CHANGELOG.md — semver releases
+- [x] GitHub Actions CI/CD — full pipeline: build + test + tsc typecheck + security audit
+- [x] README.md — professional, with quick start, architecture, tech stack, testing sections
+- [x] CHANGELOG.md — semver releases initialized (v0.1.0 → v0.3.0 + Unreleased)
 - [ ] CONTRIBUTING.md — how to contribute
 - [ ] LICENSE (MIT or similar)
 

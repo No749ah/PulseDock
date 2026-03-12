@@ -1,274 +1,322 @@
-'use client';
+"use client";
 
-import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Select, Switch, Table, Text, TextInput } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal, ConfirmModal } from '../../components/ui/modal-framework';
-import { getToken, getUser } from '../../components/auth';
-import { api } from '../../lib/api';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Edit2, Trash2, Eye, AlertCircle, CheckCircle2 } from "lucide-react";
+import { api } from "../../lib/api";
+import { getUser } from "../../components/auth";
+import { AppFrame } from "../../components/app-frame";
+import { Card } from "../components/Card";
+import { Badge } from "../components/Badge";
+import { Button } from "../components/Button";
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
+import { Modal } from "../components/Modal";
+import { FadeIn } from "../components/FadeIn";
 
-type Monitor = { id: string; name: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE'; target: string; intervalSec: number };
-type Run = { id: string; monitorId: string; level: 'green' | 'yellow' | 'red'; checkedAt: string };
-type RunDetail = { id: string; monitorId: string; checkedAt: string; ok: boolean; statusCode: number; latencyMs: number | null; message: string; level: 'green'|'yellow'|'red' };
-type Overview = { latestRuns: Run[] };
+interface Monitor {
+  id: string;
+  name: string;
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+  target: string;
+  intervalSec: number;
+  enabled: boolean;
+  createdAt: string;
+}
+
+interface MonitorRun {
+  id: string;
+  monitorId: string;
+  ok: boolean;
+  status: number;
+  latencyMs?: number;
+  message: string;
+  checkedAt: string;
+}
 
 export default function MonitorsPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
+  const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [filter, setFilter] = useState<'ALL' | Monitor['type']>('ALL');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState('10');
-
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createStep, setCreateStep] = useState(0);
-  const [createName, setCreateName] = useState('');
-  const [createTarget, setCreateTarget] = useState('');
-  const [createInterval, setCreateInterval] = useState(60);
-  const [createTimeoutMs, setCreateTimeoutMs] = useState(5000);
-  const [createAdvanced, setCreateAdvanced] = useState(false);
-  const [createEnabled, setCreateEnabled] = useState(true);
-  const [selected, setSelected] = useState<Monitor | null>(null);
-  const [historyRows, setHistoryRows] = useState<RunDetail[]>([]);
+  const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editName, setEditName] = useState('');
-  const [editTarget, setEditTarget] = useState('');
-  const [editInterval, setEditInterval] = useState(60);
+  const [error, setError] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    type: "HTTP" as const,
+    target: "",
+    intervalSec: 60,
+    enabled: true,
+  });
 
   useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [m, o] = await Promise.all([
-        api<Monitor[]>('/v1/monitors', token),
-        api<Overview>('/v1/dashboard/overview', token),
-      ]);
-      setMonitors(m);
-      setRuns(o.latestRuns);
-    } finally {
-      setLoading(false);
+    const currentUser = getUser();
+    setUser(currentUser);
+    if (!currentUser) {
+      router.push("/login");
+      return;
     }
-  }
 
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
+    const userId = currentUser.id;
 
-  async function runNow(monitorId: string) {
-    await api('/v1/monitors/run', token, { method: 'POST', body: JSON.stringify({ monitorId }) });
-    await load();
-  }
+    async function loadMonitors() {
+      try {
+        setLoading(true);
+        setError("");
+        const monitorsData = await api<Monitor[]>("/v1/monitors", userId);
+        setMonitors(monitorsData);
 
-  function resetCreateForm() {
-    setCreateStep(0);
-    setCreateName('');
-    setCreateTarget('');
-    setCreateInterval(60);
-    setCreateTimeoutMs(5000);
-    setCreateAdvanced(false);
-    setCreateEnabled(true);
-  }
+        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId);
+        setRuns(runsData);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load monitors");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  async function createMonitor() {
-    await api('/v1/monitors', token, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: createName,
-        target: createTarget,
-        type: 'HTTP',
-        intervalSec: createInterval,
-        timeoutMs: createTimeoutMs,
-      }),
-    });
-    setCreateOpen(false);
-    resetCreateForm();
-    await load();
-  }
+    loadMonitors();
+  }, [router]);
 
-  function openEdit(m: Monitor) {
-    setSelected(m);
-    setEditName(m.name);
-    setEditTarget(m.target);
-    setEditInterval(m.intervalSec);
-    setEditOpen(true);
-  }
+  const handleCreate = async () => {
+    try {
+      await api("/v1/monitors", user?.id, {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
+      setShowModal(false);
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
+      // Reload
+      const monitorsData = await api<Monitor[]>("/v1/monitors", user?.id);
+      setMonitors(monitorsData);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create monitor");
+    }
+  };
 
-  async function saveEdit() {
-    if (!selected) return;
-    await api(`/v1/monitors/${selected.id}`, token, {
-      method: 'PATCH',
-      body: JSON.stringify({ name: editName, target: editTarget, intervalSec: editInterval }),
-    });
-    setEditOpen(false);
-    await load();
-  }
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this monitor?")) return;
+    try {
+      await api(`/v1/monitors/${id}`, user?.id, { method: "DELETE" });
+      setMonitors(monitors.filter((m) => m.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete monitor");
+    }
+  };
 
-  function openDelete(m: Monitor) {
-    setSelected(m);
-    setDeleteOpen(true);
-  }
-
-  async function confirmDelete() {
-    if (!selected) return;
-    await api(`/v1/monitors/${selected.id}`, token, { method: 'DELETE' });
-    setDeleteOpen(false);
-    await load();
-  }
-
-  async function openHistory(m: Monitor) {
-    setSelected(m);
-    const rows = await api<RunDetail[]>(`/v1/monitors/${m.id}/runs`, token);
-    setHistoryRows(rows);
-    setHistoryOpen(true);
-  }
-
-  const visible = filter === 'ALL' ? monitors : monitors.filter((m) => m.type === filter);
-  const size = Number(pageSize);
-  const pages = Math.max(1, Math.ceil(visible.length / size));
-  const safePage = Math.min(page, pages);
-  const pageRows = visible.slice((safePage - 1) * size, safePage * size);
+  if (!user) return null;
+  if (loading)
+    return (
+      <AppFrame title="Monitors">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    );
 
   return (
-    <AppFrame title="Monitors" subtitle="Filter by check type and manually trigger run checks.">
-      {loading ? <LoadingState label="Loading monitors..." /> : <>
-      <AppModal opened={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title="Create website ping" size="lg">
-        {createStep === 0 ? (
+    <AppFrame title="Monitors" subtitle="Manage your application monitors">
+      <div className="space-y-6">
+        {error && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
+              <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+              <span className="text-danger text-sm">{error}</span>
+            </div>
+          </FadeIn>
+        )}
+
+        <FadeIn>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Monitors</h2>
+              <p className="text-text-muted text-sm mt-1">
+                {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} active
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setModalMode("create");
+                setEditingMonitor(null);
+                setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
+                setShowModal(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> New Monitor
+            </Button>
+          </div>
+        </FadeIn>
+
+        {monitors.length === 0 ? (
+          <Card className="text-center py-12">
+            <Eye className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-50" />
+            <p className="text-text-muted mb-4">No monitors yet</p>
+            <Button onClick={() => setShowModal(true)}>Create your first monitor</Button>
+          </Card>
+        ) : (
+          <FadeIn delay={0.1}>
+            <Card>
+              <Table>
+                <TableHead>
+                  <tr>
+                    <TableHeader>Name</TableHeader>
+                    <TableHeader>Type</TableHeader>
+                    <TableHeader>Target</TableHeader>
+                    <TableHeader>Interval</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader>Actions</TableHeader>
+                  </tr>
+                </TableHead>
+                <TableBody>
+                  {monitors.map((monitor) => {
+                    const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                    return (
+                      <TableRow key={monitor.id}>
+                        <TableCell className="font-medium">{monitor.name}</TableCell>
+                        <TableCell className="text-sm text-text-muted">{monitor.type}</TableCell>
+                        <TableCell className="text-sm text-text-muted truncate max-w-xs">
+                          {monitor.target}
+                        </TableCell>
+                        <TableCell className="text-sm text-text-muted">{monitor.intervalSec}s</TableCell>
+                        <TableCell>
+                          {!monitor.enabled ? (
+                            <Badge variant="warning">Disabled</Badge>
+                          ) : lastRun ? (
+                            <Badge variant={lastRun.ok ? "success" : "danger"}>
+                              {lastRun.ok ? "OK" : "Failed"}
+                            </Badge>
+                          ) : (
+                            <Badge>Pending</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <button
+                            onClick={() => handleDelete(monitor.id)}
+                            className="text-danger hover:text-danger/80 text-sm transition-colors inline"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </FadeIn>
+        )}
+
+        {/* Recent runs */}
+        {runs.length > 0 && (
+          <FadeIn delay={0.2}>
+            <Card>
+              <h3 className="text-lg font-bold mb-4">Recent Activity</h3>
+              <div className="space-y-2">
+                {runs.slice(0, 10).map((run) => (
+                  <div key={run.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-surface-elevated/50">
+                    <div className="flex items-center gap-2">
+                      {run.ok ? (
+                        <CheckCircle2 className="w-4 h-4 text-success" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-danger" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm">
+                          <strong>{monitors.find((m) => m.id === run.monitorId)?.name}</strong> — {run.message}
+                        </p>
+                        <p className="text-xs text-text-muted">
+                          {new Date(run.checkedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    {run.latencyMs && <span className="text-xs text-text-muted">{run.latencyMs}ms</span>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </FadeIn>
+        )}
+      </div>
+
+      {/* Create/Edit Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
+        size="md"
+        actions={
           <>
-            <Text fw={600} mb="sm">Step 1/3 · Basics</Text>
-            <TextInput label="Name" value={createName} onChange={(e) => setCreateName(e.currentTarget.value)} />
-            <TextInput mt="sm" label="URL" value={createTarget} onChange={(e) => setCreateTarget(e.currentTarget.value)} />
+            <Button variant="secondary" onClick={() => setShowModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate}>
+              {modalMode === "create" ? "Create" : "Update"}
+            </Button>
           </>
-        ) : null}
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Monitor Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+              placeholder="My API"
+            />
+          </div>
 
-        {createStep === 1 ? (
-          <>
-            <Text fw={600} mb="sm">Step 2/3 · Timing</Text>
-            <NumberInput label="Interval (sec)" min={10} value={createInterval} onChange={(v) => setCreateInterval(Number(v || 60))} />
-            <Button mt="sm" variant="subtle" onClick={() => setCreateAdvanced((v) => !v)}>{createAdvanced ? 'Hide advanced' : 'Show advanced'}</Button>
-            <Collapse in={createAdvanced}>
-              <NumberInput mt="sm" label="Timeout (ms)" min={100} value={createTimeoutMs} onChange={(v) => setCreateTimeoutMs(Number(v || 5000))} />
-              <Switch mt="sm" checked={createEnabled} onChange={(e) => setCreateEnabled(e.currentTarget.checked)} label="Enabled after create" disabled />
-            </Collapse>
-          </>
-        ) : null}
+          <div>
+            <label className="block text-sm font-medium mb-2">Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+              className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+            >
+              <option value="HTTP">HTTP Check</option>
+              <option value="GIT_RELEASE">Git Release</option>
+              <option value="DOCKER_IMAGE">Docker Image</option>
+            </select>
+          </div>
 
-        {createStep === 2 ? (
-          <>
-            <Text fw={600} mb="sm">Step 3/3 · Review</Text>
-            <Text size="sm">Name: <b>{createName}</b></Text>
-            <Text size="sm">URL: <b>{createTarget}</b></Text>
-            <Text size="sm">Interval: <b>{createInterval}s</b></Text>
-            <Text size="sm">Timeout: <b>{createTimeoutMs}ms</b></Text>
-          </>
-        ) : null}
+          <div>
+            <label className="block text-sm font-medium mb-2">Target</label>
+            <input
+              type="text"
+              value={formData.target}
+              onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+              className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+              placeholder="https://api.example.com/health"
+            />
+          </div>
 
-        <Group justify="space-between" mt="md">
-          <Button variant="default" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
-          {createStep < 2 ? <Button onClick={() => setCreateStep((s) => Math.min(2, s + 1))}>Next</Button> : <Button onClick={createMonitor}>Create ping</Button>}
-        </Group>
-      </AppModal>
+          <div>
+            <label className="block text-sm font-medium mb-2">Check Interval (seconds)</label>
+            <input
+              type="number"
+              min="30"
+              max="3600"
+              value={formData.intervalSec}
+              onChange={(e) => setFormData({ ...formData, intervalSec: parseInt(e.target.value) })}
+              className="w-full px-4 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+            />
+          </div>
 
-      <AppModal opened={editOpen} onClose={() => setEditOpen(false)} title="Edit monitor">
-        <TextInput label="Name" value={editName} onChange={(e) => setEditName(e.currentTarget.value)} />
-        <TextInput mt="sm" label="Target" value={editTarget} onChange={(e) => setEditTarget(e.currentTarget.value)} />
-        <NumberInput mt="sm" label="Interval (sec)" min={10} value={editInterval} onChange={(v) => setEditInterval(Number(v || 60))} />
-        <Group mt="md" justify="flex-end">
-          <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={saveEdit}>Save</Button>
-        </Group>
-      </AppModal>
-
-      <ConfirmModal
-        opened={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Delete monitor"
-        message={<>Delete <b>{selected?.name}</b>?</>}
-        onConfirm={confirmDelete}
-        confirmLabel="Delete"
-      />
-
-      <AppModal opened={historyOpen} onClose={() => setHistoryOpen(false)} title={`Run history · ${selected?.name ?? ''}`} size="xl">
-        <Table.ScrollContainer minWidth={760}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
-              {historyRows.map((r) => (
-                <Table.Tr key={r.id}>
-                  <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                  <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                  <Table.Td>{r.statusCode}</Table.Td>
-                  <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                  <Table.Td>{r.message}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </AppModal>
-
-      <Card withBorder radius="md" mb="md">
-        <Group justify="space-between">
-          <Text fw={700}>Website pings</Text>
-          <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create ping</Button>
-        </Group>
-      </Card>
-
-      <Card withBorder radius="md" mb="md">
-        <Group>
-          <Select
-            label="Filter"
-            value={filter}
-            onChange={(v) => { setFilter((v as any) || 'ALL'); setPage(1); }}
-            data={[{ value: 'ALL', label: 'All' }, { value: 'HTTP', label: 'HTTP' }, { value: 'GIT_RELEASE', label: 'Git Release' }, { value: 'DOCKER_IMAGE', label: 'Docker Image' }]}
-          />
-        </Group>
-      </Card>
-
-      <Card withBorder radius="md">
-        <Table.ScrollContainer minWidth={980}>
-          <Table withTableBorder withColumnBorders>
-            <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-            <Table.Tbody>
-              {pageRows.map((m) => {
-                const latest = runs.find((r) => r.monitorId === m.id);
-                const level = latest?.level ?? 'green';
-                return (
-                  <Table.Tr key={m.id}>
-                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
-                    <Table.Td>{m.type}</Table.Td>
-                    <Table.Td style={{ maxWidth: 320, overflowWrap: 'anywhere' }}>{m.target}</Table.Td>
-                    <Table.Td>{m.intervalSec}s</Table.Td>
-                    <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
-                        <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
-                        <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-        <Group justify="space-between" mt="md">
-          <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">Rows per page</Text>
-            <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
-          </Group>
-        </Group>
-      </Card>
-      </>}
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={formData.enabled}
+              onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
+              className="w-4 h-4 rounded border-border bg-surface-elevated text-accent"
+            />
+            <span className="text-sm">Enabled</span>
+          </label>
+        </div>
+      </Modal>
     </AppFrame>
   );
 }

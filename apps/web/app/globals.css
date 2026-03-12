@@ -1,62 +1,48 @@
-html, body { margin: 0; padding: 0; }
-body {
-  min-height: 100vh;
-  color: #e5f6ee;
-  overflow-x: hidden;
-  background:
-    radial-gradient(1200px 520px at 10% -20%, rgba(16, 185, 129, 0.18), transparent),
-    radial-gradient(1000px 620px at 95% 0%, rgba(34, 197, 94, 0.12), transparent),
-    #08120f;
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #050a0e;
+  --color-surface: #0a1118;
+  --color-surface-elevated: #111a22;
+  --color-surface-hover: #152028;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #f0f6fc;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #6e7681;
+  --color-accent: #58a6ff;
+  --color-accent-hover: #79b8ff;
+  --color-success: #3fb950;
+  --color-warning: #d29922;
+  --color-danger: #f85149;
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.landing-cinematic-wrap {
-  height: clamp(120vh, 165vh, 180vh);
-  margin-top: 8px;
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.landing-cinematic-sticky {
-  position: sticky;
-  top: clamp(8px, 2vw, 16px);
-  height: min(72vh, 640px);
-  border-radius: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+::selection {
+  background: rgba(88, 166, 255, 0.3);
 }
 
-@media (max-width: 48em) {
-  .landing-cinematic-wrap {
-    height: 130vh;
-  }
-
-  .landing-cinematic-sticky {
-    top: 8px;
-    height: 56vh;
-    border-radius: 12px;
-  }
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
 }
-
-@media (max-width: 48em) {
-  .landing-cinematic-wrap {
-    height: 120vh;
-  }
-
-  .landing-cinematic-sticky {
-    top: 8px;
-    height: 54vh;
-    border-radius: 12px;
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-@media (max-width: 30em) {
-  .landing-cinematic-wrap {
-    height: 105vh;
-  }
-
-  .landing-cinematic-sticky {
-    height: 48vh;
-  }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
-.landing-cinematic-video,
-.landing-cinematic-canvas {
-  display: none !important;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

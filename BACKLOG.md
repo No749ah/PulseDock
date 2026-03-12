@@ -1,14 +1,17 @@
 # PulseDock Backlog
 
 ## In Progress
-- [ ] **Full project refactor** — Audit all code, remove dead code, fix patterns, enforce strict types, proper error handling, no `any`
+- [ ] **Migrate remaining pages from Mantine → Tailwind** — Dashboard, monitors, alerts, account, admin, folders, versions
+- [ ] **Build Tailwind component library** — Card, Badge, Button, Table, Modal, Select components (reusable across app)
 
 ## Next Up
 
 ### Phase 1: Refactor & Harden
-- [ ] Remove all inline CSS from pages — extract to CSS modules or Tailwind
-- [ ] Replace Mantine with Tailwind CSS + shadcn/ui components (modern, customizable)
-- [ ] Add Tailwind CSS configuration with dark theme as default
+- [x] Add Tailwind CSS configuration with dark theme as default
+- [x] Start replacing Mantine → Tailwind (landing + login done)
+- [ ] Remove all inline CSS from remaining pages — extract to Tailwind
+- [ ] Complete Mantine → Tailwind migration for all app pages
+- [ ] Build reusable Tailwind component library (Card, Badge, Button, Table, Modal, Select)
 - [ ] Fix all TypeScript strict mode violations (`any`, missing types, implicit returns)
 - [ ] Add proper error boundaries and loading states to all pages
 - [ ] Fix all npm audit vulnerabilities (replace transitive deps where possible)
@@ -17,13 +20,15 @@
 - [ ] Add proper logging (structured JSON logs, no console.log)
 - [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management
 
-### Phase 2: Landing Page (Apple-style)
-- [ ] Redesign landing page — Apple-like aesthetic with smooth scroll animations
-- [ ] Add Framer Motion for entrance animations (fade-up, parallax, stagger)
-- [ ] Hero section: bold typography, gradient text, floating UI mockup
-- [ ] Feature sections with scroll-triggered reveals
-- [ ] Responsive design (mobile-first)
+### Phase 2: Landing Page & Login (Apple-style)
+- [x] Redesign landing page — Apple-like aesthetic with smooth scroll animations
+- [x] Add Framer Motion for entrance animations (fade-up, parallax, stagger)
+- [x] Hero section: bold typography, gradient text, floating UI mockup
+- [x] Feature sections with scroll-triggered reveals
+- [x] Responsive design (mobile-first) for landing + login
 - [ ] Add proper `<head>` metadata, OG tags, favicon
+- [x] Login page redesign — dark theme, modern inputs, animations
+- [ ] Implement 404 page with Tailwind
 
 ### Phase 3: Dashboard & App UI
 - [ ] Dark theme dashboard with glassmorphism cards

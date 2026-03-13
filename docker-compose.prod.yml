@@ -4,7 +4,7 @@ version: '3.9'
 # Usage: docker compose -f docker-compose.prod.yml up -d
 #
 # Required environment variables (set in .env.prod):
-#   DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, API_PORT, WEB_PORT
+#   POSTGRES_PASSWORD, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, API_PORT, WEB_PORT
 
 services:
   postgres:
@@ -32,10 +32,10 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-pulsedock}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pulsedock}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       API_PORT: ${API_PORT:-4321}
-      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      ALLOW_PUBLIC_REGISTRATION: ${ALLOW_PUBLIC_REGISTRATION:-false}
     ports:
       - "${API_PORT:-4321}:4321"
     depends_on:

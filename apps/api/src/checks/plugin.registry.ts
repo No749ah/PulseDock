@@ -22,7 +22,9 @@ export class PluginRegistry {
     return Array.from(this.plugins.values()).map((p) => ({
       id: p.id,
       displayName: p.displayName,
+      description: p.description ?? null,
       supportedMonitorTypes: p.supportedMonitorTypes,
+      configFields: p.configFields ?? [],
     }));
   }
 }

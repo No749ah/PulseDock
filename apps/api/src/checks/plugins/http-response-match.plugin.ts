@@ -3,7 +3,18 @@ import type { MonitorCheckPlugin } from '../plugin.contracts';
 export const httpResponseMatchPlugin: MonitorCheckPlugin = {
   id: 'http.response-match',
   displayName: 'HTTP Response Matcher',
+  description: 'Marks the monitor as healthy only when the HTTP response body contains a configured text fragment.',
   supportedMonitorTypes: ['HTTP'],
+  configFields: [
+    {
+      key: 'expectedText',
+      label: 'Expected response text',
+      type: 'text',
+      required: true,
+      placeholder: 'OK',
+      helpText: 'Case-sensitive substring that must be present in the response body.',
+    },
+  ],
   async run(context) {
     const expectedText = String(context.config.expectedText ?? '').trim();
     if (!expectedText) {

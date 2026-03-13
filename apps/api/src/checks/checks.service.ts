@@ -23,6 +23,10 @@ export class ChecksService {
     this.pluginRegistry.register(httpResponseMatchPlugin);
   }
 
+  listPlugins() {
+    return this.pluginRegistry.list();
+  }
+
   private parseGithubRepo(input: string) {
     const cleaned = input.replace(/^https?:\/\/github.com\//i, '').replace(/\.git$/, '');
     const [owner, repo] = cleaned.split('/');

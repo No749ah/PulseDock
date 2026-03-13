@@ -33,6 +33,10 @@ export class MonitorsService {
     return c;
   }
 
+  listPlugins() {
+    return this.checksService.listPlugins();
+  }
+
   async list(userId: string) {
     const monitors = await this.prisma.monitor.findMany({
       where: { userId },

@@ -14,6 +14,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Admin system health widget** — Real-time dashboard on the `/admin` page polling `/health` and `/metrics` every 30 seconds. Shows API uptime, database status + latency, request/error counters, alert dispatch metrics, and a status banner (green/red). Fully typed, auto-refreshes with manual refresh button.
 - **Live monitor/alert stream via WebSockets** — Backend now emits `monitor.checked` and `alert.triggered` events (in addition to monitor CRUD), and Dashboard/Monitors pages subscribe through Socket.io for instant status/activity updates without manual refresh.
 - **Production deployment baseline** — Added `docs/DEPLOYMENT.md`, shipped Kubernetes manifests (`k8s/base`, `k8s/overlays/prod`) for namespace/config/service/deployment/statefulset/ingress, and aligned `docker-compose.prod.yml` with real auth env names (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `ALLOW_PUBLIC_REGISTRATION`).
+- **Plugin metadata + UI configuration flow** — Added plugin metadata endpoint (`GET /v1/monitors/plugins`), expanded plugin contract metadata (`description`, `configFields`), and updated Monitors create/edit modal with plugin selection + config inputs (starter plugin `http.response-match`).
+- **Plugin packaging docs** — Added `docs/PLUGINS.md` with contribution flow, verification checklist, and security guidance for community plugin development.
 - **Plugin execution foundation for custom monitor types** — Added typed plugin contracts/registry, a guarded execution boundary (`executePluginSafely`) with timeout + output sanitization, integrated `config.pluginId` execution path in `ChecksService`, and shipped a starter plugin (`http.response-match`) with unit coverage.
 
 ### Security

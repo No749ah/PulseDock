@@ -14,9 +14,20 @@ export interface PluginExecutionResult {
   level: MonitorLevel;
 }
 
+export interface PluginConfigField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'boolean';
+  required?: boolean;
+  placeholder?: string;
+  helpText?: string;
+}
+
 export interface MonitorCheckPlugin {
   id: string;
   displayName: string;
+  description?: string;
   supportedMonitorTypes: ReadonlyArray<Monitor['type']>;
+  configFields?: ReadonlyArray<PluginConfigField>;
   run: (context: PluginExecutionContext) => Promise<PluginExecutionResult>;
 }

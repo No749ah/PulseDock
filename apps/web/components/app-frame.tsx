@@ -14,12 +14,15 @@ import {
   Globe,
   LogOut,
   Menu,
+  Moon,
   Settings,
   Shield,
+  Sun,
   User,
   X,
 } from 'lucide-react';
 import { clearSession, getCachedUser, getUser } from './auth';
+import { useTheme } from './theme-provider';
 
 type NavItem = {
   href: string;
@@ -62,6 +65,7 @@ export function AppFrame({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -209,8 +213,24 @@ export function AppFrame({
             </div>
           </div>
 
-          {/* Right: user menu */}
-          <div className="relative" ref={menuRef}>
+          {/* Right: theme toggle + user menu */}
+          <div className="flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* User menu */}
+            <div className="relative" ref={menuRef}>
             <button
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-elevated transition-colors"
               onClick={() => setUserMenuOpen((v) => !v)}
@@ -267,6 +287,7 @@ export function AppFrame({
                 </div>
               </div>
             )}
+            </div>
           </div>
         </header>
 

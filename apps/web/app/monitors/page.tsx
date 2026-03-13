@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Eye, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye } from "lucide-react";
 import { api } from "../../lib/api";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { Modal } from "../components/Modal";
 import { FadeIn } from "../components/FadeIn";
+import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 
 interface MonitorItem {
   id: string;
@@ -42,7 +43,7 @@ interface AlertChannel {
 }
 
 const inputClass =
-  "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
+  "w-full px-4 py-3 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 const CHANNEL_TYPE_COLORS: Record<string, string> = {
   discord: "text-indigo-400",
@@ -380,8 +381,8 @@ export default function MonitorsPage() {
                       return (
                         <TableRow key={monitor.id}>
                           <TableCell className="font-medium text-text-primary">{monitor.name}</TableCell>
-                          <TableCell className="text-sm text-text-secondary">{monitor.type}</TableCell>
-                          <TableCell className="text-sm text-text-secondary truncate max-w-[200px]">
+                          <TableCell className="text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
+                          <TableCell className="text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
                             {monitor.target}
                           </TableCell>
                           <TableCell className="text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
@@ -423,8 +424,9 @@ export default function MonitorsPage() {
                                   });
                                   setShowModal(true);
                                 }}
+                                title="Edit monitor"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Pencil className="w-4 h-4" />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger">
                                 <Trash2 className="w-4 h-4" />
@@ -444,7 +446,7 @@ export default function MonitorsPage() {
         {/* Recent runs */}
         <FadeIn delay={0.2}>
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-text-primary">Recent Activity</h2>
+            <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
               <Card className="text-center py-12">
                 <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
@@ -473,7 +475,7 @@ export default function MonitorsPage() {
                             <strong>{monitors.find((m) => m.id === run.monitorId)?.name}</strong> — {run.message}
                           </p>
                           <p className="text-xs text-text-secondary">
-                            {new Date(run.checkedAt).toLocaleString()}
+                            {relativeTime(run.checkedAt)}
                           </p>
                         </div>
                       </div>

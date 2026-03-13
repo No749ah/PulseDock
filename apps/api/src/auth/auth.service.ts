@@ -147,7 +147,8 @@ export class AuthService {
     return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } satisfies AuthUser };
   }
 
-  async refresh(refreshToken: string, context?: { userAgent?: string | null; ipAddress?: string | null }) {
+  async refresh(refreshToken: string | undefined, context?: { userAgent?: string | null; ipAddress?: string | null }) {
+    if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
     try {
       const payload = this.jwt.verify<{ sub: string; sid?: string; type: string; email: string; role: 'admin' | 'user' }>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret',

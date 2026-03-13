@@ -27,64 +27,55 @@ export const API_BASE =
   inferApiBaseFromLocation() ||
   'https://oc-api-test.no749ah.com';
 
-function getStored(name: string) {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(name) ?? '';
-}
-
-function setStored(name: string, value: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(name, value);
-}
-
-function clearStored(name: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(name);
-}
-
-export async function api<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
-  const access = token || getStored('pulsedock_access_token');
-
-  const run = async (bearer?: string) =>
+/**
+ * Typed fetch helper.
+ *
+ * Authentication is handled exclusively via httpOnly cookies set by the API
+ * on login/refresh. All requests use `credentials: 'include'` to send those
+ * cookies automatically. The `_token` parameter is kept for call-site backward
+ * compatibility only and is intentionally ignored — never send JWTs in headers.
+ *
+ * On 401, a cookie-based token refresh is attempted transparently.
+ */
+export async function api<T>(path: string, _token?: string, init?: RequestInit): Promise<T> {
+  const run = () =>
     fetch(`${API_BASE}${path}`, {
       ...init,
+      credentials: 'include', // httpOnly cookies sent automatically
       headers: {
         'content-type': 'application/json',
-        ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
         ...(init?.headers ?? {}),
       },
       cache: 'no-store',
     });
 
-  let response = await run(access);
+  let response = await run();
 
-  if (response.status === 401 && access && typeof window !== 'undefined') {
-    const refreshToken = getStored('pulsedock_refresh_token');
-    if (refreshToken) {
-      const refreshResp = await fetch(`${API_BASE}/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+  if (response.status === 401 && typeof window !== 'undefined') {
+    // Attempt a silent token refresh using the httpOnly refresh cookie.
+    const refreshResp = await fetch(`${API_BASE}/v1/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include', // sends pulsedock_refresh cookie
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
 
-      if (refreshResp.ok) {
-        const refreshed = (await refreshResp.json()) as {
-          accessToken: string;
-          refreshToken: string;
-          user: { id: string; email: string; role: 'admin' | 'user'; name?: string };
-        };
-        setStored('pulsedock_access_token', refreshed.accessToken);
-        setStored('pulsedock_refresh_token', refreshed.refreshToken);
+    if (refreshResp.ok) {
+      // API has rotated both cookies server-side. Retry the original request.
+      const refreshed = (await refreshResp.json()) as {
+        accessToken: string;
+        refreshToken: string;
+        user: { id: string; email: string; role: 'admin' | 'user'; name?: string };
+      };
+      // Update local user metadata (not a token — cookies were set by the server).
+      if (typeof localStorage !== 'undefined') {
         const name = refreshed.user?.name || refreshed.user?.email?.split('@')?.[0] || 'user';
-        setStored('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
-        response = await run(refreshed.accessToken);
-      } else {
-        // Invalid/expired refresh token: clear stale session so frontend can re-login cleanly
-        clearStored('pulsedock_access_token');
-        clearStored('pulsedock_refresh_token');
-        clearStored('pulsedock_user');
+        localStorage.setItem('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
       }
+      response = await run();
     }
+    // If refresh fails: do nothing here. The 401 will bubble up and callers
+    // redirect to /login on error (existing pattern in all pages).
   }
 
   if (!response.ok) {

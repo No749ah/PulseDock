@@ -10,7 +10,7 @@ import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Select } from '../components/Select';
-import { getToken, getUser } from '../../components/auth';
+import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
 type VersionItem = {
@@ -78,7 +78,6 @@ function StatusIcon({ status }: { status: 'unknown' | 'ok' | 'fail' }) {
 
 export default function VersionsPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [monitorDetails, setMonitorDetails] = useState<Record<string, MonitorDetails>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -138,15 +137,15 @@ export default function VersionsPage() {
 
   useEffect(() => {
     const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
+    if (!user) router.push('/login');
+  }, [router]);
 
   async function load() {
     setLoading(true);
     try {
       const [data, monitors] = await Promise.all([
-        api<Summary>('/v1/monitors/version-summary', token),
-        api<MonitorDetails[]>('/v1/monitors', token),
+        api<Summary>('/v1/monitors/version-summary'),
+        api<MonitorDetails[]>('/v1/monitors'),
       ]);
       setSummary(data);
       const map: Record<string, MonitorDetails> = {};
@@ -168,7 +167,7 @@ export default function VersionsPage() {
     const t = setTimeout(async () => {
       setLatestPreviewLoading(true);
       try {
-        const res = await api<{ ok: boolean; latestVersion?: string | null; message: string }>('/v1/monitors/version-test', token, {
+        const res = await api<{ ok: boolean; latestVersion?: string | null; message: string }>('/v1/monitors/version-test', undefined, {
           method: 'POST',
           body: JSON.stringify({ provider, target, token: tokenInput || undefined, host: gitlabHost || undefined }),
         });
@@ -181,15 +180,15 @@ export default function VersionsPage() {
     }, 450);
 
     return () => clearTimeout(t);
-  }, [provider, target, tokenInput, gitlabHost, token]);
+  }, [provider, target, tokenInput, gitlabHost]);
 
   async function runNow(monitorId: string) {
     setRunningId(monitorId);
     try {
-      await api('/v1/monitors/run', token, { method: 'POST', body: JSON.stringify({ monitorId }) });
+      await api('/v1/monitors/run', undefined, { method: 'POST', body: JSON.stringify({ monitorId }) });
       await load();
       if (expandedId === monitorId) {
-        const runs = await api<MonitorRun[]>(`/v1/monitors/${monitorId}/runs`, token);
+        const runs = await api<MonitorRun[]>(`/v1/monitors/${monitorId}/runs`);
         setRunsByMonitor((prev) => ({ ...prev, [monitorId]: runs }));
       }
     } finally {
@@ -206,7 +205,7 @@ export default function VersionsPage() {
     if (runsByMonitor[monitorId]) return;
     setRunsLoadingId(monitorId);
     try {
-      const runs = await api<MonitorRun[]>(`/v1/monitors/${monitorId}/runs`, token);
+      const runs = await api<MonitorRun[]>(`/v1/monitors/${monitorId}/runs`);
       setRunsByMonitor((prev) => ({ ...prev, [monitorId]: runs }));
     } finally {
       setRunsLoadingId(null);
@@ -242,7 +241,7 @@ export default function VersionsPage() {
     if (!editId) return;
     setEditSaving(true);
     try {
-      await api(`/v1/monitors/${editId}`, token, {
+      await api(`/v1/monitors/${editId}`, undefined, {
         method: 'PATCH',
         body: JSON.stringify({
           name: editName,
@@ -273,13 +272,13 @@ export default function VersionsPage() {
 
   async function removeCheck(id: string) {
     if (!confirm('Version check wirklich löschen?')) return;
-    await api(`/v1/monitors/${id}`, token, { method: 'DELETE' });
+    await api(`/v1/monitors/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 
   async function testConnection() {
     try {
-      const result = await api<{ ok: boolean; message: string; latestVersion?: string | null; unauthorized?: boolean }>('/v1/monitors/version-test', token, {
+      const result = await api<{ ok: boolean; message: string; latestVersion?: string | null; unauthorized?: boolean }>('/v1/monitors/version-test', undefined, {
         method: 'POST',
         body: JSON.stringify({ provider, target, token: tokenInput || undefined, host: gitlabHost || undefined }),
       });
@@ -298,7 +297,7 @@ export default function VersionsPage() {
 
   async function discoverCurrentVersion() {
     setDetectTried(true);
-    const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[] }>('/v1/monitors/version-discover', token, {
+    const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[] }>('/v1/monitors/version-discover', undefined, {
       method: 'POST',
       body: JSON.stringify({
         provider,
@@ -371,7 +370,7 @@ export default function VersionsPage() {
     let resolvedCurrentVersion = currentVersion;
 
     if (appUrl && !resolvedCurrentVersion) {
-      const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[] }>('/v1/monitors/version-discover', token, {
+      const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[] }>('/v1/monitors/version-discover', undefined, {
         method: 'POST',
         body: JSON.stringify({
           provider,
@@ -403,7 +402,7 @@ export default function VersionsPage() {
       }
     }
 
-    await api('/v1/monitors', token, {
+    await api('/v1/monitors', undefined, {
       method: 'POST',
       body: JSON.stringify({
         name,

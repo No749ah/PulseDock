@@ -22,9 +22,10 @@ export class LoginDto {
 }
 
 export class RefreshDto {
+  @IsOptional()
   @IsString()
   @MaxLength(2048)
-  refreshToken!: string;
+  refreshToken?: string;
 }
 
 export class InviteInfoDto {

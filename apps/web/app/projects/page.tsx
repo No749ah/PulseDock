@@ -9,7 +9,7 @@ import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Select } from '../components/Select';
-import { getToken, getUser } from '../../components/auth';
+import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
 type Folder = { id: string; name: string; createdAt: string };
@@ -18,7 +18,6 @@ const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg 
 
 export default function FoldersPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -34,13 +33,13 @@ export default function FoldersPage() {
 
   useEffect(() => {
     const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
+    if (!user) router.push('/login');
+  }, [router]);
 
   async function load() {
     setLoading(true);
     try {
-      setFolders(await api<Folder[]>('/v1/folders', token));
+      setFolders(await api<Folder[]>('/v1/folders'));
     } finally {
       setLoading(false);
     }
@@ -54,7 +53,7 @@ export default function FoldersPage() {
   }
 
   async function createFolder() {
-    await api('/v1/folders', token, { method: 'POST', body: JSON.stringify({ name }) });
+    await api('/v1/folders', undefined, { method: 'POST', body: JSON.stringify({ name }) });
     resetCreateForm();
     setCreateOpen(false);
     await load();
@@ -68,7 +67,7 @@ export default function FoldersPage() {
 
   async function saveEdit() {
     if (!selected) return;
-    await api(`/v1/folders/${selected.id}`, token, { method: 'PATCH', body: JSON.stringify({ name: editName }) });
+    await api(`/v1/folders/${selected.id}`, undefined, { method: 'PATCH', body: JSON.stringify({ name: editName }) });
     setEditOpen(false);
     await load();
   }
@@ -80,7 +79,7 @@ export default function FoldersPage() {
 
   async function confirmDelete() {
     if (!selected) return;
-    await api(`/v1/folders/${selected.id}`, token, { method: 'DELETE' });
+    await api(`/v1/folders/${selected.id}`, undefined, { method: 'DELETE' });
     setDeleteOpen(false);
     await load();
   }

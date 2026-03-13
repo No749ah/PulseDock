@@ -115,8 +115,7 @@ export default function AccountPage() {
       setConfirmPassword("");
       setSuccess("Password changed. Please login again.");
       setTimeout(() => {
-        clearSession();
-        router.push("/login");
+        void clearSession().then(() => router.push("/login"));
       }, 2000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to change password");

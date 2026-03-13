@@ -259,7 +259,7 @@ export function AppFrame({
                 <div className="py-1 border-t border-border">
                   <button
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left"
-                    onClick={() => { clearSession(); router.push('/login'); }}
+                    onClick={() => { void clearSession().then(() => router.push('/login')); }}
                   >
                     <LogOut className="w-4 h-4" />
                     Logout

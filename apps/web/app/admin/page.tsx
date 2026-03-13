@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
 import { AppModal } from '../../components/ui/modal-framework';
-import { getToken, getUser } from '../../components/auth';
+import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { Button } from '../../app/components/Button';
 import { Card } from '../../app/components/Card';
@@ -21,7 +21,6 @@ type PasswordReset = { id: string; email: string; expiresAt: string; createdAt: 
 
 export default function AdminPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
   const user = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,18 +40,18 @@ export default function AdminPage() {
   const [pageSize, setPageSize] = useState('10');
 
   useEffect(() => {
-    if (!user || !token) router.push('/login');
+    if (!user) router.push('/login');
     else if (user.role !== 'admin') router.push('/unauthorized');
-  }, [router, token, user]);
+  }, [router, user]);
 
   async function load() {
     setLoading(true);
     try {
       const [list, inviteList, logs, resets] = await Promise.all([
-        api<AdminUser[]>('/v1/admin/users', token),
-        api<Invite[]>('/v1/admin/invites', token),
-        api<AuditLog[]>('/v1/admin/audit-logs', token),
-        api<PasswordReset[]>('/v1/admin/password-resets', token),
+        api<AdminUser[]>('/v1/admin/users'),
+        api<Invite[]>('/v1/admin/invites'),
+        api<AuditLog[]>('/v1/admin/audit-logs'),
+        api<PasswordReset[]>('/v1/admin/password-resets'),
       ]);
       setUsers(list);
       setInvites(inviteList);
@@ -64,12 +63,12 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (!token || user?.role !== 'admin') return;
+    if (user?.role !== 'admin') return;
     load().catch(() => router.push('/unauthorized'));
-  }, [token, user]);
+  }, [user]);
 
   async function updateRole(userId: string, role: 'admin' | 'user') {
-    await api('/v1/admin/users/role', token, {
+    await api('/v1/admin/users/role', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId, role }),
     });
@@ -83,7 +82,7 @@ export default function AdminPage() {
   }
 
   async function saveUserEmail() {
-    await api('/v1/admin/users/update', token, {
+    await api('/v1/admin/users/update', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId: editUserId, email: editUserEmail }),
     });
@@ -92,7 +91,7 @@ export default function AdminPage() {
   }
 
   async function setStatus(userId: string, isActive: boolean) {
-    await api('/v1/admin/users/status', token, {
+    await api('/v1/admin/users/status', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId, isActive }),
     });
@@ -106,7 +105,7 @@ export default function AdminPage() {
   }
 
   async function createInvite() {
-    const invite = await api<Invite>('/v1/admin/invites', token, {
+    const invite = await api<Invite>('/v1/admin/invites', undefined, {
       method: 'POST',
       body: JSON.stringify({ email: inviteEmail, role: inviteRole, expiresInHours: 48 }),
     });
@@ -116,12 +115,12 @@ export default function AdminPage() {
   }
 
   async function revokeInvite(id: string) {
-    await api(`/v1/admin/invites/${id}`, token, { method: 'DELETE' });
+    await api(`/v1/admin/invites/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 
   async function revokePasswordReset(id: string) {
-    await api(`/v1/admin/password-resets/${id}`, token, { method: 'DELETE' });
+    await api(`/v1/admin/password-resets/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 

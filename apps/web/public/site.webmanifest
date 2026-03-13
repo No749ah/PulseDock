@@ -2,21 +2,39 @@
   "name": "PulseDock",
   "short_name": "PulseDock",
   "description": "Version Intelligence & Uptime Monitoring",
-  "start_url": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#050a0e",
   "theme_color": "#5EE2B0",
+  "categories": ["developer", "productivity", "utilities"],
+  "lang": "en",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View your monitoring dashboard"
+    },
+    {
+      "name": "Monitors",
+      "url": "/monitors",
+      "description": "Manage your monitors"
     }
   ]
 }

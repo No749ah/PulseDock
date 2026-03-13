@@ -10,6 +10,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) for one-click monitor creation from any tab. Features: auto-detects current tab URL/title, context menu integration ("Add to PulseDock Monitors" on any page/link), configurable interval and monitor type (HTTP/Git Release/Docker Image), API key auth, dark-theme popup matching PulseDock design language, and a dashboard shortcut button. Load from `packages/extension/dist/` in Chrome developer mode. See `docs/EXTENSION.md`.
+
+### Added
 - **V2 API — alert channels + check history endpoints** — Extended v2 surface: `GET /v2/alert-channels` (paginated, filterable by type/name, with `usedByCount` per channel and redacted webhook secrets) and `GET /v2/checks` (paginated check run history with level + date-range filtering). Both follow the v2 envelope format `{ data, meta: { total, page, limit, pages } }`. 7 new integration tests added (89 total).
 - **PWA UX baseline** — Added contextual skeleton loading states for Dashboard/Monitors/Alerts, install banner (`beforeinstallprompt` + iOS add-to-home-screen hint), offline route (`/offline`), service worker registration (`/sw.js`), and updated `site.webmanifest` shortcuts/scope.
 

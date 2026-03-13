@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseDock</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-brand">
+      <svg class="header-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="url(#g)" stroke-width="2"/>
+        <path d="M7 12h2l2-4 2 8 2-4h2" stroke="url(#g)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="g" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#818cf8"/>
+            <stop offset="1" stop-color="#a78bfa"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span class="header-title">PulseDock</span>
+    </div>
+    <div class="header-actions">
+      <button id="btn-open-dashboard" class="icon-btn" title="Open dashboard">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+        </svg>
+      </button>
+      <button id="btn-settings-icon" class="icon-btn" title="Settings">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+          <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Create Monitor View ── -->
+  <div id="view-create" class="view" style="display:none">
+    <div class="section-label">Monitor URL</div>
+    <input id="input-url" class="input" type="url" placeholder="https://example.com" />
+
+    <div class="section-label">Name</div>
+    <input id="input-name" class="input" type="text" placeholder="My Monitor" maxlength="255" />
+
+    <div class="row-two">
+      <div class="field">
+        <div class="section-label">Type</div>
+        <select id="input-type" class="input select">
+          <option value="HTTP">HTTP Uptime</option>
+          <option value="GIT_RELEASE">Git Release</option>
+          <option value="DOCKER_IMAGE">Docker Image</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="section-label">Interval <span id="interval-label" class="label-hint">every 5 min</span></div>
+        <select id="input-interval" class="input select">
+          <option value="30">30 seconds</option>
+          <option value="60">1 minute</option>
+          <option value="300" selected>5 minutes</option>
+          <option value="600">10 minutes</option>
+          <option value="1800">30 minutes</option>
+          <option value="3600">1 hour</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="status-msg" class="status-msg" style="display:none"></div>
+
+    <button id="btn-create" class="btn btn-primary">
+      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" style="margin-right:6px">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+      </svg>
+      Add Monitor
+    </button>
+  </div>
+
+  <!-- ── Success View ── -->
+  <div id="view-success" class="view" style="display:none">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" width="40" height="40">
+        <circle cx="12" cy="12" r="10" fill="rgba(52,211,153,0.12)" stroke="#34d399" stroke-width="1.5"/>
+        <path d="M8 12.5l3 3 5-5" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="success-title">Monitor created!</div>
+    <div id="success-name" class="success-name"></div>
+    <div id="success-url" class="success-url"></div>
+    <div class="success-actions">
+      <button id="btn-success-view-monitor" class="btn btn-primary btn-sm">View in Dashboard</button>
+      <button id="btn-success-add-another" class="btn btn-ghost btn-sm">Add Another</button>
+    </div>
+  </div>
+
+  <!-- ── Error View ── -->
+  <div id="view-error" class="view" style="display:none">
+    <div class="error-icon">
+      <svg viewBox="0 0 24 24" fill="none" width="40" height="40">
+        <circle cx="12" cy="12" r="10" fill="rgba(248,113,113,0.12)" stroke="#f87171" stroke-width="1.5"/>
+        <path d="M12 8v4m0 4h.01" stroke="#f87171" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="error-title">Failed to create monitor</div>
+    <div id="error-msg" class="error-msg"></div>
+    <button id="btn-error-retry" class="btn btn-ghost btn-sm">Try Again</button>
+  </div>
+
+  <!-- ── Settings View ── -->
+  <div id="view-settings" class="view" style="display:none">
+    <div class="settings-header">Settings</div>
+
+    <div class="section-label">PulseDock API URL</div>
+    <input id="input-api-url" class="input" type="url" placeholder="http://localhost:4321" />
+
+    <div class="section-label mt">API Key</div>
+    <input id="input-api-key" class="input" type="password" placeholder="pd_live_…" />
+    <div class="settings-hint">
+      Create an API key in your PulseDock dashboard under Account → API Keys.
+    </div>
+
+    <div id="settings-status" class="settings-status"></div>
+
+    <div class="settings-actions">
+      <button id="btn-test-connection" class="btn btn-ghost btn-sm">Test Connection</button>
+      <button id="btn-cancel-settings" class="btn btn-ghost btn-sm">Cancel</button>
+      <button id="btn-save-settings" class="btn btn-primary btn-sm">Save</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -5,12 +5,18 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050a0e",
-  "theme_color": "#58a6ff",
+  "theme_color": "#5EE2B0",
   "icons": [
     {
-      "src": "/brand/pulsedock-logo.svg",
+      "src": "/favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }

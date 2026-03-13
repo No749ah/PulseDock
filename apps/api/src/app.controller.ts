@@ -1,5 +1,5 @@
-import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Header, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MetricsService } from './common/metrics.service';
 import { PrismaService } from './common/prisma.service';
 
@@ -78,10 +78,22 @@ export class AppController {
   }
 
   @Get('metrics')
-  @ApiOperation({ summary: 'Metrics snapshot', description: 'Returns runtime request/error counters.' })
+  @ApiOperation({ summary: 'Metrics snapshot (JSON)', description: 'Returns runtime request/error counters as JSON.' })
   @ApiResponse({ status: 200, description: 'Metrics snapshot returned.' })
   metricsSnapshot() {
     return this.metrics.snapshot();
+  }
+
+  @Get('metrics/prometheus')
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  @ApiOperation({
+    summary: 'Prometheus metrics',
+    description: 'Returns runtime metrics in Prometheus text exposition format (version 0.0.4). Suitable for scraping by a Prometheus server.',
+  })
+  @ApiProduces('text/plain')
+  @ApiResponse({ status: 200, description: 'Prometheus metrics text returned.' })
+  metricsPrometheus(): string {
+    return this.metrics.prometheusText();
   }
 
   @Get('v1/system/version')

@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Activity, AlertTriangle, CheckCircle, Database, RefreshCw, Server, XCircle, Zap } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
 import { AppModal } from '../../components/ui/modal-framework';
-import { getToken, getUser } from '../../components/auth';
+import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { Button } from '../../app/components/Button';
+import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
 import { CopyButton } from '../../app/components/CopyButton';
 import { Select } from '../../app/components/Select';
@@ -19,9 +21,185 @@ type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: s
 type AuditLog = { id: string; action: string; actorUserId: string | null; targetUserId: string | null; createdAt: string };
 type PasswordReset = { id: string; email: string; expiresAt: string; createdAt: string; resetUrl: string };
 
+type HealthData = {
+  ok: boolean;
+  service: string;
+  version: string;
+  runtime: string;
+  uptimeMs: number;
+  checks: {
+    database: { status: 'ok' | 'error'; latencyMs: number | null };
+  };
+};
+
+type MetricsData = {
+  requestsTotal: number;
+  errorsTotal: number;
+  authLoginFailed: number;
+  alertsSent: number;
+  alertsFailed: number;
+  at: string;
+};
+
+function formatUptime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function SystemHealthWidget() {
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [metrics, setMetrics] = useState<MetricsData | null>(null);
+  const [healthError, setHealthError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchHealth = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [h, m] = await Promise.all([
+        api<HealthData>('/health').catch(() => null),
+        api<MetricsData>('/metrics').catch(() => null),
+      ]);
+      setHealth(h);
+      setMetrics(m);
+      setHealthError(h === null || !h.ok);
+      setLastUpdated(new Date());
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchHealth();
+    const interval = setInterval(() => void fetchHealth(), 30_000);
+    return () => clearInterval(interval);
+  }, [fetchHealth]);
+
+  const statusColor = healthError ? 'text-danger' : 'text-success';
+  const StatusIcon = healthError ? XCircle : CheckCircle;
+  const dbStatus = health?.checks?.database?.status;
+
+  return (
+    <Card className="mb-6">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-accent" />
+          <h3 className="text-lg font-bold text-text-primary">System Health</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-text-secondary">Updated {lastUpdated.toLocaleTimeString()}</span>
+          )}
+          <button
+            onClick={() => void fetchHealth()}
+            disabled={refreshing}
+            className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-50"
+            aria-label="Refresh health"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Overall status banner */}
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-5 ${healthError ? 'bg-danger/10 border border-danger/20' : 'bg-success/10 border border-success/20'}`}>
+        <StatusIcon className={`w-5 h-5 ${statusColor}`} />
+        <div>
+          <p className={`font-semibold text-sm ${statusColor}`}>
+            {healthError ? 'Service Degraded' : 'All Systems Operational'}
+          </p>
+          {health && (
+            <p className="text-xs text-text-secondary mt-0.5">
+              {health.service} v{health.version} · {health.runtime}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        {/* Uptime */}
+        <div className="bg-surface-elevated rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="w-4 h-4 text-accent" />
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Uptime</span>
+          </div>
+          <p className="text-xl font-bold text-text-primary tabular-nums">
+            {health ? formatUptime(health.uptimeMs) : '—'}
+          </p>
+        </div>
+
+        {/* DB */}
+        <div className="bg-surface-elevated rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-4 h-4 text-accent" />
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Database</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={dbStatus === 'ok' ? 'success' : 'danger'}>
+              {dbStatus === 'ok' ? 'OK' : dbStatus === 'error' ? 'ERROR' : '—'}
+            </Badge>
+            {health?.checks?.database?.latencyMs != null && (
+              <span className="text-xs text-text-secondary">{health.checks.database.latencyMs}ms</span>
+            )}
+          </div>
+        </div>
+
+        {/* Requests */}
+        <div className="bg-surface-elevated rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-4 h-4 text-accent" />
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Requests</span>
+          </div>
+          <p className="text-xl font-bold text-text-primary tabular-nums">
+            {metrics?.requestsTotal?.toLocaleString() ?? '—'}
+          </p>
+        </div>
+
+        {/* Errors */}
+        <div className="bg-surface-elevated rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Errors</span>
+          </div>
+          <p className={`text-xl font-bold tabular-nums ${(metrics?.errorsTotal ?? 0) > 0 ? 'text-warning' : 'text-text-primary'}`}>
+            {metrics?.errorsTotal?.toLocaleString() ?? '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Alerts metrics row */}
+      {metrics && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-text-secondary">Login failures</span>
+            <span className="text-sm font-semibold text-text-primary tabular-nums">{metrics.authLoginFailed}</span>
+          </div>
+          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-text-secondary">Alerts sent</span>
+            <span className="text-sm font-semibold text-success tabular-nums">{metrics.alertsSent}</span>
+          </div>
+          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-text-secondary">Alert failures</span>
+            <span className={`text-sm font-semibold tabular-nums ${metrics.alertsFailed > 0 ? 'text-danger' : 'text-text-primary'}`}>
+              {metrics.alertsFailed}
+            </span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
   const user = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,18 +219,18 @@ export default function AdminPage() {
   const [pageSize, setPageSize] = useState('10');
 
   useEffect(() => {
-    if (!user || !token) router.push('/login');
+    if (!user) router.push('/login');
     else if (user.role !== 'admin') router.push('/unauthorized');
-  }, [router, token, user]);
+  }, [router, user]);
 
   async function load() {
     setLoading(true);
     try {
       const [list, inviteList, logs, resets] = await Promise.all([
-        api<AdminUser[]>('/v1/admin/users', token),
-        api<Invite[]>('/v1/admin/invites', token),
-        api<AuditLog[]>('/v1/admin/audit-logs', token),
-        api<PasswordReset[]>('/v1/admin/password-resets', token),
+        api<AdminUser[]>('/v1/admin/users'),
+        api<Invite[]>('/v1/admin/invites'),
+        api<AuditLog[]>('/v1/admin/audit-logs'),
+        api<PasswordReset[]>('/v1/admin/password-resets'),
       ]);
       setUsers(list);
       setInvites(inviteList);
@@ -64,12 +242,12 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (!token || user?.role !== 'admin') return;
+    if (user?.role !== 'admin') return;
     load().catch(() => router.push('/unauthorized'));
-  }, [token, user]);
+  }, [user]);
 
   async function updateRole(userId: string, role: 'admin' | 'user') {
-    await api('/v1/admin/users/role', token, {
+    await api('/v1/admin/users/role', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId, role }),
     });
@@ -83,7 +261,7 @@ export default function AdminPage() {
   }
 
   async function saveUserEmail() {
-    await api('/v1/admin/users/update', token, {
+    await api('/v1/admin/users/update', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId: editUserId, email: editUserEmail }),
     });
@@ -92,7 +270,7 @@ export default function AdminPage() {
   }
 
   async function setStatus(userId: string, isActive: boolean) {
-    await api('/v1/admin/users/status', token, {
+    await api('/v1/admin/users/status', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId, isActive }),
     });
@@ -106,7 +284,7 @@ export default function AdminPage() {
   }
 
   async function createInvite() {
-    const invite = await api<Invite>('/v1/admin/invites', token, {
+    const invite = await api<Invite>('/v1/admin/invites', undefined, {
       method: 'POST',
       body: JSON.stringify({ email: inviteEmail, role: inviteRole, expiresInHours: 48 }),
     });
@@ -116,12 +294,12 @@ export default function AdminPage() {
   }
 
   async function revokeInvite(id: string) {
-    await api(`/v1/admin/invites/${id}`, token, { method: 'DELETE' });
+    await api(`/v1/admin/invites/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 
   async function revokePasswordReset(id: string) {
-    await api(`/v1/admin/password-resets/${id}`, token, { method: 'DELETE' });
+    await api(`/v1/admin/password-resets/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 
@@ -138,6 +316,7 @@ export default function AdminPage() {
   return (
     <AppFrame title="Admin" subtitle="Role management, secure onboarding and invite links.">
       {loading ? <LoadingState label="Loading admin data..." /> : <>
+      <SystemHealthWidget />
       <AppModal opened={editUserOpen} onClose={() => setEditUserOpen(false)} title="Edit user email">
         <div className="space-y-4">
           <TextInput label="Email" value={editUserEmail} onChange={(e) => setEditUserEmail(e.currentTarget.value)} />

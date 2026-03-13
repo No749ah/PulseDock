@@ -99,6 +99,42 @@ export class TestVersionConnectionDto {
   host?: string;
 }
 
+export class ImportMonitorItemDto {
+  @IsString()
+  @MaxLength(255)
+  name!: string;
+
+  @IsString()
+  @MaxLength(1024)
+  target!: string;
+
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  intervalSec?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  timeoutMs?: number;
+
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
+export class ImportMonitorsDto {
+  @IsArray()
+  monitors!: ImportMonitorItemDto[];
+}
+
 export class DiscoverVersionDto {
   @IsIn(['github', 'gitlab', 'docker', 'apt'])
   provider!: 'github' | 'gitlab' | 'docker' | 'apt';

@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser') as (opts?: unknown) => (req: unknown, res: unknown, next: () => void) => void;
 import { AppModule } from './app.module';
 import { validateEnv } from './common/env';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
@@ -45,8 +47,17 @@ async function bootstrap() {
       logger.warn('Migrations check failed or already up to date', { error: err });
     }
   }
-  const app = await NestFactory.create(AppModule, { cors: { origin: '*', credentials: false } });
+  const webOrigin = process.env.WEB_URL || 'http://localhost:1234';
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      origin: [webOrigin, 'https://oc-dev-test.no749ah.com'],
+      credentials: true,
+    },
+  });
   
+  // Cookie parser (must be before route handlers)
+  app.use(cookieParser());
+
   // Security middleware
   app.use(helmet({
     contentSecurityPolicy: {

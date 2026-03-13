@@ -1,0 +1,122 @@
+# PulseDock — Development Docker Compose
+# Starts the full stack: API + Web + PostgreSQL + Redis
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.dev.yml up --build   # rebuild after Dockerfile changes
+#   docker compose -f docker-compose.dev.yml down -v      # teardown + wipe volumes
+#
+# Hot reload is enabled for both API and Web via bind mounts.
+# The .env file at the project root is used for all configuration.
+
+version: '3.9'
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pulsedock
+      POSTGRES_PASSWORD: pulsedock
+      POSTGRES_DB: pulsedock
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsedock"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulsedock_dev
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pulsedock_dev
+
+  # ── API (NestJS) ────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://pulsedock:pulsedock@postgres:5432/pulsedock
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+    ports:
+      - "${API_PORT:-4321}:4321"
+    volumes:
+      # Source bind mount for hot reload
+      - ./apps/api:/app/apps/api:delegated
+      - ./prisma:/app/prisma:delegated
+      # Prevent container node_modules from being overwritten by host
+      - api_node_modules:/app/node_modules
+      - api_app_node_modules:/app/apps/api/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${API_PORT:-4321}/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      - pulsedock_dev
+
+  # ── Web (Next.js) ───────────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      API_INTERNAL_URL: http://api:${API_PORT:-4321}
+    ports:
+      - "${WEB_PORT:-1234}:1234"
+    volumes:
+      # Source bind mount for hot reload
+      - ./apps/web:/app/apps/web:delegated
+      # Prevent container node_modules from being overwritten by host
+      - web_node_modules:/app/node_modules
+      - web_app_node_modules:/app/apps/web/node_modules
+    depends_on:
+      - api
+    networks:
+      - pulsedock_dev
+
+# ── Volumes & Networks ──────────────────────────────────────────────────────
+
+volumes:
+  dev_pg_data:
+  dev_redis_data:
+  api_node_modules:
+  api_app_node_modules:
+  web_node_modules:
+  web_app_node_modules:
+
+networks:
+  pulsedock_dev:
+    driver: bridge

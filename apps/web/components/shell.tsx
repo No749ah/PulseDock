@@ -28,8 +28,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <button
           className="btn secondary mt-[18px] w-full"
           onClick={() => {
-            clearSession();
-            router.push('/login');
+            void clearSession().then(() => router.push('/login'));
           }}
         >
           Logout

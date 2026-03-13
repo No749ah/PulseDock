@@ -1,9 +1,40 @@
-import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto } from './auth.dto';
+
+interface ExpressResponse {
+  cookie(name: string, value: string, options: object): this;
+  clearCookie(name: string, options?: object): this;
+}
+
+const IS_PROD = process.env.NODE_ENV === 'production';
+const ACCESS_TTL = 15 * 60 * 1000;        // 15 min
+const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function setAuthCookies(res: ExpressResponse, accessToken: string, refreshToken: string) {
+  res.cookie('pulsedock_token', accessToken, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: 'lax',
+    maxAge: ACCESS_TTL,
+    path: '/',
+  });
+  res.cookie('pulsedock_refresh', refreshToken, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: 'lax',
+    maxAge: REFRESH_TTL,
+    path: '/',
+  });
+}
+
+function clearAuthCookies(res: ExpressResponse) {
+  res.clearCookie('pulsedock_token', { path: '/' });
+  res.clearCookie('pulsedock_refresh', { path: '/' });
+}
 
 @ApiTags('Auth')
 @Controller('v1/auth')
@@ -24,11 +55,17 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email + password', description: 'Returns accessToken, refreshToken and user info.' })
   @ApiResponse({ status: 200, description: 'Login successful.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or account locked.' })
-  login(@Req() req: { headers: Record<string, string | undefined>; ip?: string }, @Body() body: LoginDto) {
-    return this.authService.login(body.email, body.password, {
+  async login(
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: LoginDto,
+  ) {
+    const result = await this.authService.login(body.email, body.password, {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
@@ -36,11 +73,19 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token', description: 'Exchange a valid refreshToken for a new access + refresh token pair.' })
   @ApiResponse({ status: 200, description: 'Token refreshed.' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token.' })
-  refresh(@Req() req: { headers: Record<string, string | undefined>; ip?: string }, @Body() body: RefreshDto) {
-    return this.authService.refresh(body.refreshToken, {
+  async refresh(
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string; cookies?: Record<string, string | undefined> },
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: RefreshDto,
+  ) {
+    // Accept refresh token from cookie OR from request body (backward compat)
+    const refreshToken = req.cookies?.pulsedock_refresh || body.refreshToken;
+    const result = await this.authService.refresh(refreshToken, {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @Throttle({ default: { limit: 15, ttl: 60_000 } })
@@ -57,8 +102,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Accept an invite and create account', description: 'Validates the invite token and creates the invited user with the given password.' })
   @ApiResponse({ status: 201, description: 'Account created.' })
   @ApiResponse({ status: 400, description: 'Token invalid or expired.' })
-  acceptInvite(@Body() body: AcceptInviteDto) {
-    return this.authService.acceptInvite(body.token, body.password);
+  async acceptInvite(
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: AcceptInviteDto,
+  ) {
+    const result = await this.authService.acceptInvite(body.token, body.password);
+    if ('accessToken' in result && 'refreshToken' in result) {
+      setAuthCookies(res, result.accessToken as string, result.refreshToken as string);
+    }
+    return result;
   }
 
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
@@ -74,8 +126,32 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password using token' })
   @ApiResponse({ status: 200, description: 'Password updated.' })
   @ApiResponse({ status: 400, description: 'Token invalid or expired.' })
-  resetPassword(@Body() body: ResetPasswordDto) {
-    return this.authService.resetPassword(body.token, body.newPassword);
+  async resetPassword(
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: ResetPasswordDto,
+  ) {
+    const result = await this.authService.resetPassword(body.token, body.newPassword);
+    if (result && typeof result === 'object' && 'accessToken' in result && 'refreshToken' in result) {
+      setAuthCookies(res, result.accessToken as string, result.refreshToken as string);
+    }
+    return result;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout', description: 'Clears auth cookies and revokes the current DB session.' })
+  @ApiResponse({ status: 200, description: 'Logged out.' })
+  async logout(
+    @Req() req: { cookies?: Record<string, string | undefined> },
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    // Revoke the current session in the DB so stolen refresh tokens become invalid
+    const token = req.cookies?.pulsedock_token;
+    if (token) {
+      await this.authService.revokeSessionByToken(token).catch(() => {/* ignore errors */});
+    }
+    clearAuthCookies(res);
+    return { ok: true };
   }
 
   @UseGuards(AuthGuard)

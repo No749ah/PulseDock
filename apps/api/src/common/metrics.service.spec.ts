@@ -53,4 +53,42 @@ describe('MetricsService', () => {
       expect(new Date(snap.at).getTime()).toBeGreaterThan(0);
     });
   });
+
+  describe('prometheusText()', () => {
+    it('returns a non-empty string', () => {
+      const text = service.prometheusText();
+      expect(typeof text).toBe('string');
+      expect(text.length).toBeGreaterThan(0);
+    });
+
+    it('includes HELP and TYPE comments for all counters', () => {
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_requestsTotal');
+      expect(text).toContain('# TYPE pulsedock_requestsTotal counter');
+      expect(text).toContain('# HELP pulsedock_errorsTotal');
+      expect(text).toContain('# TYPE pulsedock_errorsTotal counter');
+      expect(text).toContain('# HELP pulsedock_alertsSent');
+      expect(text).toContain('# HELP pulsedock_alertsFailed');
+    });
+
+    it('renders counter values correctly', () => {
+      service.inc('requestsTotal', 42);
+      service.inc('alertsSent', 7);
+      const text = service.prometheusText();
+      expect(text).toContain('pulsedock_requestsTotal 42');
+      expect(text).toContain('pulsedock_alertsSent 7');
+    });
+
+    it('includes process uptime gauge', () => {
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_process_uptime_seconds');
+      expect(text).toContain('# TYPE pulsedock_process_uptime_seconds gauge');
+      expect(text).toMatch(/pulsedock_process_uptime_seconds \d+/);
+    });
+
+    it('ends with a trailing newline (Prometheus requirement)', () => {
+      const text = service.prometheusText();
+      expect(text.endsWith('\n')).toBe(true);
+    });
+  });
 });

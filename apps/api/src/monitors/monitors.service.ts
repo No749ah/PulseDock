@@ -142,11 +142,112 @@ export class MonitorsService {
     return this.list(userId).then((items) => items.find((m) => m.id === monitorId));
   }
 
+  async exportMonitors(userId: string) {
+    const monitors = await this.list(userId);
+    return {
+      version: '1',
+      exportedAt: new Date().toISOString(),
+      monitors: monitors.map((m) => ({
+        name: m.name,
+        type: m.type,
+        target: m.target,
+        intervalSec: m.intervalSec,
+        timeoutMs: m.timeoutMs,
+        config: m.config,
+        enabled: m.enabled,
+      })),
+    };
+  }
+
+  async importMonitors(userId: string, items: Array<{
+    name: string;
+    target: string;
+    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number;
+    timeoutMs?: number;
+    config?: Record<string, unknown>;
+    enabled?: boolean;
+  }>) {
+    const created = [];
+    const errors: Array<{ index: number; name: string; error: string }> = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item) continue;
+      try {
+        const monitor = await this.create(userId, {
+          name: item.name,
+          target: item.target,
+          type: item.type,
+          intervalSec: item.intervalSec,
+          timeoutMs: item.timeoutMs,
+          config: item.config,
+        });
+        if (item.enabled === false) {
+          await this.update(userId, monitor.id, { enabled: false });
+        }
+        created.push(monitor);
+      } catch (err) {
+        errors.push({ index: i, name: item.name, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    await this.audit.log('monitor.import', userId, userId, { imported: created.length, errors: errors.length });
+    return { imported: created.length, errors };
+  }
+
   async remove(userId: string, monitorId: string) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
     await this.prisma.monitor.delete({ where: { id: monitorId } });
     await this.audit.log('monitor.delete', userId, userId, { monitorId });
+    return { ok: true };
+  }
+
+  async listMonitorAlerts(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const assignments = await this.prisma.monitorAlert.findMany({
+      where: { monitorId },
+      include: { alertChannel: true },
+    });
+
+    return assignments.map((a) => ({
+      id: a.alertChannel.id,
+      name: a.alertChannel.name,
+      type: a.alertChannel.type,
+      config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
+      createdAt: a.alertChannel.createdAt.toISOString(),
+    }));
+  }
+
+  async addMonitorAlert(userId: string, monitorId: string, channelId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id: channelId, userId } });
+    if (!channel) throw new NotFoundException('alert channel not found');
+
+    await this.prisma.monitorAlert.upsert({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      create: { monitorId, alertChannelId: channelId },
+      update: {},
+    });
+
+    await this.audit.log('monitor.alert.add', userId, userId, { monitorId, channelId });
+    return { ok: true };
+  }
+
+  async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    await this.prisma.monitorAlert.deleteMany({
+      where: { monitorId, alertChannelId: channelId },
+    });
+
+    await this.audit.log('monitor.alert.remove', userId, userId, { monitorId, channelId });
     return { ok: true };
   }
 

@@ -10,7 +10,7 @@ import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Select } from '../components/Select';
-import { getToken, getUser } from '../../components/auth';
+import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
 type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
@@ -27,7 +27,6 @@ const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg 
 
 export default function AlertsPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
   const [channels, setChannels] = useState<AlertChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -46,13 +45,13 @@ export default function AlertsPage() {
 
   useEffect(() => {
     const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
+    if (!user) router.push('/login');
+  }, [router]);
 
   async function load() {
     setLoading(true);
     try {
-      setChannels(await api<AlertChannel[]>('/v1/alert-channels', token));
+      setChannels(await api<AlertChannel[]>('/v1/alert-channels'));
     } finally {
       setLoading(false);
     }
@@ -82,14 +81,14 @@ export default function AlertsPage() {
 
   async function createChannel() {
     const config = buildConfig(form.type, form.a, form.b);
-    await api('/v1/alert-channels', token, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
+    await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
     setWizardOpen(false);
     resetCreateForm();
     await load();
   }
 
   async function testChannel(channelId: string) {
-    await api('/v1/alert-channels/test', token, { method: 'POST', body: JSON.stringify({ channelId }) });
+    await api('/v1/alert-channels/test', undefined, { method: 'POST', body: JSON.stringify({ channelId }) });
   }
 
   function openEdit(channel: AlertChannel) {
@@ -114,7 +113,7 @@ export default function AlertsPage() {
   async function saveEdit() {
     if (!selected) return;
     const config = buildConfig(selected.type, editA, editB);
-    await api(`/v1/alert-channels/${selected.id}`, token, {
+    await api(`/v1/alert-channels/${selected.id}`, '', {
       method: 'PATCH',
       body: JSON.stringify({ name: editName, config }),
     });
@@ -129,7 +128,7 @@ export default function AlertsPage() {
 
   async function confirmDelete() {
     if (!selected) return;
-    await api(`/v1/alert-channels/${selected.id}`, token, { method: 'DELETE' });
+    await api(`/v1/alert-channels/${selected.id}`, '', { method: 'DELETE' });
     setDeleteOpen(false);
     await load();
   }

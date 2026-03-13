@@ -1,0 +1,1 @@
+-- CreateTable (already applied manually — this migration baseline-resolves the ApiKey table)

@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
-import { CreateMonitorDto, DiscoverVersionDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { CreateMonitorDto, DiscoverVersionDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -91,5 +91,64 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Version summary returned.' })
   versionSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.versionSummary(req.user.id);
+  }
+
+  @Get('export')
+  @ApiOperation({
+    summary: 'Export monitors',
+    description: 'Returns all monitors as a portable JSON document (no IDs or timestamps). Suitable for backup and re-import.',
+  })
+  @ApiResponse({ status: 200, description: 'Export document returned.' })
+  exportMonitors(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.exportMonitors(req.user.id);
+  }
+
+  @Post('import')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Import monitors',
+    description: 'Bulk-creates monitors from a previously exported document. Existing monitors are not modified.',
+  })
+  @ApiResponse({ status: 200, description: 'Import result returned.' })
+  importMonitors(@Req() req: { user: { id: string } }, @Body() body: ImportMonitorsDto) {
+    return this.monitorsService.importMonitors(req.user.id, body.monitors);
+  }
+
+  @Get(':id/alerts')
+  @ApiOperation({ summary: 'List alert channels assigned to a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Assigned alert channels returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  listAlerts(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.listMonitorAlerts(req.user.id, id);
+  }
+
+  @Post(':id/alerts/:channelId')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Assign an alert channel to a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'channelId', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Alert channel assigned.' })
+  @ApiResponse({ status: 404, description: 'Monitor or channel not found.' })
+  addAlert(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('channelId') channelId: string,
+  ) {
+    return this.monitorsService.addMonitorAlert(req.user.id, id, channelId);
+  }
+
+  @Delete(':id/alerts/:channelId')
+  @ApiOperation({ summary: 'Unassign an alert channel from a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'channelId', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Alert channel unassigned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  removeAlert(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('channelId') channelId: string,
+  ) {
+    return this.monitorsService.removeMonitorAlert(req.user.id, id, channelId);
   }
 }

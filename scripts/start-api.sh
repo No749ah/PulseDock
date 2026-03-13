@@ -8,5 +8,9 @@ API_PORT=${API_PORT:-4321}
 echo "Starting PulseDock API on port $API_PORT"
 cd "$REPO_ROOT"
 
+# Ensure Prisma client is generated (survives node_modules reinstalls)
+echo "Generating Prisma client..."
+DATABASE_URL="postgresql://pulsedock:pulsedock@dind:5432/pulsedock?schema=public" npx prisma generate 2>&1 | tail -3
+
 # API will load .env from root via node --env-file
 API_PORT=$API_PORT npm run dev:api

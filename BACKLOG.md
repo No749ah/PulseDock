@@ -41,7 +41,7 @@
 ### Phase 3: Dashboard & App UI
 - [x] Dark theme dashboard with glassmorphism cards
 - [x] Monitor list with live status indicators
-- [ ] Version diff viewer with syntax highlighting
+- [x] Version diff viewer with syntax highlighting — VersionDiff component: parses semver from run messages, highlights major/minor/patch/pre segments with severity colors. Integrated on versions page (run history rows + main table).
 - [ ] Alert configuration UI (form) — wizard exists (3-step create + edit modal), missing: per-monitor alert assignment UI on monitor detail
 - [x] User settings / account page (settings form)
 - [x] Admin panel (user management, system health) — user management + invites + audit logs done; system health widget added (polls /health + /metrics every 30s, shows uptime, DB status/latency, request/error/alert counters)

@@ -23,6 +23,8 @@ import { BootstrapService } from './common/bootstrap.service';
 import { AuditService } from './common/audit.service';
 import { MailerService } from './common/mailer.service';
 import { MetricsService } from './common/metrics.service';
+import { ApiKeysService } from './apikeys/apikeys.service';
+import { ApiKeysController } from './apikeys/apikeys.controller';
 
 @Module({
   imports: [
@@ -40,6 +42,7 @@ import { MetricsService } from './common/metrics.service';
     AdminController,
     FoldersController,
     InvitesController,
+    ApiKeysController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -54,6 +57,7 @@ import { MetricsService } from './common/metrics.service';
     ChecksService,
     ChecksScheduler,
     RolesGuard,
+    ApiKeysService,
   ],
 })
 export class AppModule {}

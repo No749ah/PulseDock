@@ -37,6 +37,8 @@ model User {
   sentInvites     InviteToken[]    @relation("invitedBy")
   actorAuditLogs  AuditLog[]       @relation("audit_actor")
   targetAuditLogs AuditLog[]       @relation("audit_target")
+  apiKeys          ApiKey[]
+  statusPages      PublicStatusPage[]
 }
 
 model Session {
@@ -163,4 +165,36 @@ model PasswordResetToken {
 
   @@index([email])
   @@index([token])
+}
+
+model PublicStatusPage {
+  id          String    @id @default(cuid())
+  userId      String
+  slug        String    @unique
+  title       String
+  description String?
+  configJson  Json
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([publishedAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

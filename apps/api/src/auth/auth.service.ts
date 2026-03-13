@@ -343,6 +343,26 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Revoke the session associated with an access token.
+   * Used by logout so stolen refresh tokens become invalid immediately.
+   */
+  async revokeSessionByToken(token: string): Promise<void> {
+    try {
+      const payload = this.jwt.verify<{ sub: string; sid?: string; type: string }>(token, {
+        secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
+      });
+      if (payload.type !== 'access' || !payload.sid) return;
+      await this.prisma.session.updateMany({
+        where: { id: payload.sid, userId: payload.sub, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await this.audit.log('auth.logout', payload.sub, payload.sub, { sessionId: payload.sid });
+    } catch {
+      // Token invalid/expired — nothing to revoke
+    }
+  }
+
   async getActiveUserById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || !user.isActive) return null;

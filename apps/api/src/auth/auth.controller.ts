@@ -139,9 +139,17 @@ export class AuthController {
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('logout')
-  @ApiOperation({ summary: 'Logout', description: 'Clears auth cookies and optionally revokes the current session.' })
+  @ApiOperation({ summary: 'Logout', description: 'Clears auth cookies and revokes the current DB session.' })
   @ApiResponse({ status: 200, description: 'Logged out.' })
-  logout(@Res({ passthrough: true }) res: ExpressResponse) {
+  async logout(
+    @Req() req: { cookies?: Record<string, string | undefined> },
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    // Revoke the current session in the DB so stolen refresh tokens become invalid
+    const token = req.cookies?.pulsedock_token;
+    if (token) {
+      await this.authService.revokeSessionByToken(token).catch(() => {/* ignore errors */});
+    }
     clearAuthCookies(res);
     return { ok: true };
   }

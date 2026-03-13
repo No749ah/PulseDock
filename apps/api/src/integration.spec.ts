@@ -382,3 +382,135 @@ describe('GET /docs', () => {
     expect(res.status).toBeLessThan(400);
   });
 });
+
+// ─── V2 API ───────────────────────────────────────────────────────────────────
+
+describe('V2 System endpoints', () => {
+  it('GET /v2/system/info returns API metadata', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v2/system/info');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      service: 'pulsedock-api',
+      apiVersions: {
+        supported: expect.arrayContaining(['v1', 'v2']),
+        current: 'v2',
+        stable: 'v1',
+      },
+    });
+    expect(Array.isArray(res.body.apiVersions.deprecated)).toBe(true);
+  });
+
+  it('GET /v2/system/versions returns version matrix', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v2/system/versions');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.versions)).toBe(true);
+    const vNames = res.body.versions.map((v: { version: string }) => v.version);
+    expect(vNames).toContain('v1');
+    expect(vNames).toContain('v2');
+  });
+});
+
+describe('V2 Monitors — unauthenticated', () => {
+  it('GET /v2/monitors returns 401 without auth', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v2/monitors');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('V2 Monitors — paginated list', () => {
+  it('returns envelope { data, meta } with empty monitors', async () => {
+    const { JwtService } = await import('@nestjs/jwt');
+    const jwtService = new JwtService({});
+    const token = jwtService.sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.monitor.findMany.mockResolvedValueOnce([]);
+    mockPrisma.monitor.count.mockResolvedValueOnce(0);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/monitors')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toMatchObject({
+      total: 0,
+      page: 1,
+      limit: 20,
+      pages: 0,
+    });
+  });
+
+  it('respects ?page=2&limit=5 query params', async () => {
+    const { JwtService } = await import('@nestjs/jwt');
+    const jwtService = new JwtService({});
+    const token = jwtService.sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.monitor.findMany.mockResolvedValueOnce([]);
+    mockPrisma.monitor.count.mockResolvedValueOnce(12);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/monitors?page=2&limit=5')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta).toMatchObject({
+      total: 12,
+      page: 2,
+      limit: 5,
+      pages: 3,
+    });
+  });
+
+  it('returns monitor items with correct shape', async () => {
+    const { JwtService } = await import('@nestjs/jwt');
+    const jwtService = new JwtService({});
+    const token = jwtService.sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+
+    const mockMonitor = {
+      id: 'mon-001',
+      userId: VALID_USER.id,
+      name: 'Test Monitor',
+      type: 'HTTP',
+      target: 'https://example.com',
+      enabled: true,
+      intervalSec: 60,
+      timeoutMs: 5000,
+      folderId: null,
+      configJson: {},
+      monitorAlerts: [],
+      createdAt: new Date('2025-01-01T00:00:00Z'),
+    };
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.monitor.findMany.mockResolvedValueOnce([mockMonitor]);
+    mockPrisma.monitor.count.mockResolvedValueOnce(1);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/monitors')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({
+      id: 'mon-001',
+      name: 'Test Monitor',
+      type: 'HTTP',
+      enabled: true,
+    });
+    expect(typeof res.body.data[0].createdAt).toBe('string');
+  });
+});

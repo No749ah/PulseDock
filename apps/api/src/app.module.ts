@@ -26,6 +26,8 @@ import { MetricsService } from './common/metrics.service';
 import { ApiKeysService } from './apikeys/apikeys.service';
 import { ApiKeysController } from './apikeys/apikeys.controller';
 import { RealtimeModule } from './realtime/realtime.module';
+import { V2MonitorsController } from './v2/monitors/monitors.controller';
+import { V2SystemController } from './v2/system/system.controller';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     FoldersController,
     InvitesController,
     ApiKeysController,
+    V2MonitorsController,
+    V2SystemController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

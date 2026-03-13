@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Admin system health widget** — Real-time dashboard on the `/admin` page polling `/health` and `/metrics` every 30 seconds. Shows API uptime, database status + latency, request/error counters, alert dispatch metrics, and a status banner (green/red). Fully typed, auto-refreshes with manual refresh button.
+
 ### Security
 - **Logout session revocation** — Logout endpoint now reads the access token cookie, extracts the session ID, and revokes it in the DB. Stolen refresh tokens are immediately invalidated on logout rather than being usable until natural expiry.
 - **Auth flow audit complete** — Confirmed: JWTs stored exclusively in httpOnly cookies (never localStorage), `sameSite: lax` CSRF protection, token rotation on every refresh, DB-backed session revocation, account lockout after 5 failed attempts.

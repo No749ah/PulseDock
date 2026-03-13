@@ -44,7 +44,7 @@
 - [ ] Version diff viewer with syntax highlighting
 - [ ] Alert configuration UI (form) — wizard exists (3-step create + edit modal), missing: per-monitor alert assignment UI on monitor detail
 - [x] User settings / account page (settings form)
-- [ ] Admin panel (user management, system health) — user management + invites + audit logs done; missing: system health widget
+- [x] Admin panel (user management, system health) — user management + invites + audit logs done; system health widget added (polls /health + /metrics every 30s, shows uptime, DB status/latency, request/error/alert counters)
 - [x] Folder/project organization UI — full CRUD with table, pagination, modals
 - [x] Monitors page (full CRUD)
 - [x] Versions page — full CRUD, multi-step wizard, run history, expandable rows, stats cards

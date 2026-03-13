@@ -55,11 +55,11 @@
 
 ### Phase 4: API & Backend
 - [x] Add unit tests for core services — AppController, MetricsService, AuthService, MonitorsService, AlertsService (45 tests, vitest). AlertsService: multi-channel dispatch, retry logic with fake timers, user ownership guard, all channel types.
-- [ ] Add integration tests for API endpoints
+- [x] Add integration tests for API endpoints — 22 integration tests across auth, health, monitors, metrics, Swagger, input validation (supertest + @nestjs/testing)
 - [ ] Add proper API versioning strategy
 - [x] Swagger/OpenAPI docs with examples — @ApiTags/@ApiOperation/@ApiResponse on all 9 controllers, live at /docs
 - [x] Add health check endpoint with DB/Redis connectivity status — /health (DB latency), /health/live, /health/ready. Returns 503 when DB down.
-- [ ] Add metrics endpoint (Prometheus-compatible)
+- [x] Add metrics endpoint (Prometheus-compatible) — /metrics (JSON) + /metrics/prometheus (text/plain exposition format v0.0.4)
 - [ ] WebSocket support for real-time monitor updates
 
 ### Phase 5: DevOps & Docs
@@ -77,7 +77,7 @@
 - [ ] Notification channels (email, Discord, Slack, webhook)
 - [ ] Public status page (per-user, shareable URL)
 - [x] API key management for programmatic access
-- [ ] Import/export monitors (JSON/YAML)
+- [x] Import/export monitors (JSON/YAML) — GET /v1/monitors/export + POST /v1/monitors/import with Export/Import buttons on monitors page
 - [ ] Dark/light theme toggle
 
 ## Done

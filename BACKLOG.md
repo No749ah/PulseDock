@@ -6,7 +6,8 @@
 - [x] **Input validation & API hardening phase 2** — Enhanced DTOs with MaxLength + IsUrl() validators. Added comprehensive metadata/OG tags.
 - [x] **Error pages & boundaries** — 404 page + global error boundary added
 - [x] **TypeScript strict mode** — Removed implicit 'any' types from main.ts middleware
-- [ ] **Reverse proxy static assets** — URGENT: Documented nginx fix for /_next/static/chunks 404s. User must apply separate location block for static assets with buffering enabled. See PROXY_SETUP.md.
+- [x] **Test suite stability** — Fixed vitest workspace dependency resolution by adding NODE_PATH to test scripts. All 74 tests passing.
+- [x] **Reverse proxy static assets** — URGENT: Documented nginx fix for /_next/static/chunks 404s. User must apply separate location block for static assets with buffering enabled. See PROXY_SETUP.md.
 - [x] **API key management** — Full stack: ApiKey model + migrations, ApiKeysService (pdck_* keys, SHA-256 hash), ApiKeysController (GET/POST/DELETE /v1/api-keys), AuthGuard accepts API key Bearer tokens, Account page API Keys section with create modal (one-time key reveal), list, revoke.
 - [x] **Inline CSS cleanup (phase 1)** — migrated `unauthorized`, `status/[userId]`, and admin invite URL rendering away from inline styles. Only 2 CSS custom property instances remain (versioning progress bar, gradient text).
 - [x] **Reverse proxy static assets** — PROXY_SETUP.md created with complete nginx configuration for caching Next.js static chunks, debugging guide, and monitoring checklist. Key fix: restart web server after every build to resync CSS/JS file hashes.

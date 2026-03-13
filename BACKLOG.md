@@ -3,6 +3,7 @@
 ## In Progress
 - [x] **Dark/light theme toggle** — ThemeProvider with Context API, Sun/Moon icons in header, CSS variable swapping, localStorage persistence
 - [ ] **Visual UI/UX Audit** — Manual visual inspection of all pages. Usability, spacing, field sizes, contrast, empty states, mobile view, inconsistencies. Seiten: Landing, Login, Dashboard, Monitors, Versions, Alerts, Projects, Account, Admin, Status Page, 404.
+  - [x] Fixed ConfirmModal Button variant incompatibility (dangervariant removed, using className for red styling)
 
 ## Next Up
 

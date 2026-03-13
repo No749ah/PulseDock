@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "NODE_ENV=development node --env-file=../../.env -e \"require('ts-node/register/transpile-only'); require('./src/main.ts');\"",
     "build": "tsc -p tsconfig.build.json",
-    "test": "../../node_modules/.bin/vitest run --reporter=verbose",
+    "test": "NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --reporter=verbose",
     "test:typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:coverage": "../../node_modules/.bin/vitest run --coverage",
+    "test:coverage": "NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --coverage",
     "start": "node dist/main.js"
   },
   "dependencies": {

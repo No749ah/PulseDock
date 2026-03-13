@@ -4,6 +4,7 @@ import { PrismaService } from '../common/prisma.service';
 import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
+import { RealtimeEvents } from '../realtime/realtime.events';
 
 @Injectable()
 export class MonitorsService {
@@ -11,6 +12,7 @@ export class MonitorsService {
     private readonly prisma: PrismaService,
     private readonly checksService: ChecksService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeEvents,
   ) {}
 
   private sanitizeConfig(config: Record<string, unknown> | null | undefined) {
@@ -82,7 +84,7 @@ export class MonitorsService {
 
     await this.audit.log('monitor.create', userId, userId, { monitorId: created.id, type: created.type, target: created.target });
 
-    return {
+    const response = {
       id: created.id,
       userId: created.userId,
       name: created.name,
@@ -96,6 +98,9 @@ export class MonitorsService {
       enabled: created.enabled,
       createdAt: created.createdAt.toISOString(),
     };
+
+    this.realtime.monitorCreated(userId, response);
+    return response;
   }
 
   async update(userId: string, monitorId: string, body: {
@@ -139,7 +144,9 @@ export class MonitorsService {
     }
 
     await this.audit.log('monitor.update', userId, userId, { monitorId });
-    return this.list(userId).then((items) => items.find((m) => m.id === monitorId));
+    const updated = await this.list(userId).then((items) => items.find((m) => m.id === monitorId));
+    if (updated) this.realtime.monitorUpdated(userId, updated);
+    return updated;
   }
 
   async exportMonitors(userId: string) {
@@ -201,6 +208,7 @@ export class MonitorsService {
     if (!current) throw new NotFoundException('monitor not found');
     await this.prisma.monitor.delete({ where: { id: monitorId } });
     await this.audit.log('monitor.delete', userId, userId, { monitorId });
+    this.realtime.monitorDeleted(userId, { id: monitorId });
     return { ok: true };
   }
 

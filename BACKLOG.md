@@ -1,9 +1,12 @@
 # PulseDock Backlog
 
+## In Progress
+
+- [ ] **WebSocket support for real-time monitor updates** — Socket.io foundation added (`/realtime` gateway + user-room subscriptions) and monitor CRUD events (`monitor.created|updated|deleted`) now emitted server-side. Remaining: alert/check status push + frontend live subscriptions.
+
 ## Next Up (Priority Order)
 
 ### High Priority
-- [ ] **WebSocket support for real-time monitor updates** — Socket.io server integration, real-time monitor status/alert push, live dashboard updates. Estimated impact: High (UX improvement, real-time alerts).
 - [ ] **Docker Compose / Kubernetes manifests for production** — k8s deployment manifests, helm charts or docker-compose production variant. Estimated impact: High (deployment readiness).
 - [ ] **Plugin system for custom monitor types** — Allow community-contributed monitor types. Plugin registry, validation, sandboxing. Estimated impact: Medium (extensibility).
 

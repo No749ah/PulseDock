@@ -25,12 +25,14 @@ import { MailerService } from './common/mailer.service';
 import { MetricsService } from './common/metrics.service';
 import { ApiKeysService } from './apikeys/apikeys.service';
 import { ApiKeysController } from './apikeys/apikeys.controller';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     JwtModule.register({}),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    RealtimeModule,
   ],
   controllers: [
     AppController,

@@ -5,10 +5,14 @@ import type { Monitor, MonitorRun } from '../types';
 import { PrismaService } from '../common/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
+import { PluginRegistry } from './plugin.registry';
+import { executePluginSafely } from './plugin.sandbox';
+import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
 
 @Injectable()
 export class ChecksService {
   private readonly realtime: Pick<RealtimeEvents, 'monitorChecked'>;
+  private readonly pluginRegistry = new PluginRegistry();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -16,6 +20,7 @@ export class ChecksService {
     @Optional() realtime?: RealtimeEvents,
   ) {
     this.realtime = realtime ?? { monitorChecked: () => undefined };
+    this.pluginRegistry.register(httpResponseMatchPlugin);
   }
 
   private parseGithubRepo(input: string) {
@@ -466,17 +471,52 @@ export class ChecksService {
     }
   }
 
+  private async runPluginMonitor(monitor: Monitor) {
+    const pluginId = String(monitor.config.pluginId ?? '').trim();
+    if (!pluginId) return null;
+
+    const plugin = this.pluginRegistry.get(pluginId, monitor.type);
+    if (!plugin) {
+      return {
+        ok: false,
+        statusCode: 400,
+        latencyMs: null,
+        message: `Unknown or incompatible plugin: ${pluginId}`,
+        level: 'red' as const,
+      };
+    }
+
+    return executePluginSafely(
+      plugin,
+      {
+        monitor: {
+          id: monitor.id,
+          name: monitor.name,
+          type: monitor.type,
+          target: monitor.target,
+          timeoutMs: monitor.timeoutMs,
+        },
+        config: monitor.config,
+        nowIso: new Date().toISOString(),
+      },
+      monitor.timeoutMs,
+    );
+  }
+
   async runMonitor(monitor: Monitor): Promise<MonitorRun> {
     const prev = await this.prisma.monitorRun.findFirst({
       where: { monitorId: monitor.id },
       orderBy: { checkedAt: 'desc' },
     });
 
-    const result = monitor.type === 'HTTP'
-      ? await this.runHttpCheck(monitor.target, monitor.timeoutMs)
-      : monitor.type === 'GIT_RELEASE'
-      ? await this.runGitReleaseCheck(monitor.target, monitor.config)
-      : await this.runDockerCheck(monitor.target, monitor.config);
+    const pluginResult = await this.runPluginMonitor(monitor);
+    const result = pluginResult ?? (
+      monitor.type === 'HTTP'
+        ? await this.runHttpCheck(monitor.target, monitor.timeoutMs)
+        : monitor.type === 'GIT_RELEASE'
+        ? await this.runGitReleaseCheck(monitor.target, monitor.config)
+        : await this.runDockerCheck(monitor.target, monitor.config)
+    );
 
     const created = await this.prisma.monitorRun.create({
       data: {

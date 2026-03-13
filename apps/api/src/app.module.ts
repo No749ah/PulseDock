@@ -28,6 +28,8 @@ import { ApiKeysController } from './apikeys/apikeys.controller';
 import { RealtimeModule } from './realtime/realtime.module';
 import { V2MonitorsController } from './v2/monitors/monitors.controller';
 import { V2SystemController } from './v2/system/system.controller';
+import { V2AlertsController } from './v2/alerts/alerts.controller';
+import { V2ChecksController } from './v2/checks/checks.controller';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { V2SystemController } from './v2/system/system.controller';
     ApiKeysController,
     V2MonitorsController,
     V2SystemController,
+    V2AlertsController,
+    V2ChecksController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

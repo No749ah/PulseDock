@@ -76,12 +76,17 @@ const mockPrisma = {
     create: vi.fn(),
     count: vi.fn().mockResolvedValue(0),
   },
+  monitorRun: {
+    findMany: vi.fn().mockResolvedValue([]),
+    count: vi.fn().mockResolvedValue(0),
+  },
   alertChannel: {
     findMany: vi.fn().mockResolvedValue([]),
     findFirst: vi.fn().mockResolvedValue(null),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
   },
   inviteToken: {
     findFirst: vi.fn().mockResolvedValue(null),
@@ -512,5 +517,173 @@ describe('V2 Monitors — paginated list', () => {
       enabled: true,
     });
     expect(typeof res.body.data[0].createdAt).toBe('string');
+  });
+});
+
+describe('V2 Alert Channels — unauthenticated', () => {
+  it('GET /v2/alert-channels returns 401 without auth', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v2/alert-channels');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('V2 Alert Channels — paginated list', () => {
+  async function getToken() {
+    const { JwtService } = await import('@nestjs/jwt');
+    const jwtService = new JwtService({});
+    return jwtService.sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+  }
+
+  it('returns envelope { data, meta } with empty alert channels', async () => {
+    const token = await getToken();
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.alertChannel.findMany.mockResolvedValueOnce([]);
+    mockPrisma.alertChannel.count = vi.fn().mockResolvedValueOnce(0);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/alert-channels')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toMatchObject({
+      total: 0,
+      page: 1,
+      limit: 20,
+      pages: 0,
+    });
+  });
+
+  it('respects ?page=1&limit=5 query params', async () => {
+    const token = await getToken();
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.alertChannel.findMany.mockResolvedValueOnce([]);
+    mockPrisma.alertChannel.count = vi.fn().mockResolvedValueOnce(10);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/alert-channels?page=1&limit=5')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta).toMatchObject({
+      total: 10,
+      page: 1,
+      limit: 5,
+      pages: 2,
+    });
+  });
+
+  it('returns channel items with correct shape and redacted secrets', async () => {
+    const token = await getToken();
+
+    const mockChannel = {
+      id: 'ch-001',
+      userId: VALID_USER.id,
+      name: 'Slack Alerts',
+      type: 'SLACK',
+      config: { webhookUrl: 'https://hooks.slack.com/services/T00/B00/secret123' },
+      monitorAlerts: [{ monitorId: 'mon-001' }, { monitorId: 'mon-002' }],
+      createdAt: new Date('2025-01-01T00:00:00Z'),
+    };
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.alertChannel.findMany.mockResolvedValueOnce([mockChannel]);
+    mockPrisma.alertChannel.count = vi.fn().mockResolvedValueOnce(1);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/alert-channels')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    const ch = res.body.data[0];
+    expect(ch).toMatchObject({
+      id: 'ch-001',
+      name: 'Slack Alerts',
+      type: 'SLACK',
+      usedByCount: 2,
+    });
+    // Webhook URL must be redacted - original secret must not appear in the config
+    expect(JSON.stringify(ch.config)).not.toContain('secret123');
+    expect(typeof ch.createdAt).toBe('string');
+  });
+});
+
+// ─── V2 Check History ─────────────────────────────────────────────────────────
+
+describe('V2 Checks — unauthenticated', () => {
+  it('GET /v2/checks returns 401 without auth', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v2/checks');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('V2 Checks — paginated history', () => {
+  async function authToken() {
+    const { JwtService } = await import('@nestjs/jwt');
+    return new JwtService({}).sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+  }
+
+  it('returns envelope { data, meta } with empty check history', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.monitorRun.findMany.mockResolvedValueOnce([]);
+    mockPrisma.monitorRun.count = vi.fn().mockResolvedValueOnce(0);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/checks')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toMatchObject({ total: 0, page: 1, limit: 50, pages: 0 });
+  });
+
+  it('returns check run items with correct shape', async () => {
+    const token = await authToken();
+    const mockRun = {
+      id: 'run-001',
+      monitorId: 'mon-001',
+      userId: VALID_USER.id,
+      checkedAt: new Date('2025-06-01T12:00:00Z'),
+      ok: true,
+      status: 200,
+      latencyMs: 120,
+      message: 'OK',
+      level: 'green',
+    };
+
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.monitorRun.findMany.mockResolvedValueOnce([mockRun]);
+    mockPrisma.monitorRun.count = vi.fn().mockResolvedValueOnce(1);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v2/checks')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({
+      id: 'run-001',
+      monitorId: 'mon-001',
+      ok: true,
+      statusCode: 200,
+      latencyMs: 120,
+      level: 'green',
+    });
+    expect(typeof res.body.data[0].checkedAt).toBe('string');
   });
 });

@@ -9,7 +9,14 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Security
+- **Logout session revocation** — Logout endpoint now reads the access token cookie, extracts the session ID, and revokes it in the DB. Stolen refresh tokens are immediately invalidated on logout rather than being usable until natural expiry.
+- **Auth flow audit complete** — Confirmed: JWTs stored exclusively in httpOnly cookies (never localStorage), `sameSite: lax` CSRF protection, token rotation on every refresh, DB-backed session revocation, account lockout after 5 failed attempts.
+
 ### Added
+- **Favicon & brand assets** — `favicon.svg` (SVG icon, modern browsers), `favicon.ico` (32×32 ICO fallback), `apple-touch-icon.png` (180×180 for iOS home screen), `og-image.png` (1200×630 OpenGraph card with brand colors), `og-image.svg` (source vector)
+- **site.webmanifest** — Updated with correct icons array, theme color `#5EE2B0`, `maskable` icon purpose
+- **layout.tsx** — SVG favicon with ICO fallback link tags, OG image already wired up
 - **Enhanced health check** — `/health` now includes DB connectivity status + latency, service version, and uptime. New `/health/live` (liveness probe) and `/health/ready` (readiness probe) endpoints. Returns HTTP 503 when DB is unreachable.
 - **Production Dockerfiles** — Multi-stage `apps/api/Dockerfile` and `apps/web/Dockerfile` with non-root user, minimal alpine images, and built-in HEALTHCHECK instructions.
 - **`docker-compose.prod.yml`** — Full production stack (PostgreSQL + API + Web) with service healthchecks, named volume for data persistence, and `INTERNAL_API_URL` env var for container networking.

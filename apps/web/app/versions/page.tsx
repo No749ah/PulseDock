@@ -10,6 +10,7 @@ import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Select } from '../components/Select';
+import { VersionDiff, extractVersionsFromMessage } from '../components/VersionDiff';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
@@ -801,8 +802,20 @@ export default function VersionsPage() {
                         </TableCell>
                         <TableCell>{item.type}</TableCell>
                         <TableCell className="max-w-[280px] break-all">{item.target}</TableCell>
-                        <TableCell>{item.currentVersion || '—'}</TableCell>
-                        <TableCell className="max-w-[280px] break-all">{item.latestMessage}</TableCell>
+                        <TableCell>
+                          {item.currentVersion ? (
+                            <span className="font-mono text-sm">{item.currentVersion}</span>
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell className="max-w-[320px]">
+                          {(() => {
+                            const { from, to } = extractVersionsFromMessage(item.latestMessage);
+                            if (from && to && from !== to) {
+                              return <VersionDiff from={from} to={to} />;
+                            }
+                            return <span className="text-xs text-text-secondary break-all">{item.latestMessage}</span>;
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <Badge variant={levelBadgeVariant(item.level)}>
@@ -853,19 +866,31 @@ export default function VersionsPage() {
                                         <TableHeader>Level</TableHeader>
                                         <TableHeader>Status</TableHeader>
                                         <TableHeader>Latency</TableHeader>
+                                        <TableHeader>Version diff</TableHeader>
                                         <TableHeader>Message</TableHeader>
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                      {runs.slice(0, 12).map((r) => (
-                                        <TableRow key={r.id}>
-                                          <TableCell>{new Date(r.checkedAt).toLocaleString()}</TableCell>
-                                          <TableCell><Badge variant={levelBadgeVariant(r.level)}>{r.level.toUpperCase()}</Badge></TableCell>
-                                          <TableCell>{r.statusCode}</TableCell>
-                                          <TableCell>{r.latencyMs ?? '—'} ms</TableCell>
-                                          <TableCell>{r.message}</TableCell>
-                                        </TableRow>
-                                      ))}
+                                      {runs.slice(0, 12).map((r) => {
+                                        const { from, to } = extractVersionsFromMessage(r.message);
+                                        const hasDiff = from && to && from !== to;
+                                        return (
+                                          <TableRow key={r.id}>
+                                            <TableCell>{new Date(r.checkedAt).toLocaleString()}</TableCell>
+                                            <TableCell><Badge variant={levelBadgeVariant(r.level)}>{r.level.toUpperCase()}</Badge></TableCell>
+                                            <TableCell>{r.statusCode}</TableCell>
+                                            <TableCell>{r.latencyMs ?? '—'} ms</TableCell>
+                                            <TableCell>
+                                              {hasDiff ? (
+                                                <VersionDiff from={from} to={to} />
+                                              ) : (
+                                                <span className="text-xs text-text-secondary">—</span>
+                                              )}
+                                            </TableCell>
+                                            <TableCell className="text-xs text-text-secondary max-w-[200px]">{r.message}</TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
                                     </TableBody>
                                   </Table>
                                 )}

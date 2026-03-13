@@ -26,7 +26,7 @@
 - [x] Add security headers (helmet, CORS lockdown, CSP, rate limiting per-route)
 - [x] Add input validation/sanitization on all API endpoints — class-validator DTOs + global ValidationPipe (whitelist+forbidNonWhitelisted)
 - [x] Add proper logging (structured JSON logs, no console.log)
-- [ ] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management
+- [x] Audit auth flow: token storage (httpOnly cookies vs localStorage), CSRF, session management — tokens in httpOnly cookies ✅, sameSite:lax ✅, session revocation on logout fixed ✅, token rotation ✅, account lockout ✅
 
 ### Phase 2: Landing Page & Login (Apple-style)
 - [x] Redesign landing page — Apple-like aesthetic with smooth scroll animations
@@ -34,7 +34,7 @@
 - [x] Hero section: bold typography, gradient text, floating UI mockup
 - [x] Feature sections with scroll-triggered reveals
 - [x] Responsive design (mobile-first) for landing + login
-- [ ] Add proper `<head>` metadata, OG tags, favicon
+- [x] Add proper `<head>` metadata, OG tags, favicon — favicon.svg/ico, apple-touch-icon.png, og-image.png, site.webmanifest updated
 - [x] Login page redesign — dark theme, modern inputs, animations
 - [x] Implement 404 page with Tailwind
 

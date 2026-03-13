@@ -214,7 +214,7 @@ export default function FoldersPage() {
             </Table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between p-4 border-t border-border">
+            <div className="flex flex-col gap-3 p-4 border-t border-border sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
                   <ChevronLeft className="w-4 h-4" />
@@ -224,7 +224,7 @@ export default function FoldersPage() {
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 sm:justify-end">
                 <span className="text-sm text-text-secondary">Rows per page</span>
                 <Select
                   value={pageSize}

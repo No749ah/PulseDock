@@ -100,6 +100,7 @@
 
 ## In Progress
 - [ ] **Visual UI/UX Audit** — Manuell jede Seite mit Browser visuell durchklicken. Usability, Spacing, Feldgrößen, Kontrast, leere Zustände, mobile Ansicht, Inkonsistenzen. Fix alle visuellen Issues direkt. Seiten: Landing, Login, Dashboard, Monitors, Versions, Alerts, Projects, Account, Admin, Status Page, 404.
+  - [x] Pagination footer mobile polish (Alerts/Projects/Versions): stacked layout on small screens to prevent cramped controls/overflow.
 
 ## Ideas
 - Browser extension for quick monitor creation

@@ -98,6 +98,9 @@
 - [x] Added root workspace test runner (`npm run test`) with package-level TypeScript checks
 - [x] Fixed Prisma client generation issue after npm audit fix (requires explicit DATABASE_URL env var)
 
+## In Progress
+- [ ] **Visual UI/UX Audit** — Manuell jede Seite mit Browser visuell durchklicken. Usability, Spacing, Feldgrößen, Kontrast, leere Zustände, mobile Ansicht, Inkonsistenzen. Fix alle visuellen Issues direkt. Seiten: Landing, Login, Dashboard, Monitors, Versions, Alerts, Projects, Account, Admin, Status Page, 404.
+
 ## Ideas
 - Browser extension for quick monitor creation
 - CLI tool (`pulsedock check <url>`)

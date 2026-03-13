@@ -11,6 +11,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { FadeIn } from "../components/FadeIn";
+import { relativeTime, formatMonitorType } from "../components/timeUtils";
 
 interface Monitor {
   id: string;
@@ -157,7 +158,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-text-secondary text-sm mb-1">Last Check</p>
                     <p className="text-lg font-mono text-text-primary mt-1">
-                      {new Date(stats.lastCheck).toLocaleTimeString()}
+                      {relativeTime(stats.lastCheck)}
                     </p>
                   </div>
                   <div className="p-3 rounded-xl bg-surface-elevated">
@@ -174,7 +175,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-text-primary">Monitors</h2>
+                <h2 className="text-xl font-bold text-text-primary">Monitors</h2>
                 <p className="text-text-secondary text-sm mt-1">
                   {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
                 </p>
@@ -212,7 +213,7 @@ export default function DashboardPage() {
                         return (
                           <TableRow key={monitor.id}>
                             <TableCell className="font-medium">{monitor.name}</TableCell>
-                            <TableCell className="text-text-secondary">{monitor.type}</TableCell>
+                            <TableCell className="text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
                             <TableCell>
                               {monitor.enabled ? (
                                 lastRun ? (
@@ -227,9 +228,7 @@ export default function DashboardPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-text-secondary text-sm">
-                              {lastRun
-                                ? new Date(lastRun.checkedAt).toLocaleDateString()
-                                : "Never"}
+                              {lastRun ? relativeTime(lastRun.checkedAt) : "Never"}
                             </TableCell>
                             <TableCell>
                               <Button
@@ -255,7 +254,7 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <FadeIn delay={0.2}>
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-text-primary">Recent Activity</h2>
+            <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
               <Card className="text-center py-12">
                 <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
@@ -282,7 +281,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="font-medium text-text-primary">{run.message}</p>
                           <p className="text-text-secondary text-xs">
-                            {new Date(run.checkedAt).toLocaleString()}
+                            {relativeTime(run.checkedAt)}
                           </p>
                         </div>
                       </div>

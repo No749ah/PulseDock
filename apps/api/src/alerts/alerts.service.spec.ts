@@ -3,6 +3,10 @@ import { AlertsService } from './alerts.service';
 import { MetricsService } from '../common/metrics.service';
 import type { AlertChannel, Monitor, MonitorRun } from '../types';
 
+function makeMailer() {
+  return { sendAlertEmail: vi.fn().mockResolvedValue({ sent: true }) };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
@@ -95,7 +99,7 @@ describe('AlertsService', () => {
   describe('notifyTest()', () => {
     it('sends test message via webhook channel', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
 
       await service.notifyTest(channel);
@@ -111,7 +115,7 @@ describe('AlertsService', () => {
 
     it('sends test message via discord webhook', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel({ type: 'discord', config: { webhookUrl: 'https://discord.com/api/webhooks/abc/xyz' } });
 
       await service.notifyTest(channel);
@@ -125,7 +129,7 @@ describe('AlertsService', () => {
 
     it('sends test message via slack webhook', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel({ type: 'slack', config: { webhookUrl: 'https://hooks.slack.com/services/T/B/x' } });
 
       await service.notifyTest(channel);
@@ -139,7 +143,7 @@ describe('AlertsService', () => {
 
     it('sends test message via telegram bot', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel({
         type: 'telegram',
         config: { botToken: 'abc123', chatId: '-1001234567890' },
@@ -158,7 +162,7 @@ describe('AlertsService', () => {
 
     it('increments alertsSent metric on success', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel();
 
       await service.notifyTest(channel);
@@ -169,7 +173,7 @@ describe('AlertsService', () => {
     it('increments alertsFailed metric on persistent failure', async () => {
       fetchMock.mockRejectedValue(new Error('Network failure'));
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel();
 
       vi.useFakeTimers();
@@ -196,7 +200,7 @@ describe('AlertsService', () => {
         makeChannel({ id: 'chan-2', userId: monitor.userId, type: 'discord', config: { webhookUrl: 'https://discord.com/api/webhooks/1/2' } }),
       ];
       const prisma = makePrisma(channels.map((c) => ({ alertChannel: c })));
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
 
       await service.notifyMonitorFailure(monitor, run);
 
@@ -210,7 +214,7 @@ describe('AlertsService', () => {
 
       const channel = makeChannel({ userId: monitor.userId });
       const prisma = makePrisma([{ alertChannel: channel }]);
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
 
       await service.notifyMonitorFailure(monitor, run);
 
@@ -227,7 +231,7 @@ describe('AlertsService', () => {
       // Channel belongs to a different user
       const foreignChannel = makeChannel({ id: 'chan-x', userId: 'user-2' });
       const prisma = makePrisma([{ alertChannel: foreignChannel }]);
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
 
       await service.notifyMonitorFailure(monitor, run);
 
@@ -238,7 +242,7 @@ describe('AlertsService', () => {
       const monitor = makeMonitor();
       const run = makeRun();
       const prisma = makePrisma([]);
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
 
       await service.notifyMonitorFailure(monitor, run);
 
@@ -265,7 +269,7 @@ describe('AlertsService', () => {
         .mockResolvedValue({ ok: true });
 
       const prisma = makePrisma(channels.map((c) => ({ alertChannel: c })));
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
 
       // Should not throw even if one channel fails
       const promise = service.notifyMonitorFailure(monitor, run);
@@ -297,7 +301,7 @@ describe('AlertsService', () => {
         .mockRejectedValueOnce(new Error('fail 4'));
 
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel();
 
       const promise = service.notifyTest(channel);
@@ -316,7 +320,7 @@ describe('AlertsService', () => {
         .mockResolvedValueOnce({ ok: true });
 
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel();
 
       const promise = service.notifyTest(channel);
@@ -334,7 +338,7 @@ describe('AlertsService', () => {
         .mockResolvedValueOnce({ ok: true });
 
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never);
       const channel = makeChannel();
 
       const promise = service.notifyTest(channel);
@@ -346,18 +350,49 @@ describe('AlertsService', () => {
     });
   });
 
-  // ── email (no-op) ───────────────────────────────────────────────────────────
+  // ── email channel ───────────────────────────────────────────────────────────
 
   describe('email channel', () => {
-    it('does not call fetch (email is not yet implemented)', async () => {
+    it('calls mailer.sendAlertEmail with correct arguments', async () => {
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics);
-      const channel = makeChannel({ type: 'email', config: { to: 'user@example.com' } });
+      const mailer = makeMailer();
+      const service = new AlertsService(prisma as never, metrics, mailer as never);
+      const channel = makeChannel({ type: 'email', config: { to: 'alert@example.com' } });
 
-      // Email is a TODO — should resolve without calling fetch
       await service.notifyTest(channel);
 
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(mailer.sendAlertEmail).toHaveBeenCalledOnce();
+      const [to, text] = mailer.sendAlertEmail.mock.calls[0] as [string, string];
+      expect(to).toBe('alert@example.com');
+      expect(text).toContain('PulseDock test notification');
+    });
+
+    it('increments alertsSent when email succeeds', async () => {
+      const prisma = makePrisma();
+      const mailer = makeMailer();
+      const service = new AlertsService(prisma as never, metrics, mailer as never);
+      const channel = makeChannel({ type: 'email', config: { to: 'alert@example.com' } });
+
+      await service.notifyTest(channel);
+
+      expect(metrics.snapshot().alertsSent).toBe(1);
+    });
+
+    it('increments alertsFailed when mailer throws', async () => {
+      vi.useFakeTimers();
+      const prisma = makePrisma();
+      const mailer = { sendAlertEmail: vi.fn().mockRejectedValue(new Error('SMTP error')) };
+      const service = new AlertsService(prisma as never, metrics, mailer as never);
+      const channel = makeChannel({ type: 'email', config: { to: 'alert@example.com' } });
+
+      const promise = service.notifyTest(channel);
+      const rejectCheck = expect(promise).rejects.toThrow('SMTP error');
+      await vi.runAllTimersAsync();
+      await rejectCheck;
+      vi.useRealTimers();
+
+      expect(metrics.snapshot().alertsFailed).toBe(1);
     });
   });
 });

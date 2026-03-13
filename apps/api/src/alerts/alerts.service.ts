@@ -1,13 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { MailerService } from '../common/mailer.service';
 import type { AlertChannel, Monitor, MonitorRun } from '../types';
 import { MetricsService } from '../common/metrics.service';
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger(AlertsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
+    private readonly mailer: MailerService,
   ) {}
 
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
@@ -15,11 +19,13 @@ export class AlertsService {
       await fetch(channel.config.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, extra }) });
       return;
     }
+
     if ((channel.type === 'discord' || channel.type === 'slack') && typeof channel.config.webhookUrl === 'string') {
       const payload = channel.type === 'discord' ? { content: text } : { text };
       await fetch(channel.config.webhookUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       return;
     }
+
     if (channel.type === 'telegram' && typeof channel.config.botToken === 'string' && typeof channel.config.chatId === 'string') {
       await fetch(`https://api.telegram.org/bot${channel.config.botToken}/sendMessage`, {
         method: 'POST',
@@ -28,8 +34,10 @@ export class AlertsService {
       });
       return;
     }
-    if (channel.type === 'email') {
-      // TODO: Implement actual email sending via SMTP
+
+    if (channel.type === 'email' && typeof channel.config.to === 'string') {
+      await this.mailer.sendAlertEmail(channel.config.to, text, extra);
+      return;
     }
   }
 
@@ -77,7 +85,7 @@ export class AlertsService {
       try {
         await this.sendWithRetry(channel, text, { monitor, run });
       } catch (error) {
-        console.error('alert channel failed', channel.name, error);
+        this.logger.error(`Alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
       }
     }
   }

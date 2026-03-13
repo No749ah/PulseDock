@@ -52,4 +52,22 @@ export class MailerService {
     await transporter.sendMail({ from, to, subject, text });
     return { sent: true };
   }
+
+  async sendAlertEmail(to: string, alertText: string, extra?: unknown) {
+    const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
+    const transporter = this.transporter();
+
+    const subject = 'PulseDock Alert';
+    const body = extra
+      ? `${alertText}\n\n---\n${JSON.stringify(extra, null, 2)}`
+      : alertText;
+
+    if (!transporter) {
+      this.logger.warn(`[mail-disabled] alert to ${to}: ${alertText}`);
+      return { sent: false };
+    }
+
+    await transporter.sendMail({ from, to, subject: subject, text: body });
+    return { sent: true };
+  }
 }

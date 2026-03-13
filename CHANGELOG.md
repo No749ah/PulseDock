@@ -10,6 +10,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **V2 API — alert channels + check history endpoints** — Extended v2 surface: `GET /v2/alert-channels` (paginated, filterable by type/name, with `usedByCount` per channel and redacted webhook secrets) and `GET /v2/checks` (paginated check run history with level + date-range filtering). Both follow the v2 envelope format `{ data, meta: { total, page, limit, pages } }`. 7 new integration tests added (89 total).
+
+### Added
 - **API key management** — Programmatic access via `pdck_*` Bearer tokens. Full stack: `PublicStatusPage` + `ApiKey` Prisma models with proper migrations. `ApiKeysService` generates cryptographically secure keys (32-byte random hex, SHA-256 hash storage, prefix for fast lookup). `ApiKeysController` provides `GET/POST/DELETE /v1/api-keys`. `AuthGuard` now accepts both JWT sessions and `pdck_*` API keys transparently. Account page gains an API Keys section: create keys with optional expiry, one-time key reveal modal with copy button, list with last-used timestamps, revoke with confirmation.
 - **Admin system health widget** — Real-time dashboard on the `/admin` page polling `/health` and `/metrics` every 30 seconds. Shows API uptime, database status + latency, request/error counters, alert dispatch metrics, and a status banner (green/red). Fully typed, auto-refreshes with manual refresh button.
 - **Live monitor/alert stream via WebSockets** — Backend now emits `monitor.checked` and `alert.triggered` events (in addition to monitor CRUD), and Dashboard/Monitors pages subscribe through Socket.io for instant status/activity updates without manual refresh.

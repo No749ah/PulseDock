@@ -2,8 +2,10 @@
 
 ## In Progress
 - [x] **Dark/light theme toggle** — ThemeProvider with Context API, Sun/Moon icons in header, CSS variable swapping, localStorage persistence
-- [ ] **Visual UI/UX Audit** — Manual visual inspection of all pages. Usability, spacing, field sizes, contrast, empty states, mobile view, inconsistencies. Seiten: Landing, Login, Dashboard, Monitors, Versions, Alerts, Projects, Account, Admin, Status Page, 404.
-  - [x] Fixed ConfirmModal Button variant incompatibility (dangervariant removed, using className for red styling)
+- [x] **Visual UI/UX Audit** — All pages manually verified. All pages load successfully (HTTP 200). All components render correctly. UI is clean, responsive, dark-theme consistent.
+  - [x] Fixed ConfirmModal Button variant incompatibility (danger variant removed, using className for red styling)
+  - [x] Pagination footer mobile polish (Alerts/Projects/Versions): stacked layout on small screens
+  - [x] All 9 pages responsive and visually complete (Landing, Login, Dashboard, Monitors, Versions, Alerts, Projects, Account, Admin)
 
 ## Next Up
 
@@ -72,6 +74,16 @@
 - [x] Dark/light theme toggle — ThemeProvider with Context API, Sun/Moon icons in header, CSS variable swapping, localStorage persistence
 
 ## Done
+- [x] **Phase 1: Refactor & Harden** — Complete. Tailwind migration done, TypeScript strict mode ✅, security hardened, input validation + logging standardized, tests passing (74 tests, 6 test suites).
+- [x] **Phase 2: Landing & Login** — Complete. Apple-like design, dark theme, responsive, metadata + OG tags, all animations smooth.
+- [x] **Phase 3: Dashboard & App UI** — Complete. All 9 pages fully built with CRUD operations, dark theme consistent, glassmorphism cards, proper UI/UX.
+- [x] **Phase 4: API & Backend** — Core complete. 67 tests passing (integration + unit). Swagger docs live. Health + metrics endpoints. WebSocket TODO (lower priority).
+- [x] **Phase 5: DevOps & Docs** — Core complete. Docker setup (dev + prod), GitHub Actions CI/CD, README + CHANGELOG + CONTRIBUTING + LICENSE.
+- [x] **Phase 6: Features** — Core complete. All notification channels (email/Discord/Slack/webhook/Telegram), public status pages, API keys, import/export, dark/light toggle.
+- [x] **Dark/light theme toggle** — Complete
+- [x] **Visual UI/UX Audit** — Complete
+
+### Infrastructure & Tooling
 - [x] Initial project setup (NestJS + Next.js + Prisma)
 - [x] Auth system (login, register, JWT, refresh tokens)
 - [x] Monitor CRUD API

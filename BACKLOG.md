@@ -42,17 +42,17 @@
 - [x] Dark theme dashboard with glassmorphism cards
 - [x] Monitor list with live status indicators
 - [ ] Version diff viewer with syntax highlighting
-- [ ] Alert configuration UI (form)
+- [ ] Alert configuration UI (form) — wizard exists (3-step create + edit modal), missing: per-monitor alert assignment UI on monitor detail
 - [x] User settings / account page (settings form)
-- [ ] Admin panel (user management, system health)
-- [ ] Folder/project organization UI
+- [ ] Admin panel (user management, system health) — user management + invites + audit logs done; missing: system health widget
+- [x] Folder/project organization UI — full CRUD with table, pagination, modals
 - [x] Monitors page (full CRUD)
-- [ ] Versions page
-- [ ] Projects page
-- [ ] Alerts page
+- [x] Versions page — full CRUD, multi-step wizard, run history, expandable rows, stats cards
+- [x] Projects page — full CRUD with table, pagination, modals
+- [x] Alerts page — full CRUD, 3-step wizard, test functionality, all channel types
 
 ### Phase 4: API & Backend
-- [x] Add unit tests for core services — AppController, MetricsService, AuthService, MonitorsService (27 tests, vitest)
+- [x] Add unit tests for core services — AppController, MetricsService, AuthService, MonitorsService, AlertsService (45 tests, vitest). AlertsService: multi-channel dispatch, retry logic with fake timers, user ownership guard, all channel types.
 - [ ] Add integration tests for API endpoints
 - [ ] Add proper API versioning strategy
 - [x] Swagger/OpenAPI docs with examples — @ApiTags/@ApiOperation/@ApiResponse on all 9 controllers, live at /docs
@@ -62,7 +62,7 @@
 
 ### Phase 5: DevOps & Docs
 - [x] Production Dockerfile (multi-stage, minimal image) — apps/api/Dockerfile + apps/web/Dockerfile + docker-compose.prod.yml
-- [ ] Docker Compose for development (app + postgres + redis)
+- [x] Docker Compose for development (app + postgres + redis) — docker-compose.dev.yml with hot reload, apps/api/Dockerfile.dev (ts-node-dev), apps/web/Dockerfile.dev (next dev), named volumes for node_modules isolation
 - [ ] Docker Compose / Kubernetes manifests for production
 - [x] GitHub Actions CI/CD — full pipeline: build + test + tsc typecheck + security audit
 - [x] README.md — professional, with quick start, architecture, tech stack, testing sections

@@ -16,4 +16,12 @@ export class RealtimeEvents {
   monitorDeleted(userId: string, payload: unknown) {
     this.gateway.emitToUser(userId, 'monitor.deleted', payload);
   }
+
+  monitorChecked(userId: string, payload: unknown) {
+    this.gateway.emitToUser(userId, 'monitor.checked', payload);
+  }
+
+  alertTriggered(userId: string, payload: unknown) {
+    this.gateway.emitToUser(userId, 'alert.triggered', payload);
+  }
 }

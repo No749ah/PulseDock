@@ -1,18 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
 import type { AlertChannel, Monitor, MonitorRun } from '../types';
 import { MetricsService } from '../common/metrics.service';
+import { RealtimeEvents } from '../realtime/realtime.events';
 
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
+  private readonly realtime: Pick<RealtimeEvents, 'alertTriggered'>;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
     private readonly mailer: MailerService,
-  ) {}
+    @Optional() realtime?: RealtimeEvents,
+  ) {
+    this.realtime = realtime ?? { alertTriggered: () => undefined };
+  }
 
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
@@ -80,6 +85,16 @@ export class AlertsService {
       }));
 
     const text = `🚨 PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
+
+    this.realtime.alertTriggered(monitor.userId, {
+      monitor: {
+        id: monitor.id,
+        name: monitor.name,
+      },
+      run,
+      channelCount: channels.length,
+      sentAt: new Date().toISOString(),
+    });
 
     for (const channel of channels) {
       try {

@@ -2,12 +2,15 @@
 
 ## In Progress
 
-- [ ] **WebSocket support for real-time monitor updates** — Socket.io foundation added (`/realtime` gateway + user-room subscriptions) and monitor CRUD events (`monitor.created|updated|deleted`) now emitted server-side. Remaining: alert/check status push + frontend live subscriptions.
+- [ ] **Docker Compose / Kubernetes manifests for production** — k8s deployment manifests, helm charts or docker-compose production variant. Estimated impact: High (deployment readiness).
+
+## Recently Completed
+
+- [x] **WebSocket support for real-time monitor updates** — Added server push for check + alert activity (`monitor.checked`, `alert.triggered`) and frontend live subscriptions on Dashboard/Monitors with immediate UI updates.
 
 ## Next Up (Priority Order)
 
 ### High Priority
-- [ ] **Docker Compose / Kubernetes manifests for production** — k8s deployment manifests, helm charts or docker-compose production variant. Estimated impact: High (deployment readiness).
 - [ ] **Plugin system for custom monitor types** — Allow community-contributed monitor types. Plugin registry, validation, sandboxing. Estimated impact: Medium (extensibility).
 
 ### Blocked/In Review
@@ -32,7 +35,7 @@
 - **Codebase:** 74 tests passing, zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx setup documented
-- **Production Readiness:** ~90% — Core features stable, missing WebSocket real-time + k8s manifests
+- **Production Readiness:** ~93% — Core features stable, next major gap is production-grade k8s/compose manifests
 
 ## Ideas & Future Work
 - Browser extension for quick monitor creation

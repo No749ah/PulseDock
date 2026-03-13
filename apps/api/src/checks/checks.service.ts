@@ -1,16 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/i;
 import type { Monitor, MonitorRun } from '../types';
 import { PrismaService } from '../common/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { RealtimeEvents } from '../realtime/realtime.events';
 
 @Injectable()
 export class ChecksService {
+  private readonly realtime: Pick<RealtimeEvents, 'monitorChecked'>;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
-  ) {}
+    @Optional() realtime?: RealtimeEvents,
+  ) {
+    this.realtime = realtime ?? { monitorChecked: () => undefined };
+  }
 
   private parseGithubRepo(input: string) {
     const cleaned = input.replace(/^https?:\/\/github.com\//i, '').replace(/\.git$/, '');
@@ -500,6 +506,21 @@ export class ChecksService {
     if ((run.level === 'red' || run.level === 'yellow') && levelChanged) {
       await this.alerts.notifyMonitorFailure(monitor, run);
     }
+
+    this.realtime.monitorChecked(monitor.userId, {
+      monitor: {
+        id: monitor.id,
+        name: monitor.name,
+        type: monitor.type,
+        target: monitor.target,
+        enabled: monitor.enabled,
+      },
+      run,
+      changed: {
+        previousLevel: prev?.level ?? null,
+        levelChanged,
+      },
+    });
 
     return run;
   }

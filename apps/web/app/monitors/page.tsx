@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye } from "lucide-react";
 import { api } from "../../lib/api";
+import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
 import { Card } from "../components/Card";
@@ -28,10 +29,11 @@ interface MonitorRun {
   id: string;
   monitorId: string;
   ok: boolean;
-  status: number;
+  statusCode: number;
   latencyMs?: number;
   message: string;
   checkedAt: string;
+  level?: "green" | "yellow" | "red";
 }
 
 interface AlertChannel {
@@ -61,6 +63,7 @@ export default function MonitorsPage() {
   const [allChannels, setAllChannels] = useState<AlertChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [realtimeAlert, setRealtimeAlert] = useState("");
 
   // create/edit monitor modal
   const [showModal, setShowModal] = useState(false);
@@ -121,6 +124,48 @@ export default function MonitorsPage() {
     }
 
     loadData();
+
+    const socket = createRealtimeSocket(userId);
+
+    socket.on("connect", () => {
+      socket.emit("subscribe", { userId });
+    });
+
+    socket.on("monitor.created", (payload: MonitorItem) => {
+      setMonitors((prev) => (prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev]));
+    });
+
+    socket.on("monitor.updated", (payload: MonitorItem) => {
+      setMonitors((prev) => prev.map((m) => (m.id === payload.id ? payload : m)));
+    });
+
+    socket.on("monitor.deleted", (payload: { id: string }) => {
+      setMonitors((prev) => prev.filter((m) => m.id !== payload.id));
+      setRuns((prev) => prev.filter((r) => r.monitorId !== payload.id));
+    });
+
+    socket.on(
+      "monitor.checked",
+      (payload: { run: MonitorRun }) => {
+        if (!payload?.run) return;
+        setRuns((prev) => [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 20));
+      },
+    );
+
+    socket.on(
+      "alert.triggered",
+      (payload: { monitor?: { name?: string }; run?: { level?: string; message?: string } }) => {
+        const name = payload?.monitor?.name ?? "Monitor";
+        const level = payload?.run?.level?.toUpperCase() ?? "ALERT";
+        const message = payload?.run?.message ?? "Notification sent";
+        setRealtimeAlert(`${name}: ${level} — ${message}`);
+        setTimeout(() => setRealtimeAlert(""), 6000);
+      },
+    );
+
+    return () => {
+      socket.disconnect();
+    };
   }, [router]);
 
   const openAlertPanel = async (monitor: MonitorItem) => {
@@ -261,6 +306,15 @@ export default function MonitorsPage() {
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
+            </div>
+          </FadeIn>
+        )}
+
+        {realtimeAlert && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
+              <Bell className="w-5 h-5 text-warning mt-0.5 shrink-0" />
+              <span className="text-warning text-sm">{realtimeAlert}</span>
             </div>
           </FadeIn>
         )}

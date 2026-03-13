@@ -150,6 +150,53 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  async listMonitorAlerts(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const assignments = await this.prisma.monitorAlert.findMany({
+      where: { monitorId },
+      include: { alertChannel: true },
+    });
+
+    return assignments.map((a) => ({
+      id: a.alertChannel.id,
+      name: a.alertChannel.name,
+      type: a.alertChannel.type,
+      config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
+      createdAt: a.alertChannel.createdAt.toISOString(),
+    }));
+  }
+
+  async addMonitorAlert(userId: string, monitorId: string, channelId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id: channelId, userId } });
+    if (!channel) throw new NotFoundException('alert channel not found');
+
+    await this.prisma.monitorAlert.upsert({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      create: { monitorId, alertChannelId: channelId },
+      update: {},
+    });
+
+    await this.audit.log('monitor.alert.add', userId, userId, { monitorId, channelId });
+    return { ok: true };
+  }
+
+  async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    await this.prisma.monitorAlert.deleteMany({
+      where: { monitorId, alertChannelId: channelId },
+    });
+
+    await this.audit.log('monitor.alert.remove', userId, userId, { monitorId, channelId });
+    return { ok: true };
+  }
+
   async runNow(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');

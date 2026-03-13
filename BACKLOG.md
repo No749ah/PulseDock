@@ -6,6 +6,7 @@ _(nothing active — pick from Next Up)_
 
 ## Recently Completed
 
+- [x] **CLI tool** — `pulsedock check <url>` one-shot HTTP checker + `monitors list/check` + `config` commands. New package `@pulsedock/cli` with 10 unit tests, fully wired into root build/test, documented in `docs/CLI.md`.
 - [x] **Mobile-responsive PWA improvements** — Added contextual loading skeletons for Monitors/Dashboard/Alerts, installability banner (`beforeinstallprompt` + iOS hint), service worker registration, and offline fallback route (`/offline`) with cached offline support.
 - [x] **Add proper API versioning strategy** — Implemented v2 API surface: `GET /v2/monitors` (paginated + filtering + sorting), `GET /v2/alert-channels` (paginated + usedByCount + secret redaction), `GET /v2/checks` (paginated check history + date-range + level filters), `GET /v2/system/info`, `GET /v2/system/versions`. v1 unchanged. 89 integration tests passing.
 - [x] **Plugin system for custom monitor types** — Delivered plugin contracts/registry/sandbox + plugin execution path, added starter plugin (`http.response-match`), exposed plugin metadata + config UX in Monitors UI, and documented packaging/verification flow (`docs/PLUGINS.md`).
@@ -15,7 +16,7 @@ _(nothing active — pick from Next Up)_
 ## Next Up (Priority Order)
 
 ### High Priority
-- [ ] **CLI tool** — `pulsedock check <url>` one-shot HTTP checker using the PulseDock API. Estimated impact: Medium (developer UX).
+_(CLI done — see Recently Completed)_
 
 ### Blocked/In Review
 - [ ] **Fix all npm audit vulnerabilities** (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 with breaking changes; waiting on upstream hono/prisma fixes)

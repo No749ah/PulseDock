@@ -142,6 +142,60 @@ export class MonitorsService {
     return this.list(userId).then((items) => items.find((m) => m.id === monitorId));
   }
 
+  async exportMonitors(userId: string) {
+    const monitors = await this.list(userId);
+    return {
+      version: '1',
+      exportedAt: new Date().toISOString(),
+      monitors: monitors.map((m) => ({
+        name: m.name,
+        type: m.type,
+        target: m.target,
+        intervalSec: m.intervalSec,
+        timeoutMs: m.timeoutMs,
+        config: m.config,
+        enabled: m.enabled,
+      })),
+    };
+  }
+
+  async importMonitors(userId: string, items: Array<{
+    name: string;
+    target: string;
+    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number;
+    timeoutMs?: number;
+    config?: Record<string, unknown>;
+    enabled?: boolean;
+  }>) {
+    const created = [];
+    const errors: Array<{ index: number; name: string; error: string }> = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item) continue;
+      try {
+        const monitor = await this.create(userId, {
+          name: item.name,
+          target: item.target,
+          type: item.type,
+          intervalSec: item.intervalSec,
+          timeoutMs: item.timeoutMs,
+          config: item.config,
+        });
+        if (item.enabled === false) {
+          await this.update(userId, monitor.id, { enabled: false });
+        }
+        created.push(monitor);
+      } catch (err) {
+        errors.push({ index: i, name: item.name, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    await this.audit.log('monitor.import', userId, userId, { imported: created.length, errors: errors.length });
+    return { imported: created.length, errors };
+  }
+
   async remove(userId: string, monitorId: string) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');

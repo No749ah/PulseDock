@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Eye, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X } from "lucide-react";
+import { Plus, Trash2, Eye, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload } from "lucide-react";
 import { api } from "../../lib/api";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
@@ -78,6 +78,11 @@ export default function MonitorsPage() {
     intervalSec: 60,
     enabled: true,
   });
+
+  // import/export
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; errors: Array<{ index: number; name: string; error: string }> } | null>(null);
 
   // alert assignment panel
   const [alertPanelMonitor, setAlertPanelMonitor] = useState<MonitorItem | null>(null);
@@ -193,6 +198,46 @@ export default function MonitorsPage() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const data = await api<{ version: string; exportedAt: string; monitors: unknown[] }>("/v1/monitors/export", user?.id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Export failed");
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setError("");
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { monitors?: unknown[] };
+      const monitorsArray = Array.isArray(parsed) ? parsed : (parsed.monitors ?? []);
+      const result = await api<{ imported: number; errors: Array<{ index: number; name: string; error: string }> }>("/v1/monitors/import", user?.id, {
+        method: "POST",
+        body: JSON.stringify({ monitors: monitorsArray }),
+      });
+      setImportResult(result);
+      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(monitorsData);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const unassignedChannels = allChannels.filter(
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
@@ -220,27 +265,85 @@ export default function MonitorsPage() {
         )}
 
         <FadeIn>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Monitors</h2>
               <p className="text-text-secondary text-sm mt-1">
                 {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} active
               </p>
             </div>
-            <Button
-              size="lg"
-              onClick={() => {
-                setModalMode("create");
-                setEditingMonitor(null);
-                setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
-                setShowModal(true);
-              }}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> New Monitor
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExport}
+                className="flex items-center gap-2"
+                title="Export monitors as JSON"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2"
+                title="Import monitors from JSON"
+                disabled={importing}
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">{importing ? "Importing…" : "Import"}</span>
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  setModalMode("create");
+                  setEditingMonitor(null);
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
+                  setShowModal(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">New Monitor</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            </div>
           </div>
         </FadeIn>
+
+        {importResult && (
+          <FadeIn>
+            <div className={`flex items-start gap-3 p-4 rounded-xl border ${importResult.errors.length === 0 ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
+              <CheckCircle2 className={`w-5 h-5 mt-0.5 shrink-0 ${importResult.errors.length === 0 ? "text-success" : "text-warning"}`} />
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${importResult.errors.length === 0 ? "text-success" : "text-warning"}`}>
+                  Imported {importResult.imported} monitor{importResult.imported !== 1 ? "s" : ""}
+                  {importResult.errors.length > 0 && `, ${importResult.errors.length} failed`}
+                </p>
+                {importResult.errors.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {importResult.errors.map((e, i) => (
+                      <li key={i} className="text-xs text-text-secondary">
+                        <span className="font-medium">{e.name}</span>: {e.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <button onClick={() => setImportResult(null)} className="text-text-secondary hover:text-text-primary">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </FadeIn>
+        )}
 
         {monitors.length === 0 ? (
           <FadeIn delay={0.1}>

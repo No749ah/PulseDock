@@ -74,8 +74,8 @@
 
 ### Phase 6: Features
 - [ ] Plugin system for custom monitor types
-- [ ] Notification channels (email, Discord, Slack, webhook)
-- [ ] Public status page (per-user, shareable URL)
+- [x] Notification channels (email, Discord, Slack, webhook) — All implemented: webhook, Discord, Slack, Telegram via fetch; email via MailerService (SMTP). AlertsService uses structured Logger instead of console.error.
+- [x] Public status page (per-user, shareable URL) — /status/[userId]: per-monitor breakdown (operational/degraded/outage), live status banner with animated dot, recent events table, loading/error segments, 404 on unknown user.
 - [x] API key management for programmatic access
 - [x] Import/export monitors (JSON/YAML) — GET /v1/monitors/export + POST /v1/monitors/import with Export/Import buttons on monitors page
 - [ ] Dark/light theme toggle

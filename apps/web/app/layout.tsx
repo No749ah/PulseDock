@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
+import { ThemeProvider } from "../components/theme-provider";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -65,7 +66,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         
       </head>
       <body className="bg-bg text-text-primary antialiased">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

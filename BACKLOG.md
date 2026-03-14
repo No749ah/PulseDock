@@ -2,10 +2,11 @@
 
 ## In Progress
 
-_(nothing active — pick from Next Up)_
+_(nothing active — project is feature-complete)_
 
 ## Recently Completed
 
+- [x] **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) with one-click monitor creation, context menu integration, dark theme popup, API key auth, settings panel, and dashboard shortcut. Documented in `docs/EXTENSION.md`.
 - [x] **CLI tool** — `pulsedock check <url>` one-shot HTTP checker + `monitors list/check` + `config` commands. New package `@pulsedock/cli` with 10 unit tests, fully wired into root build/test, documented in `docs/CLI.md`.
 - [x] **Mobile-responsive PWA improvements** — Added contextual loading skeletons for Monitors/Dashboard/Alerts, installability banner (`beforeinstallprompt` + iOS hint), service worker registration, and offline fallback route (`/offline`) with cached offline support.
 - [x] **Add proper API versioning strategy** — Implemented v2 API surface: `GET /v2/monitors` (paginated + filtering + sorting), `GET /v2/alert-channels` (paginated + usedByCount + secret redaction), `GET /v2/checks` (paginated check history + date-range + level filters), `GET /v2/system/info`, `GET /v2/system/versions`. v1 unchanged. 89 integration tests passing.
@@ -22,7 +23,7 @@ _(CLI done — see Recently Completed)_
 - [ ] **Fix all npm audit vulnerabilities** (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 with breaking changes; waiting on upstream hono/prisma fixes)
 
 ### Nice-to-Have
-- [ ] **Browser extension** — One-click monitor creation from current tab URL with quick check presets. Estimated impact: Medium (activation).
+- [x] **Browser extension** — Shipped! Chrome MV3 extension in `packages/extension/`. Load unpacked from `dist/` in Chrome developer mode.
 
 ---
 

@@ -35,7 +35,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ### 🔴 SECURITY — Critical Gaps
 
 - [ ] **2FA / TOTP (Two-Factor Authentication)** — Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
-- [ ] **CSRF Protection** — Add CSRF token validation for all state-mutating endpoints (POST/PUT/DELETE). Use `csurf` or double-submit cookie pattern. Ensure SameSite cookie flags are set.
+- [x] **CSRF Protection** — Double-submit cookie pattern implemented. `GET /v1/auth/csrf` issues non-httpOnly cookie + returns token. `CsrfMiddleware` validates `X-CSRF-Token` header against cookie on all mutating routes (timingSafeEqual). Web `api.ts` auto-injects token. API key / Bearer callers exempt.
 - [x] **Account lockout after failed login attempts** — After 5 consecutive failed logins, lock account for 15 minutes. Log lockout events to audit log. Notify user via email.
 - [ ] **Email verification on registration** — New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
 - [x] **Password strength enforcement** — Enforce minimum 12 chars, complexity rules (upper/lower/digit/special). Show strength indicator in UI. Reject weak passwords at API level.

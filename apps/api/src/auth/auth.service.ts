@@ -85,17 +85,30 @@ export class AuthService {
     if (existing) throw new ConflictException('email already exists');
 
     const userCount = await this.prisma.user.count();
+    const isFirstAdmin = userCount === 0;
     const user = await this.prisma.user.create({
       data: {
         email: email.toLowerCase(),
         passwordHash: hashSync(password, 10),
-        role: userCount === 0 ? 'admin' : 'user',
+        role: isFirstAdmin ? 'admin' : 'user',
         isActive: true,
         mustChangePassword: false,
+        emailVerified: isFirstAdmin,
       },
     });
 
     await this.audit.log('auth.register', user.id, user.id, { email: user.email });
+
+    if (!isFirstAdmin && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
+      const token = randomBytes(24).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await this.prisma.emailVerificationToken.create({ data: { token, email: user.email, expiresAt } });
+      const appBase = process.env.APP_BASE_URL ?? 'http://localhost:3000';
+      const verifyUrl = `${appBase}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
+      await this.mailer.sendEmailVerificationEmail(user.email, verifyUrl);
+      return { id: user.id, email: user.email, role: user.role, emailVerificationSent: true };
+    }
+
     return { id: user.id, email: user.email, role: user.role };
   }
 
@@ -118,6 +131,10 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new UnauthorizedException('user is disabled');
+    }
+
+    if (!user.emailVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
+      throw new UnauthorizedException('email_not_verified');
     }
 
     if (user.failedLoginCount > 0 || user.lockedUntil) {
@@ -218,6 +235,7 @@ export class AuthService {
         role: invite.role,
         isActive: true,
         mustChangePassword: false,
+        emailVerified: true,
       },
     });
 
@@ -361,6 +379,50 @@ export class AuthService {
     } catch {
       // Token invalid/expired — nothing to revoke
     }
+  }
+
+  async verifyEmail(token: string) {
+    const record = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
+    if (!record) throw new UnauthorizedException('invalid verification token');
+    if (record.consumedAt) throw new UnauthorizedException('verification token already used');
+    if (record.expiresAt.getTime() < Date.now()) throw new UnauthorizedException('verification token expired');
+
+    await this.prisma.user.update({ where: { email: record.email }, data: { emailVerified: true } });
+    await this.prisma.emailVerificationToken.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+
+    const user = await this.prisma.user.findUnique({ where: { email: record.email } });
+    if (user) {
+      await this.audit.log('auth.verify_email', user.id, user.id, { email: record.email });
+    }
+
+    return { ok: true };
+  }
+
+  async resendVerification(email: string) {
+    const normalized = email.toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
+
+    // Do not leak user existence — always return ok
+    if (user && !user.emailVerified) {
+      const recentToken = await this.prisma.emailVerificationToken.findFirst({
+        where: {
+          email: normalized,
+          createdAt: { gt: new Date(Date.now() - 2 * 60 * 1000) },
+        },
+      });
+
+      if (!recentToken) {
+        const token = randomBytes(24).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await this.prisma.emailVerificationToken.create({ data: { token, email: normalized, expiresAt } });
+        const appBase = process.env.APP_BASE_URL ?? 'http://localhost:3000';
+        const verifyUrl = `${appBase}/verify-email?token=${token}&email=${encodeURIComponent(normalized)}`;
+        await this.mailer.sendEmailVerificationEmail(normalized, verifyUrl);
+        await this.audit.log('auth.resend_verification', user.id, user.id, { email: normalized });
+      }
+    }
+
+    return { ok: true };
   }
 
   async getActiveUserById(id: string) {

@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [rememberUser, setRememberUser] = useState(true);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
@@ -103,7 +104,12 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Login failed";
-      setError(msg);
+      if (msg === "email_not_verified") {
+        setNeedsVerification(true);
+        setError("");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -287,6 +293,19 @@ export default function LoginPage() {
               {info && (
                 <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">
                   {info}
+                </div>
+              )}
+
+              {/* Email not verified */}
+              {needsVerification && (
+                <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">
+                  Please verify your email before signing in.{" "}
+                  <a
+                    href={`/verify-email?email=${encodeURIComponent(email)}`}
+                    className="underline hover:text-accent-hover transition-colors"
+                  >
+                    Resend verification email
+                  </a>
                 </div>
               )}
 

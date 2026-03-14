@@ -1,5 +1,6 @@
 import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
+
 export class RegisterDto {
   @IsEmail()
   @MaxLength(255)
@@ -84,4 +85,16 @@ export class RevokeSessionDto {
   @IsString()
   @MaxLength(255)
   sessionId!: string;
+}
+
+export class VerifyEmailDto {
+  @IsString()
+  @MaxLength(1024)
+  token!: string;
+}
+
+export class ResendVerificationDto {
+  @IsEmail()
+  @MaxLength(255)
+  email!: string;
 }

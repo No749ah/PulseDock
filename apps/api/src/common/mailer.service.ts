@@ -53,6 +53,22 @@ export class MailerService {
     return { sent: true };
   }
 
+  async sendEmailVerificationEmail(to: string, verifyUrl: string) {
+    const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
+    const transporter = this.transporter();
+
+    const subject = 'Verify your PulseDock email';
+    const text = `Please verify your PulseDock email address by opening this link: ${verifyUrl}`;
+
+    if (!transporter) {
+      this.logger.warn(`[mail-disabled] email verification for ${to}: ${verifyUrl}`);
+      return { sent: false };
+    }
+
+    await transporter.sendMail({ from, to, subject, text });
+    return { sent: true };
+  }
+
   async sendAlertEmail(to: string, alertText: string, extra?: unknown) {
     const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
     const transporter = this.transporter();

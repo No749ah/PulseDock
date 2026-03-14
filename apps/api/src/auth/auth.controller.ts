@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
-import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto } from './auth.dto';
+import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto, VerifyEmailDto } from './auth.dto';
 import { generateCsrfToken, setCsrfCookie } from '../common/csrf.middleware';
 
 interface ExpressResponse {
@@ -112,6 +112,23 @@ export class AuthController {
       setAuthCookies(res, result.accessToken as string, result.refreshToken as string);
     }
     return result;
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('verify-email')
+  @ApiOperation({ summary: 'Verify email address' })
+  @ApiResponse({ status: 200, description: 'Email verified.' })
+  @ApiResponse({ status: 401, description: 'Token invalid or expired.' })
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.authService.verifyEmail(body.token);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('resend-verification')
+  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiResponse({ status: 200, description: 'Verification email sent (or no-op if already verified).' })
+  resendVerification(@Body() body: ResendVerificationDto) {
+    return this.authService.resendVerification(body.email);
   }
 
   @Throttle({ default: { limit: 4, ttl: 60_000 } })

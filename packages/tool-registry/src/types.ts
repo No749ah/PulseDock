@@ -27,7 +27,9 @@ export type ToolCategory =
   | 'Infrastructure'
   | 'Messaging'
   | 'API'
-  | 'Cloud';
+  | 'Cloud'
+  | 'Maven Central'
+  | 'Helm';
 
 export interface VersionSource {
   type: VersionSourceType;

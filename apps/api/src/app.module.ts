@@ -31,6 +31,8 @@ import { V2MonitorsController } from './v2/monitors/monitors.controller';
 import { V2SystemController } from './v2/system/system.controller';
 import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
+import { TagsController } from './tags/tags.controller';
+import { TagsService } from './tags/tags.service';
 
 @Module({
   imports: [
@@ -54,6 +56,7 @@ import { V2ChecksController } from './v2/checks/checks.controller';
     V2SystemController,
     V2AlertsController,
     V2ChecksController,
+    TagsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -69,6 +72,7 @@ import { V2ChecksController } from './v2/checks/checks.controller';
     ChecksScheduler,
     RolesGuard,
     ApiKeysService,
+    TagsService,
   ],
 })
 export class AppModule implements NestModule {

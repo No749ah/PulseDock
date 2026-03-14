@@ -16,6 +16,7 @@ function makeMonitor(overrides: Record<string, unknown> = {}) {
     enabled: true,
     createdAt: new Date('2026-01-01'),
     monitorAlerts: [],
+    monitorTags: [],
     ...overrides,
   };
 }
@@ -33,6 +34,7 @@ function makePrisma(monitorOverride?: ReturnType<typeof makeMonitor> | null) {
           target: data.target,
           type: data.type,
           monitorAlerts: [],
+          monitorTags: [],
         }),
       ),
       findFirst: vi.fn().mockResolvedValue(monitor),

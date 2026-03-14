@@ -43,6 +43,7 @@ model User {
   targetAuditLogs AuditLog[]       @relation("audit_target")
   apiKeys          ApiKey[]
   statusPages      PublicStatusPage[]
+  tags             Tag[]
 }
 
 model Session {
@@ -86,6 +87,31 @@ model Monitor {
   folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs          MonitorRun[]
   monitorAlerts MonitorAlert[]
+  monitorTags   MonitorTag[]
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorTags MonitorTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model MonitorTag {
+  monitorId String
+  tagId     String
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([monitorId, tagId])
 }
 
 model MonitorRun {

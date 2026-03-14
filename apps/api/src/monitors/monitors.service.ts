@@ -37,11 +37,17 @@ export class MonitorsService {
     return this.checksService.listPlugins();
   }
 
-  async list(userId: string) {
+  async list(userId: string, tagFilter?: string) {
     const monitors = await this.prisma.monitor.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(tagFilter ? { monitorTags: { some: { tag: { name: tagFilter } } } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
-      include: { monitorAlerts: true },
+      include: {
+        monitorAlerts: true,
+        monitorTags: { include: { tag: true } },
+      },
     });
 
     return monitors.map((m) => ({
@@ -55,6 +61,7 @@ export class MonitorsService {
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       folderId: m.folderId,
+      tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
       enabled: m.enabled,
       createdAt: m.createdAt.toISOString(),
     }));
@@ -69,6 +76,7 @@ export class MonitorsService {
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
+    tags?: string[];
   }) {
     const created = await this.prisma.monitor.create({
       data: {
@@ -86,6 +94,20 @@ export class MonitorsService {
       },
     });
 
+    // Handle tags
+    const createdTags: Array<{ id: string; name: string; color: string }> = [];
+    if (body.tags && body.tags.length > 0) {
+      for (const tagName of body.tags) {
+        const tag = await this.prisma.tag.upsert({
+          where: { userId_name: { userId, name: tagName } },
+          create: { userId, name: tagName },
+          update: {},
+        });
+        await this.prisma.monitorTag.create({ data: { monitorId: created.id, tagId: tag.id } });
+        createdTags.push({ id: tag.id, name: tag.name, color: tag.color });
+      }
+    }
+
     await this.audit.log('monitor.create', userId, userId, { monitorId: created.id, type: created.type, target: created.target });
 
     const response = {
@@ -99,6 +121,7 @@ export class MonitorsService {
       config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
+      tags: createdTags,
       enabled: created.enabled,
       createdAt: created.createdAt.toISOString(),
     };
@@ -117,6 +140,7 @@ export class MonitorsService {
     alertChannelIds?: string[];
     folderId?: string | null;
     enabled?: boolean;
+    tags?: string[];
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -144,6 +168,18 @@ export class MonitorsService {
         await this.prisma.monitorAlert.createMany({
           data: body.alertChannelIds.map((alertChannelId) => ({ monitorId, alertChannelId })),
         });
+      }
+    }
+
+    if (body.tags !== undefined) {
+      await this.prisma.monitorTag.deleteMany({ where: { monitorId } });
+      for (const tagName of body.tags) {
+        const tag = await this.prisma.tag.upsert({
+          where: { userId_name: { userId, name: tagName } },
+          create: { userId, name: tagName },
+          update: {},
+        });
+        await this.prisma.monitorTag.create({ data: { monitorId, tagId: tag.id } });
       }
     }
 

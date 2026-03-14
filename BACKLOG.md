@@ -71,7 +71,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Discord alert channel** — Discord webhook URL config + embed payload implemented. UI + backend complete.
 - [x] **Telegram alert channel** — Bot token + chat ID implemented via Telegram Bot API. UI + backend complete.
 - [x] **Public status page polish** — Added latency sparklines (inline SVG per monitor), structured incident history (active + resolved with durations), per-monitor uptime%, active incidents banner. Custom domain support deferred (infra work).
-- [ ] **Monitor groups / tags** — Allow grouping monitors with tags. Filter/search by tag in UI.
+- [x] **Monitor groups / tags** — Prisma Tag + MonitorTag models, migration applied. API: GET/POST/PATCH/DELETE /v1/tags, monitors list/create/update accept tags[]. UI: tag filter bar on monitors page, tag chips in rows, tag input (Enter/comma) in create+edit modal.
 - [x] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Checkbox per row + select-all header, bulk action bar, POST /v1/monitors/bulk API endpoint.
 - [x] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.

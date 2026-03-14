@@ -34,6 +34,12 @@ export class CreateMonitorDto {
 
   @IsOptional()
   folderId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 }
 
 export class UpdateMonitorDto {
@@ -76,6 +82,12 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 }
 
 export class RunMonitorDto {

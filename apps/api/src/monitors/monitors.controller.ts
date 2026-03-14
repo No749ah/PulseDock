@@ -13,9 +13,10 @@ export class MonitorsController {
 
   @Get()
   @ApiOperation({ summary: 'List monitors', description: 'Returns all monitors for the authenticated user.' })
+  @ApiQuery({ name: 'tag', required: false, description: 'Filter monitors by tag name.' })
   @ApiResponse({ status: 200, description: 'Monitor list returned.' })
-  list(@Req() req: { user: { id: string } }) {
-    return this.monitorsService.list(req.user.id);
+  list(@Req() req: { user: { id: string } }, @Query('tag') tag?: string) {
+    return this.monitorsService.list(req.user.id, tag);
   }
 
   @Post()

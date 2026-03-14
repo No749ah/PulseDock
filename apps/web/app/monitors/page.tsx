@@ -20,6 +20,20 @@ import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
 import { Sparkline } from "../components/Sparkline";
 
+interface MonitorTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface TagItem {
+  id: string;
+  name: string;
+  color: string;
+  monitorCount: number;
+  createdAt: string;
+}
+
 interface MonitorItem {
   id: string;
   name: string;
@@ -29,6 +43,7 @@ interface MonitorItem {
   enabled: boolean;
   createdAt: string;
   config?: Record<string, unknown>;
+  tags?: MonitorTag[];
 }
 
 interface MonitorRun {
@@ -86,6 +101,8 @@ export default function MonitorsPage() {
   const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [allChannels, setAllChannels] = useState<AlertChannel[]>([]);
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
+  const [allTags, setAllTags] = useState<TagItem[]>([]);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -112,6 +129,8 @@ export default function MonitorsPage() {
     pluginId: "",
     expectedText: "",
   });
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
 
@@ -144,16 +163,18 @@ export default function MonitorsPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
           api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
+          api<TagItem[]>("/v1/tags", userId),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
         setAllChannels(channelsData);
         setPlugins(pluginsData);
+        setAllTags(tagsData);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitors");
       } finally {
@@ -288,12 +309,19 @@ export default function MonitorsPage() {
           intervalSec: formData.intervalSec,
           enabled: formData.enabled,
           config,
+          tags: selectedTags,
         }),
       });
       setShowModal(false);
       setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
-      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setSelectedTags([]);
+      setTagInput("");
+      const [monitorsData, tagsData] = await Promise.all([
+        api<MonitorItem[]>("/v1/monitors", user?.id),
+        api<TagItem[]>("/v1/tags", user?.id),
+      ]);
       setMonitors(monitorsData);
+      setAllTags(tagsData);
       success("Monitor created");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to create monitor");
@@ -317,12 +345,19 @@ export default function MonitorsPage() {
           intervalSec: formData.intervalSec,
           enabled: formData.enabled,
           config,
+          tags: selectedTags,
         }),
       });
       setShowModal(false);
       setEditingMonitor(null);
-      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setSelectedTags([]);
+      setTagInput("");
+      const [monitorsData, tagsData] = await Promise.all([
+        api<MonitorItem[]>("/v1/monitors", user?.id),
+        api<TagItem[]>("/v1/tags", user?.id),
+      ]);
       setMonitors(monitorsData);
+      setAllTags(tagsData);
       success("Monitor updated");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to update monitor");
@@ -441,6 +476,10 @@ export default function MonitorsPage() {
   const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
 
+  const filteredMonitors = activeTagFilter
+    ? monitors.filter((m) => m.tags?.some((t) => t.name === activeTagFilter))
+    : monitors;
+
   if (!user) return null;
   if (loading)
     return (
@@ -517,6 +556,8 @@ export default function MonitorsPage() {
                   setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
                   setFormErrors({});
                   setFormTouched({});
+                  setSelectedTags([]);
+                  setTagInput("");
                   setShowModal(true);
                   setShowTemplates(true);
                 }}
@@ -529,6 +570,34 @@ export default function MonitorsPage() {
             </div>
           </div>
         </FadeIn>
+
+        {allTags.length > 0 && (
+          <FadeIn>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setActiveTagFilter(null)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${activeTagFilter === null ? "bg-accent text-white" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => setActiveTagFilter(activeTagFilter === tag.name ? null : tag.name)}
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-colors border"
+                  style={{
+                    backgroundColor: activeTagFilter === tag.name ? tag.color + "33" : "transparent",
+                    borderColor: tag.color + "66",
+                    color: activeTagFilter === tag.name ? tag.color : undefined,
+                  }}
+                >
+                  {tag.name}
+                  {tag.monitorCount > 0 && <span className="ml-1 opacity-60">({tag.monitorCount})</span>}
+                </button>
+              ))}
+            </div>
+          </FadeIn>
+        )}
 
         {importResult && (
           <FadeIn>
@@ -556,30 +625,46 @@ export default function MonitorsPage() {
           </FadeIn>
         )}
 
-        {monitors.length === 0 ? (
+        {filteredMonitors.length === 0 ? (
           <FadeIn delay={0.1}>
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
                 <Monitor className="w-12 h-12 text-text-secondary opacity-50" />
               </div>
-              <p className="text-text-primary text-lg font-medium mb-2">No monitors yet</p>
-              <p className="text-text-secondary text-sm mb-6">
-                Create your first monitor to start tracking uptime and performance
-              </p>
-              <Button
-                size="lg"
-                onClick={() => {
-                  setModalMode("create");
-                  setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
-                  setFormErrors({});
-                  setFormTouched({});
-                  setShowModal(true);
-                  setShowTemplates(true);
-                }}
-              >
-                Create your first monitor
-              </Button>
+              {monitors.length === 0 ? (
+                <>
+                  <p className="text-text-primary text-lg font-medium mb-2">No monitors yet</p>
+                  <p className="text-text-secondary text-sm mb-6">
+                    Create your first monitor to start tracking uptime and performance
+                  </p>
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      setModalMode("create");
+                      setEditingMonitor(null);
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                      setFormErrors({});
+                      setFormTouched({});
+                      setSelectedTags([]);
+                      setTagInput("");
+                      setShowModal(true);
+                      setShowTemplates(true);
+                    }}
+                  >
+                    Create your first monitor
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-text-primary text-lg font-medium mb-2">No monitors with tag &quot;{activeTagFilter}&quot;</p>
+                  <p className="text-text-secondary text-sm mb-4">
+                    Try selecting a different tag or clear the filter
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => setActiveTagFilter(null)}>
+                    Clear filter
+                  </Button>
+                </>
+              )}
             </Card>
           </FadeIn>
         ) : (
@@ -631,7 +716,7 @@ export default function MonitorsPage() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {monitors.map((monitor) => {
+                    {filteredMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
                         <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
@@ -648,6 +733,24 @@ export default function MonitorsPage() {
                           </TableCell>
                           <TableCell className="font-medium text-text-primary">
                             <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
+                            {monitor.tags && monitor.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {monitor.tags.slice(0, 3).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium leading-none"
+                                    style={{ backgroundColor: tag.color + "22", color: tag.color }}
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                                {monitor.tags.length > 3 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] text-text-secondary leading-none">
+                                    +{monitor.tags.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
@@ -695,6 +798,8 @@ export default function MonitorsPage() {
                                     pluginId: String(monitor.config?.pluginId ?? ""),
                                     expectedText: String(monitor.config?.expectedText ?? ""),
                                   });
+                                  setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
+                                  setTagInput("");
                                   setFormErrors({});
                                   setFormTouched({});
                                   setShowModal(true);
@@ -769,7 +874,7 @@ export default function MonitorsPage() {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); }}
+        onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); setSelectedTags([]); setTagInput(""); }}
         title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
         size="md"
         actions={
@@ -950,6 +1055,68 @@ export default function MonitorsPage() {
               <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
             ) : (
               <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedTags.map((tag) => {
+                  const tagObj = allTags.find((t) => t.name === tag);
+                  return (
+                    <span
+                      key={tag}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{ backgroundColor: (tagObj?.color ?? "#6366f1") + "22", color: tagObj?.color ?? "#6366f1" }}
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
+                        aria-label={`Remove tag ${tag}`}
+                        className="hover:opacity-70"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                  e.preventDefault();
+                  const newTag = tagInput.trim().replace(/,+$/, "").trim();
+                  if (newTag && !selectedTags.includes(newTag)) {
+                    setSelectedTags((prev) => [...prev, newTag]);
+                  }
+                  setTagInput("");
+                }
+              }}
+              className={inputClass}
+              placeholder="Type a tag name, press Enter or comma"
+            />
+            {allTags.filter((t) => !selectedTags.includes(t.name)).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {allTags
+                  .filter((t) => !selectedTags.includes(t.name))
+                  .map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setSelectedTags((prev) => [...prev, tag.name])}
+                      className="px-2 py-0.5 rounded-full text-xs border transition-colors hover:opacity-80"
+                      style={{ borderColor: tag.color + "66", color: tag.color }}
+                    >
+                      + {tag.name}
+                    </button>
+                  ))}
+              </div>
             )}
           </div>
 

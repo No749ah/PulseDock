@@ -37,7 +37,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **2FA / TOTP (Two-Factor Authentication)** — Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
 - [x] **CSRF Protection** — Double-submit cookie pattern implemented. `GET /v1/auth/csrf` issues non-httpOnly cookie + returns token. `CsrfMiddleware` validates `X-CSRF-Token` header against cookie on all mutating routes (timingSafeEqual). Web `api.ts` auto-injects token. API key / Bearer callers exempt.
 - [x] **Account lockout after failed login attempts** — After 5 consecutive failed logins, lock account for 15 minutes. Log lockout events to audit log. Notify user via email.
-- [ ] **Email verification on registration** — New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
+- [x] **Email verification on registration** — New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
 - [x] **Password strength enforcement** — Enforce minimum 12 chars, complexity rules (upper/lower/digit/special). Show strength indicator in UI. Reject weak passwords at API level.
 - [x] **Stricter rate limiting on auth endpoints** — Auth routes (`/auth/login`, `/auth/register`, `/auth/forgot-password`) need much tighter limits (e.g. 5 req/min per IP), separate from the global 120/min limit.
 - [ ] **Audit log export (CSV/JSON)** — Users/admins can export their audit log. Useful for compliance. Add export button on audit log page.
@@ -114,5 +114,5 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Codebase:** 89 tests passing, zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx setup documented
-- **Production Readiness:** ~40-50% — Core infrastructure solid, but major security gaps (no 2FA, no CSRF, no email verification, no account lockout), significant frontend UX gaps (no a11y, no empty states, incomplete forms), and many features still missing (alert channels, more providers, charts, etc.)
+- **Production Readiness:** ~40-50% — Core infrastructure solid, but major security gaps (no 2FA, no CSRF, no account lockout), significant frontend UX gaps (no a11y, no empty states, incomplete forms), and many features still missing (alert channels, more providers, charts, etc.)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

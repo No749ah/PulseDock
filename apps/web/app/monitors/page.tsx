@@ -15,6 +15,8 @@ import { Modal } from "../components/Modal";
 import { FadeIn } from "../components/FadeIn";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
+import Link from "next/link";
+import { Sparkline } from "../components/Sparkline";
 
 interface MonitorItem {
   id: string;
@@ -539,22 +541,27 @@ export default function MonitorsPage() {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
                         <TableRow key={monitor.id}>
-                          <TableCell className="font-medium text-text-primary">{monitor.name}</TableCell>
+                          <TableCell className="font-medium text-text-primary">
+                            <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors">{monitor.name}</Link>
+                          </TableCell>
                           <TableCell className="text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
                           <TableCell className="text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
                             {monitor.target}
                           </TableCell>
                           <TableCell className="text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
                           <TableCell>
-                            {!monitor.enabled ? (
-                              <Badge variant="warning">Disabled</Badge>
-                            ) : lastRun ? (
-                              <Badge variant={lastRun.ok ? "success" : "danger"}>
-                                {lastRun.ok ? "OK" : "Failed"}
-                              </Badge>
-                            ) : (
-                              <Badge>Pending</Badge>
-                            )}
+                            <div className="flex flex-col gap-1">
+                              {!monitor.enabled ? (
+                                <Badge variant="warning">Disabled</Badge>
+                              ) : lastRun ? (
+                                <Badge variant={lastRun.ok ? "success" : "danger"}>
+                                  {lastRun.ok ? "OK" : "Failed"}
+                                </Badge>
+                              ) : (
+                                <Badge>Pending</Badge>
+                              )}
+                              <Sparkline runs={runs.filter((r) => r.monitorId === monitor.id).slice(0, 30)} width={80} height={16} />
+                            </div>
                           </TableCell>
                           <TableCell>
                             <button

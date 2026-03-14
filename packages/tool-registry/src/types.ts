@@ -4,6 +4,9 @@ export type VersionSourceType =
   | 'docker-hub'
   | 'npm-registry'
   | 'pypi'
+  | 'cargo'
+  | 'maven-central'
+  | 'helm-chart'
   | 'apt-release'
   | 'json-path'
   | 'html-scrape'
@@ -24,7 +27,9 @@ export type ToolCategory =
   | 'Infrastructure'
   | 'Messaging'
   | 'API'
-  | 'Cloud';
+  | 'Cloud'
+  | 'Maven Central'
+  | 'Helm';
 
 export interface VersionSource {
   type: VersionSourceType;

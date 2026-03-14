@@ -113,7 +113,7 @@ export default function VersionsPage() {
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<'GIT_RELEASE' | 'DOCKER_IMAGE'>('GIT_RELEASE');
-  const [provider, setProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo'>('github');
+  const [provider, setProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'>('github');
   const [target, setTarget] = useState('');
   const [currentVersion, setCurrentVersion] = useState('');
   const [intervalSec, setIntervalSec] = useState(86400);
@@ -140,7 +140,7 @@ export default function VersionsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
-  const [editProvider, setEditProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo'>('github');
+  const [editProvider, setEditProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'>('github');
   const [editTarget, setEditTarget] = useState('');
   const [editCurrentVersion, setEditCurrentVersion] = useState('');
   const [editIntervalSec, setEditIntervalSec] = useState(86400);
@@ -246,7 +246,7 @@ export default function VersionsPage() {
   function openEdit(item: VersionItem) {
     const details = monitorDetails[item.id];
     const cfg = (details?.config ?? {}) as Record<string, unknown>;
-    const p = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase() as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo';
+    const p = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase() as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm';
 
     setEditId(item.id);
     setEditName(item.name);
@@ -373,6 +373,8 @@ export default function VersionsPage() {
       'pypi': 'pypi',
       'apt-release': 'apt',
       'cargo': 'cargo',
+      'maven-central': 'maven',
+      'helm-chart': 'helm',
     };
     const p = providerMap[ls.type] ?? 'github';
     setProvider(p);
@@ -525,6 +527,8 @@ export default function VersionsPage() {
     { value: 'npm', label: 'npm package' },
     { value: 'pypi', label: 'PyPI package' },
     { value: 'cargo', label: 'Cargo crate (crates.io)' },
+    { value: 'maven', label: 'Maven Central artifact' },
+    { value: 'helm', label: 'Helm chart (Artifact Hub)' },
   ];
 
   const authOptions = [
@@ -647,14 +651,21 @@ export default function VersionsPage() {
                   <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
                 </div>
                 <Select label="Provider" value={provider} onChange={(v) => {
-                  const p = (v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo') || 'github';
+                  const p = (v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm') || 'github';
                   setProvider(p);
                   setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
                   setSourceStatus('unknown');
                 }} options={providerOptions} />
+                {(provider === 'maven' || provider === 'helm') && (
+                  <p className="text-xs text-text-secondary/70 -mt-1">
+                    {provider === 'maven'
+                      ? 'Format: groupId:artifactId — e.g. org.springframework.boot:spring-boot'
+                      : 'Format: repoName/chartName — e.g. bitnami/postgresql (from Artifact Hub)'}
+                  </p>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : 'owner/repo'} />
+                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'} />
                 </div>
                 {((provider === 'github' || provider === 'gitlab') || showTokenField) && (
                   <div>
@@ -772,10 +783,17 @@ export default function VersionsPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
                 <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
-              <Select label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo') || 'github')} options={providerOptions} />
+              <Select label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm') || 'github')} options={providerOptions} />
+              {(editProvider === 'maven' || editProvider === 'helm') && (
+                <p className="text-xs text-text-secondary/70 -mt-1">
+                  {editProvider === 'maven'
+                    ? 'Format: groupId:artifactId — e.g. org.springframework.boot:spring-boot'
+                    : 'Format: repoName/chartName — e.g. bitnami/postgresql (from Artifact Hub)'}
+                </p>
+              )}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                <input className={inputClass} value={editTarget} onChange={(e) => setEditTarget(e.target.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : editProvider === 'npm' ? 'react' : editProvider === 'pypi' ? 'requests' : editProvider === 'cargo' ? 'serde' : 'owner/repo'} />
+                <input className={inputClass} value={editTarget} onChange={(e) => setEditTarget(e.target.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : editProvider === 'npm' ? 'react' : editProvider === 'pypi' ? 'requests' : editProvider === 'cargo' ? 'serde' : editProvider === 'maven' ? 'org.springframework.boot:spring-boot' : editProvider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'} />
               </div>
               {(editProvider === 'github' || editProvider === 'gitlab') && (
                 <>
@@ -942,7 +960,18 @@ export default function VersionsPage() {
                             <span className="truncate max-w-[120px] sm:max-w-none">{item.name}</span>
                           </button>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">{item.type}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {(() => {
+                            const cfg = (monitorDetails[item.id]?.config ?? {}) as Record<string, unknown>;
+                            const prov = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase();
+                            const providerLabels: Record<string, string> = {
+                              github: 'GitHub', gitlab: 'GitLab', docker: 'Docker',
+                              apt: 'APT', npm: 'npm', pypi: 'PyPI',
+                              cargo: 'Cargo', maven: 'Maven', helm: 'Helm',
+                            };
+                            return <span className="text-xs text-text-secondary">{providerLabels[prov] ?? item.type}</span>;
+                          })()}
+                        </TableCell>
                         <TableCell className="hidden md:table-cell max-w-[280px] break-all">{item.target}</TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {item.currentVersion ? (

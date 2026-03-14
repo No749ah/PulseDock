@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, AlertCircle, CheckCircle2, Clock, Plus, TrendingUp } from "lucide-react";
 import { api } from "../../lib/api";
+import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
 import { Card } from "../components/Card";
@@ -24,7 +25,7 @@ interface MonitorRun {
   id: string;
   monitorId: string;
   ok: boolean;
-  status: number;
+  statusCode: number;
   latencyMs?: number;
   message: string;
   checkedAt: string;
@@ -54,28 +55,30 @@ export default function DashboardPage() {
       return;
     }
 
+    const computeStats = (monitorsData: Monitor[], runsData: MonitorRun[]) => {
+      const active = monitorsData.filter((m) => m.enabled).length;
+      const upMonitors = runsData.filter((r) => r.ok).length;
+      const uptime = runsData.length > 0 ? Math.round((upMonitors / runsData.length) * 100) : 100;
+
+      setStats({
+        totalMonitors: monitorsData.length,
+        activeMonitors: active,
+        uptime,
+        lastCheck: new Date().toISOString(),
+      });
+    };
+
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
 
         const monitorsData = await api<Monitor[]>("/v1/monitors");
-        setMonitors(monitorsData);
-
         const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10");
+
+        setMonitors(monitorsData);
         setRuns(runsData);
-
-        const active = monitorsData.filter((m) => m.enabled).length;
-        const upMonitors = runsData.filter((r) => r.ok).length;
-        const uptime =
-          runsData.length > 0 ? Math.round((upMonitors / runsData.length) * 100) : 100;
-
-        setStats({
-          totalMonitors: monitorsData.length,
-          activeMonitors: active,
-          uptime,
-          lastCheck: new Date().toISOString(),
-        });
+        computeStats(monitorsData, runsData);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load dashboard");
       } finally {
@@ -84,7 +87,66 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [user, router]);
+
+    const socket = createRealtimeSocket(currentUser.id);
+
+    socket.on("connect", () => {
+      socket.emit("subscribe", { userId: currentUser.id });
+    });
+
+    socket.on("monitor.created", (payload: Monitor) => {
+      setMonitors((prev) => {
+        const next = prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev];
+        setStats((existing) =>
+          existing
+            ? { ...existing, totalMonitors: next.length, activeMonitors: next.filter((m) => m.enabled).length }
+            : existing,
+        );
+        return next;
+      });
+    });
+
+    socket.on("monitor.updated", (payload: Monitor) => {
+      setMonitors((prev) => {
+        const next = prev.map((m) => (m.id === payload.id ? payload : m));
+        setStats((existing) =>
+          existing ? { ...existing, activeMonitors: next.filter((m) => m.enabled).length } : existing,
+        );
+        return next;
+      });
+    });
+
+    socket.on("monitor.deleted", (payload: { id: string }) => {
+      setMonitors((prev) => {
+        const next = prev.filter((m) => m.id !== payload.id);
+        setStats((existing) =>
+          existing
+            ? { ...existing, totalMonitors: next.length, activeMonitors: next.filter((m) => m.enabled).length }
+            : existing,
+        );
+        return next;
+      });
+      setRuns((prev) => prev.filter((r) => r.monitorId !== payload.id));
+    });
+
+    socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
+      if (!payload?.run) return;
+      setRuns((prev) => {
+        const nextRuns = [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 10);
+        setStats((existing) => {
+          if (!existing) return existing;
+          const upMonitors = nextRuns.filter((r) => r.ok).length;
+          const uptime = nextRuns.length > 0 ? Math.round((upMonitors / nextRuns.length) * 100) : 100;
+          return { ...existing, uptime, lastCheck: payload.run.checkedAt };
+        });
+        return nextRuns;
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [router]);
 
   if (!user) return null;
   if (loading) {
@@ -285,7 +347,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant={run.ok ? "success" : "danger"}>{String(run.status)}</Badge>
+                      <Badge variant={run.ok ? "success" : "danger"}>{String(run.statusCode)}</Badge>
                     </div>
                   ))}
                 </div>

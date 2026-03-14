@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "NODE_ENV=development node --env-file=../../.env -e \"require('ts-node/register/transpile-only'); require('./src/main.ts');\"",
     "build": "tsc -p tsconfig.build.json",
-    "test": "NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --reporter=verbose",
+    "pretest": "../../node_modules/.bin/prisma generate --schema=../../prisma/schema.prisma 2>/dev/null || true",
+    "test": "NODE_ENV=test NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --reporter=verbose",
     "test:typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:coverage": "NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --coverage",
+    "test:coverage": "NODE_ENV=test NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --coverage",
     "start": "node dist/main.js"
   },
   "dependencies": {
@@ -15,9 +16,11 @@
     "@nestjs/core": "^11.1.6",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/platform-socket.io": "^11.1.16",
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/throttler": "^6.5.0",
+    "@nestjs/websockets": "^11.1.16",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "bcryptjs": "^3.0.3",
@@ -28,6 +31,7 @@
     "nodemailer": "^8.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "swagger-ui-express": "^5.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"

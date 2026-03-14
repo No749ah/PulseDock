@@ -67,6 +67,13 @@ export class MonitorsController {
     return this.monitorsService.discoverCurrentVersion(body);
   }
 
+  @Get('plugins')
+  @ApiOperation({ summary: 'List monitor plugins', description: 'Returns available monitor check plugins and their config field metadata.' })
+  @ApiResponse({ status: 200, description: 'Plugin metadata returned.' })
+  listPlugins() {
+    return this.monitorsService.listPlugins();
+  }
+
   @Get('runs')
   @ApiOperation({ summary: 'Recent check runs', description: 'Returns recent check results across all monitors for the authenticated user.' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max results (default: 10)' })

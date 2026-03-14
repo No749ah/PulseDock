@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye } from "lucide-react";
 import { api } from "../../lib/api";
+import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
 import { Card } from "../components/Card";
@@ -22,16 +23,18 @@ interface MonitorItem {
   intervalSec: number;
   enabled: boolean;
   createdAt: string;
+  config?: Record<string, unknown>;
 }
 
 interface MonitorRun {
   id: string;
   monitorId: string;
   ok: boolean;
-  status: number;
+  statusCode: number;
   latencyMs?: number;
   message: string;
   checkedAt: string;
+  level?: "green" | "yellow" | "red";
 }
 
 interface AlertChannel {
@@ -40,6 +43,23 @@ interface AlertChannel {
   type: string;
   config: Record<string, unknown>;
   createdAt: string;
+}
+
+interface PluginField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "boolean";
+  required?: boolean;
+  placeholder?: string;
+  helpText?: string;
+}
+
+interface MonitorPlugin {
+  id: string;
+  displayName: string;
+  description?: string | null;
+  supportedMonitorTypes: Array<MonitorItem["type"]>;
+  configFields: PluginField[];
 }
 
 const inputClass =
@@ -59,8 +79,10 @@ export default function MonitorsPage() {
   const [monitors, setMonitors] = useState<MonitorItem[]>([]);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [allChannels, setAllChannels] = useState<AlertChannel[]>([]);
+  const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [realtimeAlert, setRealtimeAlert] = useState("");
 
   // create/edit monitor modal
   const [showModal, setShowModal] = useState(false);
@@ -72,12 +94,16 @@ export default function MonitorsPage() {
     target: string;
     intervalSec: number;
     enabled: boolean;
+    pluginId: string;
+    expectedText: string;
   }>({
     name: "",
     type: "HTTP",
     target: "",
     intervalSec: 60,
     enabled: true,
+    pluginId: "",
+    expectedText: "",
   });
 
   // import/export
@@ -105,14 +131,16 @@ export default function MonitorsPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
+          api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
         setAllChannels(channelsData);
+        setPlugins(pluginsData);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitors");
       } finally {
@@ -121,6 +149,48 @@ export default function MonitorsPage() {
     }
 
     loadData();
+
+    const socket = createRealtimeSocket(userId);
+
+    socket.on("connect", () => {
+      socket.emit("subscribe", { userId });
+    });
+
+    socket.on("monitor.created", (payload: MonitorItem) => {
+      setMonitors((prev) => (prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev]));
+    });
+
+    socket.on("monitor.updated", (payload: MonitorItem) => {
+      setMonitors((prev) => prev.map((m) => (m.id === payload.id ? payload : m)));
+    });
+
+    socket.on("monitor.deleted", (payload: { id: string }) => {
+      setMonitors((prev) => prev.filter((m) => m.id !== payload.id));
+      setRuns((prev) => prev.filter((r) => r.monitorId !== payload.id));
+    });
+
+    socket.on(
+      "monitor.checked",
+      (payload: { run: MonitorRun }) => {
+        if (!payload?.run) return;
+        setRuns((prev) => [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 20));
+      },
+    );
+
+    socket.on(
+      "alert.triggered",
+      (payload: { monitor?: { name?: string }; run?: { level?: string; message?: string } }) => {
+        const name = payload?.monitor?.name ?? "Monitor";
+        const level = payload?.run?.level?.toUpperCase() ?? "ALERT";
+        const message = payload?.run?.message ?? "Notification sent";
+        setRealtimeAlert(`${name}: ${level} — ${message}`);
+        setTimeout(() => setRealtimeAlert(""), 6000);
+      },
+    );
+
+    return () => {
+      socket.disconnect();
+    };
   }, [router]);
 
   const openAlertPanel = async (monitor: MonitorItem) => {
@@ -160,12 +230,23 @@ export default function MonitorsPage() {
 
   const handleCreate = async () => {
     try {
+      const config: Record<string, unknown> = {};
+      if (formData.pluginId) config.pluginId = formData.pluginId;
+      if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
+
       await api("/v1/monitors", user?.id, {
         method: "POST",
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          type: formData.type,
+          target: formData.target,
+          intervalSec: formData.intervalSec,
+          enabled: formData.enabled,
+          config,
+        }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
       const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
       setMonitors(monitorsData);
     } catch (e) {
@@ -176,9 +257,20 @@ export default function MonitorsPage() {
   const handleUpdate = async () => {
     if (!editingMonitor) return;
     try {
+      const config: Record<string, unknown> = {};
+      if (formData.pluginId) config.pluginId = formData.pluginId;
+      if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
+
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
         method: "PATCH",
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          type: formData.type,
+          target: formData.target,
+          intervalSec: formData.intervalSec,
+          enabled: formData.enabled,
+          config,
+        }),
       });
       setShowModal(false);
       setEditingMonitor(null);
@@ -243,6 +335,9 @@ export default function MonitorsPage() {
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
 
+  const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
+  const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
+
   if (!user) return null;
   if (loading)
     return (
@@ -261,6 +356,15 @@ export default function MonitorsPage() {
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
+            </div>
+          </FadeIn>
+        )}
+
+        {realtimeAlert && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
+              <Bell className="w-5 h-5 text-warning mt-0.5 shrink-0" />
+              <span className="text-warning text-sm">{realtimeAlert}</span>
             </div>
           </FadeIn>
         )}
@@ -307,7 +411,7 @@ export default function MonitorsPage() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true });
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
                   setShowModal(true);
                 }}
                 className="flex items-center gap-2"
@@ -356,7 +460,15 @@ export default function MonitorsPage() {
               <p className="text-text-secondary text-sm mb-6">
                 Create your first monitor to start tracking uptime and performance
               </p>
-              <Button size="lg" onClick={() => setShowModal(true)}>Create your first monitor</Button>
+              <Button
+                size="lg"
+                onClick={() => {
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                  setShowModal(true);
+                }}
+              >
+                Create your first monitor
+              </Button>
             </Card>
           </FadeIn>
         ) : (
@@ -421,6 +533,8 @@ export default function MonitorsPage() {
                                     target: monitor.target,
                                     intervalSec: monitor.intervalSec,
                                     enabled: monitor.enabled,
+                                    pluginId: String(monitor.config?.pluginId ?? ""),
+                                    expectedText: String(monitor.config?.expectedText ?? ""),
                                   });
                                   setShowModal(true);
                                 }}
@@ -522,7 +636,14 @@ export default function MonitorsPage() {
             <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as typeof formData.type })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  type: e.target.value as typeof formData.type,
+                  pluginId: "",
+                  expectedText: "",
+                })
+              }
               className={inputClass}
             >
               <option value="HTTP">HTTP Check</option>
@@ -530,6 +651,41 @@ export default function MonitorsPage() {
               <option value="DOCKER_IMAGE">Docker Image</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Check Plugin</label>
+            <select
+              value={formData.pluginId}
+              onChange={(e) => setFormData({ ...formData, pluginId: e.target.value, expectedText: "" })}
+              className={inputClass}
+            >
+              <option value="">Built-in check logic</option>
+              {availablePlugins.map((plugin) => (
+                <option key={plugin.id} value={plugin.id}>
+                  {plugin.displayName}
+                </option>
+              ))}
+            </select>
+            {selectedPlugin?.description && (
+              <p className="mt-1 text-xs text-text-secondary">{selectedPlugin.description}</p>
+            )}
+          </div>
+
+          {formData.pluginId === "http.response-match" && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Expected response text</label>
+              <input
+                type="text"
+                value={formData.expectedText}
+                onChange={(e) => setFormData({ ...formData, expectedText: e.target.value })}
+                className={inputClass}
+                placeholder={selectedPlugin?.configFields?.[0]?.placeholder ?? "OK"}
+              />
+              <p className="mt-1 text-xs text-text-secondary">
+                {selectedPlugin?.configFields?.[0]?.helpText ?? "Case-sensitive substring that must be present in the response body."}
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Target</label>

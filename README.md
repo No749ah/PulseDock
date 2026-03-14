@@ -60,6 +60,7 @@ npm run restart
 ### Production
 
 See [Deployment Guide](./docs/DEPLOYMENT.md).
+Kubernetes manifests are available in [`k8s/`](./k8s).
 
 ---
 
@@ -165,6 +166,7 @@ PulseDock/
 - **[WORKFLOW.md](./docs/WORKFLOW.md)** — Heartbeat cycle, branching, development process
 - **[GITFLOW.md](./docs/GITFLOW.md)** — Git strategy (main/dev/heartbeat branches)
 - **[PROXY_SETUP.md](./docs/PROXY_SETUP.md)** — Nginx reverse proxy configuration
+- **[PLUGINS.md](./docs/PLUGINS.md)** — Plugin contracts, packaging, and verification flow
 
 ---
 

@@ -56,11 +56,20 @@ function makeAudit() {
   return { log: vi.fn().mockResolvedValue(undefined) };
 }
 
+function makeRealtime() {
+  return {
+    monitorCreated: vi.fn(),
+    monitorUpdated: vi.fn(),
+    monitorDeleted: vi.fn(),
+  };
+}
+
 function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
   return new MonitorsService(
     (prismaOverride ?? makePrisma()) as never,
     makeChecksService() as never,
     makeAudit() as never,
+    makeRealtime() as never,
   );
 }
 

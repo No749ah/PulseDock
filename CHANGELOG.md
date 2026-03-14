@@ -10,8 +10,20 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) for one-click monitor creation from any tab. Features: auto-detects current tab URL/title, context menu integration ("Add to PulseDock Monitors" on any page/link), configurable interval and monitor type (HTTP/Git Release/Docker Image), API key auth, dark-theme popup matching PulseDock design language, and a dashboard shortcut button. Load from `packages/extension/dist/` in Chrome developer mode. See `docs/EXTENSION.md`.
+
+### Added
+- **V2 API — alert channels + check history endpoints** — Extended v2 surface: `GET /v2/alert-channels` (paginated, filterable by type/name, with `usedByCount` per channel and redacted webhook secrets) and `GET /v2/checks` (paginated check run history with level + date-range filtering). Both follow the v2 envelope format `{ data, meta: { total, page, limit, pages } }`. 7 new integration tests added (89 total).
+- **PWA UX baseline** — Added contextual skeleton loading states for Dashboard/Monitors/Alerts, install banner (`beforeinstallprompt` + iOS add-to-home-screen hint), offline route (`/offline`), service worker registration (`/sw.js`), and updated `site.webmanifest` shortcuts/scope.
+
+### Added
 - **API key management** — Programmatic access via `pdck_*` Bearer tokens. Full stack: `PublicStatusPage` + `ApiKey` Prisma models with proper migrations. `ApiKeysService` generates cryptographically secure keys (32-byte random hex, SHA-256 hash storage, prefix for fast lookup). `ApiKeysController` provides `GET/POST/DELETE /v1/api-keys`. `AuthGuard` now accepts both JWT sessions and `pdck_*` API keys transparently. Account page gains an API Keys section: create keys with optional expiry, one-time key reveal modal with copy button, list with last-used timestamps, revoke with confirmation.
 - **Admin system health widget** — Real-time dashboard on the `/admin` page polling `/health` and `/metrics` every 30 seconds. Shows API uptime, database status + latency, request/error counters, alert dispatch metrics, and a status banner (green/red). Fully typed, auto-refreshes with manual refresh button.
+- **Live monitor/alert stream via WebSockets** — Backend now emits `monitor.checked` and `alert.triggered` events (in addition to monitor CRUD), and Dashboard/Monitors pages subscribe through Socket.io for instant status/activity updates without manual refresh.
+- **Production deployment baseline** — Added `docs/DEPLOYMENT.md`, shipped Kubernetes manifests (`k8s/base`, `k8s/overlays/prod`) for namespace/config/service/deployment/statefulset/ingress, and aligned `docker-compose.prod.yml` with real auth env names (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `ALLOW_PUBLIC_REGISTRATION`).
+- **Plugin metadata + UI configuration flow** — Added plugin metadata endpoint (`GET /v1/monitors/plugins`), expanded plugin contract metadata (`description`, `configFields`), and updated Monitors create/edit modal with plugin selection + config inputs (starter plugin `http.response-match`).
+- **Plugin packaging docs** — Added `docs/PLUGINS.md` with contribution flow, verification checklist, and security guidance for community plugin development.
+- **Plugin execution foundation for custom monitor types** — Added typed plugin contracts/registry, a guarded execution boundary (`executePluginSafely`) with timeout + output sanitization, integrated `config.pluginId` execution path in `ChecksService`, and shipped a starter plugin (`http.response-match`) with unit coverage.
 
 ### Security
 - **Logout session revocation** — Logout endpoint now reads the access token cookie, extracts the session ID, and revokes it in the DB. Stolen refresh tokens are immediately invalidated on logout rather than being usable until natural expiry.

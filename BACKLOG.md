@@ -2,7 +2,7 @@
 
 ## In Progress
 
-_(nothing active — project is feature-complete)_
+_(nothing active — project is feature-complete, awaiting new project approval)_
 
 ## Recently Completed
 
@@ -16,14 +16,8 @@ _(nothing active — project is feature-complete)_
 
 ## Next Up (Priority Order)
 
-### High Priority
-_(CLI done — see Recently Completed)_
-
-### Blocked/In Review
+### Blocked/On Hold
 - [ ] **Fix all npm audit vulnerabilities** (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 with breaking changes; waiting on upstream hono/prisma fixes)
-
-### Nice-to-Have
-- [x] **Browser extension** — Shipped! Chrome MV3 extension in `packages/extension/`. Load unpacked from `dist/` in Chrome developer mode.
 
 ---
 
@@ -42,10 +36,4 @@ _(CLI done — see Recently Completed)_
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx setup documented
 - **Production Readiness:** ~99% — Core features stable, full v2 API + PWA baseline, deployment includes compose + k8s + plugin system; primary gap is upstream audit fixes
-
-## Ideas & Future Work
-- Browser extension for quick monitor creation
-- CLI tool (`pulsedock check <url>`)
-- Mobile-responsive PWA
-- Multi-tenant support
-- Changelog AI summarization (OpenAI/Anthropic)
+- **Next Project:** Proposed `PulsePing` (self-hosted cron job monitoring) to Noah via Discord on 2026-03-14. Waiting for repo creation approval.

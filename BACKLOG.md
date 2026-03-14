@@ -288,13 +288,13 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
-- [ ] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV.
+- [x] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV. Implemented `POST /v1/monitors/import-external` supporting Uptime Robot JSON, BetterUptime JSON, and generic CSV. Frontend modal with source picker + instructions. Duplicate URL detection, disabled monitor support. 6 tests added.
 
 ---
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [~] **Increase test coverage to >90%** — 342 tests passing. Coverage at 52.6% (up from 34% across two cycles). src/users 100%, src/status-pages 94%, src/realtime 84%, src/checks 59%. Remaining gaps: src/auth controllers, v2 controllers. Continue each cycle.
+- [~] **Increase test coverage to >90%** — 440 tests passing (up from 294). Coverage at 62.9% (up from 52.6%). Added: dashboard controller (5%→95%), auth controller (28%→45%), monitors controller (15%→covered), AuthGuard, DataService, PluginRegistry, testVersionConnection (all providers). Remaining gaps: src/auth service (38%), src/monitors service (37%), src/checks service (55%). Continue each cycle.
 - [ ] **E2E tests (Playwright)** — Add basic E2E tests for: login, create monitor, view dashboard, receive alert. Run in CI.
 - [ ] **API documentation improvements** — Ensure all endpoints have Swagger descriptions, request/response examples, error codes documented.
 - [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

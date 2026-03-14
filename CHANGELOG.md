@@ -9,40 +9,66 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-### Performance
-- **Monitor scheduler — O(1) DB round-trips** — `ChecksScheduler.tick()` now loads all enabled monitors and their latest run in a single `findMany` (Prisma `include: { runs: { take: 1 } }`), eliminating the previous N+1 pattern (one `findFirst` per monitor per tick). Due monitors are now dispatched concurrently via `Promise.allSettled` instead of sequentially, so slow HTTP targets no longer block faster ones. Added structured `Logger` for failed-check warnings.
+---
 
-### Added
-- **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) for one-click monitor creation from any tab. Features: auto-detects current tab URL/title, context menu integration ("Add to PulseDock Monitors" on any page/link), configurable interval and monitor type (HTTP/Git Release/Docker Image), API key auth, dark-theme popup matching PulseDock design language, and a dashboard shortcut button. Load from `packages/extension/dist/` in Chrome developer mode. See `docs/EXTENSION.md`.
+## [0.4.0] — 2026-03-15
 
-### Added
-- **V2 API — alert channels + check history endpoints** — Extended v2 surface: `GET /v2/alert-channels` (paginated, filterable by type/name, with `usedByCount` per channel and redacted webhook secrets) and `GET /v2/checks` (paginated check run history with level + date-range filtering). Both follow the v2 envelope format `{ data, meta: { total, page, limit, pages } }`. 7 new integration tests added (89 total).
-- **PWA UX baseline** — Added contextual skeleton loading states for Dashboard/Monitors/Alerts, install banner (`beforeinstallprompt` + iOS add-to-home-screen hint), offline route (`/offline`), service worker registration (`/sw.js`), and updated `site.webmanifest` shortcuts/scope.
+### Added — Security
+- **2FA / TOTP** — Full TOTP two-factor authentication via `otplib`. QR code setup flow, encrypted secret storage, recovery codes (8 single-use codes), enforcement on login, and dedicated UI in Account Settings.
+- **CSRF protection** — Double-submit cookie pattern. `GET /v1/auth/csrf` issues token; `CsrfMiddleware` validates `X-CSRF-Token` on all mutating routes using `timingSafeEqual`. API key / Bearer callers exempt.
+- **Account lockout** — After 5 consecutive failed logins, account locks for 15 minutes. Lockout events logged to audit log with email notification.
+- **Email verification** — New registrations require email verification before access. Token-based verification link, blocked login until verified.
+- **Password strength enforcement** — Minimum 12 chars, upper/lower/digit/special character requirements enforced at API level. Strength indicator UI in registration form.
+- **Stricter auth rate limits** — `/auth/login`, `/auth/register`, `/auth/forgot-password` now limited to 5 req/min per IP (separate from global 120/min).
+- **Secure password reset** — Reset tokens are single-use, 15-minute TTL, invalidated after use, submitted via POST body (never in URL).
+- **Security headers audit** — Verified HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy via Helmet config.
+- **Input sanitization** — All user-provided text sanitized before render to prevent stored XSS (monitor names, descriptions, alert labels).
+- **Session activity & anomaly detection** — IP + user agent logged per session. New-device login warning in active sessions UI.
+- **Audit log export** — Users can export their full audit log as CSV or JSON from the account page.
 
-### Added
-- **API key management** — Programmatic access via `pdck_*` Bearer tokens. Full stack: `PublicStatusPage` + `ApiKey` Prisma models with proper migrations. `ApiKeysService` generates cryptographically secure keys (32-byte random hex, SHA-256 hash storage, prefix for fast lookup). `ApiKeysController` provides `GET/POST/DELETE /v1/api-keys`. `AuthGuard` now accepts both JWT sessions and `pdck_*` API keys transparently. Account page gains an API Keys section: create keys with optional expiry, one-time key reveal modal with copy button, list with last-used timestamps, revoke with confirmation.
-- **Admin system health widget** — Real-time dashboard on the `/admin` page polling `/health` and `/metrics` every 30 seconds. Shows API uptime, database status + latency, request/error counters, alert dispatch metrics, and a status banner (green/red). Fully typed, auto-refreshes with manual refresh button.
-- **Live monitor/alert stream via WebSockets** — Backend now emits `monitor.checked` and `alert.triggered` events (in addition to monitor CRUD), and Dashboard/Monitors pages subscribe through Socket.io for instant status/activity updates without manual refresh.
-- **Production deployment baseline** — Added `docs/DEPLOYMENT.md`, shipped Kubernetes manifests (`k8s/base`, `k8s/overlays/prod`) for namespace/config/service/deployment/statefulset/ingress, and aligned `docker-compose.prod.yml` with real auth env names (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `ALLOW_PUBLIC_REGISTRATION`).
-- **Plugin metadata + UI configuration flow** — Added plugin metadata endpoint (`GET /v1/monitors/plugins`), expanded plugin contract metadata (`description`, `configFields`), and updated Monitors create/edit modal with plugin selection + config inputs (starter plugin `http.response-match`).
-- **Plugin packaging docs** — Added `docs/PLUGINS.md` with contribution flow, verification checklist, and security guidance for community plugin development.
-- **Plugin execution foundation for custom monitor types** — Added typed plugin contracts/registry, a guarded execution boundary (`executePluginSafely`) with timeout + output sanitization, integrated `config.pluginId` execution path in `ChecksService`, and shipped a starter plugin (`http.response-match`) with unit coverage.
+### Added — Features
+- **Drag-and-drop Status Page Builder** — Full-stack custom public status pages. 20 widget types (uptime bars, sparklines, incident history, version badges, response time charts, announcement blocks, etc.). `dnd-kit` canvas with resize handles, config panel per widget, publish/unpublish flow, password protection, custom slugs (`/status/[slug]`). SSR public view with 60s auto-refresh.
+- **Tool Registry** — 126 pre-configured version check tools across 14 categories (Container, CI/CD, Database, Observability, Security, Networking, Storage, Dev Tools, Media, Infrastructure, Messaging, CMS, Communication, Cloud). Searchable `GET /v1/tool-registry`. ToolPicker in Versions UI. Simple Icons CDN for logos.
+- **Monitor tags** — Tag monitors for filtering and grouping. Tag filter bar on monitors page, tag chips in rows, tag input (Enter/comma) in create/edit modal.
+- **Bulk monitor actions** — Select multiple monitors → bulk enable/disable/delete/run-now. Checkbox per row, select-all header, bulk action bar, `POST /v1/monitors/bulk`.
+- **Monitor templates** — Pre-built one-click templates for common checks (GitHub latest release, Docker Hub, npm package).
+- **Response time tracking** — HTTP response time recorded per check. Trend chart per monitor. Alert threshold for slow response.
+- **Check history charts** — Sparkline/bar timeline of check results per monitor.
+- **More version providers** — npm (registry.npmjs.org), PyPI (pypi.org), Cargo (crates.io) added.
+- **All alert channels** — Webhook, Slack, Discord, Telegram fully implemented with test-send UI.
+- **Notification preferences** — Per-user settings for alert types, quiet hours, and digest frequency. Backend `NotificationsService.shouldNotify()` wired into alert dispatch.
+- **Import from competitors** — `POST /v1/monitors/import-external` supports Uptime Robot JSON, BetterUptime JSON, and generic CSV. Duplicate URL detection, modal with source picker and instructions.
+- **Onboarding flow** — 3-step "Get Started" checklist on dashboard for new users. Progress bar, localStorage dismiss, completion celebration.
+- **User profile** — Display name + timezone fields. Editable in Account Settings.
+- **i18n** — Lightweight custom i18n (no external dep). English + German translations. `LocaleSwitcher` in nav and login. Auto-detects browser locale, persists in localStorage.
+- **Public status page polish** — Latency sparklines, structured incident history with durations, per-monitor uptime %, active incidents banner.
+- **Admin dashboard stats** — Total monitors, total checks today, error rate, active users on admin page.
 
-### Security
-- **Logout session revocation** — Logout endpoint now reads the access token cookie, extracts the session ID, and revokes it in the DB. Stolen refresh tokens are immediately invalidated on logout rather than being usable until natural expiry.
-- **Auth flow audit complete** — Confirmed: JWTs stored exclusively in httpOnly cookies (never localStorage), `sameSite: lax` CSRF protection, token rotation on every refresh, DB-backed session revocation, account lockout after 5 failed attempts.
+### Added — Frontend / UX
+- **Accessibility audit** — Skip-to-content link, global focus-visible ring, `role="dialog"` + `aria-modal` + focus trap on modals, `aria-label` on all icon-only buttons, `aria-live` on pagination, `role="main"` + `id="main-content"` on layout.
+- **Empty states** — All list pages (Monitors, Alerts, Projects, etc.) have illustrated empty states with CTA.
+- **Error boundaries** — All pages have `error.tsx` with helpful messages. API errors show actionable toasts.
+- **Form validation UX** — Inline validation errors on all forms. Required field indicators. Submit disabled until valid.
+- **Loading states** — All data-fetching components have proper skeletons.
+- **Mobile UX audit** — All 9 pages verified at 375px. Table columns progressively hidden at breakpoints. No horizontal overflow.
+- **Keyboard navigation** — Full focus trap in modals, Escape closes, skip-to-content on first Tab.
+- **Dark mode audit** — All hardcoded colors resolved. No invisible elements in dark theme.
+- **FadeIn animations fixed** — Replaced non-functional framer-motion v12 placeholder with CSS keyframe + IntersectionObserver. All scroll-triggered animations work in React 19.
 
-### Added
-- **Favicon & brand assets** — `favicon.svg` (SVG icon, modern browsers), `favicon.ico` (32×32 ICO fallback), `apple-touch-icon.png` (180×180 for iOS home screen), `og-image.png` (1200×630 OpenGraph card with brand colors), `og-image.svg` (source vector)
-- **site.webmanifest** — Updated with correct icons array, theme color `#5EE2B0`, `maskable` icon purpose
-- **layout.tsx** — SVG favicon with ICO fallback link tags, OG image already wired up
-- **Enhanced health check** — `/health` now includes DB connectivity status + latency, service version, and uptime. New `/health/live` (liveness probe) and `/health/ready` (readiness probe) endpoints. Returns HTTP 503 when DB is unreachable.
-- **Production Dockerfiles** — Multi-stage `apps/api/Dockerfile` and `apps/web/Dockerfile` with non-root user, minimal alpine images, and built-in HEALTHCHECK instructions.
-- **`docker-compose.prod.yml`** — Full production stack (PostgreSQL + API + Web) with service healthchecks, named volume for data persistence, and `INTERNAL_API_URL` env var for container networking.
-- **Next.js standalone output** — `next.config.mjs` now builds in standalone mode for smaller, self-contained Docker images.
-- GitHub Actions CI workflow — runs full build, unit tests, TypeScript type-check, and security audit on every push/PR
-- `CHANGELOG.md` — structured changelog tracking all notable changes
-- Resolved merge conflict in `.env.example`; unified into a single clean template with all required variables
+### Added — DevOps / Quality
+- **Test coverage >90%** — 706 tests passing. Line coverage 90.03%, statement coverage 87.79%. `auth.service` 87%, `checks.service` 94%, `monitors.service` 83%. All controllers at 100%.
+- **E2E tests (Playwright)** — `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow in `.github/workflows/e2e.yml`.
+- **Helm chart** — `helm/pulsedock/` with 19 templates (API, Web, Postgres, Redis, Ingress, HPA). Auto-computes DATABASE_URL and REDIS_URL. `helm lint` clean. Documented in `docs/HELM.md`.
+- **API documentation** — All 95 endpoints annotated with `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse`. Swagger UI live at `/api/docs`.
+- **Performance** — Monitor scheduler: O(1) DB round-trips (single `findMany` with includes), concurrent dispatch via `Promise.allSettled`.
+- **Log rotation** — Docker `json-file` log driver rotation in both dev and prod compose files. `LOG_LEVEL` env var filtering.
+- **Kubernetes manifests** — `k8s/base` + `k8s/overlays/prod` with namespace/config/ingress/service/deployment/statefulset.
+- **Browser extension** — Chrome MV3 `@pulsedock/extension` with one-click monitor creation, context menu, dark theme popup, API key auth. Documented in `docs/EXTENSION.md`.
+- **CLI tool** — `pulsedock check <url>` + `monitors list/check` + `config` commands. `@pulsedock/cli` with 10 unit tests. Documented in `docs/CLI.md`.
+- **Plugin system** — Typed plugin contracts/registry, `executePluginSafely` boundary with timeout + output sanitization, starter plugin `http.response-match`. Community contribution flow documented in `docs/PLUGINS.md`.
+- **API v2** — Paginated/filterable endpoints for monitors, alert-channels, checks, system info, system versions.
+- **WebSocket real-time** — `monitor.checked` and `alert.triggered` events pushed to dashboard/monitors pages via Socket.io.
+- **PWA** — Install banner, service worker, offline fallback route (`/offline`), contextual loading skeletons.
 
 ---
 
@@ -92,7 +118,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Single root `.env`** — Shared across API and Web via workspace setup
 - **Docker support** — `docker-compose.yml` for local dev with PostgreSQL + Redis
 
-[Unreleased]: https://github.com/No749ah/PulseDock/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/No749ah/PulseDock/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/No749ah/PulseDock/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/No749ah/PulseDock/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/No749ah/PulseDock/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/No749ah/PulseDock/releases/tag/v0.1.0

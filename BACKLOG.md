@@ -295,11 +295,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ### 🟢 CODE QUALITY / DEVOPS
 
 - [x] **Increase test coverage to >90%** — 706 tests passing. Line coverage at 90.03%, statement coverage 87.79%. auth.service 87%, checks.service 94%, monitors.service 83%, all controllers at 100%. Achieved via systematic subagent coverage sprints across all major services.
-- [ ] **E2E tests (Playwright)** — Add basic E2E tests for: login, create monitor, view dashboard, receive alert. Run in CI.
-- [ ] **API documentation improvements** — Ensure all endpoints have Swagger descriptions, request/response examples, error codes documented.
+- [x] **E2E tests (Playwright)** — `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
+- [x] **API documentation improvements** — All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
 - [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.
 - [x] **Log rotation & cleanup** — Docker json-file log driver rotation configured in docker-compose.prod.yml (api: 20MB×5, web: 10MB×5, postgres: 10MB×3) and dev (api: 20MB×3, web: 10MB×3). Logger enhanced with LOG_LEVEL env var filtering (debug/info/warn/error) and process.stdout.write for clean JSON-per-line. Comprehensive docs/LOGGING.md covers PM2, systemd+logrotate, and log aggregation options (Loki, ELK, etc).
-- [ ] **Helm chart for Kubernetes** — Proper Helm chart with configurable values for self-hosters deploying to k8s.
+- [x] **Helm chart for Kubernetes** — `helm/pulsedock/` with 19 templates (API, Web, Postgres, Redis, Ingress, HPA, ConfigMap, Secret, helpers). Auto-computes DATABASE_URL and REDIS_URL. `helm lint` clean. Full values reference in `docs/HELM.md`.
 
 ---
 

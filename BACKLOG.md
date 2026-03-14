@@ -76,6 +76,212 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
 - [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
+- [ ] **Public Status Page Builder (Drag & Drop)** — Full drag-and-drop editor for creating shareable public status pages. See detailed spec below. _(Added 2026-03-14 by Noah)_
+
+  <details>
+  <summary>Full Feature Spec</summary>
+
+  **Goal:** Allow admins to build a fully customizable public status page from a set of widgets. The page can be published and shared with a public URL — no login required for viewers.
+
+  **Editor (Admin only — `/status/[id]/edit`):**
+  - Drag-and-drop canvas using a grid-based layout (e.g. `react-grid-layout` or `dnd-kit` + custom grid)
+  - Widget palette on the left sidebar — drag widgets onto the canvas
+  - Each widget is resizable and repositionable
+  - Click any widget to open its config panel (right sidebar)
+  - Toolbar: Save draft, Preview, Publish/Unpublish, Share link, Duplicate page, Delete page
+  - "Add Page" button to create multiple independent status pages
+
+  **Available Widgets:**
+  | Widget | Description | Config options |
+  |--------|-------------|----------------|
+  | **Uptime Bar** | Shows uptime % over a selectable period | Monitor selector, time range (7/30/90d), label, show % toggle |
+  | **Uptime Timeline** | 90-day bar chart (green/red per day) | Monitor selector, day count, tooltip on hover |
+  | **Response Time Chart** | Sparkline or area chart of latency over time | Monitor selector, time range, chart type, threshold line |
+  | **Response Time Heatmap** | Hour-of-day × day-of-week latency heatmap | Monitor selector, color scale |
+  | **Current Status Badge** | Green/yellow/red pill indicator | Monitor selector, label, show latency, show last checked |
+  | **Multi-Monitor Status Grid** | Grid of badges for multiple monitors at once | Monitor multi-select, columns count, compact/detailed |
+  | **Incident History** | Paginated list of past incidents with duration/cause | Max shown, filter by tag/monitor, show resolved toggle |
+  | **Active Incident Banner** | Full-width banner when something is currently down | Monitors to watch, custom "all clear" message |
+  | **Monitor Group Status** | Overview of a tag/group (all green / X degraded / X down) | Tag selector, compact/detailed, show monitor list |
+  | **Version Check Widget** | Shows tracked version + last checked timestamp | Monitor selector, show changelog link, show "latest" label |
+  | **Update Status Badge** | "Up to date ✓" / "Update available ↑ vX.Y.Z" | Monitor selector, link to release notes |
+  | **Version Comparison Table** | Side-by-side: current vs latest for N monitors | Monitor multi-select, show delta column |
+  | **Overall System Status** | Auto-computed hero status: Operational / Degraded / Outage | Monitors to include, custom labels per state |
+  | **SLA Summary** | Shows SLA target vs actual for a period | Monitor, SLA target %, period, color-code pass/fail |
+  | **Check History Feed** | Live-updating log of recent check results | Monitor selector, max rows, show status icon + latency |
+  | **Text / Announcement Block** | Free text (markdown supported) for maintenance notes | Text editor, optional expiry date/time, style (info/warn/danger) |
+  | **Scheduled Maintenance** | Shows upcoming or active maintenance windows | Date range, affected monitors, custom message |
+  | **Last Updated Footer** | "Last updated X seconds ago" with refresh button | Format options, auto-refresh interval |
+  | **Custom Header / Logo** | Page title, subtitle, logo/favicon | Text, image upload (stored as base64 or object storage), link URL |
+  | **Metric Counter** | Single big stat (e.g. "99.9% uptime last 30 days") | Monitor, metric type, period, prefix/suffix, decimal places |
+  | **Metric Comparison Row** | N metric counters in a horizontal strip | Multiple monitors + metrics, label each |
+  | **Embed / iFrame Block** | Embed an external URL (e.g. Grafana panel) | URL, height, sandbox policy |
+  | **Divider / Spacer** | Visual separator or empty space | Height, optional label, style (line/dots/none) |
+  | **Countdown** | Countdown to a planned event (e.g. maintenance end) | Target datetime, label, hide after expiry |
+
+  **Editor UX details:**
+  - Grid: 12-column responsive grid, min widget height 1 row = 80px
+  - Snap-to-grid while dragging, resize handles on all 4 corners
+  - Multi-select widgets (Shift+click) → group move/align/distribute
+  - Undo/Redo (Ctrl+Z / Ctrl+Y), keyboard shortcuts panel
+  - Widget lock (prevent accidental moves), widget duplicate
+  - Page-level settings panel: background color, font, accent color, favicon, custom CSS (advanced)
+  - Responsive preview toggle: Desktop / Tablet / Mobile view in editor
+  - Real-time collaboration placeholder (future: OT/CRDT — note in spec for later)
+  - Template gallery: start from pre-built layouts (Minimal, Full Dashboard, Incident Page, SLA Report)
+
+  **Public View (`/status/[slug]`):**
+  - Renders the published layout — read-only, no auth required
+  - Auto-refreshes data every 60s (SSE or polling)
+  - Mobile-responsive: single column on small screens
+  - Shows "Last updated: X seconds ago" footer
+  - Optional password protection (admin sets a passphrase)
+  - Custom slug support (e.g. `/status/my-company`)
+  - SEO-friendly: proper meta tags, OG image
+
+  **Data model additions (Prisma):**
+  - `StatusPage { id, userId, slug, title, description, isPublished, passwordHash?, layout (JSON), createdAt, updatedAt }`
+  - `layout` stores: `{ widgets: [{ id, type, x, y, w, h, config: {} }] }`
+
+  **API endpoints:**
+  - `GET /v1/status-pages` — list my pages
+  - `POST /v1/status-pages` — create page
+  - `PATCH /v1/status-pages/:id` — update layout/config
+  - `POST /v1/status-pages/:id/publish` — publish/unpublish
+  - `DELETE /v1/status-pages/:id`
+  - `GET /v1/public/status/:slug` — public data endpoint (no auth)
+  - `GET /v1/public/status/:slug/widget/:widgetId` — individual widget data
+
+  **Implementation order:**
+  1. DB schema + migrations
+  2. API endpoints + widget data resolvers
+  3. Drag-and-drop editor (dnd-kit recommended — already tree-shakeable)
+  4. Widget components (public view)
+  5. Public route + SSR/ISR rendering
+  6. Publish flow + slug management
+  7. Password protection
+  8. Custom slug + OG image generation
+
+  </details>
+
+- [ ] **Tool Registry — Pre-configured Version Check Library** — Searchable library of 500+ popular self-hosted & open-source tools with pre-filled version API configs, icons, and one-click monitor setup. Users just pick a tool, enter their instance URL, done. See detailed spec below. _(Added 2026-03-14 by Noah)_
+
+  <details>
+  <summary>Full Feature Spec</summary>
+
+  **Goal:** Zero-config version monitoring for all major tools. Instead of manually finding a tool's version API, users pick from a searchable catalog. PulseDock already knows where to fetch the version, what the JSON path is, what the latest release endpoint is, and even what the project looks like.
+
+  **UX Flow:**
+  1. User clicks "New Monitor" → selects "Version Check"
+  2. Modal shows **Tool Picker** as first step (searchable gallery)
+  3. User searches (e.g. "gitlab") → sees GitLab CE card with icon + description
+  4. Clicks it → form pre-fills: name, version URL, JSON path, latest-version source, check interval
+  5. User only needs to enter: **their instance URL** (or leave blank for cloud-hosted tools)
+  6. Save → monitor is live
+
+  **Tool Picker UI:**
+  - Search bar with instant filtering (name, category, tags)
+  - Category filters: `Self-hosted` · `Cloud` · `Database` · `CI/CD` · `Infra` · `Security` · `Observability` · `CMS` · `Dev Tools` · `Container` · `Network` · `Storage`
+  - Grid view: icon + name + category badge + short description
+  - "Custom" tile always available at end for manual config
+  - Verified badge on official/maintained entries
+  - Community-contributed entries (future: submission flow)
+
+  **Registry data model** (static JSON file bundled with app, updateable via PR):
+  ```json
+  {
+    "id": "gitlab-ce",
+    "name": "GitLab CE",
+    "category": "CI/CD",
+    "tags": ["git", "devops", "self-hosted"],
+    "icon": "https://cdn.../gitlab.svg",  // or bundled in /public/tool-icons/
+    "description": "Open-source DevOps platform",
+    "homepage": "https://gitlab.com",
+    "versionSource": {
+      "type": "json-path",
+      "urlTemplate": "{{instanceUrl}}/api/v4/version",
+      "jsonPath": "$.version",
+      "authRequired": false
+    },
+    "latestSource": {
+      "type": "github-releases",
+      "repo": "gitlab-org/gitlab-foss"
+    },
+    "docsUrl": "https://docs.gitlab.com/ce/api/version.html",
+    "checkInterval": 3600
+  }
+  ```
+
+  **Source types supported:**
+  | Type | Description |
+  |------|-------------|
+  | `json-path` | Fetch URL, extract value via JSONPath |
+  | `github-releases` | Latest release from GitHub API (`/releases/latest`) |
+  | `github-tags` | Latest tag from GitHub API |
+  | `docker-hub` | Latest tag from Docker Hub API |
+  | `npm-registry` | Latest version from registry.npmjs.org |
+  | `pypi` | Latest version from pypi.org |
+  | `apt-release` | Parse Debian/Ubuntu package version |
+  | `html-scrape` | Regex extract from HTML page (fallback) |
+  | `custom-endpoint` | User-defined URL + path (for "Custom" tile) |
+
+  **Initial tool list (target: 500+ at launch, prioritized):**
+
+  **Container / Orchestration:**
+  Portainer, Rancher, Kubernetes, k3s, k0s, Docker Engine, Podman, Nomad, Fleet, OpenShift, Lens
+
+  **CI/CD:**
+  GitLab CE, Gitea, Forgejo, Gogs, Jenkins, Drone CI, Woodpecker CI, Tekton, ArgoCD, FluxCD, GoCD, TeamCity, Concourse CI
+
+  **Databases:**
+  PostgreSQL, MySQL, MariaDB, MongoDB, Redis, InfluxDB, TimescaleDB, CockroachDB, Cassandra, Elasticsearch, OpenSearch, ClickHouse, DuckDB, Valkey, KeyDB, Meilisearch, Typesense, SurrealDB
+
+  **Observability / Monitoring:**
+  Grafana, Prometheus, Alertmanager, Loki, Tempo, VictoriaMetrics, Zabbix, Nagios, Checkmk, Uptime Kuma, Netdata, Graylog, OpenTelemetry Collector, Jaeger, Zipkin
+
+  **Security:**
+  Vault (HashiCorp), Vaultwarden, Bitwarden, Passbolt, Keycloak, Authelia, Authentik, CrowdSec, Fail2Ban, Wazuh, Trivy, Clair, Falco, OpenVAS
+
+  **Networking / Proxy:**
+  Nginx, Nginx Proxy Manager, Traefik, Caddy, HAProxy, Envoy, Istio, Linkerd, Pi-hole, AdGuard Home, WireGuard, Tailscale, Cloudflare WARP, Netbird
+
+  **Storage:**
+  MinIO, Nextcloud, Seafile, Syncthing, Rclone, TrueNAS SCALE, OpenMediaVault, Longhorn, Rook/Ceph, Garage
+
+  **CMS / Web:**
+  WordPress, Ghost, Strapi, Directus, Payload CMS, Pocketbase, Appwrite, Supabase, Plausible Analytics, Umami, Matomo, Fathom
+
+  **Dev Tools / IDE:**
+  Gitea, code-server, Coder, Jupyter, JupyterHub, Gitpod, Windmill, n8n, Node-RED, Temporal, Prefect, Airflow
+
+  **Communication:**
+  Mattermost, Rocket.Chat, Matrix Synapse, Element, Zulip, Discourse, Revolt, XMPP (Prosody/ejabberd)
+
+  **Media / Home:**
+  Jellyfin, Plex, Emby, Immich, Photoprism, Navidrome, Owncast, Frigate, Home Assistant, OpenWRT
+
+  **Infrastructure:**
+  Terraform, OpenTofu, Ansible, Pulumi, Salt, Chef, Puppet, Packer
+
+  **Queue / Messaging:**
+  RabbitMQ, Kafka, NATS, Redpanda, Mosquitto, ActiveMQ, ZeroMQ
+
+  **API / Backend:**
+  Kong, APISIX, Tyk, Hasura, PostgREST, PocketBase, Hono, Fastify, NestJS
+
+  **Implementation plan:**
+  1. Create `/packages/tool-registry/` — JSON files organized by category, loader, TypeScript types
+  2. Bundle icon sprites or use a CDN (Simple Icons covers ~90% of logos)
+  3. API endpoint: `GET /v1/tool-registry` — returns full list (filterable), cached in memory
+  4. UI: ToolPicker component (searchable grid modal)
+  5. Wire into "New Monitor" flow as step 1
+  6. Auto-populate form fields when tool selected
+  7. "Suggest a tool" link → opens GitHub issue template (pre-filled)
+  8. Admin can add custom registry entries per instance (private tools)
+  9. Periodic community-maintained updates via GitHub PRs to registry JSON
+
+  </details>
+
 - [ ] **i18n / Internationalization** — Add i18n support (at minimum: English + German since Noah is German-speaking). Use `next-intl` or similar.
 - [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.

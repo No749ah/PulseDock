@@ -28,7 +28,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
-  const [mailEnabled, setMailEnabled] = useState<boolean | null>(null);
+  const [mailEnabled, setMailEnabled] = useState(false);
   // 2FA state
   const [totpStep, setTotpStep] = useState(false);
   const [totpTempToken, setTotpTempToken] = useState("");
@@ -428,7 +428,7 @@ export default function LoginPage() {
             </form>
 
             {/* Forgot password link — only shown when SMTP is configured */}
-            {!totpStep && !inInviteFlow && !inResetFlow && mailEnabled === true && (
+            {!totpStep && !inInviteFlow && !inResetFlow && mailEnabled && (
               <div className="mt-4 text-center">
                 <button
                   type="button"

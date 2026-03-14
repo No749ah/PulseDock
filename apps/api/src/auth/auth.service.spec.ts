@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
 
 describe('AuthService', () => {
   describe('password policy', () => {
-    it('throws UnauthorizedException for short password', async () => {
+    it('throws BadRequestException for short password', async () => {
       // Temporarily enable public registration
       const oldEnv = process.env.ALLOW_PUBLIC_REGISTRATION;
       process.env.ALLOW_PUBLIC_REGISTRATION = 'true';
@@ -83,19 +83,19 @@ describe('AuthService', () => {
       const prisma = makePrisma(null); // no existing user
       const svc = makeService(prisma as never);
 
-      await expect(svc.register('new@example.com', 'short')).rejects.toThrow(UnauthorizedException);
+      await expect(svc.register('new@example.com', 'short')).rejects.toThrow(BadRequestException);
 
       process.env.ALLOW_PUBLIC_REGISTRATION = oldEnv;
     });
 
-    it('throws UnauthorizedException for password without uppercase', async () => {
+    it('throws BadRequestException for password without uppercase', async () => {
       const oldEnv = process.env.ALLOW_PUBLIC_REGISTRATION;
       process.env.ALLOW_PUBLIC_REGISTRATION = 'true';
 
       const prisma = makePrisma(null);
       const svc = makeService(prisma as never);
 
-      await expect(svc.register('new@example.com', 'lowercase123!')).rejects.toThrow(UnauthorizedException);
+      await expect(svc.register('new@example.com', 'lowercase123!')).rejects.toThrow(BadRequestException);
 
       process.env.ALLOW_PUBLIC_REGISTRATION = oldEnv;
     });
@@ -107,7 +107,7 @@ describe('AuthService', () => {
       process.env.ALLOW_PUBLIC_REGISTRATION = 'false';
 
       const svc = makeService();
-      await expect(svc.register('new@example.com', 'ValidPass1!')).rejects.toThrow(UnauthorizedException);
+      await expect(svc.register('new@example.com', 'ValidPass12!')).rejects.toThrow(UnauthorizedException);
 
       process.env.ALLOW_PUBLIC_REGISTRATION = oldEnv;
     });

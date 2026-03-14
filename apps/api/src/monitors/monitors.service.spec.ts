@@ -830,3 +830,471 @@ describe('testVersionConnection()', () => {
     expect(result).toMatchObject({ ok: false });
   });
 });
+
+// ── bulkAction() ─────────────────────────────────────────────────────────────
+
+describe('bulkAction()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('returns { ok: true, affected: 0 } for empty ids array', async () => {
+    const result = await service.bulkAction('user-1', [], 'delete');
+    expect(result).toEqual({ ok: true, affected: 0 });
+  });
+
+  it('returns { ok: true, affected: 0 } when no owned monitors found', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await service.bulkAction('user-1', ['m1', 'm2'], 'delete');
+    expect(result).toEqual({ ok: true, affected: 0 });
+  });
+
+  it('deletes monitors on bulk delete action', async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const extPrisma = {
+      ...prisma,
+      monitor: {
+        ...prisma.monitor,
+        findMany: vi.fn().mockResolvedValue([makeMonitor()]),
+        deleteMany,
+      },
+    };
+    const svc = makeService(extPrisma as never);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'delete');
+    expect(deleteMany).toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('enables monitors on bulk enable', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const extPrisma = {
+      ...prisma,
+      monitor: {
+        ...prisma.monitor,
+        findMany: vi.fn().mockResolvedValue([makeMonitor()]),
+        updateMany,
+      },
+    };
+    const svc = makeService(extPrisma as never);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'enable');
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { enabled: true } }),
+    );
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('disables monitors on bulk disable', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const extPrisma = {
+      ...prisma,
+      monitor: {
+        ...prisma.monitor,
+        findMany: vi.fn().mockResolvedValue([makeMonitor()]),
+        updateMany,
+      },
+    };
+    const svc = makeService(extPrisma as never);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'disable');
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { enabled: false } }),
+    );
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('calls runNow for each monitor on bulk run', async () => {
+    const checksService = makeChecksService();
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor()]);
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'run');
+    expect(checksService.runMonitor).toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it('counts only succeeded runs in bulk run result', async () => {
+    const checksService = makeChecksService();
+    checksService.runMonitor.mockRejectedValueOnce(new Error('fail'));
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor(), makeMonitor({ id: 'monitor-2' })]);
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const result = await svc.bulkAction('user-1', ['monitor-1', 'monitor-2'], 'run');
+    // 1 rejected, 1 fulfilled
+    expect(result.affected).toBe(1);
+  });
+});
+
+// ── addMonitorAlert() ─────────────────────────────────────────────────────────
+
+describe('addMonitorAlert()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.addMonitorAlert('user-1', 'non-existent', 'ch-1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when alert channel not found', async () => {
+    prisma.alertChannel.findFirst.mockResolvedValue(null);
+    await expect(service.addMonitorAlert('user-1', 'monitor-1', 'ch-missing')).rejects.toThrow(NotFoundException);
+  });
+
+  it('upserts monitorAlert and returns { ok: true }', async () => {
+    const result = await service.addMonitorAlert('user-1', 'monitor-1', 'ch-1');
+    expect(prisma.monitorAlert.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { monitorId_alertChannelId: { monitorId: 'monitor-1', alertChannelId: 'ch-1' } },
+      }),
+    );
+    expect(result).toEqual({ ok: true });
+  });
+});
+
+// ── removeMonitorAlert() ──────────────────────────────────────────────────────
+
+describe('removeMonitorAlert()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.removeMonitorAlert('user-1', 'non-existent', 'ch-1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('deletes alert assignment and returns { ok: true }', async () => {
+    const result = await service.removeMonitorAlert('user-1', 'monitor-1', 'ch-1');
+    expect(prisma.monitorAlert.deleteMany).toHaveBeenCalledWith({
+      where: { monitorId: 'monitor-1', alertChannelId: 'ch-1' },
+    });
+    expect(result).toEqual({ ok: true });
+  });
+});
+
+// ── runNow() ──────────────────────────────────────────────────────────────────
+
+describe('runNow()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.runNow('user-1', 'non-existent')).rejects.toThrow(NotFoundException);
+  });
+
+  it('calls checksService.runMonitor with correct monitor shape', async () => {
+    const checksService = makeChecksService();
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+
+    const result = await svc.runNow('user-1', 'monitor-1');
+
+    expect(checksService.runMonitor).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'monitor-1', userId: 'user-1', type: 'GIT_RELEASE' }),
+    );
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it('logs audit event on runNow', async () => {
+    const audit = makeAudit();
+    const svc = new MonitorsService(prisma as never, makeChecksService() as never, audit as never, makeRealtime() as never);
+    await svc.runNow('user-1', 'monitor-1');
+    expect(audit.log).toHaveBeenCalledWith('monitor.run_now', 'user-1', 'user-1', expect.objectContaining({ monitorId: 'monitor-1' }));
+  });
+});
+
+// ── listPlugins() ─────────────────────────────────────────────────────────────
+
+describe('listPlugins()', () => {
+  it('delegates to checksService.listPlugins()', () => {
+    const checksService = makeChecksService();
+    const svc = new MonitorsService(makePrisma() as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const result = svc.listPlugins();
+    expect(checksService.listPlugins).toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+});
+
+// ── create() with tags ────────────────────────────────────────────────────────
+
+describe('create() — with tags', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('creates tags via upsert when tags array is provided', async () => {
+    await service.create('user-1', {
+      name: 'Tagged Monitor',
+      target: 'nestjs/nest',
+      type: 'GIT_RELEASE',
+      tags: ['production', 'critical'],
+    });
+
+    expect(prisma.tag.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.monitorTag.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('includes tags in response when tags are created', async () => {
+    const result = await service.create('user-1', {
+      name: 'Tagged Monitor',
+      target: 'nestjs/nest',
+      type: 'GIT_RELEASE',
+      tags: ['v8'],
+    });
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]).toMatchObject({ id: 'tag-1', name: 'v8' });
+  });
+
+  it('skips tag creation when tags array is empty', async () => {
+    await service.create('user-1', {
+      name: 'No Tags Monitor',
+      target: 'nestjs/nest',
+      type: 'GIT_RELEASE',
+      tags: [],
+    });
+
+    expect(prisma.tag.upsert).not.toHaveBeenCalled();
+    expect(prisma.monitorTag.create).not.toHaveBeenCalled();
+  });
+});
+
+// ── update() with tags ────────────────────────────────────────────────────────
+
+describe('update() — with tags', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('replaces all tags when tags array provided', async () => {
+    await service.update('user-1', 'monitor-1', { tags: ['new-tag'] });
+
+    expect(prisma.monitorTag.deleteMany).toHaveBeenCalledWith({ where: { monitorId: 'monitor-1' } });
+    expect(prisma.tag.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.monitorTag.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears tags when empty tags array provided', async () => {
+    await service.update('user-1', 'monitor-1', { tags: [] });
+
+    expect(prisma.monitorTag.deleteMany).toHaveBeenCalledWith({ where: { monitorId: 'monitor-1' } });
+    expect(prisma.tag.upsert).not.toHaveBeenCalled();
+  });
+
+  it('does not touch tags when tags is not in update body', async () => {
+    await service.update('user-1', 'monitor-1', { name: 'Rename Only' });
+
+    expect(prisma.monitorTag.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+// ── versionSummary() ─────────────────────────────────────────────────────────
+
+describe('versionSummary()', () => {
+  it('returns correct stats for monitors with runs', async () => {
+    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: { currentVersion: '1.0.0' } };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([gitMonitor]);
+    const monitorRunFindFirst = vi.fn().mockResolvedValue(makeRun({ level: 'green', message: 'up to date' }));
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: monitorRunFindFirst,
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+
+    expect(result.stats).toMatchObject({ total: 1, green: 1, yellow: 0, red: 0 });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe('Test Monitor');
+  });
+
+  it('returns "No run yet" and yellow level when monitor has no runs', async () => {
+    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {} };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([gitMonitor]);
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: vi.fn().mockResolvedValue(null),
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+
+    expect(result.items[0].latestMessage).toBe('No run yet');
+    expect(result.items[0].level).toBe('yellow');
+    expect(result.items[0].checkedAt).toBeNull();
+  });
+
+  it('returns empty stats when no version monitors exist', async () => {
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+
+    const result = await svc.versionSummary('user-1');
+    expect(result.stats.total).toBe(0);
+    expect(result.items).toHaveLength(0);
+  });
+
+  it('counts red/yellow monitors in stats correctly', async () => {
+    const mon1 = { ...makeMonitor({ id: 'm1' }), type: 'GIT_RELEASE', configJson: {} };
+    const mon2 = { ...makeMonitor({ id: 'm2' }), type: 'DOCKER_IMAGE', configJson: {} };
+    const mon3 = { ...makeMonitor({ id: 'm3' }), type: 'GIT_RELEASE', configJson: {} };
+
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([mon1, mon2, mon3]);
+    const findFirst = vi.fn()
+      .mockResolvedValueOnce(makeRun({ level: 'green', monitorId: 'm1' }))
+      .mockResolvedValueOnce(makeRun({ level: 'yellow', monitorId: 'm2' }))
+      .mockResolvedValueOnce(makeRun({ level: 'red', monitorId: 'm3' }));
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst,
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+
+    expect(result.stats).toMatchObject({ total: 3, green: 1, yellow: 1, red: 1 });
+  });
+});
+
+// ── discoverCurrentVersion() ──────────────────────────────────────────────────
+
+describe('discoverCurrentVersion()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns deployed-endpoint strategy when appUrl has version endpoint', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '2.3.4' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+    });
+
+    expect(result.currentVersion).toBe('2.3.4');
+    expect(result.strategy).toBe('deployed-endpoint');
+    expect(result.detectedFrom).toBeTruthy();
+  });
+
+  it('returns manual strategy with auth message when app endpoint returns 401', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'text/plain' },
+      json: async () => ({}),
+      text: async () => '',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    expect((result as Record<string, unknown>).message).toContain('401/403');
+  });
+
+  it('returns latest-release-probe strategy when no appUrl and testVersionConnection succeeds', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ tag_name: 'v1.0.0' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+    });
+
+    expect(result.strategy).toBe('latest-release-probe');
+    expect(result.currentVersion).toBeTruthy();
+  });
+
+  it('returns manual strategy with suggestions when testVersionConnection fails', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: { get: () => 'text/plain' },
+      json: async () => ({}),
+      text: async () => '',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+  });
+
+  it('returns manual strategy for docker when discovery fails', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: { get: () => 'text/plain' },
+      json: async () => ({}),
+      text: async () => '',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'nginx',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    expect((result as Record<string, unknown>).suggestions).toEqual(
+      expect.arrayContaining(['latest', 'stable']),
+    );
+  });
+});

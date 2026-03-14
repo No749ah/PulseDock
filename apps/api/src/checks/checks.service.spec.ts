@@ -649,4 +649,179 @@ describe('ChecksService', () => {
       expect(run.level).toBe('yellow');
     });
   });
+
+  // ── runMonitor() — GIT_RELEASE age-based (no currentVersion) ──────────────
+
+  describe('runMonitor() — GIT_RELEASE GitHub age-based (no currentVersion)', () => {
+    it('returns yellow when GitHub release is 400 hours old and no currentVersion set', async () => {
+      const service = makeService();
+      const publishedAt = new Date(Date.now() - 400 * 3600000).toISOString();
+
+      globalThis.fetch = mockFetch([
+        {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ tag_name: 'v1.0.0', published_at: publishedAt }),
+        },
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {},
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toContain('v1.0.0');
+    });
+
+    it('returns green when GitHub release is recent (< 336 hours old) and no currentVersion', async () => {
+      const service = makeService();
+      const publishedAt = new Date(Date.now() - 10 * 3600000).toISOString();
+
+      globalThis.fetch = mockFetch([
+        {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ tag_name: 'v2.0.0', published_at: publishedAt }),
+        },
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {},
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns red when GitHub release is > 720 hours old and no currentVersion', async () => {
+      const service = makeService();
+      const publishedAt = new Date(Date.now() - 800 * 3600000).toISOString();
+
+      globalThis.fetch = mockFetch([
+        {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ tag_name: 'v0.5.0', published_at: publishedAt }),
+        },
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {},
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.level).toBe('red');
+    });
+  });
+
+  // ── runGitReleaseCheck catch block ─────────────────────────────────────────
+
+  describe('runGitReleaseCheck() — catch block', () => {
+    it('returns red with "Version check failed" when fetch throws', async () => {
+      const service = makeService();
+
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {},
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('Version check failed');
+    });
+
+    it('returns generic "Version check failed" when non-Error is thrown', async () => {
+      const service = makeService();
+
+      globalThis.fetch = vi.fn().mockRejectedValue('string error');
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {},
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toBe('Version check failed');
+    });
+  });
+
+  // ── runMonitor() — plugin monitor ─────────────────────────────────────────
+
+  describe('runMonitor() — plugin (runPluginMonitor)', () => {
+    it('returns red with "Unknown or incompatible plugin" for unknown pluginId', async () => {
+      const service = makeService();
+
+      const monitor = makeMonitor({
+        type: 'HTTP',
+        target: 'https://example.com',
+        config: { pluginId: 'nonexistent-plugin-xyz' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toContain('Unknown or incompatible plugin');
+      expect(run.level).toBe('red');
+    });
+
+    it('runs http.response-match plugin and returns green when text matched', async () => {
+      const service = makeService();
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('Hello World from server'),
+        headers: { get: () => 'text/plain' },
+      });
+
+      const monitor = makeMonitor({
+        type: 'HTTP',
+        target: 'https://example.com',
+        config: { pluginId: 'http.response-match', expectedText: 'Hello World' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+      expect(run.message).toContain('Hello World');
+    });
+
+    it('runs http.response-match plugin and returns red when text not found', async () => {
+      const service = makeService();
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('Different content'),
+        headers: { get: () => 'text/plain' },
+      });
+
+      const monitor = makeMonitor({
+        type: 'HTTP',
+        target: 'https://example.com',
+        config: { pluginId: 'http.response-match', expectedText: 'ExpectedText' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('returns red when plugin config has no expectedText', async () => {
+      const service = makeService();
+
+      const monitor = makeMonitor({
+        type: 'HTTP',
+        target: 'https://example.com',
+        config: { pluginId: 'http.response-match' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toContain('expectedText is required');
+    });
+  });
 });

@@ -70,9 +70,9 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Slack alert channel** — Slack incoming webhook URL config implemented. UI + backend complete.
 - [x] **Discord alert channel** — Discord webhook URL config + embed payload implemented. UI + backend complete.
 - [x] **Telegram alert channel** — Bot token + chat ID implemented via Telegram Bot API. UI + backend complete.
-- [ ] **Public status page polish** — Review current status page: add uptime percentage, response time chart, incident history, custom domain support.
+- [x] **Public status page polish** — Added latency sparklines (inline SVG per monitor), structured incident history (active + resolved with durations), per-monitor uptime%, active incidents banner. Custom domain support deferred (infra work).
 - [ ] **Monitor groups / tags** — Allow grouping monitors with tags. Filter/search by tag in UI.
-- [ ] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Useful for power users.
+- [x] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Checkbox per row + select-all header, bulk action bar, POST /v1/monitors/bulk API endpoint.
 - [ ] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
 - [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.

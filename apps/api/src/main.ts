@@ -66,12 +66,24 @@ async function bootstrap() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
       },
     },
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     frameguard: { action: 'deny' },
     noSniff: true,
-    xssFilter: true,
+    // xssFilter removed in helmet v7+ (deprecated browser feature); CSP scriptSrc covers XSS protection
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    permittedCrossDomainPolicies: false,
+    crossOriginEmbedderPolicy: false, // disabled: API is consumed cross-origin by the web frontend
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow web frontend to fetch API
   }));
   const metrics = app.get(MetricsService);
   app.use((req: AppRequest, res: AppResponse, next: () => void) => {

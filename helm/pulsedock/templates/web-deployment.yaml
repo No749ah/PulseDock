@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pulsedock.fullname" . }}-web
+  namespace: {{ include "pulsedock.namespace" . }}
+  labels:
+    {{- include "pulsedock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      {{- include "pulsedock.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "pulsedock.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "pulsedock.serviceAccountName" . }}
+      {{- end }}
+      containers:
+        - name: web
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.web.image }}:{{ .Values.web.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "pulsedock.fullname" . }}-config
+            - secretRef:
+                name: {{ include "pulsedock.fullname" . }}-secrets
+          {{- if .Values.web.extraEnv }}
+          env:
+            {{- toYaml .Values.web.extraEnv | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.web.port }}
+            initialDelaySeconds: {{ .Values.web.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.readinessProbe.periodSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.web.port }}
+            initialDelaySeconds: {{ .Values.web.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.livenessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}

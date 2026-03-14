@@ -1,0 +1,66 @@
+╔══════════════════════════════════════════════════════╗
+║           PulseDock — Deployment Notes               ║
+╚══════════════════════════════════════════════════════╝
+
+Chart version : {{ .Chart.Version }}
+App version   : {{ .Chart.AppVersion }}
+Release name  : {{ .Release.Name }}
+Namespace     : {{ include "pulsedock.namespace" . }}
+
+{{- if .Values.ingress.enabled }}
+  ┌─ Application URL ───────────────────────────────────┐
+  │                                                     │
+  {{- $scheme := ternary "https" "http" .Values.ingress.tls }}
+  │  {{ $scheme }}://{{ .Values.ingress.host }}
+  │                                                     │
+  └─────────────────────────────────────────────────────┘
+{{- else }}
+  ⚠  Ingress is disabled. Expose the web service manually or
+     port-forward with:
+
+       kubectl port-forward svc/{{ include "pulsedock.fullname" . }}-web 3000:{{ .Values.web.port }} -n {{ include "pulsedock.namespace" . }}
+
+     Then open: http://localhost:3000
+{{- end }}
+
+─────────────────────────────────────────────────────────
+  USEFUL COMMANDS
+─────────────────────────────────────────────────────────
+
+  View API logs:
+    kubectl logs -l app.kubernetes.io/component=api \
+      -n {{ include "pulsedock.namespace" . }} -f --tail=100
+
+  View Web logs:
+    kubectl logs -l app.kubernetes.io/component=web \
+      -n {{ include "pulsedock.namespace" . }} -f --tail=100
+
+  Run Prisma migrations:
+    kubectl exec -it deploy/{{ include "pulsedock.fullname" . }}-api \
+      -n {{ include "pulsedock.namespace" . }} \
+      -- npx prisma migrate deploy
+
+  Open an API shell:
+    kubectl exec -it deploy/{{ include "pulsedock.fullname" . }}-api \
+      -n {{ include "pulsedock.namespace" . }} -- sh
+
+─────────────────────────────────────────────────────────
+  UPGRADE
+─────────────────────────────────────────────────────────
+
+  helm upgrade {{ .Release.Name }} pulsedock/pulsedock \
+    --reuse-values \
+    --set api.tag=<new-tag> \
+    --set web.tag=<new-tag>
+
+─────────────────────────────────────────────────────────
+  ⚠  FIRST-BOOT CHECKLIST
+─────────────────────────────────────────────────────────
+
+  1. secrets.jwtSecret        — set to a 32-byte hex string
+  2. secrets.jwtRefreshSecret — set to a 32-byte hex string
+  3. postgres.password        — set to a strong password
+  4. ingress.host             — set to your actual domain
+  5. Run migrations (see above) after the API pod is Ready
+
+  Generate secrets:  openssl rand -hex 32

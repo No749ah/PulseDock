@@ -69,6 +69,33 @@ export class MailerService {
     return { sent: true };
   }
 
+  async sendNewLoginEmail(to: string, context: { ipAddress: string | null; userAgent: string | null; timestamp: string }) {
+    const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
+    const transporter = this.transporter();
+
+    const subject = 'New login detected on your PulseDock account';
+    const ip = context.ipAddress ?? 'unknown';
+    const ua = context.userAgent ?? 'unknown';
+    const text = [
+      `A new login was detected on your PulseDock account.`,
+      ``,
+      `Time: ${context.timestamp}`,
+      `IP address: ${ip}`,
+      `Device/browser: ${ua}`,
+      ``,
+      `If this was you, no action is needed.`,
+      `If you did not log in, please change your password immediately and revoke any unknown sessions in Account Settings.`,
+    ].join('\n');
+
+    if (!transporter) {
+      this.logger.warn(`[mail-disabled] new-login alert to ${to} from IP ${ip}`);
+      return { sent: false };
+    }
+
+    await transporter.sendMail({ from, to, subject, text });
+    return { sent: true };
+  }
+
   async sendAlertEmail(to: string, alertText: string, extra?: unknown) {
     const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
     const transporter = this.transporter();

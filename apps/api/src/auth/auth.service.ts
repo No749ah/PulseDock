@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compareSync, hashSync } from 'bcryptjs';
 import type ms from 'ms';
@@ -14,6 +14,8 @@ type AuthUser = { id: string; email: string; role: 'admin' | 'user'; mustChangeP
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   private assertPasswordPolicy(password: string) {
     const ok =
       password.length >= 12 &&
@@ -175,7 +177,48 @@ export class AuthService {
     });
 
     await this.audit.log('auth.login', user.id, user.id, {});
+
+    // Anomaly detection: warn user if login from a previously unseen IP
+    void this.checkNewIpAndNotify(user.id, user.email, context?.ipAddress ?? null, context?.userAgent ?? null);
+
     return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } satisfies AuthUser };
+  }
+
+  /**
+   * Fires-and-forgets an email if the given IP has never been seen in this user's session history.
+   * Runs after login completes so it doesn't add latency to the login response.
+   */
+  private async checkNewIpAndNotify(userId: string, email: string, ipAddress: string | null, userAgent: string | null): Promise<void> {
+    if (!ipAddress) return;
+
+    try {
+      // Count sessions from before now with this IP (excluding the session just created)
+      const previousSessionsWithIp = await this.prisma.session.count({
+        where: {
+          userId,
+          ipAddress,
+          // created more than 10 seconds ago to exclude the current session
+          createdAt: { lt: new Date(Date.now() - 10_000) },
+        },
+      });
+
+      if (previousSessionsWithIp > 0) return; // IP is known, no alert
+
+      // Check if this is the very first login ever (only 1 session total)
+      const totalSessions = await this.prisma.session.count({ where: { userId } });
+      if (totalSessions <= 1) return; // First ever login — no alert
+
+      // New IP on an established account → send warning
+      await this.mailer.sendNewLoginEmail(email, {
+        ipAddress,
+        userAgent,
+        timestamp: new Date().toUTCString(),
+      });
+
+      await this.audit.log('auth.new_ip_login', userId, userId, { ipAddress, userAgent });
+    } catch (err) {
+      this.logger.warn(`[anomaly-detect] failed to check IP for user ${userId}: ${String(err)}`);
+    }
   }
 
   async refresh(refreshToken: string | undefined, context?: { userAgent?: string | null; ipAddress?: string | null }) {

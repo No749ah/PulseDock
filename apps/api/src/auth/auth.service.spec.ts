@@ -80,6 +80,9 @@ function makePrisma(userOverride?: Record<string, unknown> | null) {
       findUnique: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
     },
+    auditLog: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -453,5 +456,69 @@ describe('AuthService', () => {
         }),
       );
     });
+  });
+});
+
+// ─── getUserAuditLog() ───────────────────────────────────────────────────────
+
+describe('getUserAuditLog()', () => {
+  it('returns audit log entries for user', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([
+      { id: 'al-1', action: 'monitor.create', createdAt: new Date(), metaJson: { monitorId: 'm-1' } },
+      { id: 'al-2', action: 'user.login', createdAt: new Date(), metaJson: {} },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.getUserAuditLog('user-1');
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { actorUserId: 'user-1' },
+    }));
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 'al-1', action: 'monitor.create' });
+  });
+
+  it('caps limit at 500', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    const svc = makeService(prisma as never);
+
+    await svc.getUserAuditLog('user-1', 9999);
+    const call = (prisma.auditLog.findMany as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { take: number };
+    expect(call.take).toBe(500);
+  });
+});
+
+// ─── exportUserAuditLog() ────────────────────────────────────────────────────
+
+describe('exportUserAuditLog()', () => {
+  it('exports as JSON', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([
+      { id: 'al-1', action: 'user.login', createdAt: new Date('2026-01-01'), metaJson: {} },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.exportUserAuditLog('user-1', 'json');
+
+    expect(result.contentType).toBe('application/json');
+    expect(result.filename).toMatch(/\.json$/);
+    const parsed = JSON.parse(result.data) as unknown[];
+    expect(parsed).toHaveLength(1);
+  });
+
+  it('exports as CSV', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([
+      { id: 'al-1', action: 'monitor.create', createdAt: new Date('2026-01-01'), metaJson: { key: 'value' } },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.exportUserAuditLog('user-1', 'csv');
+
+    expect(result.contentType).toBe('text/csv');
+    expect(result.filename).toMatch(/\.csv$/);
+    expect(result.data).toContain('id,action,createdAt,meta');
+    expect(result.data).toContain('monitor.create');
   });
 });

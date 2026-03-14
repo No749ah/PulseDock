@@ -132,9 +132,17 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: 4, ttl: 60_000 } })
+  @Get('mail-configured')
+  @ApiOperation({ summary: 'Check if mail/SMTP is configured on this instance' })
+  @ApiResponse({ status: 200, description: 'Returns { enabled: boolean }' })
+  mailConfigured() {
+    return { enabled: this.authService.isMailConfigured() };
+  }
+
   @Post('request-password-reset')
   @ApiOperation({ summary: 'Request password reset email' })
   @ApiResponse({ status: 200, description: 'Reset email sent (or silently no-ops if email unknown).' })
+  @ApiResponse({ status: 503, description: 'Mail not configured on this instance.' })
   requestPasswordReset(@Body() body: RequestResetDto) {
     return this.authService.requestPasswordReset(body.email);
   }

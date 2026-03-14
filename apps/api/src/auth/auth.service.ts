@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compareSync, hashSync } from 'bcryptjs';
 import type ms from 'ms';
@@ -337,7 +337,15 @@ export class AuthService {
     return { ok: true };
   }
 
+  isMailConfigured(): boolean {
+    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  }
+
   async requestPasswordReset(email: string) {
+    if (!this.isMailConfigured()) {
+      throw new ServiceUnavailableException('Password reset is not available: mail is not configured on this instance.');
+    }
+
     const normalized = email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email: normalized } });
 

@@ -28,12 +28,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  const [mailEnabled, setMailEnabled] = useState<boolean | null>(null);
   // 2FA state
   const [totpStep, setTotpStep] = useState(false);
   const [totpTempToken, setTotpTempToken] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    api<{ enabled: boolean }>('/v1/auth/mail-configured')
+      .then((r) => setMailEnabled(r.enabled))
+      .catch(() => setMailEnabled(false));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -420,8 +427,8 @@ export default function LoginPage() {
             )}
             </form>
 
-            {/* Forgot password link */}
-            {!totpStep && !inInviteFlow && !inResetFlow && (
+            {/* Forgot password link — only shown when SMTP is configured */}
+            {!totpStep && !inInviteFlow && !inResetFlow && mailEnabled === true && (
               <div className="mt-4 text-center">
                 <button
                   type="button"

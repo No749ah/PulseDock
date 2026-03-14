@@ -33,6 +33,8 @@ import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
 import { TagsController } from './tags/tags.controller';
 import { TagsService } from './tags/tags.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { TagsService } from './tags/tags.service';
     V2AlertsController,
     V2ChecksController,
     TagsController,
+    NotificationsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -73,6 +76,7 @@ import { TagsService } from './tags/tags.service';
     RolesGuard,
     ApiKeysService,
     TagsService,
+    NotificationsService,
   ],
 })
 export class AppModule implements NestModule {

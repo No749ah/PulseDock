@@ -284,7 +284,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
   </details>
 
-- [ ] **i18n / Internationalization** — Add i18n support (at minimum: English + German since Noah is German-speaking). Use `next-intl` or similar.
+- [x] **i18n / Internationalization** — Custom lightweight i18n context (no external dependency). EN + DE translations for landing page and login page. I18nProvider with localStorage persistence + browser locale auto-detection. LocaleSwitcher component in nav and login header. Type-safe message catalog in `lib/i18n/messages.ts`.
 - [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).

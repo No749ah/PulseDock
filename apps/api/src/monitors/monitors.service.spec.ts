@@ -606,3 +606,93 @@ describe('MonitorsService', () => {
     });
   });
 });
+
+// ── External import parser tests ────────────────────────────────────────────
+
+describe('importExternal', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('parses Uptime Robot JSON format', async () => {
+    const uptimeRobotExport = {
+      stat: 'ok',
+      monitors: [
+        { id: 1, friendly_name: 'My Site', url: 'https://example.com', type: 1, interval: 300, status: 2 },
+        { id: 2, friendly_name: 'API', url: 'https://api.example.com', type: 2, interval: 60, status: 2 },
+        { id: 3, friendly_name: 'Ping test', url: 'example.com', type: 3, interval: 300, status: 2 }, // ping, skip
+        { id: 4, friendly_name: 'No URL', url: 'ftp://skip.me', type: 1, interval: 300, status: 2 }, // ftp, skip
+      ],
+    };
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target }))
+    );
+
+    const result = await service.importExternal('user-1', 'uptime-robot', uptimeRobotExport);
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('skips Uptime Robot monitors with non-http URLs', async () => {
+    const data = { monitors: [{ friendly_name: 'FTP', url: 'ftp://server.local', type: 1, interval: 60, status: 2 }] };
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('parses BetterUptime JSON format', async () => {
+    const betterUptimeExport = {
+      data: [
+        { id: '1', attributes: { url: 'https://site.com', pronounceable_name: 'Main Site', check_type: 'status', request_interval_seconds: 180, paused: false } },
+        { id: '2', attributes: { url: 'https://app.site.com', pronounceable_name: 'App', check_type: 'keyword', request_interval_seconds: 60, paused: true } },
+        { id: '3', attributes: { url: 'https://skip.com', pronounceable_name: 'TCP', check_type: 'tcp', request_interval_seconds: 60, paused: false } }, // skip
+      ],
+    };
+    // findFirst: return null for duplicate check (first arg: target), return a monitor for ownership check (first arg: id)
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      // duplicate check passes target as one of the where keys
+      if ('target' in where) return Promise.resolve(null);
+      // ownership check passes id
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target }))
+    );
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+
+    const result = await service.importExternal('user-1', 'better-uptime', betterUptimeExport);
+    expect(result.imported).toBe(2);
+  });
+
+  it('parses CSV format', async () => {
+    const csv = `name,url,interval\nMy App,https://myapp.com,120\nAdmin Panel,https://admin.myapp.com,60\nBad Row,not-a-url,60`;
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target }))
+    );
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(2); // bad row skipped
+  });
+
+  it('skips duplicate targets', async () => {
+    const data = { monitors: [{ friendly_name: 'Existing', url: 'https://existing.com', type: 1, interval: 300, status: 2 }] };
+    prisma.monitor.findFirst.mockResolvedValue(makeMonitor({ target: 'https://existing.com' }));
+
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(1);
+  });
+
+  it('returns empty result for unknown/empty data', async () => {
+    const result = await service.importExternal('user-1', 'uptime-robot', { stat: 'ok', monitors: [] });
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+});

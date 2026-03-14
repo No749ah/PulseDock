@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
-import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -128,6 +128,17 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Import result returned.' })
   importMonitors(@Req() req: { user: { id: string } }, @Body() body: ImportMonitorsDto) {
     return this.monitorsService.importMonitors(req.user.id, body.monitors);
+  }
+
+  @Post('import-external')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Import from external service',
+    description: 'Parse and import monitors from an Uptime Robot JSON export, BetterUptime JSON export, or a generic CSV file. Duplicate targets (same URL already monitored) are automatically skipped.',
+  })
+  @ApiResponse({ status: 200, description: 'Import result with count of imported, skipped, and errors.' })
+  importExternal(@Req() req: { user: { id: string } }, @Body() body: ImportExternalDto) {
+    return this.monitorsService.importExternal(req.user.id, body.source, body.payload);
   }
 
   @Get(':id/alerts')

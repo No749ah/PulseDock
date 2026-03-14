@@ -207,3 +207,11 @@ export class BulkActionDto {
   @IsIn(['enable', 'disable', 'delete', 'run'])
   action!: 'enable' | 'disable' | 'delete' | 'run';
 }
+
+export class ImportExternalDto {
+  @IsIn(['uptime-robot', 'better-uptime', 'csv'])
+  source!: 'uptime-robot' | 'better-uptime' | 'csv';
+
+  /** Raw export payload: JSON object for uptime-robot/better-uptime, CSV string for csv. */
+  payload!: unknown;
+}

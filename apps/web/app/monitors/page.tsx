@@ -139,6 +139,13 @@ export default function MonitorsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; errors: Array<{ index: number; name: string; error: string }> } | null>(null);
 
+  // external import modal
+  const externalImportFileRef = useRef<HTMLInputElement>(null);
+  const [showExternalImport, setShowExternalImport] = useState(false);
+  const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "csv">("uptime-robot");
+  const [externalImporting, setExternalImporting] = useState(false);
+  const [externalImportResult, setExternalImportResult] = useState<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string } | null>(null);
+
   // bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -469,6 +476,38 @@ export default function MonitorsPage() {
     }
   };
 
+  const handleExternalImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExternalImporting(true);
+    setExternalImportResult(null);
+    try {
+      const text = await file.text();
+      let payload: unknown;
+      if (externalImportSource === "csv") {
+        payload = text;
+      } else {
+        payload = JSON.parse(text);
+      }
+      const result = await api<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string }>(
+        "/v1/monitors/import-external",
+        user?.id,
+        {
+          method: "POST",
+          body: JSON.stringify({ source: externalImportSource, payload }),
+        },
+      );
+      setExternalImportResult(result);
+      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(monitorsData);
+    } catch (e) {
+      setExternalImportResult({ imported: 0, skipped: 0, errors: [], message: e instanceof Error ? e.message : "Import failed" });
+    } finally {
+      setExternalImporting(false);
+      if (externalImportFileRef.current) externalImportFileRef.current.value = "";
+    }
+  };
+
   const unassignedChannels = allChannels.filter(
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
@@ -535,7 +574,7 @@ export default function MonitorsPage() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2"
-                title="Import monitors from JSON"
+                title="Import monitors from PulseDock JSON"
                 disabled={importing}
               >
                 <Upload className="w-4 h-4" />
@@ -548,6 +587,16 @@ export default function MonitorsPage() {
                 className="hidden"
                 onChange={handleImportFile}
               />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowExternalImport(true); setExternalImportResult(null); }}
+                className="flex items-center gap-2"
+                title="Import from Uptime Robot, BetterUptime, or CSV"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import from…</span>
+              </Button>
               <Button
                 size="sm"
                 onClick={() => {
@@ -1273,6 +1322,111 @@ export default function MonitorsPage() {
               >
                 Done
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* External Import Modal */}
+      {showExternalImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-text-primary">Import from external service</h2>
+              <button onClick={() => setShowExternalImport(false)} className="text-text-secondary hover:text-text-primary transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Source selector */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-primary">Source</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "uptime-robot", label: "Uptime Robot", hint: "JSON export" },
+                    { id: "better-uptime", label: "BetterUptime", hint: "JSON export" },
+                    { id: "csv", label: "Generic CSV", hint: ".csv file" },
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setExternalImportSource(s.id)}
+                      className={`flex flex-col items-center gap-1 px-3 py-3 rounded-xl border text-sm transition-colors ${
+                        externalImportSource === s.id
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-surface-secondary text-text-secondary hover:border-accent/50"
+                      }`}
+                    >
+                      <span className="font-medium">{s.label}</span>
+                      <span className="text-xs opacity-70">{s.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="rounded-xl bg-surface-secondary border border-border p-4 text-xs text-text-secondary space-y-1">
+                {externalImportSource === "uptime-robot" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">How to export from Uptime Robot:</p>
+                    <p>1. Log in → My Settings → Export → Download JSON</p>
+                    <p>2. Upload the downloaded <code className="font-mono bg-surface px-1 rounded">uptimerobot-*.json</code> file below.</p>
+                    <p className="mt-1 text-text-secondary/70">Only HTTP/HTTPS monitors are imported. Ping, port, and keyword monitors are skipped.</p>
+                  </>
+                )}
+                {externalImportSource === "better-uptime" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">How to export from BetterUptime:</p>
+                    <p>1. Use the BetterUptime API: <code className="font-mono bg-surface px-1 rounded">GET /api/v2/monitors</code></p>
+                    <p>2. Save the JSON response and upload it below.</p>
+                    <p className="mt-1 text-text-secondary/70">Only status/keyword check types are imported.</p>
+                  </>
+                )}
+                {externalImportSource === "csv" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">CSV format:</p>
+                    <p>First row must be headers. Required column: <code className="font-mono bg-surface px-1 rounded">url</code></p>
+                    <p>Optional: <code className="font-mono bg-surface px-1 rounded">name</code>, <code className="font-mono bg-surface px-1 rounded">interval</code>, <code className="font-mono bg-surface px-1 rounded">paused</code></p>
+                  </>
+                )}
+              </div>
+
+              {/* Result */}
+              {externalImportResult && (
+                <div className={`rounded-xl p-4 border text-sm ${
+                  externalImportResult.errors.length === 0 && externalImportResult.imported > 0
+                    ? "bg-success/10 border-success/20 text-success"
+                    : externalImportResult.imported === 0
+                      ? "bg-danger/10 border-danger/20 text-danger"
+                      : "bg-warning/10 border-warning/20 text-warning"
+                }`}>
+                  <p className="font-medium">{externalImportResult.message}</p>
+                  {externalImportResult.skipped > 0 && (
+                    <p className="text-xs mt-1 opacity-80">{externalImportResult.skipped} duplicate{externalImportResult.skipped !== 1 ? "s" : ""} skipped (URL already monitored).</p>
+                  )}
+                  {externalImportResult.errors.map((err, i) => (
+                    <p key={i} className="text-xs mt-1 opacity-80">⚠ {err.name}: {err.error}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3">
+              <Button variant="secondary" onClick={() => setShowExternalImport(false)}>Cancel</Button>
+              <Button
+                onClick={() => externalImportFileRef.current?.click()}
+                disabled={externalImporting}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {externalImporting ? "Importing…" : "Choose file & Import"}
+              </Button>
+              <input
+                ref={externalImportFileRef}
+                type="file"
+                accept={externalImportSource === "csv" ? ".csv,text/csv" : ".json,application/json"}
+                className="hidden"
+                onChange={handleExternalImportFile}
+              />
             </div>
           </div>
         </div>

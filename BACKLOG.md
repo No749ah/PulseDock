@@ -73,12 +73,12 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Public status page polish** — Added latency sparklines (inline SVG per monitor), structured incident history (active + resolved with durations), per-monitor uptime%, active incidents banner. Custom domain support deferred (infra work).
 - [ ] **Monitor groups / tags** — Allow grouping monitors with tags. Filter/search by tag in UI.
 - [x] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Checkbox per row + select-all header, bulk action bar, POST /v1/monitors/bulk API endpoint.
-- [ ] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
+- [x] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
 - [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
 - [ ] **i18n / Internationalization** — Add i18n support (at minimum: English + German since Noah is German-speaking). Use `next-intl` or similar.
 - [ ] **User profile page improvements** — Avatar upload, display name, timezone setting (affects how times are shown).
-- [ ] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
+- [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [ ] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest).
 - [ ] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV.
 

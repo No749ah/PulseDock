@@ -13,6 +13,8 @@ import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { Modal } from "../components/Modal";
 import { FadeIn } from "../components/FadeIn";
+import { MonitorTemplates } from "../components/MonitorTemplates";
+import type { MonitorTemplate } from "../components/MonitorTemplates";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
@@ -91,6 +93,7 @@ export default function MonitorsPage() {
   // create/edit monitor modal
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [showTemplates, setShowTemplates] = useState(true);
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
@@ -377,6 +380,19 @@ export default function MonitorsPage() {
     }
   };
 
+  const handleApplyTemplate = (t: MonitorTemplate) => {
+    setFormData({
+      name: t.name,
+      type: t.type,
+      target: t.target,
+      intervalSec: t.intervalSec,
+      enabled: true,
+      pluginId: t.pluginId ?? "",
+      expectedText: t.expectedText ?? "",
+    });
+    setShowTemplates(false);
+  };
+
   const handleExport = async () => {
     try {
       const data = await api<{ version: string; exportedAt: string; monitors: unknown[] }>("/v1/monitors/export", user?.id);
@@ -502,6 +518,7 @@ export default function MonitorsPage() {
                   setFormErrors({});
                   setFormTouched({});
                   setShowModal(true);
+                  setShowTemplates(true);
                 }}
                 className="flex items-center gap-2"
               >
@@ -558,6 +575,7 @@ export default function MonitorsPage() {
                   setFormErrors({});
                   setFormTouched({});
                   setShowModal(true);
+                  setShowTemplates(true);
                 }}
               >
                 Create your first monitor
@@ -680,6 +698,7 @@ export default function MonitorsPage() {
                                   setFormErrors({});
                                   setFormTouched({});
                                   setShowModal(true);
+                  setShowTemplates(true);
                                 }}
                                 aria-label={`Edit monitor ${monitor.name}`}
                                 title="Edit monitor"
@@ -765,6 +784,31 @@ export default function MonitorsPage() {
         }
       >
         <div className="space-y-4">
+          {modalMode === "create" && showTemplates && (
+            <div className="rounded-xl border border-border/60 p-3 bg-surface-elevated/30">
+              <MonitorTemplates onSelect={handleApplyTemplate} />
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(false)}
+                  className="text-xs text-text-secondary hover:text-accent transition-colors"
+                >
+                  Start from scratch →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {modalMode === "create" && !showTemplates && (
+            <button
+              type="button"
+              onClick={() => setShowTemplates(true)}
+              className="text-xs text-text-secondary hover:text-accent transition-colors flex items-center gap-1"
+            >
+              ← Use a template
+            </button>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Monitor Name <span className="text-danger" aria-hidden="true">*</span>

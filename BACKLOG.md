@@ -285,7 +285,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **i18n / Internationalization** — Add i18n support (at minimum: English + German since Noah is German-speaking). Use `next-intl` or similar.
 - [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
-- [ ] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest).
+- [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
 - [ ] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV.
 
 ---
@@ -317,7 +317,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 108 tests passing (98 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX
+- **Codebase:** 214 tests passing (204 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 8 pages 200)
 - **Production Readiness:** ~70% — All security gaps closed (2FA, CSRF, lockout, rate limiting, password strength, audit log, session anomaly detection, input sanitization), full accessibility foundation, public status page polished (sparklines, incident history, per-monitor uptime), all alert channels working

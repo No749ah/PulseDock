@@ -92,7 +92,7 @@ export default function VersionsPage() {
   const [createStep, setCreateStep] = useState(0);
   const [name, setName] = useState('');
   const [type, setType] = useState<'GIT_RELEASE' | 'DOCKER_IMAGE'>('GIT_RELEASE');
-  const [provider, setProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt'>('github');
+  const [provider, setProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo'>('github');
   const [target, setTarget] = useState('');
   const [currentVersion, setCurrentVersion] = useState('');
   const [intervalSec, setIntervalSec] = useState(86400);
@@ -119,7 +119,7 @@ export default function VersionsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
-  const [editProvider, setEditProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt'>('github');
+  const [editProvider, setEditProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo'>('github');
   const [editTarget, setEditTarget] = useState('');
   const [editCurrentVersion, setEditCurrentVersion] = useState('');
   const [editIntervalSec, setEditIntervalSec] = useState(86400);
@@ -216,7 +216,7 @@ export default function VersionsPage() {
   function openEdit(item: VersionItem) {
     const details = monitorDetails[item.id];
     const cfg = (details?.config ?? {}) as Record<string, unknown>;
-    const p = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase() as 'github' | 'gitlab' | 'docker' | 'apt';
+    const p = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase() as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo';
 
     setEditId(item.id);
     setEditName(item.name);
@@ -456,6 +456,9 @@ export default function VersionsPage() {
     { value: 'gitlab', label: 'GitLab releases' },
     { value: 'docker', label: 'Docker image tags' },
     { value: 'apt', label: 'APT package versions' },
+    { value: 'npm', label: 'npm package' },
+    { value: 'pypi', label: 'PyPI package' },
+    { value: 'cargo', label: 'Cargo crate (crates.io)' },
   ];
 
   const authOptions = [
@@ -512,14 +515,14 @@ export default function VersionsPage() {
                   <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
                 </div>
                 <Select label="Provider" value={provider} onChange={(v) => {
-                  const p = (v as 'github' | 'gitlab' | 'docker' | 'apt') || 'github';
+                  const p = (v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo') || 'github';
                   setProvider(p);
                   setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
                   setSourceStatus('unknown');
                 }} options={providerOptions} />
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : 'owner/repo'} />
+                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : 'owner/repo'} />
                 </div>
                 {((provider === 'github' || provider === 'gitlab') || showTokenField) && (
                   <div>
@@ -637,10 +640,10 @@ export default function VersionsPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
                 <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
-              <Select label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as 'github' | 'gitlab' | 'docker' | 'apt') || 'github')} options={providerOptions} />
+              <Select label="Provider" value={editProvider} onChange={(v) => setEditProvider((v as 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo') || 'github')} options={providerOptions} />
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                <input className={inputClass} value={editTarget} onChange={(e) => setEditTarget(e.target.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : 'owner/repo'} />
+                <input className={inputClass} value={editTarget} onChange={(e) => setEditTarget(e.target.value)} placeholder={editProvider === 'docker' ? 'library/nginx' : editProvider === 'apt' ? 'openssl' : editProvider === 'gitlab' ? 'group/project' : editProvider === 'npm' ? 'react' : editProvider === 'pypi' ? 'requests' : editProvider === 'cargo' ? 'serde' : 'owner/repo'} />
               </div>
               {(editProvider === 'github' || editProvider === 'gitlab') && (
                 <>

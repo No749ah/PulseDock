@@ -55,11 +55,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Error boundaries and user-friendly error pages** — Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
 - [x] **Form validation UX** — All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
 - [ ] **Onboarding flow for new users** — First login should guide user: create first monitor → set up alert channel → view dashboard. Simple multi-step wizard or checklist widget.
-- [ ] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
+- [x] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
 - [x] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
 - [ ] **Mobile UX audit** — Test all 9 pages on 375px width. Fix any overflow, unclickable elements, font size issues.
 - [x] **Keyboard navigation** — Modals (both Modal.tsx and modal-framework.tsx) now trap focus with Tab/Shift+Tab cycle and close on Escape. Skip-to-content link visible on first Tab press. Global focus-visible ring ensures all interactive elements show keyboard focus indicator.
-- [ ] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
+- [x] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
 
 ---
 

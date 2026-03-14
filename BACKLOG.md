@@ -65,7 +65,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ### 🟡 FEATURES — Missing / Incomplete
 
-- [ ] **More version providers** — Add npm (registry.npmjs.org), PyPI (pypi.org/pypi/{pkg}/json), Maven Central, Cargo (crates.io), Helm chart repos. Each needs: fetcher, parser, tests.
+- [x] **More version providers** — Added npm (registry.npmjs.org), PyPI (pypi.org/pypi/{pkg}/json), Cargo (crates.io). Maven Central + Helm TBD.
 - [x] **Webhook alert channel** — Webhook URL config + HTTP POST with JSON payload implemented in `alerts.service.ts`. UI supports create/edit/test flow.
 - [x] **Slack alert channel** — Slack incoming webhook URL config implemented. UI + backend complete.
 - [x] **Discord alert channel** — Discord webhook URL config + embed payload implemented. UI + backend complete.

@@ -6,6 +6,8 @@ _(nothing active — project is feature-complete, awaiting new project approval)
 
 ## Recently Completed
 
+- [x] **Fix FadeIn animation component** — Replaced no-op placeholder (caused by framer-motion v12 / React 19 typing incompatibility) with CSS keyframe + Intersection Observer implementation. All scroll-triggered entrance animations on landing, login, dashboard, and monitors pages now work correctly. Dependency-free, performant, React 19 compatible.
+
 - [x] **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) with one-click monitor creation, context menu integration, dark theme popup, API key auth, settings panel, and dashboard shortcut. Documented in `docs/EXTENSION.md`.
 - [x] **CLI tool** — `pulsedock check <url>` one-shot HTTP checker + `monitors list/check` + `config` commands. New package `@pulsedock/cli` with 10 unit tests, fully wired into root build/test, documented in `docs/CLI.md`.
 - [x] **Mobile-responsive PWA improvements** — Added contextual loading skeletons for Monitors/Dashboard/Alerts, installability banner (`beforeinstallprompt` + iOS hint), service worker registration, and offline fallback route (`/offline`) with cached offline support.
@@ -36,4 +38,5 @@ _(nothing active — project is feature-complete, awaiting new project approval)
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx setup documented
 - **Production Readiness:** ~99% — Core features stable, full v2 API + PWA baseline, deployment includes compose + k8s + plugin system; primary gap is upstream audit fixes
+- **Animations:** Landing page, login, dashboard, monitors — all scroll-triggered FadeIn animations now functional (CSS + IntersectionObserver)
 - **Next Project:** Proposed `PulsePing` (self-hosted cron job monitoring) to Noah via Discord on 2026-03-14. Waiting for repo creation approval.

@@ -528,11 +528,11 @@ export default function MonitorsPage() {
                   <TableHead>
                     <tr>
                       <TableHeader>Name</TableHeader>
-                      <TableHeader>Type</TableHeader>
-                      <TableHeader>Target</TableHeader>
-                      <TableHeader>Interval</TableHeader>
+                      <TableHeader className="hidden sm:table-cell">Type</TableHeader>
+                      <TableHeader className="hidden md:table-cell">Target</TableHeader>
+                      <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
                       <TableHeader>Status</TableHeader>
-                      <TableHeader>Alerts</TableHeader>
+                      <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>
                       <TableHeader>Actions</TableHeader>
                     </tr>
                   </TableHead>
@@ -542,13 +542,13 @@ export default function MonitorsPage() {
                       return (
                         <TableRow key={monitor.id}>
                           <TableCell className="font-medium text-text-primary">
-                            <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors">{monitor.name}</Link>
+                            <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
                           </TableCell>
-                          <TableCell className="text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
-                          <TableCell className="text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
+                          <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
                             {monitor.target}
                           </TableCell>
-                          <TableCell className="text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               {!monitor.enabled ? (
@@ -563,7 +563,7 @@ export default function MonitorsPage() {
                               <Sparkline runs={runs.filter((r) => r.monitorId === monitor.id).slice(0, 30)} width={80} height={16} />
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <button
                               onClick={() => openAlertPanel(monitor)}
                               className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors"

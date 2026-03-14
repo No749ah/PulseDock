@@ -294,7 +294,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [~] **Increase test coverage to >90%** — Currently 89 tests but coverage % unknown. Add missing unit tests for services, edge cases, auth flows.
+- [~] **Increase test coverage to >90%** — 294 tests passing. Coverage at 41% (up from 34%). src/users 100%, src/status-pages 94%. Remaining gaps: src/realtime (21%), src/checks/service, src/auth/controllers. Continue adding tests each cycle.
 - [ ] **E2E tests (Playwright)** — Add basic E2E tests for: login, create monitor, view dashboard, receive alert. Run in CI.
 - [ ] **API documentation improvements** — Ensure all endpoints have Swagger descriptions, request/response examples, error codes documented.
 - [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

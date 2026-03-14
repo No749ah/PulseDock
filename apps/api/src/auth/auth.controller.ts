@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto } from './auth.dto';
+import { generateCsrfToken, setCsrfCookie } from '../common/csrf.middleware';
 
 interface ExpressResponse {
   cookie(name: string, value: string, options: object): this;
@@ -152,6 +153,15 @@ export class AuthController {
     }
     clearAuthCookies(res);
     return { ok: true };
+  }
+
+  @Get('csrf')
+  @ApiOperation({ summary: 'Obtain CSRF token', description: 'Sets the pulsedock_csrf non-httpOnly cookie and returns the token. Call this once after page load; include the token as X-CSRF-Token on all state-mutating requests.' })
+  @ApiResponse({ status: 200, description: 'CSRF token returned.' })
+  getCsrf(@Res({ passthrough: true }) res: { cookie: (name: string, value: string, opts: object) => void }) {
+    const token = generateCsrfToken();
+    setCsrfCookie(res as Parameters<typeof setCsrfCookie>[0], token);
+    return { csrfToken: token };
   }
 
   @UseGuards(AuthGuard)

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { FadeIn } from "./components/FadeIn";
 import { GradientText } from "./components/GradientText";
+import { LocaleSwitcher } from "./components/LocaleSwitcher";
+import { useI18n } from "../components/i18n-provider";
 import {
   Activity,
   Bell,
@@ -50,13 +52,15 @@ const features = [
 ];
 
 const stats = [
-  { value: "< 1s", label: "Check latency" },
-  { value: "99.9%", label: "Uptime SLA" },
-  { value: "∞", label: "Monitors" },
-  { value: "0", label: "Vendor lock-in" },
-];
+  { value: "< 1s", labelKey: "landing.checkLatency" },
+  { value: "99.9%", labelKey: "landing.uptimeSla" },
+  { value: "∞", labelKey: "landing.monitorCount" },
+  { value: "0", labelKey: "landing.lockIn" },
+] as const;
 
 export default function LandingPage() {
+  const { t } = useI18n();
+
   return (
     <main className="min-h-screen overflow-hidden">
       {/* Navigation */}
@@ -67,16 +71,17 @@ export default function LandingPage() {
             <span className="font-semibold text-lg tracking-tight">PulseDock</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-text-secondary">
-            <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-text-primary transition-colors">How it works</a>
-            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
+            <a href="#features" className="hover:text-text-primary transition-colors">{t("landing.navFeatures")}</a>
+            <a href="#how-it-works" className="hover:text-text-primary transition-colors">{t("landing.navHowItWorks")}</a>
+            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">{t("common.github")}</a>
           </div>
           <div className="flex items-center gap-3">
+            <LocaleSwitcher compact />
             <Link href="/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-              Sign in
+              {t("landing.signIn")}
             </Link>
             <Link href="/login" className="text-sm bg-accent hover:bg-accent-hover text-bg font-medium px-4 py-2 rounded-lg transition-colors">
-              Get Started
+              {t("landing.getStarted")}
             </Link>
           </div>
         </div>
@@ -94,31 +99,31 @@ export default function LandingPage() {
           <FadeIn>
             <div className="inline-flex items-center gap-2 bg-surface border border-border rounded-full px-4 py-1.5 text-sm text-text-secondary mb-8">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              Open source &middot; Self-hosted &middot; Version intelligence
+              {t("landing.heroBadge")}
             </div>
           </FadeIn>
 
           <FadeIn delay={0.1}>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
-              Know when your
+              {t("landing.heroTitleLine1")}
               <br />
-              apps <GradientText>need attention</GradientText>
+              apps <GradientText>{t("landing.heroTitleAccent")}</GradientText>
             </h1>
           </FadeIn>
 
           <FadeIn delay={0.2}>
             <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              PulseDock monitors your applications for version updates, security patches, and uptime — then tells you exactly what changed and why it matters.
+              {t("landing.heroDescription")}
             </p>
           </FadeIn>
 
           <FadeIn delay={0.3}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
-                Start monitoring →
+                {t("landing.startMonitoring")}
               </Link>
               <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base">
-                View on GitHub
+                {t("landing.viewOnGithub")}
               </a>
             </div>
           </FadeIn>
@@ -141,8 +146,8 @@ export default function LandingPage() {
                   {/* Mock dashboard content */}
                   <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Monitors</span>
-                      <span className="text-xs text-text-muted">Last checked: just now</span>
+                      <span className="text-sm font-medium">{t("landing.monitors")}</span>
+                      <span className="text-xs text-text-muted">{t("landing.lastChecked")}</span>
                     </div>
                     {[
                       { name: "next@16.1.6", status: "up-to-date", color: "bg-success" },
@@ -171,10 +176,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, i) => (
-              <FadeIn key={stat.label} delay={i * 0.1}>
+              <FadeIn key={stat.labelKey} delay={i * 0.1}>
                 <div className="text-center">
                   <div className="text-3xl md:text-4xl font-bold text-text-primary">{stat.value}</div>
-                  <div className="text-sm text-text-muted mt-1">{stat.label}</div>
+                  <div className="text-sm text-text-muted mt-1">{t(stat.labelKey)}</div>
                 </div>
               </FadeIn>
             ))}
@@ -188,12 +193,12 @@ export default function LandingPage() {
           <FadeIn>
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-                Everything you need to
+                {t("landing.sectionTitleLine1")}
                 <br />
-                <GradientText from="#3fb950" to="#58a6ff">stay ahead</GradientText>
+                <GradientText from="#3fb950" to="#58a6ff">{t("landing.sectionTitleAccent")}</GradientText>
               </h2>
               <p className="text-text-secondary text-lg max-w-xl mx-auto">
-                Built for developers and ops teams who need clarity on what&apos;s running, what&apos;s changed, and what needs action.
+                {t("landing.sectionDescription")}
               </p>
             </div>
           </FadeIn>
@@ -217,7 +222,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-16">
-              Up and running in <GradientText>three steps</GradientText>
+              {t("landing.stepsTitle")} <GradientText>{t("landing.stepsTitleAccent")}</GradientText>
             </h2>
           </FadeIn>
 
@@ -264,19 +269,19 @@ export default function LandingPage() {
         <div className="mx-auto max-w-4xl px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              Stop guessing.
+              {t("landing.ctaTitleLine1")}
               <br />
-              <GradientText>Start monitoring.</GradientText>
+              <GradientText>{t("landing.ctaTitleAccent")}</GradientText>
             </h2>
             <p className="text-text-secondary text-lg mb-10 max-w-xl mx-auto">
-              PulseDock is free, open source, and ready to deploy. Your infrastructure, your data, your rules.
+              {t("landing.ctaDescription")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
-                Get started free →
+                {t("landing.ctaGetStarted")}
               </Link>
               <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base flex items-center gap-2">
-                <Zap className="w-4 h-4" /> Star on GitHub
+                <Zap className="w-4 h-4" /> {t("landing.starOnGithub")}
               </a>
             </div>
           </FadeIn>
@@ -291,8 +296,8 @@ export default function LandingPage() {
             <span>© {new Date().getFullYear()} PulseDock</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-text-muted">
-            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">GitHub</a>
-            <Link href="/login" className="hover:text-text-primary transition-colors">Dashboard</Link>
+            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">{t("common.github")}</a>
+            <Link href="/login" className="hover:text-text-primary transition-colors">{t("common.dashboard")}</Link>
           </div>
         </div>
       </footer>

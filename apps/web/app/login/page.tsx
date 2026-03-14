@@ -8,6 +8,8 @@ import { setSession } from "../../components/auth";
 import { FadeIn } from "../components/FadeIn";
 import { AlertCircle, Monitor, Loader2 } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
+import { LocaleSwitcher } from "../components/LocaleSwitcher";
+import { useI18n } from "../../components/i18n-provider";
 
 type LoginUser = {
   id: string;
@@ -17,6 +19,7 @@ type LoginUser = {
 };
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const [inviteToken, setInviteToken] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [email, setEmail] = useState("");
@@ -216,20 +219,20 @@ export default function LoginPage() {
   }
 
   const subtitle = inInviteFlow
-    ? "Set your password to accept your invite"
+    ? t("login.subtitleInvite")
     : inResetFlow
-      ? "Set a new password for your account"
+      ? t("login.subtitleReset")
       : forgotMode
-        ? "Request a password reset link"
-        : "Sign in to your monitoring workspace";
+        ? t("login.subtitleForgot")
+        : t("login.subtitleSignIn");
 
   const buttonLabel = inInviteFlow
-    ? "Accept Invite"
+    ? t("login.acceptInvite")
     : inResetFlow
-      ? "Set New Password"
+      ? t("login.setNewPassword")
       : forgotMode
-        ? "Request Reset Link"
-        : "Sign in";
+        ? t("login.requestResetLink")
+        : t("login.signIn");
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
@@ -241,6 +244,9 @@ export default function LoginPage() {
       <FadeIn>
         <div className="w-full max-w-2xl">
           {/* Logo */}
+          <div className="mb-6 flex justify-center">
+            <LocaleSwitcher />
+          </div>
           <div className="flex items-center justify-center gap-3 mb-10">
             <Monitor className="w-10 h-10 text-accent" />
             <span className="text-4xl font-bold tracking-tight">PulseDock</span>
@@ -249,7 +255,7 @@ export default function LoginPage() {
           {/* Card */}
           <div className="bg-surface border border-border rounded-2xl p-12 shadow-2xl shadow-black/50">
             <p className="text-text-secondary text-sm text-center mb-6">
-              {totpStep ? "Enter your authenticator code to continue" : subtitle}
+              {totpStep ? t("login.subtitleTotp") : subtitle}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -257,7 +263,7 @@ export default function LoginPage() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {useRecoveryCode ? "Recovery Code" : "Authenticator Code"}
+                    {useRecoveryCode ? t("login.recoveryCode") : t("login.authenticatorCode")}
                   </label>
                   <input
                     type={useRecoveryCode ? "text" : "text"}
@@ -290,7 +296,7 @@ export default function LoginPage() {
                   className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Verify
+                  {t("login.verify")}
                 </button>
 
                 <div className="text-center space-y-2">
@@ -299,7 +305,7 @@ export default function LoginPage() {
                     onClick={() => { setUseRecoveryCode((v) => !v); setTotpCode(""); setError(""); }}
                     className="text-sm text-accent hover:text-accent-hover transition-colors"
                   >
-                    {useRecoveryCode ? "← Use authenticator app" : "Use a recovery code instead"}
+                    {useRecoveryCode ? t("login.useAuthenticator") : t("login.useRecoveryCode")}
                   </button>
                   <br />
                   <button
@@ -307,7 +313,7 @@ export default function LoginPage() {
                     onClick={() => { setTotpStep(false); setTotpTempToken(""); setTotpCode(""); setError(""); setUseRecoveryCode(false); }}
                     className="text-sm text-text-muted hover:text-text-secondary transition-colors"
                   >
-                    ← Back to login
+                    {t("login.backToLogin")}
                   </button>
                 </div>
               </>
@@ -320,7 +326,7 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="block text-sm font-medium text-text-secondary mb-1.5"
                 >
-                  Email
+                  {t("login.email")}
                 </label>
                 <input
                   id="email"
@@ -342,8 +348,8 @@ export default function LoginPage() {
                     className="block text-sm font-medium text-text-secondary mb-1.5"
                   >
                     {inInviteFlow || inResetFlow
-                      ? "Choose Password"
-                      : "Password"}
+                      ? t("login.choosePassword")
+                      : t("login.password")}
                   </label>
                   <input
                     id="password"
@@ -375,7 +381,7 @@ export default function LoginPage() {
                     className="w-4 h-4 rounded border-border bg-surface-elevated text-accent focus:ring-accent/30"
                   />
                   <span className="text-sm text-text-secondary">
-                    Remember me
+                    {t("login.rememberMe")}
                   </span>
                 </label>
               )}
@@ -398,12 +404,12 @@ export default function LoginPage() {
               {/* Email not verified */}
               {needsVerification && (
                 <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">
-                  Please verify your email before signing in.{" "}
+                  {t("login.verifyEmailNotice")}{" "}
                   <a
                     href={`/verify-email?email=${encodeURIComponent(email)}`}
                     className="underline hover:text-accent-hover transition-colors"
                   >
-                    Resend verification email
+                    {t("login.resendVerification")}
                   </a>
                 </div>
               )}
@@ -435,7 +441,7 @@ export default function LoginPage() {
                   onClick={() => setForgotMode((v) => !v)}
                   className="text-sm text-accent hover:text-accent-hover transition-colors"
                 >
-                  {forgotMode ? "← Back to sign in" : "Forgot password?"}
+                  {forgotMode ? t("login.backToSignIn") : t("login.forgotPassword")}
                 </button>
               </div>
             )}
@@ -447,7 +453,7 @@ export default function LoginPage() {
               href="/"
               className="text-sm text-text-muted hover:text-text-secondary transition-colors"
             >
-              ← Back to home
+              {t("common.backToHome")}
             </Link>
           </div>
         </div>

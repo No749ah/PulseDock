@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
@@ -296,5 +296,33 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'All sessions revoked.' })
   revokeAllSessions(@Req() req: { user: { id: string } }) {
     return this.authService.revokeAllSessions(req.user.id);
+  }
+
+  // ─── Audit Log ──────────────────────────────────────────────────────────────
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('audit-log')
+  @ApiOperation({ summary: 'Get activity log', description: 'Returns the last 100 audit log entries for the authenticated user.' })
+  @ApiResponse({ status: 200, description: 'Audit log entries returned.' })
+  getAuditLog(@Req() req: { user: { id: string } }, @Query('limit') limit?: string) {
+    return this.authService.getUserAuditLog(req.user.id, limit ? parseInt(limit, 10) : 100);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('audit-log/export')
+  @ApiOperation({ summary: 'Export activity log', description: 'Download audit log as CSV or JSON. Pass ?format=csv or ?format=json.' })
+  @ApiResponse({ status: 200, description: 'File download.' })
+  async exportAuditLog(
+    @Req() req: { user: { id: string } },
+    @Query('format') format: string,
+    @Res() res: { setHeader(k: string, v: string): void; end(data: string): void },
+  ) {
+    const fmt = format === 'csv' ? 'csv' : 'json';
+    const { data, contentType, filename } = await this.authService.exportUserAuditLog(req.user.id, fmt);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.end(data);
   }
 }

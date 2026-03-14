@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Copy, Key, LogOut, Plus, QrCode, RefreshCw, Shield, Smartphone, Trash2, User, X } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, Copy, Download, Key, LogOut, Plus, QrCode, RefreshCw, Shield, Smartphone, Trash2, User, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -33,6 +33,13 @@ interface Session {
   ipAddress: string | null;
   revokedAt: string | null;
   createdAt: string;
+}
+
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  createdAt: string;
+  metaJson: unknown;
 }
 
 interface ApiKey {
@@ -83,6 +90,11 @@ export default function AccountPage() {
   const [regenLoading, setRegenLoading] = useState(false);
   const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false);
 
+  // Activity log state
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditExpanded, setAuditExpanded] = useState(false);
+
   // API key creation state
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -114,6 +126,8 @@ export default function AccountPage() {
         setSessions(sess);
         setApiKeys(keys);
         setEmail(profile.email);
+        // Load audit log lazily (don't block main load)
+        api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load account");
         router.push("/login");
@@ -259,6 +273,29 @@ export default function AccountPage() {
     setTimeout(() => setRecoveryCodesCopied(false), 2000);
   };
   // ─────────────────────────────────────────────────────────────────────────
+
+  const handleExportAuditLog = async (format: "csv" | "json") => {
+    if (!user?.id) return;
+    try {
+      setAuditLoading(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem(`pd_token_${user.id}`) ?? "" : "";
+      const res = await fetch(`/api/v1/auth/audit-log/export?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
 
   const handleRevokeSession = async (sessionId: string) => {
     if (!window.confirm("Revoke this session?")) return;
@@ -649,6 +686,74 @@ export default function AccountPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </Card>
+        </FadeIn>
+
+        {/* Activity Log Section */}
+        <FadeIn delay={0.5}>
+          <Card>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-surface-elevated">
+                  <Activity className="w-5 h-5 text-text-secondary" />
+                </div>
+                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("csv")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("json")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  JSON
+                </Button>
+              </div>
+            </div>
+
+            {auditLog.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">No activity recorded yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {(auditExpanded ? auditLog : auditLog.slice(0, 10)).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-start justify-between px-4 py-3 rounded-lg bg-surface-elevated/50 border border-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text-primary font-mono">{entry.action}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {auditLog.length > 10 && (
+                  <button
+                    onClick={() => setAuditExpanded((v) => !v)}
+                    className="mt-4 text-sm text-accent hover:text-accent-hover transition-colors"
+                  >
+                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
         </FadeIn>

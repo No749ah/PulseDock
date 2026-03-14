@@ -639,4 +639,44 @@ export class AuthService {
       return null;
     }
   }
+
+  // ─── Audit Log ──────────────────────────────────────────────────────────────
+
+  async getUserAuditLog(userId: string, limit = 100): Promise<Array<{
+    id: string;
+    action: string;
+    createdAt: Date;
+    metaJson: unknown;
+  }>> {
+    return this.prisma.auditLog.findMany({
+      where: { actorUserId: userId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 500),
+      select: { id: true, action: true, createdAt: true, metaJson: true },
+    });
+  }
+
+  async exportUserAuditLog(userId: string, format: 'csv' | 'json'): Promise<{ data: string; contentType: string; filename: string }> {
+    const entries = await this.getUserAuditLog(userId, 500);
+
+    if (format === 'json') {
+      return {
+        data: JSON.stringify(entries, null, 2),
+        contentType: 'application/json',
+        filename: `audit-log-${new Date().toISOString().slice(0, 10)}.json`,
+      };
+    }
+
+    // CSV format
+    const header = 'id,action,createdAt,meta';
+    const rows = entries.map((e) => {
+      const meta = e.metaJson ? JSON.stringify(e.metaJson).replace(/"/g, '""') : '';
+      return `"${e.id}","${e.action}","${e.createdAt.toISOString()}","${meta}"`;
+    });
+    return {
+      data: [header, ...rows].join('\n'),
+      contentType: 'text/csv',
+      filename: `audit-log-${new Date().toISOString().slice(0, 10)}.csv`,
+    };
+  }
 }

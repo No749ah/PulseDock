@@ -297,8 +297,15 @@ export class AuthService {
     // do not leak user existence
     if (!user) return { ok: true };
 
+    // Invalidate any existing unused reset tokens for this email before issuing a new one
+    await this.prisma.passwordResetToken.updateMany({
+      where: { email: normalized, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+
     const token = randomBytes(24).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    // Short-lived: 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     await this.prisma.passwordResetToken.create({
       data: {

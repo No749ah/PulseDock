@@ -11,7 +11,7 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     screenshot: "only-on-failure",
-    video: "on-first-retry",
+    video: "retain-on-failure",
     trace: "on-first-retry",
   },
 

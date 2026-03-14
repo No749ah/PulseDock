@@ -5,7 +5,8 @@
   "description": "PulseDock - Version intelligence dashboard",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "packages/e2e"
   ],
   "scripts": {
     "dev": "echo \"Use: npm run web | npm run api (or dev:web/dev:api)\"",

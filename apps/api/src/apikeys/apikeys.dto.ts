@@ -1,8 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateString, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { SanitizeHtml } from '../common/sanitize';
 
 export class CreateApiKeyDto {
   @ApiProperty({ example: 'CI/CD Pipeline', description: 'Human-readable name for this API key' })
+  @SanitizeHtml()
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)

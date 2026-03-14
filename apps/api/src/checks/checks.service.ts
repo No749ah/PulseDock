@@ -292,6 +292,82 @@ export class ChecksService {
 
       const provider = String(config.provider ?? '').toLowerCase();
 
+      // ── npm ──────────────────────────────────────────────────────────────────
+      if (provider === 'npm') {
+        const pkg = target.trim();
+        if (!pkg) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid npm package name', level: 'red' as const };
+
+        const npmResp = await fetch(`https://registry.npmjs.org/${encodeURIComponent(pkg)}/latest`, {
+          headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' },
+        });
+        if (!npmResp.ok) {
+          return { ok: false, statusCode: npmResp.status, latencyMs: null, message: `npm registry ${npmResp.status}`, level: 'red' as const };
+        }
+        const npmPayload = await npmResp.json() as { version?: string; name?: string };
+        const latestVersion = npmPayload.version ?? null;
+
+        if (!latestVersion) {
+          return { ok: false, statusCode: 404, latencyMs: null, message: 'No npm version found', level: 'red' as const };
+        }
+
+        if (currentVersion) {
+          const level = this.classifyVersionStatus(currentVersion, latestVersion);
+          return { ok: level === 'green', statusCode: 200, latencyMs: null, message: `npm current ${currentVersion}, latest ${latestVersion}`, level } as const;
+        }
+        return { ok: true, statusCode: 200, latencyMs: null, message: `npm latest ${latestVersion}`, level: 'green' as const };
+      }
+
+      // ── PyPI ─────────────────────────────────────────────────────────────────
+      if (provider === 'pypi') {
+        const pkg = target.trim();
+        if (!pkg) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid PyPI package name', level: 'red' as const };
+
+        const pypiResp = await fetch(`https://pypi.org/pypi/${encodeURIComponent(pkg)}/json`, {
+          headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' },
+        });
+        if (!pypiResp.ok) {
+          return { ok: false, statusCode: pypiResp.status, latencyMs: null, message: `PyPI API ${pypiResp.status}`, level: 'red' as const };
+        }
+        const pypiPayload = await pypiResp.json() as { info?: { version?: string } };
+        const latestVersion = pypiPayload.info?.version ?? null;
+
+        if (!latestVersion) {
+          return { ok: false, statusCode: 404, latencyMs: null, message: 'No PyPI version found', level: 'red' as const };
+        }
+
+        if (currentVersion) {
+          const level = this.classifyVersionStatus(currentVersion, latestVersion);
+          return { ok: level === 'green', statusCode: 200, latencyMs: null, message: `PyPI current ${currentVersion}, latest ${latestVersion}`, level } as const;
+        }
+        return { ok: true, statusCode: 200, latencyMs: null, message: `PyPI latest ${latestVersion}`, level: 'green' as const };
+      }
+
+      // ── Cargo (crates.io) ────────────────────────────────────────────────────
+      if (provider === 'cargo') {
+        const pkg = target.trim();
+        if (!pkg) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid crate name', level: 'red' as const };
+
+        const cargoResp = await fetch(`https://crates.io/api/v1/crates/${encodeURIComponent(pkg)}`, {
+          headers: { 'User-Agent': 'PulseDock/1.0 (https://github.com/No749ah/PulseDock)', Accept: 'application/json' },
+        });
+        if (!cargoResp.ok) {
+          return { ok: false, statusCode: cargoResp.status, latencyMs: null, message: `crates.io API ${cargoResp.status}`, level: 'red' as const };
+        }
+        const cargoPayload = await cargoResp.json() as { crate?: { newest_version?: string; max_stable_version?: string } };
+        const latestVersion = cargoPayload.crate?.max_stable_version ?? cargoPayload.crate?.newest_version ?? null;
+
+        if (!latestVersion) {
+          return { ok: false, statusCode: 404, latencyMs: null, message: 'No crate version found', level: 'red' as const };
+        }
+
+        if (currentVersion) {
+          const level = this.classifyVersionStatus(currentVersion, latestVersion);
+          return { ok: level === 'green', statusCode: 200, latencyMs: null, message: `Cargo current ${currentVersion}, latest ${latestVersion}`, level } as const;
+        }
+        return { ok: true, statusCode: 200, latencyMs: null, message: `Cargo latest ${latestVersion}`, level: 'green' as const };
+      }
+
+      // ── APT ──────────────────────────────────────────────────────────────────
       if (provider === 'apt') {
         const pkg = target.trim().toLowerCase();
         if (!pkg) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid APT package', level: 'red' as const };

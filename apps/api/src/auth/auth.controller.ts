@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
-import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto } from './auth.dto';
+import { AcceptInviteDto, ChangePasswordDto, DisableTotpDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto, VerifyCodeDto, VerifyEmailDto, VerifyTotpDto } from './auth.dto';
+import { generateCsrfToken, setCsrfCookie } from '../common/csrf.middleware';
 
 interface ExpressResponse {
   cookie(name: string, value: string, options: object): this;
@@ -113,6 +114,23 @@ export class AuthController {
     return result;
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('verify-email')
+  @ApiOperation({ summary: 'Verify email address' })
+  @ApiResponse({ status: 200, description: 'Email verified.' })
+  @ApiResponse({ status: 401, description: 'Token invalid or expired.' })
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.authService.verifyEmail(body.token);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('resend-verification')
+  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiResponse({ status: 200, description: 'Verification email sent (or no-op if already verified).' })
+  resendVerification(@Body() body: ResendVerificationDto) {
+    return this.authService.resendVerification(body.email);
+  }
+
   @Throttle({ default: { limit: 4, ttl: 60_000 } })
   @Post('request-password-reset')
   @ApiOperation({ summary: 'Request password reset email' })
@@ -153,6 +171,76 @@ export class AuthController {
     clearAuthCookies(res);
     return { ok: true };
   }
+
+  @Get('csrf')
+  @ApiOperation({ summary: 'Obtain CSRF token', description: 'Sets the pulsedock_csrf non-httpOnly cookie and returns the token. Call this once after page load; include the token as X-CSRF-Token on all state-mutating requests.' })
+  @ApiResponse({ status: 200, description: 'CSRF token returned.' })
+  getCsrf(@Res({ passthrough: true }) res: { cookie: (name: string, value: string, opts: object) => void }) {
+    const token = generateCsrfToken();
+    setCsrfCookie(res as Parameters<typeof setCsrfCookie>[0], token);
+    return { csrfToken: token };
+  }
+
+  // ─── 2FA / TOTP ─────────────────────────────────────────────────────────────
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('2fa/verify')
+  @ApiOperation({ summary: 'Complete 2FA login', description: 'Verify TOTP code (or recovery code) after initial password auth. Returns full auth tokens.' })
+  @ApiResponse({ status: 200, description: 'Login completed.' })
+  @ApiResponse({ status: 401, description: 'Invalid code or expired temp token.' })
+  async verifyTotpLogin(
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: VerifyTotpDto,
+  ) {
+    const result = await this.authService.verifyTotpLogin(body.tempToken, body.code, {
+      userAgent: req.headers['user-agent'] ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/setup')
+  @ApiOperation({ summary: 'Begin 2FA setup', description: 'Generates a TOTP secret and QR code. Call enable after verifying a code.' })
+  @ApiResponse({ status: 200, description: 'Setup data returned.' })
+  setup2FA(@Req() req: { user: { id: string } }) {
+    return this.authService.setup2FA(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/enable')
+  @ApiOperation({ summary: 'Enable 2FA', description: 'Verifies first TOTP code and enables 2FA. Returns one-time recovery codes.' })
+  @ApiResponse({ status: 200, description: '2FA enabled, recovery codes returned.' })
+  @ApiResponse({ status: 401, description: 'Invalid TOTP code.' })
+  enable2FA(@Req() req: { user: { id: string } }, @Body() body: VerifyCodeDto) {
+    return this.authService.verifyAndEnable2FA(req.user.id, body.code);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/disable')
+  @ApiOperation({ summary: 'Disable 2FA', description: 'Disables 2FA after verifying password and current TOTP code.' })
+  @ApiResponse({ status: 200, description: '2FA disabled.' })
+  @ApiResponse({ status: 401, description: 'Invalid password or TOTP code.' })
+  disable2FA(@Req() req: { user: { id: string } }, @Body() body: DisableTotpDto) {
+    return this.authService.disable2FA(req.user.id, body.password, body.code);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/regenerate-recovery-codes')
+  @ApiOperation({ summary: 'Regenerate recovery codes', description: 'Generates 10 new single-use recovery codes. Old codes are invalidated.' })
+  @ApiResponse({ status: 200, description: 'New recovery codes returned.' })
+  @ApiResponse({ status: 401, description: 'Invalid TOTP code.' })
+  regenerateRecoveryCodes(@Req() req: { user: { id: string } }, @Body() body: VerifyCodeDto) {
+    return this.authService.regenerateRecoveryCodes(req.user.id, body.code);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
@@ -208,5 +296,33 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'All sessions revoked.' })
   revokeAllSessions(@Req() req: { user: { id: string } }) {
     return this.authService.revokeAllSessions(req.user.id);
+  }
+
+  // ─── Audit Log ──────────────────────────────────────────────────────────────
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('audit-log')
+  @ApiOperation({ summary: 'Get activity log', description: 'Returns the last 100 audit log entries for the authenticated user.' })
+  @ApiResponse({ status: 200, description: 'Audit log entries returned.' })
+  getAuditLog(@Req() req: { user: { id: string } }, @Query('limit') limit?: string) {
+    return this.authService.getUserAuditLog(req.user.id, limit ? parseInt(limit, 10) : 100);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('audit-log/export')
+  @ApiOperation({ summary: 'Export activity log', description: 'Download audit log as CSV or JSON. Pass ?format=csv or ?format=json.' })
+  @ApiResponse({ status: 200, description: 'File download.' })
+  async exportAuditLog(
+    @Req() req: { user: { id: string } },
+    @Query('format') format: string,
+    @Res() res: { setHeader(k: string, v: string): void; end(data: string): void },
+  ) {
+    const fmt = format === 'csv' ? 'csv' : 'json';
+    const { data, contentType, filename } = await this.authService.exportUserAuditLog(req.user.id, fmt);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.end(data);
   }
 }

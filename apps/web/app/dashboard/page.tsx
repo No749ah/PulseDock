@@ -13,6 +13,7 @@ import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { FadeIn } from "../components/FadeIn";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
+import { OnboardingChecklist } from "../components/OnboardingChecklist";
 
 interface Monitor {
   id: string;
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
+  const [hasAlertChannels, setHasAlertChannels] = useState(false);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -75,6 +77,13 @@ export default function DashboardPage() {
 
         const monitorsData = await api<Monitor[]>("/v1/monitors");
         const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10");
+        // Check if user has any alert channels (for onboarding)
+        try {
+          const channels = await api<{ id: string }[]>("/v1/alert-channels");
+          setHasAlertChannels(Array.isArray(channels) && channels.length > 0);
+        } catch {
+          // non-critical, ignore
+        }
 
         setMonitors(monitorsData);
         setRuns(runsData);
@@ -171,6 +180,15 @@ export default function DashboardPage() {
             </div>
           </FadeIn>
         )}
+
+        {/* Onboarding Checklist — shown to new users */}
+        <FadeIn>
+          <OnboardingChecklist
+            userId={user.id}
+            hasMonitors={monitors.length > 0}
+            hasAlertChannels={hasAlertChannels}
+          />
+        </FadeIn>
 
         {/* Stats Grid */}
         {stats && (

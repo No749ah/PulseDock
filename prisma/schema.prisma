@@ -24,8 +24,12 @@ model User {
   role               Role           @default(user)
   isActive           Boolean        @default(true)
   mustChangePassword Boolean        @default(false)
+  emailVerified      Boolean        @default(false)
   failedLoginCount   Int            @default(0)
   lockedUntil        DateTime?
+  totpSecret         String?
+  totpEnabled        Boolean        @default(false)
+  totpRecoveryCodes  String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -162,6 +166,18 @@ model PasswordResetToken {
   expiresAt  DateTime
   consumedAt DateTime?
   createdAt  DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([email])
   @@index([token])

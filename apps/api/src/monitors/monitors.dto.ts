@@ -1,6 +1,8 @@
 import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
+import { SanitizeHtml } from '../common/sanitize';
 
 export class CreateMonitorDto {
+  @SanitizeHtml()
   @IsString()
   @MaxLength(255)
   name!: string;
@@ -36,6 +38,7 @@ export class CreateMonitorDto {
 
 export class UpdateMonitorDto {
   @IsOptional()
+  @SanitizeHtml()
   @IsString()
   @MaxLength(255)
   name?: string;
@@ -81,8 +84,8 @@ export class RunMonitorDto {
 }
 
 export class TestVersionConnectionDto {
-  @IsIn(['github', 'gitlab', 'docker', 'apt'])
-  provider!: 'github' | 'gitlab' | 'docker' | 'apt';
+  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo'])
+  provider!: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo';
 
   @IsString()
   @MaxLength(1024)
@@ -100,6 +103,7 @@ export class TestVersionConnectionDto {
 }
 
 export class ImportMonitorItemDto {
+  @SanitizeHtml()
   @IsString()
   @MaxLength(255)
   name!: string;
@@ -136,8 +140,8 @@ export class ImportMonitorsDto {
 }
 
 export class DiscoverVersionDto {
-  @IsIn(['github', 'gitlab', 'docker', 'apt'])
-  provider!: 'github' | 'gitlab' | 'docker' | 'apt';
+  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo'])
+  provider!: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo';
 
   @IsString()
   @MaxLength(1024)

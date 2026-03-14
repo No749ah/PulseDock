@@ -27,6 +27,49 @@ export const API_BASE =
   inferApiBaseFromLocation() ||
   'https://oc-api-test.no749ah.com';
 
+// ─── CSRF ────────────────────────────────────────────────────────────────────
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Read the pulsedock_csrf cookie from document.cookie.
+ * Returns undefined when running server-side or when the cookie is absent.
+ */
+function readCsrfCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(/(?:^|;\s*)pulsedock_csrf=([^;]+)/);
+  return match?.[1];
+}
+
+/**
+ * Ensure a CSRF token is available in the pulsedock_csrf cookie.
+ * If not, fetches one from the API (which sets the cookie server-side).
+ * Returns the token string so it can be attached to headers immediately.
+ */
+async function ensureCsrfToken(): Promise<string | undefined> {
+  if (typeof document === 'undefined') return undefined; // SSR — no CSRF needed
+
+  const existing = readCsrfCookie();
+  if (existing) return existing;
+
+  try {
+    const resp = await fetch(`${API_BASE}/v1/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (resp.ok) {
+      const data = (await resp.json()) as { csrfToken?: string };
+      return data.csrfToken ?? readCsrfCookie();
+    }
+  } catch {
+    // Non-fatal: requests without CSRF will get a 403, which is visible to the user
+  }
+  return undefined;
+}
+
+// ─── Main API helper ─────────────────────────────────────────────────────────
+
 /**
  * Typed fetch helper.
  *
@@ -35,15 +78,30 @@ export const API_BASE =
  * cookies automatically. The `_token` parameter is kept for call-site backward
  * compatibility only and is intentionally ignored — never send JWTs in headers.
  *
+ * CSRF protection: mutating requests (POST/PUT/PATCH/DELETE) automatically
+ * include the X-CSRF-Token header from the pulsedock_csrf cookie value.
+ *
  * On 401, a cookie-based token refresh is attempted transparently.
  */
 export async function api<T>(path: string, _token?: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? 'GET').toUpperCase();
+
+  // Inject CSRF token for state-mutating requests
+  let csrfHeaders: Record<string, string> = {};
+  if (MUTATING_METHODS.has(method)) {
+    const token = await ensureCsrfToken();
+    if (token) {
+      csrfHeaders = { 'x-csrf-token': token };
+    }
+  }
+
   const run = () =>
     fetch(`${API_BASE}${path}`, {
       ...init,
       credentials: 'include', // httpOnly cookies sent automatically
       headers: {
         'content-type': 'application/json',
+        ...csrfHeaders,
         ...(init?.headers ?? {}),
       },
       cache: 'no-store',

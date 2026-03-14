@@ -91,6 +91,10 @@ model Monitor {
   runs          MonitorRun[]
   monitorAlerts MonitorAlert[]
   monitorTags   MonitorTag[]
+
+  @@index([userId])
+  @@index([enabled])
+  @@index([userId, enabled])
 }
 
 model Tag {
@@ -132,6 +136,8 @@ model MonitorRun {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([monitorId, checkedAt])
+  @@index([userId, checkedAt])
+  @@index([checkedAt])
 }
 
 model AlertChannel {

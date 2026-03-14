@@ -24,6 +24,9 @@ function makePrisma(monitors?: ReturnType<typeof makeMonitor>[]) {
     monitor: {
       findMany: vi.fn().mockResolvedValue(monitors ?? []),
     },
+    monitorRun: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
 }
 
@@ -161,6 +164,44 @@ describe('ChecksScheduler', () => {
           alertChannelIds: [],
         }),
       );
+    });
+  });
+
+  describe('pruneOldRuns()', () => {
+    it('deletes MonitorRun records older than retention cutoff', async () => {
+      prisma.monitorRun.deleteMany.mockResolvedValue({ count: 42 });
+      await scheduler.pruneOldRuns();
+      expect(prisma.monitorRun.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            checkedAt: expect.objectContaining({ lt: expect.any(Date) }),
+          }),
+        }),
+      );
+    });
+
+    it('does not throw if deleteMany returns 0 deleted rows', async () => {
+      prisma.monitorRun.deleteMany.mockResolvedValue({ count: 0 });
+      await expect(scheduler.pruneOldRuns()).resolves.not.toThrow();
+    });
+
+    it('does not throw if deleteMany rejects (logs error instead)', async () => {
+      prisma.monitorRun.deleteMany.mockRejectedValue(new Error('DB error'));
+      await expect(scheduler.pruneOldRuns()).resolves.not.toThrow();
+    });
+
+    it('cutoff date is approximately RUN_RETENTION_DAYS ago', async () => {
+      prisma.monitorRun.deleteMany.mockResolvedValue({ count: 0 });
+      const before = new Date();
+      await scheduler.pruneOldRuns();
+      const call = prisma.monitorRun.deleteMany.mock.calls[0]?.[0];
+      const cutoff: Date = call?.where?.checkedAt?.lt;
+      expect(cutoff).toBeInstanceOf(Date);
+      // Cutoff should be between (now - 91 days) and (now - 89 days) for default 90-day retention
+      const ninetyOneDaysAgo = new Date(before.getTime() - 91 * 24 * 60 * 60 * 1000);
+      const eightyNineDaysAgo = new Date(before.getTime() - 89 * 24 * 60 * 60 * 1000);
+      expect(cutoff.getTime()).toBeGreaterThan(ninetyOneDaysAgo.getTime());
+      expect(cutoff.getTime()).toBeLessThan(eightyNineDaysAgo.getTime());
     });
   });
 });

@@ -367,6 +367,49 @@ export class ChecksService {
         return { ok: true, statusCode: 200, latencyMs: null, message: `Cargo latest ${latestVersion}`, level: 'green' as const };
       }
 
+      // ── Maven Central ────────────────────────────────────────────────────────
+      // target format: "groupId:artifactId" e.g. "org.springframework:spring-core"
+      if (provider === 'maven') {
+        const parts = target.trim().split(':');
+        if (parts.length < 2) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid Maven target. Use "groupId:artifactId" format.', level: 'red' as const };
+        const [groupId, artifactId] = parts;
+        const mavenResp = await fetch(
+          `https://search.maven.org/solrsearch/select?q=g:${encodeURIComponent(groupId)}+AND+a:${encodeURIComponent(artifactId)}&core=gav&rows=1&wt=json`,
+          { headers: { 'User-Agent': 'PulseDock/1.0', Accept: 'application/json' } },
+        );
+        if (!mavenResp.ok) return { ok: false, statusCode: mavenResp.status, latencyMs: null, message: `Maven Central API ${mavenResp.status}`, level: 'red' as const };
+        const mavenPayload = await mavenResp.json() as { response?: { docs?: Array<{ v?: string }> } };
+        const latestVersion = mavenPayload.response?.docs?.[0]?.v ?? null;
+        if (!latestVersion) return { ok: false, statusCode: 404, latencyMs: null, message: 'No Maven artifact version found', level: 'red' as const };
+        if (currentVersion) {
+          const level = this.classifyVersionStatus(currentVersion, latestVersion);
+          return { ok: level === 'green', statusCode: 200, latencyMs: null, message: `Maven current ${currentVersion}, latest ${latestVersion}`, level } as const;
+        }
+        return { ok: true, statusCode: 200, latencyMs: null, message: `Maven latest ${latestVersion}`, level: 'green' as const };
+      }
+
+      // ── Helm (Artifact Hub) ──────────────────────────────────────────────────
+      // target format: "repoName/chartName" e.g. "bitnami/redis" or "grafana/grafana"
+      if (provider === 'helm') {
+        const parts = target.trim().split('/');
+        if (parts.length < 2) return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid Helm target. Use "repoName/chartName" format.', level: 'red' as const };
+        const [repoName, chartName] = parts;
+        const helmResp = await fetch(
+          `https://artifacthub.io/api/v1/packages/helm/${encodeURIComponent(repoName)}/${encodeURIComponent(chartName)}`,
+          { headers: { 'User-Agent': 'PulseDock/1.0', Accept: 'application/json' } },
+        );
+        if (!helmResp.ok) return { ok: false, statusCode: helmResp.status, latencyMs: null, message: `Artifact Hub API ${helmResp.status}`, level: 'red' as const };
+        const helmPayload = await helmResp.json() as { version?: string; app_version?: string };
+        // Prefer app_version (the underlying app), fall back to chart version
+        const latestVersion = helmPayload.app_version ?? helmPayload.version ?? null;
+        if (!latestVersion) return { ok: false, statusCode: 404, latencyMs: null, message: 'No Helm chart version found', level: 'red' as const };
+        if (currentVersion) {
+          const level = this.classifyVersionStatus(currentVersion, latestVersion);
+          return { ok: level === 'green', statusCode: 200, latencyMs: null, message: `Helm current ${currentVersion}, latest ${latestVersion}`, level } as const;
+        }
+        return { ok: true, statusCode: 200, latencyMs: null, message: `Helm latest ${latestVersion}`, level: 'green' as const };
+      }
+
       // ── APT ──────────────────────────────────────────────────────────────────
       if (provider === 'apt') {
         const pkg = target.trim().toLowerCase();

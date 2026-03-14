@@ -60,6 +60,7 @@ services:
       DATABASE_URL: postgresql://pulsedock:pulsedock@postgres:5432/pulsedock
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
     ports:
       - "${API_PORT:-4321}:4321"
     volumes:
@@ -80,6 +81,11 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     networks:
       - pulsedock_dev
 
@@ -104,6 +110,11 @@ services:
       - web_app_node_modules:/app/apps/web/node_modules
     depends_on:
       - api
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - pulsedock_dev
 

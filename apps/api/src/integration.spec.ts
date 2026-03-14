@@ -117,6 +117,31 @@ const mockPrisma = {
     delete: vi.fn(),
     count: vi.fn().mockResolvedValue(0),
   },
+  publicStatusPage: {
+    findMany: vi.fn().mockResolvedValue([]),
+    findFirst: vi.fn().mockResolvedValue(null),
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+  },
+  tag: {
+    findMany: vi.fn().mockResolvedValue([]),
+    findFirst: vi.fn().mockResolvedValue(null),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  monitorTag: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  notificationPreference: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    upsert: vi.fn(),
+  },
   $transaction: vi.fn().mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 };
 
@@ -685,5 +710,173 @@ describe('V2 Checks — paginated history', () => {
       level: 'green',
     });
     expect(typeof res.body.data[0].checkedAt).toBe('string');
+  });
+});
+
+// ─── Tool Registry ────────────────────────────────────────────────────────────
+
+describe('Tool Registry', () => {
+  it('GET /v1/tool-registry returns list with total and categories', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v1/tool-registry');
+    expect(res.status).toBe(200);
+    expect(typeof res.body.total).toBe('number');
+    expect(res.body.total).toBeGreaterThan(0);
+    expect(Array.isArray(res.body.categories)).toBe(true);
+    expect(Array.isArray(res.body.tools)).toBe(true);
+    expect(res.body.tools.length).toBe(res.body.total);
+  });
+
+  it('GET /v1/tool-registry?q=portainer filters by name', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v1/tool-registry?q=portainer');
+    expect(res.status).toBe(200);
+    expect(res.body.tools.length).toBeGreaterThan(0);
+    expect(res.body.tools[0].id).toBe('portainer');
+  });
+
+  it('GET /v1/tool-registry?category=Container filters by category', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v1/tool-registry?category=Container');
+    expect(res.status).toBe(200);
+    expect(res.body.tools.every((t: { category: string }) => t.category === 'Container')).toBe(true);
+    expect(res.body.tools.length).toBeGreaterThan(0);
+  });
+
+  it('GET /v1/tool-registry?q=nonexistent returns empty list', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v1/tool-registry?q=xxxxnonexistentxxxx');
+    expect(res.status).toBe(200);
+    expect(res.body.tools).toHaveLength(0);
+    expect(res.body.total).toBe(0);
+  });
+
+  it('tool entries have required fields', async () => {
+    const res = await supertest(app.getHttpServer()).get('/v1/tool-registry?q=grafana');
+    expect(res.status).toBe(200);
+    const tool = res.body.tools[0];
+    expect(tool).toMatchObject({
+      id: expect.any(String),
+      name: expect.any(String),
+      category: expect.any(String),
+      description: expect.any(String),
+      homepage: expect.any(String),
+      verified: expect.any(Boolean),
+    });
+  });
+});
+
+// ─── Status Pages ─────────────────────────────────────────────────────────────
+
+describe('Status Pages', () => {
+  async function authToken() {
+    const { JwtService } = await import('@nestjs/jwt');
+    return new JwtService({}).sign(
+      { sub: VALID_USER.id, sid: MOCK_SESSION.id, email: VALID_USER.email, role: VALID_USER.role, type: 'access' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+    );
+  }
+
+  const MOCK_PAGE = {
+    id: 'page-001',
+    userId: VALID_USER.id,
+    slug: 'test-page',
+    title: 'Test Page',
+    description: null,
+    isPublished: false,
+    passwordHash: null,
+    layout: { widgets: [] },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it('POST /v1/status-pages creates a status page', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(null); // slug not taken
+    mockPrisma.publicStatusPage.create.mockResolvedValueOnce(MOCK_PAGE);
+
+    const res = await supertest(app.getHttpServer())
+      .post('/v1/status-pages')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Test Page' });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('GET /v1/status-pages lists pages for user', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.publicStatusPage.findMany.mockResolvedValueOnce([MOCK_PAGE]);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v1/status-pages')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('GET /v1/status-pages/:id returns a single page', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(MOCK_PAGE);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v1/status-pages/page-001')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe('page-001');
+  });
+
+  it('POST /v1/status-pages/:id/publish toggles publish state', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(MOCK_PAGE);
+    mockPrisma.publicStatusPage.update.mockResolvedValueOnce({ ...MOCK_PAGE, isPublished: true });
+
+    const res = await supertest(app.getHttpServer())
+      .post('/v1/status-pages/page-001/publish')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect([200, 201]).toContain(res.status);
+  });
+
+  it('GET /v1/public/status/:slug returns 404 for non-existent page', async () => {
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(null);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v1/public/status/no-such-page');
+
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /v1/public/status/:slug returns data for published page', async () => {
+    const publishedPage = { ...MOCK_PAGE, isPublished: true };
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(publishedPage);
+    mockPrisma.monitor.findMany.mockResolvedValueOnce([]);
+    mockPrisma.monitorRun.findMany.mockResolvedValueOnce([]);
+
+    const res = await supertest(app.getHttpServer())
+      .get('/v1/public/status/test-page');
+
+    expect(res.status).toBe(200);
+    expect(res.body.slug).toBe('test-page');
+    expect(res.body.isPublished).toBe(true);
+  });
+
+  it('DELETE /v1/status-pages/:id removes the page', async () => {
+    const token = await authToken();
+    mockPrisma.session.findFirst.mockResolvedValueOnce(MOCK_SESSION);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(VALID_USER);
+    mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(MOCK_PAGE);
+    mockPrisma.publicStatusPage.delete.mockResolvedValueOnce(MOCK_PAGE);
+
+    const res = await supertest(app.getHttpServer())
+      .delete('/v1/status-pages/page-001')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
   });
 });

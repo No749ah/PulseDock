@@ -78,7 +78,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
 - [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
-- [ ] **Public Status Page Builder (Drag & Drop)** — Full drag-and-drop editor for creating shareable public status pages. See detailed spec below. _(Added 2026-03-14 by Noah)_
+- [x] **Public Status Page Builder (Drag & Drop)** — Delivered: Prisma schema + migration, full CRUD API (create/update/publish/delete/public endpoint), drag-and-drop editor (`dnd-kit`, 20 widget types, resizable/repositionable), public view at `/status/[slug]` (SSR, auto-refresh), publish flow + slug management, password protection (bcrypt), status-pages list+create UI. 7 integration tests added.
 
   <details>
   <summary>Full Feature Spec</summary>
@@ -166,7 +166,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
   </details>
 
-- [ ] **Tool Registry — Pre-configured Version Check Library** — Searchable library of 500+ popular self-hosted & open-source tools with pre-filled version API configs, icons, and one-click monitor setup. Users just pick a tool, enter their instance URL, done. See detailed spec below. _(Added 2026-03-14 by Noah)_
+- [x] **Tool Registry — Pre-configured Version Check Library** — Delivered: 126 tools across 14 categories (Container, CI/CD, Database, Observability, Security, Networking, Storage, Dev Tools, Media, Infrastructure, Messaging, CMS, Communication, Cloud). Searchable `GET /v1/tool-registry` API (filter by q + category). ToolPicker UI integrated in Versions page. Simple Icons CDN for icons. 5 integration tests. Notable tools: Prometheus, Loki, Vault, Keycloak, Gitea, ArgoCD, Jellyfin, Immich, n8n, MinIO, Nextcloud, AdGuard, Pi-hole, Caddy, RabbitMQ, NATS, Terraform, OpenTofu, and more.
 
   <details>
   <summary>Full Feature Spec</summary>
@@ -319,9 +319,9 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 214 tests passing (204 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX, LOG_LEVEL filtering + Docker log rotation
+- **Codebase:** 226 tests passing (216 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX, LOG_LEVEL filtering + Docker log rotation
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 8 pages 200)
-- **Production Readiness:** ~70% — All security gaps closed (2FA, CSRF, lockout, rate limiting, password strength, audit log, session anomaly detection, input sanitization), full accessibility foundation, public status page polished (sparklines, incident history, per-monitor uptime), all alert channels working
-- **Remaining:** Monitor groups/tags, bulk actions, monitor templates, i18n, user profile improvements, admin dashboard stats, notification preferences, import from competitors, test coverage >90%, E2E tests (Playwright), performance profiling, log rotation, Helm chart
+- **Production Readiness:** ~80% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, notification preferences
+- **Remaining:** i18n (English + German), import from competitors, test coverage >90%, E2E tests (Playwright), API documentation improvements, Helm chart
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

@@ -1,0 +1,139 @@
+import {
+  IsBoolean,
+  IsObject,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+  IsArray,
+  IsNumber,
+  IsIn,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { WidgetType } from './status-pages.types';
+
+const VALID_WIDGET_TYPES: WidgetType[] = [
+  'uptime-bar',
+  'uptime-timeline',
+  'response-time-chart',
+  'response-time-heatmap',
+  'current-status-badge',
+  'multi-monitor-status-grid',
+  'incident-history',
+  'active-incident-banner',
+  'monitor-group-status',
+  'overall-system-status',
+  'sla-summary',
+  'check-history-feed',
+  'text-block',
+  'scheduled-maintenance',
+  'last-updated-footer',
+  'metric-counter',
+  'divider',
+];
+
+export class WidgetDto {
+  @ApiProperty()
+  @IsString()
+  id!: string;
+
+  @ApiProperty()
+  @IsIn(VALID_WIDGET_TYPES)
+  type!: WidgetType;
+
+  @ApiProperty()
+  @IsNumber()
+  x!: number;
+
+  @ApiProperty()
+  @IsNumber()
+  y!: number;
+
+  @ApiProperty()
+  @IsNumber()
+  w!: number;
+
+  @ApiProperty()
+  @IsNumber()
+  h!: number;
+
+  @ApiProperty()
+  @IsObject()
+  config!: Record<string, unknown>;
+}
+
+export class PageLayoutDto {
+  @ApiProperty({ type: [WidgetDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WidgetDto)
+  widgets!: WidgetDto[];
+}
+
+export class CreateStatusPageDto {
+  @ApiProperty({ maxLength: 100 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  title!: string;
+
+  @ApiPropertyOptional({ maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL-friendly slug (lowercase letters, numbers, hyphens only)',
+    pattern: '^[a-z0-9-]+$',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(80)
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'slug must contain only lowercase letters, numbers, and hyphens',
+  })
+  slug?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  layout?: PageLayoutDto;
+}
+
+export class UpdateStatusPageDto {
+  @ApiPropertyOptional({ maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  title?: string;
+
+  @ApiPropertyOptional({ maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  layout?: PageLayoutDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  password?: string;
+
+  @ApiPropertyOptional({
+    description: 'Set to empty string to remove password protection',
+  })
+  @IsOptional()
+  @IsBoolean()
+  removePassword?: boolean;
+}

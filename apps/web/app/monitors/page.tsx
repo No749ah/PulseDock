@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -13,10 +13,26 @@ import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { Modal } from "../components/Modal";
 import { FadeIn } from "../components/FadeIn";
+import { MonitorTemplates } from "../components/MonitorTemplates";
+import type { MonitorTemplate } from "../components/MonitorTemplates";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
 import { Sparkline } from "../components/Sparkline";
+
+interface MonitorTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface TagItem {
+  id: string;
+  name: string;
+  color: string;
+  monitorCount: number;
+  createdAt: string;
+}
 
 interface MonitorItem {
   id: string;
@@ -27,6 +43,7 @@ interface MonitorItem {
   enabled: boolean;
   createdAt: string;
   config?: Record<string, unknown>;
+  tags?: MonitorTag[];
 }
 
 interface MonitorRun {
@@ -84,6 +101,8 @@ export default function MonitorsPage() {
   const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [allChannels, setAllChannels] = useState<AlertChannel[]>([]);
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
+  const [allTags, setAllTags] = useState<TagItem[]>([]);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -91,6 +110,7 @@ export default function MonitorsPage() {
   // create/edit monitor modal
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [showTemplates, setShowTemplates] = useState(true);
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
@@ -109,6 +129,8 @@ export default function MonitorsPage() {
     pluginId: "",
     expectedText: "",
   });
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
 
@@ -116,6 +138,17 @@ export default function MonitorsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; errors: Array<{ index: number; name: string; error: string }> } | null>(null);
+
+  // external import modal
+  const externalImportFileRef = useRef<HTMLInputElement>(null);
+  const [showExternalImport, setShowExternalImport] = useState(false);
+  const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "csv">("uptime-robot");
+  const [externalImporting, setExternalImporting] = useState(false);
+  const [externalImportResult, setExternalImportResult] = useState<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string } | null>(null);
+
+  // bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // alert assignment panel
   const [alertPanelMonitor, setAlertPanelMonitor] = useState<MonitorItem | null>(null);
@@ -137,16 +170,18 @@ export default function MonitorsPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
           api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
+          api<TagItem[]>("/v1/tags", userId),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
         setAllChannels(channelsData);
         setPlugins(pluginsData);
+        setAllTags(tagsData);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitors");
       } finally {
@@ -281,12 +316,19 @@ export default function MonitorsPage() {
           intervalSec: formData.intervalSec,
           enabled: formData.enabled,
           config,
+          tags: selectedTags,
         }),
       });
       setShowModal(false);
       setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
-      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setSelectedTags([]);
+      setTagInput("");
+      const [monitorsData, tagsData] = await Promise.all([
+        api<MonitorItem[]>("/v1/monitors", user?.id),
+        api<TagItem[]>("/v1/tags", user?.id),
+      ]);
       setMonitors(monitorsData);
+      setAllTags(tagsData);
       success("Monitor created");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to create monitor");
@@ -310,12 +352,19 @@ export default function MonitorsPage() {
           intervalSec: formData.intervalSec,
           enabled: formData.enabled,
           config,
+          tags: selectedTags,
         }),
       });
       setShowModal(false);
       setEditingMonitor(null);
-      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setSelectedTags([]);
+      setTagInput("");
+      const [monitorsData, tagsData] = await Promise.all([
+        api<MonitorItem[]>("/v1/monitors", user?.id),
+        api<TagItem[]>("/v1/tags", user?.id),
+      ]);
       setMonitors(monitorsData);
+      setAllTags(tagsData);
       success("Monitor updated");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to update monitor");
@@ -331,6 +380,59 @@ export default function MonitorsPage() {
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to delete monitor");
     }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === monitors.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(monitors.map((m) => m.id)));
+    }
+  };
+
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run") => {
+    if (!selectedIds.size) return;
+    if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
+    setBulkLoading(true);
+    try {
+      const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+      });
+      if (action === "delete") {
+        setMonitors((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+        setRuns((prev) => prev.filter((r) => !selectedIds.has(r.monitorId)));
+      } else if (action === "enable" || action === "disable") {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, enabled: action === "enable" } : m));
+      }
+      setSelectedIds(new Set());
+      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : "queued for check"}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleApplyTemplate = (t: MonitorTemplate) => {
+    setFormData({
+      name: t.name,
+      type: t.type,
+      target: t.target,
+      intervalSec: t.intervalSec,
+      enabled: true,
+      pluginId: t.pluginId ?? "",
+      expectedText: t.expectedText ?? "",
+    });
+    setShowTemplates(false);
   };
 
   const handleExport = async () => {
@@ -374,12 +476,48 @@ export default function MonitorsPage() {
     }
   };
 
+  const handleExternalImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExternalImporting(true);
+    setExternalImportResult(null);
+    try {
+      const text = await file.text();
+      let payload: unknown;
+      if (externalImportSource === "csv") {
+        payload = text;
+      } else {
+        payload = JSON.parse(text);
+      }
+      const result = await api<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string }>(
+        "/v1/monitors/import-external",
+        user?.id,
+        {
+          method: "POST",
+          body: JSON.stringify({ source: externalImportSource, payload }),
+        },
+      );
+      setExternalImportResult(result);
+      const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(monitorsData);
+    } catch (e) {
+      setExternalImportResult({ imported: 0, skipped: 0, errors: [], message: e instanceof Error ? e.message : "Import failed" });
+    } finally {
+      setExternalImporting(false);
+      if (externalImportFileRef.current) externalImportFileRef.current.value = "";
+    }
+  };
+
   const unassignedChannels = allChannels.filter(
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
 
   const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
+
+  const filteredMonitors = activeTagFilter
+    ? monitors.filter((m) => m.tags?.some((t) => t.name === activeTagFilter))
+    : monitors;
 
   if (!user) return null;
   if (loading)
@@ -436,7 +574,7 @@ export default function MonitorsPage() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2"
-                title="Import monitors from JSON"
+                title="Import monitors from PulseDock JSON"
                 disabled={importing}
               >
                 <Upload className="w-4 h-4" />
@@ -450,6 +588,16 @@ export default function MonitorsPage() {
                 onChange={handleImportFile}
               />
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowExternalImport(true); setExternalImportResult(null); }}
+                className="flex items-center gap-2"
+                title="Import from Uptime Robot, BetterUptime, or CSV"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import from…</span>
+              </Button>
+              <Button
                 size="sm"
                 onClick={() => {
                   setModalMode("create");
@@ -457,7 +605,10 @@ export default function MonitorsPage() {
                   setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
                   setFormErrors({});
                   setFormTouched({});
+                  setSelectedTags([]);
+                  setTagInput("");
                   setShowModal(true);
+                  setShowTemplates(true);
                 }}
                 className="flex items-center gap-2"
               >
@@ -468,6 +619,34 @@ export default function MonitorsPage() {
             </div>
           </div>
         </FadeIn>
+
+        {allTags.length > 0 && (
+          <FadeIn>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setActiveTagFilter(null)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${activeTagFilter === null ? "bg-accent text-white" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => setActiveTagFilter(activeTagFilter === tag.name ? null : tag.name)}
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-colors border"
+                  style={{
+                    backgroundColor: activeTagFilter === tag.name ? tag.color + "33" : "transparent",
+                    borderColor: tag.color + "66",
+                    color: activeTagFilter === tag.name ? tag.color : undefined,
+                  }}
+                >
+                  {tag.name}
+                  {tag.monitorCount > 0 && <span className="ml-1 opacity-60">({tag.monitorCount})</span>}
+                </button>
+              ))}
+            </div>
+          </FadeIn>
+        )}
 
         {importResult && (
           <FadeIn>
@@ -495,38 +674,87 @@ export default function MonitorsPage() {
           </FadeIn>
         )}
 
-        {monitors.length === 0 ? (
+        {filteredMonitors.length === 0 ? (
           <FadeIn delay={0.1}>
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
                 <Monitor className="w-12 h-12 text-text-secondary opacity-50" />
               </div>
-              <p className="text-text-primary text-lg font-medium mb-2">No monitors yet</p>
-              <p className="text-text-secondary text-sm mb-6">
-                Create your first monitor to start tracking uptime and performance
-              </p>
-              <Button
-                size="lg"
-                onClick={() => {
-                  setModalMode("create");
-                  setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
-                  setFormErrors({});
-                  setFormTouched({});
-                  setShowModal(true);
-                }}
-              >
-                Create your first monitor
-              </Button>
+              {monitors.length === 0 ? (
+                <>
+                  <p className="text-text-primary text-lg font-medium mb-2">No monitors yet</p>
+                  <p className="text-text-secondary text-sm mb-6">
+                    Create your first monitor to start tracking uptime and performance
+                  </p>
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      setModalMode("create");
+                      setEditingMonitor(null);
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                      setFormErrors({});
+                      setFormTouched({});
+                      setSelectedTags([]);
+                      setTagInput("");
+                      setShowModal(true);
+                      setShowTemplates(true);
+                    }}
+                  >
+                    Create your first monitor
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-text-primary text-lg font-medium mb-2">No monitors with tag &quot;{activeTagFilter}&quot;</p>
+                  <p className="text-text-secondary text-sm mb-4">
+                    Try selecting a different tag or clear the filter
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => setActiveTagFilter(null)}>
+                    Clear filter
+                  </Button>
+                </>
+              )}
             </Card>
           </FadeIn>
         ) : (
           <FadeIn delay={0.1}>
+            {/* Bulk action bar */}
+            {selectedIds.size > 0 && (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5">
+                <span className="text-sm font-medium text-text-primary mr-1">{selectedIds.size} selected</span>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("enable")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <Power className="w-3.5 h-3.5" />Enable
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("disable")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <PowerOff className="w-3.5 h-3.5" />Disable
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("run")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <PlayCircle className="w-3.5 h-3.5" />Run now
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
+                  <Trash2 className="w-3.5 h-3.5" />Delete
+                </Button>
+                <button onClick={() => setSelectedIds(new Set())} className="ml-1 p-1 rounded hover:bg-surface-elevated text-text-secondary hover:text-text-primary" aria-label="Clear selection">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <Card className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHead>
                     <tr>
+                      <TableHeader className="w-10">
+                        <button
+                          onClick={toggleSelectAll}
+                          className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
+                          aria-label={selectedIds.size === monitors.length ? "Deselect all" : "Select all"}
+                        >
+                          {selectedIds.size === monitors.length && monitors.length > 0
+                            ? <CheckSquare className="w-4 h-4 text-accent" />
+                            : <Square className="w-4 h-4" />}
+                        </button>
+                      </TableHeader>
                       <TableHeader>Name</TableHeader>
                       <TableHeader className="hidden sm:table-cell">Type</TableHeader>
                       <TableHeader className="hidden md:table-cell">Target</TableHeader>
@@ -537,12 +765,41 @@ export default function MonitorsPage() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {monitors.map((monitor) => {
+                    {filteredMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
-                        <TableRow key={monitor.id}>
+                        <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
+                          <TableCell className="w-10">
+                            <button
+                              onClick={() => toggleSelect(monitor.id)}
+                              className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
+                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name}`}
+                            >
+                              {selectedIds.has(monitor.id)
+                                ? <CheckSquare className="w-4 h-4 text-accent" />
+                                : <Square className="w-4 h-4" />}
+                            </button>
+                          </TableCell>
                           <TableCell className="font-medium text-text-primary">
                             <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
+                            {monitor.tags && monitor.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {monitor.tags.slice(0, 3).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-medium leading-none"
+                                    style={{ backgroundColor: tag.color + "22", color: tag.color }}
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                                {monitor.tags.length > 3 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] text-text-secondary leading-none">
+                                    +{monitor.tags.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
@@ -590,9 +847,12 @@ export default function MonitorsPage() {
                                     pluginId: String(monitor.config?.pluginId ?? ""),
                                     expectedText: String(monitor.config?.expectedText ?? ""),
                                   });
+                                  setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
+                                  setTagInput("");
                                   setFormErrors({});
                                   setFormTouched({});
                                   setShowModal(true);
+                  setShowTemplates(true);
                                 }}
                                 aria-label={`Edit monitor ${monitor.name}`}
                                 title="Edit monitor"
@@ -663,7 +923,7 @@ export default function MonitorsPage() {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); }}
+        onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); setSelectedTags([]); setTagInput(""); }}
         title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
         size="md"
         actions={
@@ -678,6 +938,31 @@ export default function MonitorsPage() {
         }
       >
         <div className="space-y-4">
+          {modalMode === "create" && showTemplates && (
+            <div className="rounded-xl border border-border/60 p-3 bg-surface-elevated/30">
+              <MonitorTemplates onSelect={handleApplyTemplate} />
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(false)}
+                  className="text-xs text-text-secondary hover:text-accent transition-colors"
+                >
+                  Start from scratch →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {modalMode === "create" && !showTemplates && (
+            <button
+              type="button"
+              onClick={() => setShowTemplates(true)}
+              className="text-xs text-text-secondary hover:text-accent transition-colors flex items-center gap-1"
+            >
+              ← Use a template
+            </button>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Monitor Name <span className="text-danger" aria-hidden="true">*</span>
@@ -819,6 +1104,68 @@ export default function MonitorsPage() {
               <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
             ) : (
               <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedTags.map((tag) => {
+                  const tagObj = allTags.find((t) => t.name === tag);
+                  return (
+                    <span
+                      key={tag}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{ backgroundColor: (tagObj?.color ?? "#6366f1") + "22", color: tagObj?.color ?? "#6366f1" }}
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
+                        aria-label={`Remove tag ${tag}`}
+                        className="hover:opacity-70"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                  e.preventDefault();
+                  const newTag = tagInput.trim().replace(/,+$/, "").trim();
+                  if (newTag && !selectedTags.includes(newTag)) {
+                    setSelectedTags((prev) => [...prev, newTag]);
+                  }
+                  setTagInput("");
+                }
+              }}
+              className={inputClass}
+              placeholder="Type a tag name, press Enter or comma"
+            />
+            {allTags.filter((t) => !selectedTags.includes(t.name)).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {allTags
+                  .filter((t) => !selectedTags.includes(t.name))
+                  .map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setSelectedTags((prev) => [...prev, tag.name])}
+                      className="px-2 py-0.5 rounded-full text-xs border transition-colors hover:opacity-80"
+                      style={{ borderColor: tag.color + "66", color: tag.color }}
+                    >
+                      + {tag.name}
+                    </button>
+                  ))}
+              </div>
             )}
           </div>
 
@@ -975,6 +1322,111 @@ export default function MonitorsPage() {
               >
                 Done
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* External Import Modal */}
+      {showExternalImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-text-primary">Import from external service</h2>
+              <button onClick={() => setShowExternalImport(false)} className="text-text-secondary hover:text-text-primary transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Source selector */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-primary">Source</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "uptime-robot", label: "Uptime Robot", hint: "JSON export" },
+                    { id: "better-uptime", label: "BetterUptime", hint: "JSON export" },
+                    { id: "csv", label: "Generic CSV", hint: ".csv file" },
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setExternalImportSource(s.id)}
+                      className={`flex flex-col items-center gap-1 px-3 py-3 rounded-xl border text-sm transition-colors ${
+                        externalImportSource === s.id
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-surface-secondary text-text-secondary hover:border-accent/50"
+                      }`}
+                    >
+                      <span className="font-medium">{s.label}</span>
+                      <span className="text-xs opacity-70">{s.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="rounded-xl bg-surface-secondary border border-border p-4 text-xs text-text-secondary space-y-1">
+                {externalImportSource === "uptime-robot" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">How to export from Uptime Robot:</p>
+                    <p>1. Log in → My Settings → Export → Download JSON</p>
+                    <p>2. Upload the downloaded <code className="font-mono bg-surface px-1 rounded">uptimerobot-*.json</code> file below.</p>
+                    <p className="mt-1 text-text-secondary/70">Only HTTP/HTTPS monitors are imported. Ping, port, and keyword monitors are skipped.</p>
+                  </>
+                )}
+                {externalImportSource === "better-uptime" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">How to export from BetterUptime:</p>
+                    <p>1. Use the BetterUptime API: <code className="font-mono bg-surface px-1 rounded">GET /api/v2/monitors</code></p>
+                    <p>2. Save the JSON response and upload it below.</p>
+                    <p className="mt-1 text-text-secondary/70">Only status/keyword check types are imported.</p>
+                  </>
+                )}
+                {externalImportSource === "csv" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">CSV format:</p>
+                    <p>First row must be headers. Required column: <code className="font-mono bg-surface px-1 rounded">url</code></p>
+                    <p>Optional: <code className="font-mono bg-surface px-1 rounded">name</code>, <code className="font-mono bg-surface px-1 rounded">interval</code>, <code className="font-mono bg-surface px-1 rounded">paused</code></p>
+                  </>
+                )}
+              </div>
+
+              {/* Result */}
+              {externalImportResult && (
+                <div className={`rounded-xl p-4 border text-sm ${
+                  externalImportResult.errors.length === 0 && externalImportResult.imported > 0
+                    ? "bg-success/10 border-success/20 text-success"
+                    : externalImportResult.imported === 0
+                      ? "bg-danger/10 border-danger/20 text-danger"
+                      : "bg-warning/10 border-warning/20 text-warning"
+                }`}>
+                  <p className="font-medium">{externalImportResult.message}</p>
+                  {externalImportResult.skipped > 0 && (
+                    <p className="text-xs mt-1 opacity-80">{externalImportResult.skipped} duplicate{externalImportResult.skipped !== 1 ? "s" : ""} skipped (URL already monitored).</p>
+                  )}
+                  {externalImportResult.errors.map((err, i) => (
+                    <p key={i} className="text-xs mt-1 opacity-80">⚠ {err.name}: {err.error}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3">
+              <Button variant="secondary" onClick={() => setShowExternalImport(false)}>Cancel</Button>
+              <Button
+                onClick={() => externalImportFileRef.current?.click()}
+                disabled={externalImporting}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {externalImporting ? "Importing…" : "Choose file & Import"}
+              </Button>
+              <input
+                ref={externalImportFileRef}
+                type="file"
+                accept={externalImportSource === "csv" ? ".csv,text/csv" : ".json,application/json"}
+                className="hidden"
+                onChange={handleExternalImportFile}
+              />
             </div>
           </div>
         </div>

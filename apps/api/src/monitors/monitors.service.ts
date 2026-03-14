@@ -37,11 +37,17 @@ export class MonitorsService {
     return this.checksService.listPlugins();
   }
 
-  async list(userId: string) {
+  async list(userId: string, tagFilter?: string) {
     const monitors = await this.prisma.monitor.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(tagFilter ? { monitorTags: { some: { tag: { name: tagFilter } } } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
-      include: { monitorAlerts: true },
+      include: {
+        monitorAlerts: true,
+        monitorTags: { include: { tag: true } },
+      },
     });
 
     return monitors.map((m) => ({
@@ -55,6 +61,7 @@ export class MonitorsService {
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       folderId: m.folderId,
+      tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
       enabled: m.enabled,
       createdAt: m.createdAt.toISOString(),
     }));
@@ -69,6 +76,7 @@ export class MonitorsService {
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
+    tags?: string[];
   }) {
     const created = await this.prisma.monitor.create({
       data: {
@@ -86,6 +94,20 @@ export class MonitorsService {
       },
     });
 
+    // Handle tags
+    const createdTags: Array<{ id: string; name: string; color: string }> = [];
+    if (body.tags && body.tags.length > 0) {
+      for (const tagName of body.tags) {
+        const tag = await this.prisma.tag.upsert({
+          where: { userId_name: { userId, name: tagName } },
+          create: { userId, name: tagName },
+          update: {},
+        });
+        await this.prisma.monitorTag.create({ data: { monitorId: created.id, tagId: tag.id } });
+        createdTags.push({ id: tag.id, name: tag.name, color: tag.color });
+      }
+    }
+
     await this.audit.log('monitor.create', userId, userId, { monitorId: created.id, type: created.type, target: created.target });
 
     const response = {
@@ -99,6 +121,7 @@ export class MonitorsService {
       config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
+      tags: createdTags,
       enabled: created.enabled,
       createdAt: created.createdAt.toISOString(),
     };
@@ -117,6 +140,7 @@ export class MonitorsService {
     alertChannelIds?: string[];
     folderId?: string | null;
     enabled?: boolean;
+    tags?: string[];
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -144,6 +168,18 @@ export class MonitorsService {
         await this.prisma.monitorAlert.createMany({
           data: body.alertChannelIds.map((alertChannelId) => ({ monitorId, alertChannelId })),
         });
+      }
+    }
+
+    if (body.tags !== undefined) {
+      await this.prisma.monitorTag.deleteMany({ where: { monitorId } });
+      for (const tagName of body.tags) {
+        const tag = await this.prisma.tag.upsert({
+          where: { userId_name: { userId, name: tagName } },
+          create: { userId, name: tagName },
+          update: {},
+        });
+        await this.prisma.monitorTag.create({ data: { monitorId, tagId: tag.id } });
       }
     }
 
@@ -214,6 +250,38 @@ export class MonitorsService {
     await this.audit.log('monitor.delete', userId, userId, { monitorId });
     this.realtime.monitorDeleted(userId, { id: monitorId });
     return { ok: true };
+  }
+
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run') {
+    if (!ids.length) return { ok: true, affected: 0 };
+    // Verify ownership of all IDs first
+    const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
+    const ownedIds = monitors.map((m) => m.id);
+    if (!ownedIds.length) return { ok: true, affected: 0 };
+
+    if (action === 'delete') {
+      await this.prisma.monitor.deleteMany({ where: { id: { in: ownedIds }, userId } });
+      for (const id of ownedIds) {
+        await this.audit.log('monitor.delete', userId, userId, { monitorId: id, bulk: true });
+        this.realtime.monitorDeleted(userId, { id });
+      }
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'enable' || action === 'disable') {
+      const enabled = action === 'enable';
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { enabled } });
+      await this.audit.log(`monitor.bulk_${action}`, userId, userId, { ids: ownedIds });
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'run') {
+      const results = await Promise.allSettled(ownedIds.map((id) => this.runNow(userId, id)));
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      return { ok: true, affected: succeeded };
+    }
+
+    return { ok: false, affected: 0 };
   }
 
   async listMonitorAlerts(userId: string, monitorId: string) {
@@ -725,6 +793,209 @@ export class MonitorsService {
         red: rows.filter((r) => r.level === 'red').length,
       },
       items: rows,
+    };
+  }
+
+  // ── External import parsers ─────────────────────────────────────────────────
+
+  /**
+   * Parse an Uptime Robot JSON export and return a normalised monitor list.
+   * Uptime Robot monitor types: 1=HTTP(S), 2=Keyword, 3=Ping, 4=Port, 5=Heartbeat
+   * We map type 1 and 2 → HTTP; skip unsupported types.
+   */
+  private parseUptimeRobot(raw: unknown): Array<{
+    name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number; enabled?: boolean;
+  }> {
+    const data = raw as Record<string, unknown>;
+    const monitors: unknown[] = Array.isArray(data['monitors'])
+      ? (data['monitors'] as unknown[])
+      : Array.isArray(raw)
+        ? (raw as unknown[])
+        : [];
+
+    const results: ReturnType<MonitorsService['parseUptimeRobot']> = [];
+
+    for (const m of monitors) {
+      const mon = m as Record<string, unknown>;
+      const urlRaw = (mon['url'] ?? mon['target'] ?? '') as string;
+      const name = (mon['friendly_name'] ?? mon['name'] ?? urlRaw) as string;
+      const type = (mon['type'] as number) ?? 1;
+      // Only import HTTP-like monitors (type 1 = HTTP, 2 = Keyword)
+      if (![1, 2].includes(type)) continue;
+      const interval = (mon['interval'] as number) ?? 300;
+      // status: 2=up, else paused/down — treat non-2 as disabled
+      const status = (mon['status'] as number) ?? 2;
+
+      if (!urlRaw || !/^https?:\/\//i.test(urlRaw)) continue;
+
+      results.push({
+        name: String(name).slice(0, 255),
+        target: urlRaw,
+        type: 'HTTP',
+        intervalSec: Math.max(10, interval),
+        enabled: status === 2,
+      });
+    }
+    return results;
+  }
+
+  /**
+   * Parse a BetterUptime JSON export.
+   * BetterUptime API format: { data: [{ id, attributes: { url, pronounceable_name, check_type, call, request_interval_seconds, paused } }] }
+   * Also accepts a plain array of attribute objects.
+   */
+  private parseBetterUptime(raw: unknown): Array<{
+    name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number; enabled?: boolean;
+  }> {
+    const data = raw as Record<string, unknown>;
+
+    // Support both { data: [...] } and plain array
+    let items: unknown[] = [];
+    if (Array.isArray(data['data'])) {
+      items = data['data'] as unknown[];
+    } else if (Array.isArray(raw)) {
+      items = raw as unknown[];
+    }
+
+    const results: ReturnType<MonitorsService['parseBetterUptime']> = [];
+
+    for (const item of items) {
+      const entry = item as Record<string, unknown>;
+      // Support both nested { attributes: {...} } and flat objects
+      const attrs = (entry['attributes'] as Record<string, unknown>) ?? entry;
+
+      const url = (attrs['url'] ?? '') as string;
+      const name = (attrs['pronounceable_name'] ?? attrs['name'] ?? url) as string;
+      const checkType = (attrs['check_type'] ?? 'status') as string;
+      const paused = (attrs['paused'] ?? false) as boolean;
+      const interval = (attrs['request_interval_seconds'] ?? attrs['interval'] ?? 180) as number;
+
+      // Only import HTTP-type checks
+      if (!['status', 'expected_status_code', 'keyword'].includes(checkType)) continue;
+      if (!url || !/^https?:\/\//i.test(url)) continue;
+
+      results.push({
+        name: String(name).slice(0, 255),
+        target: url,
+        type: 'HTTP',
+        intervalSec: Math.max(10, interval as number),
+        enabled: !paused,
+      });
+    }
+    return results;
+  }
+
+  /**
+   * Parse a generic CSV export where the first row is headers.
+   * Looks for columns: name/Name, url/URL/target/Target, interval/Interval
+   */
+  private parseCsv(csv: string): Array<{
+    name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number; enabled?: boolean;
+  }> {
+    const lines = csv.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return [];
+
+    const headers = (lines[0] ?? '').split(',').map((h) => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const nameIdx = headers.findIndex((h) => ['name', 'friendly_name', 'monitor name'].includes(h));
+    const urlIdx = headers.findIndex((h) => ['url', 'target', 'address', 'website'].includes(h));
+    const intervalIdx = headers.findIndex((h) => ['interval', 'check interval', 'request_interval_seconds'].includes(h));
+    const pausedIdx = headers.findIndex((h) => ['paused', 'status', 'enabled'].includes(h));
+
+    if (urlIdx === -1) return [];
+
+    const results: ReturnType<MonitorsService['parseCsv']> = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = (lines[i] ?? '').split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+      const url = cols[urlIdx] ?? '';
+      if (!url || !/^https?:\/\//i.test(url)) continue;
+
+      const name = nameIdx >= 0 ? (cols[nameIdx] ?? url) : url;
+      const interval = intervalIdx >= 0 ? parseInt(cols[intervalIdx] ?? '300', 10) : 300;
+      const pausedRaw = pausedIdx >= 0 ? (cols[pausedIdx] ?? '') : '';
+      const enabled = !['paused', 'false', '0', 'disabled'].includes(pausedRaw.toLowerCase());
+
+      results.push({
+        name: name.slice(0, 255),
+        target: url,
+        type: 'HTTP',
+        intervalSec: isNaN(interval) ? 300 : Math.max(10, interval),
+        enabled,
+      });
+    }
+    return results;
+  }
+
+  async importExternal(
+    userId: string,
+    source: 'uptime-robot' | 'better-uptime' | 'csv',
+    payload: unknown,
+  ) {
+    let items: Array<{
+      name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+      intervalSec?: number; enabled?: boolean;
+    }>;
+
+    switch (source) {
+      case 'uptime-robot':
+        items = this.parseUptimeRobot(payload);
+        break;
+      case 'better-uptime':
+        items = this.parseBetterUptime(payload);
+        break;
+      case 'csv':
+        items = this.parseCsv(typeof payload === 'string' ? payload : JSON.stringify(payload));
+        break;
+      default:
+        items = [];
+    }
+
+    if (!items.length) {
+      return { imported: 0, skipped: 0, errors: [], message: 'No importable monitors found in the provided data.' };
+    }
+
+    const created = [];
+    const errors: Array<{ index: number; name: string; error: string }> = [];
+    let skipped = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item) continue;
+      try {
+        // Skip duplicates (same target already exists for this user)
+        const existing = await this.prisma.monitor.findFirst({ where: { userId, target: item.target } });
+        if (existing) { skipped++; continue; }
+
+        const monitor = await this.create(userId, {
+          name: item.name,
+          target: item.target,
+          type: item.type,
+          intervalSec: item.intervalSec,
+        });
+        if (item.enabled === false) {
+          await this.update(userId, monitor.id, { enabled: false });
+        }
+        created.push(monitor);
+      } catch (err) {
+        errors.push({ index: i, name: item?.name ?? '?', error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    await this.audit.log('monitor.import_external', userId, userId, {
+      source,
+      imported: created.length,
+      skipped,
+      errors: errors.length,
+    });
+
+    return {
+      imported: created.length,
+      skipped,
+      errors,
+      message: `Imported ${created.length} monitor${created.length !== 1 ? 's' : ''}${skipped ? `, skipped ${skipped} duplicate${skipped !== 1 ? 's' : ''}` : ''}.`,
     };
   }
 }

@@ -1,0 +1,145 @@
+# PulseDock Helm Chart — Default Values
+# Override these via --set or a custom values file.
+
+global:
+  # Base registry for all PulseDock images
+  imageRegistry: ghcr.io/no749ah
+  imagePullPolicy: IfNotPresent
+
+# ─── API (NestJS) ──────────────────────────────────────────────────────────────
+api:
+  image: pulsedock-api
+  tag: latest
+  replicas: 2
+  port: 4321
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      cpu: 600m
+      memory: 768Mi
+  # Probe tuning
+  readinessProbe:
+    initialDelaySeconds: 12
+    periodSeconds: 10
+  livenessProbe:
+    initialDelaySeconds: 20
+    periodSeconds: 20
+  # Extra environment variables injected directly into the API pod
+  extraEnv: []
+  # - name: SOME_VAR
+  #   value: "some-value"
+
+# ─── Web (Next.js) ─────────────────────────────────────────────────────────────
+web:
+  image: pulsedock-web
+  tag: latest
+  replicas: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+  readinessProbe:
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  livenessProbe:
+    initialDelaySeconds: 25
+    periodSeconds: 20
+  extraEnv: []
+
+# ─── PostgreSQL ────────────────────────────────────────────────────────────────
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  storageSize: 10Gi
+  # Set to a StorageClass name, or "" to use the cluster default
+  storageClass: ""
+  database: pulsedock
+  username: pulsedock
+  # REQUIRED when postgres.enabled — set via --set postgres.password=<value>
+  password: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ─── Redis ─────────────────────────────────────────────────────────────────────
+redis:
+  enabled: true
+  image: redis:7-alpine
+  storageSize: 1Gi
+  storageClass: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ─── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: pulsedock.example.com
+  tls: false
+  tlsSecretName: ""
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+
+# ─── Application Config (non-secret) ──────────────────────────────────────────
+config:
+  nodeEnv: production
+  # Public URL of the API — used by the web frontend
+  # Defaults to https://<ingress.host>/api if left empty
+  apiUrl: ""
+  # Next.js public env (browser-facing)
+  nextPublicApiUrl: ""
+  logLevel: info
+  # Allow users to self-register. Set to "true" to enable.
+  allowPublicRegistration: "false"
+
+# ─── Secrets ───────────────────────────────────────────────────────────────────
+secrets:
+  # REQUIRED — generate with: openssl rand -hex 32
+  jwtSecret: ""
+  jwtRefreshSecret: ""
+  # Auto-computed from postgres section when postgres.enabled and left empty.
+  # Override here to connect to an external database.
+  databaseUrl: ""
+  # Auto-computed from redis section when redis.enabled and left empty.
+  # Override here to connect to an external Redis.
+  redisUrl: ""
+  # Default admin credentials created on first boot
+  defaultAdminEmail: "admin@example.com"
+  defaultAdminPassword: "ChangeMe123!"
+
+# ─── Horizontal Pod Autoscaler ─────────────────────────────────────────────────
+hpa:
+  enabled: false
+  api:
+    minReplicas: 2
+    maxReplicas: 10
+    cpuUtilization: 70
+  web:
+    minReplicas: 2
+    maxReplicas: 10
+    cpuUtilization: 70
+
+# ─── Service Account ───────────────────────────────────────────────────────────
+serviceAccount:
+  create: false
+  name: ""
+
+# ─── Namespace ─────────────────────────────────────────────────────────────────
+# Set to "" to deploy into the release namespace (default behaviour)
+namespaceOverride: ""

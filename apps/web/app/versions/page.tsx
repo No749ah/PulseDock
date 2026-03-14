@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -54,6 +54,22 @@ type Summary = {
 
 const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
+// ── Tool Registry (inline types + fetched data) ──────────────────────────────
+type ToolEntry = {
+  id: string;
+  name: string;
+  category: string;
+  tags: string[];
+  icon: string;
+  description: string;
+  homepage: string;
+  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean };
+  latestSource: { type: string; target?: string; urlTemplate?: string };
+  checkInterval: number;
+  requiresInstanceUrl: boolean;
+  verified: boolean;
+};
+
 function stripLeadingV(version: string) {
   return version.replace(/^v(?=\d)/i, '');
 }
@@ -89,7 +105,12 @@ export default function VersionsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
   const [createOpen, setCreateOpen] = useState(false);
-  const [createStep, setCreateStep] = useState(0);
+  const [createStep, setCreateStep] = useState(-1); // -1 = tool picker, 0-3 = manual steps
+  // Tool registry
+  const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
+  const [toolSearch, setToolSearch] = useState('');
+  const [toolCategory, setToolCategory] = useState('');
+  const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<'GIT_RELEASE' | 'DOCKER_IMAGE'>('GIT_RELEASE');
   const [provider, setProvider] = useState<'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo'>('github');
@@ -158,6 +179,15 @@ export default function VersionsPage() {
   }
 
   useEffect(() => { load().catch(() => router.push('/login')); }, []);
+
+  // Load tool registry once (public endpoint, no auth needed)
+  useEffect(() => {
+    if (toolRegistry) return;
+    fetch('/api/v1/tool-registry')
+      .then((r) => r.json())
+      .then((d: { tools: ToolEntry[]; categories: string[]; total: number }) => setToolRegistry(d))
+      .catch(() => null);
+  }, [toolRegistry]);
 
   useEffect(() => {
     if (!target.trim()) {
@@ -328,6 +358,39 @@ export default function VersionsPage() {
     return result;
   }
 
+  function applyToolToForm(tool: ToolEntry) {
+    setSelectedTool(tool);
+    setName(tool.name);
+    setIntervalSec(tool.checkInterval);
+
+    // Map latestSource type → provider
+    const ls = tool.latestSource;
+    const providerMap: Record<string, typeof provider> = {
+      'github-releases': 'github',
+      'github-tags': 'github',
+      'docker-hub': 'docker',
+      'npm-registry': 'npm',
+      'pypi': 'pypi',
+      'apt-release': 'apt',
+      'cargo': 'cargo',
+    };
+    const p = providerMap[ls.type] ?? 'github';
+    setProvider(p);
+    setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
+    if (ls.target) setTarget(ls.target);
+
+    // If it requires an instance URL, pre-fill app URL hint
+    if (tool.requiresInstanceUrl) {
+      setAppUrl(tool.homepage);
+      if (tool.versionSource.urlTemplate) {
+        setAppVersionEndpoint(tool.versionSource.urlTemplate.replace('{{instanceUrl}}', '').replace(/^\//, ''));
+      }
+    }
+
+    // Advance past the picker to step 0
+    setCreateStep(0);
+  }
+
   async function validateSetup() {
     const source = await testConnection();
     const discovered = await discoverCurrentVersion();
@@ -340,7 +403,10 @@ export default function VersionsPage() {
   }
 
   function resetCreateForm() {
-    setCreateStep(0);
+    setCreateStep(-1);
+    setToolSearch('');
+    setToolCategory('');
+    setSelectedTool(null);
     setName('');
     setType('GIT_RELEASE');
     setProvider('github');
@@ -434,7 +500,7 @@ export default function VersionsPage() {
   const total = summary?.items.length ?? 0;
   const size = Number(pageSize);
 
-  const modalProgress = ((createStep + 1) / 4) * 100;
+  const modalProgress = createStep < 0 ? 0 : ((createStep + 1) / 4) * 100;
   const missing: string[] = [];
   if (createStep === 0) {
     if (!name.trim()) missing.push('Name is required.');
@@ -483,7 +549,7 @@ export default function VersionsPage() {
             size="lg"
             actions={
               <div className="flex items-center justify-between w-full">
-                <Button variant="secondary" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
+                <Button variant="secondary" onClick={() => setCreateStep((s) => Math.max(-1, s - 1))} disabled={createStep === -1}>Back</Button>
                 {createStep < 3
                   ? <Button onClick={() => setCreateStep((s) => Math.min(3, s + 1))} disabled={missing.length > 0}>Next</Button>
                   : <Button onClick={createVersionCheck} disabled={missing.length > 0}>Create check</Button>
@@ -504,6 +570,72 @@ export default function VersionsPage() {
                   <span className="text-sm font-semibold text-danger">Missing information</span>
                 </div>
                 {missing.map((m) => <p key={m} className="text-sm text-danger">• {m}</p>)}
+              </div>
+            )}
+
+            {createStep === -1 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-text-primary">Pick a tool from the registry</p>
+                  <button onClick={() => setCreateStep(0)} className="text-xs text-accent hover:underline">Skip → manual config</button>
+                </div>
+                {/* Search + category filter */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                    <input
+                      className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent"
+                      placeholder="Search tools…"
+                      value={toolSearch}
+                      onChange={(e) => setToolSearch(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <select
+                    value={toolCategory}
+                    onChange={(e) => setToolCategory(e.target.value)}
+                    className="px-3 py-2 text-sm bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    <option value="">All categories</option>
+                    {(toolRegistry?.categories ?? []).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Tool grid */}
+                <div className="max-h-80 overflow-y-auto -mx-1 px-1">
+                  {toolRegistry === null ? (
+                    <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
+                  ) : (() => {
+                    const q = toolSearch.toLowerCase();
+                    const filtered = toolRegistry.tools.filter((t) => {
+                      const cat = !toolCategory || t.category === toolCategory;
+                      if (!q) return cat;
+                      return cat && (t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some((tag) => tag.includes(q)));
+                    });
+                    return filtered.length === 0 ? (
+                      <p className="text-sm text-text-secondary text-center py-8">No tools found — try "manual config" to set up a custom check.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {filtered.map((tool) => (
+                          <button
+                            key={tool.id}
+                            onClick={() => applyToolToForm(tool)}
+                            className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
+                          >
+                            <div className="flex items-center gap-2 w-full min-w-0">
+                              <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
+                              {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
+                            </div>
+                            <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 

@@ -30,6 +30,8 @@ model User {
   totpSecret         String?
   totpEnabled        Boolean        @default(false)
   totpRecoveryCodes  String?
+  displayName        String?
+  timezone           String?        @default("UTC")
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -41,8 +43,10 @@ model User {
   sentInvites     InviteToken[]    @relation("invitedBy")
   actorAuditLogs  AuditLog[]       @relation("audit_actor")
   targetAuditLogs AuditLog[]       @relation("audit_target")
-  apiKeys          ApiKey[]
-  statusPages      PublicStatusPage[]
+  apiKeys                 ApiKey[]
+  statusPages             PublicStatusPage[]
+  tags                    Tag[]
+  notificationPreference  NotificationPreference?
 }
 
 model Session {
@@ -86,6 +90,35 @@ model Monitor {
   folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs          MonitorRun[]
   monitorAlerts MonitorAlert[]
+  monitorTags   MonitorTag[]
+
+  @@index([userId])
+  @@index([enabled])
+  @@index([userId, enabled])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorTags MonitorTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model MonitorTag {
+  monitorId String
+  tagId     String
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([monitorId, tagId])
 }
 
 model MonitorRun {
@@ -103,6 +136,8 @@ model MonitorRun {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([monitorId, checkedAt])
+  @@index([userId, checkedAt])
+  @@index([checkedAt])
 }
 
 model AlertChannel {
@@ -184,20 +219,22 @@ model EmailVerificationToken {
 }
 
 model PublicStatusPage {
-  id          String    @id @default(cuid())
-  userId      String
-  slug        String    @unique
-  title       String
-  description String?
-  configJson  Json
-  publishedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  userId       String
+  slug         String   @unique
+  title        String
+  description  String?
+  isPublished  Boolean  @default(false)
+  passwordHash String?
+  layout       Json     @default("{\"widgets\":[]}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([publishedAt])
+  @@index([slug])
+  @@index([isPublished])
 }
 
 model ApiKey {
@@ -209,6 +246,24 @@ model ApiKey {
   lastUsedAt DateTime?
   expiresAt  DateTime?
   createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  notifyOnDown      Boolean  @default(true)
+  notifyOnRecovery  Boolean  @default(true)
+  notifyOnDegraded  Boolean  @default(true)
+  quietHoursEnabled Boolean  @default(false)
+  quietHoursStart   Int      @default(22)
+  quietHoursEnd     Int      @default(8)
+  frequency         String   @default("instant")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

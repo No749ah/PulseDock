@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "pulsedock.fullname" . }}
+  namespace: {{ include "pulsedock.namespace" . }}
+  labels:
+    {{- include "pulsedock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+  {{- if .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      {{- if .Values.ingress.tlsSecretName }}
+      secretName: {{ .Values.ingress.tlsSecretName | quote }}
+      {{- else }}
+      secretName: {{ printf "%s-tls" (include "pulsedock.fullname" .) | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # API traffic (path prefix /api and /health)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "pulsedock.fullname" . }}-api
+                port:
+                  number: {{ .Values.api.port }}
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "pulsedock.fullname" . }}-api
+                port:
+                  number: {{ .Values.api.port }}
+          # All other traffic → web frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "pulsedock.fullname" . }}-web
+                port:
+                  number: {{ .Values.web.port }}
+{{- end }}

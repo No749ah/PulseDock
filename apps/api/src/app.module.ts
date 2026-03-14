@@ -31,6 +31,13 @@ import { V2MonitorsController } from './v2/monitors/monitors.controller';
 import { V2SystemController } from './v2/system/system.controller';
 import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
+import { TagsController } from './tags/tags.controller';
+import { ToolRegistryController } from './tool-registry/tool-registry.controller';
+import { TagsService } from './tags/tags.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
+import { StatusPagesController } from './status-pages/status-pages.controller';
+import { StatusPagesService } from './status-pages/status-pages.service';
 
 @Module({
   imports: [
@@ -54,6 +61,10 @@ import { V2ChecksController } from './v2/checks/checks.controller';
     V2SystemController,
     V2AlertsController,
     V2ChecksController,
+    TagsController,
+    ToolRegistryController,
+    NotificationsController,
+    StatusPagesController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -69,6 +80,9 @@ import { V2ChecksController } from './v2/checks/checks.controller';
     ChecksScheduler,
     RolesGuard,
     ApiKeysService,
+    TagsService,
+    NotificationsService,
+    StatusPagesService,
   ],
 })
 export class AppModule implements NestModule {

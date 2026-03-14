@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
-import { CreateMonitorDto, DiscoverVersionDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -13,9 +13,10 @@ export class MonitorsController {
 
   @Get()
   @ApiOperation({ summary: 'List monitors', description: 'Returns all monitors for the authenticated user.' })
+  @ApiQuery({ name: 'tag', required: false, description: 'Filter monitors by tag name.' })
   @ApiResponse({ status: 200, description: 'Monitor list returned.' })
-  list(@Req() req: { user: { id: string } }) {
-    return this.monitorsService.list(req.user.id);
+  list(@Req() req: { user: { id: string } }, @Query('tag') tag?: string) {
+    return this.monitorsService.list(req.user.id, tag);
   }
 
   @Post()
@@ -51,6 +52,14 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Check triggered.' })
   runNow(@Req() req: { user: { id: string } }, @Body() body: RunMonitorDto) {
     return this.monitorsService.runNow(req.user.id, body.monitorId);
+  }
+
+  @Post('bulk')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Bulk action on monitors', description: 'Apply enable, disable, delete, or run-now to multiple monitors at once.' })
+  @ApiResponse({ status: 200, description: 'Bulk action applied.' })
+  bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
+    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action);
   }
 
   @Post('version-test')
@@ -119,6 +128,17 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Import result returned.' })
   importMonitors(@Req() req: { user: { id: string } }, @Body() body: ImportMonitorsDto) {
     return this.monitorsService.importMonitors(req.user.id, body.monitors);
+  }
+
+  @Post('import-external')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Import from external service',
+    description: 'Parse and import monitors from an Uptime Robot JSON export, BetterUptime JSON export, or a generic CSV file. Duplicate targets (same URL already monitored) are automatically skipped.',
+  })
+  @ApiResponse({ status: 200, description: 'Import result with count of imported, skipped, and errors.' })
+  importExternal(@Req() req: { user: { id: string } }, @Body() body: ImportExternalDto) {
+    return this.monitorsService.importExternal(req.user.id, body.source, body.payload);
   }
 
   @Get(':id/alerts')

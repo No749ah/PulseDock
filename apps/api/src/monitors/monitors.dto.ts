@@ -34,6 +34,12 @@ export class CreateMonitorDto {
 
   @IsOptional()
   folderId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 }
 
 export class UpdateMonitorDto {
@@ -76,6 +82,12 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 }
 
 export class RunMonitorDto {
@@ -185,4 +197,21 @@ export class DiscoverVersionDto {
   @IsString()
   @MaxLength(255)
   openvpnPassword?: string;
+}
+
+export class BulkActionDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsIn(['enable', 'disable', 'delete', 'run'])
+  action!: 'enable' | 'disable' | 'delete' | 'run';
+}
+
+export class ImportExternalDto {
+  @IsIn(['uptime-robot', 'better-uptime', 'csv'])
+  source!: 'uptime-robot' | 'better-uptime' | 'csv';
+
+  /** Raw export payload: JSON object for uptime-robot/better-uptime, CSV string for csv. */
+  payload!: unknown;
 }

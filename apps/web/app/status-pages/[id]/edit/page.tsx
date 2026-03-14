@@ -1,0 +1,731 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Save,
+  Eye,
+  ExternalLink,
+  ChevronLeft,
+  LayoutGrid,
+  Globe,
+  EyeOff,
+  Activity,
+  BarChart2,
+  AlertTriangle,
+  Zap,
+  Type,
+  Minus,
+  Clock,
+  TrendingUp,
+  CheckCircle,
+  Grid,
+  GripVertical,
+  X,
+  Settings,
+} from "lucide-react";
+import { api } from "../../../../lib/api";
+import { getUser } from "../../../../components/auth";
+import { useToast } from "../../../../components/ui/toast";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface Widget {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  config: {
+    monitorId?: string;
+    monitorIds?: string[];
+    label?: string;
+    periodDays?: number;
+    text?: string;
+    [key: string]: unknown;
+  };
+}
+
+interface PageLayout {
+  widgets: Widget[];
+}
+
+interface StatusPage {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  isPublished: boolean;
+  hasPassword: boolean;
+  layout: PageLayout;
+}
+
+interface Monitor {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface WidgetPaletteItem {
+  type: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  category: string;
+  defaultW: number;
+  defaultH: number;
+}
+
+// ── Widget palette ─────────────────────────────────────────────────────────
+
+const WIDGET_PALETTE: WidgetPaletteItem[] = [
+  { type: "overall-system-status", label: "Overall Status", description: "Hero operational / degraded / outage banner", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 2 },
+  { type: "current-status-badge", label: "Status Badge", description: "Green/yellow/red pill for a single monitor", icon: Zap, category: "Status", defaultW: 3, defaultH: 2 },
+  { type: "multi-monitor-status-grid", label: "Monitor Grid", description: "Grid of status badges for multiple monitors", icon: Grid, category: "Status", defaultW: 12, defaultH: 3 },
+  { type: "active-incident-banner", label: "Incident Banner", description: "Full-width banner when something is down", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 2 },
+  { type: "uptime-bar", label: "Uptime Bar", description: "Shows uptime % over a selectable period", icon: Activity, category: "Uptime", defaultW: 6, defaultH: 2 },
+  { type: "uptime-timeline", label: "Uptime Timeline", description: "90-day bar chart (green/red per day)", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
+  { type: "sla-summary", label: "SLA Summary", description: "SLA target vs actual for a period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
+  { type: "response-time-chart", label: "Response Time", description: "Sparkline or area chart of latency", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "check-history-feed", label: "Check History", description: "Live-updating log of recent check results", icon: Clock, category: "Performance", defaultW: 12, defaultH: 4 },
+  { type: "incident-history", label: "Incident History", description: "Paginated list of past incidents", icon: AlertTriangle, category: "Incidents", defaultW: 12, defaultH: 4 },
+  { type: "text-block", label: "Text Block", description: "Free text / markdown for announcements", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "scheduled-maintenance", label: "Maintenance", description: "Shows upcoming maintenance windows", icon: Clock, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
+];
+
+const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
+
+const ROW_H = 80;
+const COL_COUNT = 12;
+
+// ── Palette widget (draggable from sidebar) ──────────────────────────────
+
+function PaletteWidget({ item }: { item: WidgetPaletteItem }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `palette-${item.type}`,
+    data: { source: "palette", widgetType: item.type, paletteItem: item },
+  });
+  const Icon = item.icon;
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={`w-full cursor-grab rounded-xl border border-border bg-bg p-3 text-left transition hover:border-accent/50 hover:bg-accent/5 active:cursor-grabbing ${isDragging ? "opacity-40" : ""}`}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-accent" />
+        <span className="text-xs font-semibold text-text-primary">{item.label}</span>
+      </div>
+      <p className="text-[10px] leading-tight text-text-secondary">{item.description}</p>
+    </div>
+  );
+}
+
+// ── Canvas widget (draggable on canvas) ─────────────────────────────────
+
+interface CanvasWidgetProps {
+  widget: Widget;
+  isSelected: boolean;
+  colWidth: number;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: CanvasWidgetProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `canvas-${widget.id}`,
+    data: { source: "canvas", widget },
+  });
+
+  const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
+  const Icon = paletteItem?.icon ?? LayoutGrid;
+
+  const style: React.CSSProperties = {
+    position: "absolute",
+    left: `${(widget.x / COL_COUNT) * 100}%`,
+    top: widget.y * ROW_H,
+    width: `${(widget.w / COL_COUNT) * 100}%`,
+    height: widget.h * ROW_H,
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 10 : isSelected ? 5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={(e) => { e.stopPropagation(); onSelect(widget.id); }}
+      className={`group rounded-xl border-2 bg-surface transition-colors ${
+        isSelected ? "border-accent shadow-lg shadow-accent/10" : "border-border hover:border-accent/40"
+      }`}
+    >
+      {/* Header bar with drag handle + title */}
+      <div className="flex items-center gap-1 border-b border-border/60 px-3 py-2">
+        <div
+          {...listeners}
+          {...attributes}
+          className="cursor-grab p-0.5 text-text-secondary/40 hover:text-text-secondary active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </div>
+        <Icon className="h-3 w-3 text-accent/70" />
+        <span className="flex-1 text-xs font-medium text-text-secondary">
+          {paletteItem?.label ?? widget.type}
+        </span>
+        {widget.config.label && (
+          <span className="truncate max-w-[80px] text-xs text-text-secondary/60">
+            {widget.config.label as string}
+          </span>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(widget.id); }}
+          className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      {/* Widget body placeholder */}
+      <div className="flex flex-1 items-center justify-center p-3">
+        <span className="text-xs text-text-secondary/40">{paletteItem?.description}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Canvas drop zone ─────────────────────────────────────────────────────
+
+interface CanvasProps {
+  widgets: Widget[];
+  selectedId: string | null;
+  isDraggingOverCanvas: boolean;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+  onSelect: (id: string | null) => void;
+  onDelete: (id: string) => void;
+}
+
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete }: CanvasProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
+
+  const maxY = widgets.length > 0
+    ? Math.max(...widgets.map((w) => w.y + w.h))
+    : 0;
+  const minHeight = Math.max(maxY * ROW_H + ROW_H * 4, 480);
+
+  // Combine refs
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    if (canvasRef) {
+      (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }
+  }, [setNodeRef, canvasRef]);
+
+  return (
+    <div
+      ref={combinedRef}
+      className={`relative w-full transition-colors ${
+        isOver ? "bg-accent/5" : ""
+      }`}
+      style={{ minHeight }}
+      onClick={() => onSelect(null)}
+    >
+      {/* Grid guide lines when dragging */}
+      {isDraggingOverCanvas && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(to right, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
+              repeating-linear-gradient(to bottom, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent ${ROW_H}px)
+            `,
+          }}
+        />
+      )}
+
+      {widgets.length === 0 && !isOver && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
+            <LayoutGrid className="h-8 w-8 text-accent/60" />
+          </div>
+          <h3 className="text-base font-semibold text-text-primary">Drag widgets here</h3>
+          <p className="mt-2 max-w-xs text-center text-sm text-text-secondary">
+            Drag widgets from the left panel to build your status page.
+          </p>
+        </div>
+      )}
+
+      {isOver && widgets.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl border-2 border-dashed border-accent/40">
+          <p className="text-sm font-medium text-accent/70">Drop to add widget</p>
+        </div>
+      )}
+
+      {/* Render widgets */}
+      {widgets.map((widget) => {
+        const colWidth = canvasRef.current
+          ? canvasRef.current.getBoundingClientRect().width / COL_COUNT
+          : 0;
+        return (
+          <CanvasWidget
+            key={widget.id}
+            widget={widget}
+            isSelected={selectedId === widget.id}
+            colWidth={colWidth}
+            onSelect={onSelect}
+            onDelete={onDelete}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Widget config panel ──────────────────────────────────────────────────
+
+interface ConfigPanelProps {
+  widget: Widget | null;
+  monitors: Monitor[];
+  onChange: (config: Widget["config"]) => void;
+}
+
+function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
+  if (!widget) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-4 text-center">
+        <p className="text-xs text-text-secondary">Click a widget on the canvas to configure it</p>
+      </div>
+    );
+  }
+
+  const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
+
+  // widget is non-null here — early return above handles the null case
+  const w = widget!;
+  function update(key: string, value: unknown) {
+    onChange({ ...w.config, [key]: value });
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div>
+        <p className="mb-1 text-xs font-semibold text-text-primary">{paletteItem?.label ?? w.type}</p>
+        <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
+      </div>
+
+      {/* Label */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
+        <input
+          type="text"
+          value={(w.config.label as string) ?? ""}
+          onChange={(e) => update("label", e.target.value || undefined)}
+          placeholder="Optional custom label"
+          className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+        />
+      </div>
+
+      {/* Monitor picker */}
+      {["current-status-badge", "uptime-bar", "sla-summary", "response-time-chart", "uptime-timeline"].includes(w.type) && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
+          <select
+            value={(w.config.monitorId as string) ?? ""}
+            onChange={(e) => update("monitorId", e.target.value || undefined)}
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">— Select monitor —</option>
+            {monitors.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Period days */}
+      {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>
+          <select
+            value={(w.config.periodDays as number) ?? 30}
+            onChange={(e) => update("periodDays", Number(e.target.value))}
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+        </div>
+      )}
+
+      {/* Text content */}
+      {["text-block", "scheduled-maintenance"].includes(w.type) && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Content</label>
+          <textarea
+            value={(w.config.text as string) ?? ""}
+            onChange={(e) => update("text", e.target.value || undefined)}
+            placeholder="Enter text or markdown…"
+            rows={4}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+        </div>
+      )}
+
+      {/* Size info */}
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5">
+        <p className="text-[10px] font-medium text-text-secondary">Size</p>
+        <p className="mt-0.5 text-xs text-text-primary">
+          {widget.w} col × {widget.h} row{widget.h > 1 ? "s" : ""} &nbsp;·&nbsp; ({widget.x}, {widget.y})
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────────────
+
+export default function StatusPageEditorPage() {
+  const params = useParams();
+  const router = useRouter();
+  const toastCtx = useToast();
+  const id = params.id as string;
+
+  const [page, setPage] = useState<StatusPage | null>(null);
+  const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("Status");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  useEffect(() => {
+    const u = getUser();
+    if (!u) router.replace("/login");
+    fetchPage();
+    fetchMonitors();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  async function fetchPage() {
+    setLoading(true);
+    try {
+      const data = await api<StatusPage>(`/v1/status-pages/${id}`);
+      setPage(data);
+      setWidgets(data.layout?.widgets ?? []);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+        toastCtx.error("Status page not found");
+        router.push("/status-pages");
+      } else if (msg.includes("403") || msg.toLowerCase().includes("forbidden")) {
+        toastCtx.error("Access denied");
+        router.push("/status-pages");
+      } else {
+        toastCtx.error("Failed to load status page");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchMonitors() {
+    try {
+      const data = await api<Monitor[]>("/v1/monitors");
+      setMonitors(data);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  const handleSave = useCallback(async () => {
+    if (!page) return;
+    setSaving(true);
+    try {
+      await api(`/v1/status-pages/${id}`, undefined, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layout: { widgets } }),
+      });
+      toastCtx.success("Saved");
+    } catch {
+      toastCtx.error("Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }, [page, id, widgets, toastCtx]);
+
+  async function handleTogglePublish() {
+    if (!page) return;
+    setPublishing(true);
+    try {
+      const updated = await api<{ isPublished: boolean }>(`/v1/status-pages/${id}/publish`, undefined, { method: "POST" });
+      setPage((prev) => prev ? { ...prev, isPublished: updated.isPublished } : prev);
+      toastCtx.success(updated.isPublished ? "Page published — it's now live!" : "Page unpublished");
+    } catch {
+      toastCtx.error("Failed to update publish state");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  function autoPlace(w: number, h: number): { x: number; y: number } {
+    if (widgets.length === 0) return { x: 0, y: 0 };
+    // Stack below all existing widgets
+    const maxY = Math.max(...widgets.map((wg) => wg.y + wg.h));
+    return { x: 0, y: maxY };
+  }
+
+  function addWidget(type: string) {
+    const paletteItem = WIDGET_PALETTE.find((p) => p.type === type);
+    if (!paletteItem) return;
+    const { x, y } = autoPlace(paletteItem.defaultW, paletteItem.defaultH);
+    const newWidget: Widget = {
+      id: `${type}-${Date.now()}`,
+      type,
+      x,
+      y,
+      w: paletteItem.defaultW,
+      h: paletteItem.defaultH,
+      config: {},
+    };
+    setWidgets((prev) => [...prev, newWidget]);
+    setSelectedId(newWidget.id);
+  }
+
+  function deleteWidget(widgetId: string) {
+    setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
+    if (selectedId === widgetId) setSelectedId(null);
+  }
+
+  function updateWidgetConfig(config: Widget["config"]) {
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === selectedId ? { ...w, config } : w))
+    );
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id as string);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null);
+    const { active, delta, over } = event;
+    const activeId = active.id as string;
+
+    if (activeId.startsWith("palette-")) {
+      // Drop from palette onto canvas
+      if (over?.id === "canvas") {
+        const type = activeId.replace("palette-", "");
+        addWidget(type);
+      }
+    } else if (activeId.startsWith("canvas-")) {
+      // Move existing widget
+      const widgetId = activeId.replace("canvas-", "");
+      if (!canvasRef.current) return;
+      const containerWidth = canvasRef.current.getBoundingClientRect().width;
+      const colWidth = containerWidth / COL_COUNT;
+      const deltaCol = Math.round(delta.x / colWidth);
+      const deltaRow = Math.round(delta.y / ROW_H);
+
+      if (deltaCol === 0 && deltaRow === 0) return;
+
+      setWidgets((prev) =>
+        prev.map((w) => {
+          if (w.id !== widgetId) return w;
+          const newX = Math.max(0, Math.min(COL_COUNT - w.w, w.x + deltaCol));
+          const newY = Math.max(0, w.y + deltaRow);
+          return { ...w, x: newX, y: newY };
+        })
+      );
+    }
+  }
+
+  const selectedWidget = widgets.find((w) => w.id === selectedId) ?? null;
+  const activeDragPaletteItem = activeDragId?.startsWith("palette-")
+    ? WIDGET_PALETTE.find((p) => p.type === activeDragId.replace("palette-", ""))
+    : null;
+  const activeDragCanvasWidget = activeDragId?.startsWith("canvas-")
+    ? widgets.find((w) => w.id === activeDragId.replace("canvas-", ""))
+    : null;
+  const isDraggingOverCanvas = !!activeDragId;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-bg">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!page) return null;
+
+  const publicBase = typeof window !== "undefined" ? window.location.origin : "";
+
+  return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-screen flex-col bg-bg text-text-primary">
+        {/* Toolbar */}
+        <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-sm">
+          <button
+            onClick={() => router.push("/status-pages")}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-text-secondary transition hover:text-text-primary"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Pages
+          </button>
+          <div className="mx-2 h-4 w-px bg-border" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-semibold text-text-primary">{page.title}</h1>
+            <div className="flex items-center gap-2">
+              <code className="font-mono text-xs text-text-secondary">/status/{page.slug}</code>
+              {page.isPublished && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                  Live
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-secondary/60">{widgets.length} widget{widgets.length !== 1 ? "s" : ""}</span>
+            {page.isPublished && (
+              <a
+                href={`${publicBase}/status/${page.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Preview
+              </a>
+            )}
+            <button
+              onClick={handleTogglePublish}
+              disabled={publishing}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                page.isPublished
+                  ? "border-border bg-bg text-text-secondary hover:border-red-500/40 hover:text-red-400"
+                  : "border-green-500/40 bg-green-500/10 text-green-400 hover:bg-green-500/20"
+              }`}
+            >
+              {page.isPublished ? (
+                <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
+              ) : (
+                <><Eye className="h-3.5 w-3.5" /> Publish</>
+              )}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </header>
+
+        {/* Editor body */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Widget Palette — left sidebar */}
+          <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-surface">
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Widgets</p>
+            </div>
+            {/* Category tabs */}
+            <div className="flex flex-wrap gap-1 border-b border-border p-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                    activeCategory === cat
+                      ? "bg-accent text-white"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {/* Widget list */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {WIDGET_PALETTE.filter((w) => w.category === activeCategory).map((widget) => (
+                <PaletteWidget key={widget.type} item={widget} />
+              ))}
+            </div>
+          </aside>
+
+          {/* Canvas */}
+          <main className="flex-1 overflow-auto bg-bg/50 p-6">
+            <CanvasDropZone
+              widgets={widgets}
+              selectedId={selectedId}
+              isDraggingOverCanvas={isDraggingOverCanvas}
+              canvasRef={canvasRef}
+              onSelect={setSelectedId}
+              onDelete={deleteWidget}
+            />
+          </main>
+
+          {/* Right panel — Properties */}
+          <aside className="flex w-60 shrink-0 flex-col border-l border-border bg-surface">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+              <Settings className="h-3.5 w-3.5 text-text-secondary" />
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Properties</p>
+            </div>
+            <ConfigPanel
+              widget={selectedWidget}
+              monitors={monitors}
+              onChange={updateWidgetConfig}
+            />
+          </aside>
+        </div>
+      </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeDragPaletteItem && (
+          <div className="cursor-grabbing rounded-xl border border-accent/50 bg-surface px-3 py-2 shadow-xl shadow-black/30">
+            <div className="flex items-center gap-2">
+              <activeDragPaletteItem.icon className="h-3.5 w-3.5 text-accent" />
+              <span className="text-xs font-semibold text-text-primary">{activeDragPaletteItem.label}</span>
+            </div>
+          </div>
+        )}
+        {activeDragCanvasWidget && (
+          <div className="cursor-grabbing rounded-xl border-2 border-accent/60 bg-surface shadow-xl shadow-black/30 px-4 py-3 opacity-90">
+            <span className="text-xs font-medium text-text-primary">
+              {WIDGET_PALETTE.find((p) => p.type === activeDragCanvasWidget.type)?.label ?? activeDragCanvasWidget.type}
+            </span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}

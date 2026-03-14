@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, AlertTriangle, CheckCircle, Database, RefreshCw, Server, XCircle, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Database, RefreshCw, Server, Users, Monitor, BarChart2, XCircle, Zap } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
 import { AppModal } from '../../components/ui/modal-framework';
@@ -198,6 +198,64 @@ function SystemHealthWidget() {
   );
 }
 
+type SystemStatsData = {
+  users: { total: number; active: number };
+  monitors: { total: number; enabled: number };
+  checksToday: number;
+  failedToday: number;
+  errorRatePct: number;
+  generatedAt: string;
+};
+
+function SystemStatsWidget() {
+  const [stats, setStats] = useState<SystemStatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<SystemStatsData>('/v1/admin/stats')
+      .then(setStats)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <Card className="mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-16 bg-surface-elevated rounded-xl animate-pulse" />
+        ))}
+      </div>
+    </Card>
+  );
+
+  if (!stats) return null;
+
+  const tiles = [
+    { label: 'Total users', value: stats.users.total, sub: `${stats.users.active} active`, icon: Users, color: 'text-accent' },
+    { label: 'Total monitors', value: stats.monitors.total, sub: `${stats.monitors.enabled} enabled`, icon: Monitor, color: 'text-accent' },
+    { label: 'Checks today', value: stats.checksToday, sub: 'since midnight UTC', icon: BarChart2, color: 'text-success' },
+    { label: 'Failed today', value: stats.failedToday, sub: `${stats.errorRatePct}% error rate`, icon: AlertTriangle, color: stats.failedToday > 0 ? 'text-danger' : 'text-text-secondary' },
+  ];
+
+  return (
+    <Card className="mb-5">
+      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">System statistics</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {tiles.map(({ label, value, sub, icon: Icon, color }) => (
+          <div key={label} className="flex flex-col gap-1 rounded-xl bg-surface-elevated border border-border p-4">
+            <div className="flex items-center gap-2">
+              <Icon className={`w-4 h-4 ${color}`} />
+              <span className="text-xs text-text-secondary">{label}</span>
+            </div>
+            <span className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</span>
+            <span className="text-xs text-text-secondary">{sub}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const user = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
@@ -317,6 +375,7 @@ export default function AdminPage() {
     <AppFrame title="Admin" subtitle="Role management, secure onboarding and invite links.">
       {loading ? <LoadingState label="Loading admin data..." /> : <>
       <SystemHealthWidget />
+      <SystemStatsWidget />
       <AppModal opened={editUserOpen} onClose={() => setEditUserOpen(false)} title="Edit user email">
         <div className="space-y-4">
           <TextInput label="Email" value={editUserEmail} onChange={(e) => setEditUserEmail(e.currentTarget.value)} />

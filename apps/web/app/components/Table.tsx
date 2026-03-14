@@ -29,9 +29,9 @@ export function TableBody({ children }: { children: ReactNode }) {
   return <tbody>{children}</tbody>;
 }
 
-export function TableRow({ children, hover = true }: { children: ReactNode; hover?: boolean }) {
+export function TableRow({ children, hover = true, className = "" }: { children: ReactNode; hover?: boolean; className?: string }) {
   return (
-    <tr className={`border-b border-border last:border-b-0 ${hover ? "hover:bg-surface-hover transition-colors" : ""}`}>
+    <tr className={`border-b border-border last:border-b-0 ${hover ? "hover:bg-surface-hover transition-colors" : ""} ${className}`}>
       {children}
     </tr>
   );

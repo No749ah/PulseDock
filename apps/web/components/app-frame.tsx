@@ -45,7 +45,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors', label: 'Monitors', icon: Activity },
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/projects', label: 'Projects', icon: Folder },
-      { href: '/status/demo', label: 'Public Status', icon: Globe },
+      { href: '/status-pages', label: 'Status Pages', icon: Globe },
     ],
   },
   {

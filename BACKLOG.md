@@ -294,7 +294,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [~] **Increase test coverage to >90%** — 440 tests passing (up from 294). Coverage at 62.9% (up from 52.6%). Added: dashboard controller (5%→95%), auth controller (28%→45%), monitors controller (15%→covered), AuthGuard, DataService, PluginRegistry, testVersionConnection (all providers). Remaining gaps: src/auth service (38%), src/monitors service (37%), src/checks service (55%). Continue each cycle.
+- [x] **Increase test coverage to >90%** — 706 tests passing. Line coverage at 90.03%, statement coverage 87.79%. auth.service 87%, checks.service 94%, monitors.service 83%, all controllers at 100%. Achieved via systematic subagent coverage sprints across all major services.
 - [ ] **E2E tests (Playwright)** — Add basic E2E tests for: login, create monitor, view dashboard, receive alert. Run in CI.
 - [ ] **API documentation improvements** — Ensure all endpoints have Swagger descriptions, request/response examples, error codes documented.
 - [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

@@ -22,6 +22,7 @@
     "restart:web": "bash ./scripts/stop-web.sh && bash ./scripts/start-web.sh",
     "restart:api": "bash ./scripts/stop-api.sh && bash ./scripts/start-api.sh",
     "restart": "npm run restart:api && sleep 2 && npm run restart:web",
+    "test:e2e": "npm run test -w @pulsedock/e2e",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

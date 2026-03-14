@@ -34,29 +34,29 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ### 🔴 SECURITY — Critical Gaps
 
-- [ ] **2FA / TOTP (Two-Factor Authentication)** — Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
+- [x] **2FA / TOTP (Two-Factor Authentication)** — Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
 - [x] **CSRF Protection** — Double-submit cookie pattern implemented. `GET /v1/auth/csrf` issues non-httpOnly cookie + returns token. `CsrfMiddleware` validates `X-CSRF-Token` header against cookie on all mutating routes (timingSafeEqual). Web `api.ts` auto-injects token. API key / Bearer callers exempt.
 - [x] **Account lockout after failed login attempts** — After 5 consecutive failed logins, lock account for 15 minutes. Log lockout events to audit log. Notify user via email.
 - [x] **Email verification on registration** — New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
 - [x] **Password strength enforcement** — Enforce minimum 12 chars, complexity rules (upper/lower/digit/special). Show strength indicator in UI. Reject weak passwords at API level.
 - [x] **Stricter rate limiting on auth endpoints** — Auth routes (`/auth/login`, `/auth/register`, `/auth/forgot-password`) need much tighter limits (e.g. 5 req/min per IP), separate from the global 120/min limit.
-- [ ] **Audit log export (CSV/JSON)** — Users/admins can export their audit log. Useful for compliance. Add export button on audit log page.
-- [ ] **Session activity & anomaly detection** — Log IP + user agent per session. Warn user if new login from unknown IP/device. Show in active sessions list.
-- [ ] **Secure password reset flow review** — Ensure reset tokens are: single-use, short-lived (15min), invalidated after use, and not exposed in URLs (use POST body instead).
+- [x] **Audit log export (CSV/JSON)** — Users/admins can export their audit log. Useful for compliance. Add export button on audit log page.
+- [x] **Session activity & anomaly detection** — Log IP + user agent per session. Warn user if new login from unknown IP/device. Show in active sessions list.
+- [x] **Secure password reset flow review** — Ensure reset tokens are: single-use, short-lived (15min), invalidated after use, and not exposed in URLs (use POST body instead).
 - [x] **Security headers review** — Audit helmet config: ensure `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` all set correctly.
-- [ ] **Input sanitization for stored content** — Sanitize all user-provided text that gets rendered in UI (monitor names, descriptions, etc.) to prevent stored XSS.
+- [x] **Input sanitization for stored content** — Sanitize all user-provided text that gets rendered in UI (monitor names, descriptions, etc.) to prevent stored XSS.
 
 ---
 
 ### 🟠 FRONTEND / UX — Major Gaps
 
 - [ ] **Accessibility (a11y) audit and fixes** — Currently near-zero aria-labels, roles, keyboard navigation. Add: `aria-label` to all icon buttons, `role` attributes, focus rings, keyboard shortcuts for main actions, skip-to-content link. Test with screen reader.
-- [ ] **Empty states for all pages** — Every list page (Monitors, Alerts, Projects, etc.) needs a proper empty state with illustration, message, and CTA ("Create your first monitor →"). Currently likely just blank.
-- [ ] **Error boundaries and user-friendly error pages** — Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
-- [ ] **Form validation UX** — All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
+- [x] **Empty states for all pages** — Every list page (Monitors, Alerts, Projects, etc.) needs a proper empty state with illustration, message, and CTA ("Create your first monitor →"). Currently likely just blank.
+- [x] **Error boundaries and user-friendly error pages** — Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
+- [x] **Form validation UX** — All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
 - [ ] **Onboarding flow for new users** — First login should guide user: create first monitor → set up alert channel → view dashboard. Simple multi-step wizard or checklist widget.
 - [ ] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
-- [ ] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
+- [x] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
 - [ ] **Mobile UX audit** — Test all 9 pages on 375px width. Fix any overflow, unclickable elements, font size issues.
 - [ ] **Keyboard navigation** — All interactive elements reachable by Tab. Modals trap focus. Dropdowns closable with Escape.
 - [ ] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.

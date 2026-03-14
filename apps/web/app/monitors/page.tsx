@@ -107,6 +107,8 @@ export default function MonitorsPage() {
     pluginId: "",
     expectedText: "",
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
 
   // import/export
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -230,7 +232,39 @@ export default function MonitorsPage() {
     }
   };
 
+  const validateMonitorForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    const name = formData.name.trim();
+    const target = formData.target.trim();
+
+    if (!name) {
+      errors.name = "Name is required";
+    } else if (name.length < 2) {
+      errors.name = "Name must be at least 2 characters";
+    } else if (name.length > 100) {
+      errors.name = "Name must be 100 characters or less";
+    }
+
+    if (!target) {
+      errors.target = "Target is required";
+    } else if (formData.type === "HTTP") {
+      try { new URL(target); } catch { errors.target = "Must be a valid URL (e.g. https://example.com)"; }
+    }
+
+    if (formData.intervalSec < 30) errors.interval = "Minimum interval is 30 seconds";
+    if (formData.intervalSec > 3600) errors.interval = "Maximum interval is 3600 seconds (1 hour)";
+
+    if (formData.pluginId === "http.response-match" && !formData.expectedText.trim()) {
+      errors.expectedText = "Expected text is required for this plugin";
+    }
+
+    setFormErrors(errors);
+    setFormTouched({ name: true, target: true, interval: true, expectedText: true });
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreate = async () => {
+    if (!validateMonitorForm()) return;
     try {
       const config: Record<string, unknown> = {};
       if (formData.pluginId) config.pluginId = formData.pluginId;
@@ -259,6 +293,7 @@ export default function MonitorsPage() {
 
   const handleUpdate = async () => {
     if (!editingMonitor) return;
+    if (!validateMonitorForm()) return;
     try {
       const config: Record<string, unknown> = {};
       if (formData.pluginId) config.pluginId = formData.pluginId;
@@ -418,6 +453,8 @@ export default function MonitorsPage() {
                   setModalMode("create");
                   setEditingMonitor(null);
                   setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                  setFormErrors({});
+                  setFormTouched({});
                   setShowModal(true);
                 }}
                 className="flex items-center gap-2"
@@ -469,7 +506,11 @@ export default function MonitorsPage() {
               <Button
                 size="lg"
                 onClick={() => {
+                  setModalMode("create");
+                  setEditingMonitor(null);
                   setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                  setFormErrors({});
+                  setFormTouched({});
                   setShowModal(true);
                 }}
               >
@@ -542,13 +583,16 @@ export default function MonitorsPage() {
                                     pluginId: String(monitor.config?.pluginId ?? ""),
                                     expectedText: String(monitor.config?.expectedText ?? ""),
                                   });
+                                  setFormErrors({});
+                                  setFormTouched({});
                                   setShowModal(true);
                                 }}
+                                aria-label={`Edit monitor ${monitor.name}`}
                                 title="Edit monitor"
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger">
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger" aria-label={`Delete monitor ${monitor.name}`} title="Delete monitor">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
@@ -612,7 +656,7 @@ export default function MonitorsPage() {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => { setShowModal(false); setEditingMonitor(null); }}
+        onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); }}
         title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
         size="md"
         actions={
@@ -628,14 +672,26 @@ export default function MonitorsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Monitor Name</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Monitor Name <span className="text-danger" aria-hidden="true">*</span>
+            </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={inputClass}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (formTouched.name) setFormErrors((prev) => ({ ...prev, name: e.target.value.trim().length < 2 ? "Name must be at least 2 characters" : "" }));
+              }}
+              onBlur={() => setFormTouched((t) => ({ ...t, name: true }))}
+              className={`${inputClass} ${formTouched.name && formErrors.name ? "border-danger focus:ring-danger" : ""}`}
               placeholder="My API"
+              aria-required="true"
+              aria-invalid={formTouched.name && !!formErrors.name}
+              aria-describedby={formErrors.name ? "name-error" : undefined}
             />
+            {formTouched.name && formErrors.name && (
+              <p id="name-error" role="alert" className="mt-1 text-xs text-danger">{formErrors.name}</p>
+            )}
           </div>
 
           <div>
@@ -679,41 +735,84 @@ export default function MonitorsPage() {
 
           {formData.pluginId === "http.response-match" && (
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Expected response text</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Expected response text <span className="text-danger" aria-hidden="true">*</span>
+              </label>
               <input
                 type="text"
                 value={formData.expectedText}
-                onChange={(e) => setFormData({ ...formData, expectedText: e.target.value })}
-                className={inputClass}
+                onChange={(e) => {
+                  setFormData({ ...formData, expectedText: e.target.value });
+                  if (formTouched.expectedText) setFormErrors((prev) => ({ ...prev, expectedText: !e.target.value.trim() ? "Expected text is required" : "" }));
+                }}
+                onBlur={() => setFormTouched((t) => ({ ...t, expectedText: true }))}
+                className={`${inputClass} ${formTouched.expectedText && formErrors.expectedText ? "border-danger focus:ring-danger" : ""}`}
                 placeholder={selectedPlugin?.configFields?.[0]?.placeholder ?? "OK"}
+                aria-invalid={formTouched.expectedText && !!formErrors.expectedText}
               />
-              <p className="mt-1 text-xs text-text-secondary">
-                {selectedPlugin?.configFields?.[0]?.helpText ?? "Case-sensitive substring that must be present in the response body."}
-              </p>
+              {formTouched.expectedText && formErrors.expectedText ? (
+                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.expectedText}</p>
+              ) : (
+                <p className="mt-1 text-xs text-text-secondary">
+                  {selectedPlugin?.configFields?.[0]?.helpText ?? "Case-sensitive substring that must be present in the response body."}
+                </p>
+              )}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Target</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Target <span className="text-danger" aria-hidden="true">*</span>
+            </label>
             <input
               type="text"
               value={formData.target}
-              onChange={(e) => setFormData({ ...formData, target: e.target.value })}
-              className={inputClass}
-              placeholder="https://api.example.com/health"
+              onChange={(e) => {
+                setFormData({ ...formData, target: e.target.value });
+                if (formTouched.target) {
+                  let err = "";
+                  if (!e.target.value.trim()) err = "Target is required";
+                  else if (formData.type === "HTTP") { try { new URL(e.target.value.trim()); } catch { err = "Must be a valid URL"; } }
+                  setFormErrors((prev) => ({ ...prev, target: err }));
+                }
+              }}
+              onBlur={() => setFormTouched((t) => ({ ...t, target: true }))}
+              className={`${inputClass} ${formTouched.target && formErrors.target ? "border-danger focus:ring-danger" : ""}`}
+              placeholder={targetPlaceholder(formData.type)}
+              aria-required="true"
+              aria-invalid={formTouched.target && !!formErrors.target}
+              aria-describedby={formErrors.target ? "target-error" : "target-hint"}
             />
+            {formTouched.target && formErrors.target ? (
+              <p id="target-error" role="alert" className="mt-1 text-xs text-danger">{formErrors.target}</p>
+            ) : (
+              <p id="target-hint" className="mt-1 text-xs text-text-secondary">{targetHelperText(formData.type)}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Check Interval (seconds)</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
+            </label>
             <input
               type="number"
               min="30"
               max="3600"
               value={formData.intervalSec}
-              onChange={(e) => setFormData({ ...formData, intervalSec: parseInt(e.target.value) })}
-              className={inputClass}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setFormData({ ...formData, intervalSec: val });
+                if (formTouched.interval) setFormErrors((prev) => ({ ...prev, interval: val < 30 ? "Min 30s" : val > 3600 ? "Max 3600s" : "" }));
+              }}
+              onBlur={() => setFormTouched((t) => ({ ...t, interval: true }))}
+              className={`${inputClass} ${formTouched.interval && formErrors.interval ? "border-danger focus:ring-danger" : ""}`}
+              aria-invalid={formTouched.interval && !!formErrors.interval}
             />
+            {formTouched.interval && formErrors.interval ? (
+              <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
+            ) : (
+              <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
+            )}
           </div>
 
           <label className="flex items-center gap-3 py-1">

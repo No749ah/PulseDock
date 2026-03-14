@@ -219,20 +219,22 @@ model EmailVerificationToken {
 }
 
 model PublicStatusPage {
-  id          String    @id @default(cuid())
-  userId      String
-  slug        String    @unique
-  title       String
-  description String?
-  configJson  Json
-  publishedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  userId       String
+  slug         String   @unique
+  title        String
+  description  String?
+  isPublished  Boolean  @default(false)
+  passwordHash String?
+  layout       Json     @default("{\"widgets\":[]}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([publishedAt])
+  @@index([slug])
+  @@index([isPublished])
 }
 
 model ApiKey {

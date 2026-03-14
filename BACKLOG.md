@@ -114,6 +114,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Codebase:** 108 tests passing (98 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 8 pages 200)
-- **Production Readiness:** ~65-70% — All security gaps closed (2FA, CSRF, lockout, rate limiting, password strength, audit log, session anomaly detection, input sanitization), full accessibility foundation (focus traps, aria roles, skip-to-content, focus-visible rings), form validation UX on monitors, all alert channels (discord/slack/telegram/webhook) working
-- **Remaining:** Onboarding flow, loading states audit, mobile UX audit, dark mode audit, more version providers, response time tracking, check history charts, performance profiling, E2E tests, i18n
+- **Production Readiness:** ~70% — All security gaps closed (2FA, CSRF, lockout, rate limiting, password strength, audit log, session anomaly detection, input sanitization), full accessibility foundation, public status page polished (sparklines, incident history, per-monitor uptime), all alert channels working
+- **Remaining:** Monitor groups/tags, bulk actions, monitor templates, i18n, user profile improvements, admin dashboard stats, notification preferences, import from competitors, test coverage >90%, E2E tests (Playwright), performance profiling, log rotation, Helm chart
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

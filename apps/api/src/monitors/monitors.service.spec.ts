@@ -829,6 +829,124 @@ describe('testVersionConnection()', () => {
     const result = await service.testVersionConnection({ provider: 'apt', target: '' });
     expect(result).toMatchObject({ ok: false });
   });
+
+  // ── GitLab provider in testVersionConnection ──────────────────────────────
+
+  it('returns version from GitLab releases endpoint', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ tag_name: 'v2.5.0' }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'gitlab', target: 'gitlab:mygroup/myproject' });
+    expect(result).toMatchObject({ ok: true, latestVersion: 'v2.5.0' });
+  });
+
+  it('returns error for invalid GitLab target', async () => {
+    const result = await service.testVersionConnection({ provider: 'gitlab', target: 'not-valid' });
+    expect(result).toMatchObject({ ok: false });
+    expect((result as Record<string, unknown>).message).toContain('Invalid GitLab target');
+  });
+
+  it('returns error when GitLab API fails', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
+
+    const result = await service.testVersionConnection({ provider: 'gitlab', target: 'gitlab:group/project' });
+    expect(result).toMatchObject({ ok: false, unauthorized: true });
+  });
+
+  it('includes Private-Token header when GitLab token provided', async () => {
+    const capturedHeaders: Record<string, string>[] = [];
+    fetchMock.mockImplementation((_url: string, opts?: { headers?: Record<string, string> }) => {
+      capturedHeaders.push(opts?.headers ?? {});
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ tag_name: 'v1.0.0' }),
+      });
+    });
+
+    await service.testVersionConnection({ provider: 'gitlab', target: 'gitlab:group/project', token: 'glpat-secret' });
+    expect(capturedHeaders[0]['PRIVATE-TOKEN']).toBe('glpat-secret');
+  });
+
+  it('returns APT fallback to first version when all are prerelease', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        versions: [
+          { version: '2.0.0-beta1' },
+          { version: '1.9.0-rc1' },
+        ],
+      }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'apt', target: 'mypackage' });
+    expect(result).toMatchObject({ ok: true, latestVersion: '2.0.0-beta1' });
+  });
+
+  it('returns null latestVersion when APT has no versions in response', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ versions: [] }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'apt', target: 'emptypackage' });
+    expect(result).toMatchObject({ ok: true, latestVersion: null });
+  });
+
+  it('returns version from GitHub with token (Authorization header)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ tag_name: 'v3.0.0' }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'github', target: 'owner/repo', token: 'ghp_token123' });
+    expect(result).toMatchObject({ ok: true, latestVersion: 'v3.0.0' });
+  });
+
+  it('returns error when GitHub tags lookup also fails (after 404 on releases)', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 404 }) // releases/latest
+      .mockResolvedValueOnce({ ok: false, status: 500 }); // tags
+
+    const result = await service.testVersionConnection({ provider: 'github', target: 'owner/repo' });
+    expect(result).toMatchObject({ ok: false });
+  });
+});
+
+// ── discoverCurrentVersion — catch block via fetch throwing ──────────────────
+
+describe('discoverCurrentVersion() — fetch throws (catch path in detectDeployedVersion)', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns manual strategy when all fetch calls throw (catch block covered)', async () => {
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+    });
+
+    // fetch throws → catch { continue; } path is taken
+    // All endpoints fail → returns manual strategy
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+  });
 });
 
 // ── bulkAction() ─────────────────────────────────────────────────────────────
@@ -1296,5 +1414,206 @@ describe('discoverCurrentVersion()', () => {
     expect((result as Record<string, unknown>).suggestions).toEqual(
       expect.arrayContaining(['latest', 'stable']),
     );
+  });
+});
+
+// ── importExternal — extra branch coverage ────────────────────────────────────
+
+describe('importExternal — additional branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('hits default switch branch when unknown source is provided', async () => {
+    // @ts-expect-error testing runtime unknown source
+    const result = await service.importExternal('user-1', 'unknown-source', {});
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('records errors array when monitor creation throws', async () => {
+    const data = {
+      monitors: [
+        { friendly_name: 'Failing', url: 'https://will-fail.com', type: 1, interval: 300, status: 2 },
+      ],
+    };
+    prisma.monitor.findFirst.mockResolvedValue(null); // no duplicate
+    prisma.monitor.create.mockRejectedValue(new Error('DB constraint violated'));
+
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.imported).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({ name: 'Failing', error: 'DB constraint violated' });
+  });
+
+  it('records non-Error exception message in errors array', async () => {
+    const data = {
+      monitors: [
+        { friendly_name: 'Throws', url: 'https://throws.com', type: 1, interval: 300, status: 2 },
+      ],
+    };
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockRejectedValue('string error');
+
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.errors[0]).toMatchObject({ error: 'string error' });
+  });
+
+  it('imports Uptime Robot data as a plain array (not wrapped in {monitors:[]})', async () => {
+    const rawArray = [
+      { friendly_name: 'Site A', url: 'https://site-a.com', type: 1, interval: 60, status: 2 },
+      { friendly_name: 'Site B', url: 'https://site-b.com', type: 1, interval: 120, status: 2 },
+    ];
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name }))
+    );
+
+    const result = await service.importExternal('user-1', 'uptime-robot', rawArray);
+    expect(result.imported).toBe(2);
+  });
+
+  it('imports Uptime Robot monitor with disabled status (enabled=false path)', async () => {
+    const data = {
+      monitors: [
+        { friendly_name: 'Paused', url: 'https://paused.com', type: 1, interval: 300, status: 0 }, // status 0 = paused
+      ],
+    };
+    const created = makeMonitor({ id: 'new-1', name: 'Paused' });
+    // findFirst: first call (duplicate check) → null; second call (ownership in update) → the monitor
+    prisma.monitor.findFirst
+      .mockResolvedValueOnce(null)    // no duplicate
+      .mockResolvedValueOnce(created); // ownership check inside update()
+    prisma.monitor.create.mockResolvedValue(created);
+    prisma.monitor.update.mockResolvedValue(created);
+
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.imported).toBe(1);
+    // update should have been called to disable the monitor
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ enabled: false }) })
+    );
+  });
+
+  it('imports Uptime Robot monitor using mon.target fallback when no url key', async () => {
+    const data = {
+      monitors: [
+        { name: 'My Target', target: 'https://via-target.com', type: 1, interval: 60, status: 2 },
+      ],
+    };
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target }))
+    );
+
+    const result = await service.importExternal('user-1', 'uptime-robot', data);
+    expect(result.imported).toBe(1);
+  });
+
+  it('imports BetterUptime data as plain array', async () => {
+    const rawArray = [
+      { url: 'https://flat.com', pronounceable_name: 'Flat', check_type: 'status', request_interval_seconds: 60, paused: false },
+    ];
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name }))
+    );
+
+    const result = await service.importExternal('user-1', 'better-uptime', rawArray);
+    expect(result.imported).toBe(1);
+  });
+
+  it('imports BetterUptime data with flat items (no nested attributes)', async () => {
+    const data = {
+      data: [
+        // Flat item (attributes is undefined → fallback to entry itself)
+        { url: 'https://flat-entry.com', pronounceable_name: 'Flat Entry', check_type: 'status', request_interval_seconds: 90, paused: false },
+      ],
+    };
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name }))
+    );
+
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+  });
+});
+
+// ── versionSummary — additional branch coverage ───────────────────────────────
+
+describe('versionSummary() — additional branch coverage', () => {
+  it('strips leading v from currentVersion in output', async () => {
+    const gitMonitor = {
+      ...makeMonitor(),
+      type: 'GIT_RELEASE',
+      configJson: { currentVersion: 'v2.0.0' }, // has leading v
+    };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([gitMonitor]);
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: vi.fn().mockResolvedValue(makeRun({ level: 'green', message: 'up to date' })),
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+    // v2.0.0 → '2.0.0' (leading v stripped)
+    expect(result.items[0].currentVersion).toBe('2.0.0');
+  });
+
+  it('uses currentTag from config when currentVersion is not present (DOCKER)', async () => {
+    const dockerMonitor = {
+      ...makeMonitor({ id: 'docker-1' }),
+      type: 'DOCKER_IMAGE',
+      configJson: { currentTag: 'v1.5.0' }, // currentTag, not currentVersion
+    };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([dockerMonitor]);
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: vi.fn().mockResolvedValue(makeRun({ level: 'yellow', message: 'update available' })),
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+    // currentTag 'v1.5.0' → stripped to '1.5.0'
+    expect(result.items[0].currentVersion).toBe('1.5.0');
+  });
+
+  it('returns empty string when neither currentVersion nor currentTag is set', async () => {
+    const mon = {
+      ...makeMonitor({ id: 'bare-1' }),
+      type: 'GIT_RELEASE',
+      configJson: {}, // no version info
+    };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([mon]);
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: vi.fn().mockResolvedValue(null),
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+    expect(result.items[0].currentVersion).toBe('');
+  });
+
+  it('returns null checkedAt when no run exists', async () => {
+    const mon = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {} };
+    const p = makePrisma();
+    p.monitor.findMany.mockResolvedValue([mon]);
+    (p as unknown as Record<string, unknown>).monitorRun = {
+      ...(p.monitorRun as object),
+      findFirst: vi.fn().mockResolvedValue(null),
+    };
+
+    const svc = makeService(p);
+    const result = await svc.versionSummary('user-1');
+    expect(result.items[0].checkedAt).toBeNull();
   });
 });

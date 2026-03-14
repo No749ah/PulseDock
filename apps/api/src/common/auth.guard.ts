@@ -38,7 +38,7 @@ export class AuthGuard implements CanActivate {
     const user = await this.authService.getActiveUserById(tokenUser.id);
     if (!user) throw new UnauthorizedException('User inactive or not found');
 
-    request.user = { id: user.id, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword };
+    request.user = { id: user.id, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword, totpEnabled: user.totpEnabled };
     return true;
   }
 }

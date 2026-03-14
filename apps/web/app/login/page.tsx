@@ -28,6 +28,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  // 2FA state
+  const [totpStep, setTotpStep] = useState(false);
+  const [totpTempToken, setTotpTempToken] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -73,35 +78,39 @@ export default function LoginPage() {
   const inInviteFlow = useMemo(() => Boolean(inviteToken), [inviteToken]);
   const inResetFlow = useMemo(() => Boolean(resetToken), [resetToken]);
 
+  type LoginResponse =
+    | { accessToken: string; refreshToken: string; user: LoginUser }
+    | { requires2fa: true; tempToken: string };
+
+  function completeLogin(res: { accessToken: string; refreshToken: string; user: LoginUser }) {
+    const isFirstLogin = Boolean(res.user.mustChangePassword);
+    if (rememberUser && !isFirstLogin)
+      localStorage.setItem("pulsedock_remembered_user", email.trim().toLowerCase());
+    else localStorage.removeItem("pulsedock_remembered_user");
+    const name = (res.user.email?.split("@")[0] || "user").trim() || "user";
+    setSession(res.accessToken, res.refreshToken, { ...res.user, name });
+    router.push("/dashboard");
+  }
+
   async function login() {
     setLoading(true);
     setError("");
     setInfo("");
     try {
-      const res = await api<{
-        accessToken: string;
-        refreshToken: string;
-        user: LoginUser;
-      }>("/v1/auth/login", undefined, {
+      const res = await api<LoginResponse>("/v1/auth/login", undefined, {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
 
-      const isFirstLogin = Boolean(res.user.mustChangePassword);
-      if (rememberUser && !isFirstLogin)
-        localStorage.setItem(
-          "pulsedock_remembered_user",
-          email.trim().toLowerCase()
-        );
-      else localStorage.removeItem("pulsedock_remembered_user");
+      if ("requires2fa" in res && res.requires2fa) {
+        setTotpTempToken(res.tempToken);
+        setTotpStep(true);
+        setTotpCode("");
+        setUseRecoveryCode(false);
+        return;
+      }
 
-      const name =
-        (res.user.email?.split("@")[0] || "user").trim() || "user";
-      setSession(res.accessToken, res.refreshToken, {
-        ...res.user,
-        name,
-      });
-      router.push("/dashboard");
+      completeLogin(res as { accessToken: string; refreshToken: string; user: LoginUser });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Login failed";
       if (msg === "email_not_verified") {
@@ -110,6 +119,27 @@ export default function LoginPage() {
       } else {
         setError(msg);
       }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyTotp() {
+    if (!totpCode.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api<{ accessToken: string; refreshToken: string; user: LoginUser }>(
+        "/v1/auth/2fa/verify",
+        undefined,
+        {
+          method: "POST",
+          body: JSON.stringify({ tempToken: totpTempToken, code: totpCode.trim() }),
+        },
+      );
+      completeLogin(res);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Invalid code");
     } finally {
       setLoading(false);
     }
@@ -171,6 +201,7 @@ export default function LoginPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (totpStep) return void verifyTotp();
     if (inInviteFlow) return void acceptInvite();
     if (inResetFlow) return void confirmReset();
     if (forgotMode) return void requestReset();
@@ -211,10 +242,71 @@ export default function LoginPage() {
           {/* Card */}
           <div className="bg-surface border border-border rounded-2xl p-12 shadow-2xl shadow-black/50">
             <p className="text-text-secondary text-sm text-center mb-6">
-              {subtitle}
+              {totpStep ? "Enter your authenticator code to continue" : subtitle}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+            {totpStep && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    {useRecoveryCode ? "Recovery Code" : "Authenticator Code"}
+                  </label>
+                  <input
+                    type={useRecoveryCode ? "text" : "text"}
+                    inputMode={useRecoveryCode ? "text" : "numeric"}
+                    value={totpCode}
+                    onChange={(e) => {
+                      const val = useRecoveryCode
+                        ? e.target.value
+                        : e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setTotpCode(val);
+                    }}
+                    className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors text-center tracking-[0.3em] text-lg"
+                    placeholder={useRecoveryCode ? "xxxx-xxxx-xxxx" : "000000"}
+                    maxLength={useRecoveryCode ? 14 : 6}
+                    autoFocus
+                    autoComplete="one-time-code"
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || totpCode.length < (useRecoveryCode ? 14 : 6)}
+                  className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
+                >
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Verify
+                </button>
+
+                <div className="text-center space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => { setUseRecoveryCode((v) => !v); setTotpCode(""); setError(""); }}
+                    className="text-sm text-accent hover:text-accent-hover transition-colors"
+                  >
+                    {useRecoveryCode ? "← Use authenticator app" : "Use a recovery code instead"}
+                  </button>
+                  <br />
+                  <button
+                    type="button"
+                    onClick={() => { setTotpStep(false); setTotpTempToken(""); setTotpCode(""); setError(""); setUseRecoveryCode(false); }}
+                    className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+                  >
+                    ← Back to login
+                  </button>
+                </div>
+              </>
+            )}
+            {!totpStep && (
+              <>
               {/* Email */}
               <div>
                 <label
@@ -324,10 +416,12 @@ export default function LoginPage() {
                 )}
                 {buttonLabel}
               </button>
+              </>
+            )}
             </form>
 
             {/* Forgot password link */}
-            {!inInviteFlow && !inResetFlow && (
+            {!totpStep && !inInviteFlow && !inResetFlow && (
               <div className="mt-4 text-center">
                 <button
                   type="button"

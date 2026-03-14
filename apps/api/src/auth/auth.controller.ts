@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
-import { AcceptInviteDto, ChangePasswordDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto, VerifyEmailDto } from './auth.dto';
+import { AcceptInviteDto, ChangePasswordDto, DisableTotpDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto, VerifyCodeDto, VerifyEmailDto, VerifyTotpDto } from './auth.dto';
 import { generateCsrfToken, setCsrfCookie } from '../common/csrf.middleware';
 
 interface ExpressResponse {
@@ -180,6 +180,67 @@ export class AuthController {
     setCsrfCookie(res as Parameters<typeof setCsrfCookie>[0], token);
     return { csrfToken: token };
   }
+
+  // ─── 2FA / TOTP ─────────────────────────────────────────────────────────────
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('2fa/verify')
+  @ApiOperation({ summary: 'Complete 2FA login', description: 'Verify TOTP code (or recovery code) after initial password auth. Returns full auth tokens.' })
+  @ApiResponse({ status: 200, description: 'Login completed.' })
+  @ApiResponse({ status: 401, description: 'Invalid code or expired temp token.' })
+  async verifyTotpLogin(
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: VerifyTotpDto,
+  ) {
+    const result = await this.authService.verifyTotpLogin(body.tempToken, body.code, {
+      userAgent: req.headers['user-agent'] ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/setup')
+  @ApiOperation({ summary: 'Begin 2FA setup', description: 'Generates a TOTP secret and QR code. Call enable after verifying a code.' })
+  @ApiResponse({ status: 200, description: 'Setup data returned.' })
+  setup2FA(@Req() req: { user: { id: string } }) {
+    return this.authService.setup2FA(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/enable')
+  @ApiOperation({ summary: 'Enable 2FA', description: 'Verifies first TOTP code and enables 2FA. Returns one-time recovery codes.' })
+  @ApiResponse({ status: 200, description: '2FA enabled, recovery codes returned.' })
+  @ApiResponse({ status: 401, description: 'Invalid TOTP code.' })
+  enable2FA(@Req() req: { user: { id: string } }, @Body() body: VerifyCodeDto) {
+    return this.authService.verifyAndEnable2FA(req.user.id, body.code);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/disable')
+  @ApiOperation({ summary: 'Disable 2FA', description: 'Disables 2FA after verifying password and current TOTP code.' })
+  @ApiResponse({ status: 200, description: '2FA disabled.' })
+  @ApiResponse({ status: 401, description: 'Invalid password or TOTP code.' })
+  disable2FA(@Req() req: { user: { id: string } }, @Body() body: DisableTotpDto) {
+    return this.authService.disable2FA(req.user.id, body.password, body.code);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('2fa/regenerate-recovery-codes')
+  @ApiOperation({ summary: 'Regenerate recovery codes', description: 'Generates 10 new single-use recovery codes. Old codes are invalidated.' })
+  @ApiResponse({ status: 200, description: 'New recovery codes returned.' })
+  @ApiResponse({ status: 401, description: 'Invalid TOTP code.' })
+  regenerateRecoveryCodes(@Req() req: { user: { id: string } }, @Body() body: VerifyCodeDto) {
+    return this.authService.regenerateRecoveryCodes(req.user.id, body.code);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth()

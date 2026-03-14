@@ -1,6 +1,8 @@
 import { IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { SanitizeHtml } from '../common/sanitize';
 
 export class CreateAlertChannelDto {
+  @SanitizeHtml()
   @IsString()
   @MaxLength(255)
   name!: string;
@@ -14,6 +16,7 @@ export class CreateAlertChannelDto {
 
 export class UpdateAlertChannelDto {
   @IsOptional()
+  @SanitizeHtml()
   @IsString()
   @MaxLength(255)
   name?: string;

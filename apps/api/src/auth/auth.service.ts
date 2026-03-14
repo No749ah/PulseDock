@@ -7,6 +7,8 @@ import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { MailerService } from '../common/mailer.service';
 import { MetricsService } from '../common/metrics.service';
+import { generateSecret as totpGenerateSecret, generate as totpGenerate, verify as totpVerify, generateURI } from 'otplib';
+import * as QRCode from 'qrcode';
 
 type AuthUser = { id: string; email: string; role: 'admin' | 'user'; mustChangePassword: boolean };
 
@@ -139,6 +141,18 @@ export class AuthService {
 
     if (user.failedLoginCount > 0 || user.lockedUntil) {
       await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
+    }
+
+    // If 2FA is enabled, issue a short-lived temp token instead of a session
+    if (user.totpEnabled) {
+      const tempToken = this.jwt.sign(
+        { sub: user.id, type: 'totp-pending' },
+        {
+          secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
+          expiresIn: '5m' as ms.StringValue,
+        },
+      );
+      return { requires2fa: true, tempToken } as unknown as { accessToken: string; refreshToken: string; user: AuthUser };
     }
 
     const payloadUser = { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
@@ -425,10 +439,183 @@ export class AuthService {
     return { ok: true };
   }
 
+  // ─── 2FA / TOTP ─────────────────────────────────────────────────────────────
+
+  private generateRecoveryCodes(): { plaintext: string[]; hashes: string[] } {
+    const codes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const hex = randomBytes(6).toString('hex'); // 12 hex chars
+      codes.push(`${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`);
+    }
+    const hashes = codes.map((c) => hashSync(c, 10));
+    return { plaintext: codes, hashes };
+  }
+
+  async setup2FA(userId: string): Promise<{ secret: string; qrCodeUrl: string; otpAuthUrl: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('user not found');
+
+    const secret = totpGenerateSecret();
+    const otpAuthUrl = generateURI({ issuer: 'PulseDock', label: user.email, secret });
+    const qrCodeUrl = await QRCode.toDataURL(otpAuthUrl);
+
+    // Store secret but do NOT enable 2FA yet — user must verify a code first
+    await this.prisma.user.update({ where: { id: userId }, data: { totpSecret: secret } });
+    await this.audit.log('auth.2fa_setup_started', userId, userId, {});
+
+    return { secret, qrCodeUrl, otpAuthUrl };
+  }
+
+  async verifyAndEnable2FA(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.totpSecret) throw new BadRequestException('2FA setup not started');
+    if (user.totpEnabled) throw new BadRequestException('2FA already enabled');
+
+    const valid = await totpVerify({ token: code, secret: user.totpSecret });
+    if (!valid) throw new UnauthorizedException('invalid TOTP code');
+
+    const { plaintext, hashes } = this.generateRecoveryCodes();
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: true, totpRecoveryCodes: JSON.stringify(hashes) },
+    });
+    await this.audit.log('auth.2fa_enabled', userId, userId, {});
+
+    return { recoveryCodes: plaintext };
+  }
+
+  async disable2FA(userId: string, password: string, code: string): Promise<{ ok: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('user not found');
+    if (!user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA is not enabled');
+
+    if (!compareSync(password, user.passwordHash)) {
+      throw new UnauthorizedException('invalid password');
+    }
+
+    const valid = await totpVerify({ token: code, secret: user.totpSecret });
+    if (!valid && !this.checkRecoveryCode(user.totpRecoveryCodes, code)) {
+      throw new UnauthorizedException('invalid TOTP code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: false, totpSecret: null, totpRecoveryCodes: null },
+    });
+    await this.audit.log('auth.2fa_disabled', userId, userId, {});
+
+    return { ok: true };
+  }
+
+  async regenerateRecoveryCodes(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA is not enabled');
+
+    const valid = await totpVerify({ token: code, secret: user.totpSecret });
+    if (!valid) throw new UnauthorizedException('invalid TOTP code');
+
+    const { plaintext, hashes } = this.generateRecoveryCodes();
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpRecoveryCodes: JSON.stringify(hashes) },
+    });
+    await this.audit.log('auth.2fa_recovery_codes_regenerated', userId, userId, {});
+
+    return { recoveryCodes: plaintext };
+  }
+
+  private checkRecoveryCode(totpRecoveryCodes: string | null, code: string): boolean {
+    if (!totpRecoveryCodes) return false;
+    let hashes: string[];
+    try {
+      hashes = JSON.parse(totpRecoveryCodes) as string[];
+    } catch {
+      return false;
+    }
+    const matched = hashes.findIndex((h) => compareSync(code, h));
+    if (matched === -1) return false;
+    return true;
+  }
+
+  private consumeRecoveryCode(totpRecoveryCodes: string | null, code: string): { matched: boolean; remainingHashes: string[] } {
+    if (!totpRecoveryCodes) return { matched: false, remainingHashes: [] };
+    let hashes: string[];
+    try {
+      hashes = JSON.parse(totpRecoveryCodes) as string[];
+    } catch {
+      return { matched: false, remainingHashes: [] };
+    }
+    const matchedIdx = hashes.findIndex((h) => compareSync(code, h));
+    if (matchedIdx === -1) return { matched: false, remainingHashes: hashes };
+    const remaining = [...hashes.slice(0, matchedIdx), ...hashes.slice(matchedIdx + 1)];
+    return { matched: true, remainingHashes: remaining };
+  }
+
+  async verifyTotpLogin(
+    tempToken: string,
+    code: string,
+    context?: { userAgent?: string | null; ipAddress?: string | null },
+  ): Promise<{ accessToken: string; refreshToken: string; user: AuthUser }> {
+    let payload: { sub: string; type: string };
+    try {
+      payload = this.jwt.verify<{ sub: string; type: string }>(tempToken, {
+        secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
+      });
+    } catch {
+      throw new UnauthorizedException('invalid or expired temp token');
+    }
+
+    if (payload.type !== 'totp-pending') throw new UnauthorizedException('invalid token type');
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive) throw new UnauthorizedException('user not found or disabled');
+    if (!user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA not enabled');
+
+    // Try TOTP code first
+    const totpValid = await totpVerify({ token: code, secret: user.totpSecret });
+    if (!totpValid) {
+      // Try recovery code (single-use)
+      const { matched, remainingHashes } = this.consumeRecoveryCode(user.totpRecoveryCodes, code);
+      if (!matched) {
+        await this.audit.log('auth.2fa_verify_failed', user.id, user.id, {});
+        throw new UnauthorizedException('invalid TOTP code');
+      }
+      // Consume the recovery code
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { totpRecoveryCodes: JSON.stringify(remainingHashes) },
+      });
+      await this.audit.log('auth.2fa_recovery_code_used', user.id, user.id, {});
+    }
+
+    const payloadUser = { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
+
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshTokenHash: 'pending',
+        userAgent: context?.userAgent ?? null,
+        ipAddress: context?.ipAddress ?? null,
+      },
+    });
+
+    const accessToken = this.signAccessToken(payloadUser, session.id);
+    const refreshToken = this.signRefreshToken(payloadUser, session.id);
+
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { refreshTokenHash: hashSync(refreshToken, 10) },
+    });
+
+    await this.audit.log('auth.login', user.id, user.id, { via: '2fa' });
+    return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } };
+  }
+
   async getActiveUserById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || !user.isActive) return null;
-    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', mustChangePassword: user.mustChangePassword };
+    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', mustChangePassword: user.mustChangePassword, totpEnabled: user.totpEnabled };
   }
 
   async getUserByAccessToken(token: string | undefined) {

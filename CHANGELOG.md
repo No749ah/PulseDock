@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Performance
+- **Monitor scheduler — O(1) DB round-trips** — `ChecksScheduler.tick()` now loads all enabled monitors and their latest run in a single `findMany` (Prisma `include: { runs: { take: 1 } }`), eliminating the previous N+1 pattern (one `findFirst` per monitor per tick). Due monitors are now dispatched concurrently via `Promise.allSettled` instead of sequentially, so slow HTTP targets no longer block faster ones. Added structured `Logger` for failed-check warnings.
+
 ### Added
 - **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) for one-click monitor creation from any tab. Features: auto-detects current tab URL/title, context menu integration ("Add to PulseDock Monitors" on any page/link), configurable interval and monitor type (HTTP/Git Release/Docker Image), API key auth, dark-theme popup matching PulseDock design language, and a dashboard shortcut button. Load from `packages/extension/dist/` in Chrome developer mode. See `docs/EXTENSION.md`.
 

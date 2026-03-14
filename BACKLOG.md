@@ -296,7 +296,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **E2E tests (Playwright)** — Add basic E2E tests for: login, create monitor, view dashboard, receive alert. Run in CI.
 - [ ] **API documentation improvements** — Ensure all endpoints have Swagger descriptions, request/response examples, error codes documented.
 - [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.
-- [ ] **Log rotation & cleanup** — Ensure logs don't fill disk on long-running self-hosted instances. Add log rotation config.
+- [x] **Log rotation & cleanup** — Docker json-file log driver rotation configured in docker-compose.prod.yml (api: 20MB×5, web: 10MB×5, postgres: 10MB×3) and dev (api: 20MB×3, web: 10MB×3). Logger enhanced with LOG_LEVEL env var filtering (debug/info/warn/error) and process.stdout.write for clean JSON-per-line. Comprehensive docs/LOGGING.md covers PM2, systemd+logrotate, and log aggregation options (Loki, ELK, etc).
 - [ ] **Helm chart for Kubernetes** — Proper Helm chart with configurable values for self-hosters deploying to k8s.
 
 ---
@@ -317,7 +317,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 214 tests passing (204 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX
+- **Codebase:** 214 tests passing (204 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX, LOG_LEVEL filtering + Docker log rotation
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 8 pages 200)
 - **Production Readiness:** ~70% — All security gaps closed (2FA, CSRF, lockout, rate limiting, password strength, audit log, session anomaly detection, input sanitization), full accessibility foundation, public status page polished (sparklines, incident history, per-monitor uptime), all alert channels working

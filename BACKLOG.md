@@ -57,7 +57,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Onboarding flow for new users** — 3-step "Get Started" checklist on dashboard: create monitor → set up alert channel → explore dashboard. Progress bar, per-user localStorage dismiss, all-done celebration banner. Auto-marks steps complete from real API data.
 - [x] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
 - [x] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
-- [ ] **Mobile UX audit** — Test all 9 pages on 375px width. Fix any overflow, unclickable elements, font size issues.
+- [x] **Mobile UX audit** — Audited all 9 pages at 375px. Fixed: monitors/versions table columns progressively hidden at sm/md/lg breakpoints (Name+Status+Action always visible), versions page header buttons responsive text (New vs Create version check), admin metrics grid-cols-1 sm:grid-cols-3. All 8 pages return 200, no horizontal overflow.
 - [x] **Keyboard navigation** — Modals (both Modal.tsx and modal-framework.tsx) now trap focus with Tab/Shift+Tab cycle and close on Escape. Skip-to-content link visible on first Tab press. Global focus-visible ring ensures all interactive elements show keyboard focus indicator.
 - [x] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
 

@@ -11,23 +11,46 @@ PulseDock monitors your apps for version updates, security patches, and uptime �
 ## Features
 
 ✨ **Real-time Monitoring**
-- Track version changes across all your apps with live status updates
+- Track version changes across all your apps with live WebSocket status updates
 - Automatic changelog summaries and semantic version tracking
-- Realtime alerts via email, Discord, Slack, webhooks
+- Paginated history via v2 API (`GET /v2/checks`, `GET /v2/monitors`)
+
+🔔 **Multi-channel Alerts**
+- Email, Discord, Slack, Telegram, and webhook notification channels
+- Per-monitor alert channel assignment
+- Alert test endpoint before saving
 
 🔒 **Security First**
 - Detect vulnerable versions instantly
-- Never miss a critical security patch
-- Audit logs for compliance
+- Helmet, CORS, CSP, rate limiting, input validation on all endpoints
+- JWT sessions (httpOnly cookies), DB-backed revocation, audit trail
 
 🌐 **Public Status Pages**
-- Share beautiful, real-time status pages with your team or stakeholders
-- Shareable URLs, customizable per project
+- Shareable real-time status pages — one URL per user, no auth required
+
+🔌 **Plugin System**
+- Ship custom monitor types as plugins — typed contracts, sandboxed execution
+- Starter plugin: `http.response-match` (regex matching on response bodies)
+- See [PLUGINS.md](./docs/PLUGINS.md) for packaging and verification
+
+🖥️ **Browser Extension**
+- Chrome MV3 extension for one-click monitor creation from any tab
+- Context-menu integration, API key auth, dark-themed popup
+- See [EXTENSION.md](./docs/EXTENSION.md) for installation
+
+⌨️ **CLI Tool**
+- `pulsedock check <url>` — one-shot HTTP health check from the terminal
+- `pulsedock monitors list/check` — interact with your monitors via API key
+- See [CLI.md](./docs/CLI.md) for usage and configuration
+
+📱 **PWA Support**
+- Install banner (Chromium) and Add-to-Home-Screen hint (iOS)
+- Service worker with offline fallback page
+- Contextual skeleton loading on all major pages
 
 📦 **Self-Hosted**
-- Your data stays yours
-- Deploy on your infrastructure with Docker
-- PostgreSQL + Redis backend
+- Your data stays yours — deploy on your own infra with Docker or Kubernetes
+- `docker-compose.prod.yml` and `k8s/` manifests included
 
 ---
 
@@ -107,20 +130,37 @@ See [WORKFLOW.md](./docs/WORKFLOW.md) for details.
 # Development
 npm run dev:api      # NestJS with ts-node (watches changes)
 npm run dev:web      # Next.js dev server
-npm run restart      # Kill and restart both services
+npm run restart      # Kill and restart both services (API then Web)
 
 # Building
-npm run build        # Build both API and Web for production
-npm run dev          # Show available commands
+npm run build        # Build web + API for production
+npm run build -w @pulsedock/cli   # Build CLI
 
 # Database
 npm run prisma:generate   # Generate Prisma client
 npm run prisma:migrate    # Run pending migrations
 
 # Testing
-npm run test         # Run all tests (API unit tests + Web TypeScript check)
-npm audit            # Check for vulnerabilities
+npm run test         # All tests (web TS check + API vitest + CLI vitest)
+npm audit            # Vulnerability check
+
+# CLI (after build)
+node packages/cli/dist/index.js check <url>
+node packages/cli/dist/index.js monitors list
 ```
+
+## API v1 / v2
+
+PulseDock ships two stable API versions:
+
+| Version | Status | Key features |
+|---------|--------|-------------|
+| `v1` | **stable** | Full CRUD — monitors, alerts, auth, API keys, dashboard, plugins |
+| `v2` | **stable** | Paginated envelopes `{ data, meta }` · filtering · sorting · extended system info |
+
+v2 endpoints: `GET /v2/monitors` · `GET /v2/alert-channels` · `GET /v2/checks` · `GET /v2/system/info` · `GET /v2/system/versions`
+
+Both versions run concurrently — v1 is never removed, v2 is additive only.
 
 ---
 
@@ -130,29 +170,44 @@ npm audit            # Check for vulnerabilities
 PulseDock/
 ├── apps/
 │   ├── api/              # NestJS API (port 4321)
-│   │   ├── src/
-│   │   │   ├── auth/     # Authentication, JWT, sessions
-│   │   │   ├── monitors/ # Monitor CRUD + health checks
-│   │   │   ├── alerts/   # Alert channels + dispatch
-│   │   │   ├── checks/   # Scheduled version checks
-│   │   │   ├── users/    # User management, admin controls
-│   │   │   └── common/   # Prisma, logging, guards, middleware
-│   │   └── package.json
+│   │   └── src/
+│   │       ├── auth/         # JWT, sessions, invite flow, password reset
+│   │       ├── monitors/     # Monitor CRUD, version checks, export/import
+│   │       ├── alerts/       # Alert channels + multi-channel dispatch
+│   │       ├── checks/       # Scheduler, plugin sandbox, check history
+│   │       ├── apikeys/      # API key management (pdck_* tokens)
+│   │       ├── realtime/     # Socket.io gateway, live events
+│   │       ├── v2/           # V2 API (paginated envelopes, extended endpoints)
+│   │       └── common/       # Prisma, logging, guards, metrics, audit
 │   │
-│   └── web/              # Next.js Frontend (port 1234)
+│   └── web/              # Next.js 16 Frontend (port 1234)
 │       ├── app/
-│       │   ├── components/    # Reusable Tailwind components
-│       │   ├── dashboard/     # Main app pages
-│       │   ├── login/         # Auth flow
-│       │   └── account/       # User settings
-│       ├── lib/              # API client, auth helpers
-│       └── package.json
+│       │   ├── components/   # Skeleton, Card, Button, Table, Modal, Badge…
+│       │   ├── dashboard/    # Stats + realtime activity
+│       │   ├── monitors/     # CRUD, plugin config, alert assignment
+│       │   ├── alerts/       # Alert channel management
+│       │   ├── account/      # Profile, API keys, sessions
+│       │   ├── admin/        # User management, audit logs, health widget
+│       │   ├── versions/     # Version matrix
+│       │   ├── offline/      # PWA offline fallback page
+│       │   └── status/       # Public status page
+│       └── components/
+│           ├── app-frame.tsx       # Sidebar nav shell
+│           ├── pwa-install-banner.tsx  # Install prompt
+│           └── sw-register.tsx     # Service worker registration
 │
-├── prisma/              # Database schema + migrations
-├── scripts/             # Service control (start/stop/restart)
-├── docs/               # Documentation (see below)
-├── .env                # Root environment (shared by both apps)
-├── package.json        # Workspace config + npm scripts
+├── packages/
+│   ├── cli/              # @pulsedock/cli — terminal tool
+│   │   └── src/          # check/monitors/config commands, 10 unit tests
+│   └── extension/        # @pulsedock/extension — Chrome MV3 extension
+│       └── src/          # popup, background worker, context menu
+│
+├── k8s/                 # Kubernetes manifests (base + prod overlay)
+├── prisma/              # Schema + migrations
+├── scripts/             # Service control (start/stop/restart/stop-api…)
+├── docs/               # Full documentation suite
+├── .env                # Root environment (shared by all apps)
+├── package.json        # npm workspace config
 └── BACKLOG.md          # Development roadmap
 ```
 
@@ -163,10 +218,13 @@ PulseDock/
 - **[START.md](./docs/START.md)** — Complete setup guide (ports, env vars, databases)
 - **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — System design & tech decisions
 - **[API.md](./docs/API.md)** — API endpoints, auth, error handling
+- **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — Docker Compose + Kubernetes production deployment
 - **[WORKFLOW.md](./docs/WORKFLOW.md)** — Heartbeat cycle, branching, development process
 - **[GITFLOW.md](./docs/GITFLOW.md)** — Git strategy (main/dev/heartbeat branches)
 - **[PROXY_SETUP.md](./docs/PROXY_SETUP.md)** — Nginx reverse proxy configuration
-- **[PLUGINS.md](./docs/PLUGINS.md)** — Plugin contracts, packaging, and verification flow
+- **[PLUGINS.md](./docs/PLUGINS.md)** — Plugin contracts, packaging, and verification
+- **[CLI.md](./docs/CLI.md)** — CLI tool usage and configuration
+- **[EXTENSION.md](./docs/EXTENSION.md)** — Browser extension installation and development
 
 ---
 
@@ -200,14 +258,17 @@ PulseDock/
 
 ## Testing
 
-- ✅ Vitest — 27 unit tests for core services (Auth, Monitors, Metrics, AppController)
+- ✅ **89 tests** — Vitest unit + integration tests across 7 test files
+- ✅ Unit tests for Auth, Monitors, Metrics, Alerts, Plugins, CLI
+- ✅ Integration tests for all API endpoints (v1 + v2), auth flows, and input validation
 - ✅ TypeScript strict mode — both apps compile cleanly under `strict: true`
-- ✅ GitHub Actions CI — runs build + tests on every push and PR
+- ✅ GitHub Actions CI — runs build + lint + tests on every push and PR
 
-Roadmap:
-- Integration tests for API endpoints
-- E2E tests for critical user flows (login, monitor CRUD, alerts)
-- Coverage target: >80%
+```bash
+npm run test          # All tests (web type-check + API vitest)
+npm run test -w @pulsedock/api  # API tests only
+npm run test -w @pulsedock/cli  # CLI tests only
+```
 
 ---
 

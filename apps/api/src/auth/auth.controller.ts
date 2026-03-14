@@ -41,7 +41,7 @@ function clearAuthCookies(res: ExpressResponse) {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully.' })
@@ -50,7 +50,7 @@ export class AuthController {
     return this.authService.register(body.email, body.password);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @Post('login')
   @ApiOperation({ summary: 'Login with email + password', description: 'Returns accessToken, refreshToken and user info.' })
   @ApiResponse({ status: 200, description: 'Login successful.' })
@@ -113,7 +113,7 @@ export class AuthController {
     return result;
   }
 
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
   @Post('request-password-reset')
   @ApiOperation({ summary: 'Request password reset email' })
   @ApiResponse({ status: 200, description: 'Reset email sent (or silently no-ops if email unknown).' })

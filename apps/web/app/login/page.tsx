@@ -7,6 +7,7 @@ import { api } from "../../lib/api";
 import { setSession } from "../../components/auth";
 import { FadeIn } from "../components/FadeIn";
 import { AlertCircle, Monitor, Loader2 } from "lucide-react";
+import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 
 type LoginUser = {
   id: string;
@@ -252,6 +253,10 @@ export default function LoginPage() {
                         : "current-password"
                     }
                   />
+                  {/* Show strength meter only when setting a new password */}
+                  {(inInviteFlow || inResetFlow) && (
+                    <PasswordStrength password={password} />
+                  )}
                 </div>
               )}
 
@@ -288,7 +293,11 @@ export default function LoginPage() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading || inviteLoading}
+                disabled={
+                  loading ||
+                  inviteLoading ||
+                  ((inInviteFlow || inResetFlow) && !passwordMeetsPolicy(password))
+                }
                 className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
               >
                 {loading && (

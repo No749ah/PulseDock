@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Copy, Key, LogOut, Plus, Shield, Trash2, User } from "lucide-react";
+import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
@@ -313,7 +314,9 @@ export default function AccountPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={inputClass}
                   placeholder="Enter new password"
+                  autoComplete="new-password"
                 />
+                <PasswordStrength password={newPassword} />
               </div>
 
               <div>
@@ -326,14 +329,19 @@ export default function AccountPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={inputClass}
                   placeholder="Confirm new password"
+                  autoComplete="new-password"
                 />
+                {confirmPassword && confirmPassword !== newPassword && (
+                  <p className="mt-1 text-xs text-danger">Passwords don't match</p>
+                )}
               </div>
 
-              <p className="text-xs text-text-secondary">
-                Password must be at least 12 characters long
-              </p>
-
-              <Button onClick={handleChangePassword} size="lg" className="w-full">
+              <Button
+                onClick={handleChangePassword}
+                size="lg"
+                className="w-full"
+                disabled={!passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword}
+              >
                 Change Password
               </Button>
             </div>

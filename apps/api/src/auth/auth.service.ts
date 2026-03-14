@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compareSync, hashSync } from 'bcryptjs';
 import type ms from 'ms';
@@ -21,7 +21,7 @@ export class AuthService {
       /[^A-Za-z0-9]/.test(password);
 
     if (!ok) {
-      throw new UnauthorizedException('password must be at least 12 chars and include upper/lower/number/special');
+      throw new BadRequestException('Password must be at least 12 characters and include uppercase, lowercase, a number, and a special character');
     }
   }
   constructor(

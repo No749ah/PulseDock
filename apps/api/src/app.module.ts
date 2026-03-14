@@ -32,6 +32,7 @@ import { V2SystemController } from './v2/system/system.controller';
 import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
 import { TagsController } from './tags/tags.controller';
+import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
 import { NotificationsController } from './notifications/notifications.controller';
 import { NotificationsService } from './notifications/notifications.service';
@@ -61,6 +62,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     V2AlertsController,
     V2ChecksController,
     TagsController,
+    ToolRegistryController,
     NotificationsController,
     StatusPagesController,
   ],

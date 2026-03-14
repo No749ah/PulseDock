@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { Badge } from "../components/Badge";
 import { FadeIn } from "../components/FadeIn";
 import { Modal } from "../components/Modal";
+import { useToast } from "../../components/ui/toast";
 
 interface Me {
   id: string;
@@ -60,13 +61,13 @@ const inputClass =
 
 export default function AccountPage() {
   const router = useRouter();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -116,7 +117,7 @@ export default function AccountPage() {
     async function load() {
       try {
         setLoading(true);
-        setError("");
+        
         const [profile, sess, keys] = await Promise.all([
           api<Me>("/v1/auth/me", userId),
           api<Session[]>("/v1/auth/sessions", userId),
@@ -129,7 +130,7 @@ export default function AccountPage() {
         // Load audit log lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load account");
+        setLoadError(e instanceof Error ? e.message : "Failed to load account");
         router.push("/login");
       } finally {
         setLoading(false);
@@ -141,31 +142,31 @@ export default function AccountPage() {
 
   const handleUpdateEmail = async () => {
     try {
-      setError("");
-      setSuccess("");
+      
+      
       await api("/v1/auth/profile", user?.id, {
         method: "PATCH",
         body: JSON.stringify({ email }),
       });
-      setSuccess("Email updated successfully");
+      toastSuccess("Email updated successfully");
       if (me) setMe({ ...me, email });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update email");
+      toastError(e instanceof Error ? e.message : "Failed to update email");
     }
   };
 
   const handleChangePassword = async () => {
     try {
-      setError("");
-      setSuccess("");
+      
+      
 
       if (newPassword !== confirmPassword) {
-        setError("Passwords don't match");
+        toastError("Passwords don't match");
         return;
       }
 
       if (newPassword.length < 12) {
-        setError("Password must be at least 12 characters");
+        toastError("Password must be at least 12 characters");
         return;
       }
 
@@ -177,12 +178,12 @@ export default function AccountPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setSuccess("Password changed. Please login again.");
+      toastSuccess("Password changed. Logging you out…");
       setTimeout(() => {
         void clearSession().then(() => router.push("/login"));
       }, 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to change password");
+      toastError(e instanceof Error ? e.message : "Failed to change password");
     }
   };
 
@@ -241,7 +242,7 @@ export default function AccountPage() {
       setShowDisable2FA(false);
       setDisablePassword("");
       setDisableCode("");
-      setSuccess("Two-factor authentication disabled");
+      toastSuccess("Two-factor authentication disabled");
     } catch (e) {
       setTotpError(e instanceof Error ? e.message : "Failed to disable 2FA");
     } finally {
@@ -290,8 +291,9 @@ export default function AccountPage() {
       a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
+      toastSuccess("Audit log exported");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Export failed");
+      toastError(e instanceof Error ? e.message : "Export failed");
     } finally {
       setAuditLoading(false);
     }
@@ -305,8 +307,9 @@ export default function AccountPage() {
         body: JSON.stringify({ sessionId }),
       });
       setSessions(sessions.filter((s) => s.id !== sessionId));
+      toastSuccess("Session revoked");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to revoke session");
+      toastError(e instanceof Error ? e.message : "Failed to revoke session");
     }
   };
 
@@ -324,7 +327,7 @@ export default function AccountPage() {
       setCreatedKey(created);
       setApiKeys([{ id: created.id, name: created.name, prefix: created.prefix, lastUsedAt: created.lastUsedAt, expiresAt: created.expiresAt, createdAt: created.createdAt }, ...apiKeys]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create API key");
+      toastError(e instanceof Error ? e.message : "Failed to create API key");
     } finally {
       setCreatingKey(false);
     }
@@ -334,6 +337,7 @@ export default function AccountPage() {
     if (!createdKey) return;
     await navigator.clipboard.writeText(createdKey.key);
     setKeyCopied(true);
+    toastInfo("API key copied to clipboard");
     setTimeout(() => setKeyCopied(false), 2000);
   };
 
@@ -350,8 +354,9 @@ export default function AccountPage() {
     try {
       await api(`/v1/api-keys/${id}`, user?.id, { method: "DELETE" });
       setApiKeys(apiKeys.filter((k) => k.id !== id));
+      toastSuccess("API key revoked");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to revoke API key");
+      toastError(e instanceof Error ? e.message : "Failed to revoke API key");
     }
   };
 
@@ -373,20 +378,11 @@ export default function AccountPage() {
   return (
     <AppFrame title="Account" subtitle="Manage your profile and security">
       <div className="space-y-6 max-w-2xl">
-        {error && (
+        {loadError && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
-              <span className="text-danger text-sm">{error}</span>
-            </div>
-          </FadeIn>
-        )}
-
-        {success && (
-          <FadeIn>
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-success/10 border border-success/20">
-              <CheckCircle2 className="w-5 h-5 text-success mt-0.5 shrink-0" />
-              <span className="text-success text-sm">{success}</span>
+              <span className="text-danger text-sm">{loadError}</span>
             </div>
           </FadeIn>
         )}

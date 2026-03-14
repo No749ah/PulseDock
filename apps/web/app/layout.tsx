@@ -2,6 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "../components/theme-provider";
+import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
 import { PWAInstallBanner } from "../components/pwa-install-banner";
 
@@ -69,9 +70,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="bg-bg text-text-primary antialiased">
         <ThemeProvider>
-          {children}
-          <PWAInstallBanner />
-          <SWRegister />
+          <ToastProvider>
+            {children}
+            <PWAInstallBanner />
+            <SWRegister />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

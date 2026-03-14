@@ -14,6 +14,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from ".
 import { Modal } from "../components/Modal";
 import { FadeIn } from "../components/FadeIn";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
+import { useToast } from "../../components/ui/toast";
 
 interface MonitorItem {
   id: string;
@@ -75,6 +76,7 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
 
 export default function MonitorsPage() {
   const router = useRouter();
+  const { success, error: toastError } = useToast();
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [monitors, setMonitors] = useState<MonitorItem[]>([]);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
@@ -249,8 +251,9 @@ export default function MonitorsPage() {
       setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
       const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
       setMonitors(monitorsData);
+      success("Monitor created");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create monitor");
+      toastError(e instanceof Error ? e.message : "Failed to create monitor");
     }
   };
 
@@ -276,8 +279,9 @@ export default function MonitorsPage() {
       setEditingMonitor(null);
       const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
       setMonitors(monitorsData);
+      success("Monitor updated");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update monitor");
+      toastError(e instanceof Error ? e.message : "Failed to update monitor");
     }
   };
 
@@ -286,8 +290,9 @@ export default function MonitorsPage() {
     try {
       await api(`/v1/monitors/${id}`, user?.id, { method: "DELETE" });
       setMonitors(monitors.filter((m) => m.id !== id));
+      success("Monitor deleted");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete monitor");
+      toastError(e instanceof Error ? e.message : "Failed to delete monitor");
     }
   };
 
@@ -301,8 +306,9 @@ export default function MonitorsPage() {
       a.download = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      success("Monitors exported");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Export failed");
+      toastError(e instanceof Error ? e.message : "Export failed");
     }
   };
 

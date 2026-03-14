@@ -12,6 +12,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '.
 import { Select } from '../components/Select';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
+import { useToast } from '../../components/ui/toast';
 
 type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
 
@@ -27,6 +28,7 @@ const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg 
 
 export default function AlertsPage() {
   const router = useRouter();
+  const { success, error: toastError } = useToast();
   const [channels, setChannels] = useState<AlertChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -80,15 +82,25 @@ export default function AlertsPage() {
   }
 
   async function createChannel() {
-    const config = buildConfig(form.type, form.a, form.b);
-    await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
-    setWizardOpen(false);
-    resetCreateForm();
-    await load();
+    try {
+      const config = buildConfig(form.type, form.a, form.b);
+      await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
+      setWizardOpen(false);
+      resetCreateForm();
+      await load();
+      success('Alert channel created');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to create channel');
+    }
   }
 
   async function testChannel(channelId: string) {
-    await api('/v1/alert-channels/test', undefined, { method: 'POST', body: JSON.stringify({ channelId }) });
+    try {
+      await api('/v1/alert-channels/test', undefined, { method: 'POST', body: JSON.stringify({ channelId }) });
+      success('Test message sent');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Test failed');
+    }
   }
 
   function openEdit(channel: AlertChannel) {
@@ -112,13 +124,18 @@ export default function AlertsPage() {
 
   async function saveEdit() {
     if (!selected) return;
-    const config = buildConfig(selected.type, editA, editB);
-    await api(`/v1/alert-channels/${selected.id}`, '', {
-      method: 'PATCH',
-      body: JSON.stringify({ name: editName, config }),
-    });
-    setEditOpen(false);
-    await load();
+    try {
+      const config = buildConfig(selected.type, editA, editB);
+      await api(`/v1/alert-channels/${selected.id}`, '', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editName, config }),
+      });
+      setEditOpen(false);
+      await load();
+      success('Channel updated');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to update channel');
+    }
   }
 
   function openDelete(channel: AlertChannel) {
@@ -128,9 +145,14 @@ export default function AlertsPage() {
 
   async function confirmDelete() {
     if (!selected) return;
-    await api(`/v1/alert-channels/${selected.id}`, '', { method: 'DELETE' });
-    setDeleteOpen(false);
-    await load();
+    try {
+      await api(`/v1/alert-channels/${selected.id}`, '', { method: 'DELETE' });
+      setDeleteOpen(false);
+      await load();
+      success('Channel deleted');
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to delete channel');
+    }
   }
 
   const size = Number(pageSize);

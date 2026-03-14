@@ -696,3 +696,137 @@ describe('importExternal', () => {
     expect(result.message).toContain('No importable');
   });
 });
+
+// ── testVersionConnection() ─────────────────────────────────────────────────
+
+describe('testVersionConnection()', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    // Mock globalThis.fetch for all tests in this block
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns version from GitHub releases endpoint', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ tag_name: 'v1.2.3' }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'github', target: 'owner/repo' });
+    expect(result).toMatchObject({ ok: true, latestVersion: 'v1.2.3', source: 'releases/latest' });
+  });
+
+  it('returns invalid target error for bad GitHub repo', async () => {
+    const result = await service.testVersionConnection({ provider: 'github', target: 'not-a-valid-repo-format-with//slashes' });
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it('falls back to tags when GitHub has no releases (404)', async () => {
+    // releases/latest returns 404
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404 });
+    // tags returns a list
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => [{ name: 'v2.0.0' }] });
+
+    const result = await service.testVersionConnection({ provider: 'github', target: 'owner/repo' });
+    expect(result).toMatchObject({ ok: true, source: 'tags' });
+  });
+
+  it('returns error when GitHub API returns non-404 error', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
+
+    const result = await service.testVersionConnection({ provider: 'github', target: 'owner/repo' });
+    expect(result).toMatchObject({ ok: false, unauthorized: true });
+  });
+
+  it('returns version from npm registry', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '3.0.0', name: 'express' }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'npm', target: 'express' });
+    expect(result).toMatchObject({ ok: true, latestVersion: '3.0.0' });
+  });
+
+  it('returns error for empty npm package name', async () => {
+    const result = await service.testVersionConnection({ provider: 'npm', target: '  ' });
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it('returns error when npm registry fails', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404 });
+    const result = await service.testVersionConnection({ provider: 'npm', target: 'nonexistent-pkg-12345' });
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it('returns version from PyPI', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ info: { version: '4.2.1' } }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'pypi', target: 'requests' });
+    expect(result).toMatchObject({ ok: true, latestVersion: '4.2.1' });
+  });
+
+  it('returns error for empty PyPI package name', async () => {
+    const result = await service.testVersionConnection({ provider: 'pypi', target: '' });
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it('returns version from crates.io', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ crate: { max_stable_version: '1.0.1', newest_version: '1.0.2' } }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'cargo', target: 'serde' });
+    expect(result).toMatchObject({ ok: true, latestVersion: '1.0.1' });
+  });
+
+  it('returns error for empty cargo crate name', async () => {
+    const result = await service.testVersionConnection({ provider: 'cargo', target: '   ' });
+    expect(result).toMatchObject({ ok: false });
+  });
+
+  it('returns version from Docker Hub', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ results: [{ name: 'latest' }] }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'docker', target: 'nginx' });
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it('returns version from APT / Debian Sources', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ versions: [{ version: '3.4.0-1', suites: ['bookworm'] }, { version: '3.4.0-beta1', suites: ['testing'] }] }),
+    });
+
+    const result = await service.testVersionConnection({ provider: 'apt', target: 'nginx' });
+    expect(result).toMatchObject({ ok: true, latestVersion: '3.4.0-1' });
+  });
+
+  it('returns error for empty APT package name', async () => {
+    const result = await service.testVersionConnection({ provider: 'apt', target: '' });
+    expect(result).toMatchObject({ ok: false });
+  });
+});

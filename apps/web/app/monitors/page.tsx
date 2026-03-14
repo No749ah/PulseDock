@@ -836,7 +836,12 @@ export default function MonitorsPage() {
             onClick={() => setAlertPanelMonitor(null)}
           />
           {/* Panel */}
-          <div className="relative w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col overflow-hidden">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="alert-panel-title"
+            className="relative w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col overflow-hidden"
+          >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
@@ -844,13 +849,14 @@ export default function MonitorsPage() {
                   <Bell className="w-4 h-4 text-accent" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-text-primary">Alert Channels</h3>
+                  <h3 id="alert-panel-title" className="text-base font-semibold text-text-primary">Alert Channels</h3>
                   <p className="text-xs text-text-secondary truncate max-w-[200px]">{alertPanelMonitor.name}</p>
                 </div>
               </div>
               <button
                 onClick={() => setAlertPanelMonitor(null)}
                 className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-secondary hover:text-text-primary"
+                aria-label="Close alert channels panel"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -900,6 +906,7 @@ export default function MonitorsPage() {
                               onClick={() => unassignChannel(channel.id)}
                               className="ml-3 p-1.5 rounded-md hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors shrink-0"
                               title="Remove"
+                              aria-label={`Remove ${channel.name} from this monitor`}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -931,6 +938,7 @@ export default function MonitorsPage() {
                               onClick={() => assignChannel(channel.id)}
                               className="ml-3 p-1.5 rounded-md bg-accent/10 hover:bg-accent/20 text-accent transition-colors shrink-0"
                               title="Add"
+                              aria-label={`Add ${channel.name} to this monitor`}
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </button>

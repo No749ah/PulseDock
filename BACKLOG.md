@@ -50,7 +50,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ### 🟠 FRONTEND / UX — Major Gaps
 
-- [ ] **Accessibility (a11y) audit and fixes** — Currently near-zero aria-labels, roles, keyboard navigation. Add: `aria-label` to all icon buttons, `role` attributes, focus rings, keyboard shortcuts for main actions, skip-to-content link. Test with screen reader.
+- [x] **Accessibility (a11y) audit and fixes** — Added skip-to-content link, global focus-visible ring (CSS), `role="dialog"` + `aria-modal` + `aria-labelledby` + focus-trap (Tab/Shift+Tab) to both Modal components, `aria-label` on all icon-only buttons (Edit/Delete in alerts/projects tables, pagination prev/next), `aria-live="polite"` on pagination counters, `aria-label` on navigation + user menu button, `id="main-content"` + `role="main"` on main layout area.
 - [x] **Empty states for all pages** — Every list page (Monitors, Alerts, Projects, etc.) needs a proper empty state with illustration, message, and CTA ("Create your first monitor →"). Currently likely just blank.
 - [x] **Error boundaries and user-friendly error pages** — Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
 - [x] **Form validation UX** — All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
@@ -58,7 +58,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
 - [x] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
 - [ ] **Mobile UX audit** — Test all 9 pages on 375px width. Fix any overflow, unclickable elements, font size issues.
-- [ ] **Keyboard navigation** — All interactive elements reachable by Tab. Modals trap focus. Dropdowns closable with Escape.
+- [x] **Keyboard navigation** — Modals (both Modal.tsx and modal-framework.tsx) now trap focus with Tab/Shift+Tab cycle and close on Escape. Skip-to-content link visible on first Tab press. Global focus-visible ring ensures all interactive elements show keyboard focus indicator.
 - [ ] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
 
 ---
@@ -66,10 +66,10 @@ _(pick the highest priority unchecked item below and start immediately)_
 ### 🟡 FEATURES — Missing / Incomplete
 
 - [ ] **More version providers** — Add npm (registry.npmjs.org), PyPI (pypi.org/pypi/{pkg}/json), Maven Central, Cargo (crates.io), Helm chart repos. Each needs: fetcher, parser, tests.
-- [ ] **Webhook alert channel** — Allow users to configure a webhook URL to receive alerts via HTTP POST with JSON payload. Add signature (HMAC) for verification.
-- [ ] **Slack alert channel** — OAuth app or Incoming Webhook URL. Send formatted Slack message on version change/alert.
-- [ ] **Discord alert channel** — Discord webhook integration. Send embed on alert.
-- [ ] **Telegram alert channel** — Bot token + chat ID. Send message on alert.
+- [x] **Webhook alert channel** — Webhook URL config + HTTP POST with JSON payload implemented in `alerts.service.ts`. UI supports create/edit/test flow.
+- [x] **Slack alert channel** — Slack incoming webhook URL config implemented. UI + backend complete.
+- [x] **Discord alert channel** — Discord webhook URL config + embed payload implemented. UI + backend complete.
+- [x] **Telegram alert channel** — Bot token + chat ID implemented via Telegram Bot API. UI + backend complete.
 - [ ] **Public status page polish** — Review current status page: add uptime percentage, response time chart, incident history, custom domain support.
 - [ ] **Monitor groups / tags** — Allow grouping monitors with tags. Filter/search by tag in UI.
 - [ ] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Useful for power users.

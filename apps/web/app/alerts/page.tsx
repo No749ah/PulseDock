@@ -333,10 +333,10 @@ export default function AlertsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={() => testChannel(c.id)}>Test</Button>
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`} title="Edit channel">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => openDelete(c)} className="text-danger hover:text-danger">
+                        <Button variant="ghost" size="sm" onClick={() => openDelete(c)} className="text-danger hover:text-danger" aria-label={`Delete ${c.name}`} title="Delete channel">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -349,11 +349,11 @@ export default function AlertsPage() {
             {/* Pagination */}
             <div className="flex flex-col gap-3 p-4 border-t border-border sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1}>
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} aria-label="Previous page">
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-sm text-text-secondary">Page {safePage} of {pages}</span>
-                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages}>
+                <span className="text-sm text-text-secondary" aria-live="polite">Page {safePage} of {pages}</span>
+                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages} aria-label="Next page">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>

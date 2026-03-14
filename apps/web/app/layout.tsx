@@ -69,6 +69,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         
       </head>
       <body className="bg-bg text-text-primary antialiased">
+        {/* Skip-to-content — keyboard users can skip repetitive navigation */}
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
         <ThemeProvider>
           <ToastProvider>
             {children}

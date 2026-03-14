@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **Status Pages build stabilization** — Fixed failing web build by removing obsolete conflicting route `app/status/[userId]` (conflicted with new slug route `app/status/[slug]`) and repairing corrupted JSX references in status page editor (`widget.type`, `widget.config.label`, size display string). Build now passes and all tests green.
+
 - [x] **Scheduler perf: eliminate N+1 queries + concurrent monitor checks** — Refactored `ChecksScheduler.tick()` to load all enabled monitors with their latest run in a single `findMany` (one DB round-trip instead of N+1). Due monitors now dispatched concurrently via `Promise.allSettled` rather than sequentially. Added structured logger for failed-tick warnings.
 
 - [x] **Fix FadeIn animation component** — Replaced no-op placeholder (caused by framer-motion v12 / React 19 typing incompatibility) with CSS keyframe + Intersection Observer implementation. All scroll-triggered entrance animations on landing, login, dashboard, and monitors pages now work correctly. Dependency-free, performant, React 19 compatible.

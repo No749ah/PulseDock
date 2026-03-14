@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
-import { CreateMonitorDto, DiscoverVersionDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -51,6 +51,14 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Check triggered.' })
   runNow(@Req() req: { user: { id: string } }, @Body() body: RunMonitorDto) {
     return this.monitorsService.runNow(req.user.id, body.monitorId);
+  }
+
+  @Post('bulk')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Bulk action on monitors', description: 'Apply enable, disable, delete, or run-now to multiple monitors at once.' })
+  @ApiResponse({ status: 200, description: 'Bulk action applied.' })
+  bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
+    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action);
   }
 
   @Post('version-test')

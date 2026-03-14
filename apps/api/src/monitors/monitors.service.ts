@@ -216,6 +216,38 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run') {
+    if (!ids.length) return { ok: true, affected: 0 };
+    // Verify ownership of all IDs first
+    const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
+    const ownedIds = monitors.map((m) => m.id);
+    if (!ownedIds.length) return { ok: true, affected: 0 };
+
+    if (action === 'delete') {
+      await this.prisma.monitor.deleteMany({ where: { id: { in: ownedIds }, userId } });
+      for (const id of ownedIds) {
+        await this.audit.log('monitor.delete', userId, userId, { monitorId: id, bulk: true });
+        this.realtime.monitorDeleted(userId, { id });
+      }
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'enable' || action === 'disable') {
+      const enabled = action === 'enable';
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { enabled } });
+      await this.audit.log(`monitor.bulk_${action}`, userId, userId, { ids: ownedIds });
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'run') {
+      const results = await Promise.allSettled(ownedIds.map((id) => this.runNow(userId, id)));
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+      return { ok: true, affected: succeeded };
+    }
+
+    return { ok: false, affected: 0 };
+  }
+
   async listMonitorAlerts(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');

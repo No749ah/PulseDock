@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -116,6 +116,10 @@ export default function MonitorsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; errors: Array<{ index: number; name: string; error: string }> } | null>(null);
+
+  // bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // alert assignment panel
   const [alertPanelMonitor, setAlertPanelMonitor] = useState<MonitorItem | null>(null);
@@ -333,6 +337,46 @@ export default function MonitorsPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === monitors.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(monitors.map((m) => m.id)));
+    }
+  };
+
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run") => {
+    if (!selectedIds.size) return;
+    if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
+    setBulkLoading(true);
+    try {
+      const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+      });
+      if (action === "delete") {
+        setMonitors((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+        setRuns((prev) => prev.filter((r) => !selectedIds.has(r.monitorId)));
+      } else if (action === "enable" || action === "disable") {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, enabled: action === "enable" } : m));
+      }
+      setSelectedIds(new Set());
+      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : "queued for check"}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleExport = async () => {
     try {
       const data = await api<{ version: string; exportedAt: string; monitors: unknown[] }>("/v1/monitors/export", user?.id);
@@ -522,11 +566,43 @@ export default function MonitorsPage() {
           </FadeIn>
         ) : (
           <FadeIn delay={0.1}>
+            {/* Bulk action bar */}
+            {selectedIds.size > 0 && (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5">
+                <span className="text-sm font-medium text-text-primary mr-1">{selectedIds.size} selected</span>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("enable")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <Power className="w-3.5 h-3.5" />Enable
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("disable")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <PowerOff className="w-3.5 h-3.5" />Disable
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("run")} disabled={bulkLoading} className="flex items-center gap-1.5">
+                  <PlayCircle className="w-3.5 h-3.5" />Run now
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
+                  <Trash2 className="w-3.5 h-3.5" />Delete
+                </Button>
+                <button onClick={() => setSelectedIds(new Set())} className="ml-1 p-1 rounded hover:bg-surface-elevated text-text-secondary hover:text-text-primary" aria-label="Clear selection">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <Card className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHead>
                     <tr>
+                      <TableHeader className="w-10">
+                        <button
+                          onClick={toggleSelectAll}
+                          className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
+                          aria-label={selectedIds.size === monitors.length ? "Deselect all" : "Select all"}
+                        >
+                          {selectedIds.size === monitors.length && monitors.length > 0
+                            ? <CheckSquare className="w-4 h-4 text-accent" />
+                            : <Square className="w-4 h-4" />}
+                        </button>
+                      </TableHeader>
                       <TableHeader>Name</TableHeader>
                       <TableHeader className="hidden sm:table-cell">Type</TableHeader>
                       <TableHeader className="hidden md:table-cell">Target</TableHeader>
@@ -540,7 +616,18 @@ export default function MonitorsPage() {
                     {monitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
-                        <TableRow key={monitor.id}>
+                        <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
+                          <TableCell className="w-10">
+                            <button
+                              onClick={() => toggleSelect(monitor.id)}
+                              className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
+                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name}`}
+                            >
+                              {selectedIds.has(monitor.id)
+                                ? <CheckSquare className="w-4 h-4 text-accent" />
+                                : <Square className="w-4 h-4" />}
+                            </button>
+                          </TableCell>
                           <TableCell className="font-medium text-text-primary">
                             <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
                           </TableCell>

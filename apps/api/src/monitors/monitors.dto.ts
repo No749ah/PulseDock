@@ -186,3 +186,12 @@ export class DiscoverVersionDto {
   @MaxLength(255)
   openvpnPassword?: string;
 }
+
+export class BulkActionDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsIn(['enable', 'disable', 'delete', 'run'])
+  action!: 'enable' | 'disable' | 'delete' | 'run';
+}

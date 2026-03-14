@@ -177,7 +177,7 @@ function SystemHealthWidget() {
 
       {/* Alerts metrics row */}
       {metrics && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-text-secondary">Login failures</span>
             <span className="text-sm font-semibold text-text-primary tabular-nums">{metrics.authLoginFailed}</span>

@@ -716,17 +716,24 @@ export default function VersionsPage() {
           </Modal>
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
+          <div className="flex items-center justify-between mb-6 gap-3">
+            <div className="min-w-0">
               <h2 className="text-2xl font-bold text-text-primary">Version Checks</h2>
               <p className="text-text-secondary text-sm mt-1">
                 {summary?.stats.total ?? 0} tracked {(summary?.stats.total ?? 0) === 1 ? 'item' : 'items'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="secondary" onClick={() => load()}>Refresh</Button>
-              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
-                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create version check</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="secondary" size="sm" onClick={() => load()} title="Refresh">
+                <span className="hidden sm:inline">Refresh</span>
+                <span className="sm:hidden">↺</span>
+              </Button>
+              <Button size="sm" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
+                <span className="flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Create version check</span>
+                  <span className="sm:hidden">New</span>
+                </span>
               </Button>
             </div>
           </div>
@@ -773,13 +780,13 @@ export default function VersionsPage() {
               <TableHead>
                 <TableRow hover={false}>
                   <TableHeader>Name</TableHeader>
-                  <TableHeader>Type</TableHeader>
-                  <TableHeader>Target</TableHeader>
-                  <TableHeader>Current</TableHeader>
+                  <TableHeader className="hidden sm:table-cell">Type</TableHeader>
+                  <TableHeader className="hidden md:table-cell">Target</TableHeader>
+                  <TableHeader className="hidden sm:table-cell">Current</TableHeader>
                   <TableHeader>Latest</TableHeader>
                   <TableHeader>Status</TableHeader>
-                  <TableHeader>Last check</TableHeader>
-                  <TableHeader>Interval</TableHeader>
+                  <TableHeader className="hidden lg:table-cell">Last check</TableHeader>
+                  <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
                   <TableHeader>Action</TableHeader>
                 </TableRow>
               </TableHead>
@@ -798,19 +805,19 @@ export default function VersionsPage() {
                     <Fragment key={item.id}>
                       <TableRow>
                         <TableCell>
-                          <button className="text-accent hover:underline flex items-center gap-1" onClick={() => toggleDetails(item.id)}>
-                            {expandedId === item.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            {item.name}
+                          <button className="text-accent hover:underline flex items-center gap-1 text-left" onClick={() => toggleDetails(item.id)}>
+                            {expandedId === item.id ? <ChevronUp className="w-3 h-3 shrink-0" /> : <ChevronDown className="w-3 h-3 shrink-0" />}
+                            <span className="truncate max-w-[120px] sm:max-w-none">{item.name}</span>
                           </button>
                         </TableCell>
-                        <TableCell>{item.type}</TableCell>
-                        <TableCell className="max-w-[280px] break-all">{item.target}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">{item.type}</TableCell>
+                        <TableCell className="hidden md:table-cell max-w-[280px] break-all">{item.target}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           {item.currentVersion ? (
                             <span className="font-mono text-sm">{item.currentVersion}</span>
                           ) : '—'}
                         </TableCell>
-                        <TableCell className="max-w-[320px]">
+                        <TableCell className="max-w-[200px] sm:max-w-[320px]">
                           {(() => {
                             const { from, to } = extractVersionsFromMessage(item.latestMessage);
                             if (from && to && from !== to) {
@@ -829,8 +836,8 @@ export default function VersionsPage() {
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
-                        <TableCell>{secondsToHuman(item.intervalSec)}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{secondsToHuman(item.intervalSec)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Button variant="secondary" size="sm" loading={runningId === item.id} onClick={() => runNow(item.id)}>
@@ -848,7 +855,7 @@ export default function VersionsPage() {
 
                       {expandedId === item.id && (
                         <tr className="border-b border-border">
-                          <td colSpan={9} className="px-4 py-3 bg-surface-elevated">
+                          <td colSpan={9} className="px-4 py-3 bg-surface-elevated overflow-x-auto">
                             {runsLoadingId === item.id ? (
                               <p className="text-sm text-text-secondary">Loading runs…</p>
                             ) : (

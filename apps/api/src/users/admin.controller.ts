@@ -124,4 +124,40 @@ export class AdminController {
     await this.audit.log('admin.password_reset.revoke', req.user.id, null, { passwordResetId: id, email: existing.email });
     return { ok: true };
   }
+
+  @Roles('admin')
+  @Get('stats')
+  @ApiOperation({ summary: 'System statistics', description: 'Admin only. Returns aggregate counts for monitors, users, checks, and error rate.' })
+  @ApiResponse({ status: 200, description: 'System stats returned.' })
+  async systemStats() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      totalUsers,
+      activeUsers,
+      totalMonitors,
+      enabledMonitors,
+      checksToday,
+      failedToday,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { isActive: true } }),
+      this.prisma.monitor.count(),
+      this.prisma.monitor.count({ where: { enabled: true } }),
+      this.prisma.monitorRun.count({ where: { checkedAt: { gte: todayStart } } }),
+      this.prisma.monitorRun.count({ where: { checkedAt: { gte: todayStart }, ok: false } }),
+    ]);
+
+    const errorRatePct = checksToday > 0 ? Math.round((failedToday / checksToday) * 1000) / 10 : 0;
+
+    return {
+      users: { total: totalUsers, active: activeUsers },
+      monitors: { total: totalMonitors, enabled: enabledMonitors },
+      checksToday,
+      failedToday,
+      errorRatePct,
+      generatedAt: now.toISOString(),
+    };
+  }
 }

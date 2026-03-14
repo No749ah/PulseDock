@@ -258,7 +258,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Update user profile', description: 'Update email and/or display name.' })
   @ApiResponse({ status: 200, description: 'Profile updated.' })
   updateProfile(@Req() req: { user: { id: string } }, @Body() body: UpdateProfileDto) {
-    return this.authService.updateProfile(req.user.id, body.email);
+    return this.authService.updateProfile(req.user.id, body.email, body.displayName, body.timezone);
   }
 
   @UseGuards(AuthGuard)

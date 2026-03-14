@@ -70,6 +70,8 @@ export default function AccountPage() {
   const [loadError, setLoadError] = useState("");
 
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [timezone, setTimezone] = useState("UTC");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -127,6 +129,8 @@ export default function AccountPage() {
         setSessions(sess);
         setApiKeys(keys);
         setEmail(profile.email);
+        setDisplayName((profile as unknown as { displayName?: string }).displayName ?? "");
+        setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
         // Load audit log lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
       } catch (e) {
@@ -140,18 +144,16 @@ export default function AccountPage() {
     load();
   }, [router]);
 
-  const handleUpdateEmail = async () => {
+  const handleUpdateProfile = async () => {
     try {
-      
-      
       await api("/v1/auth/profile", user?.id, {
         method: "PATCH",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, displayName: displayName || undefined, timezone }),
       });
-      toastSuccess("Email updated successfully");
+      toastSuccess("Profile updated successfully");
       if (me) setMe({ ...me, email });
     } catch (e) {
-      toastError(e instanceof Error ? e.message : "Failed to update email");
+      toastError(e instanceof Error ? e.message : "Failed to update profile");
     }
   };
 
@@ -400,6 +402,20 @@ export default function AccountPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Display name <span className="text-text-secondary font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className={inputClass}
+                  placeholder="Jane Smith"
+                  maxLength={64}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   Email
                 </label>
                 <input
@@ -411,6 +427,26 @@ export default function AccountPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Timezone
+                </label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className={inputClass}
+                >
+                  {[
+                    "UTC", "Europe/Berlin", "Europe/London", "Europe/Paris", "Europe/Vienna",
+                    "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+                    "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Australia/Sydney",
+                    "Pacific/Auckland",
+                  ].map((tz) => (
+                    <option key={tz} value={tz}>{tz.replace("_", " ")}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex items-center gap-2 py-1">
                 <span className="text-sm text-text-secondary">Role:</span>
                 <Badge variant={me?.role === "admin" ? "success" : "default"}>
@@ -418,8 +454,8 @@ export default function AccountPage() {
                 </Badge>
               </div>
 
-              <Button onClick={handleUpdateEmail} size="lg" className="w-full">
-                Update Email
+              <Button onClick={handleUpdateProfile} size="lg" className="w-full">
+                Save Profile
               </Button>
             </div>
           </Card>

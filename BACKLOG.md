@@ -77,7 +77,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
 - [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
 - [ ] **i18n / Internationalization** — Add i18n support (at minimum: English + German since Noah is German-speaking). Use `next-intl` or similar.
-- [ ] **User profile page improvements** — Avatar upload, display name, timezone setting (affects how times are shown).
+- [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [ ] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest).
 - [ ] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV.

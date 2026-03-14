@@ -302,14 +302,18 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
   }
 
-  async updateProfile(userId: string, email: string) {
+  async updateProfile(userId: string, email: string, displayName?: string, timezone?: string) {
     const normalized = email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email: normalized } });
     if (existing && existing.id !== userId) throw new ConflictException('email already exists');
 
-    const user = await this.prisma.user.update({ where: { id: userId }, data: { email: normalized } });
-    await this.audit.log('auth.update_profile', userId, userId, { email: normalized });
-    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
+    const data: Record<string, unknown> = { email: normalized };
+    if (displayName !== undefined) data.displayName = displayName.trim() || null;
+    if (timezone !== undefined) data.timezone = timezone || 'UTC';
+
+    const user = await this.prisma.user.update({ where: { id: userId }, data });
+    await this.audit.log('auth.update_profile', userId, userId, { email: normalized, displayName, timezone });
+    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', displayName: user.displayName ?? null, timezone: user.timezone ?? 'UTC' };
   }
 
   async changePassword(userId: string, currentPassword: string | undefined, newPassword: string) {
@@ -665,7 +669,7 @@ export class AuthService {
   async getActiveUserById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || !user.isActive) return null;
-    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', mustChangePassword: user.mustChangePassword, totpEnabled: user.totpEnabled };
+    return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', mustChangePassword: user.mustChangePassword, totpEnabled: user.totpEnabled, displayName: user.displayName ?? null, timezone: user.timezone ?? 'UTC' };
   }
 
   async getUserByAccessToken(token: string | undefined) {

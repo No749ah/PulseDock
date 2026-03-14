@@ -67,6 +67,16 @@ export class UpdateProfileDto {
   @IsEmail()
   @MaxLength(255)
   email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timezone?: string;
 }
 
 export class ChangePasswordDto {

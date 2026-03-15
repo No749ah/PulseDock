@@ -2805,3 +2805,122 @@ describe('MonitorsService branch coverage gaps', () => {
     expect(secondHeaders['x-openvpn-password']).toBe('ovpn-pass');
   });
 });
+
+// ── Branch coverage: isSensibleVersionValue returns false (lines 562-564) ─────
+
+describe('isSensibleVersionValue — returns false for non-version strings (lines 562-564)', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeJsonResponse(body: unknown) {
+    return {
+      ok: true, status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+    };
+  }
+
+  it('skips version key with non-semver value (covers isSensibleVersionValue return false)', async () => {
+    // { version: "N/A" } → key "version" in directKeySet BUT isSensibleVersionValue("N/A") returns false
+    // → loop continues → no version found → currentVersion=null
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ version: 'N/A', uptime: '100%' }));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+
+  it('skips version key with single-word non-numeric value (covers return false branch)', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ version: 'unknown', status: 'ok' }));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+});
+
+// ── Branch coverage: openvpn auth with actual credentials (lines 699-700) ─────
+
+describe('openvpn auth with non-empty credentials (lines 699-700 branch)', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sets Basic auth header when openvpnUsername and openvpnPassword are provided', async () => {
+    // All fetch calls fail → manual strategy, but the auth apply() lambdas run with non-empty creds
+    fetchMock.mockResolvedValue({
+      ok: false, status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://vpn-app.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'vpnuser',
+      openvpnPassword: 'vpnpass123',
+    });
+
+    expect(result.strategy).toBe('manual');
+    // Verify Basic auth header was set (openvpn-basic mode ran with non-empty basic)
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    const basicAuthCall = calls.find((c) => {
+      const headers = c[1]?.headers as Record<string, string> | undefined;
+      return headers?.authorization?.startsWith('Basic ');
+    });
+    expect(basicAuthCall).toBeDefined();
+  });
+
+  it('sets openvpn username/password headers when credentials are non-empty', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false, status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://vpn-app.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'admin',
+      openvpnPassword: 'secret',
+    });
+
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    const headerCall = calls.find((c) => {
+      const headers = c[1]?.headers as Record<string, string> | undefined;
+      return headers?.['x-openvpn-username'] === 'admin';
+    });
+    expect(headerCall).toBeDefined();
+  });
+});

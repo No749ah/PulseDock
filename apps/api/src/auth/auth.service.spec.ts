@@ -1350,3 +1350,67 @@ describe('exportUserAuditLog() additional CSV branch coverage', () => {
     expect(result.data).toContain(',""');
   });
 });
+
+// ── Branch coverage: fire-and-forget .catch() callback in login ───────────────
+
+describe('login — sendAccountLockedEmail rejects (fire-and-forget catch branch)', () => {
+  it('swallows mailer rejection on 5th failed login (covers .catch callback body)', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const passwordHash = hashSync('CorrectPass1!Strong', 1);
+    // Set failedLoginCount=4 so this attempt pushes it to 5 → sets lockedUntil
+    const user = makeUser({ failedLoginCount: 4, passwordHash });
+    const prisma = makePrisma(user);
+    const mailer = makeMailer();
+    // Make the mailer reject to exercise the .catch(() => {}) callback
+    mailer.sendAccountLockedEmail.mockRejectedValueOnce(new Error('SMTP unavailable'));
+    const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+    // Login with wrong password → account gets locked → mailer called (and rejected, but swallowed)
+    await expect(svc.login('test@example.com', 'WrongPass1!', { ipAddress: '10.0.0.1' })).rejects.toThrow(UnauthorizedException);
+    // Allow fire-and-forget microtask to settle
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mailer.sendAccountLockedEmail).toHaveBeenCalled();
+  });
+});
+
+// ── Branch coverage: changePassword — mustChangePassword=true bypasses check ──
+
+describe('changePassword — mustChangePassword=true (requiresCurrentPassword=false branch)', () => {
+  it('skips current password validation when mustChangePassword is true', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const passwordHash = hashSync('OldPass1!Strong', 1);
+    const user = makeUser({ mustChangePassword: true, passwordHash });
+    const prisma = makePrisma(user);
+    const svc = makeService(prisma);
+
+    // No currentPassword provided — should succeed because mustChangePassword=true
+    const result = await svc.changePassword('user-1', undefined, 'NewStr0ng!Pass123');
+    expect(result).toEqual({ ok: true });
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ mustChangePassword: false }) }),
+    );
+  });
+});
+
+// ── Branch coverage: checkRecoveryCode — invalid JSON totpRecoveryCodes ────────
+
+describe('disable2FA — checkRecoveryCode with malformed JSON (catch branch)', () => {
+  it('throws UnauthorizedException when totpRecoveryCodes is not valid JSON', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const { verify } = await import('otplib');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false } as never);
+
+    const passwordHash = hashSync('ValidPass1!Strong', 1);
+    // totpRecoveryCodes is not valid JSON → JSON.parse throws → catch returns false
+    const user = makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash,
+      totpRecoveryCodes: 'NOT_VALID_JSON_AT_ALL{{{',
+    });
+    const prisma = makePrisma(user);
+    const svc = makeService(prisma);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'anycode')).rejects.toThrow(UnauthorizedException);
+  });
+});

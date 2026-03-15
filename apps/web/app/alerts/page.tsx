@@ -36,7 +36,7 @@ export default function AlertsPage() {
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const [form, setForm] = useState({ name: '', type: 'discord' as AlertType, a: '', b: '' });
+  const [form, setForm] = useState({ name: '', type: 'discord' as AlertType, a: '', b: '', secret: '' });
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -44,6 +44,7 @@ export default function AlertsPage() {
   const [editName, setEditName] = useState('');
   const [editA, setEditA] = useState('');
   const [editB, setEditB] = useState('');
+  const [editSecret, setEditSecret] = useState('');
 
   useEffect(() => {
     const user = getUser();
@@ -63,7 +64,7 @@ export default function AlertsPage() {
 
   function resetCreateForm() {
     setWizardStep(0);
-    setForm({ name: '', type: 'discord', a: '', b: '' });
+    setForm({ name: '', type: 'discord', a: '', b: '', secret: '' });
   }
 
   function next() {
@@ -74,16 +75,20 @@ export default function AlertsPage() {
     setWizardStep((s) => Math.max(0, s - 1));
   }
 
-  function buildConfig(type: AlertType, a: string, b: string) {
+  function buildConfig(type: AlertType, a: string, b: string, secret?: string) {
     if (type === 'discord' || type === 'slack') return { webhookUrl: a };
-    if (type === 'webhook') return { url: a };
+    if (type === 'webhook') {
+      const cfg: Record<string, string> = { url: a };
+      if (secret?.trim()) cfg.secret = secret.trim();
+      return cfg;
+    }
     if (type === 'telegram') return { botToken: a, chatId: b };
     return { to: a };
   }
 
   async function createChannel() {
     try {
-      const config = buildConfig(form.type, form.a, form.b);
+      const config = buildConfig(form.type, form.a, form.b, form.secret);
       await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
       setWizardOpen(false);
       resetCreateForm();
@@ -112,12 +117,14 @@ export default function AlertsPage() {
     } else if (channel.type === 'webhook') {
       setEditA(String(channel.config.url ?? ''));
       setEditB('');
+      setEditSecret(String(channel.config.secret ?? ''));
     } else if (channel.type === 'telegram') {
       setEditA(String(channel.config.botToken ?? ''));
       setEditB(String(channel.config.chatId ?? ''));
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
+      setEditSecret('');
     }
     setEditOpen(true);
   }
@@ -125,7 +132,7 @@ export default function AlertsPage() {
   async function saveEdit() {
     if (!selected) return;
     try {
-      const config = buildConfig(selected.type, editA, editB);
+      const config = buildConfig(selected.type, editA, editB, editSecret);
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
         body: JSON.stringify({ name: editName, config }),
@@ -212,13 +219,32 @@ export default function AlertsPage() {
                   {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : 'Enter destination email.'}
                 </p>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Primary</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : 'URL'}
+                  </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
                 {form.type === 'telegram' && (
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Secondary (chat ID)</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
                     <input className={inputClass} value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                  </div>
+                )}
+                {form.type === 'webhook' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <input
+                      className={inputClass}
+                      type="password"
+                      placeholder="e.g. whsec_abc123…"
+                      value={form.secret}
+                      onChange={(e) => setForm({ ...form, secret: e.target.value })}
+                    />
+                    <p className="mt-1.5 text-xs text-text-secondary">
+                      When set, PulseDock adds an <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> header so your endpoint can verify delivery authenticity.
+                    </p>
                   </div>
                 )}
               </div>
@@ -229,9 +255,14 @@ export default function AlertsPage() {
                 <p className="font-semibold text-text-primary">Step 3/3 · Review</p>
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
-                <p className="text-sm text-text-secondary">Primary: {form.a ? 'configured' : 'missing'}</p>
+                <p className="text-sm text-text-secondary">
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                </p>
                 {form.type === 'telegram' && (
-                  <p className="text-sm text-text-secondary">Secondary: {form.b ? 'configured' : 'missing'}</p>
+                  <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
+                )}
+                {form.type === 'webhook' && (
+                  <p className="text-sm text-text-secondary">Signing secret: {form.secret ? '✓ set' : 'not set (optional)'}</p>
                 )}
               </div>
             )}
@@ -255,13 +286,32 @@ export default function AlertsPage() {
                 <input className={inputClass} value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Primary</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : 'URL'}
+                </label>
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>
               {selected?.type === 'telegram' && (
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Secondary (chat ID)</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
                   <input className={inputClass} value={editB} onChange={(e) => setEditB(e.target.value)} />
+                </div>
+              )}
+              {selected?.type === 'webhook' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="password"
+                    placeholder="Leave blank to keep existing, or enter a new secret"
+                    value={editSecret}
+                    onChange={(e) => setEditSecret(e.target.value)}
+                  />
+                  <p className="mt-1.5 text-xs text-text-secondary">
+                    PulseDock will send <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> with every webhook payload.
+                  </p>
                 </div>
               )}
             </div>

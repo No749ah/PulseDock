@@ -423,6 +423,69 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── webhook HMAC signing ─────────────────────────────────────────────────────
+
+  describe('webhook HMAC signing', () => {
+    it('adds X-PulseDock-Signature header when secret is configured', async () => {
+      const { createHmac } = await import('node:crypto');
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const secret = 'my-signing-secret';
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', secret } });
+
+      await service.notifyTest(channel);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [, opts] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string>; body: string }];
+      const sig = opts.headers['x-pulsedock-signature'];
+      expect(sig).toBeDefined();
+      expect(sig).toMatch(/^sha256=[a-f0-9]{64}$/);
+
+      // Verify the signature matches the body
+      const expected = `sha256=${createHmac('sha256', secret).update(opts.body).digest('hex')}`;
+      expect(sig).toBe(expected);
+    });
+
+    it('does NOT add signature header when no secret is configured', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
+
+      await service.notifyTest(channel);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }];
+      expect(opts.headers['x-pulsedock-signature']).toBeUndefined();
+    });
+
+    it('does NOT add signature header when secret is empty string', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', secret: '' } });
+
+      await service.notifyTest(channel);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }];
+      expect(opts.headers['x-pulsedock-signature']).toBeUndefined();
+    });
+
+    it('generates deterministic signature for same secret + body', async () => {
+      const { createHmac } = await import('node:crypto');
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const secret = 'deterministic-secret-test';
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', secret } });
+
+      // Call twice
+      await service.notifyTest(channel);
+      fetchMock.mockClear();
+      await service.notifyTest(channel);
+
+      const [, opts1] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string>; body: string }];
+      const expected = `sha256=${createHmac('sha256', secret).update(opts1.body).digest('hex')}`;
+      expect(opts1.headers['x-pulsedock-signature']).toBe(expected);
+    });
+  });
+
   // ── email channel ───────────────────────────────────────────────────────────
 
   describe('email channel', () => {

@@ -200,11 +200,35 @@ export default function MonitorDetailPage() {
           </div>
         </FadeIn>
 
+        {/* Heartbeat info card */}
+        {monitor.type === "HEARTBEAT" && (
+          <FadeIn delay={0.12}>
+            <Card className="p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Heartbeat Config</h2>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-xs text-text-secondary">Ping URL</span>
+                  <p className="font-mono text-xs text-text-primary bg-surface-elevated rounded px-2 py-1 mt-1 break-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/v1/heartbeat/${monitor.config?.token ?? "—"}` : `…/v1/heartbeat/${monitor.config?.token ?? "—"}`}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">Send a POST to this URL from your cron job or service to mark it healthy.</p>
+                </div>
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <span className="text-xs text-text-secondary block">Timeout</span>
+                    <span className="font-medium text-text-primary">{String(monitor.config?.timeoutMin ?? 5)} min</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </FadeIn>
+        )}
+
         {/* Response time chart */}
         <FadeIn delay={0.15}>
           <Card className="p-4 space-y-3">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-              Response Time
+              {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
             </h2>
             <ResponseTimeChart runs={runs} height={80} />
           </Card>

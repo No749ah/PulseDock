@@ -9,6 +9,12 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **TCP port monitor** — New monitor type checks if a TCP port is open (`host:port` target). Measures connection latency. Fails on refused connection or timeout.
+- **SSL certificate monitor** — Tracks TLS certificate expiry for any domain or HTTPS URL. Levels: green (>30 days), yellow (10–30 days), red (<10 days or expired). Shows days remaining in check messages.
+- **Heartbeat monitor** — Push-based monitoring for cron jobs and internal services. Generates a unique token per monitor. `POST /v1/heartbeat/:token` (no auth) updates `lastHeartbeatAt`. Alerts if no ping received within configurable timeout window. Ping URL displayed with copy button in UI.
+- **Maintenance windows frontend** — Full CRUD UI for maintenance windows. Status badges (Active/Upcoming/Past), create/edit modal with datetime inputs, calendar empty state. `/maintenance` route in nav.
+
 ---
 
 ## [0.4.0] — 2026-03-15

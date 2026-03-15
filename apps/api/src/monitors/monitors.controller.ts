@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { MonitorsService } from './monitors.service';
@@ -100,6 +100,22 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Run history returned.' })
   monitorRuns(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.monitorsService.monitorRuns(req.user.id, id);
+  }
+
+  @Get(':id/uptime')
+  @ApiOperation({ summary: 'Uptime & SLA stats for a monitor', description: 'Returns time-window uptime %, incident count, MTTR, MTBF, and downtime for a configurable period.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', required: false, enum: ['1d', '7d', '30d', '90d'], description: 'Time window (default: 30d)' })
+  @ApiResponse({ status: 200, description: 'Uptime stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  monitorUptime(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period', new DefaultValuePipe('30d')) period: string,
+  ) {
+    const validPeriods = ['1d', '7d', '30d', '90d'] as const;
+    const safePeriod = validPeriods.includes(period as '1d' | '7d' | '30d' | '90d') ? (period as '1d' | '7d' | '30d' | '90d') : '30d';
+    return this.monitorsService.monitorUptime(req.user.id, id, safePeriod);
   }
 
   @Get('version-summary')

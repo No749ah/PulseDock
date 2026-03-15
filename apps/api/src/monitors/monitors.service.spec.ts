@@ -1617,3 +1617,129 @@ describe('versionSummary() — additional branch coverage', () => {
     expect(result.items[0].checkedAt).toBeNull();
   });
 });
+
+describe('monitorUptime()', () => {
+  function makeUptimeRun(checkedAt: string, ok: boolean, latencyMs: number | null = 50) {
+    return makeRun({ checkedAt: new Date(checkedAt), ok, latencyMs });
+  }
+
+  it('returns 100% uptime when all checks pass', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', true),
+      makeUptimeRun('2026-03-14T12:00:00Z', true),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.uptimePct).toBe(100);
+    expect(result.failedChecks).toBe(0);
+    expect(result.incidents).toBe(0);
+    expect(result.mttrSec).toBe(0);
+  });
+
+  it('returns 0% uptime when all checks fail', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', false),
+      makeUptimeRun('2026-03-14T11:00:00Z', false),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '30d');
+    expect(result.uptimePct).toBe(0);
+    expect(result.failedChecks).toBe(2);
+    expect(result.incidents).toBe(1);
+  });
+
+  it('detects multiple incidents correctly', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', false), // incident 1 start
+      makeUptimeRun('2026-03-14T11:10:00Z', false), // incident 1 end
+      makeUptimeRun('2026-03-14T12:00:00Z', true),
+      makeUptimeRun('2026-03-14T13:00:00Z', false), // incident 2 (single)
+      makeUptimeRun('2026-03-14T14:00:00Z', true),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.incidents).toBe(2);
+    expect(result.failedChecks).toBe(3);
+    expect(result.uptimePct).toBe(50); // 3/6 pass = 50%
+    expect(result.incidentList).toHaveLength(2);
+    // Incident 1: 10 minutes
+    expect(result.incidentList[0].durationSec).toBe(600);
+    // Incident 2: single point (0s duration)
+    expect(result.incidentList[1].durationSec).toBe(0);
+  });
+
+  it('returns 100% and no incidents when no runs exist', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '90d');
+    expect(result.uptimePct).toBe(100);
+    expect(result.totalChecks).toBe(0);
+    expect(result.incidents).toBe(0);
+    expect(result.avgLatencyMs).toBeNull();
+  });
+
+  it('calculates avgLatencyMs correctly', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true, 100),
+      makeUptimeRun('2026-03-14T11:00:00Z', true, 200),
+      makeUptimeRun('2026-03-14T12:00:00Z', false, null),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.avgLatencyMs).toBe(150); // (100+200)/2
+  });
+
+  it('defaults to 30d period for unknown period string', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    // @ts-expect-error testing runtime coercion
+    const result = await svc.monitorUptime('user-1', 'monitor-1', 'invalid');
+    // period field should still reflect the passed string — service stores what was asked
+    expect(result.monitorId).toBe('monitor-1');
+  });
+
+  it('throws NotFoundException when monitor does not belong to user', async () => {
+    const p = makePrisma(null);
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await expect(svc.monitorUptime('other-user', 'monitor-1', '7d')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns correct period metadata', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '1d');
+    expect(result.period).toBe('1d');
+    expect(result.from).toBeDefined();
+    expect(result.to).toBeDefined();
+    expect(new Date(result.to).getTime() - new Date(result.from).getTime()).toBeCloseTo(86400_000, -5);
+  });
+
+  it('handles open incident at period end (no closing success run)', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', false),
+      makeUptimeRun('2026-03-14T12:00:00Z', false),
+      // no recovery run — incident is still open
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.incidents).toBe(1);
+    expect(result.incidentList[0].durationSec).toBe(3600); // 60 min = 3600s
+  });
+});

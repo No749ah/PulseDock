@@ -430,6 +430,96 @@ export class MonitorsService {
     }));
   }
 
+  async monitorUptime(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '30d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+    const days = periodDays[period] ?? 30;
+    const from = new Date(Date.now() - days * 86400_000);
+    const to = new Date();
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId, checkedAt: { gte: from } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const successChecks = totalChecks - failedChecks;
+
+    // Time-window uptime: percentage of seconds the service was up within the period.
+    // Approximation: allocate each check's "window" as half the interval before + half after,
+    // clamped to the period boundaries. For the simple case with uniform intervals we
+    // use the fraction of successful checks, which is accurate for fixed-interval monitors.
+    const uptimePct = totalChecks === 0 ? 100 : Math.round((successChecks / totalChecks) * 10000) / 100;
+
+    // Incident detection: consecutive failed runs form an incident.
+    // Returns array of { start, end, durationSec } for each contiguous failure run.
+    const incidents: Array<{ start: string; end: string; durationSec: number }> = [];
+    let incidentStart: Date | null = null;
+    let incidentLast: Date | null = null;
+    for (const run of runs) {
+      if (!run.ok) {
+        if (!incidentStart) incidentStart = run.checkedAt;
+        incidentLast = run.checkedAt;
+      } else {
+        if (incidentStart && incidentLast) {
+          incidents.push({
+            start: incidentStart.toISOString(),
+            end: incidentLast.toISOString(),
+            durationSec: Math.round((incidentLast.getTime() - incidentStart.getTime()) / 1000),
+          });
+        }
+        incidentStart = null;
+        incidentLast = null;
+      }
+    }
+    // Close open incident at period end
+    if (incidentStart && incidentLast) {
+      incidents.push({
+        start: incidentStart.toISOString(),
+        end: incidentLast.toISOString(),
+        durationSec: Math.round((incidentLast.getTime() - incidentStart.getTime()) / 1000),
+      });
+    }
+
+    const totalDowntimeSec = incidents.reduce((sum, i) => sum + i.durationSec, 0);
+
+    // MTTR: mean time to recovery (average incident duration)
+    const mttrSec = incidents.length > 0 ? Math.round(totalDowntimeSec / incidents.length) : 0;
+
+    // MTBF: mean time between failures = total uptime / number of incidents
+    const periodSec = days * 86400;
+    const uptimeSec = periodSec - totalDowntimeSec;
+    const mtbfSec = incidents.length > 0 ? Math.round(uptimeSec / incidents.length) : uptimeSec;
+
+    // Average latency
+    const withLatency = runs.filter((r) => r.latencyMs !== null);
+    const avgLatencyMs =
+      withLatency.length > 0
+        ? Math.round(withLatency.reduce((sum, r) => sum + (r.latencyMs as number), 0) / withLatency.length)
+        : null;
+
+    return {
+      monitorId,
+      period,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      uptimePct,
+      totalChecks,
+      failedChecks,
+      successChecks,
+      totalDowntimeSec,
+      incidents: incidents.length,
+      incidentList: incidents,
+      mttrSec,
+      mtbfSec,
+      avgLatencyMs,
+    };
+  }
+
   private parseGithubRepo(input: string) {
     const cleaned = input.replace(/^https?:\/\/github.com\//i, '').replace(/\.git$/, '');
     const [owner, repo] = cleaned.split('/');

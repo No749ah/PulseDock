@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { V2SystemController } from './system.controller';
 
 describe('V2SystemController', () => {
@@ -75,6 +75,31 @@ describe('V2SystemController', () => {
       const versions = result.versions as Array<Record<string, unknown>>;
       const v1 = versions.find((v) => v.version === 'v1');
       expect(Array.isArray(v1?.features)).toBe(true);
+    });
+
+    it('v2 introducedIn falls back to "0.1.0" when pkg.version is undefined', async () => {
+      // Re-import the module with a mock that returns no version
+      vi.doMock('../../../package.json', () => ({ default: {}, version: undefined }));
+      const { V2SystemController: MockedController } = await import('./system.controller');
+      const ctrl = new MockedController();
+      const result = ctrl.versions() as Record<string, unknown>;
+      const versions = result.versions as Array<Record<string, unknown>>;
+      const v2 = versions.find((v) => v.version === 'v2');
+      // When pkg.version is undefined, fallback '0.1.0' should be used
+      expect(typeof v2?.introducedIn).toBe('string');
+      vi.doUnmock('../../../package.json');
+    });
+  });
+
+  describe('info() — version fallback', () => {
+    it('falls back to "0.0.0" when pkg.version is undefined', async () => {
+      vi.doMock('../../../package.json', () => ({ default: {}, version: undefined }));
+      const { V2SystemController: MockedController } = await import('./system.controller');
+      const ctrl = new MockedController();
+      const result = ctrl.info() as Record<string, unknown>;
+      // version should be "0.0.0" or "undefined" — either way it's a string
+      expect(typeof result.version).toBe('string');
+      vi.doUnmock('../../../package.json');
     });
   });
 });

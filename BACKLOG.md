@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **Fix maven/helm testVersionConnection handlers** — Added explicit maven (Maven Central solrsearch API) and helm (Artifact Hub API) branches in `testVersionConnection()` — previously both providers silently fell through to Docker Hub, returning wrong data. Replaced 2 stale `as never` test hacks with 8 proper tests covering happy paths, empty-result, API errors, and invalid target formats. Tests: 953 → 963.
+
 - [x] **Status Pages build stabilization** — Fixed failing web build by removing obsolete conflicting route `app/status/[userId]` (conflicted with new slug route `app/status/[slug]`) and repairing corrupted JSX references in status page editor (`widget.type`, `widget.config.label`, size display string). Build now passes and all tests green.
 
 - [x] **Scheduler perf: eliminate N+1 queries + concurrent monitor checks** — Refactored `ChecksScheduler.tick()` to load all enabled monitors with their latest run in a single `findMany` (one DB round-trip instead of N+1). Due monitors now dispatched concurrently via `Promise.allSettled` rather than sequentially. Added structured logger for failed-tick warnings.
@@ -321,7 +323,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 967 tests passing (957 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 973 tests passing (963 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
 - **Production Readiness:** ~94% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests

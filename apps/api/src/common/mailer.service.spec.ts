@@ -189,6 +189,26 @@ describe('MailerService', () => {
       expect(args.html).toContain('DOWN');
     });
 
+    it('sendAlertEmail uses DEGRADED label and yellow color for yellow level', async () => {
+      await svc.sendAlertEmail('user@example.com', '⚠️ Slow response', {
+        monitor: { name: 'API Monitor' },
+        run: { level: 'yellow', message: 'Latency high' },
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('DEGRADED');
+      expect(args.html).toContain('#f59e0b');
+    });
+
+    it('sendAlertEmail uses RECOVERED label and green color for green level', async () => {
+      await svc.sendAlertEmail('user@example.com', '✅ Recovered', {
+        monitor: { name: 'API Monitor' },
+        run: { level: 'green', message: 'Back to normal' },
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('RECOVERED');
+      expect(args.html).toContain('#22c55e');
+    });
+
     it('uses MAIL_FROM env as from address', async () => {
       process.env.MAIL_FROM = 'custom@domain.com';
       svc = new MailerService();

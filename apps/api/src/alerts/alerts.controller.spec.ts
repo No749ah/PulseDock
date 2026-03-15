@@ -113,6 +113,12 @@ describe('AlertsController', () => {
       const result = await controller.list(req as never);
       expect(result).toHaveLength(0);
     });
+
+    it('falls back to {} config when channel configJson is null', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.list(req as never);
+      expect(result[0].config).toEqual({});
+    });
   });
 
   // ─── create() ──────────────────────────────────────────────────────────────
@@ -144,6 +150,13 @@ describe('AlertsController', () => {
         }),
       );
     });
+
+    it('returns {} config when created channel has null configJson', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const dto = { name: 'Webhook', type: 'webhook' };
+      const result = await controller.create(req as never, dto as never);
+      expect(result.config).toEqual({});
+    });
   });
 
   // ─── update() ──────────────────────────────────────────────────────────────
@@ -164,6 +177,12 @@ describe('AlertsController', () => {
     it('logs audit event on update', async () => {
       await controller.update(req as never, 'ch-1', {});
       expect(audit.log).toHaveBeenCalledWith('alert_channel.update', 'user-1', 'user-1', expect.any(Object));
+    });
+
+    it('returns {} config when updated channel has null configJson', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.update(req as never, 'ch-1', {});
+      expect(result.config).toEqual({});
     });
 
     it('falls back to existing values when fields are omitted', async () => {
@@ -225,6 +244,15 @@ describe('AlertsController', () => {
       expect(alertsService.notifyTest).toHaveBeenCalledWith(
         expect.objectContaining({ config: { url: 'https://discord.com/api/webhooks/test' } }),
       );
+    });
+
+    it('falls back to {} config when channel configJson is null', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.test(req as never, { channelId: 'ch-1' });
+      expect(alertsService.notifyTest).toHaveBeenCalledWith(
+        expect.objectContaining({ config: {} }),
+      );
+      expect(result).toEqual({ ok: true });
     });
   });
 });

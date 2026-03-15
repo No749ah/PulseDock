@@ -309,6 +309,79 @@ describe('AuthService', () => {
       expect(result.user).toHaveProperty('email');
       expect(result.user).toHaveProperty('role');
     });
+
+    it('returns { requires2fa: true, tempToken } when user has TOTP enabled', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash, totpEnabled: true });
+      const prisma = makePrisma(user);
+      const svc = makeService(prisma as never);
+
+      const result = await svc.login('test@example.com', 'ValidPass1!') as Record<string, unknown>;
+      expect(result.requires2fa).toBe(true);
+      expect(typeof result.tempToken).toBe('string');
+      // Should NOT return access/refresh tokens yet
+      expect(result.accessToken).toBeUndefined();
+    });
+
+    it('sends new-login email when IP is new on an established account (anomaly detection)', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      // First session.count call (previousSessionsWithIp) → 0 (IP not seen before)
+      // Second session.count call (totalSessions) → 2 (established account)
+      prisma.session.count
+        .mockResolvedValueOnce(0)   // no previous sessions from this IP
+        .mockResolvedValueOnce(2);  // 2 total sessions → established account
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '10.0.0.1', userAgent: 'TestBrowser/1.0' });
+      // Allow fire-and-forget to settle
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        expect.objectContaining({ ipAddress: '10.0.0.1', userAgent: 'TestBrowser/1.0' }),
+      );
+    });
+
+    it('does NOT send new-login email when this is the very first login (totalSessions <= 1)', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      prisma.session.count
+        .mockResolvedValueOnce(0)  // no previous sessions from this IP
+        .mockResolvedValueOnce(1); // only 1 total session → first-ever login
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '10.0.0.2' });
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).not.toHaveBeenCalled();
+    });
+
+    it('does NOT send new-login email when IP was already seen', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      prisma.session.count
+        .mockResolvedValueOnce(3); // 3 previous sessions from this IP → known IP
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '192.168.1.1' });
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).not.toHaveBeenCalled();
+    });
   });
 
   // ─── verifyEmail() ──────────────────────────────────────────────────────────
@@ -1239,5 +1312,178 @@ describe('exportUserAuditLog()', () => {
     expect(result.filename).toMatch(/\.csv$/);
     expect(result.data).toContain('id,action,createdAt,meta');
     expect(result.data).toContain('monitor.create');
+  });
+});
+
+describe('AuthService branch coverage gaps', () => {
+  it('does not treat past lockedUntil as an active lock', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const password = 'ValidPass1!';
+    const prisma = makePrisma(makeUser({
+      passwordHash: hashSync(password, 10),
+      failedLoginCount: 2,
+      lockedUntil: new Date(Date.now() - 60_000),
+    }));
+    const svc = makeService(prisma as never);
+
+    const result = await svc.login('test@example.com', password);
+
+    expect(result).toHaveProperty('accessToken');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-1' },
+        data: { failedLoginCount: 0, lockedUntil: null },
+      }),
+    );
+  });
+
+  it('allows changePassword without current password when mustChangePassword=true', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const prisma = makePrisma(makeUser({
+      mustChangePassword: true,
+      passwordHash: hashSync('CurrentPass1!', 10),
+    }));
+    const svc = makeService(prisma as never);
+
+    const result = await svc.changePassword('user-1', undefined, 'NewPass1!SuperStrong');
+
+    expect(result).toEqual({ ok: true });
+    expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it('throws UnauthorizedException when changePassword user does not exist', async () => {
+    const prisma = makePrisma(null);
+    const svc = makeService(prisma as never);
+
+    await expect(svc.changePassword('missing-user', 'CurrentPass1!', 'NewPass1!SuperStrong')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('returns UnauthorizedException in disable2FA when recovery codes JSON is invalid', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: '{bad-json',
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'bad-code')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejects disable2FA when recovery-code JSON is valid but code does not match', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: JSON.stringify([hashSync('some-other-code', 10)]),
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'bad-code')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('accepts disable2FA when recovery-code matches', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const recoveryCode = 'RECOV-DISABLE-001';
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: JSON.stringify([hashSync(recoveryCode, 10)]),
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', recoveryCode)).resolves.toEqual({ ok: true });
+  });
+});
+
+describe('exportUserAuditLog() additional CSV branch coverage', () => {
+  it('exports CSV with empty meta column when metaJson is null', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([
+      { id: 'al-null-meta', action: 'user.login', createdAt: new Date('2026-01-01'), metaJson: null },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.exportUserAuditLog('user-1', 'csv');
+
+    expect(result.contentType).toBe('text/csv');
+    expect(result.data).toContain('"al-null-meta","user.login"');
+    expect(result.data).toContain(',""');
+  });
+});
+
+// ── Branch coverage: fire-and-forget .catch() callback in login ───────────────
+
+describe('login — sendAccountLockedEmail rejects (fire-and-forget catch branch)', () => {
+  it('swallows mailer rejection on 5th failed login (covers .catch callback body)', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const passwordHash = hashSync('CorrectPass1!Strong', 1);
+    // Set failedLoginCount=4 so this attempt pushes it to 5 → sets lockedUntil
+    const user = makeUser({ failedLoginCount: 4, passwordHash });
+    const prisma = makePrisma(user);
+    const mailer = makeMailer();
+    // Make the mailer reject to exercise the .catch(() => {}) callback
+    mailer.sendAccountLockedEmail.mockRejectedValueOnce(new Error('SMTP unavailable'));
+    const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+    // Login with wrong password → account gets locked → mailer called (and rejected, but swallowed)
+    await expect(svc.login('test@example.com', 'WrongPass1!', { ipAddress: '10.0.0.1' })).rejects.toThrow(UnauthorizedException);
+    // Allow fire-and-forget microtask to settle
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mailer.sendAccountLockedEmail).toHaveBeenCalled();
+  });
+});
+
+// ── Branch coverage: changePassword — mustChangePassword=true bypasses check ──
+
+describe('changePassword — mustChangePassword=true (requiresCurrentPassword=false branch)', () => {
+  it('skips current password validation when mustChangePassword is true', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const passwordHash = hashSync('OldPass1!Strong', 1);
+    const user = makeUser({ mustChangePassword: true, passwordHash });
+    const prisma = makePrisma(user);
+    const svc = makeService(prisma);
+
+    // No currentPassword provided — should succeed because mustChangePassword=true
+    const result = await svc.changePassword('user-1', undefined, 'NewStr0ng!Pass123');
+    expect(result).toEqual({ ok: true });
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ mustChangePassword: false }) }),
+    );
+  });
+});
+
+// ── Branch coverage: checkRecoveryCode — invalid JSON totpRecoveryCodes ────────
+
+describe('disable2FA — checkRecoveryCode with malformed JSON (catch branch)', () => {
+  it('throws UnauthorizedException when totpRecoveryCodes is not valid JSON', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const { verify } = await import('otplib');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false } as never);
+
+    const passwordHash = hashSync('ValidPass1!Strong', 1);
+    // totpRecoveryCodes is not valid JSON → JSON.parse throws → catch returns false
+    const user = makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash,
+      totpRecoveryCodes: 'NOT_VALID_JSON_AT_ALL{{{',
+    });
+    const prisma = makePrisma(user);
+    const svc = makeService(prisma);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'anycode')).rejects.toThrow(UnauthorizedException);
   });
 });

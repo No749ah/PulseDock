@@ -9,15 +9,32 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+---
+
+## [0.6.0] — 2026-03-15
+
 ### Added
 - **Account lockout email notification** — When a user's account is locked after 5 consecutive failed login attempts, a branded HTML email is sent to their registered address. Email includes lockout expiry time (UTC), IP address of the attempt (when available), and a password change reminder. Fire-and-forget delivery — never blocks the login response.
 - **Webhook HMAC signing** — Alert webhook channels now support an optional signing secret (`config.secret`). When set, outgoing webhook POSTs include an `X-PulseDock-Signature: sha256=<hex>` header using HMAC-SHA256. Receivers can verify payload authenticity. UI: new "Signing Secret" field in the create/edit webhook channel wizard.
 - **Branded HTML emails** — All 5 MailerService email types (invite, password reset, email verification, new login, alert) now render dark-themed HTML with PulseDock logo, CTA buttons, metadata rows, and footers. Inline-CSS safe for all major email clients.
 
+### Fixed
+- **OpenVPN auth params forwarding** — `discoverCurrentVersion()` now correctly forwards `appAuthType`, `appUsername`, and `appPassword` into `detectDeployedVersion()` for OpenVPN-authenticated endpoints. Previously parameters were silently dropped, causing auth failures for OpenVPN monitors.
+- **otplib v2 API compatibility** — Updated TOTP verify call to use the async `verify()` API (returns `{ valid: boolean }` object) introduced in otplib v12+. Previously used deprecated sync call that returned a raw boolean.
+- **Background API startup** — `start-api.sh` now correctly backgrounds the NestJS process, preventing the web start script from blocking on API startup.
+
 ### Improved — Test Coverage
-- **StatusPagesController** — 24 new unit tests covering all 8 endpoints: list, create, findOne, update, publish, remove, findPublic, getWidgetData. Previously publish() and getWidgetData() had 0% coverage.
+- **auth.controller** — Branch coverage improved from 78% → 88%. Added tests for CSRF token endpoint, session anomaly detection paths, and 2FA bypass scenarios.
+- **monitors.service** — Branch coverage improved from 71% → 85.6%. Added 20+ tests for CSV/BetterUptime import parsers, `importExternal` error handling, and `discoverCurrentVersion` auth type branches.
+- **checks.service** — Added tests for semver extraction fallback paths and prerelease comparison branches.
+- **status-pages.controller** — 24 new unit tests covering all 8 endpoints: list, create, findOne, update, publish, remove, findPublic, getWidgetData. Previously publish() and getWidgetData() had 0% coverage.
+- **plugin.sandbox** — Added branch coverage for error handling and sandbox isolation paths.
+- **http-response-match plugin** — Improved branch coverage for regex match, header extraction, and JSON path resolution.
+- **alerts.controller** — Additional branch coverage for bulk and paginated alert query paths.
+- **scheduler** — Covered `N+1` eliminated tick path and concurrent dispatch failure handling.
 - **validateEnv()** — 11 new unit tests covering dev fallbacks, production/staging validations, missing DATABASE_URL, short JWT secrets, and default admin password guard. Previously 0% coverage.
-- **Test count: 1022 → 1053** (+31 tests). Coverage: 94.32% → 95.65% stmt | 96.59% → 98.04% lines.
+- **Test count: 960 → 1115 API tests** (+155 tests, +16%). Total including CLI: **1125 tests**.
+- **Coverage: 96.82% stmt | 90.4% branch | 98.89% func | 98.88% line** (from 93.31% / 84.97% / 94.8% / 95.7%)
 
 ---
 

@@ -165,6 +165,15 @@ describe('ChecksScheduler', () => {
         }),
       );
     });
+
+    it('defaults config to {} when monitor configJson is null', async () => {
+      const monitor = makeMonitor({ configJson: null, runs: [] });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+      await scheduler.tick();
+      expect(checks.runMonitor).toHaveBeenCalledWith(
+        expect.objectContaining({ config: {} }),
+      );
+    });
   });
 
   describe('pruneOldRuns()', () => {
@@ -187,6 +196,11 @@ describe('ChecksScheduler', () => {
 
     it('does not throw if deleteMany rejects (logs error instead)', async () => {
       prisma.monitorRun.deleteMany.mockRejectedValue(new Error('DB error'));
+      await expect(scheduler.pruneOldRuns()).resolves.not.toThrow();
+    });
+
+    it('handles non-Error rejection gracefully (String(err) path)', async () => {
+      prisma.monitorRun.deleteMany.mockRejectedValue('string error');
       await expect(scheduler.pruneOldRuns()).resolves.not.toThrow();
     });
 

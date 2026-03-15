@@ -194,6 +194,24 @@ describe('StatusPagesService', () => {
       const result = await service.create('user-1', { title: 'Test' });
       expect(result).not.toHaveProperty('passwordHash');
     });
+
+    it('uses page-<timestamp> slug when title produces empty slug', async () => {
+      prisma = makePrisma({ page: null });
+      service = makeService(prisma);
+      // Empty title → slugify('') returns '' → !slug is true → fallback to page-<ts>
+      await service.create('user-1', { title: '' });
+      const callArgs = prisma.publicStatusPage.create.mock.calls[0][0];
+      expect(callArgs.data.slug).toMatch(/^page-/);
+    });
+
+    it('uses emptyLayout when dto.layout is not provided', async () => {
+      prisma = makePrisma({ page: null });
+      service = makeService(prisma);
+      await service.create('user-1', { title: 'No Layout' });
+      const callArgs = prisma.publicStatusPage.create.mock.calls[0][0];
+      // layout should be the empty layout structure { widgets: [] }
+      expect(callArgs.data.layout).toMatchObject({ widgets: [] });
+    });
   });
 
   // ── update() ──────────────────────────────────────────────────────────────
@@ -240,6 +258,19 @@ describe('StatusPagesService', () => {
       );
       const result = await service.update('user-1', 'page-1', { title: 'X' });
       expect(result.hasPassword).toBe(true);
+    });
+
+    it('updates description when provided', async () => {
+      await service.update('user-1', 'page-1', { description: 'New description' });
+      const callArgs = prisma.publicStatusPage.update.mock.calls[0][0];
+      expect(callArgs.data.description).toBe('New description');
+    });
+
+    it('updates layout when provided', async () => {
+      const newLayout = { widgets: [{ id: 'w1', type: 'uptime-bar', config: {}, x: 0, y: 0, w: 4, h: 2 }] };
+      await service.update('user-1', 'page-1', { layout: newLayout as never });
+      const callArgs = prisma.publicStatusPage.update.mock.calls[0][0];
+      expect(callArgs.data.layout).toEqual(newLayout);
     });
   });
 
@@ -561,6 +592,49 @@ describe('StatusPagesService', () => {
       expect(result.widgetType).toBe('custom-unknown-type');
     });
 
+    it('overall-system-status returns degraded when only yellow monitors', async () => {
+      const layout = { widgets: [{ id: 'w3', type: 'overall-system-status', config: {}, x: 0, y: 0, w: 12, h: 2 }] };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ runs: [{ level: 'yellow', message: 'Slow', latencyMs: 2000, checkedAt: new Date() }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'w3');
+      expect(result.status).toBe('degraded');
+      expect(result.monitorsDegraded).toBe(1);
+      expect(result.monitorsDown).toBe(0);
+    });
+
+    it('overall-system-status returns operational when all monitors green', async () => {
+      const layout = { widgets: [{ id: 'w3', type: 'overall-system-status', config: {}, x: 0, y: 0, w: 12, h: 2 }] };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ runs: [{ level: 'green', message: 'OK', latencyMs: 50, checkedAt: new Date() }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'w3');
+      expect(result.status).toBe('operational');
+    });
+
+    it('current-status-badge returns green with null lastChecked when monitor has no runs', async () => {
+      const layout = { widgets: [{ id: 'w2', type: 'current-status-badge', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 4, h: 2 }] };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [makeMonitor({ runs: [] })],
+      });
+      // monitor.findFirst returns monitor with no runs
+      prisma.monitor.findFirst = vi.fn().mockResolvedValue(makeMonitor({ runs: [] }));
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'w2');
+      expect(result.level).toBe('green');
+      expect(result.lastChecked).toBeNull();
+      expect(result.latencyMs).toBeNull();
+    });
+
     it('calculates uptimePct=100 when no runs exist', async () => {
       const layout = {
         widgets: [
@@ -582,6 +656,61 @@ describe('StatusPagesService', () => {
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'w1');
       expect(result.uptimePct).toBe(100);
+    });
+
+    it('throws UnauthorizedException for password-protected page with no password', async () => {
+      const layout = {
+        widgets: [{ id: 'w1', type: 'uptime-bar', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 4, h: 2 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, passwordHash: '$2a$12$fakehash', layout }),
+      });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'w1')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException for password-protected page with wrong password', async () => {
+      const realBcrypt = await import('bcryptjs');
+      const hash = await realBcrypt.hash('correct-password', 12);
+      const layout = {
+        widgets: [{ id: 'w1', type: 'uptime-bar', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 4, h: 2 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, passwordHash: hash, layout }),
+        runs: [{ level: 'green' }],
+      });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'w1', 'wrong-password')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('returns widget data for password-protected page with correct password', async () => {
+      const realBcrypt = await import('bcryptjs');
+      const hash = await realBcrypt.hash('correct-password', 12);
+      const layout = {
+        widgets: [{ id: 'w1', type: 'uptime-bar', config: { monitorId: 'mon-1', periodDays: 7 }, x: 0, y: 0, w: 4, h: 2 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, passwordHash: hash, layout }),
+        runs: [{ level: 'green' }, { level: 'green' }],
+      });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'w1', 'correct-password');
+      expect(result).toHaveProperty('uptimePct');
+      expect(result.uptimePct).toBe(100);
+    });
+
+    it('throws NotFoundException when page is not published (getWidgetData)', async () => {
+      prisma = makePrisma({
+        page: makePage({ isPublished: false }),
+      });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'w1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

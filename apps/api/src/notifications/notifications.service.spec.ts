@@ -146,4 +146,31 @@ describe('NotificationsService', () => {
       expect(await service.shouldNotify('user-1', 'degraded')).toBe(true);
     });
   });
+
+  describe('updatePreference — branch coverage', () => {
+    it('can update notifyOnRecovery field', async () => {
+      const updated = makePref({ notifyOnRecovery: false });
+      prisma.notificationPreference.upsert.mockResolvedValue(updated);
+      const result = await service.updatePreference('user-1', { notifyOnRecovery: false });
+      const call = prisma.notificationPreference.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({ notifyOnRecovery: false });
+      expect(result.notifyOnRecovery).toBe(false);
+    });
+
+    it('can update notifyOnDegraded field', async () => {
+      const updated = makePref({ notifyOnDegraded: false });
+      prisma.notificationPreference.upsert.mockResolvedValue(updated);
+      const result = await service.updatePreference('user-1', { notifyOnDegraded: false });
+      const call = prisma.notificationPreference.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({ notifyOnDegraded: false });
+      expect(result.notifyOnDegraded).toBe(false);
+    });
+
+    it('update with no fields produces empty create/update objects', async () => {
+      await service.updatePreference('user-1', {});
+      const call = prisma.notificationPreference.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({});
+      expect(call.create).toEqual({ userId: 'user-1' });
+    });
+  });
 });

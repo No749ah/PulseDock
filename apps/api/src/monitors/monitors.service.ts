@@ -871,7 +871,14 @@ export class MonitorsService {
 
   async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
-    const deployed = await this.detectDeployedVersion({ appUrl: input.appUrl, appToken: input.appToken, appVersionEndpoint: input.appVersionEndpoint });
+    const deployed = await this.detectDeployedVersion({
+      appUrl: input.appUrl,
+      appToken: input.appToken,
+      appVersionEndpoint: input.appVersionEndpoint,
+      appAuthType: input.appAuthType,
+      openvpnUsername: input.openvpnUsername,
+      openvpnPassword: input.openvpnPassword,
+    });
     if (deployed.currentVersion) {
       return {
         currentVersion: deployed.currentVersion,

@@ -73,6 +73,16 @@ describe('PluginRegistry', () => {
     expect(item?.configFields).toEqual([]);
   });
 
+  it('list() defaults description to null when plugin has no description', () => {
+    const registry = new PluginRegistry();
+    const plugin = makePlugin('no-desc');
+    delete (plugin as Record<string, unknown>)['description'];
+    registry.register(plugin);
+
+    const [item] = registry.list();
+    expect(item?.description).toBeNull();
+  });
+
   it('supports plugins with multiple monitor types', () => {
     const registry = new PluginRegistry();
     registry.register(makePlugin('multi', ['HTTP', 'DOCKER_IMAGE', 'GIT_RELEASE']));

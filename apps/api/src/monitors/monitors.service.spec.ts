@@ -2710,3 +2710,292 @@ describe('importExternal — high-level branch coverage', () => {
     expect(result.message).toContain('2 duplicates');
   });
 });
+
+describe('MonitorsService branch coverage gaps', () => {
+  let service: MonitorsService;
+
+  beforeEach(() => {
+    service = makeService();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('accepts loose embedded version tokens from deployed endpoint payload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: 'build version=2.33.3-linux-amd64' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+    });
+
+    expect(result.strategy).toBe('deployed-endpoint');
+    expect(result.currentVersion).toContain('2.33.3');
+  });
+
+  it('treats non-version deployed payload values as unusable', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: 'definitely-not-a-version' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+  });
+
+  it('applies openvpn basic and header auth modes when credentials are provided', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ status: 'ok' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ version: '1.2.3' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await (service as unknown as {
+      detectDeployedVersion: (input: {
+        appUrl: string;
+        appVersionEndpoint: string;
+        appAuthType: 'openvpn';
+        openvpnUsername: string;
+        openvpnPassword: string;
+      }) => Promise<{ currentVersion: string | null }>;
+    }).detectDeployedVersion({
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'ovpn-user',
+      openvpnPassword: 'ovpn-pass',
+    });
+
+    expect(result.currentVersion).toBe('1.2.3');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const firstHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const secondHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
+
+    expect(firstHeaders.authorization).toBe(`Basic ${Buffer.from('ovpn-user:ovpn-pass').toString('base64')}`);
+    expect(secondHeaders['x-openvpn-username']).toBe('ovpn-user');
+    expect(secondHeaders['x-openvpn-password']).toBe('ovpn-pass');
+  });
+});
+
+// ── Branch coverage: isSensibleVersionValue returns false (lines 562-564) ─────
+
+describe('isSensibleVersionValue — returns false for non-version strings (lines 562-564)', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeJsonResponse(body: unknown) {
+    return {
+      ok: true, status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+    };
+  }
+
+  it('skips version key with non-semver value (covers isSensibleVersionValue return false)', async () => {
+    // { version: "N/A" } → key "version" in directKeySet BUT isSensibleVersionValue("N/A") returns false
+    // → loop continues → no version found → currentVersion=null
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ version: 'N/A', uptime: '100%' }));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+
+  it('skips version key with single-word non-numeric value (covers return false branch)', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ version: 'unknown', status: 'ok' }));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+});
+
+// ── Branch coverage: openvpn auth with actual credentials (lines 699-700) ─────
+
+describe('openvpn auth with non-empty credentials (lines 699-700 branch)', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('sets Basic auth header when openvpnUsername and openvpnPassword are provided', async () => {
+    // All fetch calls fail → manual strategy, but the auth apply() lambdas run with non-empty creds
+    fetchMock.mockResolvedValue({
+      ok: false, status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://vpn-app.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'vpnuser',
+      openvpnPassword: 'vpnpass123',
+    });
+
+    expect(result.strategy).toBe('manual');
+    // Verify Basic auth header was set (openvpn-basic mode ran with non-empty basic)
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    const basicAuthCall = calls.find((c) => {
+      const headers = c[1]?.headers as Record<string, string> | undefined;
+      return headers?.authorization?.startsWith('Basic ');
+    });
+    expect(basicAuthCall).toBeDefined();
+  });
+
+  it('sets openvpn username/password headers when credentials are non-empty', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false, status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://vpn-app.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'admin',
+      openvpnPassword: 'secret',
+    });
+
+    const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
+    const headerCall = calls.find((c) => {
+      const headers = c[1]?.headers as Record<string, string> | undefined;
+      return headers?.['x-openvpn-username'] === 'admin';
+    });
+    expect(headerCall).toBeDefined();
+  });
+});
+
+// ── list() — alertChannelIds and tags mapping (lines 67-69) ──────────────────
+
+describe('list() — non-empty monitorAlerts and monitorTags (lines 67-69)', () => {
+  it('maps alertChannelIds from non-empty monitorAlerts array', async () => {
+    const monitor = makeMonitor({
+      monitorAlerts: [{ alertChannelId: 'ch-1' }, { alertChannelId: 'ch-2' }],
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].alertChannelIds).toEqual(['ch-1', 'ch-2']);
+  });
+
+  it('maps tags from non-empty monitorTags array', async () => {
+    const monitor = makeMonitor({
+      monitorTags: [
+        { tag: { id: 'tag-1', name: 'production', color: '#6366f1' } },
+        { tag: { id: 'tag-2', name: 'web', color: '#10b981' } },
+      ],
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].tags).toEqual([
+      { id: 'tag-1', name: 'production', color: '#6366f1' },
+      { id: 'tag-2', name: 'web', color: '#10b981' },
+    ]);
+  });
+});
+
+// ── bulkAction() — unknown action fallback (line 307) ─────────────────────────
+
+describe('bulkAction() — unknown action returns { ok: false }', () => {
+  it('returns { ok: false, affected: 0 } for unrecognised bulk action', async () => {
+    const p = makePrisma(makeMonitor());
+    const svc = makeService(p);
+    p.monitor.findMany.mockResolvedValue([makeMonitor()]);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'export' as never);
+    expect(result).toEqual({ ok: false, affected: 0 });
+  });
+});
+
+// ── parseGitlabTarget() — plain group/project path (line 542) ────────────────
+
+describe('testVersionConnection() — gitlab plain group/project target (line 542)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ tag_name: 'v2.0.0' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('resolves plain "group/project" gitlab target without protocol prefix (covers target.includes("/") branch)', async () => {
+    const svc = makeService();
+    // target has '/' but no 'gitlab:' prefix and no http(s):// URL
+    // → parseGitlabTarget falls through to target.includes('/') branch → line 542
+    const result = await svc.testVersionConnection({ provider: 'gitlab', target: 'mygroup/myproject' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('v2.0.0');
+    // Verify the fetch URL used the correct encoded path
+    const url = fetchMock.mock.calls[0]?.[0] as string;
+    expect(url).toContain('gitlab.com');
+    expect(url).toContain('mygroup%2Fmyproject');
+  });
+});

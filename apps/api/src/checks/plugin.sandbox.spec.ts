@@ -104,6 +104,41 @@ describe('executePluginSafely', () => {
     expect(result.level).toBe('red');
   });
 
+  it('handles plugin throwing an Error instance (uses error.message)', async () => {
+    const plugin: MonitorCheckPlugin = {
+      id: 'test.throw-error',
+      displayName: 'Throw Error',
+      supportedMonitorTypes: ['HTTP'],
+      run: async () => { throw new Error('connection refused'); },
+    };
+    const result = await executePluginSafely(plugin, baseContext, 1000);
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe('Plugin failed: connection refused');
+    expect(result.level).toBe('red');
+  });
+
+  it('sanitizes null message to empty string', async () => {
+    const plugin: MonitorCheckPlugin = {
+      id: 'test.null-message',
+      displayName: 'Null Message',
+      supportedMonitorTypes: ['HTTP'],
+      run: async () => ({ ok: true, statusCode: 200, latencyMs: 10, message: null as unknown as string, level: 'green' as const }),
+    };
+    const result = await executePluginSafely(plugin, baseContext, 1000);
+    expect(result.message).toBe('');
+  });
+
+  it('sanitizes non-finite statusCode to 0', async () => {
+    const plugin: MonitorCheckPlugin = {
+      id: 'test.nan-status',
+      displayName: 'NaN Status',
+      supportedMonitorTypes: ['HTTP'],
+      run: async () => ({ ok: false, statusCode: NaN, latencyMs: 10, message: 'bad', level: 'red' as const }),
+    };
+    const result = await executePluginSafely(plugin, baseContext, 1000);
+    expect(result.statusCode).toBe(0);
+  });
+
   it('deep-freezes nested context objects', async () => {
     let capturedContext: typeof baseContext | null = null;
     const plugin: MonitorCheckPlugin = {
@@ -118,8 +153,8 @@ describe('executePluginSafely', () => {
     await executePluginSafely(plugin, { ...baseContext, config: { nested: { deep: true } } }, 1000);
     expect(capturedContext).not.toBeNull();
     expect(Object.isFrozen(capturedContext!)).toBe(true);
-    expect(Object.isFrozen((capturedContext as Record<string, unknown>).monitor)).toBe(true);
-    expect(Object.isFrozen((capturedContext as Record<string, unknown>).config)).toBe(true);
+    expect(Object.isFrozen((capturedContext as unknown as Record<string, unknown>).monitor)).toBe(true);
+    expect(Object.isFrozen((capturedContext as unknown as Record<string, unknown>).config)).toBe(true);
   });
 
   it('times out long-running plugins', async () => {

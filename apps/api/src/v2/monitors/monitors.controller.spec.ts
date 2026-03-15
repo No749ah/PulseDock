@@ -97,9 +97,9 @@ describe('V2MonitorsController', () => {
     });
 
     it('applies type filter', async () => {
-      await controller.list(makeReq(), { type: 'version' });
+      await controller.list(makeReq(), { type: 'GIT_RELEASE' });
       expect(prisma.monitor.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ type: 'version' }) }),
+        expect.objectContaining({ where: expect.objectContaining({ type: 'GIT_RELEASE' }) }),
       );
     });
 

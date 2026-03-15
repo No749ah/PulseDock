@@ -515,6 +515,57 @@ describe('AlertsService', () => {
       expect(metrics.snapshot().alertsSent).toBe(1);
     });
 
+    it('suppresses alert when active maintenance window exists', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Override: findFirst returns an active maintenance window
+      prisma.maintenanceWindow.findFirst = vi.fn().mockResolvedValue({ id: 'mw-1', name: 'Planned Downtime' });
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      // No fetch call should be made — alert was suppressed
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('logs String(error) when channel catch receives non-Error', async () => {
+      vi.useFakeTimers();
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Make fetch throw a non-Error so all 4 attempts fail
+      fetchMock.mockRejectedValue('network down');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      // Should not throw — error is caught and logged
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+    });
+
+    it('uses {} config fallback when alertChannel configJson is null', async () => {
+      const monitor = makeMonitor({ name: 'API', userId: 'u-1' });
+      const run = makeRun({ level: 'red' });
+      const prismaRaw = {
+        monitorAlert: {
+          findMany: vi.fn().mockResolvedValue([{
+            alertChannel: { id: 'ch-1', userId: 'u-1', name: 'Webhook', type: 'webhook', configJson: null, createdAt: new Date() },
+          }]),
+        },
+        maintenanceWindow: { findFirst: vi.fn().mockResolvedValue(null) },
+      };
+      const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // Channel config will be {} — webhook with no url → falls through (no fetch call since no url)
+      await service.notifyMonitorFailure(monitor, run);
+      // Should not throw; alert triggered but no URL → no fetch
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('increments alertsFailed when mailer throws', async () => {
       vi.useFakeTimers();
       const prisma = makePrisma();

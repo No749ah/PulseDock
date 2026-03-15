@@ -1037,6 +1037,20 @@ describe('ChecksService', () => {
       const run = await service.runMonitor(monitor);
       expect(run.ok).toBe(true);
     });
+
+    it('returns error when GitLab target has no slash, no http prefix, and no gitlab: prefix (parseGitlabTarget returns null)', async () => {
+      const service = makeService();
+      globalThis.fetch = vi.fn(); // should not be called
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        // "justword" has no slash, no https://, no gitlab: prefix → parseGitlabTarget returns null
+        target: 'justword',
+        config: { provider: 'gitlab', currentVersion: '1.0.0' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+    });
   });
 
   // ── APT provider ───────────────────────────────────────────────────────────
@@ -2572,5 +2586,272 @@ describe('ChecksService', () => {
         vi.unstubAllGlobals();
       }
     });
+  });
+});
+
+describe('ChecksService branch coverage gaps', () => {
+  it('handles empty currentVersion (normalizeVersion falsy branch)', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.2.3' }) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: '' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('filters out clearly unstable semver-looking tags when includePrerelease=false', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      { ok: false, status: 404 }, // releases/latest
+      { ok: false, status: 404 }, // releases list
+      {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([{ name: '1.2.3+nightly' }, { name: '1.2.2' }]),
+      },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: '1.2.2', includePrerelease: false },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('returns null for array payloads with no extractable version and continues endpoints', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([{ foo: 'bar' }, { data: { hello: 'world' } }]),
+      },
+      { ok: true, status: 200, json: () => Promise.resolve({ version: '2.0.0' }) },
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v2.0.0' }) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('continues detectAppVersion candidates when fetch throws', async () => {
+    const service = makeService();
+
+    globalThis.fetch = vi.fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ version: '3.4.5' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ tag_name: 'v3.4.5' }),
+      });
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+});
+
+// ── Branch coverage: detectAppVersion uncovered paths ─────────────────────────
+
+describe('detectAppVersion — array response yields no version (line 193 branch)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('returns null currentVersion when JSON array has no usable version strings', async () => {
+    const service = makeService();
+    let callIdx = 0;
+    globalThis.fetch = vi.fn().mockImplementation(() => {
+      callIdx++;
+      if (callIdx === 1) {
+        // Custom appVersionEndpoint (absolute URL): returns array with no version info
+        return Promise.resolve({
+          ok: true, status: 200,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve([{ id: 1, name: 'alpha' }, { id: 2, status: 'ok' }]),
+        });
+      }
+      // callIdx=2: GitHub releases/latest → success
+      return Promise.resolve({
+        ok: true, status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ tag_name: 'v1.2.3', published_at: new Date().toISOString() }),
+      });
+    });
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com', appVersionEndpoint: 'https://myapp.example.com/list' },
+    });
+    const run = await service.runMonitor(monitor);
+    // No current version detected from array, latest from GitHub = v1.2.3
+    expect(run.message).toContain('v1.2.3');
+  });
+});
+
+describe('detectAppVersion — fetch throws on first candidate (line 230 catch branch)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('skips throwing candidate and uses the next one', async () => {
+    const service = makeService();
+    let callIdx = 0;
+    globalThis.fetch = vi.fn().mockImplementation(() => {
+      callIdx++;
+      if (callIdx === 1) {
+        // First candidate throws (network error) → catch { continue }
+        throw new Error('ECONNREFUSED');
+      }
+      if (callIdx === 2) {
+        // Second candidate succeeds with version
+        return Promise.resolve({
+          ok: true, status: 200,
+          headers: { get: () => 'application/json' },
+          json: () => Promise.resolve({ version: '5.1.0' }),
+        });
+      }
+      // GitHub releases/latest
+      return Promise.resolve({
+        ok: true, status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ tag_name: 'v5.1.0' }),
+      });
+    });
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+    expect(run.message).toContain('5.1.0');
+  });
+});
+
+describe('selectBestSemverTag — includePrerelease=true (line 137 branch)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('includes prerelease releases when includePrerelease=true in config', async () => {
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      // releases/latest → 404 (no stable release)
+      { ok: false, status: 404 },
+      // releases list → has a prerelease
+      { ok: true, status: 200, json: () => Promise.resolve([
+        { tag_name: 'v2.0.0-beta.1', prerelease: true, draft: false, published_at: new Date().toISOString() },
+        { tag_name: 'v1.9.0', prerelease: false, draft: false, published_at: new Date().toISOString() },
+      ]) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { includePrerelease: true },
+    });
+    const run = await service.runMonitor(monitor);
+    // With includePrerelease=true, selectBestSemverTag uses the `return true` branch
+    expect(run.ok).toBe(true);
+    // Should pick v2.0.0-beta.1 as latest (higher semver)
+    expect(run.message).toContain('v2.0.0');
+  });
+});
+
+describe('normalizeVersion — non-parseable tag string (line 63 branch)', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('returns null for tags with no semver pattern (covers !extracted return null)', async () => {
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      // releases/latest → 404
+      { ok: false, status: 404 },
+      // releases list → empty
+      { ok: true, status: 200, json: () => Promise.resolve([]) },
+      // tags → only non-semver tags: normalizeVersion("nightly") hits the !extracted branch
+      { ok: true, status: 200, json: () => Promise.resolve([
+        { name: 'nightly' },
+        { name: 'edge' },
+        { name: 'stable' },
+      ]) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: {},
+    });
+    const run = await service.runMonitor(monitor);
+    // All tags are non-semver → selectBestSemverTag falls back to original tag list → picks "nightly" (first)
+    // The key coverage: normalizeVersion("nightly") returns null at line 63 (no semver pattern)
+    expect(run.ok).toBe(true);
+    expect(run.message).toMatch(/nightly|edge|stable/);
+  });
+});
+
+// ── normalizeVersion — regex-extraction path (line 63) ────────────────────────
+describe('normalizeVersion — regex-extraction success (line 63 branch)', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('extracts semver from prefixed tag like "release-1.2.3" (covers parseSemver(extracted[0]) path)', async () => {
+    const service = makeService();
+    // Scenario: releases/latest → 404, then tags list returns a tag with a non-standard prefix
+    // "release-1.2.3" does NOT match SEMVER_RE directly (prefix before digits fails ^v? anchor)
+    // but the regex /v?\d+\.\d+\.\d+.../ extracts "1.2.3" and parseSemver("1.2.3") succeeds → line 63
+    globalThis.fetch = mockFetch([
+      // releases/latest → 404
+      { ok: false, status: 404 },
+      // releases → empty list
+      { ok: true, status: 200, json: () => Promise.resolve([]) },
+      // tags → tag with non-standard prefix
+      { ok: true, status: 200, json: () => Promise.resolve([
+        { name: 'release-1.2.3' },
+        { name: 'release-1.1.0' },
+      ]) },
+    ]);
+
+    const monitor = makeMonitor({ type: 'GIT_RELEASE', target: 'owner/repo' });
+    const run = await service.runMonitor(monitor);
+    // selectBestSemverTag picks "release-1.2.3" via normalizeVersion("release-1.2.3")
+    // → parseSemver fails on full string → regex extracts "1.2.3" → parseSemver("1.2.3") succeeds
+    expect(run.ok).toBe(true);
+    expect(run.message).toContain('1.2.3');
   });
 });

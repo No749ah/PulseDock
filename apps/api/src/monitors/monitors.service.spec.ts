@@ -2244,9 +2244,9 @@ describe('detectDeployedVersion — absolute URL and authFailed path', () => {
   });
 });
 
-// ── testVersionConnection — maven/helm default-to-docker path ─────────────────
+// ── testVersionConnection — maven/helm providers ──────────────────────────────
 
-describe('testVersionConnection() — maven/helm providers (docker fallback)', () => {
+describe('testVersionConnection() — maven/helm providers', () => {
   let service: MonitorsService;
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -2260,34 +2260,78 @@ describe('testVersionConnection() — maven/helm providers (docker fallback)', (
     vi.unstubAllGlobals();
   });
 
-  it('falls through to Docker Hub for maven provider', async () => {
+  // ── Maven ──
+  it('maven: returns latestVersion from Maven Central docs[0].v', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      headers: { get: () => 'application/json' },
-      json: async () => ({ results: [{ name: '3.9.6' }] }),
+      json: async () => ({ response: { docs: [{ v: '3.9.6' }] } }),
     });
-    const result = await service.testVersionConnection({
-      provider: 'maven' as never,
-      target: 'library/maven',
-    });
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'org.apache.maven:maven-core' });
     expect(result.ok).toBe(true);
     expect(result.latestVersion).toBe('3.9.6');
+    expect(result.message).toContain('Maven Central');
   });
 
-  it('falls through to Docker Hub for helm provider', async () => {
+  it('maven: returns ok:false when docs array is empty', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      headers: { get: () => 'application/json' },
-      json: async () => ({ results: [{ name: 'v3.14.0' }] }),
+      json: async () => ({ response: { docs: [] } }),
     });
-    const result = await service.testVersionConnection({
-      provider: 'helm' as never,
-      target: 'helm/helm',
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'com.example:unknown-artifact' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('No Maven artifact version found');
+  });
+
+  it('maven: returns ok:false on API error', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) });
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'com.example:artifact' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('503');
+  });
+
+  it('maven: returns ok:false for invalid target (no colon)', async () => {
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'invalidddd' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('groupId:artifactId');
+  });
+
+  // ── Helm ──
+  it('helm: returns app_version when present', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '14.0.1', app_version: '16.3' }),
     });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'bitnami/postgresql' });
     expect(result.ok).toBe(true);
-    expect(result.latestVersion).toBe('v3.14.0');
+    expect(result.latestVersion).toBe('16.3');
+    expect(result.message).toContain('Artifact Hub');
+  });
+
+  it('helm: falls back to version when app_version is absent', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '3.14.0' }),
+    });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'helm/helm' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('3.14.0');
+  });
+
+  it('helm: returns ok:false on Artifact Hub API error', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'unknown/chart' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('404');
+  });
+
+  it('helm: returns ok:false for invalid target (no slash)', async () => {
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'invalidchart' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('repoName/chartName');
   });
 
   it('returns Docker Hub latestVersion=null when results array is empty', async () => {

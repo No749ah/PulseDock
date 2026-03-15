@@ -832,6 +832,36 @@ export class MonitorsService {
       return { ok: true, message: 'APT package lookup successful', latestVersion: stable ?? versions[0] ?? null };
     }
 
+    if (input.provider === 'maven') {
+      const parts = input.target.trim().split(':');
+      if (parts.length < 2) return { ok: false, message: 'Invalid Maven target. Use "groupId:artifactId" format.' };
+      const [groupId, artifactId] = parts;
+      const resp = await fetch(
+        `https://search.maven.org/solrsearch/select?q=g:${encodeURIComponent(groupId)}+AND+a:${encodeURIComponent(artifactId)}&core=gav&rows=1&wt=json`,
+        { headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' } },
+      );
+      if (!resp.ok) return { ok: false, message: `Maven Central API ${resp.status}` };
+      const data = await resp.json() as { response?: { docs?: Array<{ v?: string }> } };
+      const latestVersion = data.response?.docs?.[0]?.v ?? null;
+      if (!latestVersion) return { ok: false, message: 'No Maven artifact version found. Check groupId:artifactId.' };
+      return { ok: true, message: 'Maven Central reachable', latestVersion };
+    }
+
+    if (input.provider === 'helm') {
+      const parts = input.target.trim().split('/');
+      if (parts.length < 2) return { ok: false, message: 'Invalid Helm target. Use "repoName/chartName" format.' };
+      const [repoName, chartName] = parts;
+      const resp = await fetch(
+        `https://artifacthub.io/api/v1/packages/helm/${encodeURIComponent(repoName)}/${encodeURIComponent(chartName)}`,
+        { headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' } },
+      );
+      if (!resp.ok) return { ok: false, message: `Artifact Hub API ${resp.status}` };
+      const data = await resp.json() as { version?: string; app_version?: string };
+      const latestVersion = data.app_version ?? data.version ?? null;
+      if (!latestVersion) return { ok: false, message: 'No Helm chart version found.' };
+      return { ok: true, message: 'Artifact Hub reachable', latestVersion };
+    }
+
     const image = input.target.includes('/') ? input.target : `library/${input.target}`;
     const resp = await fetch(`https://hub.docker.com/v2/repositories/${image}/tags?page_size=1&page=1&ordering=last_updated`);
     if (!resp.ok) return { ok: false, message: `Docker API ${resp.status}` };

@@ -483,6 +483,20 @@ describe('AuthService', () => {
 
       await expect(svc.updateProfile('user-1', 'test@example.com')).resolves.not.toThrow();
     });
+
+    it('updates only displayName when email is omitted (no email conflict check)', async () => {
+      const prisma = makePrisma();
+      const svc = makeService(prisma as never);
+
+      await svc.updateProfile('user-1', undefined, 'New Name');
+      // findUnique should NOT be called — no email to check
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ displayName: 'New Name' }),
+        }),
+      );
+    });
   });
 
   // ─── revokeSession() ────────────────────────────────────────────────────────

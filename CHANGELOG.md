@@ -9,6 +9,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Account lockout email notification** — When a user's account is locked after 5 consecutive failed login attempts, a branded HTML email is sent to their registered address. Email includes lockout expiry time (UTC), IP address of the attempt (when available), and a password change reminder. Fire-and-forget delivery — never blocks the login response.
+- **Webhook HMAC signing** — Alert webhook channels now support an optional signing secret (`config.secret`). When set, outgoing webhook POSTs include an `X-PulseDock-Signature: sha256=<hex>` header using HMAC-SHA256. Receivers can verify payload authenticity. UI: new "Signing Secret" field in the create/edit webhook channel wizard.
+- **Branded HTML emails** — All 5 MailerService email types (invite, password reset, email verification, new login, alert) now render dark-themed HTML with PulseDock logo, CTA buttons, metadata rows, and footers. Inline-CSS safe for all major email clients.
+
 ---
 
 ## [0.5.0] — 2026-03-15

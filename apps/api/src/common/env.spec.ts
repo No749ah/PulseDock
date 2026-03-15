@@ -116,6 +116,24 @@ describe('validateEnv()', () => {
     expect(() => validateEnv()).toThrow('JWT secrets must be at least 24 characters');
   });
 
+  it('throws when DEFAULT_ADMIN_PASSWORD is undefined in production (uses admin123 fallback)', async () => {
+    setEnv({
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://x',
+      JWT_ACCESS_SECRET: 'a-valid-access-secret-long-enough',
+      JWT_REFRESH_SECRET: 'a-valid-refresh-secret-long-enough',
+      DEFAULT_ADMIN_PASSWORD: undefined,
+      APP_BASE_URL: 'https://example.com',
+      MAIL_FROM: 'no-reply@example.com',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      SMTP_USER: 'user',
+      SMTP_PASS: 'pass',
+    });
+    const { validateEnv } = await import('./env');
+    expect(() => validateEnv()).toThrow('DEFAULT_ADMIN_PASSWORD must be overridden');
+  });
+
   it('throws for default admin password in production', async () => {
     setEnv({
       NODE_ENV: 'production',

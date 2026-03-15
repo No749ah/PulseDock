@@ -9,11 +9,22 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-### Added
+---
+
+## [0.5.0] — 2026-03-15
+
+### Added — Monitor Types
 - **TCP port monitor** — New monitor type checks if a TCP port is open (`host:port` target). Measures connection latency. Fails on refused connection or timeout.
 - **SSL certificate monitor** — Tracks TLS certificate expiry for any domain or HTTPS URL. Levels: green (>30 days), yellow (10–30 days), red (<10 days or expired). Shows days remaining in check messages.
-- **Heartbeat monitor** — Push-based monitoring for cron jobs and internal services. Generates a unique token per monitor. `POST /v1/heartbeat/:token` (no auth) updates `lastHeartbeatAt`. Alerts if no ping received within configurable timeout window. Ping URL displayed with copy button in UI.
-- **Maintenance windows frontend** — Full CRUD UI for maintenance windows. Status badges (Active/Upcoming/Past), create/edit modal with datetime inputs, calendar empty state. `/maintenance` route in nav.
+- **Heartbeat monitor** — Push-based monitoring for cron jobs and internal services. Generates a unique token per monitor. `POST /v1/heartbeat/:token` (no auth, CSRF-exempt) updates `lastHeartbeatAt`. Alerts if no ping received within configurable timeout window. Ping URL displayed with copy button in UI.
+
+### Added — Features
+- **Maintenance windows** — Full CRUD for scheduling planned maintenance windows (name, description, startsAt, endsAt, monitorIds). Alert suppression during active windows. Frontend at `/maintenance` with status badges (Active/Upcoming/Past), create/edit modal, calendar icon empty state. Navigation item added.
+
+### Improved — Code Quality
+- **Test suite expanded to 960 tests** (950 API + 10 CLI). Previously 851.
+- **Branch coverage improvements** — TOTP recovery code edge cases (invalid JSON, recovery code consumption + audit event), monitors.service version sort tiebreaker, openvpn no-credential path, tags.service update() branch paths (no-name, same-name, no-color fallback).
+- **Overall coverage**: 93.31% stmt | 84.97% branch | 94.8% func | 95.7% line
 
 ---
 
@@ -124,7 +135,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Single root `.env`** — Shared across API and Web via workspace setup
 - **Docker support** — `docker-compose.yml` for local dev with PostgreSQL + Redis
 
-[Unreleased]: https://github.com/No749ah/PulseDock/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/No749ah/PulseDock/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/No749ah/PulseDock/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/No749ah/PulseDock/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/No749ah/PulseDock/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/No749ah/PulseDock/compare/v0.1.0...v0.2.0

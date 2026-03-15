@@ -147,6 +147,39 @@ describe('TagsService', () => {
 
       await expect(service.update('user-1', 'tag-1', { name: 'existing-name' })).rejects.toThrow(ConflictException);
     });
+
+    it('skips conflict check when body.name is not provided (falsy branch)', async () => {
+      // Only updating color — body.name is undefined, so line 35 if-guard short-circuits
+      prisma.tag.findFirst.mockResolvedValueOnce(makeTag());
+      const result = await service.update('user-1', 'tag-1', { color: '#abcdef' });
+      // Only one findFirst call (no conflict-check query)
+      expect(prisma.tag.findFirst).toHaveBeenCalledTimes(1);
+      expect(prisma.tag.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'production', color: '#abcdef' }),
+        }),
+      );
+      expect(result).toHaveProperty('id');
+    });
+
+    it('skips conflict check when body.name equals current name (same-name branch)', async () => {
+      // body.name === tag.name → second condition of line 35 if-guard is false → skip conflict check
+      prisma.tag.findFirst.mockResolvedValueOnce(makeTag({ name: 'same-name' }));
+      await service.update('user-1', 'tag-1', { name: 'same-name', color: '#111111' });
+      // Only one findFirst call (no conflict-check query)
+      expect(prisma.tag.findFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to tag.color when body.color is not provided', async () => {
+      prisma.tag.findFirst.mockResolvedValueOnce(makeTag({ color: '#original' })).mockResolvedValueOnce(null);
+      await service.update('user-1', 'tag-1', { name: 'new-name' });
+      // color should fall back to the existing tag's color
+      expect(prisma.tag.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ color: '#original' }),
+        }),
+      );
+    });
   });
 
   // ─── remove() ──────────────────────────────────────────────────────────────

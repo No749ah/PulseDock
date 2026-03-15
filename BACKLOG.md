@@ -326,8 +326,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Codebase:** 1115 tests passing (1105 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
-- **Production Readiness:** ~98% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications. Bug fix: openvpn auth params now correctly forwarded in discoverCurrentVersion.
-- **Coverage:** 96.82% stmt | 90.4% branch | 98.89% func | 98.88% line (improved from 95.65%/89.2%/97.78%/98.22%)
-- **Version:** All packages bumped to 0.5.0 to match CHANGELOG
+- **Production Readiness:** ~98% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (164 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
+- **Coverage:** ~91%+ branch | 97%+ stmt — maintenance window suppression, configJson null fallbacks, plugin Error/non-Error throws, admin updateUser fallbacks all covered
+- **Version:** v0.6.0 (bumped from 0.5.0 to match CHANGELOG)
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

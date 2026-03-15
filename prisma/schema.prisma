@@ -47,6 +47,7 @@ model User {
   statusPages             PublicStatusPage[]
   tags                    Tag[]
   notificationPreference  NotificationPreference?
+  maintenanceWindows      MaintenanceWindow[]
 }
 
 model Session {
@@ -91,6 +92,7 @@ model Monitor {
   runs          MonitorRun[]
   monitorAlerts MonitorAlert[]
   monitorTags   MonitorTag[]
+  maintenanceWindows MaintenanceWindowMonitor[]
 
   @@index([userId])
   @@index([enabled])
@@ -268,4 +270,31 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model MaintenanceWindow {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors MaintenanceWindowMonitor[]
+
+  @@index([userId])
+  @@index([startsAt, endsAt])
+}
+
+model MaintenanceWindowMonitor {
+  windowId  String
+  monitorId String
+
+  window  MaintenanceWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  monitor Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@id([windowId, monitorId])
 }

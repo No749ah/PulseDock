@@ -76,6 +76,9 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
         })),
       ),
     },
+    maintenanceWindow: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   };
 }
 

@@ -80,6 +80,23 @@ export class AlertsService {
   }
 
   async notifyMonitorFailure(monitor: Monitor, run: MonitorRun) {
+    // Suppress alerts during active maintenance windows
+    const now = new Date();
+    const activeMaintenance = await this.prisma.maintenanceWindow.findFirst({
+      where: {
+        userId: monitor.userId,
+        monitors: { some: { monitorId: monitor.id } },
+        startsAt: { lte: now },
+        endsAt: { gte: now },
+      },
+    });
+    if (activeMaintenance) {
+      this.logger.log(
+        `Suppressing alert for monitor "${monitor.name}" (id=${monitor.id}): active maintenance window "${activeMaintenance.name}"`,
+      );
+      return;
+    }
+
     // Check notification preferences before dispatching alerts
     const eventType = this.levelToEventType(run.level);
     const shouldSend = await this.notifications.shouldNotify(monitor.userId, eventType);

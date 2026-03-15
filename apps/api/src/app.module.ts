@@ -38,6 +38,8 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { NotificationsService } from './notifications/notifications.service';
 import { StatusPagesController } from './status-pages/status-pages.controller';
 import { StatusPagesService } from './status-pages/status-pages.service';
+import { MaintenanceController } from './maintenance/maintenance.controller';
+import { MaintenanceService } from './maintenance/maintenance.service';
 
 @Module({
   imports: [
@@ -65,6 +67,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     ToolRegistryController,
     NotificationsController,
     StatusPagesController,
+    MaintenanceController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -83,6 +86,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     TagsService,
     NotificationsService,
     StatusPagesService,
+    MaintenanceService,
   ],
 })
 export class AppModule implements NestModule {

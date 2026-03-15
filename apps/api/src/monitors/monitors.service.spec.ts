@@ -2327,3 +2327,81 @@ describe('testVersionConnection() — maven/helm providers (docker fallback)', (
     expect(result.latestVersion).toBe('1.0.0-rc1');
   });
 });
+
+// ── Branch coverage: sort tiebreaker + openvpn with no credentials ────────────
+
+describe('extractVersionFromText — sort tiebreaker coverage', () => {
+  let service: ReturnType<typeof makeService>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('picks the longer version token when candidates tie on score (tiebreaker branch)', async () => {
+    // Two version tokens with equal score (no scoring keywords nearby) but different lengths.
+    // "1.10.0" (6 chars) should beat "1.2.0" (5 chars) via the tiebreaker.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'deployed: 1.10.0 (replaces 1.2.0)',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+
+    // Both tokens score the same (no version-keyword context), so tiebreaker by length applies
+    expect(result.currentVersion).toBe('1.10.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+});
+
+describe('openvpn auth with empty credentials', () => {
+  let service: ReturnType<typeof makeService>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('tries openvpn modes even when username and password are empty (no-credential path)', async () => {
+    // All fetch calls fail so we can verify the auth modes were still attempted
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'openvpn',
+      // No openvpnUsername or openvpnPassword — basic will be empty string (falsy)
+    });
+
+    // With no credentials, basic is empty so openvpn-basic apply() no-ops on authorization
+    // and openvpn-headers apply() no-ops on x-openvpn-* headers
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    // Still made requests (auth mode lambdas ran, even if they didn't set headers)
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
+  });
+});

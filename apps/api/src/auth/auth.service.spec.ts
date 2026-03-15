@@ -999,6 +999,47 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('refreshToken', 'new-token');
       expect(result.user).toMatchObject({ id: 'user-1', email: 'test@example.com' });
     });
+
+    it('throws UnauthorizedException when totpRecoveryCodes contains invalid JSON', async () => {
+      const { verify } = await import('otplib');
+      vi.mocked(verify).mockReturnValueOnce(false);
+
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
+      const prisma = makePrisma(makeUser({ totpEnabled: true, totpSecret: 'MOCK_TOTP_SECRET', totpRecoveryCodes: 'not-valid-json' }));
+      const svc = new AuthService(prisma as never, jwt as never, makeAudit() as never, makeMailer() as never, makeMetrics() as never);
+      await expect(svc.verifyTotpLogin('valid-temp', 'bad-code')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('succeeds with a valid recovery code (consumes code, logs auth.2fa_recovery_code_used)', async () => {
+      const { verify } = await import('otplib');
+      const { hashSync } = await import('bcryptjs');
+      vi.mocked(verify).mockReturnValueOnce(false);
+
+      const recoveryCode = 'RECOV-001';
+      const hash = hashSync(recoveryCode, 10);
+
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
+      jwt.sign.mockReturnValue('new-token');
+      const prisma = makePrisma(makeUser({
+        totpEnabled: true,
+        totpSecret: 'MOCK_TOTP_SECRET',
+        totpRecoveryCodes: JSON.stringify([hash]),
+      }));
+      prisma.session.create.mockResolvedValue({ id: 'session-1' });
+      const audit = makeAudit();
+      const svc = new AuthService(prisma as never, jwt as never, audit as never, makeMailer() as never, makeMetrics() as never);
+
+      const result = await svc.verifyTotpLogin('valid-temp', recoveryCode);
+      expect(result).toHaveProperty('accessToken', 'new-token');
+      // Recovery code was consumed — user.update called to clear it
+      expect(prisma.user.update).toHaveBeenCalled();
+      // Audit log should include the recovery code usage event
+      const auditCalls = (audit.log as ReturnType<typeof vi.fn>).mock.calls;
+      const recoveryEvent = auditCalls.find((c: unknown[]) => c[0] === 'auth.2fa_recovery_code_used');
+      expect(recoveryEvent).toBeDefined();
+    });
   });
 
   // ─── getActiveUserById() ────────────────────────────────────────────────────

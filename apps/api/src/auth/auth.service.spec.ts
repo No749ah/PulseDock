@@ -309,6 +309,79 @@ describe('AuthService', () => {
       expect(result.user).toHaveProperty('email');
       expect(result.user).toHaveProperty('role');
     });
+
+    it('returns { requires2fa: true, tempToken } when user has TOTP enabled', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash, totpEnabled: true });
+      const prisma = makePrisma(user);
+      const svc = makeService(prisma as never);
+
+      const result = await svc.login('test@example.com', 'ValidPass1!') as Record<string, unknown>;
+      expect(result.requires2fa).toBe(true);
+      expect(typeof result.tempToken).toBe('string');
+      // Should NOT return access/refresh tokens yet
+      expect(result.accessToken).toBeUndefined();
+    });
+
+    it('sends new-login email when IP is new on an established account (anomaly detection)', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      // First session.count call (previousSessionsWithIp) → 0 (IP not seen before)
+      // Second session.count call (totalSessions) → 2 (established account)
+      prisma.session.count
+        .mockResolvedValueOnce(0)   // no previous sessions from this IP
+        .mockResolvedValueOnce(2);  // 2 total sessions → established account
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '10.0.0.1', userAgent: 'TestBrowser/1.0' });
+      // Allow fire-and-forget to settle
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        expect.objectContaining({ ipAddress: '10.0.0.1', userAgent: 'TestBrowser/1.0' }),
+      );
+    });
+
+    it('does NOT send new-login email when this is the very first login (totalSessions <= 1)', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      prisma.session.count
+        .mockResolvedValueOnce(0)  // no previous sessions from this IP
+        .mockResolvedValueOnce(1); // only 1 total session → first-ever login
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '10.0.0.2' });
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).not.toHaveBeenCalled();
+    });
+
+    it('does NOT send new-login email when IP was already seen', async () => {
+      const { hashSync } = await import('bcryptjs');
+      const hash = hashSync('ValidPass1!', 10);
+      const user = makeUser({ passwordHash: hash });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      prisma.session.count
+        .mockResolvedValueOnce(3); // 3 previous sessions from this IP → known IP
+
+      await svc.login('test@example.com', 'ValidPass1!', { ipAddress: '192.168.1.1' });
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mailer.sendNewLoginEmail).not.toHaveBeenCalled();
+    });
   });
 
   // ─── verifyEmail() ──────────────────────────────────────────────────────────

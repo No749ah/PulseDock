@@ -1037,6 +1037,20 @@ describe('ChecksService', () => {
       const run = await service.runMonitor(monitor);
       expect(run.ok).toBe(true);
     });
+
+    it('returns error when GitLab target has no slash, no http prefix, and no gitlab: prefix (parseGitlabTarget returns null)', async () => {
+      const service = makeService();
+      globalThis.fetch = vi.fn(); // should not be called
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        // "justword" has no slash, no https://, no gitlab: prefix → parseGitlabTarget returns null
+        target: 'justword',
+        config: { provider: 'gitlab', currentVersion: '1.0.0' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+    });
   });
 
   // ── APT provider ───────────────────────────────────────────────────────────

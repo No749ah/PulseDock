@@ -96,7 +96,7 @@ export class RunMonitorDto {
 }
 
 export class TestVersionConnectionDto {
-  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo'])
+  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo', 'maven', 'helm'])
   provider!: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm';
 
   @IsString()
@@ -152,7 +152,7 @@ export class ImportMonitorsDto {
 }
 
 export class DiscoverVersionDto {
-  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo'])
+  @IsIn(['github', 'gitlab', 'docker', 'apt', 'npm', 'pypi', 'cargo', 'maven', 'helm'])
   provider!: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm';
 
   @IsString()

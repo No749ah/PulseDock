@@ -306,7 +306,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ### Blocked/On Hold
-- [ ] **Fix all npm audit vulnerabilities** (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 with breaking changes; waiting on upstream hono/prisma fixes. Re-check periodically.)
+- [x] **Fix all npm audit vulnerabilities** — HIGH severity hono vulns resolved upstream (hono updated via @prisma/dev). Remaining: 9 moderate vulns (`file-type` via @nestjs/common, `lodash` via @prisma/dev) — both require breaking changes (NestJS v11 or Prisma downgrade). Monitoring for upstream fixes.
 
 ---
 
@@ -321,11 +321,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 963 tests passing (953 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 967 tests passing (957 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
-- **Production Readiness:** ~93% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests
-- **Coverage:** 93.31% stmt | 84.97% branch | 94.8% func | 95.7% line
+- **Production Readiness:** ~94% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests
+- **Coverage:** 93.31% stmt | 84.76% branch | 94.8% func | 95.7% line (dashboard 68%→97.91%, auth.controller 78%→88%)
 - **Version:** All packages bumped to 0.5.0 to match CHANGELOG
-- **Remaining:** npm audit vulns (moderate only, blocked upstream)
+- **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

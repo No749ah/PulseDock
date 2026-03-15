@@ -2449,3 +2449,264 @@ describe('openvpn auth with empty credentials', () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
   });
 });
+
+// ── Branch-coverage tests for importExternal / CSV / BetterUptime ───────────
+
+describe('importExternal — CSV parser branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target })),
+    );
+  });
+
+  it('returns empty when CSV has only a header row (lines.length < 2)', async () => {
+    const csv = 'name,url,interval';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('returns empty when CSV has no url/target/address/website column (urlIdx === -1)', async () => {
+    const csv = 'name,something,interval\nMy App,foo,60';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('skips rows where url is empty or not http(s)', async () => {
+    const csv = 'url\n\nftp://bad.com\nhttps://good.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses url as name when no name column exists (nameIdx < 0)', async () => {
+    const csv = 'url\nhttps://noname.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'https://noname.com' }) }),
+    );
+  });
+
+  it('defaults intervalSec to 300 when no interval column exists (intervalIdx < 0)', async () => {
+    const csv = 'url\nhttps://noint.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 300 }) }),
+    );
+  });
+
+  it('defaults intervalSec to 300 when interval value is NaN', async () => {
+    const csv = 'url,interval\nhttps://nanint.com,abc';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 300 }) }),
+    );
+  });
+
+  it('defaults enabled=true when no paused column exists (pausedIdx < 0)', async () => {
+    const csv = 'url\nhttps://nopaused.com';
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    // enabled is not false, so update() should NOT be called
+    expect(prisma.monitor.update).not.toHaveBeenCalled();
+  });
+
+  it('sets enabled=false for paused column values: paused, false, 0, disabled', async () => {
+    const csv = 'url,paused\nhttps://a.com,paused\nhttps://b.com,false\nhttps://c.com,0\nhttps://d.com,disabled';
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(4);
+    // All 4 monitors should trigger update() to disable
+    expect(prisma.monitor.update).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('importExternal — BetterUptime parser branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target })),
+    );
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+  });
+
+  it('parses plain array input (Array.isArray(raw) path)', async () => {
+    const data = [
+      { url: 'https://plain-array.com', pronounceable_name: 'Plain', check_type: 'status', request_interval_seconds: 60, paused: false },
+    ];
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses flat item object without attributes key', async () => {
+    const data = {
+      data: [
+        { url: 'https://flat.com', pronounceable_name: 'Flat', check_type: 'keyword', request_interval_seconds: 120, paused: false },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+  });
+
+  it('skips entry when check_type is not in allowed list', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://tcp.com', pronounceable_name: 'TCP', check_type: 'tcp', request_interval_seconds: 60, paused: false } },
+        { attributes: { url: 'https://udp.com', pronounceable_name: 'UDP', check_type: 'udp', request_interval_seconds: 60, paused: false } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('skips entry when url does not start with http(s)', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'ftp://nope.com', pronounceable_name: 'FTP', check_type: 'status', request_interval_seconds: 60, paused: false } },
+        { attributes: { url: '', pronounceable_name: 'Empty', check_type: 'status', request_interval_seconds: 60, paused: false } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('sets enabled=false when paused is true', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://paused.com', pronounceable_name: 'Paused', check_type: 'status', request_interval_seconds: 60, paused: true } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('uses interval fallback when request_interval_seconds is absent', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://fallback-int.com', pronounceable_name: 'Fallback', check_type: 'status', interval: 45 } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 45 }) }),
+    );
+  });
+});
+
+describe('importExternal — high-level branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+  });
+
+  it('calls update() to disable when item.enabled === false', async () => {
+    const csv = 'url,paused\nhttps://disable-me.com,paused';
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: 'm-disabled', name: args.data.name, target: args.data.target })),
+    );
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('pushes error when create() throws', async () => {
+    const csv = 'url\nhttps://will-fail.com';
+    prisma.monitor.create.mockRejectedValueOnce(new Error('DB constraint violation'));
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({
+      index: 0,
+      name: 'https://will-fail.com',
+      error: 'DB constraint violation',
+    });
+  });
+
+  it('uses singular "monitor" when exactly 1 imported', async () => {
+    const csv = 'url\nhttps://single.com';
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: 'm-single', name: args.data.name, target: args.data.target })),
+    );
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(result.message).toBe('Imported 1 monitor.');
+    // Should NOT say "monitors" (plural)
+    expect(result.message).not.toContain('monitors');
+  });
+
+  it('uses singular "duplicate" when exactly 1 skipped', async () => {
+    const csv = 'url\nhttps://exists.com';
+    prisma.monitor.findFirst.mockResolvedValue(makeMonitor({ target: 'https://exists.com' }));
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(result.message).toContain('skipped 1 duplicate');
+    // Should NOT say "duplicates" (plural)
+    expect(result.message).not.toMatch(/duplicates/);
+  });
+
+  it('uses plural forms for multiple imports and skips', async () => {
+    const csv = 'url\nhttps://new1.com\nhttps://new2.com\nhttps://dup1.com\nhttps://dup2.com';
+    let callCount = 0;
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) {
+        const target = where.target as string;
+        if (target.includes('dup')) return Promise.resolve(makeMonitor({ target }));
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) => {
+      callCount++;
+      return Promise.resolve(makeMonitor({ id: `m-${callCount}`, name: args.data.name, target: args.data.target }));
+    });
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(2);
+    expect(result.message).toContain('2 monitors');
+    expect(result.message).toContain('2 duplicates');
+  });
+});

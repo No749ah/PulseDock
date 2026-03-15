@@ -325,6 +325,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all pages 200)
 - **Production Readiness:** ~92% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests
-- **Coverage:** 88.59% stmt | 78.6% branch | 93% func | 90.69% line (up from 88%/78%/91%/90%)
-- **Remaining:** npm audit vulns (moderate only, blocked upstream), further branch coverage improvements (checks.service TCP/SSL timeout paths ~79% branch, monitors.service ~68% branch)
+- **Coverage:** 89.81% stmt | 79.56% branch | 93.45% func | 92.01% line (monitors.controller 50%→100% branch, monitors.service 67.9%→71.19% branch)
+- **Remaining:** npm audit vulns (moderate only, blocked upstream), further branch coverage (monitors.service ~71% branch, some extractVersionFromPayload edge paths)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

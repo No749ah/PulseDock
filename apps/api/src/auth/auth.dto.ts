@@ -20,6 +20,11 @@ export class LoginDto {
   @IsString()
   @MaxLength(256)
   password!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(6)
+  totpCode?: string;
 }
 
 export class RefreshDto {
@@ -64,9 +69,10 @@ export class ResetPasswordDto {
 }
 
 export class UpdateProfileDto {
+  @IsOptional()
   @IsEmail()
   @MaxLength(255)
-  email!: string;
+  email?: string;
 
   @IsOptional()
   @IsString()

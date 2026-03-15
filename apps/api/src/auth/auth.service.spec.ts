@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 vi.mock('otplib', () => ({
   generateSecret: vi.fn().mockReturnValue('MOCK_TOTP_SECRET'),
   generate: vi.fn().mockReturnValue('123456'),
-  verify: vi.fn().mockReturnValue(true),
+  verify: vi.fn().mockResolvedValue({ valid: true }),
   generateURI: vi.fn().mockReturnValue('otpauth://totp/PulseDock:test@example.com?secret=MOCK_TOTP_SECRET&issuer=PulseDock'),
 }));
 
@@ -146,6 +146,7 @@ function makeMailer() {
     sendPasswordResetEmail: vi.fn().mockResolvedValue({ sent: true }),
     sendEmailVerificationEmail: vi.fn().mockResolvedValue(undefined),
     sendNewLoginEmail: vi.fn().mockResolvedValue(undefined),
+    sendAccountLockedEmail: vi.fn().mockResolvedValue({ sent: true }),
   };
 }
 
@@ -247,6 +248,33 @@ describe('AuthService', () => {
       const svc = makeService(prisma as never);
 
       await expect(svc.login('test@example.com', 'WrongPassword1!')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('sends account-locked email when 5th failed attempt triggers lockout', async () => {
+      const user = makeUser({ failedLoginCount: 4, passwordHash: '$2a$10$invalidhashxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      await expect(svc.login('test@example.com', 'WrongPassword1!', { ipAddress: '1.2.3.4' })).rejects.toThrow(UnauthorizedException);
+      // Allow fire-and-forget to settle
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mailer.sendAccountLockedEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        expect.any(Date),
+        '1.2.3.4',
+      );
+    });
+
+    it('does NOT send account-locked email on 4th failed attempt (not yet locked)', async () => {
+      const user = makeUser({ failedLoginCount: 3, passwordHash: '$2a$10$invalidhashxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      await expect(svc.login('test@example.com', 'WrongPassword1!')).rejects.toThrow(UnauthorizedException);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mailer.sendAccountLockedEmail).not.toHaveBeenCalled();
     });
 
     it('throws UnauthorizedException for locked account', async () => {
@@ -454,6 +482,20 @@ describe('AuthService', () => {
       const svc = makeService(prisma as never);
 
       await expect(svc.updateProfile('user-1', 'test@example.com')).resolves.not.toThrow();
+    });
+
+    it('updates only displayName when email is omitted (no email conflict check)', async () => {
+      const prisma = makePrisma();
+      const svc = makeService(prisma as never);
+
+      await svc.updateProfile('user-1', undefined, 'New Name');
+      // findUnique should NOT be called — no email to check
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ displayName: 'New Name' }),
+        }),
+      );
     });
   });
 
@@ -869,7 +911,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const prisma = makePrisma(makeUser({ totpSecret: 'MOCK_TOTP_SECRET', totpEnabled: false }));
       const svc = makeService(prisma as never);
@@ -918,7 +960,7 @@ describe('AuthService', () => {
     it('throws UnauthorizedException for invalid TOTP code and no recovery code', async () => {
       const { hashSync } = await import('bcryptjs');
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const passwordHash = hashSync('ValidPass1!Strong', 1);
       const prisma = makePrisma(makeUser({ totpEnabled: true, totpSecret: 'MOCK_TOTP_SECRET', passwordHash, totpRecoveryCodes: null }));
@@ -950,7 +992,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const prisma = makePrisma(makeUser({ totpEnabled: true, totpSecret: 'MOCK_TOTP_SECRET' }));
       const svc = makeService(prisma as never);
@@ -977,7 +1019,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code and no recovery code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const jwt = makeJwt();
       jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
@@ -1002,7 +1044,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException when totpRecoveryCodes contains invalid JSON', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const jwt = makeJwt();
       jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
@@ -1014,7 +1056,7 @@ describe('AuthService', () => {
     it('succeeds with a valid recovery code (consumes code, logs auth.2fa_recovery_code_used)', async () => {
       const { verify } = await import('otplib');
       const { hashSync } = await import('bcryptjs');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const recoveryCode = 'RECOV-001';
       const hash = hashSync(recoveryCode, 10);

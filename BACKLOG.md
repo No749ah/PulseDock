@@ -323,11 +323,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 973 tests passing (963 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1053 tests passing (1043 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
-- **Production Readiness:** ~94% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests
-- **Coverage:** 93.31% stmt | 84.76% branch | 94.8% func | 95.7% line (dashboard 68%→97.91%, auth.controller 78%→88%)
+- **Production Readiness:** ~97% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications
+- **Coverage:** 95.65% stmt | 87.94% branch | 97.78% func | 98.04% line (improved from 94.32%/86.48%/96.89%/96.59%)
 - **Version:** All packages bumped to 0.5.0 to match CHANGELOG
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

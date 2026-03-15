@@ -1849,3 +1849,481 @@ describe('monitorUptime()', () => {
     expect(result.incidentList[0].durationSec).toBe(3600); // 60 min = 3600s
   });
 });
+
+// ── sanitizeConfig — HEARTBEAT type coverage ─────────────────────────────────
+
+describe('sanitizeConfig (via list()) — HEARTBEAT type', () => {
+  it('sets hasHeartbeatToken=true and hasRepoToken=false when HEARTBEAT monitor has token', async () => {
+    const monitor = makeMonitor({
+      type: 'HEARTBEAT',
+      configJson: { token: 'my-heartbeat-token' },
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasHeartbeatToken).toBe(true);
+    expect(result[0].config.hasRepoToken).toBe(false);
+    // HEARTBEAT token is intentionally kept in config (users need it for ping URLs)
+    expect(result[0].config.token).toBe('my-heartbeat-token');
+  });
+
+  it('sets hasHeartbeatToken=false when HEARTBEAT monitor has no token', async () => {
+    const monitor = makeMonitor({ type: 'HEARTBEAT', configJson: {} });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasHeartbeatToken).toBe(false);
+    expect(result[0].config.hasRepoToken).toBe(false);
+  });
+
+  it('returns hasRepoToken=true for non-HEARTBEAT monitor with token in config', async () => {
+    const monitor = makeMonitor({ type: 'GIT_RELEASE', configJson: { token: 'repo-token' } });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasRepoToken).toBe(true);
+    expect(result[0].config.hasHeartbeatToken).toBe(false);
+  });
+
+  it('handles null configJson gracefully (covers config ?? {} branch)', async () => {
+    const monitor = makeMonitor({ type: 'HTTP', configJson: null });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config).toBeDefined();
+    expect(result[0].config.hasRepoToken).toBe(false);
+  });
+});
+
+// ── create() — HEARTBEAT type token + timeoutMin branches ────────────────────
+
+describe('create() — HEARTBEAT type', () => {
+  it('auto-generates token when config.token is absent', async () => {
+    const p = makePrisma();
+    // Override create to capture the data
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({
+        ...makeMonitor(),
+        type: 'HEARTBEAT',
+        configJson: data.configJson,
+        monitorAlerts: [],
+        monitorTags: [],
+      });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'https://ping.example.com', type: 'HEARTBEAT' });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).length).toBeGreaterThan(10);
+  });
+
+  it('auto-generates token when config.token is empty string', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { token: '   ' } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).trim().length).toBeGreaterThan(0);
+  });
+
+  it('preserves existing token when valid', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { token: 'my-valid-token' } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.token).toBe('my-valid-token');
+  });
+
+  it('uses default timeoutMin=5 when timeoutMin is 0 (invalid)', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: 0 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+
+  it('uses default timeoutMin=5 when timeoutMin is negative', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: -5 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+
+  it('preserves valid timeoutMin when positive', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: 10 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(10);
+  });
+});
+
+// ── update() — HEARTBEAT type token + timeoutMin branches ────────────────────
+
+describe('update() — HEARTBEAT type', () => {
+  it('auto-generates token when updating type to HEARTBEAT and no token set', async () => {
+    const p = makePrisma(makeMonitor({ type: 'HTTP', configJson: {} }));
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson });
+    });
+    const svc = makeService(p);
+    await svc.update('user-1', 'monitor-1', { type: 'HEARTBEAT' });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).length).toBeGreaterThan(0);
+  });
+
+  it('uses default timeoutMin=5 when updating HEARTBEAT with timeoutMin=NaN', async () => {
+    const p = makePrisma(makeMonitor({ type: 'HEARTBEAT', configJson: { token: 'tok' } }));
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson });
+    });
+    const svc = makeService(p);
+    await svc.update('user-1', 'monitor-1', { config: { timeoutMin: NaN } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+});
+
+// ── extractVersionFromPayload — comprehensive branch coverage ─────────────────
+// Tested indirectly via discoverCurrentVersion → detectDeployedVersion
+
+describe('extractVersionFromPayload — branch coverage via detectDeployedVersion', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeJsonResponse(body: unknown) {
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+    };
+  }
+
+  // null payload → return null → detect falls through
+  it('returns null currentVersion when JSON response is null', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse(null));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    // null payload → no version extracted → manual strategy
+    expect(result.currentVersion).toBeNull();
+  });
+
+  // string payload → extractVersionFromText branch
+  it('extracts version from plain string payload', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => '2.11.3',
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('2.11.3');
+  });
+
+  // array payload → iterate items, find version in first item
+  it('extracts version from array response with version in first element', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse([{ version: '4.2.1' }, { version: '4.1.0' }]));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('4.2.1');
+  });
+
+  // array payload → all items have no version → return null
+  it('returns null when array items contain no usable version string', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse([{ status: 'ok' }, { uptime: 99.9 }]));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+
+  // object with directKeySet key `release`
+  it('extracts version from object with "release" key (directKeySet hit)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ release: '5.3.2', status: 'running' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('5.3.2');
+  });
+
+  // object with directKeySet key `tag`
+  it('extracts version from object with "tag" key (directKeySet hit)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ tag: 'v3.1.4', ok: true }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('v3.1.4');
+  });
+
+  // object with version-like key `appVersion` (not in directKeySet but matches `includes('version')`)
+  it('extracts version from object with "appVersion" key (version-like key path)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ appVersion: '2.0.5', environment: 'prod' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('2.0.5');
+  });
+
+  // object with version-like key `build_version`
+  it('extracts version from object with "build_version" key', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ build_version: '1.7.0', service: 'api' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('1.7.0');
+  });
+
+  // object with nested `data.version`
+  it('extracts version from nested data.version (nested traversal)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ status: 'ok', data: { version: '9.1.2' } }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('9.1.2');
+  });
+
+  // object with nested `build.version`
+  it('extracts version from nested build.version (nested traversal)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ ok: true, build: { version: '0.8.3' } }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('0.8.3');
+  });
+
+  // object with `latest` key → should be skipped (covers the `includes('latest') continue` branch)
+  it('ignores "latest" key and falls back to nested version', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({
+      latestVersion: '2.0.0',  // should be skipped
+      data: { version: '1.5.0' }, // should be used
+    }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    // latestVersion key contains 'latest' → skipped; data.version used instead
+    expect(result.currentVersion).toBe('1.5.0');
+  });
+});
+
+// ── detectDeployedVersion — remaining path branches ──────────────────────────
+
+describe('detectDeployedVersion — absolute URL and authFailed path', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses absolute URL directly when appVersionEndpoint starts with http', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '7.2.1' }),
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.internal',
+      appVersionEndpoint: 'https://custom-version-endpoint.example.com/ver',
+    });
+    expect(result.currentVersion).toBe('7.2.1');
+    // should call the absolute URL directly, not base+path
+    expect(fetchMock.mock.calls[0][0]).toBe('https://custom-version-endpoint.example.com/ver');
+  });
+
+  it('returns manual strategy with authFailed=true message when 401 received', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://secure.example.com',
+    });
+    expect(result.strategy).toBe('manual');
+    // authFailed=true → message should mention auth
+    const msg = (result as Record<string, unknown>).message as string;
+    expect(msg).toMatch(/auth|token|401/i);
+  });
+
+  it('returns manual strategy with docker suggestions when provider is docker', async () => {
+    // testVersionConnection also fails
+    fetchMock.mockResolvedValue({ ok: false, status: 500 });
+    const result = await service.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myimage',
+    });
+    expect(result.strategy).toBe('manual');
+    const suggestions = (result as Record<string, unknown>).suggestions as string[];
+    expect(suggestions).toContain('latest');
+    expect(suggestions).toContain('stable');
+  });
+});
+
+// ── testVersionConnection — maven/helm default-to-docker path ─────────────────
+
+describe('testVersionConnection() — maven/helm providers (docker fallback)', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('falls through to Docker Hub for maven provider', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [{ name: '3.9.6' }] }),
+    });
+    const result = await service.testVersionConnection({
+      provider: 'maven' as never,
+      target: 'library/maven',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('3.9.6');
+  });
+
+  it('falls through to Docker Hub for helm provider', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [{ name: 'v3.14.0' }] }),
+    });
+    const result = await service.testVersionConnection({
+      provider: 'helm' as never,
+      target: 'helm/helm',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('v3.14.0');
+  });
+
+  it('returns Docker Hub latestVersion=null when results array is empty', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [] }),
+    });
+    const result = await service.testVersionConnection({ provider: 'docker', target: 'emptyrepo/image' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBeNull();
+  });
+
+  it('handles Docker official image (no slash) by prefixing library/', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [{ name: 'stable' }] }),
+    });
+    await service.testVersionConnection({ provider: 'docker', target: 'nginx' });
+    // URL should contain library/nginx
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('library/nginx');
+  });
+
+  it('returns crates.io newest_version as fallback when max_stable_version is absent', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ crate: { newest_version: '1.0.0-rc1' } }),
+    });
+    const result = await service.testVersionConnection({ provider: 'cargo', target: 'mycrate' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('1.0.0-rc1');
+  });
+});

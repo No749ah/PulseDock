@@ -1,4 +1,4 @@
-export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
 export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 

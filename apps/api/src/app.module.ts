@@ -13,6 +13,7 @@ import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
 import { ChecksService } from './checks/checks.service';
 import { ChecksScheduler } from './checks/checks.scheduler';
+import { HeartbeatController } from './checks/heartbeat.controller';
 import { DashboardController } from './dashboard/dashboard.controller';
 import { PublicDashboardController } from './dashboard/public.controller';
 import { AdminController } from './users/admin.controller';
@@ -53,6 +54,7 @@ import { MaintenanceService } from './maintenance/maintenance.service';
     AuthController,
     MonitorsController,
     AlertsController,
+    HeartbeatController,
     DashboardController,
     PublicDashboardController,
     AdminController,

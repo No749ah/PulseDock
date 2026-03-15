@@ -8,11 +8,11 @@ export class CreateMonitorDto {
   name!: string;
 
   @IsString()
-  @IsUrl({}, { message: 'target must be a valid URL' })
+  @MaxLength(1024)
   target!: string;
 
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
 
   @IsOptional()
   @IsInt()
@@ -51,12 +51,12 @@ export class UpdateMonitorDto {
 
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'target must be a valid URL' })
+  @MaxLength(1024)
   target?: string;
 
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
+  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
 
   @IsOptional()
   @IsInt()
@@ -124,8 +124,8 @@ export class ImportMonitorItemDto {
   @MaxLength(1024)
   target!: string;
 
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
 
   @IsOptional()
   @IsInt()

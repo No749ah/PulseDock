@@ -17,7 +17,7 @@ import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
   enabled: boolean;

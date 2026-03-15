@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
 import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
@@ -15,18 +16,22 @@ export class MonitorsService {
     private readonly realtime: RealtimeEvents,
   ) {}
 
-  private sanitizeConfig(config: Record<string, unknown> | null | undefined) {
+  private sanitizeConfig(
+    config: Record<string, unknown> | null | undefined,
+    monitorType?: MonitorType,
+  ) {
     const c = { ...(config ?? {}) } as Record<string, unknown>;
 
-    const hasRepoToken = typeof c.token === 'string' && String(c.token).trim().length > 0;
+    const hasToken = typeof c.token === 'string' && String(c.token).trim().length > 0;
     const hasAppToken = typeof c.appToken === 'string' && String(c.appToken).trim().length > 0;
     const hasOpenvpnPassword = typeof c.openvpnPassword === 'string' && String(c.openvpnPassword).trim().length > 0;
 
-    if ('token' in c) delete c.token;
+    if (monitorType !== 'HEARTBEAT' && 'token' in c) delete c.token;
     if ('appToken' in c) delete c.appToken;
     if ('openvpnPassword' in c) delete c.openvpnPassword;
 
-    c.hasRepoToken = hasRepoToken;
+    c.hasRepoToken = monitorType === 'HEARTBEAT' ? false : hasToken;
+    c.hasHeartbeatToken = monitorType === 'HEARTBEAT' ? hasToken : false;
     c.hasAppToken = hasAppToken;
     c.hasOpenvpnPassword = hasOpenvpnPassword;
 
@@ -58,7 +63,7 @@ export class MonitorsService {
       target: m.target,
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
-      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}),
+      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       folderId: m.folderId,
       tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
@@ -78,6 +83,15 @@ export class MonitorsService {
     folderId?: string | null;
     tags?: string[];
   }) {
+    const config: Record<string, unknown> = { ...(body.config ?? {}) };
+    if (body.type === 'HEARTBEAT') {
+      if (typeof config.token !== 'string' || !config.token.trim()) {
+        config.token = randomUUID();
+      }
+      const timeoutRaw = Number(config.timeoutMin ?? 5);
+      config.timeoutMin = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 5;
+    }
+
     const created = await this.prisma.monitor.create({
       data: {
         userId,
@@ -86,7 +100,7 @@ export class MonitorsService {
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
-        configJson: (body.config ?? {}) as Prisma.InputJsonValue,
+        configJson: config as Prisma.InputJsonValue,
         folderId: body.folderId ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
@@ -118,7 +132,7 @@ export class MonitorsService {
       target: created.target,
       intervalSec: created.intervalSec,
       timeoutMs: created.timeoutMs,
-      config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}),
+      config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}, created.type as MonitorType),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
       tags: createdTags,
@@ -146,7 +160,16 @@ export class MonitorsService {
     if (!current) throw new NotFoundException('monitor not found');
 
     const currentConfig = (current.configJson as Record<string, unknown> | null) ?? {};
-    const mergedConfig = body.config ? { ...currentConfig, ...body.config } : currentConfig;
+    const mergedConfig = body.config ? { ...currentConfig, ...body.config } : { ...currentConfig };
+
+    const nextType = body.type ?? current.type;
+    if (nextType === 'HEARTBEAT') {
+      if (typeof mergedConfig.token !== 'string' || !String(mergedConfig.token).trim()) {
+        mergedConfig.token = randomUUID();
+      }
+      const timeoutRaw = Number(mergedConfig.timeoutMin ?? 5);
+      mergedConfig.timeoutMin = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 5;
+    }
 
     await this.prisma.monitor.update({
       where: { id: monitorId },
@@ -209,7 +232,7 @@ export class MonitorsService {
   async importMonitors(userId: string, items: Array<{
     name: string;
     target: string;
-    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
     intervalSec?: number;
     timeoutMs?: number;
     config?: Record<string, unknown>;

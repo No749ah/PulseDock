@@ -542,7 +542,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: { currentTag: '1.5.0' },
       });
@@ -568,7 +568,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: { currentTag: '1.5.0' },
       });
@@ -583,7 +583,7 @@ describe('ChecksService', () => {
       globalThis.fetch = mockFetch([{ ok: false, status: 404 }]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nonexistent/image',
         config: {},
       });
@@ -604,7 +604,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'emptyimage',
         config: {},
       });
@@ -617,7 +617,7 @@ describe('ChecksService', () => {
 
       globalThis.fetch = vi.fn().mockRejectedValue(new Error('Docker timeout'));
 
-      const monitor = makeMonitor({ type: 'DOCKER', target: 'nginx', config: {} });
+      const monitor = makeMonitor({ type: 'DOCKER_IMAGE', target: 'nginx', config: {} });
       const run = await service.runMonitor(monitor);
       expect(run.ok).toBe(false);
       expect(run.message).toContain('Docker check failed');
@@ -641,7 +641,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: {}, // no currentTag → age-based check
       });
@@ -1850,7 +1850,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { currentTag: '2.0.0-beta', includePrerelease: true },
       });
@@ -1978,7 +1978,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { warnAfterHours: 24, critAfterHours: 168 },
       });
@@ -2004,7 +2004,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { critAfterHours: 168 },
       });
@@ -2029,7 +2029,7 @@ describe('ChecksService', () => {
       });
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx', // no slash → library/nginx
         config: { currentTag: '1.25.0' },
       });
@@ -2075,7 +2075,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage/app',
         config: { currentTag: '1.0.0' },
       });

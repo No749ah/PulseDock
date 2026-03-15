@@ -289,6 +289,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
 - [x] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV. Implemented `POST /v1/monitors/import-external` supporting Uptime Robot JSON, BetterUptime JSON, and generic CSV. Frontend modal with source picker + instructions. Duplicate URL detection, disabled monitor support. 6 tests added.
+- [x] **Maintenance Windows** — Full CRUD for scheduling maintenance windows (name, description, startsAt, endsAt, monitorIds). Backend: `GET/POST/PATCH/DELETE /v1/maintenance` + `/active` endpoint. Alert suppression during active windows. Frontend: `/maintenance` page with status badges (Active/Upcoming/Past), create/edit modal, calendar icon empty state. Nav item added.
 
 ---
 

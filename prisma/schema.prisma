@@ -15,6 +15,9 @@ enum MonitorType {
   HTTP
   GIT_RELEASE
   DOCKER_IMAGE
+  TCP
+  SSL_CERT
+  HEARTBEAT
 }
 
 model User {

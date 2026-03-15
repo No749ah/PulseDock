@@ -26,6 +26,9 @@ const EXEMPT_PATHS = new Set([
   '/metrics',
 ]);
 
+/** URL prefixes that are exempt from CSRF (public push endpoints). */
+const EXEMPT_PREFIXES: string[] = ['/v1/heartbeat/'];
+
 /**
  * Double-Submit Cookie CSRF Middleware
  *
@@ -54,6 +57,11 @@ export class CsrfMiddleware implements NestMiddleware {
     // Exempt unauthenticated bootstrap endpoints
     const path = req.path.replace(/\/+$/, '');
     if (EXEMPT_PATHS.has(path)) {
+      return next();
+    }
+
+    // Exempt public push endpoints (e.g. heartbeat pings) by prefix
+    if (EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix))) {
       return next();
     }
 

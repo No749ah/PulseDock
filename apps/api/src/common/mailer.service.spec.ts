@@ -223,4 +223,59 @@ describe('MailerService', () => {
       );
     });
   });
+
+  // ─── sendAccountLockedEmail() ────────────────────────────────────────────────
+
+  describe('sendAccountLockedEmail()', () => {
+    beforeEach(() => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'user';
+      process.env.SMTP_PASS = 'pass';
+      process.env.MAIL_FROM = 'noreply@example.com';
+      mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
+      svc = new MailerService();
+    });
+
+    it('calls deliver with lockout subject', async () => {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      const result = await svc.sendAccountLockedEmail('victim@example.com', lockedUntil);
+      expect(result).toEqual({ sent: true });
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'victim@example.com',
+          subject: expect.stringContaining('locked'),
+        }),
+      );
+    });
+
+    it('includes IP address in HTML when provided', async () => {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      await svc.sendAccountLockedEmail('victim@example.com', lockedUntil, '192.168.1.1');
+      const callArgs = mockSendMail.mock.calls[0][0] as { html: string };
+      expect(callArgs.html).toContain('192.168.1.1');
+    });
+
+    it('omits IP row when ipAddress is not provided', async () => {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      await svc.sendAccountLockedEmail('victim@example.com', lockedUntil);
+      const callArgs = mockSendMail.mock.calls[0][0] as { html: string };
+      // IP row should not appear when not provided
+      expect(callArgs.html).not.toContain('Attempted from');
+    });
+
+    it('includes lockout time in plain-text body', async () => {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+      await svc.sendAccountLockedEmail('victim@example.com', lockedUntil);
+      const callArgs = mockSendMail.mock.calls[0][0] as { text: string };
+      expect(callArgs.text).toContain(lockedUntil.toUTCString());
+    });
+
+    it('returns { sent: false } when SMTP not configured', async () => {
+      delete process.env.SMTP_HOST;
+      svc = new MailerService();
+      const result = await svc.sendAccountLockedEmail('victim@example.com', new Date());
+      expect(result).toEqual({ sent: false });
+    });
+  });
 });

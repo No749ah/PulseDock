@@ -130,6 +130,12 @@ export class AuthService {
       await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount, lockedUntil } });
       await this.audit.log('auth.login_failed', user.id, user.id, { failedLoginCount });
       this.metrics.inc('authLoginFailed');
+      // Notify user when their account gets locked
+      if (lockedUntil) {
+        this.mailer?.sendAccountLockedEmail(user.email, lockedUntil, context?.ipAddress).catch(() => {
+          // fire-and-forget — don't block or reveal internal errors
+        });
+      }
       throw new UnauthorizedException('invalid credentials');
     }
 

@@ -284,4 +284,33 @@ export class MailerService {
 
     return this.deliver(to, subject, text, html);
   }
+
+  // ───────── Account Lockout ─────────
+  async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
+    const subject = 'Your PulseDock account has been temporarily locked';
+    const text = `Your PulseDock account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;
+
+    const unlockTime = lockedUntil.toUTCString();
+
+    const html = htmlLayout(subject, `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ef4444;">🔒 Account temporarily locked</h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">
+        Your account was locked after <strong style="color:#f1f5f9;">5 consecutive failed login attempts</strong>.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        ${metaRow('Locked until', unlockTime)}
+        ${ipAddress ? metaRow('Attempted from', ipAddress) : ''}
+      </table>
+      ${divider()}
+      <p style="margin:0 0 12px;font-size:14px;color:#94a3b8;line-height:1.6;">
+        Your account will automatically unlock after 15 minutes. If you did not make these attempts,
+        please change your password immediately after regaining access.
+      </p>
+      <p style="margin:0;font-size:12px;color:#475569;">
+        If you believe your account has been compromised, contact your instance administrator.
+      </p>
+    `);
+
+    return this.deliver(to, subject, text, html);
+  }
 }

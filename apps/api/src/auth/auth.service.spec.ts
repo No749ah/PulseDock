@@ -146,6 +146,7 @@ function makeMailer() {
     sendPasswordResetEmail: vi.fn().mockResolvedValue({ sent: true }),
     sendEmailVerificationEmail: vi.fn().mockResolvedValue(undefined),
     sendNewLoginEmail: vi.fn().mockResolvedValue(undefined),
+    sendAccountLockedEmail: vi.fn().mockResolvedValue({ sent: true }),
   };
 }
 
@@ -247,6 +248,33 @@ describe('AuthService', () => {
       const svc = makeService(prisma as never);
 
       await expect(svc.login('test@example.com', 'WrongPassword1!')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('sends account-locked email when 5th failed attempt triggers lockout', async () => {
+      const user = makeUser({ failedLoginCount: 4, passwordHash: '$2a$10$invalidhashxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      await expect(svc.login('test@example.com', 'WrongPassword1!', { ipAddress: '1.2.3.4' })).rejects.toThrow(UnauthorizedException);
+      // Allow fire-and-forget to settle
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mailer.sendAccountLockedEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        expect.any(Date),
+        '1.2.3.4',
+      );
+    });
+
+    it('does NOT send account-locked email on 4th failed attempt (not yet locked)', async () => {
+      const user = makeUser({ failedLoginCount: 3, passwordHash: '$2a$10$invalidhashxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+      const prisma = makePrisma(user);
+      const mailer = makeMailer();
+      const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+      await expect(svc.login('test@example.com', 'WrongPassword1!')).rejects.toThrow(UnauthorizedException);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mailer.sendAccountLockedEmail).not.toHaveBeenCalled();
     });
 
     it('throws UnauthorizedException for locked account', async () => {

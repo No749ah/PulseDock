@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/extension",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "PulseDock browser extension — one-click monitor creation from any tab",
   "private": true,
   "scripts": {

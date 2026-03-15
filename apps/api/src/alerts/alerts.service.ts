@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
@@ -31,9 +32,25 @@ export class AlertsService {
     return 'down';
   }
 
+  /**
+   * Computes the HMAC-SHA256 signature for a webhook body.
+   * Receivers should verify: X-PulseDock-Signature == sha256=<hex>
+   */
+  private webhookSignature(secret: string, body: string): string {
+    return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
+  }
+
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
-      await fetch(channel.config.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, extra }) });
+      const body = JSON.stringify({ text, extra });
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+
+      // Add HMAC signature if a signing secret is configured
+      if (typeof channel.config.secret === 'string' && channel.config.secret.length > 0) {
+        headers['x-pulsedock-signature'] = this.webhookSignature(channel.config.secret, body);
+      }
+
+      await fetch(channel.config.url, { method: 'POST', headers, body });
       return;
     }
 
@@ -80,6 +97,23 @@ export class AlertsService {
   }
 
   async notifyMonitorFailure(monitor: Monitor, run: MonitorRun) {
+    // Suppress alerts during active maintenance windows
+    const now = new Date();
+    const activeMaintenance = await this.prisma.maintenanceWindow.findFirst({
+      where: {
+        userId: monitor.userId,
+        monitors: { some: { monitorId: monitor.id } },
+        startsAt: { lte: now },
+        endsAt: { gte: now },
+      },
+    });
+    if (activeMaintenance) {
+      this.logger.log(
+        `Suppressing alert for monitor "${monitor.name}" (id=${monitor.id}): active maintenance window "${activeMaintenance.name}"`,
+      );
+      return;
+    }
+
     // Check notification preferences before dispatching alerts
     const eventType = this.levelToEventType(run.level);
     const shouldSend = await this.notifications.shouldNotify(monitor.userId, eventType);

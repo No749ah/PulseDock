@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import {
   Activity,
   AlertTriangle,
+  CalendarClock,
   ChevronDown,
   Folder,
   Gauge,
@@ -44,6 +45,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: '/monitors', label: 'Monitors', icon: Activity },
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
+      { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
       { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },
     ],

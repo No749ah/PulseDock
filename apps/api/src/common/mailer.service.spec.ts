@@ -111,24 +111,27 @@ describe('MailerService', () => {
       expect(mockSendMail).toHaveBeenCalledOnce();
       const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
       expect(args.to).toBe('user@example.com');
-      expect(args.subject).toBe('PulseDock invite');
+      expect(args.subject).toBe("You've been invited to PulseDock");
       expect(args.text).toContain('https://x/invite/abc');
+      expect(args.html).toContain('https://x/invite/abc');
     });
 
     it('sendPasswordResetEmail calls sendMail, returns { sent: true }', async () => {
       const result = await svc.sendPasswordResetEmail('user@example.com', 'https://x/reset/xyz');
       expect(result).toEqual({ sent: true });
       const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
-      expect(args.subject).toBe('PulseDock password reset');
+      expect(args.subject).toBe('Reset your PulseDock password');
       expect(args.text).toContain('https://x/reset/xyz');
+      expect(args.html).toContain('https://x/reset/xyz');
     });
 
     it('sendEmailVerificationEmail calls sendMail, returns { sent: true }', async () => {
       const result = await svc.sendEmailVerificationEmail('user@example.com', 'https://x/verify/tok');
       expect(result).toEqual({ sent: true });
       const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
-      expect(args.subject).toBe('Verify your PulseDock email');
+      expect(args.subject).toBe('Verify your PulseDock email address');
       expect(args.text).toContain('https://x/verify/tok');
+      expect(args.html).toContain('https://x/verify/tok');
     });
 
     it('sendNewLoginEmail calls sendMail with IP/UA in body', async () => {
@@ -154,12 +157,13 @@ describe('MailerService', () => {
       expect(args.text).toContain('unknown');
     });
 
-    it('sendAlertEmail sends plain text when no extra', async () => {
+    it('sendAlertEmail sends text + html when no extra', async () => {
       const result = await svc.sendAlertEmail('user@example.com', 'Monitor down');
       expect(result).toEqual({ sent: true });
       const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
       expect(args.subject).toBe('PulseDock Alert');
-      expect(args.text).toBe('Monitor down');
+      expect(args.text).toContain('Monitor down');
+      expect(args.html).toContain('PulseDock');
     });
 
     it('sendAlertEmail appends JSON when extra given', async () => {
@@ -167,6 +171,22 @@ describe('MailerService', () => {
       const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
       expect(args.text).toContain('Alert!');
       expect(args.text).toContain('"code": 500');
+    });
+
+    it('sendAlertEmail renders test notification HTML when extra.test is true', async () => {
+      await svc.sendAlertEmail('user@example.com', '✅ test', { test: true });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('Test notification');
+    });
+
+    it('sendAlertEmail renders monitor name in HTML when monitor info provided', async () => {
+      await svc.sendAlertEmail('user@example.com', '🚨 My API is RED', {
+        monitor: { name: 'My API' },
+        run: { level: 'red', message: 'Connection refused' },
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('My API');
+      expect(args.html).toContain('DOWN');
     });
 
     it('uses MAIL_FROM env as from address', async () => {

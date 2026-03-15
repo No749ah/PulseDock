@@ -18,6 +18,7 @@ function makeMonitorsService() {
     listPlugins: vi.fn(),
     getRecentRuns: vi.fn(),
     monitorRuns: vi.fn(),
+    monitorUptime: vi.fn(),
     versionSummary: vi.fn(),
     exportMonitors: vi.fn(),
     importMonitors: vi.fn(),
@@ -165,5 +166,18 @@ describe('MonitorsController', () => {
     service.removeMonitorAlert.mockResolvedValue({ ok: true });
     await controller.removeAlert(makeReq(), 'm-1', 'ch-1');
     expect(service.removeMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1');
+  });
+
+  it('monitorUptime() passes valid period to service', async () => {
+    service.monitorUptime.mockResolvedValue({ uptimePct: 99.5, totalChecks: 100, failedChecks: 0 });
+    const result = await controller.monitorUptime(makeReq(), 'm-1', '7d');
+    expect(service.monitorUptime).toHaveBeenCalledWith('user-1', 'm-1', '7d');
+    expect(result).toEqual(expect.objectContaining({ uptimePct: 99.5 }));
+  });
+
+  it('monitorUptime() falls back to 30d for an invalid period', async () => {
+    service.monitorUptime.mockResolvedValue({ uptimePct: 50, totalChecks: 10, failedChecks: 5 });
+    await controller.monitorUptime(makeReq(), 'm-1', 'invalid-period');
+    expect(service.monitorUptime).toHaveBeenCalledWith('user-1', 'm-1', '30d');
   });
 });

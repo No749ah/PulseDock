@@ -18,10 +18,10 @@ export class V2ListMonitorsQuery {
   @Type(() => Number)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Filter by monitor type', enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'] })
+  @ApiPropertyOptional({ description: 'Filter by monitor type', enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'] })
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
+  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
 
   @ApiPropertyOptional({ description: 'Filter by enabled state' })
   @IsOptional()

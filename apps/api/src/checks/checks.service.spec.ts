@@ -542,7 +542,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: { currentTag: '1.5.0' },
       });
@@ -568,7 +568,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: { currentTag: '1.5.0' },
       });
@@ -583,7 +583,7 @@ describe('ChecksService', () => {
       globalThis.fetch = mockFetch([{ ok: false, status: 404 }]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nonexistent/image',
         config: {},
       });
@@ -604,7 +604,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'emptyimage',
         config: {},
       });
@@ -617,7 +617,7 @@ describe('ChecksService', () => {
 
       globalThis.fetch = vi.fn().mockRejectedValue(new Error('Docker timeout'));
 
-      const monitor = makeMonitor({ type: 'DOCKER', target: 'nginx', config: {} });
+      const monitor = makeMonitor({ type: 'DOCKER_IMAGE', target: 'nginx', config: {} });
       const run = await service.runMonitor(monitor);
       expect(run.ok).toBe(false);
       expect(run.message).toContain('Docker check failed');
@@ -641,7 +641,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx',
         config: {}, // no currentTag → age-based check
       });
@@ -1850,7 +1850,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { currentTag: '2.0.0-beta', includePrerelease: true },
       });
@@ -1978,7 +1978,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { warnAfterHours: 24, critAfterHours: 168 },
       });
@@ -2004,7 +2004,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage',
         config: { critAfterHours: 168 },
       });
@@ -2029,7 +2029,7 @@ describe('ChecksService', () => {
       });
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'nginx', // no slash → library/nginx
         config: { currentTag: '1.25.0' },
       });
@@ -2075,7 +2075,7 @@ describe('ChecksService', () => {
       ]);
 
       const monitor = makeMonitor({
-        type: 'DOCKER',
+        type: 'DOCKER_IMAGE',
         target: 'myimage/app',
         config: { currentTag: '1.0.0' },
       });
@@ -2196,6 +2196,378 @@ describe('ChecksService', () => {
       await service.runMonitor(monitor);
       // Previous was yellow, result is yellow → levelChanged=false → no alert
       expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Maven / Helm currentVersion branches ──────────────────────────────────
+
+  describe('runMonitor() — GIT_RELEASE Maven with currentVersion', () => {
+    afterEach(() => { delete (globalThis as Record<string, unknown>).fetch; });
+
+    it('shows classified level when currentVersion is set and up-to-date', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '3.9.6' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven', currentVersion: '3.9.6' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.message).toMatch(/Maven current 3\.9\.6, latest 3\.9\.6/);
+      expect(run.level).toBe('green');
+    });
+
+    it('shows red level when currentVersion is behind', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '4.0.0' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven', currentVersion: '3.9.0' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Maven current 3\.9\.0, latest 4\.0\.0/);
+      expect(run.ok).toBe(false);
+    });
+
+    it('returns green with no currentVersion (latest only)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '3.9.6' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Maven latest 3\.9\.6/);
+      expect(run.level).toBe('green');
+    });
+  });
+
+  describe('runMonitor() — GIT_RELEASE Helm with currentVersion', () => {
+    afterEach(() => { delete (globalThis as Record<string, unknown>).fetch; });
+
+    it('shows classified level when currentVersion is set and up-to-date', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '10.3.1', version: '10.3.1' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm', currentVersion: '10.3.1' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.message).toMatch(/Helm current 10\.3\.1, latest 10\.3\.1/);
+      expect(run.level).toBe('green');
+    });
+
+    it('shows red level when currentVersion is a major version behind', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '11.0.0', version: '11.0.0' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm', currentVersion: '10.3.1' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Helm current 10\.3\.1, latest 11\.0\.0/);
+      expect(run.ok).toBe(false);
+    });
+
+    it('returns green with no currentVersion (latest only)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '10.3.1' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Helm latest 10\.3\.1/);
+      expect(run.level).toBe('green');
+    });
+  });
+
+  // ── SSL normalizeSslHost URL-parse error ───────────────────────────────────
+
+  describe('runMonitor() — SSL_CERT URL parse error branch', () => {
+    it('returns red when target URL is malformed (triggers URL parse catch)', async () => {
+      const service = makeService();
+      // https://[invalid triggers URL parse error in normalizeSslHost
+      const monitor = makeMonitor({ type: 'SSL_CERT', target: 'https://[invalid' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toMatch(/Invalid SSL target/i);
+      expect(run.level).toBe('red');
+    });
+  });
+
+  // ── runMonitor() — TCP type ────────────────────────────────────────────────
+
+  describe('runMonitor() — TCP type', () => {
+    it('returns red with invalid target (no port)', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'TCP', target: 'db.example.com' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toMatch(/Invalid TCP target/);
+    });
+
+    it('returns red with non-numeric port', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'TCP', target: 'db.example.com:abc' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('returns red with port out of range (>65535)', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'TCP', target: 'db.example.com:99999' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('returns red with port zero', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'TCP', target: 'db.example.com:0' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('returns green when connecting to a live local TCP server', async () => {
+      const net = await import('node:net');
+      // Start a real local TCP server on a random port
+      const server = net.createServer();
+      await new Promise<void>((res) => server.listen(0, '127.0.0.1', res));
+      const { port } = server.address() as { port: number };
+
+      try {
+        const service = makeService();
+        const monitor = makeMonitor({ type: 'TCP', target: `127.0.0.1:${port}`, timeoutMs: 3000 });
+        const run = await service.runMonitor(monitor);
+        expect(run.ok).toBe(true);
+        expect(run.level).toBe('green');
+        expect(run.message).toMatch(/TCP connect ok/);
+      } finally {
+        await new Promise<void>((res) => server.close(() => res()));
+      }
+    }, 5000);
+
+    it('returns red when connection is refused (nothing listening)', async () => {
+      const service = makeService();
+      // Port 1 is typically not open and immediately refuses
+      const monitor = makeMonitor({ type: 'TCP', target: '127.0.0.1:1', timeoutMs: 3000 });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toMatch(/TCP error/);
+    }, 5000);
+  });
+
+  // ── runMonitor() — SSL_CERT type ───────────────────────────────────────────
+
+  describe('runMonitor() — SSL_CERT type', () => {
+    it('returns red with empty target', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'SSL_CERT', target: '' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('returns red for TLS connect error (connection refused)', async () => {
+      const service = makeService();
+      // Use localhost port 1 — will get ECONNREFUSED
+      const monitor = makeMonitor({ type: 'SSL_CERT', target: '127.0.0.1:1', timeoutMs: 3000 });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toMatch(/SSL check failed/);
+    }, 5000);
+  });
+
+  // ── runMonitor() — HEARTBEAT type ─────────────────────────────────────────
+
+  describe('runMonitor() — HEARTBEAT type', () => {
+    it('returns red with no heartbeat received yet (no lastHeartbeatAt)', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'HEARTBEAT', config: {} });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toMatch(/No heartbeat received yet/);
+    });
+
+    it('returns red when lastHeartbeatAt is an invalid date string', async () => {
+      const service = makeService();
+      const monitor = makeMonitor({
+        type: 'HEARTBEAT',
+        config: { lastHeartbeatAt: 'not-a-valid-date', timeoutMin: 5 },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toMatch(/invalid/i);
+    });
+
+    it('returns green when heartbeat received within timeout window', async () => {
+      const recentPing = new Date(Date.now() - 60 * 1000).toISOString(); // 1 min ago
+      const service = makeService();
+      const monitor = makeMonitor({
+        type: 'HEARTBEAT',
+        config: { lastHeartbeatAt: recentPing, timeoutMin: 5 },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+      expect(run.message).toMatch(/Heartbeat healthy/);
+    });
+
+    it('returns red when heartbeat is overdue beyond timeout window', async () => {
+      const oldPing = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 min ago
+      const service = makeService();
+      const monitor = makeMonitor({
+        type: 'HEARTBEAT',
+        config: { lastHeartbeatAt: oldPing, timeoutMin: 5 },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toMatch(/Heartbeat overdue/);
+    });
+
+    it('uses default 5-min timeout when timeoutMin is absent', async () => {
+      // 4 min ago — within 5-min default
+      const recentPing = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+      const service = makeService();
+      const monitor = makeMonitor({
+        type: 'HEARTBEAT',
+        config: { lastHeartbeatAt: recentPing },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+    });
+
+    it('uses default timeout when timeoutMin is 0 (invalid)', async () => {
+      // 4 min ago — within 5-min default fallback
+      const recentPing = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+      const service = makeService();
+      const monitor = makeMonitor({
+        type: 'HEARTBEAT',
+        config: { lastHeartbeatAt: recentPing, timeoutMin: 0 },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+    });
+  });
+
+  // ── handleHeartbeatPing() ──────────────────────────────────────────────────
+
+  describe('handleHeartbeatPing()', () => {
+    it('throws NotFoundException when no monitor matches token', async () => {
+      const { NotFoundException } = await import('@nestjs/common');
+      const prisma = {
+        ...makePrisma(),
+        monitor: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          update: vi.fn(),
+        },
+      };
+      const service = makeService({ prisma: prisma as never });
+      await expect(service.handleHeartbeatPing('bad-token')).rejects.toThrow(NotFoundException);
+    });
+
+    it('updates lastHeartbeatAt when monitor found', async () => {
+      const updateFn = vi.fn().mockResolvedValue({});
+      const prisma = {
+        ...makePrisma(),
+        monitor: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'mon-hb',
+            configJson: { token: 'abc123', timeoutMin: 5 },
+          }),
+          update: updateFn,
+        },
+      };
+      const service = makeService({ prisma: prisma as never });
+      await service.handleHeartbeatPing('abc123');
+
+      expect(updateFn).toHaveBeenCalledOnce();
+      const updateCall = updateFn.mock.calls[0][0];
+      expect(updateCall.where.id).toBe('mon-hb');
+      const config = updateCall.data.configJson as Record<string, unknown>;
+      expect(config.lastHeartbeatAt).toBeDefined();
+      expect(typeof config.lastHeartbeatAt).toBe('string');
+    });
+
+    it('handles monitor with null configJson gracefully', async () => {
+      const updateFn = vi.fn().mockResolvedValue({});
+      const prisma = {
+        ...makePrisma(),
+        monitor: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'mon-hb',
+            configJson: null,
+          }),
+          update: updateFn,
+        },
+      };
+      const service = makeService({ prisma: prisma as never });
+      await service.handleHeartbeatPing('tok');
+
+      expect(updateFn).toHaveBeenCalledOnce();
+      const config = updateFn.mock.calls[0][0].data.configJson as Record<string, unknown>;
+      expect(config.lastHeartbeatAt).toBeDefined();
+    });
+  });
+
+  // ── dispatchCheck — default case ────────────────────────────────────────────
+
+  describe('runMonitor() — unknown/custom monitor type (default case)', () => {
+    it('falls back to HTTP check when monitor type is unrecognised', async () => {
+      // Use vi.stubGlobal to intercept fetch so we get a predictable result
+      const fakeFetch = mockFetch([{ ok: true, status: 200 }]);
+      vi.stubGlobal('fetch', fakeFetch);
+
+      try {
+        // Cast to `never` to bypass TypeScript enum check and exercise the `default:` branch
+        const monitor = makeMonitor({ type: 'NPM_PACKAGE' as never, target: 'https://example.com' });
+        const service = makeService();
+        const run = await service.runMonitor(monitor);
+        // Should still produce a run record (HTTP fallback)
+        expect(run).toHaveProperty('id');
+        expect(run).toHaveProperty('ok');
+      } finally {
+        vi.unstubAllGlobals();
+      }
     });
   });
 });

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap } from "lucide-react";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
@@ -17,7 +17,7 @@ import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -36,6 +36,40 @@ interface MonitorRun {
   level?: string;
 }
 
+type UptimePeriod = "1d" | "7d" | "30d" | "90d";
+
+interface UptimeStats {
+  monitorId: string;
+  period: UptimePeriod;
+  from: string;
+  to: string;
+  uptimePct: number;
+  totalChecks: number;
+  failedChecks: number;
+  successChecks: number;
+  totalDowntimeSec: number;
+  incidents: number;
+  incidentList: Array<{ start: string; end: string; durationSec: number }>;
+  mttrSec: number;
+  mtbfSec: number;
+  avgLatencyMs: number | null;
+}
+
+const PERIOD_LABELS: Record<UptimePeriod, string> = {
+  "1d": "24h",
+  "7d": "7d",
+  "30d": "30d",
+  "90d": "90d",
+};
+
+function formatDuration(sec: number): string {
+  if (sec === 0) return "0s";
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < 86400) return `${Math.round(sec / 3600)}h`;
+  return `${Math.round(sec / 86400)}d`;
+}
+
 export default function MonitorDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -43,6 +77,9 @@ export default function MonitorDetailPage() {
 
   const [monitor, setMonitor] = useState<MonitorItem | null>(null);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
+  const [uptime, setUptime] = useState<UptimeStats | null>(null);
+  const [uptimePeriod, setUptimePeriod] = useState<UptimePeriod>("30d");
+  const [uptimeLoading, setUptimeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -78,6 +115,29 @@ export default function MonitorDetailPage() {
     load();
   }, [id, router]);
 
+  const loadUptime = useCallback(
+    async (period: UptimePeriod) => {
+      const user = getUser();
+      if (!user || !id) return;
+      setUptimeLoading(true);
+      try {
+        const data = await api<UptimeStats>(`/v1/monitors/${id}/uptime?period=${period}`, user.id);
+        setUptime(data);
+      } catch {
+        // Non-fatal: uptime stats are bonus info
+      } finally {
+        setUptimeLoading(false);
+      }
+    },
+    [id],
+  );
+
+  useEffect(() => {
+    if (!loading && monitor) {
+      loadUptime(uptimePeriod);
+    }
+  }, [loading, monitor, uptimePeriod, loadUptime]);
+
   if (loading) {
     return (
       <AppFrame title="Monitor Detail">
@@ -101,17 +161,6 @@ export default function MonitorDetailPage() {
 
   if (!monitor) return null;
 
-  // Stats
-  const last30 = runs.slice(0, 30);
-  const passing = last30.filter((r) => r.ok).length;
-  const uptimePct = last30.length > 0 ? Math.round((passing / last30.length) * 100) : null;
-
-  const withLatency = runs.filter((r) => r.latencyMs !== null);
-  const avgLatency =
-    withLatency.length > 0
-      ? Math.round(withLatency.reduce((sum, r) => sum + (r.latencyMs as number), 0) / withLatency.length)
-      : null;
-
   const lastRun = runs[0] ?? null;
 
   // Current streak
@@ -126,7 +175,16 @@ export default function MonitorDetailPage() {
   const streakLabel =
     runs.length === 0
       ? "No runs yet"
-      : `${streak} consecutive ${runs[0].ok ? "OK" : "Failed"}`;
+      : `${streak} × ${runs[0].ok ? "OK" : "Failed"}`;
+
+  const uptimeColor =
+    uptime === null
+      ? "text-text-primary"
+      : uptime.uptimePct >= 99.9
+        ? "text-success"
+        : uptime.uptimePct >= 99
+          ? "text-warning"
+          : "text-danger";
 
   return (
     <AppFrame title={monitor.name}>
@@ -161,23 +219,112 @@ export default function MonitorDetailPage() {
           </div>
         </FadeIn>
 
-        {/* Stats row */}
+        {/* SLA Stats — with period selector */}
         <FadeIn delay={0.1}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="flex flex-col gap-1 p-4">
-              <span className="text-xs text-text-secondary uppercase tracking-wider">Uptime</span>
-              <span className="text-2xl font-bold text-text-primary">
-                {uptimePct !== null ? `${uptimePct}%` : "—"}
-              </span>
-              <span className="text-xs text-text-secondary">last 30 checks</span>
-            </Card>
-            <Card className="flex flex-col gap-1 p-4">
-              <span className="text-xs text-text-secondary uppercase tracking-wider">Avg Latency</span>
-              <span className="text-2xl font-bold text-text-primary">
-                {avgLatency !== null ? `${avgLatency}ms` : "N/A"}
-              </span>
-              <span className="text-xs text-text-secondary">all runs</span>
-            </Card>
+          <Card className="p-4 space-y-4">
+            {/* Period selector */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                SLA &amp; Uptime
+              </h2>
+              <div className="flex gap-1">
+                {(["1d", "7d", "30d", "90d"] as UptimePeriod[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setUptimePeriod(p)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                      uptimePeriod === p
+                        ? "bg-accent text-white"
+                        : "bg-surface-elevated text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Uptime */}
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-text-secondary uppercase tracking-wider">Uptime</span>
+                <span className={`text-2xl font-bold tabular-nums ${uptimeLoading ? "opacity-50" : ""} ${uptimeColor}`}>
+                  {uptime !== null ? `${uptime.uptimePct}%` : "—"}
+                </span>
+                <span className="text-xs text-text-secondary">last {PERIOD_LABELS[uptimePeriod]}</span>
+              </div>
+
+              {/* Incidents */}
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-text-secondary uppercase tracking-wider flex items-center gap-1">
+                  <Zap className="w-3 h-3" /> Incidents
+                </span>
+                <span className={`text-2xl font-bold tabular-nums ${uptimeLoading ? "opacity-50" : ""} ${uptime && uptime.incidents > 0 ? "text-danger" : "text-text-primary"}`}>
+                  {uptime !== null ? uptime.incidents : "—"}
+                </span>
+                <span className="text-xs text-text-secondary">
+                  {uptime && uptime.totalDowntimeSec > 0
+                    ? `${formatDuration(uptime.totalDowntimeSec)} downtime`
+                    : "no downtime"}
+                </span>
+              </div>
+
+              {/* MTTR */}
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-text-secondary uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> MTTR
+                </span>
+                <span className={`text-2xl font-bold tabular-nums ${uptimeLoading ? "opacity-50" : ""} text-text-primary`}>
+                  {uptime !== null ? (uptime.mttrSec > 0 ? formatDuration(uptime.mttrSec) : "—") : "—"}
+                </span>
+                <span className="text-xs text-text-secondary">mean time to recover</span>
+              </div>
+
+              {/* Avg Latency */}
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-text-secondary uppercase tracking-wider flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Avg Latency
+                </span>
+                <span className={`text-2xl font-bold tabular-nums ${uptimeLoading ? "opacity-50" : ""} text-text-primary`}>
+                  {uptime?.avgLatencyMs != null ? `${uptime.avgLatencyMs}ms` : "N/A"}
+                </span>
+                <span className="text-xs text-text-secondary">last {PERIOD_LABELS[uptimePeriod]}</span>
+              </div>
+            </div>
+
+            {/* Incident list (collapsed by default, shows if any exist) */}
+            {uptime && uptime.incidentList.length > 0 && (
+              <details className="group">
+                <summary className="text-xs text-text-secondary hover:text-accent cursor-pointer select-none flex items-center gap-1">
+                  <span className="group-open:hidden">▶</span>
+                  <span className="hidden group-open:inline">▼</span>
+                  {uptime.incidentList.length} incident{uptime.incidentList.length !== 1 ? "s" : ""} in this period
+                </summary>
+                <div className="mt-2 space-y-1">
+                  {uptime.incidentList.slice(0, 10).map((inc, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded bg-surface-elevated">
+                      <span className="text-text-secondary">{relativeTime(inc.start)}</span>
+                      <span className="text-danger font-medium">
+                        {inc.durationSec > 0 ? `↓ ${formatDuration(inc.durationSec)}` : "↓ &lt;1 check"}
+                      </span>
+                    </div>
+                  ))}
+                  {uptime.incidentList.length > 10 && (
+                    <p className="text-xs text-text-secondary text-center py-1">
+                      + {uptime.incidentList.length - 10} more incidents
+                    </p>
+                  )}
+                </div>
+              </details>
+            )}
+          </Card>
+        </FadeIn>
+
+        {/* Quick status row */}
+        <FadeIn delay={0.12}>
+          <div className="grid grid-cols-2 gap-4">
             <Card className="flex flex-col gap-1 p-4">
               <span className="text-xs text-text-secondary uppercase tracking-wider">Last Status</span>
               <div className="mt-1">
@@ -196,15 +343,44 @@ export default function MonitorDetailPage() {
             <Card className="flex flex-col gap-1 p-4">
               <span className="text-xs text-text-secondary uppercase tracking-wider">Streak</span>
               <span className="text-sm font-semibold text-text-primary mt-1">{streakLabel}</span>
+              <span className="text-xs text-text-secondary">consecutive {runs[0]?.ok ? "successes" : "failures"}</span>
             </Card>
           </div>
         </FadeIn>
 
+        {/* Heartbeat info card */}
+        {monitor.type === "HEARTBEAT" && (
+          <FadeIn delay={0.14}>
+            <Card className="p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Heartbeat Config</h2>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-xs text-text-secondary">Ping URL</span>
+                  <p className="font-mono text-xs text-text-primary bg-surface-elevated rounded px-2 py-1 mt-1 break-all">
+                    {typeof window !== "undefined"
+                      ? `${window.location.origin}/api/v1/heartbeat/${monitor.config?.token ?? "—"}`
+                      : `…/v1/heartbeat/${monitor.config?.token ?? "—"}`}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    Send a POST to this URL from your cron job or service to mark it healthy.
+                  </p>
+                </div>
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <span className="text-xs text-text-secondary block">Timeout</span>
+                    <span className="font-medium text-text-primary">{String(monitor.config?.timeoutMin ?? 5)} min</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </FadeIn>
+        )}
+
         {/* Response time chart */}
-        <FadeIn delay={0.15}>
+        <FadeIn delay={0.16}>
           <Card className="p-4 space-y-3">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-              Response Time
+              {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
             </h2>
             <ResponseTimeChart runs={runs} height={80} />
           </Card>
@@ -251,7 +427,10 @@ export default function MonitorDetailPage() {
                         <TableCell className="text-sm font-mono text-text-secondary">
                           {run.statusCode || "—"}
                         </TableCell>
-                        <TableCell className="text-sm text-text-secondary max-w-[300px] truncate" title={run.message}>
+                        <TableCell
+                          className="text-sm text-text-secondary max-w-[300px] truncate"
+                          title={run.message}
+                        >
                           {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
                         </TableCell>
                       </TableRow>

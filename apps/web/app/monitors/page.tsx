@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff } from "lucide-react";
-import { api } from "../../lib/api";
+import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
@@ -37,7 +37,7 @@ interface TagItem {
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -114,12 +114,14 @@ export default function MonitorsPage() {
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
-    type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+    type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
     target: string;
     intervalSec: number;
     enabled: boolean;
     pluginId: string;
     expectedText: string;
+    heartbeatTimeoutMin: number;
+    heartbeatToken: string;
   }>({
     name: "",
     type: "HTTP",
@@ -128,6 +130,8 @@ export default function MonitorsPage() {
     enabled: true,
     pluginId: "",
     expectedText: "",
+    heartbeatTimeoutMin: 5,
+    heartbeatToken: "",
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -286,17 +290,22 @@ export default function MonitorsPage() {
       errors.target = "Target is required";
     } else if (formData.type === "HTTP") {
       try { new URL(target); } catch { errors.target = "Must be a valid URL (e.g. https://example.com)"; }
+    } else if (formData.type === "TCP" && !/^[^:\s]+:\d+$/.test(target)) {
+      errors.target = "Must be host:port (e.g. db.example.com:5432)";
     }
 
     if (formData.intervalSec < 30) errors.interval = "Minimum interval is 30 seconds";
     if (formData.intervalSec > 3600) errors.interval = "Maximum interval is 3600 seconds (1 hour)";
+    if (formData.type === "HEARTBEAT" && (formData.heartbeatTimeoutMin < 1 || formData.heartbeatTimeoutMin > 1440)) {
+      errors.heartbeatTimeoutMin = "Heartbeat timeout must be between 1 and 1440 minutes";
+    }
 
     if (formData.pluginId === "http.response-match" && !formData.expectedText.trim()) {
       errors.expectedText = "Expected text is required for this plugin";
     }
 
     setFormErrors(errors);
-    setFormTouched({ name: true, target: true, interval: true, expectedText: true });
+    setFormTouched({ name: true, target: true, interval: true, expectedText: true, heartbeatTimeoutMin: true });
     return Object.keys(errors).length === 0;
   };
 
@@ -306,6 +315,11 @@ export default function MonitorsPage() {
       const config: Record<string, unknown> = {};
       if (formData.pluginId) config.pluginId = formData.pluginId;
       if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
+      if (formData.type === "HEARTBEAT") {
+        const token = formData.heartbeatToken || crypto.randomUUID();
+        config.token = token;
+        config.timeoutMin = formData.heartbeatTimeoutMin;
+      }
 
       await api("/v1/monitors", user?.id, {
         method: "POST",
@@ -320,7 +334,7 @@ export default function MonitorsPage() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -342,6 +356,10 @@ export default function MonitorsPage() {
       const config: Record<string, unknown> = {};
       if (formData.pluginId) config.pluginId = formData.pluginId;
       if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
+      if (formData.type === "HEARTBEAT") {
+        config.token = formData.heartbeatToken;
+        config.timeoutMin = formData.heartbeatTimeoutMin;
+      }
 
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
         method: "PATCH",
@@ -431,6 +449,8 @@ export default function MonitorsPage() {
       enabled: true,
       pluginId: t.pluginId ?? "",
       expectedText: t.expectedText ?? "",
+      heartbeatTimeoutMin: 5,
+      heartbeatToken: "",
     });
     setShowTemplates(false);
   };
@@ -602,7 +622,7 @@ export default function MonitorsPage() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -691,7 +711,7 @@ export default function MonitorsPage() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "" });
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -846,6 +866,8 @@ export default function MonitorsPage() {
                                     enabled: monitor.enabled,
                                     pluginId: String(monitor.config?.pluginId ?? ""),
                                     expectedText: String(monitor.config?.expectedText ?? ""),
+                                    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
+                                    heartbeatToken: String(monitor.config?.token ?? ""),
                                   });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
@@ -990,19 +1012,25 @@ export default function MonitorsPage() {
             <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
             <select
               value={formData.type}
-              onChange={(e) =>
+              onChange={(e) => {
+                const nextType = e.target.value as typeof formData.type;
                 setFormData({
                   ...formData,
-                  type: e.target.value as typeof formData.type,
+                  type: nextType,
                   pluginId: "",
                   expectedText: "",
-                })
-              }
+                  heartbeatTimeoutMin: nextType === "HEARTBEAT" ? formData.heartbeatTimeoutMin || 5 : formData.heartbeatTimeoutMin,
+                  heartbeatToken: nextType === "HEARTBEAT" ? (formData.heartbeatToken || crypto.randomUUID()) : formData.heartbeatToken,
+                });
+              }}
               className={inputClass}
             >
               <option value="HTTP">HTTP Check</option>
               <option value="GIT_RELEASE">Git Release</option>
               <option value="DOCKER_IMAGE">Docker Image</option>
+              <option value="TCP">TCP Port</option>
+              <option value="SSL_CERT">SSL Certificate</option>
+              <option value="HEARTBEAT">Heartbeat</option>
             </select>
           </div>
 
@@ -1063,8 +1091,10 @@ export default function MonitorsPage() {
                 setFormData({ ...formData, target: e.target.value });
                 if (formTouched.target) {
                   let err = "";
-                  if (!e.target.value.trim()) err = "Target is required";
-                  else if (formData.type === "HTTP") { try { new URL(e.target.value.trim()); } catch { err = "Must be a valid URL"; } }
+                  const nextTarget = e.target.value.trim();
+                  if (!nextTarget) err = "Target is required";
+                  else if (formData.type === "HTTP") { try { new URL(nextTarget); } catch { err = "Must be a valid URL"; } }
+                  else if (formData.type === "TCP" && !/^[^:\s]+:\d+$/.test(nextTarget)) err = "Must be host:port";
                   setFormErrors((prev) => ({ ...prev, target: err }));
                 }
               }}
@@ -1081,6 +1111,54 @@ export default function MonitorsPage() {
               <p id="target-hint" className="mt-1 text-xs text-text-secondary">{targetHelperText(formData.type)}</p>
             )}
           </div>
+
+          {formData.type === "HEARTBEAT" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Alert if no ping for (minutes) <span className="text-danger" aria-hidden="true">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1440"
+                  value={formData.heartbeatTimeoutMin}
+                  onChange={(e) => {
+                    const value = Math.max(1, Number(e.target.value || 1));
+                    setFormData({ ...formData, heartbeatTimeoutMin: value });
+                  }}
+                  className={inputClass}
+                />
+                {formErrors.heartbeatTimeoutMin && (
+                  <p role="alert" className="mt-1 text-xs text-danger">{formErrors.heartbeatTimeoutMin}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Ping URL</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`}
+                    className={`${inputClass} font-mono text-xs`}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={async () => {
+                      const url = `${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`;
+                      await navigator.clipboard.writeText(url);
+                      success("Heartbeat URL copied");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">Call this URL with POST from your cron job or app to mark it healthy.</p>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">

@@ -38,6 +38,11 @@ describe('AppController', () => {
       const result = await controller.readiness();
       expect(result.ok).toBe(true);
     });
+
+    it('throws ServiceUnavailableException when DB is unreachable', async () => {
+      mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('db down'));
+      await expect(controller.readiness()).rejects.toThrow();
+    });
   });
 
   describe('metricsSnapshot()', () => {
@@ -63,6 +68,25 @@ describe('AppController', () => {
       const result = controller.simpleVersion();
       expect(result).toHaveProperty('version');
       expect(typeof result.version).toBe('string');
+    });
+  });
+
+  describe('metricsPrometheus()', () => {
+    it('returns Prometheus text format string', () => {
+      const result = controller.metricsPrometheus();
+      expect(typeof result).toBe('string');
+      expect(result).toContain('# HELP pulsedock_requestsTotal');
+      expect(result).toContain('# TYPE pulsedock_requestsTotal counter');
+    });
+
+    it('ends with a trailing newline (Prometheus requirement)', () => {
+      const result = controller.metricsPrometheus();
+      expect(result.endsWith('\n')).toBe(true);
+    });
+
+    it('includes process uptime gauge', () => {
+      const result = controller.metricsPrometheus();
+      expect(result).toContain('pulsedock_process_uptime_seconds');
     });
   });
 });

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
 import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
@@ -15,18 +16,22 @@ export class MonitorsService {
     private readonly realtime: RealtimeEvents,
   ) {}
 
-  private sanitizeConfig(config: Record<string, unknown> | null | undefined) {
+  private sanitizeConfig(
+    config: Record<string, unknown> | null | undefined,
+    monitorType?: MonitorType,
+  ) {
     const c = { ...(config ?? {}) } as Record<string, unknown>;
 
-    const hasRepoToken = typeof c.token === 'string' && String(c.token).trim().length > 0;
+    const hasToken = typeof c.token === 'string' && String(c.token).trim().length > 0;
     const hasAppToken = typeof c.appToken === 'string' && String(c.appToken).trim().length > 0;
     const hasOpenvpnPassword = typeof c.openvpnPassword === 'string' && String(c.openvpnPassword).trim().length > 0;
 
-    if ('token' in c) delete c.token;
+    if (monitorType !== 'HEARTBEAT' && 'token' in c) delete c.token;
     if ('appToken' in c) delete c.appToken;
     if ('openvpnPassword' in c) delete c.openvpnPassword;
 
-    c.hasRepoToken = hasRepoToken;
+    c.hasRepoToken = monitorType === 'HEARTBEAT' ? false : hasToken;
+    c.hasHeartbeatToken = monitorType === 'HEARTBEAT' ? hasToken : false;
     c.hasAppToken = hasAppToken;
     c.hasOpenvpnPassword = hasOpenvpnPassword;
 
@@ -58,7 +63,7 @@ export class MonitorsService {
       target: m.target,
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
-      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}),
+      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       folderId: m.folderId,
       tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
@@ -78,6 +83,15 @@ export class MonitorsService {
     folderId?: string | null;
     tags?: string[];
   }) {
+    const config: Record<string, unknown> = { ...(body.config ?? {}) };
+    if (body.type === 'HEARTBEAT') {
+      if (typeof config.token !== 'string' || !config.token.trim()) {
+        config.token = randomUUID();
+      }
+      const timeoutRaw = Number(config.timeoutMin ?? 5);
+      config.timeoutMin = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 5;
+    }
+
     const created = await this.prisma.monitor.create({
       data: {
         userId,
@@ -86,7 +100,7 @@ export class MonitorsService {
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
-        configJson: (body.config ?? {}) as Prisma.InputJsonValue,
+        configJson: config as Prisma.InputJsonValue,
         folderId: body.folderId ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
@@ -118,7 +132,7 @@ export class MonitorsService {
       target: created.target,
       intervalSec: created.intervalSec,
       timeoutMs: created.timeoutMs,
-      config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}),
+      config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}, created.type as MonitorType),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
       tags: createdTags,
@@ -146,7 +160,16 @@ export class MonitorsService {
     if (!current) throw new NotFoundException('monitor not found');
 
     const currentConfig = (current.configJson as Record<string, unknown> | null) ?? {};
-    const mergedConfig = body.config ? { ...currentConfig, ...body.config } : currentConfig;
+    const mergedConfig = body.config ? { ...currentConfig, ...body.config } : { ...currentConfig };
+
+    const nextType = body.type ?? current.type;
+    if (nextType === 'HEARTBEAT') {
+      if (typeof mergedConfig.token !== 'string' || !String(mergedConfig.token).trim()) {
+        mergedConfig.token = randomUUID();
+      }
+      const timeoutRaw = Number(mergedConfig.timeoutMin ?? 5);
+      mergedConfig.timeoutMin = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 5;
+    }
 
     await this.prisma.monitor.update({
       where: { id: monitorId },
@@ -209,7 +232,7 @@ export class MonitorsService {
   async importMonitors(userId: string, items: Array<{
     name: string;
     target: string;
-    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
     intervalSec?: number;
     timeoutMs?: number;
     config?: Record<string, unknown>;
@@ -405,6 +428,96 @@ export class MonitorsService {
       message: r.message,
       level: r.level as 'green' | 'yellow' | 'red',
     }));
+  }
+
+  async monitorUptime(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '30d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+    const days = periodDays[period] ?? 30;
+    const from = new Date(Date.now() - days * 86400_000);
+    const to = new Date();
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId, checkedAt: { gte: from } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const successChecks = totalChecks - failedChecks;
+
+    // Time-window uptime: percentage of seconds the service was up within the period.
+    // Approximation: allocate each check's "window" as half the interval before + half after,
+    // clamped to the period boundaries. For the simple case with uniform intervals we
+    // use the fraction of successful checks, which is accurate for fixed-interval monitors.
+    const uptimePct = totalChecks === 0 ? 100 : Math.round((successChecks / totalChecks) * 10000) / 100;
+
+    // Incident detection: consecutive failed runs form an incident.
+    // Returns array of { start, end, durationSec } for each contiguous failure run.
+    const incidents: Array<{ start: string; end: string; durationSec: number }> = [];
+    let incidentStart: Date | null = null;
+    let incidentLast: Date | null = null;
+    for (const run of runs) {
+      if (!run.ok) {
+        if (!incidentStart) incidentStart = run.checkedAt;
+        incidentLast = run.checkedAt;
+      } else {
+        if (incidentStart && incidentLast) {
+          incidents.push({
+            start: incidentStart.toISOString(),
+            end: incidentLast.toISOString(),
+            durationSec: Math.round((incidentLast.getTime() - incidentStart.getTime()) / 1000),
+          });
+        }
+        incidentStart = null;
+        incidentLast = null;
+      }
+    }
+    // Close open incident at period end
+    if (incidentStart && incidentLast) {
+      incidents.push({
+        start: incidentStart.toISOString(),
+        end: incidentLast.toISOString(),
+        durationSec: Math.round((incidentLast.getTime() - incidentStart.getTime()) / 1000),
+      });
+    }
+
+    const totalDowntimeSec = incidents.reduce((sum, i) => sum + i.durationSec, 0);
+
+    // MTTR: mean time to recovery (average incident duration)
+    const mttrSec = incidents.length > 0 ? Math.round(totalDowntimeSec / incidents.length) : 0;
+
+    // MTBF: mean time between failures = total uptime / number of incidents
+    const periodSec = days * 86400;
+    const uptimeSec = periodSec - totalDowntimeSec;
+    const mtbfSec = incidents.length > 0 ? Math.round(uptimeSec / incidents.length) : uptimeSec;
+
+    // Average latency
+    const withLatency = runs.filter((r) => r.latencyMs !== null);
+    const avgLatencyMs =
+      withLatency.length > 0
+        ? Math.round(withLatency.reduce((sum, r) => sum + (r.latencyMs as number), 0) / withLatency.length)
+        : null;
+
+    return {
+      monitorId,
+      period,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      uptimePct,
+      totalChecks,
+      failedChecks,
+      successChecks,
+      totalDowntimeSec,
+      incidents: incidents.length,
+      incidentList: incidents,
+      mttrSec,
+      mtbfSec,
+      avgLatencyMs,
+    };
   }
 
   private parseGithubRepo(input: string) {
@@ -717,6 +830,36 @@ export class MonitorsService {
       const versions = (data.versions ?? []).map((v) => v.version).filter((v): v is string => Boolean(v));
       const stable = versions.find((v) => !/(alpha|beta|rc|nightly|dev|pre)/i.test(v));
       return { ok: true, message: 'APT package lookup successful', latestVersion: stable ?? versions[0] ?? null };
+    }
+
+    if (input.provider === 'maven') {
+      const parts = input.target.trim().split(':');
+      if (parts.length < 2) return { ok: false, message: 'Invalid Maven target. Use "groupId:artifactId" format.' };
+      const [groupId, artifactId] = parts;
+      const resp = await fetch(
+        `https://search.maven.org/solrsearch/select?q=g:${encodeURIComponent(groupId)}+AND+a:${encodeURIComponent(artifactId)}&core=gav&rows=1&wt=json`,
+        { headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' } },
+      );
+      if (!resp.ok) return { ok: false, message: `Maven Central API ${resp.status}` };
+      const data = await resp.json() as { response?: { docs?: Array<{ v?: string }> } };
+      const latestVersion = data.response?.docs?.[0]?.v ?? null;
+      if (!latestVersion) return { ok: false, message: 'No Maven artifact version found. Check groupId:artifactId.' };
+      return { ok: true, message: 'Maven Central reachable', latestVersion };
+    }
+
+    if (input.provider === 'helm') {
+      const parts = input.target.trim().split('/');
+      if (parts.length < 2) return { ok: false, message: 'Invalid Helm target. Use "repoName/chartName" format.' };
+      const [repoName, chartName] = parts;
+      const resp = await fetch(
+        `https://artifacthub.io/api/v1/packages/helm/${encodeURIComponent(repoName)}/${encodeURIComponent(chartName)}`,
+        { headers: { 'User-Agent': 'PulseDock', Accept: 'application/json' } },
+      );
+      if (!resp.ok) return { ok: false, message: `Artifact Hub API ${resp.status}` };
+      const data = await resp.json() as { version?: string; app_version?: string };
+      const latestVersion = data.app_version ?? data.version ?? null;
+      if (!latestVersion) return { ok: false, message: 'No Helm chart version found.' };
+      return { ok: true, message: 'Artifact Hub reachable', latestVersion };
     }
 
     const image = input.target.includes('/') ? input.target : `library/${input.target}`;

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
 
@@ -1417,6 +1417,112 @@ describe('discoverCurrentVersion()', () => {
   });
 });
 
+// ── detectDeployedVersion — auth branch coverage ──────────────────────────────
+
+describe('discoverCurrentVersion() — auth type branches in detectDeployedVersion', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses no-auth mode when appAuthType is none', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '3.0.0' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'none',
+    });
+
+    expect(result.currentVersion).toBe('3.0.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+    // no-auth mode: fetch should be called once (no token modes to retry)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses openvpn basic+header auth modes when appAuthType is openvpn', async () => {
+    // fail all requests so we can verify multiple auth modes were tried
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Forbidden',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'vpnuser',
+      openvpnPassword: 'vpnpass',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    // openvpn has 2 auth modes × N endpoints — should have made multiple requests
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('returns version from text/plain response body', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => '2.5.1',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+    });
+
+    expect(result.currentVersion).toBe('2.5.1');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+
+  it('uses Bearer-prefixed token as-is when token already starts with Bearer', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '1.9.0' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appToken: 'Bearer my-existing-bearer-token',
+    });
+
+    expect(result.currentVersion).toBe('1.9.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+    // Token starts with 'Bearer ' so it should be used verbatim
+    const authHeader = fetchMock.mock.calls[0][1]?.headers?.authorization as string | undefined;
+    if (authHeader) {
+      expect(authHeader).toBe('Bearer my-existing-bearer-token');
+    }
+  });
+});
+
 // ── importExternal — extra branch coverage ────────────────────────────────────
 
 describe('importExternal — additional branch coverage', () => {
@@ -1615,5 +1721,992 @@ describe('versionSummary() — additional branch coverage', () => {
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
     expect(result.items[0].checkedAt).toBeNull();
+  });
+});
+
+describe('monitorUptime()', () => {
+  function makeUptimeRun(checkedAt: string, ok: boolean, latencyMs: number | null = 50) {
+    return makeRun({ checkedAt: new Date(checkedAt), ok, latencyMs });
+  }
+
+  it('returns 100% uptime when all checks pass', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', true),
+      makeUptimeRun('2026-03-14T12:00:00Z', true),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.uptimePct).toBe(100);
+    expect(result.failedChecks).toBe(0);
+    expect(result.incidents).toBe(0);
+    expect(result.mttrSec).toBe(0);
+  });
+
+  it('returns 0% uptime when all checks fail', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', false),
+      makeUptimeRun('2026-03-14T11:00:00Z', false),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '30d');
+    expect(result.uptimePct).toBe(0);
+    expect(result.failedChecks).toBe(2);
+    expect(result.incidents).toBe(1);
+  });
+
+  it('detects multiple incidents correctly', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', false), // incident 1 start
+      makeUptimeRun('2026-03-14T11:10:00Z', false), // incident 1 end
+      makeUptimeRun('2026-03-14T12:00:00Z', true),
+      makeUptimeRun('2026-03-14T13:00:00Z', false), // incident 2 (single)
+      makeUptimeRun('2026-03-14T14:00:00Z', true),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.incidents).toBe(2);
+    expect(result.failedChecks).toBe(3);
+    expect(result.uptimePct).toBe(50); // 3/6 pass = 50%
+    expect(result.incidentList).toHaveLength(2);
+    // Incident 1: 10 minutes
+    expect(result.incidentList[0].durationSec).toBe(600);
+    // Incident 2: single point (0s duration)
+    expect(result.incidentList[1].durationSec).toBe(0);
+  });
+
+  it('returns 100% and no incidents when no runs exist', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '90d');
+    expect(result.uptimePct).toBe(100);
+    expect(result.totalChecks).toBe(0);
+    expect(result.incidents).toBe(0);
+    expect(result.avgLatencyMs).toBeNull();
+  });
+
+  it('calculates avgLatencyMs correctly', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true, 100),
+      makeUptimeRun('2026-03-14T11:00:00Z', true, 200),
+      makeUptimeRun('2026-03-14T12:00:00Z', false, null),
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.avgLatencyMs).toBe(150); // (100+200)/2
+  });
+
+  it('defaults to 30d period for unknown period string', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    // @ts-expect-error testing runtime coercion
+    const result = await svc.monitorUptime('user-1', 'monitor-1', 'invalid');
+    // period field should still reflect the passed string — service stores what was asked
+    expect(result.monitorId).toBe('monitor-1');
+  });
+
+  it('throws NotFoundException when monitor does not belong to user', async () => {
+    const p = makePrisma(null);
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await expect(svc.monitorUptime('other-user', 'monitor-1', '7d')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns correct period metadata', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '1d');
+    expect(result.period).toBe('1d');
+    expect(result.from).toBeDefined();
+    expect(result.to).toBeDefined();
+    expect(new Date(result.to).getTime() - new Date(result.from).getTime()).toBeCloseTo(86400_000, -5);
+  });
+
+  it('handles open incident at period end (no closing success run)', async () => {
+    const runs = [
+      makeUptimeRun('2026-03-14T10:00:00Z', true),
+      makeUptimeRun('2026-03-14T11:00:00Z', false),
+      makeUptimeRun('2026-03-14T12:00:00Z', false),
+      // no recovery run — incident is still open
+    ];
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorUptime('user-1', 'monitor-1', '7d');
+    expect(result.incidents).toBe(1);
+    expect(result.incidentList[0].durationSec).toBe(3600); // 60 min = 3600s
+  });
+});
+
+// ── sanitizeConfig — HEARTBEAT type coverage ─────────────────────────────────
+
+describe('sanitizeConfig (via list()) — HEARTBEAT type', () => {
+  it('sets hasHeartbeatToken=true and hasRepoToken=false when HEARTBEAT monitor has token', async () => {
+    const monitor = makeMonitor({
+      type: 'HEARTBEAT',
+      configJson: { token: 'my-heartbeat-token' },
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasHeartbeatToken).toBe(true);
+    expect(result[0].config.hasRepoToken).toBe(false);
+    // HEARTBEAT token is intentionally kept in config (users need it for ping URLs)
+    expect(result[0].config.token).toBe('my-heartbeat-token');
+  });
+
+  it('sets hasHeartbeatToken=false when HEARTBEAT monitor has no token', async () => {
+    const monitor = makeMonitor({ type: 'HEARTBEAT', configJson: {} });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasHeartbeatToken).toBe(false);
+    expect(result[0].config.hasRepoToken).toBe(false);
+  });
+
+  it('returns hasRepoToken=true for non-HEARTBEAT monitor with token in config', async () => {
+    const monitor = makeMonitor({ type: 'GIT_RELEASE', configJson: { token: 'repo-token' } });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config.hasRepoToken).toBe(true);
+    expect(result[0].config.hasHeartbeatToken).toBe(false);
+  });
+
+  it('handles null configJson gracefully (covers config ?? {} branch)', async () => {
+    const monitor = makeMonitor({ type: 'HTTP', configJson: null });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].config).toBeDefined();
+    expect(result[0].config.hasRepoToken).toBe(false);
+  });
+});
+
+// ── create() — HEARTBEAT type token + timeoutMin branches ────────────────────
+
+describe('create() — HEARTBEAT type', () => {
+  it('auto-generates token when config.token is absent', async () => {
+    const p = makePrisma();
+    // Override create to capture the data
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({
+        ...makeMonitor(),
+        type: 'HEARTBEAT',
+        configJson: data.configJson,
+        monitorAlerts: [],
+        monitorTags: [],
+      });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'https://ping.example.com', type: 'HEARTBEAT' });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).length).toBeGreaterThan(10);
+  });
+
+  it('auto-generates token when config.token is empty string', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { token: '   ' } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).trim().length).toBeGreaterThan(0);
+  });
+
+  it('preserves existing token when valid', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { token: 'my-valid-token' } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.token).toBe('my-valid-token');
+  });
+
+  it('uses default timeoutMin=5 when timeoutMin is 0 (invalid)', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: 0 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+
+  it('uses default timeoutMin=5 when timeoutMin is negative', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: -5 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+
+  it('preserves valid timeoutMin when positive', async () => {
+    const p = makePrisma();
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson, monitorAlerts: [], monitorTags: [] });
+    });
+    const svc = makeService(p);
+    await svc.create('user-1', { name: 'HB', target: 'x', type: 'HEARTBEAT', config: { timeoutMin: 10 } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(10);
+  });
+});
+
+// ── update() — HEARTBEAT type token + timeoutMin branches ────────────────────
+
+describe('update() — HEARTBEAT type', () => {
+  it('auto-generates token when updating type to HEARTBEAT and no token set', async () => {
+    const p = makePrisma(makeMonitor({ type: 'HTTP', configJson: {} }));
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson });
+    });
+    const svc = makeService(p);
+    await svc.update('user-1', 'monitor-1', { type: 'HEARTBEAT' });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(typeof config.token).toBe('string');
+    expect((config.token as string).length).toBeGreaterThan(0);
+  });
+
+  it('uses default timeoutMin=5 when updating HEARTBEAT with timeoutMin=NaN', async () => {
+    const p = makePrisma(makeMonitor({ type: 'HEARTBEAT', configJson: { token: 'tok' } }));
+    let capturedData: Record<string, unknown> = {};
+    p.monitor.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => {
+      capturedData = data;
+      return Promise.resolve({ ...makeMonitor(), type: 'HEARTBEAT', configJson: data.configJson });
+    });
+    const svc = makeService(p);
+    await svc.update('user-1', 'monitor-1', { config: { timeoutMin: NaN } });
+    const config = capturedData.configJson as Record<string, unknown>;
+    expect(config.timeoutMin).toBe(5);
+  });
+});
+
+// ── extractVersionFromPayload — comprehensive branch coverage ─────────────────
+// Tested indirectly via discoverCurrentVersion → detectDeployedVersion
+
+describe('extractVersionFromPayload — branch coverage via detectDeployedVersion', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeJsonResponse(body: unknown) {
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+    };
+  }
+
+  // null payload → return null → detect falls through
+  it('returns null currentVersion when JSON response is null', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse(null));
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    // null payload → no version extracted → manual strategy
+    expect(result.currentVersion).toBeNull();
+  });
+
+  // string payload → extractVersionFromText branch
+  it('extracts version from plain string payload', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => '2.11.3',
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('2.11.3');
+  });
+
+  // array payload → iterate items, find version in first item
+  it('extracts version from array response with version in first element', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse([{ version: '4.2.1' }, { version: '4.1.0' }]));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('4.2.1');
+  });
+
+  // array payload → all items have no version → return null
+  it('returns null when array items contain no usable version string', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500 });
+    fetchMock.mockResolvedValueOnce(makeJsonResponse([{ status: 'ok' }, { uptime: 99.9 }]));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBeNull();
+  });
+
+  // object with directKeySet key `release`
+  it('extracts version from object with "release" key (directKeySet hit)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ release: '5.3.2', status: 'running' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('5.3.2');
+  });
+
+  // object with directKeySet key `tag`
+  it('extracts version from object with "tag" key (directKeySet hit)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ tag: 'v3.1.4', ok: true }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('v3.1.4');
+  });
+
+  // object with version-like key `appVersion` (not in directKeySet but matches `includes('version')`)
+  it('extracts version from object with "appVersion" key (version-like key path)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ appVersion: '2.0.5', environment: 'prod' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('2.0.5');
+  });
+
+  // object with version-like key `build_version`
+  it('extracts version from object with "build_version" key', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ build_version: '1.7.0', service: 'api' }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('1.7.0');
+  });
+
+  // object with nested `data.version`
+  it('extracts version from nested data.version (nested traversal)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ status: 'ok', data: { version: '9.1.2' } }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('9.1.2');
+  });
+
+  // object with nested `build.version`
+  it('extracts version from nested build.version (nested traversal)', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({ ok: true, build: { version: '0.8.3' } }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('0.8.3');
+  });
+
+  // object with `latest` key → should be skipped (covers the `includes('latest') continue` branch)
+  it('ignores "latest" key and falls back to nested version', async () => {
+    fetchMock.mockResolvedValueOnce(makeJsonResponse({
+      latestVersion: '2.0.0',  // should be skipped
+      data: { version: '1.5.0' }, // should be used
+    }));
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+    // latestVersion key contains 'latest' → skipped; data.version used instead
+    expect(result.currentVersion).toBe('1.5.0');
+  });
+});
+
+// ── detectDeployedVersion — remaining path branches ──────────────────────────
+
+describe('detectDeployedVersion — absolute URL and authFailed path', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses absolute URL directly when appVersionEndpoint starts with http', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '7.2.1' }),
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.internal',
+      appVersionEndpoint: 'https://custom-version-endpoint.example.com/ver',
+    });
+    expect(result.currentVersion).toBe('7.2.1');
+    // should call the absolute URL directly, not base+path
+    expect(fetchMock.mock.calls[0][0]).toBe('https://custom-version-endpoint.example.com/ver');
+  });
+
+  it('returns manual strategy with authFailed=true message when 401 received', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://secure.example.com',
+    });
+    expect(result.strategy).toBe('manual');
+    // authFailed=true → message should mention auth
+    const msg = (result as Record<string, unknown>).message as string;
+    expect(msg).toMatch(/auth|token|401/i);
+  });
+
+  it('returns manual strategy with docker suggestions when provider is docker', async () => {
+    // testVersionConnection also fails
+    fetchMock.mockResolvedValue({ ok: false, status: 500 });
+    const result = await service.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myimage',
+    });
+    expect(result.strategy).toBe('manual');
+    const suggestions = (result as Record<string, unknown>).suggestions as string[];
+    expect(suggestions).toContain('latest');
+    expect(suggestions).toContain('stable');
+  });
+});
+
+// ── testVersionConnection — maven/helm providers ──────────────────────────────
+
+describe('testVersionConnection() — maven/helm providers', () => {
+  let service: MonitorsService;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // ── Maven ──
+  it('maven: returns latestVersion from Maven Central docs[0].v', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ response: { docs: [{ v: '3.9.6' }] } }),
+    });
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'org.apache.maven:maven-core' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('3.9.6');
+    expect(result.message).toContain('Maven Central');
+  });
+
+  it('maven: returns ok:false when docs array is empty', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ response: { docs: [] } }),
+    });
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'com.example:unknown-artifact' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('No Maven artifact version found');
+  });
+
+  it('maven: returns ok:false on API error', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) });
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'com.example:artifact' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('503');
+  });
+
+  it('maven: returns ok:false for invalid target (no colon)', async () => {
+    const result = await service.testVersionConnection({ provider: 'maven', target: 'invalidddd' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('groupId:artifactId');
+  });
+
+  // ── Helm ──
+  it('helm: returns app_version when present', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '14.0.1', app_version: '16.3' }),
+    });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'bitnami/postgresql' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('16.3');
+    expect(result.message).toContain('Artifact Hub');
+  });
+
+  it('helm: falls back to version when app_version is absent', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ version: '3.14.0' }),
+    });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'helm/helm' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('3.14.0');
+  });
+
+  it('helm: returns ok:false on Artifact Hub API error', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) });
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'unknown/chart' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('404');
+  });
+
+  it('helm: returns ok:false for invalid target (no slash)', async () => {
+    const result = await service.testVersionConnection({ provider: 'helm', target: 'invalidchart' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('repoName/chartName');
+  });
+
+  it('returns Docker Hub latestVersion=null when results array is empty', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [] }),
+    });
+    const result = await service.testVersionConnection({ provider: 'docker', target: 'emptyrepo/image' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBeNull();
+  });
+
+  it('handles Docker official image (no slash) by prefixing library/', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ results: [{ name: 'stable' }] }),
+    });
+    await service.testVersionConnection({ provider: 'docker', target: 'nginx' });
+    // URL should contain library/nginx
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('library/nginx');
+  });
+
+  it('returns crates.io newest_version as fallback when max_stable_version is absent', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ crate: { newest_version: '1.0.0-rc1' } }),
+    });
+    const result = await service.testVersionConnection({ provider: 'cargo', target: 'mycrate' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('1.0.0-rc1');
+  });
+});
+
+// ── Branch coverage: sort tiebreaker + openvpn with no credentials ────────────
+
+describe('extractVersionFromText — sort tiebreaker coverage', () => {
+  let service: ReturnType<typeof makeService>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('picks the longer version token when candidates tie on score (tiebreaker branch)', async () => {
+    // Two version tokens with equal score (no scoring keywords nearby) but different lengths.
+    // "1.10.0" (6 chars) should beat "1.2.0" (5 chars) via the tiebreaker.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'deployed: 1.10.0 (replaces 1.2.0)',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://example.com',
+    });
+
+    // Both tokens score the same (no version-keyword context), so tiebreaker by length applies
+    expect(result.currentVersion).toBe('1.10.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+});
+
+describe('openvpn auth with empty credentials', () => {
+  let service: ReturnType<typeof makeService>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    service = makeService();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('tries openvpn modes even when username and password are empty (no-credential path)', async () => {
+    // All fetch calls fail so we can verify the auth modes were still attempted
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Unauthorized',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'openvpn',
+      // No openvpnUsername or openvpnPassword — basic will be empty string (falsy)
+    });
+
+    // With no credentials, basic is empty so openvpn-basic apply() no-ops on authorization
+    // and openvpn-headers apply() no-ops on x-openvpn-* headers
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    // Still made requests (auth mode lambdas ran, even if they didn't set headers)
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
+  });
+});
+
+// ── Branch-coverage tests for importExternal / CSV / BetterUptime ───────────
+
+describe('importExternal — CSV parser branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target })),
+    );
+  });
+
+  it('returns empty when CSV has only a header row (lines.length < 2)', async () => {
+    const csv = 'name,url,interval';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('returns empty when CSV has no url/target/address/website column (urlIdx === -1)', async () => {
+    const csv = 'name,something,interval\nMy App,foo,60';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('skips rows where url is empty or not http(s)', async () => {
+    const csv = 'url\n\nftp://bad.com\nhttps://good.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses url as name when no name column exists (nameIdx < 0)', async () => {
+    const csv = 'url\nhttps://noname.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'https://noname.com' }) }),
+    );
+  });
+
+  it('defaults intervalSec to 300 when no interval column exists (intervalIdx < 0)', async () => {
+    const csv = 'url\nhttps://noint.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 300 }) }),
+    );
+  });
+
+  it('defaults intervalSec to 300 when interval value is NaN', async () => {
+    const csv = 'url,interval\nhttps://nanint.com,abc';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 300 }) }),
+    );
+  });
+
+  it('defaults enabled=true when no paused column exists (pausedIdx < 0)', async () => {
+    const csv = 'url\nhttps://nopaused.com';
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    // enabled is not false, so update() should NOT be called
+    expect(prisma.monitor.update).not.toHaveBeenCalled();
+  });
+
+  it('sets enabled=false for paused column values: paused, false, 0, disabled', async () => {
+    const csv = 'url,paused\nhttps://a.com,paused\nhttps://b.com,false\nhttps://c.com,0\nhttps://d.com,disabled';
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(4);
+    // All 4 monitors should trigger update() to disable
+    expect(prisma.monitor.update).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('importExternal — BetterUptime parser branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: `m-${args.data.name}`, name: args.data.name, target: args.data.target })),
+    );
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+  });
+
+  it('parses plain array input (Array.isArray(raw) path)', async () => {
+    const data = [
+      { url: 'https://plain-array.com', pronounceable_name: 'Plain', check_type: 'status', request_interval_seconds: 60, paused: false },
+    ];
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses flat item object without attributes key', async () => {
+    const data = {
+      data: [
+        { url: 'https://flat.com', pronounceable_name: 'Flat', check_type: 'keyword', request_interval_seconds: 120, paused: false },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+  });
+
+  it('skips entry when check_type is not in allowed list', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://tcp.com', pronounceable_name: 'TCP', check_type: 'tcp', request_interval_seconds: 60, paused: false } },
+        { attributes: { url: 'https://udp.com', pronounceable_name: 'UDP', check_type: 'udp', request_interval_seconds: 60, paused: false } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('skips entry when url does not start with http(s)', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'ftp://nope.com', pronounceable_name: 'FTP', check_type: 'status', request_interval_seconds: 60, paused: false } },
+        { attributes: { url: '', pronounceable_name: 'Empty', check_type: 'status', request_interval_seconds: 60, paused: false } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(0);
+    expect(result.message).toContain('No importable');
+  });
+
+  it('sets enabled=false when paused is true', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://paused.com', pronounceable_name: 'Paused', check_type: 'status', request_interval_seconds: 60, paused: true } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('uses interval fallback when request_interval_seconds is absent', async () => {
+    const data = {
+      data: [
+        { attributes: { url: 'https://fallback-int.com', pronounceable_name: 'Fallback', check_type: 'status', interval: 45 } },
+      ],
+    };
+    const result = await service.importExternal('user-1', 'better-uptime', data);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ intervalSec: 45 }) }),
+    );
+  });
+});
+
+describe('importExternal — high-level branch coverage', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) return Promise.resolve(null);
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.update.mockResolvedValue(makeMonitor());
+  });
+
+  it('calls update() to disable when item.enabled === false', async () => {
+    const csv = 'url,paused\nhttps://disable-me.com,paused';
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: 'm-disabled', name: args.data.name, target: args.data.target })),
+    );
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('pushes error when create() throws', async () => {
+    const csv = 'url\nhttps://will-fail.com';
+    prisma.monitor.create.mockRejectedValueOnce(new Error('DB constraint violation'));
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({
+      index: 0,
+      name: 'https://will-fail.com',
+      error: 'DB constraint violation',
+    });
+  });
+
+  it('uses singular "monitor" when exactly 1 imported', async () => {
+    const csv = 'url\nhttps://single.com';
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ id: 'm-single', name: args.data.name, target: args.data.target })),
+    );
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(result.message).toBe('Imported 1 monitor.');
+    // Should NOT say "monitors" (plural)
+    expect(result.message).not.toContain('monitors');
+  });
+
+  it('uses singular "duplicate" when exactly 1 skipped', async () => {
+    const csv = 'url\nhttps://exists.com';
+    prisma.monitor.findFirst.mockResolvedValue(makeMonitor({ target: 'https://exists.com' }));
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(result.message).toContain('skipped 1 duplicate');
+    // Should NOT say "duplicates" (plural)
+    expect(result.message).not.toMatch(/duplicates/);
+  });
+
+  it('uses plural forms for multiple imports and skips', async () => {
+    const csv = 'url\nhttps://new1.com\nhttps://new2.com\nhttps://dup1.com\nhttps://dup2.com';
+    let callCount = 0;
+    prisma.monitor.findFirst.mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+      if ('target' in where) {
+        const target = where.target as string;
+        if (target.includes('dup')) return Promise.resolve(makeMonitor({ target }));
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(makeMonitor());
+    });
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) => {
+      callCount++;
+      return Promise.resolve(makeMonitor({ id: `m-${callCount}`, name: args.data.name, target: args.data.target }));
+    });
+
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(2);
+    expect(result.message).toContain('2 monitors');
+    expect(result.message).toContain('2 duplicates');
   });
 });

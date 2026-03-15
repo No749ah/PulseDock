@@ -33,13 +33,15 @@ server {
     # Cache busting: static assets with hash in filename never change
     location ~* /_next/static/.+\.(js|css|webp|woff2|svg|png|jpg|jpeg|gif|ico)$ {
         proxy_pass http://pulsedock_web;
-        proxy_cache_valid 365d;
+        # ONLY cache successful responses — never cache 4xx/5xx
+        proxy_cache_valid 200 206 301 302 365d;
         proxy_cache_key "$scheme$host$request_uri";
-        
-        # Don't cache 404/500 responses
-        proxy_cache_bypass $http_pragma $http_authorization;
+        # Re-validate if origin returns an error (don't serve stale 5xx)
+        proxy_cache_use_stale error timeout invalid_header updating;
+        proxy_cache_background_update on;
         add_header Cache-Control "public, max-age=31536000, immutable";
         add_header X-Cache-Status $upstream_cache_status;
+        add_header X-Served-By $host;
     }
 
     # Public folder assets (favicon, og-image, etc.)

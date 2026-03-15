@@ -79,6 +79,17 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_refresh', 'ref', expect.any(Object));
       expect(result).toEqual(tokens);
     });
+
+    it('passes null userAgent and ipAddress when headers and ip absent', async () => {
+      const tokens = { accessToken: 'acc', refreshToken: 'ref', user: { id: 'u1', email: 'a@b.com' } };
+      authService.login.mockResolvedValue(tokens);
+      const req = { headers: {}, cookies: {} } as ReturnType<typeof makeReq>;
+      const res = makeRes();
+
+      await controller.login(req, res, { email: 'a@b.com', password: 'pass', totpCode: undefined });
+
+      expect(authService.login).toHaveBeenCalledWith('a@b.com', 'pass', expect.objectContaining({ userAgent: null, ipAddress: null }));
+    });
   });
 
   describe('refresh()', () => {
@@ -120,6 +131,14 @@ describe('AuthController', () => {
       const res = makeRes();
       await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
       expect(authService.acceptInvite).toHaveBeenCalledWith('tok', 'Passw0rd!!');
+    });
+
+    it('does not set cookies when result has no tokens', async () => {
+      authService.acceptInvite.mockResolvedValue({ message: 'invite accepted, awaiting approval' });
+      const res = makeRes();
+      const result = await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(result).toEqual({ message: 'invite accepted, awaiting approval' });
     });
   });
 
@@ -171,6 +190,14 @@ describe('AuthController', () => {
       const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
       expect(authService.resetPassword).toHaveBeenCalledWith('reset-tok', 'NewPass123!');
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_token', 'acc', expect.any(Object));
+    });
+
+    it('does not set cookies when reset result has no tokens', async () => {
+      authService.resetPassword.mockResolvedValue({ ok: true });
+      const res = makeRes();
+      const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: true });
     });
   });
 
@@ -276,6 +303,15 @@ describe('AuthController', () => {
       expect(authService.verifyTotpLogin).toHaveBeenCalledWith('tmp', '999888', expect.any(Object));
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_token', 'acc', expect.any(Object));
     });
+
+    it('verifyTotpLogin passes null userAgent and ipAddress when absent', async () => {
+      const tokens = { accessToken: 'acc', refreshToken: 'ref', user: { id: 'u1' } };
+      authService.verifyTotpLogin.mockResolvedValue(tokens);
+      const req = { headers: {}, cookies: {} } as ReturnType<typeof makeReq>;
+      const res = makeRes();
+      await controller.verifyTotpLogin(req, res, { tempToken: 'tmp', code: '999888' });
+      expect(authService.verifyTotpLogin).toHaveBeenCalledWith('tmp', '999888', expect.objectContaining({ userAgent: null, ipAddress: null }));
+    });
   });
 
   describe('sessions()', () => {
@@ -285,6 +321,78 @@ describe('AuthController', () => {
       expect(authService.listSessions).toHaveBeenCalledWith('user-1');
       const r = result as Array<Record<string, unknown>>;
       expect(r).toHaveLength(1);
+    });
+  });
+
+  describe('revokeSession()', () => {
+    it('delegates to authService.revokeSession with userId and sessionId', async () => {
+      authService.revokeSession.mockResolvedValue({ revoked: true });
+      const result = await controller.revokeSession(makeReq(), { sessionId: 'ses-1' } as never);
+      expect(authService.revokeSession).toHaveBeenCalledWith('user-1', 'ses-1');
+      expect(result).toEqual({ revoked: true });
+    });
+  });
+
+  describe('revokeAllSessions()', () => {
+    it('delegates to authService.revokeAllSessions with userId', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['revokeAllSessions'] = vi.fn().mockResolvedValue({ revoked: 3 });
+      const result = await controller.revokeAllSessions(makeReq());
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['revokeAllSessions']).toHaveBeenCalledWith('user-1');
+      expect(result).toEqual({ revoked: 3 });
+    });
+  });
+
+  describe('getAuditLog()', () => {
+    it('calls authService.getUserAuditLog with default limit 100 when no limit param', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog'] = vi.fn().mockResolvedValue([]);
+      const result = await controller.getAuditLog(makeReq(), undefined);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog']).toHaveBeenCalledWith('user-1', 100);
+      expect(result).toEqual([]);
+    });
+
+    it('parses limit string to integer', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog'] = vi.fn().mockResolvedValue([{ id: 'log-1' }]);
+      await controller.getAuditLog(makeReq(), '50');
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog']).toHaveBeenCalledWith('user-1', 50);
+    });
+  });
+
+  describe('exportAuditLog()', () => {
+    it('exports JSON and sets correct Content-Disposition header', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: '[]',
+        contentType: 'application/json',
+        filename: 'audit-log.json',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'json', res as never);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'json');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="audit-log.json"');
+      expect(res.end).toHaveBeenCalledWith('[]');
+    });
+
+    it('exports CSV when format=csv', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: 'action,actorUserId\nauth.login,user-1',
+        contentType: 'text/csv',
+        filename: 'audit-log.csv',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'csv', res as never);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'csv');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv');
+    });
+
+    it('defaults to json format when format param is not csv', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: '{}',
+        contentType: 'application/json',
+        filename: 'audit-log.json',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'xml', res as never); // unknown format → defaults to json
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'json');
     });
   });
 });

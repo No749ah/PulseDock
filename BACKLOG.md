@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **Fix maven/helm testVersionConnection handlers** — Added explicit maven (Maven Central solrsearch API) and helm (Artifact Hub API) branches in `testVersionConnection()` — previously both providers silently fell through to Docker Hub, returning wrong data. Replaced 2 stale `as never` test hacks with 8 proper tests covering happy paths, empty-result, API errors, and invalid target formats. Tests: 953 → 963.
+
 - [x] **Status Pages build stabilization** — Fixed failing web build by removing obsolete conflicting route `app/status/[userId]` (conflicted with new slug route `app/status/[slug]`) and repairing corrupted JSX references in status page editor (`widget.type`, `widget.config.label`, size display string). Build now passes and all tests green.
 
 - [x] **Scheduler perf: eliminate N+1 queries + concurrent monitor checks** — Refactored `ChecksScheduler.tick()` to load all enabled monitors with their latest run in a single `findMany` (one DB round-trip instead of N+1). Due monitors now dispatched concurrently via `Promise.allSettled` rather than sequentially. Added structured logger for failed-tick warnings.
@@ -289,6 +291,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
 - [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
 - [x] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV. Implemented `POST /v1/monitors/import-external` supporting Uptime Robot JSON, BetterUptime JSON, and generic CSV. Frontend modal with source picker + instructions. Duplicate URL detection, disabled monitor support. 6 tests added.
+- [x] **Maintenance Windows** — Full CRUD for scheduling maintenance windows (name, description, startsAt, endsAt, monitorIds). Backend: `GET/POST/PATCH/DELETE /v1/maintenance` + `/active` endpoint. Alert suppression during active windows. Frontend: `/maintenance` page with status badges (Active/Upcoming/Past), create/edit modal, calendar icon empty state. Nav item added.
+- [x] **TCP, SSL Certificate, Heartbeat monitor types** — Added 3 new monitor types: TCP port check (net.createConnection, latency), SSL certificate expiry (TLS cert days remaining, green >30d / yellow 10-30d / red <10d), Heartbeat (push-based, `POST /v1/heartbeat/:token` public endpoint, configurable timeout window). Prisma enum migration, CSRF exempt prefix, HeartbeatController, frontend form with conditional fields and ping URL copy button.
 
 ---
 
@@ -304,7 +308,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ### Blocked/On Hold
-- [ ] **Fix all npm audit vulnerabilities** (**BLOCKED**: 4 HIGH severity in hono <= 4.12.6 via @prisma/dev; npm audit fix --force downgrades prisma to 6.19.2 with breaking changes; waiting on upstream hono/prisma fixes. Re-check periodically.)
+- [x] **Fix all npm audit vulnerabilities** — HIGH severity hono vulns resolved upstream (hono updated via @prisma/dev). Remaining: 9 moderate vulns (`file-type` via @nestjs/common, `lodash` via @prisma/dev) — both require breaking changes (NestJS v11 or Prisma downgrade). Monitoring for upstream fixes.
 
 ---
 
@@ -319,9 +323,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 226 tests passing (216 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all 9 pages + PWA install/offline UX, LOG_LEVEL filtering + Docker log rotation
+- **Codebase:** 973 tests passing (963 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
-- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 8 pages 200)
-- **Production Readiness:** ~80% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, notification preferences
-- **Remaining:** i18n (English + German), import from competitors, test coverage >90%, E2E tests (Playwright), API documentation improvements, Helm chart
+- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
+- **Production Readiness:** ~94% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (126 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests
+- **Coverage:** 93.31% stmt | 84.76% branch | 94.8% func | 95.7% line (dashboard 68%→97.91%, auth.controller 78%→88%)
+- **Version:** All packages bumped to 0.5.0 to match CHANGELOG
+- **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

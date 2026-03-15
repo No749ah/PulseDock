@@ -1,4 +1,7 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import * as net from 'node:net';
+import * as tls from 'node:tls';
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/i;
 import type { Monitor, MonitorRun } from '../types';
@@ -6,6 +9,7 @@ import { PrismaService } from '../common/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { PluginRegistry } from './plugin.registry';
+import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
 
@@ -594,6 +598,230 @@ export class ChecksService {
     }
   }
 
+  private async runTcpCheck(target: string, timeoutMs = 5000): Promise<PluginExecutionResult> {
+    const started = Date.now();
+    const normalized = target.trim();
+    const [host, portRaw] = normalized.split(':');
+    const port = Number(portRaw);
+
+    if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+      return {
+        ok: false,
+        statusCode: 400,
+        latencyMs: null,
+        message: 'Invalid TCP target. Use host:port (e.g. db.example.com:5432)',
+        level: 'red' as const,
+      };
+    }
+
+    return new Promise((resolve) => {
+      const socket = net.createConnection({ host, port });
+      let settled = false;
+
+      const finalize = (payload: { ok: boolean; message: string; level: 'green' | 'yellow' | 'red'; statusCode?: number; latencyMs?: number | null }) => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        resolve({
+          ok: payload.ok,
+          statusCode: payload.statusCode ?? (payload.ok ? 200 : 0),
+          latencyMs: payload.latencyMs ?? (payload.ok ? Date.now() - started : null),
+          message: payload.message,
+          level: payload.level,
+        });
+      };
+
+      socket.setTimeout(timeoutMs);
+      socket.once('connect', () => finalize({ ok: true, message: `TCP connect ok (${host}:${port})`, level: 'green' }));
+      socket.once('timeout', () => finalize({ ok: false, message: `TCP timeout (${host}:${port})`, level: 'red' }));
+      socket.once('error', (err) => finalize({ ok: false, message: `TCP error: ${err.message}`, level: 'red' }));
+    });
+  }
+
+  private normalizeSslHost(target: string) {
+    const raw = target.trim();
+    if (!raw) return null;
+
+    try {
+      const withProto = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+      const parsed = new URL(withProto);
+      return parsed.hostname || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async runSslCheck(target: string, timeoutMs = 5000): Promise<PluginExecutionResult> {
+    const host = this.normalizeSslHost(target);
+    if (!host) {
+      return {
+        ok: false,
+        statusCode: 400,
+        latencyMs: null,
+        message: 'Invalid SSL target. Use domain or HTTPS URL',
+        level: 'red' as const,
+      };
+    }
+
+    const started = Date.now();
+
+    return new Promise((resolve) => {
+      const socket = tls.connect({ host, port: 443, servername: host, rejectUnauthorized: false, timeout: timeoutMs }, () => {
+        const cert = socket.getPeerCertificate();
+        socket.end();
+
+        const validTo = typeof cert?.valid_to === 'string' ? cert.valid_to : '';
+        const expiresAt = validTo ? new Date(validTo) : null;
+        if (!expiresAt || Number.isNaN(expiresAt.getTime())) {
+          resolve({
+            ok: false,
+            statusCode: 0,
+            latencyMs: null,
+            message: 'SSL certificate metadata unavailable',
+            level: 'red' as const,
+          });
+          return;
+        }
+
+        const daysLeft = Math.floor((expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+        const isoDate = expiresAt.toISOString().slice(0, 10);
+
+        if (daysLeft < 0) {
+          resolve({
+            ok: false,
+            statusCode: 0,
+            latencyMs: Date.now() - started,
+            message: `SSL cert EXPIRED (${isoDate})`,
+            level: 'red' as const,
+          });
+          return;
+        }
+
+        const level = daysLeft > 30 ? 'green' : daysLeft >= 10 ? 'yellow' : 'red';
+        resolve({
+          ok: daysLeft > 0,
+          statusCode: 200,
+          latencyMs: Date.now() - started,
+          message: `SSL cert expires in ${daysLeft} days (${isoDate})`,
+          level,
+        });
+      });
+
+      socket.once('timeout', () => {
+        socket.destroy();
+        resolve({
+          ok: false,
+          statusCode: 0,
+          latencyMs: null,
+          message: `SSL check timeout (${host})`,
+          level: 'red' as const,
+        });
+      });
+
+      socket.once('error', (err) => {
+        socket.destroy();
+        resolve({
+          ok: false,
+          statusCode: 0,
+          latencyMs: null,
+          message: `SSL check failed: ${err.message}`,
+          level: 'red' as const,
+        });
+      });
+    });
+  }
+
+  private async runHeartbeatCheck(monitor: Monitor): Promise<PluginExecutionResult> {
+    const timeoutMinRaw = Number(monitor.config.timeoutMin ?? 5);
+    const timeoutMin = Number.isFinite(timeoutMinRaw) && timeoutMinRaw > 0 ? timeoutMinRaw : 5;
+    const lastHeartbeat = typeof monitor.config.lastHeartbeatAt === 'string' ? monitor.config.lastHeartbeatAt : null;
+
+    if (!lastHeartbeat) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: null,
+        message: 'No heartbeat received yet',
+        level: 'red' as const,
+      };
+    }
+
+    const lastMs = new Date(lastHeartbeat).getTime();
+    if (Number.isNaN(lastMs)) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: null,
+        message: 'Heartbeat timestamp is invalid',
+        level: 'red' as const,
+      };
+    }
+
+    const elapsedMs = Date.now() - lastMs;
+    const maxAgeMs = timeoutMin * 60 * 1000;
+    if (elapsedMs <= maxAgeMs) {
+      return {
+        ok: true,
+        statusCode: 200,
+        latencyMs: null,
+        message: `Heartbeat healthy (${Math.floor(elapsedMs / 1000)}s ago)`,
+        level: 'green' as const,
+      };
+    }
+
+    const overdueSec = Math.floor((elapsedMs - maxAgeMs) / 1000);
+    return {
+      ok: false,
+      statusCode: 0,
+      latencyMs: null,
+      message: `Heartbeat overdue by ${overdueSec}s`,
+      level: 'red' as const,
+    };
+  }
+
+  private async dispatchCheck(monitor: Monitor) {
+    switch (monitor.type) {
+      case 'HTTP':
+        return this.runHttpCheck(monitor.target, monitor.timeoutMs);
+      case 'GIT_RELEASE':
+        return this.runGitReleaseCheck(monitor.target, monitor.config);
+      case 'DOCKER_IMAGE':
+        return this.runDockerCheck(monitor.target, monitor.config);
+      case 'TCP':
+        return this.runTcpCheck(monitor.target, monitor.timeoutMs);
+      case 'SSL_CERT':
+        return this.runSslCheck(monitor.target, monitor.timeoutMs);
+      case 'HEARTBEAT':
+        return this.runHeartbeatCheck(monitor);
+      default:
+        return this.runHttpCheck(monitor.target, monitor.timeoutMs);
+    }
+  }
+
+  async handleHeartbeatPing(token: string): Promise<void> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: {
+        type: 'HEARTBEAT',
+        configJson: { path: ['token'], equals: token },
+      },
+    });
+
+    if (!monitor) {
+      throw new NotFoundException('Heartbeat monitor not found');
+    }
+
+    const existingConfig = (monitor.configJson as Record<string, unknown> | null) ?? {};
+    await this.prisma.monitor.update({
+      where: { id: monitor.id },
+      data: {
+        configJson: {
+          ...existingConfig,
+          lastHeartbeatAt: new Date().toISOString(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   private async runPluginMonitor(monitor: Monitor) {
     const pluginId = String(monitor.config.pluginId ?? '').trim();
     if (!pluginId) return null;
@@ -633,13 +861,7 @@ export class ChecksService {
     });
 
     const pluginResult = await this.runPluginMonitor(monitor);
-    const result = pluginResult ?? (
-      monitor.type === 'HTTP'
-        ? await this.runHttpCheck(monitor.target, monitor.timeoutMs)
-        : monitor.type === 'GIT_RELEASE'
-        ? await this.runGitReleaseCheck(monitor.target, monitor.config)
-        : await this.runDockerCheck(monitor.target, monitor.config)
-    );
+    const result = pluginResult ?? await this.dispatchCheck(monitor);
 
     const created = await this.prisma.monitorRun.create({
       data: {

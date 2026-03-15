@@ -13,6 +13,7 @@ import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
 import { ChecksService } from './checks/checks.service';
 import { ChecksScheduler } from './checks/checks.scheduler';
+import { HeartbeatController } from './checks/heartbeat.controller';
 import { DashboardController } from './dashboard/dashboard.controller';
 import { PublicDashboardController } from './dashboard/public.controller';
 import { AdminController } from './users/admin.controller';
@@ -38,6 +39,8 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { NotificationsService } from './notifications/notifications.service';
 import { StatusPagesController } from './status-pages/status-pages.controller';
 import { StatusPagesService } from './status-pages/status-pages.service';
+import { MaintenanceController } from './maintenance/maintenance.controller';
+import { MaintenanceService } from './maintenance/maintenance.service';
 
 @Module({
   imports: [
@@ -51,6 +54,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     AuthController,
     MonitorsController,
     AlertsController,
+    HeartbeatController,
     DashboardController,
     PublicDashboardController,
     AdminController,
@@ -65,6 +69,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     ToolRegistryController,
     NotificationsController,
     StatusPagesController,
+    MaintenanceController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -83,6 +88,7 @@ import { StatusPagesService } from './status-pages/status-pages.service';
     TagsService,
     NotificationsService,
     StatusPagesService,
+    MaintenanceService,
   ],
 })
 export class AppModule implements NestModule {

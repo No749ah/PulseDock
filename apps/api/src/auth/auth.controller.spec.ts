@@ -287,4 +287,76 @@ describe('AuthController', () => {
       expect(r).toHaveLength(1);
     });
   });
+
+  describe('revokeSession()', () => {
+    it('delegates to authService.revokeSession with userId and sessionId', async () => {
+      authService.revokeSession.mockResolvedValue({ revoked: true });
+      const result = await controller.revokeSession(makeReq(), { sessionId: 'ses-1' } as never);
+      expect(authService.revokeSession).toHaveBeenCalledWith('user-1', 'ses-1');
+      expect(result).toEqual({ revoked: true });
+    });
+  });
+
+  describe('revokeAllSessions()', () => {
+    it('delegates to authService.revokeAllSessions with userId', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['revokeAllSessions'] = vi.fn().mockResolvedValue({ revoked: 3 });
+      const result = await controller.revokeAllSessions(makeReq());
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['revokeAllSessions']).toHaveBeenCalledWith('user-1');
+      expect(result).toEqual({ revoked: 3 });
+    });
+  });
+
+  describe('getAuditLog()', () => {
+    it('calls authService.getUserAuditLog with default limit 100 when no limit param', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog'] = vi.fn().mockResolvedValue([]);
+      const result = await controller.getAuditLog(makeReq(), undefined);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog']).toHaveBeenCalledWith('user-1', 100);
+      expect(result).toEqual([]);
+    });
+
+    it('parses limit string to integer', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog'] = vi.fn().mockResolvedValue([{ id: 'log-1' }]);
+      await controller.getAuditLog(makeReq(), '50');
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['getUserAuditLog']).toHaveBeenCalledWith('user-1', 50);
+    });
+  });
+
+  describe('exportAuditLog()', () => {
+    it('exports JSON and sets correct Content-Disposition header', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: '[]',
+        contentType: 'application/json',
+        filename: 'audit-log.json',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'json', res as never);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'json');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="audit-log.json"');
+      expect(res.end).toHaveBeenCalledWith('[]');
+    });
+
+    it('exports CSV when format=csv', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: 'action,actorUserId\nauth.login,user-1',
+        contentType: 'text/csv',
+        filename: 'audit-log.csv',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'csv', res as never);
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'csv');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv');
+    });
+
+    it('defaults to json format when format param is not csv', async () => {
+      (authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog'] = vi.fn().mockResolvedValue({
+        data: '{}',
+        contentType: 'application/json',
+        filename: 'audit-log.json',
+      });
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      await controller.exportAuditLog(makeReq(), 'xml', res as never); // unknown format → defaults to json
+      expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'json');
+    });
+  });
 });

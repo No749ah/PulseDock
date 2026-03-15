@@ -2199,6 +2199,134 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── Maven / Helm currentVersion branches ──────────────────────────────────
+
+  describe('runMonitor() — GIT_RELEASE Maven with currentVersion', () => {
+    afterEach(() => { delete (globalThis as Record<string, unknown>).fetch; });
+
+    it('shows classified level when currentVersion is set and up-to-date', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '3.9.6' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven', currentVersion: '3.9.6' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.message).toMatch(/Maven current 3\.9\.6, latest 3\.9\.6/);
+      expect(run.level).toBe('green');
+    });
+
+    it('shows red level when currentVersion is behind', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '4.0.0' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven', currentVersion: '3.9.0' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Maven current 3\.9\.0, latest 4\.0\.0/);
+      expect(run.ok).toBe(false);
+    });
+
+    it('returns green with no currentVersion (latest only)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ response: { docs: [{ v: '3.9.6' }] } }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'org.springframework:spring-core',
+        config: { provider: 'maven' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Maven latest 3\.9\.6/);
+      expect(run.level).toBe('green');
+    });
+  });
+
+  describe('runMonitor() — GIT_RELEASE Helm with currentVersion', () => {
+    afterEach(() => { delete (globalThis as Record<string, unknown>).fetch; });
+
+    it('shows classified level when currentVersion is set and up-to-date', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '10.3.1', version: '10.3.1' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm', currentVersion: '10.3.1' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.message).toMatch(/Helm current 10\.3\.1, latest 10\.3\.1/);
+      expect(run.level).toBe('green');
+    });
+
+    it('shows red level when currentVersion is a major version behind', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '11.0.0', version: '11.0.0' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm', currentVersion: '10.3.1' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Helm current 10\.3\.1, latest 11\.0\.0/);
+      expect(run.ok).toBe(false);
+    });
+
+    it('returns green with no currentVersion (latest only)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ app_version: '10.3.1' }),
+      }]);
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'bitnami/redis',
+        config: { provider: 'helm' },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.message).toMatch(/Helm latest 10\.3\.1/);
+      expect(run.level).toBe('green');
+    });
+  });
+
+  // ── SSL normalizeSslHost URL-parse error ───────────────────────────────────
+
+  describe('runMonitor() — SSL_CERT URL parse error branch', () => {
+    it('returns red when target URL is malformed (triggers URL parse catch)', async () => {
+      const service = makeService();
+      // https://[invalid triggers URL parse error in normalizeSslHost
+      const monitor = makeMonitor({ type: 'SSL_CERT', target: 'https://[invalid' });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(false);
+      expect(run.message).toMatch(/Invalid SSL target/i);
+      expect(run.level).toBe('red');
+    });
+  });
+
   // ── runMonitor() — TCP type ────────────────────────────────────────────────
 
   describe('runMonitor() — TCP type', () => {

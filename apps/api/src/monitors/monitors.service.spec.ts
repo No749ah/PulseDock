@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
 

@@ -2710,3 +2710,98 @@ describe('importExternal — high-level branch coverage', () => {
     expect(result.message).toContain('2 duplicates');
   });
 });
+
+describe('MonitorsService branch coverage gaps', () => {
+  let service: MonitorsService;
+
+  beforeEach(() => {
+    service = makeService();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('accepts loose embedded version tokens from deployed endpoint payload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: 'build version=2.33.3-linux-amd64' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+    });
+
+    expect(result.strategy).toBe('deployed-endpoint');
+    expect(result.currentVersion).toContain('2.33.3');
+  });
+
+  it('treats non-version deployed payload values as unusable', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: 'definitely-not-a-version' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+  });
+
+  it('applies openvpn basic and header auth modes when credentials are provided', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ status: 'ok' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ version: '1.2.3' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await (service as unknown as {
+      detectDeployedVersion: (input: {
+        appUrl: string;
+        appVersionEndpoint: string;
+        appAuthType: 'openvpn';
+        openvpnUsername: string;
+        openvpnPassword: string;
+      }) => Promise<{ currentVersion: string | null }>;
+    }).detectDeployedVersion({
+      appUrl: 'https://myapp.example.com',
+      appVersionEndpoint: '/version',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'ovpn-user',
+      openvpnPassword: 'ovpn-pass',
+    });
+
+    expect(result.currentVersion).toBe('1.2.3');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const firstHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    const secondHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
+
+    expect(firstHeaders.authorization).toBe(`Basic ${Buffer.from('ovpn-user:ovpn-pass').toString('base64')}`);
+    expect(secondHeaders['x-openvpn-username']).toBe('ovpn-user');
+    expect(secondHeaders['x-openvpn-password']).toBe('ovpn-pass');
+  });
+});

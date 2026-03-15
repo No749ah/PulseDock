@@ -2574,3 +2574,97 @@ describe('ChecksService', () => {
     });
   });
 });
+
+describe('ChecksService branch coverage gaps', () => {
+  it('handles empty currentVersion (normalizeVersion falsy branch)', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.2.3' }) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: '' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('filters out clearly unstable semver-looking tags when includePrerelease=false', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      { ok: false, status: 404 }, // releases/latest
+      { ok: false, status: 404 }, // releases list
+      {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([{ name: '1.2.3+nightly' }, { name: '1.2.2' }]),
+      },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: '1.2.2', includePrerelease: false },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('returns null for array payloads with no extractable version and continues endpoints', async () => {
+    const service = makeService();
+
+    globalThis.fetch = mockFetch([
+      {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([{ foo: 'bar' }, { data: { hello: 'world' } }]),
+      },
+      { ok: true, status: 200, json: () => Promise.resolve({ version: '2.0.0' }) },
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v2.0.0' }) },
+    ]);
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('continues detectAppVersion candidates when fetch throws', async () => {
+    const service = makeService();
+
+    globalThis.fetch = vi.fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ version: '3.4.5' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ tag_name: 'v3.4.5' }),
+      });
+
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { appUrl: 'https://myapp.example.com' },
+    });
+
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+});

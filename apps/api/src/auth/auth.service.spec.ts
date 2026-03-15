@@ -1241,3 +1241,112 @@ describe('exportUserAuditLog()', () => {
     expect(result.data).toContain('monitor.create');
   });
 });
+
+describe('AuthService branch coverage gaps', () => {
+  it('does not treat past lockedUntil as an active lock', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const password = 'ValidPass1!';
+    const prisma = makePrisma(makeUser({
+      passwordHash: hashSync(password, 10),
+      failedLoginCount: 2,
+      lockedUntil: new Date(Date.now() - 60_000),
+    }));
+    const svc = makeService(prisma as never);
+
+    const result = await svc.login('test@example.com', password);
+
+    expect(result).toHaveProperty('accessToken');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-1' },
+        data: { failedLoginCount: 0, lockedUntil: null },
+      }),
+    );
+  });
+
+  it('allows changePassword without current password when mustChangePassword=true', async () => {
+    const { hashSync } = await import('bcryptjs');
+    const prisma = makePrisma(makeUser({
+      mustChangePassword: true,
+      passwordHash: hashSync('CurrentPass1!', 10),
+    }));
+    const svc = makeService(prisma as never);
+
+    const result = await svc.changePassword('user-1', undefined, 'NewPass1!SuperStrong');
+
+    expect(result).toEqual({ ok: true });
+    expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it('throws UnauthorizedException when changePassword user does not exist', async () => {
+    const prisma = makePrisma(null);
+    const svc = makeService(prisma as never);
+
+    await expect(svc.changePassword('missing-user', 'CurrentPass1!', 'NewPass1!SuperStrong')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('returns UnauthorizedException in disable2FA when recovery codes JSON is invalid', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: '{bad-json',
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'bad-code')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejects disable2FA when recovery-code JSON is valid but code does not match', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: JSON.stringify([hashSync('some-other-code', 10)]),
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'bad-code')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('accepts disable2FA when recovery-code matches', async () => {
+    const { verify } = await import('otplib');
+    const { hashSync } = await import('bcryptjs');
+    vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+    const recoveryCode = 'RECOV-DISABLE-001';
+    const prisma = makePrisma(makeUser({
+      totpEnabled: true,
+      totpSecret: 'MOCK_TOTP_SECRET',
+      passwordHash: hashSync('ValidPass1!Strong', 10),
+      totpRecoveryCodes: JSON.stringify([hashSync(recoveryCode, 10)]),
+    }));
+    const svc = makeService(prisma as never);
+
+    await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', recoveryCode)).resolves.toEqual({ ok: true });
+  });
+});
+
+describe('exportUserAuditLog() additional CSV branch coverage', () => {
+  it('exports CSV with empty meta column when metaJson is null', async () => {
+    const prisma = makePrisma();
+    prisma.auditLog.findMany.mockResolvedValue([
+      { id: 'al-null-meta', action: 'user.login', createdAt: new Date('2026-01-01'), metaJson: null },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.exportUserAuditLog('user-1', 'csv');
+
+    expect(result.contentType).toBe('text/csv');
+    expect(result.data).toContain('"al-null-meta","user.login"');
+    expect(result.data).toContain(',""');
+  });
+});

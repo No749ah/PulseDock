@@ -113,6 +113,12 @@ describe('AlertsController', () => {
       const result = await controller.list(req as never);
       expect(result).toHaveLength(0);
     });
+
+    it('falls back to {} config when channel configJson is null', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.list(req as never);
+      expect(result[0].config).toEqual({});
+    });
   });
 
   // ─── create() ──────────────────────────────────────────────────────────────
@@ -225,6 +231,15 @@ describe('AlertsController', () => {
       expect(alertsService.notifyTest).toHaveBeenCalledWith(
         expect.objectContaining({ config: { url: 'https://discord.com/api/webhooks/test' } }),
       );
+    });
+
+    it('falls back to {} config when channel configJson is null', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.test(req as never, { channelId: 'ch-1' });
+      expect(alertsService.notifyTest).toHaveBeenCalledWith(
+        expect.objectContaining({ config: {} }),
+      );
+      expect(result).toEqual({ ok: true });
     });
   });
 });

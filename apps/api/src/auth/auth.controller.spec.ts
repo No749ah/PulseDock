@@ -79,6 +79,17 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_refresh', 'ref', expect.any(Object));
       expect(result).toEqual(tokens);
     });
+
+    it('passes null userAgent and ipAddress when headers and ip absent', async () => {
+      const tokens = { accessToken: 'acc', refreshToken: 'ref', user: { id: 'u1', email: 'a@b.com' } };
+      authService.login.mockResolvedValue(tokens);
+      const req = { headers: {}, cookies: {} } as ReturnType<typeof makeReq>;
+      const res = makeRes();
+
+      await controller.login(req, res, { email: 'a@b.com', password: 'pass', totpCode: undefined });
+
+      expect(authService.login).toHaveBeenCalledWith('a@b.com', 'pass', expect.objectContaining({ userAgent: null, ipAddress: null }));
+    });
   });
 
   describe('refresh()', () => {
@@ -120,6 +131,14 @@ describe('AuthController', () => {
       const res = makeRes();
       await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
       expect(authService.acceptInvite).toHaveBeenCalledWith('tok', 'Passw0rd!!');
+    });
+
+    it('does not set cookies when result has no tokens', async () => {
+      authService.acceptInvite.mockResolvedValue({ message: 'invite accepted, awaiting approval' });
+      const res = makeRes();
+      const result = await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(result).toEqual({ message: 'invite accepted, awaiting approval' });
     });
   });
 
@@ -171,6 +190,14 @@ describe('AuthController', () => {
       const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
       expect(authService.resetPassword).toHaveBeenCalledWith('reset-tok', 'NewPass123!');
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_token', 'acc', expect.any(Object));
+    });
+
+    it('does not set cookies when reset result has no tokens', async () => {
+      authService.resetPassword.mockResolvedValue({ ok: true });
+      const res = makeRes();
+      const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: true });
     });
   });
 
@@ -275,6 +302,15 @@ describe('AuthController', () => {
       const result = await controller.verifyTotpLogin(req, res, { tempToken: 'tmp', code: '999888' });
       expect(authService.verifyTotpLogin).toHaveBeenCalledWith('tmp', '999888', expect.any(Object));
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_token', 'acc', expect.any(Object));
+    });
+
+    it('verifyTotpLogin passes null userAgent and ipAddress when absent', async () => {
+      const tokens = { accessToken: 'acc', refreshToken: 'ref', user: { id: 'u1' } };
+      authService.verifyTotpLogin.mockResolvedValue(tokens);
+      const req = { headers: {}, cookies: {} } as ReturnType<typeof makeReq>;
+      const res = makeRes();
+      await controller.verifyTotpLogin(req, res, { tempToken: 'tmp', code: '999888' });
+      expect(authService.verifyTotpLogin).toHaveBeenCalledWith('tmp', '999888', expect.objectContaining({ userAgent: null, ipAddress: null }));
     });
   });
 

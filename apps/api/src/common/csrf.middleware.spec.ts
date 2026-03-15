@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { CsrfMiddleware, CSRF_COOKIE, CSRF_HEADER, generateCsrfToken, setCsrfCookie } from './csrf.middleware';
@@ -95,6 +95,18 @@ describe('CsrfMiddleware', () => {
         run(makeReq({ authorization: 'ApiKey sk_test_abc123' })),
       ).not.toThrow();
     });
+
+    it('treats missing authorization header as empty string (no short-circuit)', () => {
+      // req.headers has no authorization key at all → ???? '' → falls through to CSRF validation
+      const req = {
+        method: 'POST',
+        path: '/v1/monitors',
+        headers: {},
+        cookies: { [CSRF_COOKIE]: TOKEN },
+      } as unknown as Request;
+      // CSRF header is absent → should throw
+      expect(() => run(req)).toThrow(ForbiddenException);
+    });
   });
 
   // ── Token validation ──────────────────────────────────────────────────────
@@ -132,6 +144,20 @@ describe('CsrfMiddleware', () => {
       expect(() =>
         run(makeReq({ csrfCookie: TOKEN, csrfHeader: TOKEN })),
       ).not.toThrow();
+    });
+
+    it('wraps non-ForbiddenException errors from Buffer.from as CSRF validation failed', () => {
+      const origFrom = Buffer.from.bind(Buffer);
+      let callCount = 0;
+      vi.spyOn(Buffer, 'from').mockImplementation((...args: Parameters<typeof Buffer.from>) => {
+        callCount++;
+        if (callCount === 1) throw new TypeError('Buffer failed');
+        return origFrom(...args);
+      });
+      expect(() =>
+        run(makeReq({ csrfCookie: TOKEN, csrfHeader: TOKEN })),
+      ).toThrow('CSRF validation failed');
+      vi.restoreAllMocks();
     });
   });
 

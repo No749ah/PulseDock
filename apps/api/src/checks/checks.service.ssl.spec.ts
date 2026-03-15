@@ -33,6 +33,9 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     intervalSec: 60,
     timeoutMs: 5000,
     config: {},
+    alertChannelIds: [],
+    folderId: null,
+    createdAt: new Date().toISOString(),
     ...overrides,
   };
 }

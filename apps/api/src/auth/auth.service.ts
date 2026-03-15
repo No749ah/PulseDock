@@ -308,17 +308,21 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
   }
 
-  async updateProfile(userId: string, email: string, displayName?: string, timezone?: string) {
-    const normalized = email.toLowerCase();
-    const existing = await this.prisma.user.findUnique({ where: { email: normalized } });
-    if (existing && existing.id !== userId) throw new ConflictException('email already exists');
+  async updateProfile(userId: string, email?: string, displayName?: string, timezone?: string) {
+    const data: Record<string, unknown> = {};
 
-    const data: Record<string, unknown> = { email: normalized };
+    if (email !== undefined) {
+      const normalized = email.toLowerCase();
+      const existing = await this.prisma.user.findUnique({ where: { email: normalized } });
+      if (existing && existing.id !== userId) throw new ConflictException('email already exists');
+      data.email = normalized;
+    }
+
     if (displayName !== undefined) data.displayName = displayName.trim() || null;
     if (timezone !== undefined) data.timezone = timezone || 'UTC';
 
     const user = await this.prisma.user.update({ where: { id: userId }, data });
-    await this.audit.log('auth.update_profile', userId, userId, { email: normalized, displayName, timezone });
+    await this.audit.log('auth.update_profile', userId, userId, { email: data.email ?? undefined, displayName, timezone });
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', displayName: user.displayName ?? null, timezone: user.timezone ?? 'UTC' };
   }
 
@@ -540,7 +544,7 @@ export class AuthService {
     if (user.totpEnabled) throw new BadRequestException('2FA already enabled');
 
     const valid = await totpVerify({ token: code, secret: user.totpSecret });
-    if (!valid) throw new UnauthorizedException('invalid TOTP code');
+    if (!valid.valid) throw new UnauthorizedException('invalid TOTP code');
 
     const { plaintext, hashes } = this.generateRecoveryCodes();
 
@@ -563,7 +567,7 @@ export class AuthService {
     }
 
     const valid = await totpVerify({ token: code, secret: user.totpSecret });
-    if (!valid && !this.checkRecoveryCode(user.totpRecoveryCodes, code)) {
+    if (!valid.valid && !this.checkRecoveryCode(user.totpRecoveryCodes, code)) {
       throw new UnauthorizedException('invalid TOTP code');
     }
 
@@ -581,7 +585,7 @@ export class AuthService {
     if (!user || !user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA is not enabled');
 
     const valid = await totpVerify({ token: code, secret: user.totpSecret });
-    if (!valid) throw new UnauthorizedException('invalid TOTP code');
+    if (!valid.valid) throw new UnauthorizedException('invalid TOTP code');
 
     const { plaintext, hashes } = this.generateRecoveryCodes();
     await this.prisma.user.update({
@@ -642,7 +646,7 @@ export class AuthService {
 
     // Try TOTP code first
     const totpValid = await totpVerify({ token: code, secret: user.totpSecret });
-    if (!totpValid) {
+    if (!totpValid.valid) {
       // Try recovery code (single-use)
       const { matched, remainingHashes } = this.consumeRecoveryCode(user.totpRecoveryCodes, code);
       if (!matched) {

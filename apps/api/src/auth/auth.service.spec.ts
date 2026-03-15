@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 vi.mock('otplib', () => ({
   generateSecret: vi.fn().mockReturnValue('MOCK_TOTP_SECRET'),
   generate: vi.fn().mockReturnValue('123456'),
-  verify: vi.fn().mockReturnValue(true),
+  verify: vi.fn().mockResolvedValue({ valid: true }),
   generateURI: vi.fn().mockReturnValue('otpauth://totp/PulseDock:test@example.com?secret=MOCK_TOTP_SECRET&issuer=PulseDock'),
 }));
 
@@ -897,7 +897,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const prisma = makePrisma(makeUser({ totpSecret: 'MOCK_TOTP_SECRET', totpEnabled: false }));
       const svc = makeService(prisma as never);
@@ -946,7 +946,7 @@ describe('AuthService', () => {
     it('throws UnauthorizedException for invalid TOTP code and no recovery code', async () => {
       const { hashSync } = await import('bcryptjs');
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const passwordHash = hashSync('ValidPass1!Strong', 1);
       const prisma = makePrisma(makeUser({ totpEnabled: true, totpSecret: 'MOCK_TOTP_SECRET', passwordHash, totpRecoveryCodes: null }));
@@ -978,7 +978,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const prisma = makePrisma(makeUser({ totpEnabled: true, totpSecret: 'MOCK_TOTP_SECRET' }));
       const svc = makeService(prisma as never);
@@ -1005,7 +1005,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException for invalid TOTP code and no recovery code', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const jwt = makeJwt();
       jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
@@ -1030,7 +1030,7 @@ describe('AuthService', () => {
 
     it('throws UnauthorizedException when totpRecoveryCodes contains invalid JSON', async () => {
       const { verify } = await import('otplib');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const jwt = makeJwt();
       jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
@@ -1042,7 +1042,7 @@ describe('AuthService', () => {
     it('succeeds with a valid recovery code (consumes code, logs auth.2fa_recovery_code_used)', async () => {
       const { verify } = await import('otplib');
       const { hashSync } = await import('bcryptjs');
-      vi.mocked(verify).mockReturnValueOnce(false);
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
 
       const recoveryCode = 'RECOV-001';
       const hash = hashSync(recoveryCode, 10);

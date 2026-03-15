@@ -2420,4 +2420,26 @@ describe('ChecksService', () => {
       expect(config.lastHeartbeatAt).toBeDefined();
     });
   });
+
+  // ── dispatchCheck — default case ────────────────────────────────────────────
+
+  describe('runMonitor() — unknown/custom monitor type (default case)', () => {
+    it('falls back to HTTP check when monitor type is unrecognised', async () => {
+      // Use vi.stubGlobal to intercept fetch so we get a predictable result
+      const fakeFetch = mockFetch([{ ok: true, status: 200 }]);
+      vi.stubGlobal('fetch', fakeFetch);
+
+      try {
+        // Cast to `never` to bypass TypeScript enum check and exercise the `default:` branch
+        const monitor = makeMonitor({ type: 'NPM_PACKAGE' as never, target: 'https://example.com' });
+        const service = makeService();
+        const run = await service.runMonitor(monitor);
+        // Should still produce a run record (HTTP fallback)
+        expect(run).toHaveProperty('id');
+        expect(run).toHaveProperty('ok');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+  });
 });

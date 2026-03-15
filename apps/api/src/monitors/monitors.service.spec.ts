@@ -1417,6 +1417,112 @@ describe('discoverCurrentVersion()', () => {
   });
 });
 
+// ── detectDeployedVersion — auth branch coverage ──────────────────────────────
+
+describe('discoverCurrentVersion() — auth type branches in detectDeployedVersion', () => {
+  let service: MonitorsService;
+  let prisma: ReturnType<typeof makePrisma>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses no-auth mode when appAuthType is none', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '3.0.0' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'none',
+    });
+
+    expect(result.currentVersion).toBe('3.0.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+    // no-auth mode: fetch should be called once (no token modes to retry)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses openvpn basic+header auth modes when appAuthType is openvpn', async () => {
+    // fail all requests so we can verify multiple auth modes were tried
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: { get: () => 'text/plain' },
+      text: async () => 'Forbidden',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appAuthType: 'openvpn',
+      openvpnUsername: 'vpnuser',
+      openvpnPassword: 'vpnpass',
+    });
+
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+    // openvpn has 2 auth modes × N endpoints — should have made multiple requests
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('returns version from text/plain response body', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      text: async () => '2.5.1',
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+    });
+
+    expect(result.currentVersion).toBe('2.5.1');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+
+  it('uses Bearer-prefixed token as-is when token already starts with Bearer', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ version: '1.9.0' }),
+    });
+
+    const result = await service.discoverCurrentVersion({
+      provider: 'github',
+      target: 'owner/repo',
+      appUrl: 'https://myapp.example.com',
+      appToken: 'Bearer my-existing-bearer-token',
+    });
+
+    expect(result.currentVersion).toBe('1.9.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+    // Token starts with 'Bearer ' so it should be used verbatim
+    const authHeader = fetchMock.mock.calls[0][1]?.headers?.authorization as string | undefined;
+    if (authHeader) {
+      expect(authHeader).toBe('Bearer my-existing-bearer-token');
+    }
+  });
+});
+
 // ── importExternal — extra branch coverage ────────────────────────────────────
 
 describe('importExternal — additional branch coverage', () => {

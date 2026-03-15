@@ -182,6 +182,17 @@ describe('AdminController', () => {
       await controller.updateUser(req, { userId: 'user-1', isActive: true });
       expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
+
+    it('falls back to user.email when body.email is not provided', async () => {
+      const { controller, prisma } = makeController();
+      const req = { user: { id: 'admin-1' } };
+      await controller.updateUser(req, { userId: 'user-1', role: 'admin' }); // no email
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: 'alice@example.com' }), // user.email fallback
+        }),
+      );
+    });
   });
 
   // ── setStatus() ────────────────────────────────────────────────────────────
@@ -233,6 +244,12 @@ describe('AdminController', () => {
       const { controller } = makeController({ auditLogs: [] });
       const result = await controller.auditLogs();
       expect(result).toEqual([]);
+    });
+
+    it('falls back to {} when log metaJson is null', async () => {
+      const { controller } = makeController({ auditLogs: [makeAuditLog({ metaJson: null })] });
+      const result = await controller.auditLogs();
+      expect(result[0]?.meta).toEqual({});
     });
   });
 

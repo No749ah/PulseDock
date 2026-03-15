@@ -2803,3 +2803,41 @@ describe('normalizeVersion — non-parseable tag string (line 63 branch)', () =>
     expect(run.message).toMatch(/nightly|edge|stable/);
   });
 });
+
+// ── normalizeVersion — regex-extraction path (line 63) ────────────────────────
+describe('normalizeVersion — regex-extraction success (line 63 branch)', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('extracts semver from prefixed tag like "release-1.2.3" (covers parseSemver(extracted[0]) path)', async () => {
+    const service = makeService();
+    // Scenario: releases/latest → 404, then tags list returns a tag with a non-standard prefix
+    // "release-1.2.3" does NOT match SEMVER_RE directly (prefix before digits fails ^v? anchor)
+    // but the regex /v?\d+\.\d+\.\d+.../ extracts "1.2.3" and parseSemver("1.2.3") succeeds → line 63
+    globalThis.fetch = mockFetch([
+      // releases/latest → 404
+      { ok: false, status: 404 },
+      // releases → empty list
+      { ok: true, status: 200, json: () => Promise.resolve([]) },
+      // tags → tag with non-standard prefix
+      { ok: true, status: 200, json: () => Promise.resolve([
+        { name: 'release-1.2.3' },
+        { name: 'release-1.1.0' },
+      ]) },
+    ]);
+
+    const monitor = makeMonitor({ type: 'GIT_RELEASE', target: 'owner/repo' });
+    const run = await service.runMonitor(monitor);
+    // selectBestSemverTag picks "release-1.2.3" via normalizeVersion("release-1.2.3")
+    // → parseSemver fails on full string → regex extracts "1.2.3" → parseSemver("1.2.3") succeeds
+    expect(run.ok).toBe(true);
+    expect(run.message).toContain('1.2.3');
+  });
+});

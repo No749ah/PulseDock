@@ -3,8 +3,9 @@ import { httpResponseMatchPlugin } from './http-response-match.plugin';
 
 function makeContext(overrides: Record<string, unknown> = {}) {
   return {
-    monitor: { id: 'm-1', userId: 'u-1', name: 'Test', target: 'https://example.com', type: 'HTTP', intervalSec: 60, timeoutMs: 10000, enabled: true, createdAt: new Date().toISOString(), config: {}, alertChannelIds: [], folderId: null },
+    monitor: { id: 'm-1', name: 'Test', target: 'https://example.com', type: 'HTTP' as const, timeoutMs: 10000 },
     config: { expectedText: 'OK' },
+    nowIso: new Date().toISOString(),
     ...overrides,
   } as Parameters<typeof httpResponseMatchPlugin.run>[0];
 }

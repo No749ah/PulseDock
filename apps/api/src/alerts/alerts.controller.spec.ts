@@ -150,6 +150,13 @@ describe('AlertsController', () => {
         }),
       );
     });
+
+    it('returns {} config when created channel has null configJson', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const dto = { name: 'Webhook', type: 'webhook' };
+      const result = await controller.create(req as never, dto as never);
+      expect(result.config).toEqual({});
+    });
   });
 
   // ─── update() ──────────────────────────────────────────────────────────────
@@ -170,6 +177,12 @@ describe('AlertsController', () => {
     it('logs audit event on update', async () => {
       await controller.update(req as never, 'ch-1', {});
       expect(audit.log).toHaveBeenCalledWith('alert_channel.update', 'user-1', 'user-1', expect.any(Object));
+    });
+
+    it('returns {} config when updated channel has null configJson', async () => {
+      await buildModule(makeChannel({ configJson: null }));
+      const result = await controller.update(req as never, 'ch-1', {});
+      expect(result.config).toEqual({});
     });
 
     it('falls back to existing values when fields are omitted', async () => {

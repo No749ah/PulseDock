@@ -17,7 +17,10 @@ function deepFreeze<T>(value: T): T {
 }
 
 function sanitizeResult(result: PluginExecutionResult): PluginExecutionResult {
-  const message = String(result.message ?? '').slice(0, 500);
+  // null/undefined → empty string; explicitly empty string → fallback
+  const message = result.message == null
+    ? ''
+    : (String(result.message).slice(0, 500) || 'Plugin produced empty message');
   const statusCode = Number.isFinite(result.statusCode) ? Math.max(0, Math.floor(result.statusCode)) : 0;
   const latencyMs = result.latencyMs == null || !Number.isFinite(result.latencyMs)
     ? null
@@ -29,7 +32,7 @@ function sanitizeResult(result: PluginExecutionResult): PluginExecutionResult {
     ok: Boolean(result.ok),
     statusCode,
     latencyMs,
-    message: message || 'Plugin produced empty message',
+    message: message,
     level,
   };
 }

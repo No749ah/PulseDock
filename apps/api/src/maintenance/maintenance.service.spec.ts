@@ -49,7 +49,7 @@ function makePrisma(windowOverride?: ReturnType<typeof makeWindow> | null) {
       count: vi.fn().mockResolvedValue(0),
     },
     $transaction: vi.fn().mockImplementation(
-      async (fn: (tx: typeof tx) => Promise<unknown>) => fn(tx),
+      async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
     ),
     _tx: tx, // expose for assertions
   };

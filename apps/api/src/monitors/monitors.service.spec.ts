@@ -2924,3 +2924,78 @@ describe('openvpn auth with non-empty credentials (lines 699-700 branch)', () =>
     expect(headerCall).toBeDefined();
   });
 });
+
+// ── list() — alertChannelIds and tags mapping (lines 67-69) ──────────────────
+
+describe('list() — non-empty monitorAlerts and monitorTags (lines 67-69)', () => {
+  it('maps alertChannelIds from non-empty monitorAlerts array', async () => {
+    const monitor = makeMonitor({
+      monitorAlerts: [{ alertChannelId: 'ch-1' }, { alertChannelId: 'ch-2' }],
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].alertChannelIds).toEqual(['ch-1', 'ch-2']);
+  });
+
+  it('maps tags from non-empty monitorTags array', async () => {
+    const monitor = makeMonitor({
+      monitorTags: [
+        { tag: { id: 'tag-1', name: 'production', color: '#6366f1' } },
+        { tag: { id: 'tag-2', name: 'web', color: '#10b981' } },
+      ],
+    });
+    const p = makePrisma(monitor);
+    const svc = makeService(p);
+    const result = await svc.list('user-1');
+    expect(result[0].tags).toEqual([
+      { id: 'tag-1', name: 'production', color: '#6366f1' },
+      { id: 'tag-2', name: 'web', color: '#10b981' },
+    ]);
+  });
+});
+
+// ── bulkAction() — unknown action fallback (line 307) ─────────────────────────
+
+describe('bulkAction() — unknown action returns { ok: false }', () => {
+  it('returns { ok: false, affected: 0 } for unrecognised bulk action', async () => {
+    const p = makePrisma(makeMonitor());
+    const svc = makeService(p);
+    p.monitor.findMany.mockResolvedValue([makeMonitor()]);
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'export' as never);
+    expect(result).toEqual({ ok: false, affected: 0 });
+  });
+});
+
+// ── parseGitlabTarget() — plain group/project path (line 542) ────────────────
+
+describe('testVersionConnection() — gitlab plain group/project target (line 542)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ tag_name: 'v2.0.0' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('resolves plain "group/project" gitlab target without protocol prefix (covers target.includes("/") branch)', async () => {
+    const svc = makeService();
+    // target has '/' but no 'gitlab:' prefix and no http(s):// URL
+    // → parseGitlabTarget falls through to target.includes('/') branch → line 542
+    const result = await svc.testVersionConnection({ provider: 'gitlab', target: 'mygroup/myproject' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('v2.0.0');
+    // Verify the fetch URL used the correct encoded path
+    const url = fetchMock.mock.calls[0]?.[0] as string;
+    expect(url).toContain('gitlab.com');
+    expect(url).toContain('mygroup%2Fmyproject');
+  });
+});

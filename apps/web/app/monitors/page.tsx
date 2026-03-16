@@ -331,9 +331,25 @@ export default function MonitorsPage() {
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
       if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
+        if (f.requestHeaders?.trim()) {
+          try {
+            const parsed: Record<string, string> = {};
+            for (const line of f.requestHeaders.split("\n")) {
+              const idx = line.indexOf(":");
+              if (idx > 0) {
+                const key = line.slice(0, idx).trim();
+                const val = line.slice(idx + 1).trim();
+                if (key) parsed[key] = val;
+              }
+            }
+            if (Object.keys(parsed).length > 0) config.requestHeaders = parsed;
+          } catch { /* skip invalid */ }
+        }
+        if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       }
 
       await api("/v1/monitors", user?.id, {
@@ -377,9 +393,25 @@ export default function MonitorsPage() {
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
       if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
+        if (f.requestHeaders?.trim()) {
+          try {
+            const parsed: Record<string, string> = {};
+            for (const line of f.requestHeaders.split("\n")) {
+              const idx = line.indexOf(":");
+              if (idx > 0) {
+                const key = line.slice(0, idx).trim();
+                const val = line.slice(idx + 1).trim();
+                if (key) parsed[key] = val;
+              }
+            }
+            if (Object.keys(parsed).length > 0) config.requestHeaders = parsed;
+          } catch { /* skip invalid */ }
+        }
+        if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       }
 
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
@@ -936,7 +968,12 @@ export default function MonitorsPage() {
                                     heartbeatToken: String(monitor.config?.token ?? ""),
                                     expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
                                     bodyContains: String(monitor.config?.bodyContains ?? ""),
-                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string });
+                                    httpMethod: String(monitor.config?.httpMethod ?? "GET"),
+                                    requestHeaders: monitor.config?.requestHeaders
+                                      ? Object.entries(monitor.config.requestHeaders as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("\n")
+                                      : "",
+                                    requestBody: String(monitor.config?.requestBody ?? ""),
+                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -1231,9 +1268,53 @@ export default function MonitorsPage() {
             </>
           )}
 
-          {/* HTTP-specific: body keyword + expected status */}
+          {/* HTTP-specific: method, headers, body keyword, expected status */}
           {formData.type === "HTTP" && (
             <>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  HTTP Method
+                </label>
+                <select
+                  value={(formData as unknown as { httpMethod?: string }).httpMethod ?? "GET"}
+                  onChange={(e) => setFormData({ ...formData, httpMethod: e.target.value } as typeof formData & { httpMethod?: string })}
+                  className={inputClass}
+                >
+                  {["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Request Headers <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={(formData as unknown as { requestHeaders?: string }).requestHeaders ?? ""}
+                  onChange={(e) => setFormData({ ...formData, requestHeaders: e.target.value } as typeof formData & { requestHeaders?: string })}
+                  className={`${inputClass} font-mono text-xs resize-y`}
+                  placeholder={"Authorization: Bearer <token>\nX-API-Key: your-key"}
+                  spellCheck={false}
+                />
+                <p className="mt-1 text-xs text-text-secondary">One header per line: <code className="bg-surface-2 px-1 rounded">Name: Value</code>. Added to every request.</p>
+              </div>
+              {["POST", "PUT", "PATCH"].includes((formData as unknown as { httpMethod?: string }).httpMethod ?? "GET") && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Request Body <span className="text-xs text-text-muted">(optional)</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={(formData as unknown as { requestBody?: string }).requestBody ?? ""}
+                    onChange={(e) => setFormData({ ...formData, requestBody: e.target.value } as typeof formData & { requestBody?: string })}
+                    className={`${inputClass} font-mono text-xs resize-y`}
+                    placeholder={'{"key": "value"}'}
+                    spellCheck={false}
+                  />
+                  <p className="mt-1 text-xs text-text-secondary">Raw request body sent with POST/PUT/PATCH requests. Add <code className="bg-surface-2 px-1 rounded">Content-Type</code> header above if needed.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
                   Expected status code <span className="text-xs text-text-muted">(optional)</span>

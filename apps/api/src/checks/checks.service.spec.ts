@@ -414,6 +414,101 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — HTTP config: httpMethod + requestHeaders + requestBody ──
+
+  describe('runMonitor() — HTTP httpMethod + requestHeaders + requestBody config', () => {
+    it('sends POST method when httpMethod is POST', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'POST' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('sends custom request headers when requestHeaders is provided', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { requestHeaders: { 'Authorization': 'Bearer token123', 'X-API-Key': 'mykey' } } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Authorization': 'Bearer token123', 'X-API-Key': 'mykey' }),
+        }),
+      );
+    });
+
+    it('sends request body for POST when requestBody is provided', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'POST', requestBody: '{"ping":true}' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'POST', body: '{"ping":true}' }),
+      );
+    });
+
+    it('falls back to GET for unrecognized httpMethod values', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'INVALID_METHOD' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('ignores requestHeaders that are not objects', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { requestHeaders: 'not-an-object' } }),
+      );
+      expect(run.ok).toBe(true);
+      // Should still succeed, just with empty headers
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ headers: {} }),
+      );
+    });
+
+    it('does not send body for GET even if requestBody is set', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'GET', requestBody: 'should-be-ignored' } }),
+      );
+      expect(run.ok).toBe(true);
+      const callArgs = fetchSpy.mock.calls[0][1] as RequestInit;
+      expect(callArgs.body).toBeUndefined();
+    });
+  });
+
   // ── runMonitor() — GIT_RELEASE (GitHub) ───────────────────────────────────
 
   describe('runMonitor() — GIT_RELEASE type (GitHub)', () => {

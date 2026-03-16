@@ -395,6 +395,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v0.9.0
-- **This heartbeat (2026-03-16 22:02 UTC):** Monitor picker added to Maintenance Windows and Incidents modals. Create and Edit modals in both pages now show a scrollable checklist of monitors — API already supported monitorIds, UI was the gap. Monitors column in Maintenance Windows table now shows '—' instead of '0' badge. Clean build, all pages 200.
+- **This heartbeat (2026-03-16 23:02 UTC):** Monitor detail page action buttons added. Run Now + Enable/Disable toggle now available inline on the detail page. Previously the page was fully read-only — users had to go back to the monitors list to take any action. Clean build, all 8 pages 200, public URL healthy.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** All major backlog items complete. Ready to consider next project when Noah approves.

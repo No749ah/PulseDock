@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Monitor detail — Run Now + Enable/Disable actions** — Monitor detail page was previously read-only. Added two action buttons in the header: "Run Now" (triggers an immediate check via `POST /v1/monitors/run`, auto-refreshes run history after 2.5s, disabled while monitor is paused) and "Enable/Disable" toggle (PATCH /v1/monitors/:id, color-coded warning/success). Toast notification on success (3s auto-dismiss), inline error display on failure.
 - **Monitor picker in Maintenance Windows + Incidents modals** — Create and Edit modals in both Maintenance Windows and Incidents pages now include a scrollable multi-select checklist of monitors. Selecting monitors sends `monitorIds` to the API (which already supported it — this closes the UI gap). Maintenance Windows table now shows "—" instead of "0" badge when no monitors are associated.
 - **Per-page document titles** — All 12 dashboard routes now have unique browser tab titles (e.g. "Dashboard — PulseDock", "Monitors — PulseDock") via Next.js layout.tsx metadata. Improves multi-tab workflows and browser history.
 - **Monitor detail — HTTP/SSL/TCP config panel** — Monitor detail page now shows a type-specific configuration card: HTTP monitors display method, expected status codes, response time threshold, confirmations, body assertion, request body, and custom headers; SSL monitors show host and warning threshold; TCP monitors show host and port. Run history expanded from 20 to 50 entries.

@@ -18,11 +18,12 @@ function getScore(password: string): number {
 }
 
 const LEVELS = [
-  { label: "Too weak", color: "bg-danger" },
-  { label: "Weak", color: "bg-danger" },
-  { label: "Fair", color: "bg-warning" },
-  { label: "Good", color: "bg-success/70" },
-  { label: "Strong", color: "bg-success" },
+  { label: "Too weak", color: "bg-danger" },   // 0
+  { label: "Weak", color: "bg-danger" },        // 1
+  { label: "Fair", color: "bg-warning" },       // 2
+  { label: "Good", color: "bg-success/70" },    // 3
+  { label: "Strong", color: "bg-success/80" },  // 4
+  { label: "Strong", color: "bg-success" },     // 5 — all rules passed
 ];
 
 interface Props {
@@ -59,7 +60,7 @@ export function PasswordStrength({ password, className = "" }: Props) {
               ? "text-danger font-medium"
               : score === 2
                 ? "text-warning font-medium"
-                : score === 3
+                : score <= 3
                   ? "text-success/70 font-medium"
                   : "text-success font-medium"
           }

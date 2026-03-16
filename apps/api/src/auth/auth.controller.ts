@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
 import { Throttle } from '@nestjs/throttler';
-import { AcceptInviteDto, ChangePasswordDto, DisableTotpDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, UpdateProfileDto, VerifyCodeDto, VerifyEmailDto, VerifyTotpDto } from './auth.dto';
+import { AcceptInviteDto, ChangePasswordDto, DisableTotpDto, InviteInfoDto, LoginDto, RefreshDto, RegisterDto, RequestResetDto, ResendVerificationDto, ResetPasswordDto, RevokeSessionDto, SetupDto, UpdateProfileDto, VerifyCodeDto, VerifyEmailDto, VerifyTotpDto } from './auth.dto';
 import { generateCsrfToken, setCsrfCookie } from '../common/csrf.middleware';
+import { PrismaService } from '../common/prisma.service';
+import { hashSync } from 'bcryptjs';
 
 interface ExpressResponse {
   cookie(name: string, value: string, options: object): this;
@@ -40,7 +42,51 @@ function clearAuthCookies(res: ExpressResponse) {
 @ApiTags('Auth')
 @Controller('v1/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @Get('setup-status')
+  @ApiOperation({ summary: 'Check if initial setup is needed' })
+  @ApiResponse({ status: 200, description: '{ needsSetup: boolean }' })
+  async setupStatus() {
+    const count = await this.prisma.user.count();
+    return { needsSetup: count === 0 };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('setup')
+  @ApiOperation({ summary: 'Create first admin user — only if no users exist' })
+  @ApiResponse({ status: 201, description: 'Admin created and token returned' })
+  @ApiResponse({ status: 403, description: 'Setup already completed' })
+  async setup(
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Res({ passthrough: true }) res: ExpressResponse,
+    @Body() body: SetupDto,
+  ) {
+    const count = await this.prisma.user.count();
+    if (count > 0) throw new ForbiddenException('Setup already completed');
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: body.email.toLowerCase(),
+        passwordHash: hashSync(body.password, 10),
+        role: 'admin',
+        isActive: true,
+        mustChangePassword: false,
+        emailVerified: true,
+      },
+    });
+
+    // Log the user in immediately (same flow as login endpoint)
+    const result = await this.authService.login(body.email, body.password, {
+      userAgent: req.headers['user-agent'] ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    setAuthCookies(res, result.accessToken, result.refreshToken);
+    return { ...result, user: { id: user.id, email: user.email, role: user.role, mustChangePassword: false } };
+  }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')

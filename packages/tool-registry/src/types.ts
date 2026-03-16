@@ -10,7 +10,8 @@ export type VersionSourceType =
   | 'apt-release'
   | 'json-path'
   | 'html-scrape'
-  | 'custom-endpoint';
+  | 'custom-endpoint'
+  | 'pulsedock-agent';
 
 export type ToolCategory =
   | 'Container'
@@ -41,6 +42,10 @@ export interface VersionSource {
   jsonPath?: string;
   /** Whether auth is required to call this endpoint */
   authRequired?: boolean;
+  /** For pulsedock-agent type: shell command to get version */
+  agentCommand?: string;
+  /** For pulsedock-agent type: human-readable install instructions */
+  agentNote?: string;
 }
 
 export interface ToolRegistryEntry {
@@ -57,6 +62,8 @@ export interface ToolRegistryEntry {
   /** How to get the LATEST (upstream) version */
   latestSource: VersionSource;
   docsUrl?: string;
+  /** How to install the agent for this tool */
+  agentInstallHint?: string;
   /** Suggested check interval in seconds */
   checkInterval: number;
   /** Whether instance URL is required (self-hosted tools) */

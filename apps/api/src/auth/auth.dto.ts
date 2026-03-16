@@ -140,3 +140,14 @@ export class VerifyCodeDto {
   @MaxLength(64)
   code!: string;
 }
+
+export class SetupDto {
+  @IsEmail()
+  @MaxLength(255)
+  email!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(256)
+  password!: string;
+}

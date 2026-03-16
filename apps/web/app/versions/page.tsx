@@ -381,12 +381,14 @@ export default function VersionsPage() {
     setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
     if (ls.target) setTarget(ls.target);
 
-    // If it requires an instance URL, pre-fill app URL hint
+    // If it requires an instance URL, clear appUrl so user must enter their own instance
     if (tool.requiresInstanceUrl) {
-      setAppUrl(tool.homepage);
+      setAppUrl(''); // user must enter their own instance URL
       if (tool.versionSource.urlTemplate) {
         setAppVersionEndpoint(tool.versionSource.urlTemplate.replace('{{instanceUrl}}', '').replace(/^\//, ''));
       }
+    } else {
+      setAppUrl('');
     }
 
     // Advance past the picker to step 0
@@ -510,6 +512,7 @@ export default function VersionsPage() {
   }
   if (createStep === 1) {
     if (sourceStatus !== 'ok') missing.push('Please run Source check successfully.');
+    if (selectedTool?.requiresInstanceUrl && !appUrl.trim()) missing.push(`Enter your ${selectedTool.name} instance URL.`);
     if (appUrl && appStatus !== 'ok' && !currentVersion.trim()) missing.push('App version could not be detected. Add token/custom endpoint or set current version manually.');
   }
   if (createStep === 2 && !currentVersion.trim()) {
@@ -645,7 +648,18 @@ export default function VersionsPage() {
 
             {createStep === 0 && (
               <div className="space-y-4">
-                <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
+                {selectedTool ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+                    <img src={selectedTool.icon} alt={selectedTool.name} className="w-8 h-8 shrink-0 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-primary">{selectedTool.name}</p>
+                      <p className="text-xs text-text-secondary truncate">{selectedTool.description}</p>
+                    </div>
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-secondary shrink-0">{selectedTool.category}</span>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
                   <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
@@ -679,7 +693,17 @@ export default function VersionsPage() {
 
             {createStep === 1 && (
               <div className="space-y-4">
-                <p className="font-semibold text-text-primary">Step 2/4 · Connection</p>
+                {selectedTool ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+                    <img src={selectedTool.icon} alt={selectedTool.name} className="w-8 h-8 shrink-0 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-primary">{selectedTool.name}</p>
+                      <p className="text-xs text-text-secondary truncate">{selectedTool.description}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-text-primary">Step 2/4 · Connection</p>
+                )}
                 {provider === 'gitlab' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">GitLab host</label>
@@ -687,8 +711,20 @@ export default function VersionsPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Application URL (deployed app)</label>
-                  <input className={inputClass} value={appUrl} onChange={(e) => { setAppUrl(e.target.value); setAppStatus('unknown'); setCurrentVersionLocked(false); setAppDetectedFrom(''); setAppTriedEndpoints([]); }} placeholder="https://app.example.com" />
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    {selectedTool?.requiresInstanceUrl
+                      ? <>{selectedTool.name} instance URL <span className="text-danger">*</span></>
+                      : 'Application URL (optional — enables deployed version detection)'}
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={appUrl}
+                    onChange={(e) => { setAppUrl(e.target.value); setAppStatus('unknown'); setCurrentVersionLocked(false); setAppDetectedFrom(''); setAppTriedEndpoints([]); }}
+                    placeholder={selectedTool?.requiresInstanceUrl ? `https://your-${selectedTool.name.toLowerCase().replace(/\s+/g, '-')}.example.com` : 'https://app.example.com'}
+                  />
+                  {selectedTool?.requiresInstanceUrl && !appUrl && (
+                    <p className="mt-1 text-xs text-danger">Enter the URL where your {selectedTool.name} instance is running.</p>
+                  )}
                 </div>
                 {appUrl && (
                   <Select label="Application auth" value={appAuthType} onChange={(v) => setAppAuthType((v as 'none' | 'token' | 'openvpn') || 'token')} options={authOptions} />

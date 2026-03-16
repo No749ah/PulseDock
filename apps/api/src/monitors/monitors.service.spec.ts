@@ -3016,3 +3016,57 @@ describe('importExternal — CSV with non-string payload (JSON.stringify branch)
     // No crash — the branch was taken successfully
   });
 });
+
+// ── monitors.service branch coverage: parseCsv + importExternal gaps ─────────
+
+describe('parseCsv — pausedIdx branch: pausedIdx >= 0 but col value undefined', () => {
+  it('falls back to empty string when paused column exists but row has fewer cols', async () => {
+    // CSV has 3 columns but the row omits the 3rd (paused) — cols[pausedIdx] is undefined → ?? ''
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    // Row has only url col — name and paused cols exist in header but not in row data
+    const csv = 'url,name,paused\nhttps://short-row.com';
+    const result = await svc.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    // paused was undefined → '' → enabled=true (not in disabled list)
+    expect(prisma.monitor.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('importExternal — skipped duplicate increments skipped counter', () => {
+  it('skips monitors that already exist (duplicate URL), increments skipped count', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    // First call: findFirst returns existing (duplicate); second call: returns null (new)
+    prisma.monitor.findFirst
+      .mockResolvedValueOnce(makeMonitor({ target: 'https://dup.com' })) // duplicate
+      .mockResolvedValueOnce(null); // new
+    prisma.monitor.create.mockResolvedValue(makeMonitor());
+
+    const csv = 'url\nhttps://dup.com\nhttps://new.com';
+    const result = await svc.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    expect(result.skipped).toBe(1);
+  });
+});
+
+describe('importExternal — non-Error thrown (String(err) branch, line 1133)', () => {
+  it('handles non-Error throws in create() with String(err) fallback', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    // Throw a non-Error (string) to hit the String(err) branch
+    prisma.monitor.create.mockRejectedValue('something-went-wrong');
+
+    const csv = 'url\nhttps://throw-string.com';
+    const result = await svc.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]?.error).toBe('something-went-wrong');
+  });
+});

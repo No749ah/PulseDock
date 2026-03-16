@@ -211,4 +211,35 @@ describe('IncidentsService', () => {
       );
     });
   });
+
+  // ── Branch coverage: update() description null branch (line 135) ─────────
+  describe('update() — description null branch', () => {
+    it('sets description to null when description is passed as null', async () => {
+      // dto.description !== undefined → true (null !== undefined)
+      // dto.description?.trim() → undefined (null?.trim() === undefined)
+      // ?? null → null (hits the null fallback branch)
+      await service.update('user-1', 'inc-1', { description: null as unknown as string });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      // The spread should include description: null
+      expect(call.data).toHaveProperty('description', null);
+    });
+  });
+
+  // ── Branch coverage: addUpdate() resolvedAt=undefined branch (line 175) ──
+  describe('addUpdate() — already RESOLVED stays RESOLVED', () => {
+    it('passes resolvedAt=undefined when status stays RESOLVED (keeps existing resolvedAt)', async () => {
+      // Incident is already RESOLVED, and new update status is also RESOLVED
+      // → neither branch matches, resolvedAt should be undefined (not spread into data)
+      const resolvedAt = new Date();
+      prisma.incident.findFirst = vi.fn().mockResolvedValue({
+        ...mockIncident,
+        status: IncidentStatus.RESOLVED,
+        resolvedAt,
+      });
+      await service.addUpdate('user-1', 'inc-1', { body: 'Still resolved', status: IncidentStatus.RESOLVED });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      // resolvedAt should be undefined (not null, not a new Date)
+      expect(call.data.resolvedAt).toBeUndefined();
+    });
+  });
 });

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap } from "lucide-react";
+import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings } from "lucide-react";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
@@ -348,6 +348,141 @@ export default function MonitorDetailPage() {
           </div>
         </FadeIn>
 
+        {/* HTTP Configuration card */}
+        {monitor.type === "HTTP" && monitor.config && (
+          <FadeIn delay={0.14}>
+            <Card className="p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                HTTP Configuration
+              </h2>
+              {(() => {
+                const cfg = monitor.config as Record<string, unknown>;
+                const method = typeof cfg.method === "string" ? cfg.method : null;
+                const expectedStatus = cfg.expectedStatus;
+                const responseTimeMs = typeof cfg.responseTimeThresholdMs === "number" ? cfg.responseTimeThresholdMs : null;
+                const confirmations = typeof cfg.confirmations === "number" ? cfg.confirmations : null;
+                const bodyContains = typeof cfg.bodyContains === "string" ? cfg.bodyContains : null;
+                const requestBody = typeof cfg.requestBody === "string" ? cfg.requestBody : null;
+                const requestHeaders = cfg.requestHeaders && typeof cfg.requestHeaders === "object" ? cfg.requestHeaders as Record<string, string> : null;
+                return (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                      {method && method !== "GET" && (
+                        <div>
+                          <span className="text-xs text-text-secondary block mb-0.5">Method</span>
+                          <span className="font-mono font-medium text-accent">{method}</span>
+                        </div>
+                      )}
+                      {expectedStatus != null && (
+                        <div>
+                          <span className="text-xs text-text-secondary block mb-0.5">Expected Status</span>
+                          <span className="font-mono text-text-primary">
+                            {Array.isArray(expectedStatus) ? (expectedStatus as number[]).join(", ") : String(expectedStatus)}
+                          </span>
+                        </div>
+                      )}
+                      {responseTimeMs != null && (
+                        <div>
+                          <span className="text-xs text-text-secondary block mb-0.5">Slow Threshold</span>
+                          <span className="font-mono text-warning">{responseTimeMs}ms</span>
+                        </div>
+                      )}
+                      {confirmations != null && confirmations > 1 && (
+                        <div>
+                          <span className="text-xs text-text-secondary block mb-0.5">Confirmations</span>
+                          <span className="font-mono text-text-primary">{confirmations} checks</span>
+                        </div>
+                      )}
+                    </div>
+                    {bodyContains && (
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-1">Body Must Contain</span>
+                        <code className="text-xs bg-surface-elevated rounded px-2 py-1 text-text-primary block font-mono">
+                          {bodyContains}
+                        </code>
+                      </div>
+                    )}
+                    {requestBody && (
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-1">Request Body</span>
+                        <code className="text-xs bg-surface-elevated rounded px-2 py-1 text-text-primary block font-mono break-all">
+                          {requestBody}
+                        </code>
+                      </div>
+                    )}
+                    {requestHeaders && Object.keys(requestHeaders).length > 0 && (
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-1">Request Headers</span>
+                        <div className="space-y-1">
+                          {Object.entries(requestHeaders).map(([k, v]) => (
+                            <div key={k} className="flex gap-2 text-xs font-mono bg-surface-elevated rounded px-2 py-1">
+                              <span className="text-accent">{k}:</span>
+                              <span className="text-text-primary truncate">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </Card>
+          </FadeIn>
+        )}
+
+        {/* SSL Certificate config */}
+        {monitor.type === "SSL_CERT" && (
+          <FadeIn delay={0.14}>
+            <Card className="p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                SSL Configuration
+              </h2>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                  <span className="font-mono text-text-primary">{monitor.target}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Warning Threshold</span>
+                  <span className="font-mono text-warning">
+                    {monitor.config && typeof (monitor.config as Record<string, unknown>).warnDays === "number"
+                      ? `${String((monitor.config as Record<string, unknown>).warnDays)} days`
+                      : "30 days"}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </FadeIn>
+        )}
+
+        {/* TCP port config */}
+        {monitor.type === "TCP" && (
+          <FadeIn delay={0.14}>
+            <Card className="p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                TCP Configuration
+              </h2>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                  <span className="font-mono text-text-primary">
+                    {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                  <span className="font-mono text-accent">
+                    {monitor.target.includes(":") ? monitor.target.split(":").pop() : "—"}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </FadeIn>
+        )}
+
         {/* Heartbeat info card */}
         {monitor.type === "HEARTBEAT" && (
           <FadeIn delay={0.14}>
@@ -391,7 +526,7 @@ export default function MonitorDetailPage() {
           <Card className="p-0">
             <div className="px-4 py-3 border-b border-border">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                Last 20 Runs
+                Last 50 Runs
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -411,7 +546,7 @@ export default function MonitorDetailPage() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {runs.slice(0, 20).map((run) => (
+                    {runs.slice(0, 50).map((run) => (
                       <TableRow key={run.id}>
                         <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                           {relativeTime(run.checkedAt)}

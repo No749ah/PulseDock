@@ -333,9 +333,9 @@ _(pick the highest priority unchecked item below and start immediately)_
 ## Status Summary
 - **Codebase:** 1237 tests passing (1227 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working (webpack bundler fix applied)
-- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com — **BLOCKED: SSH key missing + Postgres/Redis down on dind (gateway restart wiped key)**
+- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com — **BLOCKED: SSH key not registered on GitHub + Postgres/Redis down on dind**
 - **Production Readiness:** ~99% — All security gaps closed, full accessibility, incident management, SVG status badges, public status page builder, tool registry (382 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
-- **Version:** v0.7.0
+- **Version:** v0.8.0 (bumped locally, pending push)
 - **This heartbeat:** Recovery alerts fix, WS authentication security fix (BOLA), CSRF exemption fix for email verification, dashboard N+1 query eliminated, monitors search + status filter added.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain); SSH key restoration + dind restart needed to push/deploy
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

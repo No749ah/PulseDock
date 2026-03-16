@@ -330,6 +330,11 @@ export default function MonitorsPage() {
         config.token = token;
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
+      if (formData.type === "HTTP") {
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string };
+        if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
+        if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+      }
 
       await api("/v1/monitors", user?.id, {
         method: "POST",
@@ -370,6 +375,11 @@ export default function MonitorsPage() {
       if (formData.type === "HEARTBEAT") {
         config.token = formData.heartbeatToken;
         config.timeoutMin = formData.heartbeatTimeoutMin;
+      }
+      if (formData.type === "HTTP") {
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string };
+        if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
+        if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       }
 
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
@@ -924,7 +934,9 @@ export default function MonitorsPage() {
                                     expectedText: String(monitor.config?.expectedText ?? ""),
                                     heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
                                     heartbeatToken: String(monitor.config?.token ?? ""),
-                                  });
+                                    expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
+                                    bodyContains: String(monitor.config?.bodyContains ?? ""),
+                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -1215,6 +1227,46 @@ export default function MonitorsPage() {
                   </Button>
                 </div>
                 <p className="mt-1 text-xs text-text-secondary">Call this URL with POST from your cron job or app to mark it healthy.</p>
+              </div>
+            </>
+          )}
+
+          {/* HTTP-specific: body keyword + expected status */}
+          {formData.type === "HTTP" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Expected status code <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="100"
+                  max="599"
+                  value={(formData as unknown as { expectedStatus?: number }).expectedStatus ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    setFormData({ ...formData, expectedStatus: val } as typeof formData & { expectedStatus?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="Default: any 2xx"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Leave blank to accept any 2xx response. Set to 200, 201, etc. to require an exact status.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Body must contain <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { bodyContains?: string }).bodyContains ?? ""}
+                  onChange={(e) => {
+                    setFormData({ ...formData, bodyContains: e.target.value } as typeof formData & { bodyContains?: string });
+                  }}
+                  className={inputClass}
+                  placeholder='e.g. "ok" or "status\":\"healthy"'
+                  maxLength={500}
+                />
+                <p className="mt-1 text-xs text-text-secondary">If set, the response body must contain this string (case-insensitive). Leave blank to skip body check.</p>
               </div>
             </>
           )}

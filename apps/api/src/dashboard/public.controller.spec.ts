@@ -274,3 +274,29 @@ describe('PublicDashboardController', () => {
     expect(event).toHaveProperty('level', 'green');
   });
 });
+
+// ── Incident level escalation from yellow → red (line 103) ───────────────────
+
+describe('overview() — incident escalation: yellow start, then red (line 103)', () => {
+  it('escalates ongoing incident from yellow to red when a red run follows the initial yellow', async () => {
+    const prisma = makePrisma();
+    const controller = new PublicDashboardController(prisma);
+
+    // Runs in newest-first order:
+    // yellow (newest — starts the ongoing incident, incidentLevel='yellow')
+    // red   (older  — incidentStart already set, lvl==='red' → incidentLevel='red' ← LINE 103)
+    const runs = [
+      makeRun('m1', 'yellow', 1000),
+      makeRun('m1', 'red', 2000),
+    ];
+    (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'u1', email: 'a@b.c' });
+    (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([makeMonitor('m1', 'Mon1')]);
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(runs);
+
+    const result = await controller.overview('u1');
+
+    expect(result.incidents).toHaveLength(1);
+    expect(result.incidents[0].resolvedAt).toBeNull();
+    expect(result.incidents[0].level).toBe('red');
+  });
+});

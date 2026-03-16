@@ -396,3 +396,30 @@ describe('AuthController', () => {
     });
   });
 });
+
+// ── refresh() — null userAgent / ipAddress fallback branches (lines 85-86) ──
+
+describe('refresh() — null context fallbacks', () => {
+  it('passes null userAgent and null ipAddress when headers and ip are missing', async () => {
+    const authService = makeAuthService();
+    const controller = new AuthController(authService as never);
+    const tokens = { accessToken: 'acc2', refreshToken: 'ref2', user: { id: 'u1' } };
+    authService.refresh.mockResolvedValue(tokens);
+
+    // req has no user-agent header and no ip
+    const req = {
+      headers: {},
+      ip: undefined,
+      cookies: { pulsedock_refresh: 'cookie-token' },
+      user: { id: 'user-1', email: 'a@b.com', role: 'user' },
+    };
+    const res = makeRes();
+
+    await controller.refresh(req as never, res as never, { refreshToken: '' } as never);
+
+    expect(authService.refresh).toHaveBeenCalledWith(
+      'cookie-token',
+      expect.objectContaining({ userAgent: null, ipAddress: null }),
+    );
+  });
+});

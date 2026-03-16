@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Tool registry: 164 → 302 tools** — Added 138 new tools across all 17 existing categories. New additions cover Container runtime (containerd, CRI-O, KEDA, Flagger, MicroK8s, Talos, Crossplane, Cluster API), CI/CD (Argo Workflows, Dagger, Earthly, Buildkite Agent, Spinnaker, ARC, GitLab Runner, Argo Events), Database (CouchDB, Neo4j, ArangoDB, ScyllaDB, YugabyteDB, TiDB, FerretDB, EdgeDB, QuestDB, Dragonfly, Couchbase, RethinkDB), Observability (Kibana, Logstash, Fluentd, Fluent Bit, SigNoz, OpenObserve, Pyroscope, Coroot, Quickwit, OpenSearch Dashboards), Security (OPA, Kyverno, Boundary, Consul, External Secrets, Grype, Syft, Semgrep, Infisical, OpenBao, Checkov, SOPS), Networking (Cilium, Headscale, cloudflared, ZeroTier, OpenVPN, Netmaker, FRP, Unbound, CoreDNS, Technitium DNS, ingress-nginx), Storage (OpenEBS, Velero, Restic, Kopia, BorgBackup, Duplicati, SeaweedFS, JuiceFS, Ceph), CMS (KeystoneJS, Craft CMS, ProcessWire, Microweber, Cockpit CMS, Decap CMS), Communication (Jitsi Meet, BigBlueButton, LiveKit, ejabberd, Prosody, Mumble, Coturn, Gotify, ntfy), Media (Kavita, Komga, Calibre-Web, Audiobookshelf, Sonarr, Radarr, Lidarr, Prowlarr, Overseerr, Tautulli, Bazarr), Dev Tools (Deno, Bun, DevPod, Act, Hoppscotch, Gitness, Plane, AppFlowy, Excalidraw, draw.io, Mermaid, Outline, BookStack, Wiki.js, NocoDB, Baserow), Infrastructure (Vagrant, Waypoint, CDKTF, Serverless Framework, AWS CDK, Atlantis, Infracost), Messaging (Apache Pulsar, RocketMQ, NSQ, EMQX, HiveMQ, Apache NiFi), API (KrakenD, Gravitee, SuperTokens, Logto, Zitadel, Casdoor), Cloud (k3d, kind, Minikube, kubeadm). Registry is now at 84% of the 500+ launch target.
+
 ---
 
 ## [0.6.0] — 2026-03-15

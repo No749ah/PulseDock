@@ -855,10 +855,33 @@ export class ChecksService {
   }
 
   async runMonitor(monitor: Monitor): Promise<MonitorRun> {
-    const prev = await this.prisma.monitorRun.findFirst({
-      where: { monitorId: monitor.id },
-      orderBy: { checkedAt: 'desc' },
-    });
+    // Confirmations: fetch last N runs to check for consecutive failures.
+    // Test mocks may only implement findFirst(), so gracefully fall back.
+    const confirmations = Math.max(1, Math.min(10, monitor.confirmations ?? 1));
+    const monitorRunModel = this.prisma.monitorRun as unknown as {
+      findMany?: (args: {
+        where: { monitorId: string };
+        orderBy: { checkedAt: 'desc' };
+        take: number;
+      }) => Promise<Array<{ level: string }>>;
+    };
+
+    let recentRuns: Array<{ level: string }> = [];
+    if (typeof monitorRunModel.findMany === 'function') {
+      recentRuns = await monitorRunModel.findMany({
+        where: { monitorId: monitor.id },
+        orderBy: { checkedAt: 'desc' },
+        take: confirmations,
+      });
+    } else {
+      const prevRun = await this.prisma.monitorRun.findFirst({
+        where: { monitorId: monitor.id },
+        orderBy: { checkedAt: 'desc' },
+      });
+      recentRuns = prevRun ? [{ level: prevRun.level }] : [];
+    }
+
+    const prev = recentRuns[0] ?? null;
 
     const pluginResult = await this.runPluginMonitor(monitor);
     const result = pluginResult ?? await this.dispatchCheck(monitor);
@@ -891,7 +914,23 @@ export class ChecksService {
     const wasUnhealthy = prev && (prev.level === 'red' || prev.level === 'yellow');
     const isRecovery = run.level === 'green' && wasUnhealthy && levelChanged;
 
-    if ((run.level === 'red' || run.level === 'yellow') && levelChanged) {
+    // Confirmations check: only alert on failure if we have `confirmations` consecutive failures.
+    // For confirmations=1 (default), alert immediately (existing behaviour).
+    // For confirmations=N, all of the last N-1 stored runs plus this new run must be unhealthy.
+    const isCurrentUnhealthy = run.level === 'red' || run.level === 'yellow';
+    let previousUnhealthyStreak = 0;
+    for (const r of recentRuns) {
+      if (r.level === 'red' || r.level === 'yellow') {
+        previousUnhealthyStreak += 1;
+      } else {
+        break;
+      }
+    }
+    const consecutiveFailures = isCurrentUnhealthy ? 1 + previousUnhealthyStreak : 0;
+    const crossedFailureThreshold = previousUnhealthyStreak < confirmations && consecutiveFailures >= confirmations;
+    const shouldAlertFailure = isCurrentUnhealthy && crossedFailureThreshold;
+
+    if (shouldAlertFailure) {
       await this.alerts.notifyMonitorFailure(monitor, run);
     } else if (isRecovery) {
       await this.alerts.notifyMonitorFailure(monitor, run);

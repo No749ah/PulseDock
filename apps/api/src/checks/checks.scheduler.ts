@@ -48,6 +48,7 @@ export class ChecksScheduler {
           target: monitor.target,
           intervalSec: monitor.intervalSec,
           timeoutMs: monitor.timeoutMs,
+          confirmations: monitor.confirmations,
           config: (monitor.configJson as Record<string, unknown> | null) ?? {},
           alertChannelIds: [],
           folderId: monitor.folderId,

@@ -87,6 +87,7 @@ model Monitor {
   target        String
   intervalSec   Int         @default(60)
   timeoutMs     Int         @default(5000)
+  confirmations Int         @default(1)
   enabled       Boolean     @default(true)
   configJson    Json?
   createdAt     DateTime    @default(now())

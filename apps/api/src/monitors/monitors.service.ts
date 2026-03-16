@@ -63,6 +63,7 @@ export class MonitorsService {
       target: m.target,
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
+      confirmations: m.confirmations,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       folderId: m.folderId,
@@ -78,6 +79,7 @@ export class MonitorsService {
     type: MonitorType;
     intervalSec?: number;
     timeoutMs?: number;
+    confirmations?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -100,6 +102,7 @@ export class MonitorsService {
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
+        confirmations: Math.max(1, Math.min(10, body.confirmations ?? 1)),
         configJson: config as Prisma.InputJsonValue,
         folderId: body.folderId ?? null,
         monitorAlerts: {
@@ -132,6 +135,7 @@ export class MonitorsService {
       target: created.target,
       intervalSec: created.intervalSec,
       timeoutMs: created.timeoutMs,
+      confirmations: created.confirmations,
       config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}, created.type as MonitorType),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
@@ -150,6 +154,7 @@ export class MonitorsService {
     type?: MonitorType;
     intervalSec?: number;
     timeoutMs?: number;
+    confirmations?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -179,6 +184,7 @@ export class MonitorsService {
         type: body.type ?? current.type,
         intervalSec: body.intervalSec ?? current.intervalSec,
         timeoutMs: body.timeoutMs ?? current.timeoutMs,
+        confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
         configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,
@@ -223,6 +229,7 @@ export class MonitorsService {
         target: m.target,
         intervalSec: m.intervalSec,
         timeoutMs: m.timeoutMs,
+        confirmations: m.confirmations,
         config: m.config,
         enabled: m.enabled,
       })),
@@ -235,6 +242,7 @@ export class MonitorsService {
     type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
     intervalSec?: number;
     timeoutMs?: number;
+    confirmations?: number;
     config?: Record<string, unknown>;
     enabled?: boolean;
   }>) {
@@ -251,6 +259,7 @@ export class MonitorsService {
           type: item.type,
           intervalSec: item.intervalSec,
           timeoutMs: item.timeoutMs,
+          confirmations: item.confirmations,
           config: item.config,
         });
         if (item.enabled === false) {
@@ -366,6 +375,7 @@ export class MonitorsService {
       target: monitor.target,
       intervalSec: monitor.intervalSec,
       timeoutMs: monitor.timeoutMs,
+      confirmations: monitor.confirmations,
       config: (monitor.configJson as Record<string, unknown> | null) ?? {},
       alertChannelIds: [],
       folderId: monitor.folderId,

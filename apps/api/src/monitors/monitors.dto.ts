@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUrl, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 import { SanitizeHtml } from '../common/sanitize';
 
 export class CreateMonitorDto {
@@ -23,6 +23,12 @@ export class CreateMonitorDto {
   @IsInt()
   @Min(100)
   timeoutMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
 
   @IsOptional()
   @IsObject()
@@ -67,6 +73,12 @@ export class UpdateMonitorDto {
   @IsInt()
   @Min(100)
   timeoutMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
 
   @IsOptional()
   @IsObject()
@@ -136,6 +148,12 @@ export class ImportMonitorItemDto {
   @IsInt()
   @Min(100)
   timeoutMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
 
   @IsOptional()
   @IsObject()

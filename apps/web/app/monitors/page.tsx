@@ -40,6 +40,7 @@ interface MonitorItem {
   type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
+  confirmations: number;
   enabled: boolean;
   createdAt: string;
   config?: Record<string, unknown>;
@@ -119,6 +120,7 @@ export default function MonitorsPage() {
     type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
     target: string;
     intervalSec: number;
+    confirmations: number;
     enabled: boolean;
     pluginId: string;
     expectedText: string;
@@ -129,6 +131,7 @@ export default function MonitorsPage() {
     type: "HTTP",
     target: "",
     intervalSec: 60,
+    confirmations: 1,
     enabled: true,
     pluginId: "",
     expectedText: "",
@@ -301,6 +304,8 @@ export default function MonitorsPage() {
 
     if (formData.intervalSec < 30) errors.interval = "Minimum interval is 30 seconds";
     if (formData.intervalSec > 3600) errors.interval = "Maximum interval is 3600 seconds (1 hour)";
+    if (formData.confirmations < 1) errors.confirmations = "Minimum is 1 confirmation";
+    if (formData.confirmations > 10) errors.confirmations = "Maximum is 10 confirmations";
     if (formData.type === "HEARTBEAT" && (formData.heartbeatTimeoutMin < 1 || formData.heartbeatTimeoutMin > 1440)) {
       errors.heartbeatTimeoutMin = "Heartbeat timeout must be between 1 and 1440 minutes";
     }
@@ -310,7 +315,7 @@ export default function MonitorsPage() {
     }
 
     setFormErrors(errors);
-    setFormTouched({ name: true, target: true, interval: true, expectedText: true, heartbeatTimeoutMin: true });
+    setFormTouched({ name: true, target: true, interval: true, confirmations: true, expectedText: true, heartbeatTimeoutMin: true });
     return Object.keys(errors).length === 0;
   };
 
@@ -333,13 +338,14 @@ export default function MonitorsPage() {
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
+          confirmations: formData.confirmations,
           enabled: formData.enabled,
           config,
           tags: selectedTags,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -373,6 +379,7 @@ export default function MonitorsPage() {
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
+          confirmations: formData.confirmations,
           enabled: formData.enabled,
           config,
           tags: selectedTags,
@@ -451,6 +458,7 @@ export default function MonitorsPage() {
       type: t.type,
       target: t.target,
       intervalSec: t.intervalSec,
+      confirmations: 1,
       enabled: true,
       pluginId: t.pluginId ?? "",
       expectedText: t.expectedText ?? "",
@@ -634,7 +642,7 @@ export default function MonitorsPage() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -758,7 +766,7 @@ export default function MonitorsPage() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -910,6 +918,7 @@ export default function MonitorsPage() {
                                     type: monitor.type,
                                     target: monitor.target,
                                     intervalSec: monitor.intervalSec,
+                                    confirmations: monitor.confirmations ?? 1,
                                     enabled: monitor.enabled,
                                     pluginId: String(monitor.config?.pluginId ?? ""),
                                     expectedText: String(monitor.config?.expectedText ?? ""),
@@ -1232,6 +1241,31 @@ export default function MonitorsPage() {
               <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
             ) : (
               <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={formData.confirmations}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setFormData({ ...formData, confirmations: val });
+                if (formTouched.confirmations) setFormErrors((prev) => ({ ...prev, confirmations: val < 1 ? "Min 1" : val > 10 ? "Max 10" : "" }));
+              }}
+              onBlur={() => setFormTouched((t) => ({ ...t, confirmations: true }))}
+              className={`${inputClass} ${formTouched.confirmations && formErrors.confirmations ? "border-danger focus:ring-danger" : ""}`}
+              aria-invalid={formTouched.confirmations && !!formErrors.confirmations}
+            />
+            {formTouched.confirmations && formErrors.confirmations ? (
+              <p role="alert" className="mt-1 text-xs text-danger">{formErrors.confirmations}</p>
+            ) : (
+              <p className="mt-1 text-xs text-text-secondary">How many consecutive failures before sending an alert (1-10).</p>
             )}
           </div>
 

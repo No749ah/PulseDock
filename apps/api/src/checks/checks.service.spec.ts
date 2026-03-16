@@ -17,6 +17,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     folderId: null,
     createdAt: new Date().toISOString(),
     timeoutMs: 5000,
+    confirmations: 1,
     config: {},
     ...overrides,
   };
@@ -39,11 +40,14 @@ function makeRun(overrides: Record<string, unknown> = {}) {
 
 function makePrisma(opts: {
   previousRun?: ReturnType<typeof makeRun> | null;
+  recentRuns?: Array<{ level: string }>;
 } = {}) {
   const previousRun = opts.previousRun !== undefined ? opts.previousRun : null;
+  const recentRuns = opts.recentRuns;
   return {
     monitorRun: {
       findFirst: vi.fn().mockResolvedValue(previousRun),
+      findMany: vi.fn().mockResolvedValue(recentRuns ?? (previousRun ? [{ level: String(previousRun.level) }] : [])),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({
           id: 'run-new',
@@ -178,6 +182,50 @@ describe('ChecksService', () => {
 
       await service.runMonitor(makeMonitor({ type: 'HTTP' }));
       expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
+    it('respects confirmations: does not alert on first failure when confirmations=2', async () => {
+      const prisma = makePrisma({ recentRuns: [{ level: 'green' }] });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP', confirmations: 2 }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
+    it('respects confirmations: alerts when consecutive failures reach threshold', async () => {
+      const prisma = makePrisma({ recentRuns: [{ level: 'red' }] });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP', confirmations: 2 }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+    });
+
+    it('respects confirmations: does not re-alert after threshold already crossed', async () => {
+      const prisma = makePrisma({ recentRuns: [{ level: 'red' }, { level: 'red' }] });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP', confirmations: 2 }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
+    it('still alerts immediately when confirmations=1 (default)', async () => {
+      const prisma = makePrisma({ recentRuns: [{ level: 'green' }] });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP', confirmations: 1 }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
     });
 
     it('notifies recovery alert when monitor recovers from red to green', async () => {

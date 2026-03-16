@@ -17,6 +17,12 @@ import { useToast } from '../../components/ui/toast';
 type IncidentStatus = 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
 type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+type MonitorOption = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 type IncidentUpdate = {
   id: string;
   body: string;
@@ -84,6 +90,53 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
+// ─── Monitor Picker ──────────────────────────────────────────────────────────
+
+function MonitorPicker({
+  monitors,
+  selectedIds,
+  onChange,
+}: {
+  monitors: MonitorOption[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-text-primary mb-1">
+        Affected monitors <span className="text-text-secondary/60">(optional)</span>
+      </label>
+      {monitors.length === 0 ? (
+        <p className="text-xs text-text-secondary italic">No monitors yet</p>
+      ) : (
+        <div className="max-h-48 overflow-y-auto space-y-0.5 border border-border rounded-lg p-2">
+          {monitors.map((m) => (
+            <label
+              key={m.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-elevated cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                className="accent-accent flex-shrink-0"
+                checked={selectedIds.includes(m.id)}
+                onChange={(e) => {
+                  onChange(
+                    e.target.checked
+                      ? [...selectedIds, m.id]
+                      : selectedIds.filter((id) => id !== m.id),
+                  );
+                }}
+              />
+              <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+              <span className="text-xs text-text-secondary flex-shrink-0">{m.type.replace('_', ' ')}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function IncidentsPage() {
@@ -91,6 +144,7 @@ export default function IncidentsPage() {
   const { success, error: toastError } = useToast();
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [monitors, setMonitors] = useState<MonitorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -101,6 +155,7 @@ export default function IncidentsPage() {
     description: '',
     severity: 'MEDIUM' as IncidentSeverity,
   });
+  const [createMonitorIds, setCreateMonitorIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
   // Edit modal
@@ -111,6 +166,7 @@ export default function IncidentsPage() {
     status: 'INVESTIGATING' as IncidentStatus,
     severity: 'MEDIUM' as IncidentSeverity,
   });
+  const [editMonitorIds, setEditMonitorIds] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<Incident | null>(null);
 
@@ -136,7 +192,12 @@ export default function IncidentsPage() {
   async function load() {
     setLoading(true);
     try {
-      setIncidents(await api<Incident[]>('/v1/incidents'));
+      const [incidentsData, monitorsData] = await Promise.all([
+        api<Incident[]>('/v1/incidents'),
+        api<MonitorOption[]>('/v1/monitors'),
+      ]);
+      setIncidents(incidentsData);
+      setMonitors(monitorsData);
     } catch {
       toastError('Failed to load incidents');
     } finally {
@@ -158,11 +219,13 @@ export default function IncidentsPage() {
           title: createForm.title.trim(),
           description: createForm.description.trim() || undefined,
           severity: createForm.severity,
+          monitorIds: createMonitorIds.length > 0 ? createMonitorIds : undefined,
         }),
       });
       success('Incident created');
       setCreateOpen(false);
       setCreateForm({ title: '', description: '', severity: 'MEDIUM' });
+      setCreateMonitorIds([]);
       load();
     } catch {
       toastError('Failed to create incident');
@@ -180,6 +243,7 @@ export default function IncidentsPage() {
       status: incident.status,
       severity: incident.severity,
     });
+    setEditMonitorIds(incident.monitors.map((m) => m.monitor.id));
     setEditOpen(true);
   }
 
@@ -195,6 +259,7 @@ export default function IncidentsPage() {
           description: editForm.description.trim() || undefined,
           status: editForm.status,
           severity: editForm.severity,
+          monitorIds: editMonitorIds,
         }),
       });
       success('Incident updated');
@@ -321,6 +386,11 @@ export default function IncidentsPage() {
                   <option value="CRITICAL">Critical</option>
                 </select>
               </div>
+              <MonitorPicker
+                monitors={monitors}
+                selectedIds={createMonitorIds}
+                onChange={setCreateMonitorIds}
+              />
             </div>
           </Modal>
 
@@ -384,6 +454,11 @@ export default function IncidentsPage() {
                   </select>
                 </div>
               </div>
+              <MonitorPicker
+                monitors={monitors}
+                selectedIds={editMonitorIds}
+                onChange={setEditMonitorIds}
+              />
             </div>
           </Modal>
 

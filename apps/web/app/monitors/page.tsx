@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
@@ -43,6 +44,7 @@ interface MonitorItem {
   confirmations: number;
   enabled: boolean;
   createdAt: string;
+  folderId?: string | null;
   config?: Record<string, unknown>;
   tags?: MonitorTag[];
 }
@@ -94,8 +96,9 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
   email: "text-yellow-400",
 };
 
-export default function MonitorsPage() {
+function MonitorsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: toastError } = useToast();
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [monitors, setMonitors] = useState<MonitorItem[]>([]);
@@ -103,7 +106,9 @@ export default function MonitorsPage() {
   const [allChannels, setAllChannels] = useState<AlertChannel[]>([]);
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [allTags, setAllTags] = useState<TagItem[]>([]);
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [loading, setLoading] = useState(true);
@@ -126,6 +131,7 @@ export default function MonitorsPage() {
     expectedText: string;
     heartbeatTimeoutMin: number;
     heartbeatToken: string;
+    folderId: string;
   }>({
     name: "",
     type: "HTTP",
@@ -137,6 +143,7 @@ export default function MonitorsPage() {
     expectedText: "",
     heartbeatTimeoutMin: 5,
     heartbeatToken: "",
+    folderId: "",
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -182,18 +189,24 @@ export default function MonitorsPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData, tagsData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
           api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
           api<TagItem[]>("/v1/tags", userId),
+          api<{ id: string; name: string }[]>("/v1/folders", userId),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
         setAllChannels(channelsData);
         setPlugins(pluginsData);
         setAllTags(tagsData);
+        setFolders(foldersData);
+        const folderParam = searchParams.get("folder");
+        if (folderParam) {
+          setFolderFilter(folderParam);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitors");
       } finally {
@@ -364,10 +377,11 @@ export default function MonitorsPage() {
           enabled: formData.enabled,
           config,
           tags: selectedTags,
+          folderId: formData.folderId || null,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -427,6 +441,7 @@ export default function MonitorsPage() {
           enabled: formData.enabled,
           config,
           tags: selectedTags,
+          folderId: formData.folderId || null,
         }),
       });
       setShowModal(false);
@@ -508,6 +523,7 @@ export default function MonitorsPage() {
       expectedText: t.expectedText ?? "",
       heartbeatTimeoutMin: 5,
       heartbeatToken: "",
+      folderId: "",
     });
     setShowTemplates(false);
   };
@@ -596,6 +612,7 @@ export default function MonitorsPage() {
     if (activeTagFilter && !m.tags?.some((t) => t.name === activeTagFilter)) return false;
     if (statusFilter === "enabled" && !m.enabled) return false;
     if (statusFilter === "disabled" && m.enabled) return false;
+    if (folderFilter && m.folderId !== folderFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
@@ -686,7 +703,7 @@ export default function MonitorsPage() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -736,6 +753,19 @@ export default function MonitorsPage() {
                 </button>
               ))}
             </div>
+            {folders.length > 0 && (
+              <select
+                value={folderFilter ?? ""}
+                onChange={(e) => setFolderFilter(e.target.value || null)}
+                className="px-3 py-2 bg-surface-elevated border border-border rounded-lg text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                aria-label="Filter by project"
+              >
+                <option value="">All Projects</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         </FadeIn>
 
@@ -810,7 +840,7 @@ export default function MonitorsPage() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "" });
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -828,7 +858,7 @@ export default function MonitorsPage() {
                   <p className="text-text-secondary text-sm mb-4">
                     Try adjusting your search or filters
                   </p>
-                  <Button variant="secondary" size="sm" onClick={() => { setActiveTagFilter(null); setSearchQuery(""); setStatusFilter("all"); }}>
+                  <Button variant="secondary" size="sm" onClick={() => { setActiveTagFilter(null); setSearchQuery(""); setStatusFilter("all"); setFolderFilter(null); }}>
                     Clear filters
                   </Button>
                 </>
@@ -901,6 +931,11 @@ export default function MonitorsPage() {
                           </TableCell>
                           <TableCell className="font-medium text-text-primary">
                             <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
+                            {monitor.folderId && (
+                              <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded mr-1">
+                                {folders.find((f) => f.id === monitor.folderId)?.name}
+                              </span>
+                            )}
                             {monitor.tags && monitor.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-0.5">
                                 {monitor.tags.slice(0, 3).map((tag) => (
@@ -968,6 +1003,7 @@ export default function MonitorsPage() {
                                     expectedText: String(monitor.config?.expectedText ?? ""),
                                     heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
                                     heartbeatToken: String(monitor.config?.token ?? ""),
+                                    folderId: monitor.folderId ?? "",
                                     expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
                                     bodyContains: String(monitor.config?.bodyContains ?? ""),
                                     httpMethod: String(monitor.config?.httpMethod ?? "GET"),
@@ -1485,6 +1521,22 @@ export default function MonitorsPage() {
             )}
           </div>
 
+          {folders.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Project</label>
+              <select
+                value={formData.folderId}
+                onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}
+                className={inputClass}
+              >
+                <option value="">(No project)</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <label className="flex items-center gap-3 py-1">
             <input
               type="checkbox"
@@ -1833,5 +1885,19 @@ export default function MonitorsPage() {
         </div>
       )}
     </AppFrame>
+  );
+}
+
+export default function MonitorsPage() {
+  return (
+    <Suspense fallback={
+      <AppFrame title="Monitors">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    }>
+      <MonitorsPageInner />
+    </Suspense>
   );
 }

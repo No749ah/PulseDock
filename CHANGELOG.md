@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **HTTP response time threshold alerting** — HTTP monitors now support `responseTimeThresholdMs` config option. When set, checks that succeed but take longer than the threshold are marked **yellow (degraded)** instead of green, triggering degraded alerts. UI: new "Response time threshold (ms)" field in the HTTP section of the create/edit modal. Works with all existing HTTP config options (bodyContains, expectedStatus, custom method/headers). 5 new tests.
 - **HTTP custom method, headers, and request body** — HTTP monitors now support `httpMethod` (GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS), `requestHeaders` (custom headers map, e.g. Authorization, X-API-Key), and `requestBody` (for POST/PUT/PATCH). Enables monitoring auth-protected APIs and POST-based health endpoints. UI: method dropdown, headers textarea (one per line: `Name: Value`), body textarea (shown for POST/PUT/PATCH). 6 new tests.
 - **HTTP body keyword + expected status assertions** — HTTP monitors now support two new optional config fields: `bodyContains` (response body must contain string, case-insensitive) and `expectedStatus` (require specific HTTP status code or array of codes, e.g. 201 or [200, 201]). Useful for monitoring JSON health APIs without the plugin system. 8 new unit tests.
 

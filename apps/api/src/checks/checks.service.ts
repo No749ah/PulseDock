@@ -154,19 +154,79 @@ export class ChecksService {
     })[0] ?? null;
   }
 
-  private async runHttpCheck(url: string, timeoutMs = 5000) {
+  private async runHttpCheck(
+    url: string,
+    timeoutMs = 5000,
+    config: Record<string, unknown> = {},
+  ) {
     const started = Date.now();
+
+    // Config options:
+    //   expectedStatus: number | number[]  — expected HTTP status code(s) (default: any 2xx)
+    //   bodyContains: string               — response body must contain this string (case-insensitive)
+    const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
+    const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
+    const needsBody = !!bodyContains;
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
+      const latencyMs = Date.now() - started;
+
+      // Determine if status is acceptable
+      let statusOk: boolean;
+      if (expectedStatus !== undefined) {
+        const allowed = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
+        statusOk = allowed.includes(response.status);
+      } else {
+        statusOk = response.ok; // default: 2xx
+      }
+
+      if (!statusOk) {
+        // Drain body to avoid connection leak
+        await response.text().catch(() => undefined);
+        const expected = expectedStatus ? ` (expected ${Array.isArray(expectedStatus) ? expectedStatus.join('/') : expectedStatus})` : '';
+        return {
+          ok: false,
+          statusCode: response.status,
+          latencyMs,
+          message: `HTTP ${response.status}${expected}`,
+          level: 'red' as const,
+        };
+      }
+
+      // Check body keyword if requested
+      if (needsBody) {
+        const body = await response.text().catch(() => '');
+        const found = body.toLowerCase().includes(bodyContains!.toLowerCase());
+        if (!found) {
+          return {
+            ok: false,
+            statusCode: response.status,
+            latencyMs,
+            message: `HTTP ${response.status} — body does not contain "${bodyContains}"`,
+            level: 'red' as const,
+          };
+        }
+        return {
+          ok: true,
+          statusCode: response.status,
+          latencyMs,
+          message: `OK — body contains "${bodyContains}"`,
+          level: 'green' as const,
+        };
+      }
+
+      // Drain body
+      await response.text().catch(() => undefined);
       return {
-        ok: response.ok,
+        ok: true,
         statusCode: response.status,
-        latencyMs: Date.now() - started,
-        message: response.ok ? 'OK' : `HTTP ${response.status}`,
-        level: response.ok ? 'green' : 'red' as const,
+        latencyMs,
+        message: 'OK',
+        level: 'green' as const,
       };
     } catch (error) {
       return {
@@ -782,7 +842,7 @@ export class ChecksService {
   private async dispatchCheck(monitor: Monitor) {
     switch (monitor.type) {
       case 'HTTP':
-        return this.runHttpCheck(monitor.target, monitor.timeoutMs);
+        return this.runHttpCheck(monitor.target, monitor.timeoutMs, monitor.config);
       case 'GIT_RELEASE':
         return this.runGitReleaseCheck(monitor.target, monitor.config);
       case 'DOCKER_IMAGE':

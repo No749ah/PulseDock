@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **HTTP body keyword + expected status assertions** — HTTP monitors now support two new optional config fields: `bodyContains` (response body must contain string, case-insensitive) and `expectedStatus` (require specific HTTP status code or array of codes, e.g. 201 or [200, 201]). Useful for monitoring JSON health APIs without the plugin system. 8 new unit tests.
+
 ---
 
 ## [0.9.0] — 2026-03-16

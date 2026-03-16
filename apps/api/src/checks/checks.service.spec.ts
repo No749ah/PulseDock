@@ -321,6 +321,99 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — HTTP config: bodyContains + expectedStatus ─────────────
+
+  describe('runMonitor() — HTTP bodyContains + expectedStatus config', () => {
+    it('returns green when body contains the expected string', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"ok","version":"1.0"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyContains: '"status":"ok"' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+      expect(run.message).toContain('"status":"ok"');
+    });
+
+    it('returns red when body does NOT contain the expected string', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"degraded"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyContains: '"status":"ok"' } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('does not contain');
+    });
+
+    it('body check is case-insensitive', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => 'HEALTHY' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyContains: 'healthy' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns green when status matches expectedStatus', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: false, status: 201, text: () => '' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { expectedStatus: 201 } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns red when status does not match expectedStatus', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { expectedStatus: 201 } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('201');
+    });
+
+    it('accepts array of expected status codes', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: false, status: 301, text: () => '' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { expectedStatus: [200, 301, 302] } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns red when status not in expectedStatus array', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: false, status: 500, text: () => '' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { expectedStatus: [200, 201] } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+    });
+
+    it('skips body check when bodyContains is not set', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => 'irrelevant body' }]);
+
+      const run = await service.runMonitor(makeMonitor({ type: 'HTTP', config: {} }));
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+  });
+
   // ── runMonitor() — GIT_RELEASE (GitHub) ───────────────────────────────────
 
   describe('runMonitor() — GIT_RELEASE type (GitHub)', () => {

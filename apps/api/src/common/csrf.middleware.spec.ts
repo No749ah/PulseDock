@@ -59,6 +59,8 @@ describe('CsrfMiddleware', () => {
       '/v1/auth/accept-invite',
       '/v1/auth/request-password-reset',
       '/v1/auth/reset-password',
+      '/v1/auth/verify-email',
+      '/v1/auth/resend-verification',
       '/v1/auth/logout',
       '/health',
       '/metrics',

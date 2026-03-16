@@ -330,9 +330,46 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 5: DevOps & Docs** — Docker (dev+prod), GitHub Actions CI/CD, README/CHANGELOG/CONTRIBUTING
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
-## Next Up — Post Tool-Registry (implement in order after 1000+ tools are done)
+## Next Up — In Progress / Todo
 
-> **WAIT:** Do not start these until the tool registry expansion to 1000+ tools is confirmed complete and pushed.
+### 🔴 PulseDock Agent (HIGH PRIORITY)
+
+- [ ] **PulseDock Agent — local version reporter with copy-paste onboarding** — Lightweight agent (Docker container + binary) that runs locally and reports versions of tools without external APIs (pfSense, Unraid, OpenWRT, VyOS, local DBs, etc.).
+
+  **Backend:**
+  - `POST /v1/agent/report` — API key auth, CSRF exempt, updates monitor's `configJson.currentVersion` + creates MonitorRun
+  - `GET /v1/agent/status` — list recent agent reports for user's monitors
+  - New `pulsedock-agent` versionSource type in registry with `agentCommand` + `agentNote` fields
+  - `packages/agent/` Node.js package with built-in shell checks for 20+ tools (Proxmox, pfSense, Unraid, OpenWRT, VyOS, nginx, MySQL, PostgreSQL, etc.)
+
+  **Frontend — Agent Setup UI (KEY FEATURE):**
+  - When a tool with `versionSource.type === 'pulsedock-agent'` is selected, show a "Setup Agent" card instead of the normal URL field
+  - Tab switcher: **Docker Compose** / **Docker Run** / **Shell Script**
+  - Each tab has a pre-filled, copy-ready snippet with the user's actual API key + PulseDock URL injected
+  - CopyButton component on each snippet
+  - Example compose snippet:
+    ```yaml
+    services:
+      pulsedock-agent:
+        image: pulsedock/agent:latest
+        environment:
+          PULSEDOCK_URL: https://your-pulsedock.example.com
+          PULSEDOCK_API_KEY: your-api-key-here
+          AGENT_TOOL_ID: proxmox-ve
+          AGENT_MONITOR_ID: monitor-id-here
+        restart: unless-stopped
+    ```
+  - "I've started the agent →" button that polls `/v1/agent/status` until first report, then advances to next step
+  - Monitor list shows "⏳ Waiting for agent…" badge if no reports yet
+  - Monitor detail page shows same agent setup card if no reports received
+
+  **Docs:** `docs/AGENT.md` — quick start, config format, built-in checks, security, custom checks
+
+---
+
+## Next Up — Post Tool-Registry
+
+> **WAIT:** Do not start these until the tool registry expansion and Agent feature are done.
 
 ### 🟠 UX / Flow Improvements (from 2026-03-16 session)
 

@@ -10,11 +10,18 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Monitor search + status filter** — Monitors page now has a real-time search bar (filter by name or target URL) and a segmented status control (All / Enabled / Disabled). Filters compose with existing tag filters via AND logic. Empty state contextually shows "Clear filters" when active.
 - **Incident management** — Full incident tracking lifecycle: create/edit/delete incidents with title, description, severity (LOW/MEDIUM/HIGH/CRITICAL) and status (INVESTIGATING/IDENTIFIED/MONITORING/RESOLVED). Timeline updates per incident with status transitions. Link affected monitors to incidents. Frontend `/incidents` page with expandable rows, active/resolved sections, and all CRUD modals. Nav entry added.
 - **SVG status badges** — `GET /v1/public/badge/:monitorId.svg` — shields.io-style embeddable badges showing live monitor status (up/degraded/down/paused). Supports `flat`, `flat-square`, and `for-the-badge` styles, custom label override, 60s cache headers. Monitors page now shows an embed button (Shield icon) per row with Markdown/HTML/URL copy snippets.
 - **Tool registry expansion: 302 → 382 tools** — Added 80 additional pre-configured entries spanning email/collaboration (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), infrastructure/networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), database/admin tooling (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), and self-hosted app ecosystem additions (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud, Jellyseerr, Readarr, JupyterHub, Gitpod, Hono, Clair).
 
+### Fixed
+- **Recovery alerts never sent** — `notifyMonitorFailure()` was previously only invoked on red/yellow level changes. Monitors recovering from red or yellow to green now correctly dispatch recovery alerts through all configured channels. The `notifyOnRecovery` notification preference was already implemented but never exercised.
+- **WebSocket BOLA vulnerability** — `RealtimeGateway` previously trusted a client-supplied `userId` string from the handshake query/auth. Any client knowing another user's ID could subscribe to their monitor event stream. Gateway now validates the JWT access token (from `pulsedock_token` cookie or `auth.token`) and derives the identity from the verified payload only. Cross-user subscription attempts return `{ ok: false, error: 'forbidden' }`.
+- **CSRF exemption gap** — `POST /v1/auth/verify-email` and `POST /v1/auth/resend-verification` were not in the CSRF exempt list. Since both are unauthenticated (no session cookie exists when the user clicks an email link), they would 403 in a fresh browser session.
+
 ### Improved
+- **Dashboard N+1 query eliminated** — `GET /v1/dashboard/overview` previously loaded all monitor runs without a limit. Changed to use Prisma `include: { runs: { take: 1 } }` to get latest run per monitor in a single query. Activity feed now capped at `take: 20` at the DB level instead of slicing in application code.
 - **Registry quality pass** — Normalized added entries to existing category taxonomy and removed duplicate IDs, keeping tool lookup deterministic.
 
 ---

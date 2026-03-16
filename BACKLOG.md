@@ -340,9 +340,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 - [ ] **Versions page — Tool picker instance URL UX** — When a self-hosted tool is selected (requiresInstanceUrl=true), the instance URL field is now required with better label/placeholder. But: the form still advances to step 1 (source check) even if instanceUrl is empty for non-required tools. Review full step-flow to ensure all tool types have coherent field visibility. Some tools in registry may have wrong `requiresInstanceUrl` value — audit top 50 most common tools.
 
-- [ ] **Status Pages — Create modal slug edge cases** — Slug fallback for very short/emoji-only titles now uses timestamp. But: if user manually enters a slug < 3 chars, no warning is shown. Add inline validation on the slug input field with MinLength(3) hint before submit.
+- [x] **Status Pages — Create modal slug edge cases** — Added inline validation: red border + error text when slug < 3 chars is manually entered. Submit button disabled until valid.
 
-- [ ] **Alert channels modal — Tab focus trap** — Fixed in Modal.tsx and modal-framework.tsx. Verify the specific alert channel creation modal uses one of these components and isn't a custom inline modal. If it's a custom modal, apply the same focus-trap fix there too.
+- [x] **Alert channels modal — Tab focus trap** — Confirmed: alerts page uses `Modal` component which has proper Tab/Shift+Tab focus trap since previous session. No custom modal found.
+
+- [x] **Versions page — Tool header in form** — Steps 0 and 1 now show tool icon + name + description banner when tool is selected from registry.
 
 ### 🟡 Features (from 2026-03-16 session)
 
@@ -351,10 +353,10 @@ _(pick the highest priority unchecked item below and start immediately)_
   2. Show a clear "Your {ToolName} URL" input as step 0 (before source check)
   3. Auto-populate `appVersionEndpoint` from `versionSource.urlTemplate` (strip `{{instanceUrl}}`)
   4. Lock the `target` field to the registry value (not editable)
-  5. Show the tool's icon + description in the form header
+  5. Show the tool's icon + description in the form header ✅ (done this session)
   Currently: instance URL clears to empty but the UX around it is still confusing.
 
-- [ ] **Monitors page — Templates for self-hosted app uptime** — The current templates (HTTP Health Check, GitHub Release, Docker Image) don't include pre-built uptime monitors for popular self-hosted apps. Add templates that use the tool registry: Portainer health, Gitea health, GitLab health, etc. — pre-fill URL with placeholder, user only needs to enter their instance URL. Should mirror the tool registry selection UX.
+- [x] **Monitors page — Templates for self-hosted app uptime** — Added 19 self-hosted app templates (Portainer, Gitea, GitLab, Grafana, Nextcloud, ArgoCD, Vault, Mattermost, Jellyfin, Immich, n8n, Traefik, MinIO, Keycloak, Home Assistant, Prometheus, Authentik, Authelia, Plausible). Tab UI: General / Self-Hosted Apps / Version Tracking. Placeholder URL hint shown for self-hosted group.
 
 ### 🔵 Infrastructure
 
@@ -370,6 +372,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com — **BLOCKED: SSH key not registered on GitHub + Postgres/Redis down on dind**
 - **Production Readiness:** ~99% — All security gaps closed, full accessibility, incident management, SVG status badges, public status page builder, tool registry (382 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
 - **Version:** v0.8.0 (bumped locally, pending push)
-- **This heartbeat:** Recovery alerts fix, WS authentication security fix (BOLA), CSRF exemption fix for email verification, dashboard N+1 query eliminated, monitors search + status filter added.
+- **This heartbeat (2026-03-16 noon):** Monitor templates for 19 self-hosted apps, slug validation in status pages modal, tool icon/description header in versions create flow, build fix (--webpack flag), registry fixes (TrueNAS/pfSense/OpenWrt/Proxmox requiresInstanceUrl corrections).
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain); SSH key restoration + dind restart needed to push/deploy
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

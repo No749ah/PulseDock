@@ -10,6 +10,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Incident management** — Full incident tracking lifecycle: create/edit/delete incidents with title, description, severity (LOW/MEDIUM/HIGH/CRITICAL) and status (INVESTIGATING/IDENTIFIED/MONITORING/RESOLVED). Timeline updates per incident with status transitions. Link affected monitors to incidents. Frontend `/incidents` page with expandable rows, active/resolved sections, and all CRUD modals. Nav entry added.
+- **SVG status badges** — `GET /v1/public/badge/:monitorId.svg` — shields.io-style embeddable badges showing live monitor status (up/degraded/down/paused). Supports `flat`, `flat-square`, and `for-the-badge` styles, custom label override, 60s cache headers. Monitors page now shows an embed button (Shield icon) per row with Markdown/HTML/URL copy snippets.
 - **Tool registry expansion: 302 → 382 tools** — Added 80 additional pre-configured entries spanning email/collaboration (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), infrastructure/networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), database/admin tooling (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), and self-hosted app ecosystem additions (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud, Jellyseerr, Readarr, JupyterHub, Gitpod, Hono, Clair).
 
 ### Improved

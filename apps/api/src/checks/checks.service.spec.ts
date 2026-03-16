@@ -509,6 +509,81 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — HTTP config: responseTimeThresholdMs ───────────────────
+
+  describe('runMonitor() — HTTP responseTimeThresholdMs config', () => {
+    it('returns green when latency is below threshold', async () => {
+      const service = makeService();
+      // Fake a fast response by making Date.now advance by 100ms
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 1100); // 100ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 500 } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns yellow (degraded) when latency exceeds threshold', async () => {
+      const service = makeService();
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 4000); // 3000ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 2000 } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toMatch(/exceeds threshold/);
+      expect(run.message).toMatch(/2000ms/);
+    });
+
+    it('returns yellow when latency exceeds threshold and bodyContains matches', async () => {
+      const service = makeService();
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 4000); // 3000ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"ok"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 1000, bodyContains: 'ok' } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toMatch(/exceeds threshold/);
+    });
+
+    it('ignores responseTimeThresholdMs of 0', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 0 } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('ignores non-numeric responseTimeThresholdMs', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 'fast' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+  });
+
   // ── runMonitor() — GIT_RELEASE (GitHub) ───────────────────────────────────
 
   describe('runMonitor() — GIT_RELEASE type (GitHub)', () => {

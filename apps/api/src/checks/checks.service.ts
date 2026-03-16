@@ -167,8 +167,13 @@ export class ChecksService {
     //   httpMethod: string                 — HTTP method to use (default: GET)
     //   requestHeaders: Record<string,string> — custom request headers to send
     //   requestBody: string                — request body for POST/PUT/PATCH
+    //   responseTimeThresholdMs: number    — if response latency exceeds this, return yellow (degraded)
     const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
     const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
+    const responseTimeThresholdMs =
+      typeof config['responseTimeThresholdMs'] === 'number' && config['responseTimeThresholdMs'] > 0
+        ? config['responseTimeThresholdMs']
+        : undefined;
     const needsBody = !!bodyContains;
     const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
     const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
@@ -232,6 +237,16 @@ export class ChecksService {
             level: 'red' as const,
           };
         }
+        // Check response time threshold even when body keyword matches
+        if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+          return {
+            ok: false,
+            statusCode: response.status,
+            latencyMs,
+            message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), body contains "${bodyContains}"`,
+            level: 'yellow' as const,
+          };
+        }
         return {
           ok: true,
           statusCode: response.status,
@@ -243,6 +258,18 @@ export class ChecksService {
 
       // Drain body
       await response.text().catch(() => undefined);
+
+      // Check response time threshold
+      if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+        return {
+          ok: false,
+          statusCode: response.status,
+          latencyMs,
+          message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms)`,
+          level: 'yellow' as const,
+        };
+      }
+
       return {
         ok: true,
         statusCode: response.status,

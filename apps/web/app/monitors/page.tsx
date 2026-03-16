@@ -331,7 +331,7 @@ export default function MonitorsPage() {
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
       if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
@@ -350,6 +350,7 @@ export default function MonitorsPage() {
           } catch { /* skip invalid */ }
         }
         if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
+        if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
       }
 
       await api("/v1/monitors", user?.id, {
@@ -393,7 +394,7 @@ export default function MonitorsPage() {
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
       if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
@@ -412,6 +413,7 @@ export default function MonitorsPage() {
           } catch { /* skip invalid */ }
         }
         if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
+        if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
       }
 
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
@@ -973,7 +975,8 @@ export default function MonitorsPage() {
                                       ? Object.entries(monitor.config.requestHeaders as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("\n")
                                       : "",
                                     requestBody: String(monitor.config?.requestBody ?? ""),
-                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string });
+                                    responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
+                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -1348,6 +1351,24 @@ export default function MonitorsPage() {
                   maxLength={500}
                 />
                 <p className="mt-1 text-xs text-text-secondary">If set, the response body must contain this string (case-insensitive). Leave blank to skip body check.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Response time threshold (ms) <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="50"
+                  max="60000"
+                  value={(formData as unknown as { responseTimeThresholdMs?: number }).responseTimeThresholdMs ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    setFormData({ ...formData, responseTimeThresholdMs: val } as typeof formData & { responseTimeThresholdMs?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. 2000"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
               </div>
             </>
           )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -103,6 +103,8 @@ export default function MonitorsPage() {
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [allTags, setAllTags] = useState<TagItem[]>([]);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -538,9 +540,16 @@ export default function MonitorsPage() {
   const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
 
-  const filteredMonitors = activeTagFilter
-    ? monitors.filter((m) => m.tags?.some((t) => t.name === activeTagFilter))
-    : monitors;
+  const filteredMonitors = monitors.filter((m) => {
+    if (activeTagFilter && !m.tags?.some((t) => t.name === activeTagFilter)) return false;
+    if (statusFilter === "enabled" && !m.enabled) return false;
+    if (statusFilter === "disabled" && m.enabled) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   if (!user) return null;
   if (loading)
@@ -643,6 +652,41 @@ export default function MonitorsPage() {
           </div>
         </FadeIn>
 
+        {/* Search + Status filter bar */}
+        <FadeIn>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search monitors…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-surface-elevated border border-border rounded-lg text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1 bg-surface-elevated border border-border rounded-lg p-1">
+              {(["all", "enabled", "disabled"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setStatusFilter(f)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors capitalize ${statusFilter === f ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </FadeIn>
+
         {allTags.length > 0 && (
           <FadeIn>
             <div className="flex items-center gap-2 flex-wrap">
@@ -728,12 +772,12 @@ export default function MonitorsPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-text-primary text-lg font-medium mb-2">No monitors with tag &quot;{activeTagFilter}&quot;</p>
+                  <p className="text-text-primary text-lg font-medium mb-2">No monitors match</p>
                   <p className="text-text-secondary text-sm mb-4">
-                    Try selecting a different tag or clear the filter
+                    Try adjusting your search or filters
                   </p>
-                  <Button variant="secondary" size="sm" onClick={() => setActiveTagFilter(null)}>
-                    Clear filter
+                  <Button variant="secondary" size="sm" onClick={() => { setActiveTagFilter(null); setSearchQuery(""); setStatusFilter("all"); }}>
+                    Clear filters
                   </Button>
                 </>
               )}

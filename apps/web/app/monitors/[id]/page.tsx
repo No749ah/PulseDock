@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings } from "lucide-react";
+import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff } from "lucide-react";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
 import { Card } from "../../components/Card";
 import { Badge } from "../../components/Badge";
+import { Button } from "../../components/Button";
 import { FadeIn } from "../../components/FadeIn";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../../components/Table";
 import { ResponseTimeChart } from "../../components/ResponseTimeChart";
@@ -82,6 +83,10 @@ export default function MonitorDetailPage() {
   const [uptimeLoading, setUptimeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [running, setRunning] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     const user = getUser();
@@ -137,6 +142,55 @@ export default function MonitorDetailPage() {
       loadUptime(uptimePeriod);
     }
   }, [loading, monitor, uptimePeriod, loadUptime]);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const handleRunNow = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setRunning(true);
+    setActionError("");
+    try {
+      await api("/v1/monitors/run", user.id, { method: "POST", body: JSON.stringify({ monitorId: monitor.id }) });
+      showToast("Check triggered — refreshing results…");
+      // Reload runs after a brief delay
+      setTimeout(async () => {
+        try {
+          const updated = await api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user.id);
+          setRuns(updated);
+          loadUptime(uptimePeriod);
+        } catch {
+          // Non-fatal
+        }
+      }, 2500);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to trigger check");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleToggle = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setToggling(true);
+    setActionError("");
+    try {
+      await api(`/v1/monitors/${monitor.id}`, user.id, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: !monitor.enabled }),
+      });
+      setMonitor((m) => m ? { ...m, enabled: !m.enabled } : m);
+      showToast(monitor.enabled ? "Monitor disabled" : "Monitor enabled");
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to update monitor");
+    } finally {
+      setToggling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -202,13 +256,42 @@ export default function MonitorDetailPage() {
 
         {/* Header */}
         <FadeIn delay={0.05}>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold text-text-primary">{monitor.name}</h1>
-              <Badge variant="default">{formatMonitorType(monitor.type)}</Badge>
-              <Badge variant={monitor.enabled ? "success" : "warning"}>
-                {monitor.enabled ? "Enabled" : "Disabled"}
-              </Badge>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-bold text-text-primary">{monitor.name}</h1>
+                <Badge variant="default">{formatMonitorType(monitor.type)}</Badge>
+                <Badge variant={monitor.enabled ? "success" : "warning"}>
+                  {monitor.enabled ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleRunNow}
+                  disabled={running || !monitor.enabled}
+                  title={!monitor.enabled ? "Enable the monitor to run checks" : "Trigger an immediate check"}
+                  className="flex items-center gap-1.5"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  {running ? "Running…" : "Run Now"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleToggle}
+                  disabled={toggling}
+                  className={`flex items-center gap-1.5 ${monitor.enabled ? "text-warning border-warning/40 hover:border-warning/70" : "text-success border-success/40 hover:border-success/70"}`}
+                >
+                  {monitor.enabled ? (
+                    <><PowerOff className="w-3.5 h-3.5" />{toggling ? "Disabling…" : "Disable"}</>
+                  ) : (
+                    <><Power className="w-3.5 h-3.5" />{toggling ? "Enabling…" : "Enable"}</>
+                  )}
+                </Button>
+              </div>
             </div>
             <p
               className="text-sm text-text-secondary font-mono truncate max-w-[600px]"
@@ -218,6 +301,19 @@ export default function MonitorDetailPage() {
             </p>
           </div>
         </FadeIn>
+
+        {/* Action feedback */}
+        {actionError && (
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-danger/10 border border-danger/20">
+            <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />
+            <span className="text-danger text-sm">{actionError}</span>
+          </div>
+        )}
+        {toast && (
+          <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-surface-elevated border border-border shadow-xl text-sm text-text-primary animate-fade-in">
+            {toast}
+          </div>
+        )}
 
         {/* SLA Stats — with period selector */}
         <FadeIn delay={0.1}>

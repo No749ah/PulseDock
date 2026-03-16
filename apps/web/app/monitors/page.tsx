@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -153,6 +153,9 @@ export default function MonitorsPage() {
   // bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // badge modal
+  const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
 
   // alert assignment panel
   const [alertPanelMonitor, setAlertPanelMonitor] = useState<MonitorItem | null>(null);
@@ -881,6 +884,9 @@ export default function MonitorsPage() {
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setBadgeMonitor(monitor)} className="text-text-secondary hover:text-text-primary" aria-label={`Get embed badge for ${monitor.name}`} title="Embed badge">
+                                <Shield className="w-4 h-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger" aria-label={`Delete monitor ${monitor.name}`} title="Delete monitor">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1505,6 +1511,91 @@ export default function MonitorsPage() {
                 className="hidden"
                 onChange={handleExternalImportFile}
               />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Badge Embed Modal */}
+      {badgeMonitor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="badge-modal-title">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 id="badge-modal-title" className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" />
+                Embed Badge — {badgeMonitor.name}
+              </h2>
+              <button onClick={() => setBadgeMonitor(null)} className="text-text-secondary hover:text-text-primary p-1 rounded" aria-label="Close badge modal">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <p className="text-sm text-text-secondary">
+                Embed a live status badge anywhere — GitHub READMEs, documentation, or websites. Updates every 60 seconds.
+              </p>
+              {/* Preview */}
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Preview</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/v1/public/badge/${badgeMonitor.id}.svg`}
+                  alt={`${badgeMonitor.name} status badge`}
+                  className="h-6"
+                />
+              </div>
+              {/* Markdown */}
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Markdown (GitHub README)</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                    {`![${badgeMonitor.name}](/api/v1/public/badge/${badgeMonitor.id}.svg)`}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`![${badgeMonitor.name}](/api/v1/public/badge/${badgeMonitor.id}.svg)`);
+                      success("Markdown copied!");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              {/* HTML */}
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">HTML</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                    {`<img src="/api/v1/public/badge/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`<img src="/api/v1/public/badge/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`);
+                      success("HTML copied!");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              {/* Style variants */}
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Style variants</p>
+                <div className="flex flex-wrap gap-3">
+                  {(["flat", "flat-square", "for-the-badge"] as const).map((s) => (
+                    <div key={s} className="flex flex-col items-center gap-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/v1/public/badge/${badgeMonitor.id}.svg?style=${s}`} alt={s} className="h-6" />
+                      <span className="text-xs text-text-secondary">{s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-border flex justify-end">
+              <Button variant="secondary" onClick={() => setBadgeMonitor(null)}>Close</Button>
             </div>
           </div>
         </div>

@@ -1,6 +1,77 @@
-import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, NotFoundException, Param, Query, Res, Header } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { PrismaService } from '../common/prisma.service';
+
+// ---------------------------------------------------------------------------
+// SVG Badge helpers
+// ---------------------------------------------------------------------------
+
+/** Approximate text width in pixels for a given string at font-size 11px (Verdana) */
+function textWidth(text: string): number {
+  const widths: Record<string, number> = {
+    f: 5.2, i: 3.8, j: 3.8, l: 3.8, r: 5.2, t: 5.2, ' ': 3.5,
+  };
+  let w = 0;
+  for (const ch of text) {
+    w += widths[ch] ?? 7;
+  }
+  return Math.round(w);
+}
+
+type BadgeStyle = 'flat' | 'flat-square' | 'for-the-badge';
+
+interface BadgeParams {
+  label: string;
+  message: string;
+  color: string;     // hex
+  labelColor: string; // hex
+  style: BadgeStyle;
+}
+
+function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams): string {
+  const lw = textWidth(label) + 20;  // padding 10px each side
+  const rw = textWidth(message) + 20;
+  const totalW = lw + rw;
+  const height = style === 'for-the-badge' ? 28 : 20;
+  const radius = style === 'flat-square' || style === 'for-the-badge' ? 0 : 3;
+  const fontFamily = style === 'for-the-badge' ? '"DejaVu Sans",Verdana,Geneva,sans-serif' : 'Verdana,Geneva,DejaVu Sans,sans-serif';
+  const fontSize = style === 'for-the-badge' ? 10 : 11;
+  const fontWeight = style === 'for-the-badge' ? 'bold' : 'normal';
+  const textY = Math.round(height / 2) + 1;
+  const labelX = Math.round(lw / 2);
+  const messageX = lw + Math.round(rw / 2);
+
+  // Upper-case label text for for-the-badge style
+  const displayLabel = style === 'for-the-badge' ? label.toUpperCase() : label;
+  const displayMessage = style === 'for-the-badge' ? message.toUpperCase() : message;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${height}" role="img" aria-label="${escapeXml(label)}: ${escapeXml(message)}">
+  <title>${escapeXml(label)}: ${escapeXml(message)}</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="${totalW}" height="${height}" rx="${radius}" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="${lw}" height="${height}" fill="${labelColor}"/>
+    <rect x="${lw}" width="${rw}" height="${height}" fill="${color}"/>
+    ${style !== 'flat-square' && style !== 'for-the-badge' ? `<rect width="${totalW}" height="${height}" fill="url(#s)"/>` : ''}
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="${fontFamily}" font-weight="${fontWeight}" font-size="${fontSize}">
+    <text x="${labelX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
+    <text x="${labelX}" y="${textY}" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
+    <text x="${messageX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
+    <text x="${messageX}" y="${textY}" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
+  </g>
+</svg>`;
+}
+
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
 
 @ApiTags('Public')
 @Controller('v1/public')
@@ -161,5 +232,76 @@ export class PublicDashboardController {
         level: r.level as 'green' | 'yellow' | 'red',
       })),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Embeddable SVG Status Badge
+  // ---------------------------------------------------------------------------
+
+  @Get('badge/:monitorId.svg')
+  @Header('Content-Type', 'image/svg+xml')
+  @ApiOperation({
+    summary: 'Monitor status badge (SVG)',
+    description: 'Returns a shields.io-style SVG badge for a monitor. No authentication required. Embed in GitHub READMEs with `![Status](https://your-instance/api/v1/public/badge/<monitorId>.svg)`.',
+  })
+  @ApiParam({ name: 'monitorId', description: 'Monitor ID to generate badge for.' })
+  @ApiQuery({ name: 'style', required: false, enum: ['flat', 'flat-square', 'for-the-badge'], description: 'Badge style (default: flat)' })
+  @ApiQuery({ name: 'label', required: false, description: 'Custom left-side label (default: monitor name)' })
+  @ApiResponse({ status: 200, description: 'SVG badge returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async badge(
+    @Param('monitorId') monitorId: string,
+    @Query('style') style: string | undefined,
+    @Query('label') labelOverride: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: { id: true, name: true, enabled: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    // Fetch latest run
+    const latest = await this.prisma.monitorRun.findFirst({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      select: { level: true, ok: true },
+    });
+
+    // Derive status + color
+    const level = (latest?.level ?? 'green') as 'green' | 'yellow' | 'red';
+    let message: string;
+    let color: string;
+    if (!monitor.enabled) {
+      message = 'paused';
+      color = '#9ca3af'; // gray
+    } else if (level === 'green') {
+      message = 'up';
+      color = '#3fb950'; // green
+    } else if (level === 'yellow') {
+      message = 'degraded';
+      color = '#d29922'; // yellow
+    } else {
+      message = 'down';
+      color = '#f85149'; // red
+    }
+
+    const badgeStyle: BadgeStyle =
+      style === 'flat-square' ? 'flat-square' :
+      style === 'for-the-badge' ? 'for-the-badge' :
+      'flat';
+
+    const label = labelOverride ?? monitor.name;
+    const svg = buildBadgeSvg({
+      label,
+      message,
+      color,
+      labelColor: '#555',
+      style: badgeStyle,
+    });
+
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    res.setHeader('Pragma', 'no-cache');
+    res.end(svg);
   }
 }

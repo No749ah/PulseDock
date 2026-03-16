@@ -888,7 +888,12 @@ export class ChecksService {
     };
 
     const levelChanged = !prev || prev.level !== run.level;
+    const wasUnhealthy = prev && (prev.level === 'red' || prev.level === 'yellow');
+    const isRecovery = run.level === 'green' && wasUnhealthy && levelChanged;
+
     if ((run.level === 'red' || run.level === 'yellow') && levelChanged) {
+      await this.alerts.notifyMonitorFailure(monitor, run);
+    } else if (isRecovery) {
       await this.alerts.notifyMonitorFailure(monitor, run);
     }
 

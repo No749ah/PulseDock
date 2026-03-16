@@ -180,6 +180,43 @@ describe('ChecksService', () => {
       expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
     });
 
+    it('notifies recovery alert when monitor recovers from red to green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'red' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const call = alerts.notifyMonitorFailure.mock.calls[0][1] as { level: string };
+      expect(call.level).toBe('green');
+    });
+
+    it('notifies recovery alert when monitor recovers from yellow to green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'yellow' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const call = alerts.notifyMonitorFailure.mock.calls[0][1] as { level: string };
+      expect(call.level).toBe('green');
+    });
+
+    it('does not send recovery alert when already green → green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'green' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
     it('notifies alerts when level changes from red to yellow', async () => {
       const prisma = makePrisma({ previousRun: makeRun({ level: 'red' }) });
       const alerts = makeAlerts();

@@ -20,6 +20,8 @@ const EXEMPT_PATHS = new Set([
   '/v1/auth/accept-invite',
   '/v1/auth/request-password-reset',
   '/v1/auth/reset-password',
+  '/v1/auth/verify-email',      // user arrives via email link — no session cookie yet
+  '/v1/auth/resend-verification', // pre-auth — no session cookie yet
   '/v1/auth/logout', // logout CSRF is low-severity (forces log-out, no data exfil)
   // Public endpoints
   '/health',

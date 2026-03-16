@@ -51,6 +51,7 @@ model User {
   tags                    Tag[]
   notificationPreference  NotificationPreference?
   maintenanceWindows      MaintenanceWindow[]
+  incidents               Incident[]
 }
 
 model Session {
@@ -96,6 +97,7 @@ model Monitor {
   monitorAlerts MonitorAlert[]
   monitorTags   MonitorTag[]
   maintenanceWindows MaintenanceWindowMonitor[]
+  incidentMonitors   IncidentMonitor[]
 
   @@index([userId])
   @@index([enabled])
@@ -300,4 +302,60 @@ model MaintenanceWindowMonitor {
   monitor Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   @@id([windowId, monitorId])
+}
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+enum IncidentSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Incident {
+  id          String           @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  status      IncidentStatus   @default(INVESTIGATING)
+  severity    IncidentSeverity @default(MEDIUM)
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updates  IncidentUpdate[]
+  monitors IncidentMonitor[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model IncidentUpdate {
+  id         String         @id @default(cuid())
+  incidentId String
+  body       String
+  status     IncidentStatus
+  createdAt  DateTime       @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model IncidentMonitor {
+  incidentId String
+  monitorId  String
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  monitor  Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@id([incidentId, monitorId])
 }

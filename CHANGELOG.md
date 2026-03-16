@@ -10,7 +10,36 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Monitor search + status filter** — Monitors page now has a real-time search bar (filter by name or target URL) and a segmented status control (All / Enabled / Disabled). Filters compose with existing tag filters via AND logic. Empty state contextually shows "Clear filters" when active.
+- **Incident management** — Full incident tracking lifecycle: create/edit/delete incidents with title, description, severity (LOW/MEDIUM/HIGH/CRITICAL) and status (INVESTIGATING/IDENTIFIED/MONITORING/RESOLVED). Timeline updates per incident with status transitions. Link affected monitors to incidents. Frontend `/incidents` page with expandable rows, active/resolved sections, and all CRUD modals. Nav entry added.
+- **SVG status badges** — `GET /v1/public/badge/:monitorId.svg` — shields.io-style embeddable badges showing live monitor status (up/degraded/down/paused). Supports `flat`, `flat-square`, and `for-the-badge` styles, custom label override, 60s cache headers. Monitors page now shows an embed button (Shield icon) per row with Markdown/HTML/URL copy snippets.
+- **Tool registry expansion: 302 → 382 tools** — Added 80 additional pre-configured entries spanning email/collaboration (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), infrastructure/networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), database/admin tooling (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), and self-hosted app ecosystem additions (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud, Jellyseerr, Readarr, JupyterHub, Gitpod, Hono, Clair).
+
+### Fixed
+- **Recovery alerts never sent** — `notifyMonitorFailure()` was previously only invoked on red/yellow level changes. Monitors recovering from red or yellow to green now correctly dispatch recovery alerts through all configured channels. The `notifyOnRecovery` notification preference was already implemented but never exercised.
+- **WebSocket BOLA vulnerability** — `RealtimeGateway` previously trusted a client-supplied `userId` string from the handshake query/auth. Any client knowing another user's ID could subscribe to their monitor event stream. Gateway now validates the JWT access token (from `pulsedock_token` cookie or `auth.token`) and derives the identity from the verified payload only. Cross-user subscription attempts return `{ ok: false, error: 'forbidden' }`.
+- **CSRF exemption gap** — `POST /v1/auth/verify-email` and `POST /v1/auth/resend-verification` were not in the CSRF exempt list. Since both are unauthenticated (no session cookie exists when the user clicks an email link), they would 403 in a fresh browser session.
+
+### Improved
+- **Dashboard N+1 query eliminated** — `GET /v1/dashboard/overview` previously loaded all monitor runs without a limit. Changed to use Prisma `include: { runs: { take: 1 } }` to get latest run per monitor in a single query. Activity feed now capped at `take: 20` at the DB level instead of slicing in application code.
+- **Registry quality pass** — Normalized added entries to existing category taxonomy and removed duplicate IDs, keeping tool lookup deterministic.
+
+---
+
+## [0.7.0] — 2026-03-16
+
+### Added
 - **Tool registry: 164 → 302 tools** — Added 138 new tools across all 17 existing categories. New additions cover Container runtime (containerd, CRI-O, KEDA, Flagger, MicroK8s, Talos, Crossplane, Cluster API), CI/CD (Argo Workflows, Dagger, Earthly, Buildkite Agent, Spinnaker, ARC, GitLab Runner, Argo Events), Database (CouchDB, Neo4j, ArangoDB, ScyllaDB, YugabyteDB, TiDB, FerretDB, EdgeDB, QuestDB, Dragonfly, Couchbase, RethinkDB), Observability (Kibana, Logstash, Fluentd, Fluent Bit, SigNoz, OpenObserve, Pyroscope, Coroot, Quickwit, OpenSearch Dashboards), Security (OPA, Kyverno, Boundary, Consul, External Secrets, Grype, Syft, Semgrep, Infisical, OpenBao, Checkov, SOPS), Networking (Cilium, Headscale, cloudflared, ZeroTier, OpenVPN, Netmaker, FRP, Unbound, CoreDNS, Technitium DNS, ingress-nginx), Storage (OpenEBS, Velero, Restic, Kopia, BorgBackup, Duplicati, SeaweedFS, JuiceFS, Ceph), CMS (KeystoneJS, Craft CMS, ProcessWire, Microweber, Cockpit CMS, Decap CMS), Communication (Jitsi Meet, BigBlueButton, LiveKit, ejabberd, Prosody, Mumble, Coturn, Gotify, ntfy), Media (Kavita, Komga, Calibre-Web, Audiobookshelf, Sonarr, Radarr, Lidarr, Prowlarr, Overseerr, Tautulli, Bazarr), Dev Tools (Deno, Bun, DevPod, Act, Hoppscotch, Gitness, Plane, AppFlowy, Excalidraw, draw.io, Mermaid, Outline, BookStack, Wiki.js, NocoDB, Baserow), Infrastructure (Vagrant, Waypoint, CDKTF, Serverless Framework, AWS CDK, Atlantis, Infracost), Messaging (Apache Pulsar, RocketMQ, NSQ, EMQX, HiveMQ, Apache NiFi), API (KrakenD, Gravitee, SuperTokens, Logto, Zitadel, Casdoor), Cloud (k3d, kind, Minikube, kubeadm). Registry is now at 84% of the 500+ launch target.
+
+### Fixed
+- **Test spec scoping regressions** — Fixed two broken spec describe blocks (`auth.controller` `refresh() — null context fallbacks` and `dashboard/public.controller` incident escalation test) that referenced outer-scope variables from a different `beforeEach`. Both now create their own local instances, ensuring isolation.
+
+### Improved — Test Coverage
+- **register() / login() email verification paths** — Added tests for `REQUIRE_EMAIL_VERIFICATION=true` flow: register sends verification email and returns `emailVerificationSent:true`; login blocks unverified users with `email_not_verified` error.
+- **Docker non-Error catch branch** — Added test for `runMonitor()` Docker image check when fetch throws a non-Error (string) value — verifies generic `'Docker check failed'` fallback message.
+- **CSV object payload branch** — Added test for `importExternal()` with `source=csv` and a non-string payload — verifies `JSON.stringify()` branch is taken without crash and returns `imported:0`.
+- **Test count: 1192 API tests + 10 CLI = 1202 total** (up from 1115 API + 10 CLI = 1125)
+- **Coverage: 98.26% stmt | 93.63% branch | 99.33% func | 100% line**
 
 ---
 

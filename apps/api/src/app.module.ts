@@ -41,6 +41,8 @@ import { StatusPagesController } from './status-pages/status-pages.controller';
 import { StatusPagesService } from './status-pages/status-pages.service';
 import { MaintenanceController } from './maintenance/maintenance.controller';
 import { MaintenanceService } from './maintenance/maintenance.service';
+import { IncidentsController } from './incidents/incidents.controller';
+import { IncidentsService } from './incidents/incidents.service';
 
 @Module({
   imports: [
@@ -70,6 +72,7 @@ import { MaintenanceService } from './maintenance/maintenance.service';
     NotificationsController,
     StatusPagesController,
     MaintenanceController,
+    IncidentsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -89,6 +92,7 @@ import { MaintenanceService } from './maintenance/maintenance.service';
     NotificationsService,
     StatusPagesService,
     MaintenanceService,
+    IncidentsService,
   ],
 })
 export class AppModule implements NestModule {

@@ -5,15 +5,19 @@ import { RealtimeGateway } from './realtime.gateway';
 
 function makeSocket(opts: {
   id?: string;
-  queryUserId?: string;
-  authUserId?: string;
+  cookieToken?: string;
+  authToken?: string;
 } = {}) {
   const joinedRooms = new Set<string>();
+  const cookieHeader = opts.cookieToken
+    ? `pulsedock_token=${opts.cookieToken}; other=val`
+    : '';
   return {
     id: opts.id ?? 'socket-abc',
     handshake: {
-      query: { userId: opts.queryUserId ?? undefined },
-      auth: { userId: opts.authUserId ?? undefined },
+      query: {},
+      auth: opts.authToken ? { token: opts.authToken } : {},
+      headers: { cookie: cookieHeader },
     },
     join: vi.fn().mockImplementation((room: string) => {
       joinedRooms.add(room);
@@ -31,11 +35,21 @@ function makeServer() {
   };
 }
 
-function makeGateway() {
-  const gateway = new RealtimeGateway();
+function makeJwt(userId: string | null = 'user-1') {
+  return {
+    verify: vi.fn().mockImplementation(() => {
+      if (userId === null) throw new Error('invalid token');
+      return { sub: userId, type: 'access' };
+    }),
+  };
+}
+
+function makeGateway(userId: string | null = 'user-1') {
+  const jwt = makeJwt(userId);
+  const gateway = new RealtimeGateway(jwt as never);
   const server = makeServer();
   gateway.server = server as never;
-  return { gateway, server };
+  return { gateway, server, jwt };
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -44,38 +58,30 @@ describe('RealtimeGateway', () => {
   // ── handleConnection() ─────────────────────────────────────────────────────
 
   describe('handleConnection()', () => {
-    it('joins user room when userId is in query params', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ queryUserId: 'user-1' });
+    it('joins user room when cookie token is valid', async () => {
+      const { gateway } = makeGateway('user-1');
+      const socket = makeSocket({ cookieToken: 'valid-token' });
       await gateway.handleConnection(socket as never);
       expect(socket.join).toHaveBeenCalledWith('user:user-1');
     });
 
-    it('joins user room when userId is in auth', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ authUserId: 'user-2' });
+    it('joins user room when auth.token is valid', async () => {
+      const { gateway } = makeGateway('user-2');
+      const socket = makeSocket({ authToken: 'valid-bearer' });
       await gateway.handleConnection(socket as never);
       expect(socket.join).toHaveBeenCalledWith('user:user-2');
     });
 
-    it('prefers queryUserId over authUserId when both present', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ queryUserId: 'query-user', authUserId: 'auth-user' });
-      await gateway.handleConnection(socket as never);
-      expect(socket.join).toHaveBeenCalledWith('user:query-user');
-    });
-
-    it('does not join any room when userId is missing', async () => {
-      const { gateway } = makeGateway();
+    it('does not join any room when no token provided', async () => {
+      const { gateway } = makeGateway(null);
       const socket = makeSocket();
       await gateway.handleConnection(socket as never);
       expect(socket.join).not.toHaveBeenCalled();
     });
 
-    it('does not join room for empty string userId', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ queryUserId: '  ' });
-      // ' '.trim() = '' length 0, so should not join
+    it('does not join room when token is invalid (jwt.verify throws)', async () => {
+      const { gateway } = makeGateway(null);
+      const socket = makeSocket({ authToken: 'bad-token' });
       await gateway.handleConnection(socket as never);
       expect(socket.join).not.toHaveBeenCalled();
     });
@@ -94,33 +100,41 @@ describe('RealtimeGateway', () => {
   // ── subscribe() ────────────────────────────────────────────────────────────
 
   describe('subscribe()', () => {
-    it('joins user room from body.userId and returns { ok: true }', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket();
-      const result = await gateway.subscribe(socket as never, { userId: 'user-3' });
-      expect(socket.join).toHaveBeenCalledWith('user:user-3');
+    it('joins authenticated user room and returns { ok: true }', async () => {
+      const { gateway } = makeGateway('user-1');
+      const socket = makeSocket({ cookieToken: 'valid' });
+      const result = await gateway.subscribe(socket as never, { userId: 'user-1' });
+      expect(socket.join).toHaveBeenCalledWith('user:user-1');
       expect(result).toEqual({ ok: true });
     });
 
-    it('falls back to socket handshake userId when body.userId missing', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ queryUserId: 'user-4' });
+    it('returns ok:true when body.userId matches authenticated user', async () => {
+      const { gateway } = makeGateway('user-1');
+      const socket = makeSocket({ cookieToken: 'valid' });
       const result = await gateway.subscribe(socket as never, {});
-      expect(socket.join).toHaveBeenCalledWith('user:user-4');
+      expect(socket.join).toHaveBeenCalledWith('user:user-1');
       expect(result).toEqual({ ok: true });
     });
 
-    it('returns { ok: false } when no userId available', async () => {
-      const { gateway } = makeGateway();
+    it('returns forbidden when body.userId differs from authenticated user', async () => {
+      const { gateway } = makeGateway('user-1');
+      const socket = makeSocket({ cookieToken: 'valid' });
+      const result = await gateway.subscribe(socket as never, { userId: 'other-user' });
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: 'forbidden' });
+    });
+
+    it('returns unauthenticated when no valid token present', async () => {
+      const { gateway } = makeGateway(null);
       const socket = makeSocket();
       const result = await gateway.subscribe(socket as never, {});
       expect(socket.join).not.toHaveBeenCalled();
-      expect(result).toEqual({ ok: false, error: 'missing userId' });
+      expect(result).toEqual({ ok: false, error: 'unauthenticated' });
     });
 
     it('handles undefined body gracefully', async () => {
-      const { gateway } = makeGateway();
-      const socket = makeSocket({ authUserId: 'user-5' });
+      const { gateway } = makeGateway('user-5');
+      const socket = makeSocket({ authToken: 'valid' });
       const result = await gateway.subscribe(socket as never, undefined);
       expect(socket.join).toHaveBeenCalledWith('user:user-5');
       expect(result).toEqual({ ok: true });

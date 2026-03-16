@@ -8,6 +8,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { JwtService } from '@nestjs/jwt';
 import type { Server, Socket } from 'socket.io';
 
 @Injectable()
@@ -20,6 +21,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   @WebSocketServer()
   server!: Server;
+
+  constructor(private readonly jwt: JwtService) {}
 
   async handleConnection(client: Socket) {
     const userId = this.resolveUserId(client);
@@ -41,12 +44,18 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { userId?: string } | undefined,
   ) {
-    const userId = body?.userId ?? this.resolveUserId(client);
-    if (!userId) {
-      return { ok: false, error: 'missing userId' };
+    const verifiedUserId = this.resolveUserId(client);
+    if (!verifiedUserId) {
+      return { ok: false, error: 'unauthenticated' };
     }
 
-    await client.join(this.userRoom(userId));
+    // Only allow subscribing to the authenticated user's own room
+    const requestedUserId = body?.userId;
+    if (requestedUserId && requestedUserId !== verifiedUserId) {
+      return { ok: false, error: 'forbidden' };
+    }
+
+    await client.join(this.userRoom(verifiedUserId));
     return { ok: true };
   }
 
@@ -54,18 +63,37 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.to(this.userRoom(userId)).emit(event, payload);
   }
 
+  /**
+   * Resolve the authenticated userId from the socket handshake.
+   *
+   * Order of precedence:
+   * 1. JWT from httpOnly cookie (pulsedock_token)
+   * 2. JWT from auth.token handshake field (Bearer token passed by client)
+   *
+   * A client-supplied userId string is no longer trusted — the identity is
+   * always derived from the verified JWT to prevent room-hijacking.
+   */
   private resolveUserId(client: Socket): string | undefined {
-    const queryUserId = client.handshake.query.userId;
-    if (typeof queryUserId === 'string' && queryUserId.trim().length > 0) {
-      return queryUserId;
-    }
+    // 1. Cookie-based JWT (preferred — set by the server on login)
+    const cookieHeader = client.handshake.headers.cookie ?? '';
+    const cookieMatch = /pulsedock_token=([^;]+)/.exec(cookieHeader);
+    const cookieToken = cookieMatch?.[1];
 
-    const authUserId = (client.handshake.auth as { userId?: string } | undefined)?.userId;
-    if (typeof authUserId === 'string' && authUserId.trim().length > 0) {
-      return authUserId;
-    }
+    // 2. Bearer token passed via auth handshake
+    const authToken = (client.handshake.auth as { token?: string } | undefined)?.token;
 
-    return undefined;
+    const token = cookieToken ?? authToken;
+    if (!token) return undefined;
+
+    try {
+      const payload = this.jwt.verify<{ sub: string; type?: string }>(token, {
+        secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
+      });
+      if (!payload.sub) return undefined;
+      return payload.sub;
+    } catch {
+      return undefined;
+    }
   }
 
   private userRoom(userId: string) {

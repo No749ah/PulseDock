@@ -14,19 +14,29 @@ export class DashboardController {
   @ApiOperation({ summary: 'Dashboard overview', description: 'Returns aggregate monitor stats and recent check runs for the authenticated user.' })
   @ApiResponse({ status: 200, description: 'Dashboard overview returned.' })
   async overview(@Req() req: { user: { id: string } }) {
-    const monitors = await this.prisma.monitor.findMany({ where: { userId: req.user.id } });
-    const runs = await this.prisma.monitorRun.findMany({ where: { userId: req.user.id }, orderBy: { checkedAt: 'desc' } });
+    // Load monitors with their latest run in a single query to avoid N+1
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId: req.user.id },
+      include: {
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
 
-    const latestMap = new Map<string, (typeof runs)[number]>();
-    for (const run of runs) {
-      if (!latestMap.has(run.monitorId)) latestMap.set(run.monitorId, run);
-    }
+    // Fetch the 20 most recent runs across all monitors for the activity feed
+    const recentRuns = await this.prisma.monitorRun.findMany({
+      where: { userId: req.user.id },
+      orderBy: { checkedAt: 'desc' },
+      take: 20,
+    });
 
     let green = 0;
     let yellow = 0;
     let red = 0;
     for (const monitor of monitors) {
-      const latest = latestMap.get(monitor.id);
+      const latest = monitor.runs[0];
       if (!latest || latest.level === 'green') green += 1;
       else if (latest.level === 'yellow') yellow += 1;
       else red += 1;
@@ -43,7 +53,7 @@ export class DashboardController {
         red,
         uptimePct,
       },
-      latestRuns: runs.slice(0, 12).map((r) => ({
+      latestRuns: recentRuns.map((r) => ({
         id: r.id,
         userId: r.userId,
         monitorId: r.monitorId,

@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "PulseDock CLI — one-shot HTTP checker and monitor management tool",
   "keywords": ["pulsedock", "uptime", "monitor", "cli"],
   "license": "Apache-2.0",

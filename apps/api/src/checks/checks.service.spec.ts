@@ -180,6 +180,43 @@ describe('ChecksService', () => {
       expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
     });
 
+    it('notifies recovery alert when monitor recovers from red to green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'red' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const call = alerts.notifyMonitorFailure.mock.calls[0][1] as { level: string };
+      expect(call.level).toBe('green');
+    });
+
+    it('notifies recovery alert when monitor recovers from yellow to green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'yellow' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const call = alerts.notifyMonitorFailure.mock.calls[0][1] as { level: string };
+      expect(call.level).toBe('green');
+    });
+
+    it('does not send recovery alert when already green → green', async () => {
+      const prisma = makePrisma({ previousRun: makeRun({ level: 'green' }) });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
     it('notifies alerts when level changes from red to yellow', async () => {
       const prisma = makePrisma({ previousRun: makeRun({ level: 'red' }) });
       const alerts = makeAlerts();
@@ -3777,5 +3814,21 @@ describe('runMonitor() — provider-specific branches', () => {
     const run = await service.runMonitor(monitor);
     expect(run.ok).toBe(false);
     expect(run.message).toContain('Docker check failed');
+  });
+});
+
+// ── Docker check — non-Error throw (string thrown) (line 595) ────────────────
+
+describe('runMonitor() — DOCKER_IMAGE non-Error catch branch (line 595)', () => {
+  it('returns generic "Docker check failed" message when catch receives a non-Error value', async () => {
+    const service = makeService();
+    // Throw a string (not an Error instance) → tests the `'Docker check failed'` fallback
+    globalThis.fetch = vi.fn().mockRejectedValue('network error string');
+    const monitor = makeMonitor({ type: 'DOCKER_IMAGE', target: 'nginx', config: {} });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    // When thrown value is not an Error, message is the plain fallback (no .message property)
+    expect(run.message).toBe('Docker check failed');
   });
 });

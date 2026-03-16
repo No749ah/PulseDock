@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PublicDashboardController } from './public.controller';
 import { NotFoundException } from '@nestjs/common';
+import type { Response } from 'express';
 import type { PrismaService } from '../common/prisma.service';
 
 const makeDate = (offsetMs = 0) => new Date(Date.now() - offsetMs);
@@ -298,5 +299,138 @@ describe('overview() — incident escalation: yellow start, then red (line 103)'
     expect(result.incidents).toHaveLength(1);
     expect(result.incidents[0].resolvedAt).toBeNull();
     expect(result.incidents[0].level).toBe('red');
+  });
+});
+
+// ── Badge endpoint tests ──────────────────────────────────────────────────────
+
+function makeMockRes() {
+  const headers: Record<string, string> = {};
+  let body: string | undefined;
+  return {
+    res: {
+      setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+      end: vi.fn((data: string) => { body = data; }),
+    } as unknown as Response,
+    getHeaders: () => headers,
+    getBody: () => body,
+  };
+}
+
+describe('badge()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: PublicDashboardController;
+
+  beforeEach(() => {
+    prisma = {
+      user: { findUnique: vi.fn() },
+      monitor: { findUnique: vi.fn(), findMany: vi.fn() },
+      monitorRun: { findFirst: vi.fn(), findMany: vi.fn() },
+    } as unknown as PrismaService;
+    controller = new PublicDashboardController(prisma);
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res } = makeMockRes();
+    await expect(controller.badge('nonexistent', undefined, undefined, res)).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns green SVG badge for up monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'green', ok: true });
+    const { res, getBody, getHeaders } = makeMockRes();
+
+    await controller.badge('m1', undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('<svg');
+    expect(body).toContain('up');
+    expect(body).toContain('#3fb950'); // green color
+    expect(getHeaders()['Cache-Control']).toContain('public');
+  });
+
+  it('returns degraded SVG badge for yellow monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'yellow', ok: false });
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('degraded');
+    expect(body).toContain('#d29922'); // yellow color
+  });
+
+  it('returns down SVG badge for red monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'red', ok: false });
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('down');
+    expect(body).toContain('#f85149'); // red color
+  });
+
+  it('returns paused SVG badge for disabled monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: false });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('paused');
+    expect(body).toContain('#9ca3af'); // gray color
+  });
+
+  it('uses custom label override', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'green', ok: true });
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', undefined, 'custom-label', res);
+
+    const body = getBody()!;
+    expect(body).toContain('custom-label');
+  });
+
+  it('renders flat-square style (no gradient)', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'green', ok: true });
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', 'flat-square', undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('<svg');
+    // flat-square has rx=0
+    expect(body).toContain('rx="0"');
+  });
+
+  it('renders for-the-badge style with uppercase text', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'my api', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ level: 'green', ok: true });
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', 'for-the-badge', undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('MY API');
+    expect(body).toContain('UP');
+  });
+
+  it('defaults to green when no run exists', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res, getBody } = makeMockRes();
+
+    await controller.badge('m1', undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('up');
+    expect(body).toContain('#3fb950');
   });
 });

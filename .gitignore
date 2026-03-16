@@ -42,3 +42,4 @@ apps/web/public/hero-video/*.mp4
 .keys/
 /projects/PulseDock/.keys
 projects/PulseDock/.keys/*
+core.*

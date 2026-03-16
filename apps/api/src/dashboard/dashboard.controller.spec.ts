@@ -73,9 +73,10 @@ describe('DashboardController', () => {
     });
 
     it('counts green monitors correctly', async () => {
+      // monitors now include embedded runs via include: { runs: { take: 1 } }
       prisma.monitor.findMany.mockResolvedValue([
-        makeMonitor({ id: 'm-1' }),
-        makeMonitor({ id: 'm-2' }),
+        makeMonitor({ id: 'm-1', runs: [makeRun({ id: 'r-1', monitorId: 'm-1', level: 'green' })] }),
+        makeMonitor({ id: 'm-2', runs: [makeRun({ id: 'r-2', monitorId: 'm-2', level: 'green' })] }),
       ]);
       prisma.monitorRun.findMany.mockResolvedValue([
         makeRun({ id: 'r-1', monitorId: 'm-1', level: 'green' }),
@@ -93,9 +94,9 @@ describe('DashboardController', () => {
 
     it('counts yellow and red monitors correctly', async () => {
       prisma.monitor.findMany.mockResolvedValue([
-        makeMonitor({ id: 'm-1' }),
-        makeMonitor({ id: 'm-2' }),
-        makeMonitor({ id: 'm-3' }),
+        makeMonitor({ id: 'm-1', runs: [makeRun({ monitorId: 'm-1', level: 'green' })] }),
+        makeMonitor({ id: 'm-2', runs: [makeRun({ monitorId: 'm-2', level: 'yellow' })] }),
+        makeMonitor({ id: 'm-3', runs: [makeRun({ monitorId: 'm-3', level: 'red' })] }),
       ]);
       prisma.monitorRun.findMany.mockResolvedValue([
         makeRun({ monitorId: 'm-1', level: 'green' }),
@@ -112,8 +113,9 @@ describe('DashboardController', () => {
     });
 
     it('treats monitors with no runs as green', async () => {
-      prisma.monitor.findMany.mockResolvedValue([makeMonitor({ id: 'm-1' })]);
-      prisma.monitorRun.findMany.mockResolvedValue([]); // no runs
+      // Monitor with empty runs array (no prior checks)
+      prisma.monitor.findMany.mockResolvedValue([makeMonitor({ id: 'm-1', runs: [] })]);
+      prisma.monitorRun.findMany.mockResolvedValue([]);
 
       const result = await controller.overview({ user: { id: 'user-1' } });
 
@@ -122,7 +124,9 @@ describe('DashboardController', () => {
     });
 
     it('returns latest runs with correct shape', async () => {
-      prisma.monitor.findMany.mockResolvedValue([makeMonitor()]);
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ runs: [makeRun({ id: 'r-1', checkedAt: new Date('2026-01-01T12:00:00Z'), level: 'green' })] }),
+      ]);
       prisma.monitorRun.findMany.mockResolvedValue([
         makeRun({ id: 'r-1', checkedAt: new Date('2026-01-01T12:00:00Z'), status: 200 }),
       ]);
@@ -142,22 +146,24 @@ describe('DashboardController', () => {
       expect(typeof result.latestRuns[0]?.checkedAt).toBe('string');
     });
 
-    it('caps latestRuns at 12 entries', async () => {
-      prisma.monitor.findMany.mockResolvedValue([makeMonitor()]);
+    it('latestRuns reflects the take:20 from monitorRun.findMany', async () => {
+      prisma.monitor.findMany.mockResolvedValue([makeMonitor({ runs: [] })]);
       const runs = Array.from({ length: 20 }, (_, i) => makeRun({ id: `r-${i}`, monitorId: 'm-1' }));
       prisma.monitorRun.findMany.mockResolvedValue(runs);
 
       const result = await controller.overview({ user: { id: 'user-1' } });
 
-      expect(result.latestRuns).toHaveLength(12);
+      expect(result.latestRuns).toHaveLength(20);
     });
 
     it('uses only the latest run per monitor for status calculation', async () => {
-      prisma.monitor.findMany.mockResolvedValue([makeMonitor({ id: 'm-1' })]);
-      // Runs ordered newest-first; first run is green, second is red — green should win
+      // Monitor has only the latest run embedded (take:1)
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-1', runs: [makeRun({ id: 'r-latest', monitorId: 'm-1', level: 'green' })] }),
+      ]);
       prisma.monitorRun.findMany.mockResolvedValue([
-        makeRun({ id: 'r-latest', monitorId: 'm-1', level: 'green', checkedAt: new Date('2026-01-02') }),
-        makeRun({ id: 'r-older', monitorId: 'm-1', level: 'red', checkedAt: new Date('2026-01-01') }),
+        makeRun({ id: 'r-latest', monitorId: 'm-1', level: 'green' }),
+        makeRun({ id: 'r-older', monitorId: 'm-1', level: 'red' }),
       ]);
 
       const result = await controller.overview({ user: { id: 'user-1' } });

@@ -11,6 +11,20 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [0.9.0] — 2026-03-16
+
+### Added
+- **PulseDock Agent** — New `@pulsedock/agent` package + Docker image for local version reporting. Supports 16 built-in shell checks (Proxmox VE, pfSense, OPNsense, Unraid, OpenWRT, VyOS, TrueNAS, Docker Engine, PostgreSQL, MySQL, MariaDB, nginx, Apache, OpenSSH). Deploy via Docker or shell script. Reports via `POST /v1/agent/report` (API key auth).
+- **Agent Setup UI** — Versions page tab-switcher card (Docker Run / Compose / Shell Script) shown when an agent-required tool is selected. One-click copy buttons per snippet. Link to Account settings for API key creation.
+- **Target field locking** — When a tool is selected from the registry, the target field is read-only with a 'from registry' badge. Users can clear the selection to edit manually.
+- **Nginx WebSocket proxy docs** — `docs/NGINX.md` with complete production nginx config: HTTPS, WebSocket proxying for socket.io (`/api/socket.io/`), security headers, gzip, and static asset caching.
+- **Tool registry: 382 → 1302 tools** — Expanded with 920 additional entries covering Infrastructure (Proxmox VE, TrueNAS, Unraid, pfSense, MikroTik, VyOS, WireGuard UI, cert-manager), Security (Bitwarden Server, Teleport), Networking (BIND9, FRRouting), Database (PostgreSQL Docker, MySQL Docker), and 800+ upstream GitHub/Docker release trackers across all categories.
+
+### Fixed
+- **Daily Discord report cron** — Fixed recipient format from bare ID to `user:ID` format required by the message tool.
+
+---
+
 ## [0.8.0] — 2026-03-16
 
 ### Added

@@ -28,6 +28,13 @@ PulseDock monitors your apps for version updates, security patches, and uptime �
 🌐 **Public Status Pages**
 - Shareable real-time status pages — one URL per user, no auth required
 
+🤖 **PulseDock Agent**
+- Lightweight daemon for tools without external HTTP APIs (Proxmox, pfSense, Unraid, OpenWRT, etc.)
+- Deploy via Docker or shell — runs local shell commands, reports versions via API key
+- 16 built-in checks: Proxmox VE, pfSense, Unraid, OpenWRT, VyOS, Docker, PostgreSQL, MySQL, nginx, and more
+- Tab-switcher UI (Docker Run / Compose / Shell) with one-click copy in the setup flow
+- See [AGENT.md](./docs/AGENT.md) for installation and configuration
+
 🔌 **Plugin System**
 - Ship custom monitor types as plugins — typed contracts, sandboxed execution
 - Starter plugin: `http.response-match` (regex matching on response bodies)

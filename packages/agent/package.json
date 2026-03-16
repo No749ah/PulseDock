@@ -1,0 +1,15 @@
+{
+  "name": "@pulsedock/agent",
+  "version": "0.1.0",
+  "description": "PulseDock Agent — reports local tool versions to PulseDock",
+  "main": "dist/index.js",
+  "bin": {
+    "pulsedock-agent": "bin/agent.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "license": "Apache-2.0"
+}

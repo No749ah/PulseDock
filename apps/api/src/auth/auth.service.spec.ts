@@ -1487,3 +1487,55 @@ describe('disable2FA — checkRecoveryCode with malformed JSON (catch branch)', 
     await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', 'anycode')).rejects.toThrow(UnauthorizedException);
   });
 });
+
+// ── register() — REQUIRE_EMAIL_VERIFICATION path ─────────────────────────────
+
+describe('register() — email verification flow (lines 107-113)', () => {
+  it('sends verification email and returns emailVerificationSent:true when REQUIRE_EMAIL_VERIFICATION=true', async () => {
+    const oldAllow = process.env.ALLOW_PUBLIC_REGISTRATION;
+    const oldVerify = process.env.REQUIRE_EMAIL_VERIFICATION;
+    process.env.ALLOW_PUBLIC_REGISTRATION = 'true';
+    process.env.REQUIRE_EMAIL_VERIFICATION = 'true';
+
+    // user.count returns 1 → isFirstAdmin = false
+    const prisma = makePrisma(null);
+    (prisma.user.count as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+    (prisma.user.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'new-user', email: 'brand-new@example.com', role: 'user',
+    });
+
+    const mailer = makeMailer();
+    const svc = new AuthService(prisma as never, makeJwt() as never, makeAudit() as never, mailer as never, makeMetrics() as never);
+
+    const result = await svc.register('brand-new@example.com', 'ValidPass1!Pass');
+
+    expect(result).toHaveProperty('emailVerificationSent', true);
+    expect(prisma.emailVerificationToken.create).toHaveBeenCalled();
+    expect(mailer.sendEmailVerificationEmail).toHaveBeenCalledWith(
+      'brand-new@example.com',
+      expect.stringContaining('verify-email'),
+    );
+
+    process.env.ALLOW_PUBLIC_REGISTRATION = oldAllow;
+    process.env.REQUIRE_EMAIL_VERIFICATION = oldVerify;
+  });
+});
+
+// ── login() — REQUIRE_EMAIL_VERIFICATION blocks unverified users (line 147) ──
+
+describe('login() — blocks unverified users when REQUIRE_EMAIL_VERIFICATION=true', () => {
+  it('throws email_not_verified when emailVerified=false and REQUIRE_EMAIL_VERIFICATION=true', async () => {
+    const oldVerify = process.env.REQUIRE_EMAIL_VERIFICATION;
+    process.env.REQUIRE_EMAIL_VERIFICATION = 'true';
+
+    const { hashSync } = await import('bcryptjs');
+    const hash = hashSync('ValidPass1!Pass', 1);
+    const user = makeUser({ emailVerified: false, passwordHash: hash, failedLoginCount: 0, lockedUntil: null });
+    const prisma = makePrisma(user);
+    const svc = makeService(prisma as never);
+
+    await expect(svc.login('test@example.com', 'ValidPass1!Pass')).rejects.toThrow('email_not_verified');
+
+    process.env.REQUIRE_EMAIL_VERIFICATION = oldVerify;
+  });
+});

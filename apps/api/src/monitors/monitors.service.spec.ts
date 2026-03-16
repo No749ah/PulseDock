@@ -2999,3 +2999,20 @@ describe('testVersionConnection() — gitlab plain group/project target (line 54
     expect(url).toContain('mygroup%2Fmyproject');
   });
 });
+
+// ── importExternal — CSV with non-string payload (line 1100) ─────────────────
+
+describe('importExternal — CSV with non-string payload (JSON.stringify branch)', () => {
+  it('stringifies object payload when source=csv and payload is not a string', async () => {
+    // Pass an object instead of a string for CSV — triggers JSON.stringify(payload) branch
+    const p = makePrisma(makeMonitor());
+    const svc = makeService(p);
+    p.monitor.findFirst.mockResolvedValue(null);
+
+    // An object payload for CSV: parseCsv receives JSON.stringify(payload) which won't have
+    // a valid CSV header → returns empty → importExternal returns 0 imported
+    const result = await svc.importExternal('user-1', 'csv', { some: 'object' } as never);
+    expect(result.imported).toBe(0);
+    // No crash — the branch was taken successfully
+  });
+});

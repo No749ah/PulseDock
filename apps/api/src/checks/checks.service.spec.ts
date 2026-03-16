@@ -3779,3 +3779,19 @@ describe('runMonitor() — provider-specific branches', () => {
     expect(run.message).toContain('Docker check failed');
   });
 });
+
+// ── Docker check — non-Error throw (string thrown) (line 595) ────────────────
+
+describe('runMonitor() — DOCKER_IMAGE non-Error catch branch (line 595)', () => {
+  it('returns generic "Docker check failed" message when catch receives a non-Error value', async () => {
+    const service = makeService();
+    // Throw a string (not an Error instance) → tests the `'Docker check failed'` fallback
+    globalThis.fetch = vi.fn().mockRejectedValue('network error string');
+    const monitor = makeMonitor({ type: 'DOCKER_IMAGE', target: 'nginx', config: {} });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    // When thrown value is not an Error, message is the plain fallback (no .message property)
+    expect(run.message).toBe('Docker check failed');
+  });
+});

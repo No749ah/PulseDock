@@ -332,6 +332,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
 - **Production Readiness:** ~98% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (164 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
 - **Coverage:** ~91%+ branch | 97%+ stmt — maintenance window suppression, configJson null fallbacks, plugin Error/non-Error throws, admin updateUser fallbacks all covered
-- **Version:** v0.6.0 (bumped from 0.5.0 to match CHANGELOG)
+- **Version:** v0.7.0 (bumped from 0.6.0: tool registry 164→302, test fixes, coverage improvements)
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

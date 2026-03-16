@@ -59,12 +59,15 @@ export default function StatusPagesPage() {
   }
 
   function autoSlug(title: string) {
-    return title
+    const slug = title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
       .slice(0, 80);
+    // Ensure minimum length of 3 — fallback to timestamp-based slug
+    return slug.length >= 3 ? slug : `page-${Date.now().toString(36)}`;
   }
 
   async function handleCreate(e: React.FormEvent) {

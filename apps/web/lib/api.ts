@@ -142,7 +142,9 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
 
     try {
       const parsed = JSON.parse(text);
-      message = parsed?.error?.message || parsed?.message || text;
+      const raw = parsed?.error?.message || parsed?.message || text;
+      // NestJS validation errors return an array of strings — join them
+      message = Array.isArray(raw) ? raw.join(', ') : raw;
     } catch {
       // keep raw text message
     }

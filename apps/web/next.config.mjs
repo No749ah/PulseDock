@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use webpack bundler — Turbopack causes ENOENT on pages-manifest.json in Next.js 16
-  bundler: 'webpack',
-
   // Standalone output for minimal Docker images
   output: 'standalone',
 

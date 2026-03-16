@@ -39,13 +39,17 @@ export function AppModal({
         const focusable = Array.from(
           dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)
         ).filter((el) => el.offsetParent !== null);
-        if (focusable.length === 0) return;
+        if (focusable.length === 0) { e.preventDefault(); return; }
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
+        const currentIdx = focusable.indexOf(document.activeElement as HTMLElement);
+        e.preventDefault();
         if (e.shiftKey) {
-          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+          const prev = currentIdx <= 0 ? last : focusable[currentIdx - 1];
+          prev.focus();
         } else {
-          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+          const next = currentIdx < 0 || currentIdx >= focusable.length - 1 ? first : focusable[currentIdx + 1];
+          next.focus();
         }
       }
     };

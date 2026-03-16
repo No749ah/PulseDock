@@ -39,10 +39,8 @@ export class MetricsService {
     for (const [key, value] of Object.entries(this.counters)) {
       const def = METRIC_DEFS[key];
       const name = `pulsedock_${key}`;
-      if (def) {
-        lines.push(`# HELP ${name} ${def.help}`);
-        lines.push(`# TYPE ${name} ${def.type}`);
-      }
+      lines.push(`# HELP ${name} ${def.help}`);
+      lines.push(`# TYPE ${name} ${def.type}`);
       lines.push(`${name} ${value}`);
     }
 

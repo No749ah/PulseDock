@@ -3,7 +3,7 @@ import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger
 import { MetricsService } from './common/metrics.service';
 import { PrismaService } from './common/prisma.service';
 
-const pkg = require('../package.json');
+const pkg = require('../package.json') as { version: string; name: string };
 const startedAt = Date.now();
 
 @ApiTags('System')
@@ -41,7 +41,7 @@ export class AppController {
     const payload = {
       ok: healthy,
       service: 'pulsedock-api',
-      version: String(pkg.version ?? '0.0.0'),
+      version: pkg.version,
       runtime: 'nestjs',
       uptimeMs,
       checks: {
@@ -101,7 +101,7 @@ export class AppController {
   @ApiResponse({ status: 200, description: 'Version info returned.' })
   version() {
     return {
-      ServerVersion: String(pkg.version ?? '0.0.0'),
+      ServerVersion: pkg.version,
       service: 'pulsedock-api',
       runtime: 'nestjs',
     };
@@ -111,6 +111,6 @@ export class AppController {
   @ApiOperation({ summary: 'API version (simple)', description: 'Returns just the version string.' })
   @ApiResponse({ status: 200, description: 'Version returned.' })
   simpleVersion() {
-    return { version: String(pkg.version ?? '0.0.0') };
+    return { version: pkg.version };
   }
 }

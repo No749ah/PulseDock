@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -63,11 +63,12 @@ type ToolEntry = {
   icon: string;
   description: string;
   homepage: string;
-  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean };
+  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean; agentCommand?: string; agentNote?: string };
   latestSource: { type: string; target?: string; urlTemplate?: string };
   checkInterval: number;
   requiresInstanceUrl: boolean;
   verified: boolean;
+  agentInstallHint?: string;
 };
 
 function stripLeadingV(version: string) {
@@ -127,6 +128,12 @@ export default function VersionsPage() {
   const [openvpnPassword, setOpenvpnPassword] = useState('');
   const showTokenField = false;
   const [advanced, setAdvanced] = useState(false);
+  const [agentTab, setAgentTab] = useState<'docker-run' | 'compose' | 'shell'>('docker-run');
+  const [agentPolling, setAgentPolling] = useState(false);
+  const [agentReported, setAgentReported] = useState(false);
+  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [userApiKeys, setUserApiKeys] = useState<{ id: string; name: string; prefix: string }[]>([]);
+  const [selectedApiKeyId, setSelectedApiKeyId] = useState<string>('');
   const [testMessage, setTestMessage] = useState('');
   const [detectTried, setDetectTried] = useState(false);
   const [sourceStatus, setSourceStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
@@ -358,6 +365,25 @@ export default function VersionsPage() {
     return result;
   }
 
+  const isAgentTool = selectedTool?.versionSource.type === 'pulsedock-agent';
+
+  // Load API keys when agent panel becomes relevant
+  useEffect(() => {
+    if (!isAgentTool || userApiKeys.length > 0) return;
+    api<{ apiKeys: { id: string; name: string; prefix: string }[] }>('/v1/apikeys')
+      .then((res) => {
+        setUserApiKeys(res.apiKeys ?? []);
+        if (res.apiKeys?.length > 0) setSelectedApiKeyId(res.apiKeys[0].id);
+      })
+      .catch(() => {/* silently ignore */});
+  }, [isAgentTool]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedApiKey = userApiKeys.find((k) => k.id === selectedApiKeyId);
+  const agentApiKeyDisplay = selectedApiKey ? `${selectedApiKey.prefix}...` : 'YOUR_API_KEY';
+  const agentPulsedockUrl = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : 'https://your-pulsedock.example.com';
+
   function applyToolToForm(tool: ToolEntry) {
     setSelectedTool(tool);
     setName(tool.name);
@@ -393,6 +419,31 @@ export default function VersionsPage() {
 
     // Advance past the picker to step 0
     setCreateStep(0);
+  }
+
+  function copySnippet(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedSnippet(key);
+      setTimeout(() => setCopiedSnippet(null), 2000);
+    }).catch(() => null);
+  }
+
+  async function pollAgentStatus(monitorId: string) {
+    setAgentPolling(true);
+    const maxAttempts = 12; // 12 × 5s = 60s
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      try {
+        const runs = await api<{ items: { id: string }[] }>(`/v1/monitors/${monitorId}/runs?limit=1`);
+        if (runs?.items?.length > 0) {
+          setAgentReported(true);
+          setAgentPolling(false);
+          setCreateStep(3); // jump to review
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+    setAgentPolling(false);
   }
 
   async function validateSetup() {
@@ -646,6 +697,126 @@ export default function VersionsPage() {
               </div>
             )}
 
+            {createStep === 0 && isAgentTool && (() => {
+              const toolSlug = selectedTool?.id ?? 'my-tool';
+              const dockerRun = `docker run -d \\
+  --name pulsedock-agent \\
+  -e PULSEDOCK_URL=${agentPulsedockUrl} \\
+  -e PULSEDOCK_API_KEY=${agentApiKeyDisplay} \\
+  -e AGENT_TOOL_IDS=${toolSlug} \\
+  --restart unless-stopped \\
+  pulsedock/agent:latest`;
+              const dockerCompose = `services:
+  pulsedock-agent:
+    image: pulsedock/agent:latest
+    container_name: pulsedock-agent
+    restart: unless-stopped
+    environment:
+      PULSEDOCK_URL: ${agentPulsedockUrl}
+      PULSEDOCK_API_KEY: ${agentApiKeyDisplay}
+      AGENT_TOOL_IDS: ${toolSlug}
+      AGENT_INTERVAL_SEC: "3600"`;
+              const shellScript = `#!/bin/bash
+# PulseDock Agent — one-shot shell check for ${selectedTool?.name ?? 'your tool'}
+PULSEDOCK_URL="${agentPulsedockUrl}"
+PULSEDOCK_API_KEY="${agentApiKeyDisplay}"
+${selectedTool?.versionSource.agentCommand ? `VERSION=$(${selectedTool.versionSource.agentCommand})` : `VERSION=$(your-tool --version 2>&1 | grep -oP '\\d+\\.\\d+\\.\\d+')`}
+curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
+  -H "Authorization: Bearer $PULSEDOCK_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d "{\"toolId\":\"${toolSlug}\",\"version\":\"$VERSION\"}"`;
+              const currentSnippet = agentTab === 'docker-run' ? dockerRun : agentTab === 'compose' ? dockerCompose : shellScript;
+              return (
+                <div className="space-y-4 mb-4">
+                  <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                        <GitBranch className="w-4 h-4 text-accent" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-text-primary">Agent Required</p>
+                        <p className="text-xs text-text-secondary">This tool requires the PulseDock Agent running locally</p>
+                      </div>
+                      <a href="/account#api-keys" target="_blank" rel="noopener" className="text-xs text-accent hover:underline flex items-center gap-1 shrink-0">
+                        Get API key <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <p className="text-sm text-text-secondary mb-3">
+                      <strong className="text-text-primary">{selectedTool?.name}</strong> doesn&apos;t expose an external API.
+                      The PulseDock Agent runs on your server, checks the local version, and reports it back via API key.
+                    </p>
+                    {/* API key selector */}
+                    {userApiKeys.length > 0 ? (
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-text-secondary mb-1">API Key (pre-filled in snippets below)</label>
+                        <select
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                          value={selectedApiKeyId}
+                          onChange={(e) => setSelectedApiKeyId(e.target.value)}
+                        >
+                          {userApiKeys.map((k) => (
+                            <option key={k.id} value={k.id}>{k.name} ({k.prefix}...)</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="mb-3 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning">
+                        No API keys yet. <a href="/account#api-keys" target="_blank" rel="noopener" className="underline font-medium">Create one first →</a>
+                      </div>
+                    )}
+
+                    {selectedTool?.versionSource.agentNote && (
+                      <p className="text-sm text-accent mb-3">{selectedTool.versionSource.agentNote}</p>
+                    )}
+
+                    {/* Tab switcher */}
+                    <div className="flex gap-1 mb-3 p-1 bg-background rounded-lg">
+                      {(['docker-run', 'compose', 'shell'] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setAgentTab(t)}
+                          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition ${agentTab === t ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                        >
+                          {t === 'docker-run' ? 'Docker Run' : t === 'compose' ? 'Compose' : 'Shell Script'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Snippet + copy button */}
+                    <div className="relative">
+                      <pre className="text-xs bg-background rounded-lg p-3 pr-10 overflow-x-auto text-text-primary font-mono whitespace-pre">{currentSnippet}</pre>
+                      <button
+                        type="button"
+                        onClick={() => copySnippet(currentSnippet, agentTab)}
+                        className="absolute top-2 right-2 p-1.5 rounded-md bg-surface hover:bg-surface-elevated transition"
+                        title="Copy to clipboard"
+                      >
+                        {copiedSnippet === agentTab ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-text-secondary" />}
+                      </button>
+                    </div>
+
+                    {/* Replace placeholders hint */}
+                    <p className="text-xs text-text-secondary mt-2">
+                      Replace <code className="bg-background px-1 rounded">https://your-pulsedock.example.com</code> and <code className="bg-background px-1 rounded">pdck_your_api_key</code> with your values.{' '}
+                      <a href="/account#api-keys" target="_blank" rel="noopener" className="text-accent hover:underline">Create an API key →</a>
+                    </p>
+
+                    {/* "I've started the agent" polling button */}
+                    {agentReported ? (
+                      <div className="mt-3 flex items-center gap-2 text-sm text-green-400">
+                        <Check className="w-4 h-4" /> Agent connected — first report received!
+                      </div>
+                    ) : (
+                      <p className="text-xs text-text-secondary mt-3">
+                        Create the monitor first, then start the agent. The monitor will show <em>&quot;Waiting for agent…&quot;</em> until the first report arrives.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {createStep === 0 && (
               <div className="space-y-4">
                 {selectedTool ? (
@@ -678,8 +849,20 @@ export default function VersionsPage() {
                   </p>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'} />
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Target
+                    {selectedTool && target && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent font-normal">from registry</span>}
+                  </label>
+                  <input
+                    className={`${inputClass} ${selectedTool && target ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    value={target}
+                    onChange={(e) => { if (!selectedTool) setTarget(e.target.value); }}
+                    readOnly={!!(selectedTool && target)}
+                    placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'}
+                  />
+                  {selectedTool && target && (
+                    <p className="mt-1 text-xs text-text-secondary">Target pre-filled from the {selectedTool.name} registry entry. <button type="button" className="text-accent hover:underline" onClick={() => setSelectedTool(null)}>Clear tool selection</button> to edit manually.</p>
+                  )}
                 </div>
                 {((provider === 'github' || provider === 'gitlab') || showTokenField) && (
                   <div>

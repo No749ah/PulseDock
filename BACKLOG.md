@@ -395,6 +395,6 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v0.9.0
-- **This heartbeat (2026-03-16 19:02 UTC):** Response time threshold alerting for HTTP monitors. Set responseTimeThresholdMs to trigger degraded alerts when endpoints respond slowly. 5 new tests, 1275 total. Clean build + deploy.
+- **This heartbeat (2026-03-16 20:02 UTC):** Per-page document titles for all 12 dashboard routes (login, dashboard, monitors, alerts, versions, incidents, maintenance, status-pages, projects, account, admin, monitor detail). HTTP/SSL/TCP config details panel on monitor detail page — shows method, expected status, response time threshold, confirmations, body assertion, request body, headers. Run history expanded 20→50. Swagger @ApiProperty annotations on CreateMonitorDto. 1275 tests, clean build + deploy.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** All major backlog items complete. Ready to consider next project when Noah approves.

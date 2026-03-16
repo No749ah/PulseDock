@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **Incident management + SVG status badges** — Full incident tracking: Prisma schema (Incident, IncidentUpdate, IncidentMonitor + enums), migration, backend CRUD API (`/v1/incidents`), incidents service with timeline updates and monitor linking. Public SVG badge endpoint (`GET /v1/public/badge/:monitorId.svg`) — shields.io-style flat/flat-square/for-the-badge styles, live up/degraded/down/paused status with colour coding, 60s cache. Frontend `/incidents` page: create/edit/delete/post-update modals, status/severity badges, expandable rows with timeline + affected monitors, active/resolved sections. Monitors page: embed badge button (Shield icon) per row with Markdown/HTML/URL copy snippets. Nav updated with AlertOctagon icon.
+
 - [x] **Tool registry expansion: 302 → 382 tools** — Added 80 additional pre-configured tools across existing categories with broad self-hosting coverage: Email/Comms (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), Infra & networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), data/admin (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), home/self-hosted apps (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud), and additional media/dev ecosystem tools (Jellyseerr, Readarr, Mylar3, Stremio Server, JupyterHub, Gitpod, Hono, Clair). Registry now has 382 unique tools with no duplicate IDs.
 
 - [x] **Test suite stabilization (scoping regressions)** — Fixed two broken spec blocks introduced outside their parent `describe` scopes: `auth.controller.spec.ts` (undefined `authService`) and `dashboard/public.controller.spec.ts` (undefined `prisma`). Added local test setup inside each standalone block so tests no longer rely on outer-scope variables. Result: API tests back to green (49/49 files, 1192/1192 tests).
@@ -329,11 +331,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
 ## Status Summary
-- **Codebase:** 1202 tests passing (1192 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1231 tests passing (1221 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working
-- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 9 pages 200) — API at v0.5.0
-- **Production Readiness:** ~98% — All security gaps closed, full accessibility, public status page builder (drag-and-drop, 20 widgets, password protection), tool registry (382 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
-- **Coverage:** ~91%+ branch | 97%+ stmt — maintenance window suppression, configJson null fallbacks, plugin Error/non-Error throws, admin updateUser fallbacks all covered
-- **Version:** v0.7.0 (latest: tool registry 302→382 expansion + stability maintained)
+- **Deployment:** GitHub Actions CI/CD running, reverse proxy nginx at https://oc-dev-test.no749ah.com (all 11 pages 200)
+- **Production Readiness:** ~99% — All security gaps closed, full accessibility, incident management, SVG status badges, public status page builder, tool registry (382 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, HTML emails, webhook HMAC signing, account lockout notifications.
+- **Coverage:** ~91%+ branch | 97%+ stmt
+- **Version:** v0.7.0
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — need NestJS v11 or Prisma downgrade)
 - **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

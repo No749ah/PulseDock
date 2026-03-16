@@ -63,11 +63,12 @@ type ToolEntry = {
   icon: string;
   description: string;
   homepage: string;
-  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean };
+  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean; agentCommand?: string; agentNote?: string };
   latestSource: { type: string; target?: string; urlTemplate?: string };
   checkInterval: number;
   requiresInstanceUrl: boolean;
   verified: boolean;
+  agentInstallHint?: string;
 };
 
 function stripLeadingV(version: string) {
@@ -358,6 +359,8 @@ export default function VersionsPage() {
     return result;
   }
 
+  const isAgentTool = selectedTool?.versionSource.type === 'pulsedock-agent';
+
   function applyToolToForm(tool: ToolEntry) {
     setSelectedTool(tool);
     setName(tool.name);
@@ -642,6 +645,54 @@ export default function VersionsPage() {
                       </div>
                     );
                   })()}
+                </div>
+              </div>
+            )}
+
+            {createStep === 0 && isAgentTool && (
+              <div className="space-y-4 mb-4">
+                <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                      <GitBranch className="w-4 h-4 text-accent" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-text-primary">Agent Required</p>
+                      <p className="text-xs text-text-secondary">This tool requires the PulseDock Agent running locally</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-text-secondary mb-3">
+                    {selectedTool?.name} doesn&apos;t expose an external API. The <strong className="text-text-primary">PulseDock Agent</strong> runs on your local network,
+                    checks the version via shell commands, and reports back to PulseDock securely via API key.
+                  </p>
+                  {selectedTool?.versionSource.agentNote && (
+                    <p className="text-sm text-accent mb-3">{selectedTool.versionSource.agentNote}</p>
+                  )}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Quick Start — Docker</p>
+                    <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto text-text-primary font-mono whitespace-pre">{`docker run -d \\
+  --name pulsedock-agent \\
+  -e PULSEDOCK_URL=https://your-pulsedock-instance.com \\
+  -e PULSEDOCK_API_KEY=pdck_your_api_key \\
+  --restart unless-stopped \\
+  pulsedock/agent`}</pre>
+                  </div>
+                  <details className="mt-3">
+                    <summary className="text-xs text-accent cursor-pointer hover:underline">Docker Compose snippet</summary>
+                    <pre className="text-xs bg-background rounded-lg p-3 mt-2 overflow-x-auto text-text-primary font-mono whitespace-pre">{`# docker-compose.yml
+services:
+  pulsedock-agent:
+    image: pulsedock/agent
+    container_name: pulsedock-agent
+    restart: unless-stopped
+    environment:
+      PULSEDOCK_URL: https://your-pulsedock-instance.com
+      PULSEDOCK_API_KEY: pdck_your_api_key
+      AGENT_INTERVAL_SEC: "3600"`}</pre>
+                  </details>
+                  <p className="text-xs text-text-secondary mt-3">
+                    Create the monitor below — it will show &quot;Waiting for agent report…&quot; until the agent sends its first check.
+                  </p>
                 </div>
               </div>
             )}

@@ -282,7 +282,7 @@ export default function StatusPagesPage() {
                 <label className="mb-1.5 block text-xs font-medium text-text-secondary">
                   Slug <span className="text-text-secondary/50 font-normal">(URL-friendly, auto-generated)</span>
                 </label>
-                <div className="flex items-center gap-0 overflow-hidden rounded-xl border border-border bg-bg focus-within:border-accent">
+                <div className={`flex items-center gap-0 overflow-hidden rounded-xl border bg-bg focus-within:border-accent ${createSlug && createSlug.length < 3 ? 'border-danger' : 'border-border'}`}>
                   <span className="border-r border-border bg-surface px-3 py-2.5 text-xs text-text-secondary">/status/</span>
                   <input
                     type="text"
@@ -292,6 +292,9 @@ export default function StatusPagesPage() {
                     className="flex-1 bg-transparent px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none"
                   />
                 </div>
+                {createSlug && createSlug.length < 3 && (
+                  <p className="mt-1 text-xs text-danger">Slug must be at least 3 characters.</p>
+                )}
               </div>
               <div className="flex gap-3 pt-2">
                 <button
@@ -303,7 +306,7 @@ export default function StatusPagesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || !createTitle.trim()}
+                  disabled={creating || !createTitle.trim() || (createSlug.length > 0 && createSlug.length < 3)}
                   className="flex-1 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
                 >
                   {creating ? "Creating…" : "Create & Edit"}

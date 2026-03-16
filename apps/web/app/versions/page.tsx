@@ -648,7 +648,18 @@ export default function VersionsPage() {
 
             {createStep === 0 && (
               <div className="space-y-4">
-                <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
+                {selectedTool ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+                    <img src={selectedTool.icon} alt={selectedTool.name} className="w-8 h-8 shrink-0 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-primary">{selectedTool.name}</p>
+                      <p className="text-xs text-text-secondary truncate">{selectedTool.description}</p>
+                    </div>
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border text-text-secondary shrink-0">{selectedTool.category}</span>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
                   <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
@@ -682,7 +693,17 @@ export default function VersionsPage() {
 
             {createStep === 1 && (
               <div className="space-y-4">
-                <p className="font-semibold text-text-primary">Step 2/4 · Connection</p>
+                {selectedTool ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+                    <img src={selectedTool.icon} alt={selectedTool.name} className="w-8 h-8 shrink-0 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-primary">{selectedTool.name}</p>
+                      <p className="text-xs text-text-secondary truncate">{selectedTool.description}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-text-primary">Step 2/4 · Connection</p>
+                )}
                 {provider === 'gitlab' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">GitLab host</label>

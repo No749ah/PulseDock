@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "../../lib/api";
 import { setSession } from "../../components/auth";
 import { FadeIn } from "../components/FadeIn";
-import { AlertCircle, Monitor, Loader2 } from "lucide-react";
+import { AlertCircle, Monitor, Loader2, Shield } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { LocaleSwitcher } from "../components/LocaleSwitcher";
 import { useI18n } from "../../components/i18n-provider";
@@ -37,7 +37,22 @@ export default function LoginPage() {
   const [totpTempToken, setTotpTempToken] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  // First-run setup state
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(true);
+  const [setupEmail, setSetupEmail] = useState("");
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupConfirm, setSetupConfirm] = useState("");
+  const [setupError, setSetupError] = useState("");
+  const [setupSubmitting, setSetupSubmitting] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    api<{ needsSetup: boolean }>("/v1/auth/setup-status")
+      .then((r) => setNeedsSetup(r.needsSetup))
+      .catch(() => setNeedsSetup(false))
+      .finally(() => setSetupLoading(false));
+  }, []);
 
   useEffect(() => {
     api<{ enabled: boolean }>('/v1/auth/mail-configured')
@@ -218,6 +233,46 @@ export default function LoginPage() {
     return void login();
   }
 
+  async function handleSetup(e: React.FormEvent) {
+    e.preventDefault();
+    setSetupError("");
+    if (setupPassword !== setupConfirm) {
+      setSetupError("Passwords do not match");
+      return;
+    }
+    if (!passwordMeetsPolicy(setupPassword)) {
+      setSetupError("Password does not meet the security policy");
+      return;
+    }
+    setSetupSubmitting(true);
+    try {
+      await api<{ accessToken: string; refreshToken: string; user: LoginUser }>(
+        "/v1/auth/setup",
+        undefined,
+        {
+          method: "POST",
+          body: JSON.stringify({ email: setupEmail, password: setupPassword }),
+        },
+      );
+      // Log in with the new credentials
+      const loginRes = await api<{ accessToken: string; refreshToken: string; user: LoginUser }>(
+        "/v1/auth/login",
+        undefined,
+        {
+          method: "POST",
+          body: JSON.stringify({ email: setupEmail, password: setupPassword }),
+        },
+      );
+      const name = (loginRes.user.email?.split("@")[0] || "user").trim() || "user";
+      setSession(loginRes.accessToken, loginRes.refreshToken, { ...loginRes.user, name });
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setSetupError(err instanceof Error ? err.message : "Setup failed");
+    } finally {
+      setSetupSubmitting(false);
+    }
+  }
+
   const subtitle = inInviteFlow
     ? t("login.subtitleInvite")
     : inResetFlow
@@ -233,6 +288,122 @@ export default function LoginPage() {
       : forgotMode
         ? t("login.requestResetLink")
         : t("login.signIn");
+
+  if (setupLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (needsSetup) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/95 backdrop-blur-sm">
+        <FadeIn>
+          <div className="w-full max-w-lg">
+            {/* Logo */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <Monitor className="w-10 h-10 text-accent" />
+              <span className="text-4xl font-bold tracking-tight">PulseDock</span>
+            </div>
+
+            {/* Setup Card */}
+            <div className="bg-surface border border-border rounded-2xl p-10 shadow-2xl shadow-black/50">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Shield className="w-5 h-5 text-accent" />
+                <h1 className="text-xl font-semibold text-text-primary">Welcome to PulseDock</h1>
+              </div>
+              <p className="text-text-secondary text-sm text-center mb-8">
+                Set up your admin account to get started
+              </p>
+
+              <form onSubmit={handleSetup} className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label htmlFor="setup-email" className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    id="setup-email"
+                    type="email"
+                    value={setupEmail}
+                    onChange={(e) => setSetupEmail(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
+                    placeholder="admin@example.com"
+                    autoComplete="email"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label htmlFor="setup-password" className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Password
+                  </label>
+                  <input
+                    id="setup-password"
+                    type="password"
+                    value={setupPassword}
+                    onChange={(e) => setSetupPassword(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <PasswordStrength password={setupPassword} />
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label htmlFor="setup-confirm" className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="setup-confirm"
+                    type="password"
+                    value={setupConfirm}
+                    onChange={(e) => setSetupConfirm(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-surface-elevated border border-border rounded-xl text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors"
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    required
+                  />
+                  {setupConfirm && setupPassword !== setupConfirm && (
+                    <p className="mt-1.5 text-xs text-danger">Passwords do not match</p>
+                  )}
+                </div>
+
+                {/* Error */}
+                {setupError && (
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{setupError}</span>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={
+                    setupSubmitting ||
+                    !setupEmail ||
+                    !passwordMeetsPolicy(setupPassword) ||
+                    setupPassword !== setupConfirm
+                  }
+                  className="w-full bg-accent hover:bg-accent-hover text-bg font-semibold py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(88,166,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
+                >
+                  {setupSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Create account &amp; sign in
+                </button>
+              </form>
+            </div>
+          </div>
+        </FadeIn>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">

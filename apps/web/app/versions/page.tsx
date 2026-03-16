@@ -729,8 +729,20 @@ services:
                   </p>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Target</label>
-                  <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'} />
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Target
+                    {selectedTool && target && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent font-normal">from registry</span>}
+                  </label>
+                  <input
+                    className={`${inputClass} ${selectedTool && target ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    value={target}
+                    onChange={(e) => { if (!selectedTool) setTarget(e.target.value); }}
+                    readOnly={!!(selectedTool && target)}
+                    placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'}
+                  />
+                  {selectedTool && target && (
+                    <p className="mt-1 text-xs text-text-secondary">Target pre-filled from the {selectedTool.name} registry entry. <button type="button" className="text-accent hover:underline" onClick={() => setSelectedTool(null)}>Clear tool selection</button> to edit manually.</p>
+                  )}
                 </div>
                 {((provider === 'github' || provider === 'gitlab') || showTokenField) && (
                   <div>

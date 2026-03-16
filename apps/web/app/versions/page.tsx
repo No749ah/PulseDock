@@ -718,8 +718,8 @@ export default function VersionsPage() {
       AGENT_INTERVAL_SEC: "3600"`;
               const shellScript = `#!/bin/bash
 # PulseDock Agent — one-shot shell check for ${selectedTool?.name ?? 'your tool'}
-PULSEDOCK_URL="https://your-pulsedock.example.com"
-PULSEDOCK_API_KEY="pdck_your_api_key"
+PULSEDOCK_URL="${agentPulsedockUrl}"
+PULSEDOCK_API_KEY="${agentApiKeyDisplay}"
 ${selectedTool?.versionSource.agentCommand ? `VERSION=$(${selectedTool.versionSource.agentCommand})` : `VERSION=$(your-tool --version 2>&1 | grep -oP '\\d+\\.\\d+\\.\\d+')`}
 curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
   -H "Authorization: Bearer $PULSEDOCK_API_KEY" \\
@@ -745,6 +745,26 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                       <strong className="text-text-primary">{selectedTool?.name}</strong> doesn&apos;t expose an external API.
                       The PulseDock Agent runs on your server, checks the local version, and reports it back via API key.
                     </p>
+                    {/* API key selector */}
+                    {userApiKeys.length > 0 ? (
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-text-secondary mb-1">API Key (pre-filled in snippets below)</label>
+                        <select
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                          value={selectedApiKeyId}
+                          onChange={(e) => setSelectedApiKeyId(e.target.value)}
+                        >
+                          {userApiKeys.map((k) => (
+                            <option key={k.id} value={k.id}>{k.name} ({k.prefix}...)</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="mb-3 p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-warning">
+                        No API keys yet. <a href="/account#api-keys" target="_blank" rel="noopener" className="underline font-medium">Create one first →</a>
+                      </div>
+                    )}
+
                     {selectedTool?.versionSource.agentNote && (
                       <p className="text-sm text-accent mb-3">{selectedTool.versionSource.agentNote}</p>
                     )}

@@ -330,6 +330,40 @@ _(pick the highest priority unchecked item below and start immediately)_
 ✅ **Phase 5: DevOps & Docs** — Docker (dev+prod), GitHub Actions CI/CD, README/CHANGELOG/CONTRIBUTING
 ✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
+## Next Up — Post Tool-Registry (implement in order after 1000+ tools are done)
+
+> **WAIT:** Do not start these until the tool registry expansion to 1000+ tools is confirmed complete and pushed.
+
+### 🟠 UX / Flow Improvements (from 2026-03-16 session)
+
+- [ ] **Status Pages — WebSocket through reverse proxy** — WSS fails via nginx at oc-dev-test because proxy doesn't forward Upgrade headers. Add nginx config for `/api/socket.io` location with `proxy_http_version 1.1`, `Upgrade` + `Connection` headers. Interim: polling fallback is in place but real-time updates need proper WS proxy config. Document in `docs/NGINX.md`.
+
+- [ ] **Versions page — Tool picker instance URL UX** — When a self-hosted tool is selected (requiresInstanceUrl=true), the instance URL field is now required with better label/placeholder. But: the form still advances to step 1 (source check) even if instanceUrl is empty for non-required tools. Review full step-flow to ensure all tool types have coherent field visibility. Some tools in registry may have wrong `requiresInstanceUrl` value — audit top 50 most common tools.
+
+- [ ] **Status Pages — Create modal slug edge cases** — Slug fallback for very short/emoji-only titles now uses timestamp. But: if user manually enters a slug < 3 chars, no warning is shown. Add inline validation on the slug input field with MinLength(3) hint before submit.
+
+- [ ] **Alert channels modal — Tab focus trap** — Fixed in Modal.tsx and modal-framework.tsx. Verify the specific alert channel creation modal uses one of these components and isn't a custom inline modal. If it's a custom modal, apply the same focus-trap fix there too.
+
+### 🟡 Features (from 2026-03-16 session)
+
+- [ ] **Tool Registry → Versions page integration** — When a tool with `requiresInstanceUrl: true` is selected from the registry, the versions page should:
+  1. Pre-fill all fields from the registry entry
+  2. Show a clear "Your {ToolName} URL" input as step 0 (before source check)
+  3. Auto-populate `appVersionEndpoint` from `versionSource.urlTemplate` (strip `{{instanceUrl}}`)
+  4. Lock the `target` field to the registry value (not editable)
+  5. Show the tool's icon + description in the form header
+  Currently: instance URL clears to empty but the UX around it is still confusing.
+
+- [ ] **Monitors page — Templates for self-hosted app uptime** — The current templates (HTTP Health Check, GitHub Release, Docker Image) don't include pre-built uptime monitors for popular self-hosted apps. Add templates that use the tool registry: Portainer health, Gitea health, GitLab health, etc. — pre-fill URL with placeholder, user only needs to enter their instance URL. Should mirror the tool registry selection UX.
+
+### 🔵 Infrastructure
+
+- [ ] **dind auto-start on container restart** — Currently after every restart, PostgreSQL/Redis containers in dind need to be manually started via `scripts/start-dind-services.sh`. The socat proxy containers also need restarting. Add a startup check to HEARTBEAT.md step 0 (already partially done) and ensure the script is idempotent. Consider making this a cron job that runs on boot.
+
+- [ ] **SSH key persistence** — SSH key is now stored at `/home/node/.openclaw/.ssh/` (persistent volume) and `~/.ssh` is a symlink. Verify this survives container restart correctly. If not, add key regeneration + GitHub upload prompt to startup flow.
+
+---
+
 ## Status Summary
 - **Codebase:** 1237 tests passing (1227 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, Docker setup working (webpack bundler fix applied)

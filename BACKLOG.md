@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **HTTP body keyword + expected status assertions** — `runHttpCheck()` now accepts `config.bodyContains` (response body must contain string, case-insensitive) and `config.expectedStatus` (exact status code or array of codes). Monitor create/edit UI shows both fields for HTTP monitors. 8 new tests (total: 1264). This enables monitoring JSON API health payloads without the plugin system.
+
 - [x] **Monitor failure confirmations (debounce alert noise)** — Added per-monitor `confirmations` setting (1–5) across API DTOs, service layer, Prisma schema + migration, scheduler/check runtime type mapping, and Monitors UI create/edit flow. Alerting logic now triggers only when unhealthy streak crosses the configured threshold (and avoids repeated alerts after threshold is already crossed). Added focused tests covering first-failure suppression, threshold crossing, default immediate mode, and no-repeat behavior.
 
 - [x] **Incident management + SVG status badges** — Full incident tracking: Prisma schema (Incident, IncidentUpdate, IncidentMonitor + enums), migration, backend CRUD API (`/v1/incidents`), incidents service with timeline updates and monitor linking. Public SVG badge endpoint (`GET /v1/public/badge/:monitorId.svg`) — shields.io-style flat/flat-square/for-the-badge styles, live up/degraded/down/paused status with colour coding, 60s cache. Frontend `/incidents` page: create/edit/delete/post-update modals, status/severity badges, expandable rows with timeline + affected monitors, active/resolved sections. Monitors page: embed badge button (Shield icon) per row with Markdown/HTML/URL copy snippets. Nav updated with AlertOctagon icon.
@@ -388,12 +390,12 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ## Status Summary
-- **Codebase:** 1252 tests passing (1242 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1264 tests passing (1254 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v0.8.0
-- **This heartbeat (2026-03-16 noon):** PulseDock Agent frontend tab-switcher + copy buttons + target locking, nginx WebSocket proxy docs, all 🔵 infrastructure items confirmed working, all 🟠/🟡 UX/feature items from 2026-03-16 session now complete. 1302 tool registry (up from 382).
+- **This heartbeat (2026-03-16 17:00 UTC):** HTTP body keyword + expected status code assertions — native `bodyContains` + `expectedStatus` config on HTTP monitors. No plugin needed. 8 new tests, 1264 total. Clean build + deploy.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** All major backlog items complete. Ready to consider next project when Noah approves.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain); SSH key restoration + dind restart needed to push/deploy

@@ -390,11 +390,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ## Status Summary
-- **Codebase:** 1287 tests passing (1265 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1291 tests passing (1269 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
-- **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
+- **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
-- **Version:** v1.0.0 🎉
-- **This heartbeat (2026-03-17 02:02 UTC):** Fixed yellow/degraded level surfacing across monitors list, dashboard, monitor detail page, and sparkline. Previously HTTP response-time-threshold violations and version update states (level=yellow, ok=true) were displayed as "OK" — now correctly shown as "Degraded" (amber badge). Sparkline updated with amber bars at 65% height for degraded runs.
+- **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-17 04:02 UTC):** Coverage improvements — RealtimeGateway now 100% branch coverage (2 new tests: undefined cookie header + JWT payload missing sub). CSV parser branch gap closed (4 total new tests). 1265 → 1269 API tests.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
-- **Next Project:** v1.0.0 shipped. New project proposal sent to Noah — awaiting repo creation.
+- **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.

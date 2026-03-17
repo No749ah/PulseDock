@@ -65,9 +65,29 @@ function LevelBadge({ level }: { level: "green" | "yellow" | "red" }) {
 
 // ── Widget Components ────────────────────────────────────────────────────
 
+interface ExtraData {
+  incidents: Array<{
+    id: string; title: string; status: string; severity: string;
+    createdAt: string; resolvedAt: string | null;
+    updates: { id: string; message: string; status: string; createdAt: string }[];
+    monitors: { id: string; name: string }[];
+  }>;
+  maintenance: Array<{
+    id: string; name: string; description: string | null;
+    startsAt: string; endsAt: string;
+    monitors: { id: string; name: string }[];
+  }>;
+  recentChecks: Array<{
+    id: string; monitorId: string; monitorName: string;
+    checkedAt: string; ok: boolean; level: string;
+    latencyMs: number | null; message: string | null;
+  }>;
+}
+
 interface WidgetProps {
   widget: Widget;
   monitors: MonitorSummary[];
+  extra: ExtraData;
 }
 
 // Overall System Status — hero banner
@@ -163,14 +183,35 @@ export function MultiMonitorStatusGrid({ monitors }: WidgetProps) {
 }
 
 // Active Incident Banner
-export function ActiveIncidentBanner({ monitors }: WidgetProps) {
+export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
+  const activeIncidents = extra.incidents.filter(i => i.status !== "resolved");
   const down = monitors.filter((m) => m.level === "red");
-  if (down.length === 0) return null;
+
+  if (activeIncidents.length === 0 && down.length === 0) {
+    return (
+      <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3">
+        <span className="h-3 w-3 rounded-full bg-success" />
+        <span className="text-sm font-medium text-success">All systems operational — no active incidents</span>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-      <p className="mb-3 font-semibold text-red-400">🔴 Active Incident{down.length > 1 ? "s" : ""}</p>
-      <ul className="space-y-1.5">
-        {down.map((m) => (
+      <p className="mb-3 font-semibold text-red-400">🔴 Active Incident{(activeIncidents.length + down.length) > 1 ? "s" : ""}</p>
+      <ul className="space-y-2">
+        {activeIncidents.map((i) => (
+          <li key={i.id} className="flex items-start gap-2 text-sm">
+            <span className="mt-1 h-2 w-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+            <div>
+              <span className="font-medium text-text-primary">{i.title}</span>
+              <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${i.severity === "critical" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning"}`}>{i.severity}</span>
+              {i.monitors.length > 0 && <p className="text-xs text-text-secondary">Affected: {i.monitors.map(m => m.name).join(", ")}</p>}
+              {i.updates[0] && <p className="text-xs text-text-secondary mt-0.5">{i.updates[0].message}</p>}
+            </div>
+          </li>
+        ))}
+        {down.filter(m => !activeIncidents.some(i => i.monitors.some(im => im.id === m.id))).map((m) => (
           <li key={m.id} className="flex items-center gap-2 text-sm text-text-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
             {m.name}
@@ -312,11 +353,12 @@ export function ResponseTimeChart({ widget, monitors }: WidgetProps) {
 }
 
 // Check History Feed
-export function CheckHistoryFeed({ monitors }: WidgetProps) {
-  if (monitors.length === 0) {
+export function CheckHistoryFeed({ extra }: WidgetProps) {
+  const checks = extra.recentChecks;
+  if (checks.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-secondary">
-        No monitor data available
+        No check history available yet
       </div>
     );
   }
@@ -325,17 +367,16 @@ export function CheckHistoryFeed({ monitors }: WidgetProps) {
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-medium text-text-primary">Recent Check Results</p>
       </div>
-      <ul className="divide-y divide-border/60">
-        {monitors.map((m) => (
-          <li key={m.id} className="flex items-center gap-3 px-4 py-3">
-            <LevelBadge level={m.level} />
-            <span className="flex-1 truncate text-sm text-text-primary">{m.name}</span>
-            {m.lastChecked && (
-              <span className="shrink-0 text-xs text-text-secondary">{formatRelative(m.lastChecked)}</span>
+      <ul className="divide-y divide-border/60 max-h-80 overflow-y-auto">
+        {checks.slice(0, 20).map((c) => (
+          <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+            <LevelBadge level={c.level as "green" | "yellow" | "red"} />
+            <span className="flex-1 truncate text-sm text-text-primary">{c.monitorName}</span>
+            {c.message && <span className="truncate max-w-[200px] text-xs text-text-secondary">{c.message}</span>}
+            {c.latencyMs !== null && (
+              <span className="shrink-0 tabular-nums text-xs text-text-secondary">{c.latencyMs}ms</span>
             )}
-            {m.latencyMs !== null && (
-              <span className="shrink-0 tabular-nums text-xs text-text-secondary">{m.latencyMs}ms</span>
-            )}
+            <span className="shrink-0 text-xs text-text-secondary">{formatRelative(c.checkedAt)}</span>
           </li>
         ))}
       </ul>
@@ -343,31 +384,52 @@ export function CheckHistoryFeed({ monitors }: WidgetProps) {
   );
 }
 
-// Incident History
-export function IncidentHistory({ monitors }: WidgetProps) {
-  const down = monitors.filter((m) => m.level !== "green");
+// Incident History — real incidents from API
+export function IncidentHistory({ extra }: WidgetProps) {
+  const incidents = extra.incidents;
+  const active = incidents.filter(i => i.status !== "resolved");
+  const resolved = incidents.filter(i => i.status === "resolved");
+
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
       <p className="mb-3 text-sm font-medium text-text-primary">Incident History</p>
-      {down.length === 0 ? (
+      {incidents.length === 0 ? (
         <div className="flex items-center gap-2 rounded-lg bg-green-500/5 px-3 py-2.5">
           <span className="h-2 w-2 rounded-full bg-green-400" />
-          <span className="text-sm text-green-400">No active incidents</span>
+          <span className="text-sm text-green-400">No incidents in the last 30 days</span>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {down.map((m) => (
-            <li key={m.id} className="flex items-start gap-2 rounded-lg bg-surface/80 px-3 py-2">
-              <span className={`mt-0.5 h-2 w-2 rounded-full ${m.level === "red" ? "bg-red-400" : "bg-yellow-400"}`} />
-              <div>
-                <p className="text-sm font-medium text-text-primary">{m.name}</p>
-                {m.message && <p className="text-xs text-text-secondary">{m.message}</p>}
-                {m.lastChecked && <p className="text-xs text-text-secondary">{formatRelative(m.lastChecked)}</p>}
-              </div>
-              <LevelBadge level={m.level} />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          {active.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-danger uppercase tracking-wide">Active</p>
+              {active.map(i => (
+                <div key={i.id} className="rounded-lg bg-danger/5 border border-danger/20 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
+                    <span className="text-sm font-medium text-text-primary">{i.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${i.severity === "critical" ? "bg-danger/15 text-danger" : i.severity === "major" ? "bg-warning/15 text-warning" : "bg-accent/15 text-accent"}`}>{i.severity}</span>
+                    <span className="ml-auto text-xs text-text-secondary">{formatRelative(i.createdAt)}</span>
+                  </div>
+                  {i.monitors.length > 0 && <p className="text-xs text-text-secondary mt-1">Affected: {i.monitors.map(m => m.name).join(", ")}</p>}
+                  {i.updates[0] && <p className="text-xs text-text-secondary mt-1">{i.updates[0].message}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          {resolved.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-success uppercase tracking-wide">Resolved</p>
+              {resolved.slice(0, 5).map(i => (
+                <div key={i.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-elevated/30">
+                  <span className="h-2 w-2 rounded-full bg-success" />
+                  <span className="text-sm text-text-primary flex-1 truncate">{i.title}</span>
+                  <span className="text-xs text-text-secondary">{formatRelative(i.resolvedAt ?? i.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -386,19 +448,51 @@ export function TextBlock({ widget }: WidgetProps) {
   );
 }
 
-// Scheduled Maintenance
-export function ScheduledMaintenance({ widget }: WidgetProps) {
-  const text = (widget.config.text as string) ?? "";
-  const label = (widget.config.label as string) ?? "Scheduled Maintenance";
-  return (
-    <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-yellow-400">🔧</span>
-        <p className="text-sm font-semibold text-yellow-400">{label}</p>
+// Scheduled Maintenance — real maintenance windows from API
+export function ScheduledMaintenance({ extra }: WidgetProps) {
+  const windows = extra.maintenance;
+  const now = Date.now();
+
+  if (windows.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-success">🔧</span>
+          <p className="text-sm font-semibold text-text-primary">Scheduled Maintenance</p>
+        </div>
+        <p className="mt-2 text-sm text-text-secondary">No upcoming maintenance scheduled</p>
       </div>
-      <p className="text-sm text-text-secondary">
-        {text || "No scheduled maintenance"}
-      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-yellow-400">🔧</span>
+        <p className="text-sm font-semibold text-yellow-400">Scheduled Maintenance</p>
+      </div>
+      {windows.map(mw => {
+        const start = new Date(mw.startsAt).getTime();
+        const end = new Date(mw.endsAt).getTime();
+        const isActive = now >= start && now <= end;
+        const isUpcoming = now < start;
+        return (
+          <div key={mw.id} className={`rounded-lg px-3 py-2.5 ${isActive ? "bg-warning/10 border border-warning/20" : "bg-surface-elevated/30"}`}>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-warning animate-pulse" : "bg-text-secondary/40"}`} />
+              <span className="text-sm font-medium text-text-primary">{mw.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isActive ? "bg-warning/15 text-warning" : "bg-surface-elevated text-text-secondary"}`}>
+                {isActive ? "In Progress" : isUpcoming ? "Upcoming" : "Completed"}
+              </span>
+            </div>
+            {mw.description && <p className="mt-1 text-xs text-text-secondary">{mw.description}</p>}
+            <p className="mt-1 text-xs text-text-muted">
+              {new Date(mw.startsAt).toLocaleString()} — {new Date(mw.endsAt).toLocaleString()}
+            </p>
+            {mw.monitors.length > 0 && <p className="mt-1 text-xs text-text-secondary">Affected: {mw.monitors.map(m => m.name).join(", ")}</p>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -533,8 +627,9 @@ function UpdateSummary({ monitors }: WidgetProps) {
 
 // ── Main renderer ────────────────────────────────────────────────────────
 
-export function renderWidget(widget: Widget, monitors: MonitorSummary[]): React.ReactNode {
-  const props: WidgetProps = { widget, monitors };
+export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?: Partial<ExtraData>): React.ReactNode {
+  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], ...extra };
+  const props: WidgetProps = { widget, monitors, extra: fullExtra };
   switch (widget.type) {
     case "overall-status":
     case "overall-system-status": return <OverallSystemStatus {...props} />;

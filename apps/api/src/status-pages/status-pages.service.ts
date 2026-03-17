@@ -174,12 +174,86 @@ export class StatusPagesService {
       };
     });
 
+    // Fetch incidents for the page owner (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId: page.userId, createdAt: { gte: thirtyDaysAgo } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        severity: true,
+        createdAt: true,
+        resolvedAt: true,
+        updates: { orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, body: true, status: true, createdAt: true } },
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+    });
+
+    // Fetch active/upcoming maintenance windows
+    const maintenanceWindows = await this.prisma.maintenanceWindow.findMany({
+      where: { userId: page.userId, endsAt: { gte: new Date() } },
+      orderBy: { startsAt: 'asc' },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        startsAt: true,
+        endsAt: true,
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+    });
+
+    // Fetch recent check history (last 50 checks across all monitors)
+    const recentChecks = await this.prisma.monitorRun.findMany({
+      where: { monitor: { userId: page.userId, enabled: true } },
+      orderBy: { checkedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        monitorId: true,
+        checkedAt: true,
+        ok: true,
+        level: true,
+        latencyMs: true,
+        message: true,
+        monitor: { select: { name: true } },
+      },
+    });
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safePage } = page;
     return {
       ...safePage,
       layout: page.layout as unknown as PageLayout,
       monitors: monitorSummary,
+      incidents: incidents.map(i => ({
+        id: i.id,
+        title: i.title,
+        status: i.status,
+        severity: i.severity,
+        createdAt: i.createdAt,
+        resolvedAt: i.resolvedAt,
+        updates: i.updates.map(u => ({ id: u.id, message: u.body, status: u.status, createdAt: u.createdAt })),
+        monitors: i.monitors.map(im => im.monitor),
+      })),
+      maintenance: maintenanceWindows.map(mw => ({
+        ...mw,
+        monitors: mw.monitors.map(mm => mm.monitor),
+      })),
+      recentChecks: recentChecks.map(c => ({
+        id: c.id,
+        monitorId: c.monitorId,
+        monitorName: c.monitor.name,
+        checkedAt: c.checkedAt,
+        ok: c.ok,
+        level: c.level,
+        latencyMs: c.latencyMs,
+        message: c.message,
+      })),
     };
   }
 

@@ -39,6 +39,7 @@ import {
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
 import { useToast } from "../../../../components/ui/toast";
+import { MultiMonitorPicker } from "../../components/MultiMonitorPicker";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,8 @@ interface Monitor {
   id: string;
   name: string;
   type: string;
+  folderId?: string | null;
+  tags?: { id: string; name: string; color?: string }[];
 }
 
 interface TagOption {
@@ -446,25 +449,13 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
       )}
 
       {supportsMonitorScope && monitorMode === "multiple" && (
-        <div>
-          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitors</label>
-          <select
-            multiple
-            value={(w.config.monitorIds as string[]) ?? []}
-            onChange={(e) => {
-              const values = Array.from(e.target.selectedOptions).map((opt) => opt.value);
-              update("monitorIds", values);
-            }}
-            className="h-24 w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
-          >
-            {monitors.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-[10px] text-text-secondary">
-            {(w.config.monitorIds as string[] | undefined)?.length ?? 0} selected
-          </p>
-        </div>
+        <MultiMonitorPicker
+          monitors={monitors}
+          selectedIds={(w.config.monitorIds as string[]) ?? []}
+          onChange={(values) => update("monitorIds", values)}
+          tags={tags}
+          folders={folders}
+        />
       )}
 
       {supportsFilters && (

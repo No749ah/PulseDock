@@ -1,17 +1,17 @@
-## Status Summary (2026-03-17 20:10 UTC)
+## Status Summary (2026-03-17 22:10 UTC)
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
 - **Deployment:** ✅ Services restarted via `npm run restart`
 - **This session:**
-  - Implemented real uptime-bar runtime data on public status pages:
-    - server now fetches per-widget payload from `/v1/public/status/:slug/widget/:widgetId`
-    - uptime bar now renders real `uptimePct`, `periodDays`, and check count from API widget data
-    - fallback logic retained when widget payload is unavailable
+  - Implemented **Multi-Monitor Picker** in status-page editor config panel:
+    - new reusable component with checkbox list, search, tag/folder/type filters, select-all/clear-filtered, and selected-count badge
+    - integrated into widget monitor scope when `monitorMode = multiple`
   - Ran full heartbeat checks: `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`
   - Deployed and verified:
-    - API health 200, Web login 200, frontend `/api` proxy path returns expected 401 without auth
+    - API health 200, Web login 200
+    - frontend `/api` proxy path to backend works (`/api/v1/monitors` returns expected 401 without auth)
     - Local page audit: `/login /dashboard /monitors /alerts /account /projects /versions /admin` all 200
     - Reverse-proxy audit: same routes on `https://oc-dev-test.no749ah.com` all 200
-    - Reverse-proxy static assets from login page (`/_next/static/...`) all 200
+    - Reverse-proxy static assets from login page (`/_next/static/...`) return 200
 
 # PulseDock Backlog
 
@@ -27,9 +27,11 @@
 
 ## In Progress
 
-- [ ] **Multi-Monitor Picker component** — Reusable picker with: checkboxes for multiple monitors, "Select All" button, filter by tag dropdown, filter by folder dropdown, filter by type (HTTP/TCP/SSL/Version/Heartbeat), search input, selected count badge. Used by: Multi-Status Badges, Monitor Group, Version Grid, Check History, Status Badge (multi mode), Response Time Comparison, Uptime Comparison.
+- [ ] **Monitor-scope UX polish for status widgets** — Follow-up pass on widget-specific defaults and copy so widgets that support multi-monitor mode surface the picker context more clearly (labels/help text and sensible defaults per widget type).
 
 ## Recently Completed
+
+- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
 
 - [x] **Uptime Bar with real data** — public status-page uptime widget now consumes live per-widget API data (`/v1/public/status/:slug/widget/:widgetId`) and renders real `uptimePct` + period + check count instead of status-derived placeholders.
 

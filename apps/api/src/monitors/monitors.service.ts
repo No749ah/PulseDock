@@ -84,6 +84,7 @@ export class MonitorsService {
     alertChannelIds?: string[];
     folderId?: string | null;
     tags?: string[];
+    enabled?: boolean;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -104,6 +105,7 @@ export class MonitorsService {
         timeoutMs: body.timeoutMs ?? 5000,
         confirmations: Math.max(1, Math.min(10, body.confirmations ?? 1)),
         configJson: config as Prisma.InputJsonValue,
+        enabled: body.enabled ?? true,
         folderId: body.folderId ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),

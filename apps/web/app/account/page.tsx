@@ -414,7 +414,7 @@ export default function AccountPage() {
 
   return (
     <AppFrame title="Account" subtitle="Manage your profile and security">
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-5xl mx-auto">
         {loadError && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
@@ -423,6 +423,10 @@ export default function AccountPage() {
             </div>
           </FadeIn>
         )}
+
+        {/* Two-column layout: profile/security left, keys/sessions/notif right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
 
         {/* Profile Section */}
         <FadeIn>
@@ -633,6 +637,9 @@ export default function AccountPage() {
             )}
           </Card>
         </FadeIn>
+
+        </div>{/* end left column */}
+        <div className="space-y-6">
 
         {/* API Keys Section */}
         <FadeIn delay={0.3}>
@@ -981,6 +988,9 @@ export default function AccountPage() {
             )}
           </Card>
         </FadeIn>
+
+        </div>{/* end right column */}
+        </div>{/* end grid */}
       </div>
 
       {/* Create API Key Modal */}

@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Standalone output for minimal Docker images
-  output: 'standalone',
+  // Do NOT use output: 'standalone' — it requires manual static asset copying
+  // and breaks when the reverse proxy caches error responses during restarts.
+  // Regular `next start` serves static assets natively and works reliably.
 
   devIndicators: false,
 

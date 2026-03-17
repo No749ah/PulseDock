@@ -125,7 +125,7 @@ export class ChecksService {
   }
 
   private parseGitlabTarget(target: string, config: Record<string, unknown>) {
-    const host = String(config.gitlabHost ?? 'gitlab.com').replace(/\/$/, '');
+    const host = (String(config.gitlabHost ?? '').trim() || 'gitlab.com').replace(/\/$/, '').replace(/^https?:\/\//i, '');
     if (target.startsWith('gitlab:')) {
       const projectPath = target.slice('gitlab:'.length).trim();
       if (!projectPath) return null;
@@ -561,7 +561,7 @@ export class ChecksService {
         if (parsedGitlab) {
           const encodedPath = encodeURIComponent(parsedGitlab.projectPath);
           const gitlabHeaders: Record<string, string> = { 'User-Agent': 'PulseDock' };
-          const gitlabToken = String(config.gitlabToken ?? process.env.GITLAB_TOKEN ?? '').trim();
+          const gitlabToken = String(config.gitlabToken ?? config.token ?? process.env.GITLAB_TOKEN ?? '').trim();
           if (gitlabToken) gitlabHeaders['PRIVATE-TOKEN'] = gitlabToken;
 
           const response = await fetch(`https://${parsedGitlab.host}/api/v4/projects/${encodedPath}/releases/permalink/latest`, {

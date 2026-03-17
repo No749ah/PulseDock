@@ -1,23 +1,15 @@
 import { io, Socket } from 'socket.io-client';
-import { API_BASE } from './api';
 
-function resolveRealtimeBase() {
-  const base = API_BASE.replace(/\/$/, '');
-  // If the API is proxied at /api on the same host, use the direct API port
-  // to avoid WebSocket issues through reverse proxies that don't support upgrades
-  if (typeof window !== 'undefined' && base.endsWith('/api')) {
-    // Prefer direct connection to API port (4321) to avoid proxy WS issues
-    const protocol = window.location.protocol;
-    const host = window.location.hostname;
-    return `${protocol}//${host}:4321`;
-  }
-  return base;
-}
-
+/**
+ * Socket.io connects through the web frontend's /api proxy path.
+ * The reverse proxy (nginx/OpenResty) forwards /api/socket.io/ to the API.
+ * Never connect directly to :4321 — it's not reachable from outside.
+ */
 export function createRealtimeSocket(userId: string): Socket {
-  return io(`${resolveRealtimeBase()}/realtime`, {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return io(`${origin}/realtime`, {
     withCredentials: true,
-    // Start with polling as fallback — more reliable through proxies
+    path: '/api/socket.io/',
     transports: ['polling', 'websocket'],
     auth: { userId },
     query: { userId },

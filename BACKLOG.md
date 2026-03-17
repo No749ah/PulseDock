@@ -416,6 +416,166 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ---
 
+---
+
+## 🔴 STATUS PAGE — Enterprise-Ready (PRIORITY)
+
+> **Instruction from Noah (2026-03-17):** Status pages must be 100% configurable, unlimited widgets, every monitor/group/project/tag displayable, multiple layouts, compete with Uptime Kuma and beyond. 11/10 quality. Continuously improve — add new widgets/features when you see room for improvement.
+
+### P0 — Config Panel + Multi-Monitor + Grid Layout
+
+- [ ] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
+- [ ] **Multi-Monitor Picker component** — Reusable picker with: checkboxes for multiple monitors, "Select All" button, filter by tag dropdown, filter by folder dropdown, filter by type (HTTP/TCP/SSL/Version/Heartbeat), search input, selected count badge. Used by: Multi-Status Badges, Monitor Group, Version Grid, Check History, Status Badge (multi mode), Response Time Comparison, Uptime Comparison
+- [ ] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
+- [ ] **Resize Handles in editor** — Drag corners/edges to resize widgets on canvas. Visual resize handles on hover. Minimum size constraints per widget type
+- [ ] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing (fallback when drag-resize isn't precise enough)
+
+### P0 — Fix Existing Widget Data
+
+- [ ] **Uptime Bar with real data** — Calculate actual uptime% from MonitorRun records (not dummy 99.9%). New API: `GET /v1/public/status/:slug/widget/:widgetId/uptime?days=30` returns actual check counts + uptime percentage
+- [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
+- [ ] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Show last N checks or last N hours
+- [ ] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
+
+### P1 — New Widgets (Status & Uptime)
+
+- [ ] **Component Status List** — Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
+- [ ] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
+- [ ] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
+- [ ] **Status History Ribbon** — Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
+- [ ] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
+- [ ] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
+- [ ] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
+- [ ] **Region Status Map** — SVG world map with colored pins per monitor. Config: latitude/longitude or region (EU/US/APAC) per monitor
+- [ ] **Third-Party Dependencies** — Show status of external services. Config: URLs to check (GitHub status, AWS health, Cloudflare status etc.)
+- [ ] **Rolling Uptime Cards** — Row of cards: 24h / 7d / 30d / 90d / 365d uptime percentages side by side
+
+### P1 — New Widgets (Performance)
+
+- [ ] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
+- [ ] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period
+- [ ] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
+- [ ] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
+- [ ] **Throughput Counter** — Checks per hour / requests per minute as live counter
+- [ ] **Apdex Score** — Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
+- [ ] **SSL Certificate Status** — Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
+- [ ] **DNS Resolution Time** — DNS lookup latency tracker (separate from HTTP latency)
+
+### P1 — New Widgets (SLA & Uptime Deep)
+
+- [ ] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
+- [ ] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
+- [ ] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
+- [ ] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
+- [ ] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
+
+### P1 — New Widgets (Incidents & Maintenance)
+
+- [ ] **Incident Timeline** — Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
+- [ ] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
+- [ ] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
+- [ ] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
+- [ ] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
+- [ ] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
+- [ ] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
+- [ ] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes
+
+### P1 — New Widgets (Versions)
+
+- [ ] **Version Timeline** — Chronological list of all version updates detected across monitors
+- [ ] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
+- [ ] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
+- [ ] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
+- [ ] **Security Advisory Widget** — Checks if current version has known CVEs (via GitHub advisories API)
+
+### P1 — New Widgets (Metrics & Data)
+
+- [ ] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
+- [ ] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
+- [ ] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
+- [ ] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
+- [ ] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
+- [ ] **Progress Ring** — Circular progress (like Apple Watch rings). For uptime, SLA compliance
+- [ ] **Data Table** — Configurable tabular data display with sorting and pagination
+
+### P1 — New Widgets (Content & Branding)
+
+- [ ] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
+- [ ] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
+- [ ] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs
+- [ ] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
+- [ ] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.)
+- [ ] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, sandbox policy
+- [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
+- [ ] **Code Block** — Display API response or config snippet with syntax highlighting
+- [ ] **Subscriber Form** — Email input for status update subscriptions. Backend: subscriber table, email notifications on status change
+- [ ] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
+
+### P1 — New Widgets (Layout & Navigation)
+
+- [ ] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, which widgets per tab
+- [ ] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
+- [ ] **Column Layout** — 2/3/4 column container for sub-widget grouping within a row
+- [ ] **Sticky Header** — Stays fixed at top while scrolling. Shows overall status + page title
+- [ ] **Table of Contents** — Auto-generated from section/header widgets with anchor links
+- [ ] **Page Navigation** — Links to other status pages in the account. For multi-page setups
+
+### P2 — Editor UX
+
+- [ ] **Widget Duplication** — Copy button per widget (same config, auto-placed)
+- [ ] **Widget Lock** — Lock toggle to prevent accidental drag/resize
+- [ ] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete/align
+- [ ] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
+- [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
+- [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
+- [ ] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
+- [ ] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
+- [ ] **Template Gallery** — 10+ preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Service Status, Dev/Ops Dashboard, Customer-Facing, Internal Team, Executive Summary
+- [ ] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Arrow=Nudge 1px, Shift+Arrow=Nudge 10px, Ctrl+A=Select All, Ctrl+L=Lock
+- [ ] **Widget Search in Palette** — Filter palette by name/category
+- [ ] **Layer Management** — Z-index ordering, bring to front/send to back
+- [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
+- [ ] **Version History** — Last 10 saves with preview + one-click restore
+- [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
+
+### P2 — Page-Level Configuration
+
+- [ ] **Multiple Status Pages** — Already supported, improve page list UX with thumbnails
+- [ ] **Page Themes** — Light/Dark/System/Custom. Accent color picker, font selector (Inter/Roboto/System), custom CSS editor (advanced)
+- [ ] **Page Header Config** — Logo upload (base64 or URL), title, subtitle, banner image, background gradient
+- [ ] **Custom Favicon** — Per status page, override site default
+- [ ] **Custom Slug** — Already supported, add availability checker
+- [ ] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex)
+- [ ] **Branding Toggle** — Show/hide "Powered by PulseDock" footer
+- [ ] **Auto-Refresh Config** — Interval picker: 10s / 30s / 60s / 5min / off
+- [ ] **Password Protection UX** — Improve password set/remove flow in editor
+- [ ] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
+
+### P2 — Public Page Rendering
+
+- [ ] **Smooth Data Transitions** — Animate value changes (number count-up, color transitions)
+- [ ] **Real-time via WebSocket** — Live data push instead of 60s polling. Instant status updates
+- [ ] **Print-friendly CSS** — @media print stylesheet for reporting/PDF export
+- [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
+- [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
+- [ ] **Export as Image** — Download current status page as PNG (html2canvas or server-side render)
+- [ ] **Export as PDF** — Generate PDF report of current status
+
+### P3 — Advanced Data & API
+
+- [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
+- [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
+- [ ] **Public JSON API** — `GET /api/v1/public/status/:slug/json` for third-party integrations
+- [ ] **Webhook on Status Change** — Push notifications when overall status changes
+- [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
+- [ ] **Slack/Discord Integration** — Auto-post status changes to channels
+- [ ] **Embeddable Widget** — `<script>` tag to embed single widget on external sites
+- [ ] **Status Page Badge** — "Status: Operational" badge for README/websites (already have SVG badges, extend to status page level)
+- [ ] **Historical Data Retention** — Configure how long to keep check data (7d/30d/90d/1y)
+- [ ] **Aggregation Pipelines** — Pre-compute hourly/daily rollups for fast chart rendering
+
+---
+
 ## Status Summary
 - **Codebase:** 1349 tests passing (1327 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200

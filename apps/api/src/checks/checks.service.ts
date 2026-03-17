@@ -303,11 +303,15 @@ export class ChecksService {
     }
     if (typeof payload === 'object') {
       const obj = payload as Record<string, unknown>;
-      for (const key of ['version', 'appVersion', 'app_version', 'release', 'tag', 'buildVersion']) {
-        if (typeof obj[key] === 'string') return obj[key] as string;
+      // Case-insensitive key lookup — APIs use Version, version, VERSION, etc.
+      const lowerObj = new Map(Object.entries(obj).map(([k, v]) => [k.toLowerCase(), v]));
+      for (const key of ['version', 'appversion', 'app_version', 'release', 'tag', 'buildversion']) {
+        const val = lowerObj.get(key);
+        if (typeof val === 'string') return val;
       }
       for (const key of ['data', 'build', 'info', 'meta']) {
-        const v = this.extractVersion(obj[key]);
+        const val = lowerObj.get(key);
+        const v = this.extractVersion(val);
         if (v) return v;
       }
     }

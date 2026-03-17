@@ -201,6 +201,24 @@ export default async function PublicStatusSlugPage({
   const sorted = [...widgets].sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
   const visible = sorted.filter((w) => shouldRenderWidget(w, data.monitors));
 
+  const widgetDataEntries = await Promise.all(
+    visible.map(async (widget) => {
+      try {
+        const widgetRes = await fetch(`${API_BASE}/v1/public/status/${slug}/widget/${widget.id}`, {
+          cache: "no-store",
+        });
+        if (!widgetRes.ok) return [widget.id, null] as const;
+        const payload = await widgetRes.json() as Record<string, unknown>;
+        return [widget.id, payload] as const;
+      } catch {
+        return [widget.id, null] as const;
+      }
+    })
+  );
+  const widgetDataById = Object.fromEntries(
+    widgetDataEntries.filter((entry): entry is readonly [string, Record<string, unknown>] => entry[1] !== null)
+  );
+
   const desktop = new Map<string, GridPlacement>(
     visible.map((w) => [w.id, { x: clamp(w.x, 0, 11), y: Math.max(0, w.y), w: clamp(w.w, 1, 12), h: Math.max(1, w.h) }])
   );
@@ -243,6 +261,7 @@ export default async function PublicStatusSlugPage({
                       incidents: data.incidents ?? [],
                       maintenance: data.maintenance ?? [],
                       recentChecks: data.recentChecks ?? [],
+                      widgetDataById,
                     })}
                   </div>
                 ))}
@@ -266,6 +285,7 @@ export default async function PublicStatusSlugPage({
                         incidents: data.incidents ?? [],
                         maintenance: data.maintenance ?? [],
                         recentChecks: data.recentChecks ?? [],
+                        widgetDataById,
                       })}
                     </div>
                   );
@@ -290,6 +310,7 @@ export default async function PublicStatusSlugPage({
                         incidents: data.incidents ?? [],
                         maintenance: data.maintenance ?? [],
                         recentChecks: data.recentChecks ?? [],
+                        widgetDataById,
                       })}
                     </div>
                   );

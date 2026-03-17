@@ -2,11 +2,10 @@
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
 - **Deployment:** ✅ Services restarted via `npm run restart`
 - **This session:**
-  - Implemented public status-page layout parity with editor grid:
-    - desktop now renders true 12-column grid using widget `x/y/w/h`
-    - tablet now renders 6-column responsive placement (collision-safe packing)
-    - mobile now renders clean single-column flow
-    - runtime-only visible widgets are filtered before layout (respects visibility + hide-when-no-data)
+  - Implemented real uptime-bar runtime data on public status pages:
+    - server now fetches per-widget payload from `/v1/public/status/:slug/widget/:widgetId`
+    - uptime bar now renders real `uptimePct`, `periodDays`, and check count from API widget data
+    - fallback logic retained when widget payload is unavailable
   - Ran full heartbeat checks: `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`
   - Deployed and verified:
     - API health 200, Web login 200, frontend `/api` proxy path returns expected 401 without auth
@@ -28,9 +27,11 @@
 
 ## In Progress
 
-- [ ] **Uptime Bar with real data** — replace placeholder uptime percentages with actual `MonitorRun`-derived math for selected monitor/range on public status widgets.
+- [ ] **Multi-Monitor Picker component** — Reusable picker with: checkboxes for multiple monitors, "Select All" button, filter by tag dropdown, filter by folder dropdown, filter by type (HTTP/TCP/SSL/Version/Heartbeat), search input, selected count badge. Used by: Multi-Status Badges, Monitor Group, Version Grid, Check History, Status Badge (multi mode), Response Time Comparison, Uptime Comparison.
 
 ## Recently Completed
+
+- [x] **Uptime Bar with real data** — public status-page uptime widget now consumes live per-widget API data (`/v1/public/status/:slug/widget/:widgetId`) and renders real `uptimePct` + period + check count instead of status-derived placeholders.
 
 - [x] **Public status page layout parity with editor grid** — public renderer now uses true responsive grid layout with editor coordinates (`x/y/w/h`): 12-col desktop, 6-col tablet with collision-safe placement, and 1-col mobile flow. Visibility/hide-no-data rules are applied before layout so only renderable widgets occupy grid slots.
 
@@ -433,7 +434,7 @@
 
 ### P0 — Fix Existing Widget Data
 
-- [ ] **Uptime Bar with real data** — Calculate actual uptime% from MonitorRun records (not dummy 99.9%). New API: `GET /v1/public/status/:slug/widget/:widgetId/uptime?days=30` returns actual check counts + uptime percentage
+- [x] **Uptime Bar with real data** — Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
 - [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
 - [ ] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Show last N checks or last N hours
 - [ ] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
@@ -939,6 +940,7 @@
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.
 - **This heartbeat (2026-03-17 13:02 UTC):** Fixed 4 failing tests (status-pages mock missing incident/maintenanceWindow/recentChecks). Added 5 new findPublic() coverage tests. Branch rotation — merged heartbeat/2026-03-17-maintenance → dev, created heartbeat/2026-03-17-coverage-cleanup. Bumped to v1.0.2 with CHANGELOG. All 1349 tests passing (98.73% stmt, 95.29% branch, 100% line).
 - **This heartbeat (2026-03-17 10:02 UTC):** Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to match Next.js 16 config schema. `npm run build` now runs without invalid-config warnings; restart + local/proxy route audits completed.
 - **This heartbeat (2026-03-17 09:02 UTC):** Coverage sweep completed — added edge-branch tests across auth/checks/monitors services (refresh TTL unit parsing, revoked session mapping, reset-password missing-user branch, profile conflict/trim handling, verify-email null-user post-consume path, semver prerelease number/string comparison paths, confirmations null fallback, CSV/import parser gaps). API tests: 1308 → 1327. Full suite: 1349 passing.

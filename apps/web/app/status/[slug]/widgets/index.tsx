@@ -85,6 +85,7 @@ interface ExtraData {
     checkedAt: string; ok: boolean; level: string;
     latencyMs: number | null; message: string | null;
   }>;
+  widgetDataById: Record<string, unknown>;
 }
 
 interface WidgetProps {
@@ -255,11 +256,19 @@ export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
 }
 
 // Uptime Bar — simplified stat
-export function UptimeBar({ widget, monitors }: WidgetProps) {
+export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
-  const periodDays = (widget.config.periodDays as number) ?? 30;
-  const uptimePct =
-    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0;
+  const widgetData = extra.widgetDataById[widget.id] as {
+    uptimePct?: number;
+    periodDays?: number;
+    total?: number;
+  } | undefined;
+
+  const periodDays = widgetData?.periodDays ?? (widget.config.periodDays as number) ?? 30;
+  const uptimePctRaw =
+    widgetData?.uptimePct ??
+    (!monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0);
+  const uptimePct = Math.max(0, Math.min(100, Math.round(uptimePctRaw * 100) / 100));
   const label = widget.config.label ?? monitor?.name ?? "Uptime";
 
   const barColor =
@@ -281,7 +290,7 @@ export function UptimeBar({ widget, monitors }: WidgetProps) {
           style={{ width: `${uptimePct}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-text-secondary">Last {periodDays} days</p>
+      <p className="mt-2 text-xs text-text-secondary">Last {periodDays} days{typeof widgetData?.total === "number" ? ` · ${widgetData.total} checks` : ""}</p>
     </div>
   );
 }
@@ -784,7 +793,7 @@ function monitorDetailHref(widget: Widget, scopedMonitors: MonitorSummary[]): st
 }
 
 export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?: Partial<ExtraData>): React.ReactNode {
-  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], ...extra };
+  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], widgetDataById: {}, ...extra };
   const props: WidgetProps = { widget, monitors, extra: fullExtra };
   const scopedMonitors = getScopedMonitors(widget, monitors);
 

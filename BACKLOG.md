@@ -561,6 +561,64 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **Export as Image** — Download current status page as PNG (html2canvas or server-side render)
 - [ ] **Export as PDF** — Generate PDF report of current status
 
+### P1 — Tool Registry & Templates Expansion
+
+> Current: 1302 registry tools, 33 monitor templates. Target: 2500+ tools, 100+ templates.
+
+- [ ] **Monitor Templates expansion: 33 → 100+** — Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
+
+  **Code Quality & Analysis:**
+  SonarQube (`/api/system/status`→version, no auth), SonarCloud, Codacy, CodeClimate, Snyk, Semgrep, Checkmarx, Veracode, Fortify, PMD, ESLint (daemon), Prettier (daemon), Stylelint
+
+  **Security & Scanning:**
+  Trivy, Clair, Anchore/Grype, Falco, OSSEC/Wazuh, CrowdSec, Fail2Ban (API), OpenVAS/Greenbone, Nessus, Qualys, Lynis, RKHunter, ClamAV (clamd), VirusTotal API
+
+  **Backup & Recovery:**
+  Duplicati, Restic (rest-server), Borg (borgmatic API), Velero, Veeam, Bareos, Amanda, Bacula, Urbackup, Kopia, Rclone (rcd), Syncthing
+
+  **VPN & Networking:**
+  WireGuard (wg-json), OpenVPN (management), Tailscale (API), Netbird, ZeroTier, Headscale, Netmaker, Firezone, Pritunl, SoftEther, StrongSwan, PiVPN
+
+  **DNS:**
+  Pi-hole (`/admin/api.php?summary`), AdGuard Home (`/control/status`), Unbound, CoreDNS, Technitium DNS, PowerDNS, Bind9, Knot DNS, dnsmasq, Blocky
+
+  **Mail:**
+  Mailcow (`/api/v1/get/status/version`), Mailu, Stalwart Mail, iRedMail, Postfix (postconf), Dovecot, Roundcube, Rainloop, Mailpit, MailHog, Maddy
+
+  **Analytics & BI:**
+  Plausible, Umami, Matomo, PostHog, Fathom, GoAccess, Countly, Mixpanel (self-hosted), Metabase, Redash, Apache Superset, Lightdash, Cube.js
+
+  **AI/ML:**
+  Ollama (`/api/version`), LocalAI, text-generation-webui, Stable Diffusion WebUI, ComfyUI, LiteLLM, vLLM, Triton Inference Server, MLflow, Kubeflow, Seldon Core, BentoML, Ray Serve, Hugging Face TGI
+
+  **IoT & Home Automation:**
+  Home Assistant (`/api/config`→version, auth required), Node-RED (`/red/`), Mosquitto, EMQX, HiveMQ, OpenHAB, Domoticz, Zigbee2MQTT, ESPHome, Tasmota (HTTP API), ioBroker
+
+  **Game Servers:**
+  Pterodactyl (`/api/application/info`), PufferPanel, AMP/CubeCoders, Crafty Controller, MineOS, LinuxGSM (API), GameDig, Pelican Panel
+
+  **Project Management:**
+  Vikunja, Focalboard, Taiga, OpenProject, WeKan, Kanboard, Leantime, Plane, Huly
+
+  **Wikis & Docs:**
+  Wiki.js, BookStack, Outline, Docusaurus, MkDocs, Gitbook (self-hosted), DokuWiki, MediaWiki, Confluence (DC), XWiki
+
+  **File Sharing & Storage:**
+  Nextcloud, Seafile, ownCloud, FileBrowser, ProjectSend, Pydio Cells, Ceph Dashboard, MinIO Console, Garage
+
+  **Dashboards & Portals:**
+  Heimdall, Homer, Dashy, Homarr, Organizr, Flame, Fenrus, Glances (web), Cockpit (Linux)
+
+  **Databases (more):**
+  PgBouncer, ProxySQL, Percona PMM, phpMyAdmin, pgAdmin, Adminer, CloudBeaver, Redis Commander, RedisInsight, Mongo Express, Elasticsearch HQ
+
+  **Container & Orchestration (more):**
+  Yacht, Dockge, Lazydocker (API), Diun, Watchtower, Ouroboros, Podman (API), LXD/Incus, Proxmox VE (`/api2/json/version`), TrueNAS SCALE API
+
+- [ ] **Tool Registry expansion: 1302 → 2500+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+
+- [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
+
 ### P3 — Advanced Data & API
 
 - [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)

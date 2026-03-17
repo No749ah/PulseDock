@@ -52,6 +52,7 @@ interface Widget {
   config: {
     monitorId?: string;
     monitorIds?: string[];
+    monitorMode?: "single" | "multiple" | "all";
     label?: string;
     periodDays?: number;
     text?: string;
@@ -352,9 +353,10 @@ interface ConfigPanelProps {
   widget: Widget | null;
   monitors: Monitor[];
   onChange: (config: Widget["config"]) => void;
+  onResize: (size: { w: number; h: number }) => void;
 }
 
-function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, onChange, onResize }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -364,12 +366,13 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
   }
 
   const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
+  const w = widget;
 
-  // widget is non-null here — early return above handles the null case
-  const w = widget!;
   function update(key: string, value: unknown) {
     onChange({ ...w.config, [key]: value });
   }
+
+  const monitorMode = (w.config.monitorMode as string) ?? "single";
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -378,7 +381,6 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
 
-      {/* Label */}
       <div>
         <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
         <input
@@ -390,8 +392,20 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         />
       </div>
 
-      {/* Monitor picker */}
-      {["current-status-badge", "uptime-bar", "sla-summary", "response-time-chart", "uptime-timeline"].includes(w.type) && (
+      <div>
+        <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor scope</label>
+        <select
+          value={monitorMode}
+          onChange={(e) => update("monitorMode", e.target.value)}
+          className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+        >
+          <option value="single">Single monitor</option>
+          <option value="multiple">Multiple monitors</option>
+          <option value="all">All monitors</option>
+        </select>
+      </div>
+
+      {monitorMode === "single" && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
           <select
@@ -407,7 +421,25 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Period days */}
+      {monitorMode === "multiple" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitors</label>
+          <select
+            multiple
+            value={(w.config.monitorIds as string[]) ?? []}
+            onChange={(e) => {
+              const values = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+              update("monitorIds", values);
+            }}
+            className="h-24 w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            {monitors.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>
@@ -423,7 +455,6 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Text content */}
       {["text-block", "scheduled-maintenance"].includes(w.type) && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Content</label>
@@ -437,12 +468,33 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Size info */}
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5">
-        <p className="text-[10px] font-medium text-text-secondary">Size</p>
-        <p className="mt-0.5 text-xs text-text-primary">
-          {widget.w} col × {widget.h} row{widget.h > 1 ? "s" : ""} &nbsp;·&nbsp; ({widget.x}, {widget.y})
-        </p>
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px] text-text-secondary">
+            Width (cols)
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={w.w}
+              onChange={(e) => onResize({ w: Number(e.target.value), h: w.h })}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+          <label className="text-[10px] text-text-secondary">
+            Height (rows)
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={w.h}
+              onChange={(e) => onResize({ w: w.w, h: Number(e.target.value) })}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+        </div>
+        <p className="text-[10px] text-text-primary">Position: ({w.x}, {w.y})</p>
       </div>
     </div>
   );
@@ -583,6 +635,18 @@ export default function StatusPageEditorPage() {
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
       prev.map((w) => (w.id === selectedId ? { ...w, config } : w))
+    );
+  }
+
+  function updateWidgetSize(size: { w: number; h: number }) {
+    const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
+    const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (w.id !== selectedId) return w;
+        const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
+        return { ...w, w: nextW, h: nextH, x: boundedX };
+      })
     );
   }
 
@@ -762,6 +826,7 @@ export default function StatusPageEditorPage() {
               widget={selectedWidget}
               monitors={monitors}
               onChange={updateWidgetConfig}
+              onResize={updateWidgetSize}
             />
           </aside>
         </div>

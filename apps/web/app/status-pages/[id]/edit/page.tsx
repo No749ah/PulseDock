@@ -131,6 +131,37 @@ const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
 
 const ROW_H = 80;
 const COL_COUNT = 12;
+const MULTI_MODE_PRIMARY_WIDGETS = new Set([
+  "uptime-bar",
+  "uptime-timeline",
+  "sla-summary",
+  "response-time-chart",
+  "version-check-badge",
+]);
+
+function getMultiModeHelperText(widgetType: string): string {
+  if (MULTI_MODE_PRIMARY_WIDGETS.has(widgetType)) {
+    return "This widget uses the first selected monitor as its primary series in multi-monitor mode.";
+  }
+
+  return "This widget will render data for all selected monitors.";
+}
+
+function getDefaultMultiMonitorIds(widget: Widget, monitors: Monitor[]): string[] {
+  const configured = Array.isArray(widget.config.monitorIds)
+    ? widget.config.monitorIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+    : [];
+
+  if (configured.length > 0) return configured;
+
+  const singleId = typeof widget.config.monitorId === "string" ? widget.config.monitorId : undefined;
+  const ordered = [singleId, ...monitors.map((m) => m.id)].filter(
+    (id): id is string => typeof id === "string" && id.length > 0,
+  );
+  const unique = Array.from(new Set(ordered));
+  const limit = MULTI_MODE_PRIMARY_WIDGETS.has(widget.type) ? 1 : 6;
+  return unique.slice(0, limit);
+}
 
 // ── Palette widget (draggable from sidebar) ──────────────────────────────
 
@@ -397,6 +428,36 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
   const supportsStyle = w.type !== "divider";
   const supportsResponsive = w.type !== "divider";
 
+  function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
+    if (nextMode === "multiple") {
+      onChange({
+        ...w.config,
+        monitorMode: "multiple",
+        monitorId: undefined,
+        monitorIds: getDefaultMultiMonitorIds(w, monitors),
+      });
+      return;
+    }
+
+    if (nextMode === "single") {
+      const firstSelected = Array.isArray(w.config.monitorIds) ? w.config.monitorIds[0] : undefined;
+      onChange({
+        ...w.config,
+        monitorMode: "single",
+        monitorId: (w.config.monitorId as string | undefined) ?? firstSelected,
+        monitorIds: undefined,
+      });
+      return;
+    }
+
+    onChange({
+      ...w.config,
+      monitorMode: "all",
+      monitorId: undefined,
+      monitorIds: undefined,
+    });
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-4">
       <div>
@@ -422,7 +483,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
           <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor scope</label>
           <select
             value={monitorMode}
-            onChange={(e) => update("monitorMode", e.target.value)}
+            onChange={(e) => handleMonitorModeChange(e.target.value as "single" | "multiple" | "all")}
             className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
           >
             <option value="single">Single monitor</option>
@@ -449,13 +510,18 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
       )}
 
       {supportsMonitorScope && monitorMode === "multiple" && (
-        <MultiMonitorPicker
-          monitors={monitors}
-          selectedIds={(w.config.monitorIds as string[]) ?? []}
-          onChange={(values) => update("monitorIds", values)}
-          tags={tags}
-          folders={folders}
-        />
+        <div className="space-y-2">
+          <p className="text-[10px] text-text-secondary">
+            {getMultiModeHelperText(w.type)}
+          </p>
+          <MultiMonitorPicker
+            monitors={monitors}
+            selectedIds={(w.config.monitorIds as string[]) ?? []}
+            onChange={(values) => update("monitorIds", values)}
+            tags={tags}
+            folders={folders}
+          />
+        </div>
       )}
 
       {supportsFilters && (

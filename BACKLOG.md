@@ -1,17 +1,13 @@
-## Status Summary (2026-03-17 22:10 UTC)
+## Status Summary (2026-03-17 23:08 UTC)
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
-- **Deployment:** ✅ Services restarted via `npm run restart`
+- **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
+- **Deployment:** 🔄 Pending restart after this commit.
 - **This session:**
-  - Implemented **Multi-Monitor Picker** in status-page editor config panel:
-    - new reusable component with checkbox list, search, tag/folder/type filters, select-all/clear-filtered, and selected-count badge
-    - integrated into widget monitor scope when `monitorMode = multiple`
+  - Completed **monitor-scope UX polish** for status widgets in the editor:
+    - added widget-aware helper copy for multi-monitor mode
+    - added sensible default monitor preselection when switching to multi mode (single-series widgets default to 1, aggregate widgets default up to 6)
+    - normalized monitor-scope mode transitions (`single`/`multiple`/`all`) to prevent stale monitor ID config
   - Ran full heartbeat checks: `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`
-  - Deployed and verified:
-    - API health 200, Web login 200
-    - frontend `/api` proxy path to backend works (`/api/v1/monitors` returns expected 401 without auth)
-    - Local page audit: `/login /dashboard /monitors /alerts /account /projects /versions /admin` all 200
-    - Reverse-proxy audit: same routes on `https://oc-dev-test.no749ah.com` all 200
-    - Reverse-proxy static assets from login page (`/_next/static/...`) return 200
 
 # PulseDock Backlog
 
@@ -27,9 +23,11 @@
 
 ## In Progress
 
-- [ ] **Monitor-scope UX polish for status widgets** — Follow-up pass on widget-specific defaults and copy so widgets that support multi-monitor mode surface the picker context more clearly (labels/help text and sensible defaults per widget type).
+- [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown.
 
 ## Recently Completed
+
+- [x] **Monitor-scope UX polish for status widgets** — Added widget-specific multi-monitor helper text, sensible default monitor preselection on mode switch, and clean monitor-scope mode transitions (`single`/`multiple`/`all`) so config stays coherent.
 
 - [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
 

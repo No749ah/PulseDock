@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -39,15 +39,39 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const stableOnClose = useCallback(() => onCloseRef.current(), []);
 
-  // Escape key + body scroll lock
+  const justOpened = useRef(false);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
       if (e.key === "Escape") {
-        onClose();
+        stableOnClose();
         return;
       }
+
+      // Enter → click the last (primary) non-disabled button in the footer actions.
+      // Skip if user is in a textarea (multi-line input) or already on a button.
+      if (e.key === "Enter" && dialogRef.current) {
+        const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+        if (tag === "textarea") return; // let Enter create newlines
+        if (tag === "button" || tag === "a") return; // let native click handle it
+
+        // Find the footer actions container and click the last button (= primary action)
+        const footer = dialogRef.current.querySelector('[data-modal-actions]');
+        if (footer) {
+          const buttons = footer.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+          const primary = buttons[buttons.length - 1]; // last button = primary by convention
+          if (primary) {
+            e.preventDefault();
+            primary.click();
+            return;
+          }
+        }
+      }
+
       // Focus trap: Tab / Shift+Tab stays within modal
       if (e.key === "Tab" && dialogRef.current) {
         const focusable = Array.from(
@@ -59,11 +83,9 @@ export function Modal({
         const currentIdx = focusable.indexOf(document.activeElement as HTMLElement);
         e.preventDefault();
         if (e.shiftKey) {
-          // Shift+Tab: go backwards
           const prev = currentIdx <= 0 ? last : focusable[currentIdx - 1];
           prev.focus();
         } else {
-          // Tab: go forwards
           const next = currentIdx < 0 || currentIdx >= focusable.length - 1 ? first : focusable[currentIdx + 1];
           next.focus();
         }
@@ -73,9 +95,10 @@ export function Modal({
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
-      // Move focus into modal on open
+      justOpened.current = true;
       requestAnimationFrame(() => {
-        if (dialogRef.current) {
+        if (justOpened.current && dialogRef.current) {
+          justOpened.current = false;
           const first = dialogRef.current.querySelector<HTMLElement>(FOCUSABLE);
           first?.focus();
         }
@@ -85,7 +108,7 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, stableOnClose]);
 
   if (!isOpen) return null;
 
@@ -119,11 +142,11 @@ export function Modal({
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">{children}</div>
+        <div className="p-6 max-h-[75vh] overflow-y-auto">{children}</div>
 
-        {/* Footer */}
+        {/* Footer — data-modal-actions is used by Enter key handler */}
         {actions && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-border">
+          <div data-modal-actions className="flex items-center justify-end gap-3 p-6 border-t border-border">
             {actions}
           </div>
         )}

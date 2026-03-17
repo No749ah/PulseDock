@@ -49,7 +49,7 @@ function makeAuthService() {
 
 function makePrisma() {
   return {
-    user: { count: vi.fn().mockResolvedValue(1) },
+    user: { count: vi.fn().mockResolvedValue(1), create: vi.fn() },
   };
 }
 
@@ -399,6 +399,90 @@ describe('AuthController', () => {
       const res = { setHeader: vi.fn(), end: vi.fn() };
       await controller.exportAuditLog(makeReq(), 'xml', res as never); // unknown format → defaults to json
       expect((authService as Record<string, ReturnType<typeof vi.fn>>)['exportUserAuditLog']).toHaveBeenCalledWith('user-1', 'json');
+    });
+  });
+});
+
+// ── setupStatus() and setup() — initial admin setup flow ──
+
+describe('setupStatus()', () => {
+  it('returns needsSetup: true when no users exist', async () => {
+    const authService = makeAuthService();
+    const prisma = makePrisma();
+    prisma.user.count.mockResolvedValue(0);
+    const controller = new AuthController(authService as never, prisma as never);
+    const result = await controller.setupStatus();
+    expect(result).toEqual({ needsSetup: true });
+  });
+
+  it('returns needsSetup: false when users already exist', async () => {
+    const authService = makeAuthService();
+    const prisma = makePrisma();
+    prisma.user.count.mockResolvedValue(3);
+    const controller = new AuthController(authService as never, prisma as never);
+    const result = await controller.setupStatus();
+    expect(result).toEqual({ needsSetup: false });
+  });
+});
+
+describe('setup()', () => {
+  it('creates admin user and logs in when no users exist', async () => {
+    const authService = makeAuthService();
+    const prisma = makePrisma();
+    prisma.user.count.mockResolvedValue(0);
+    const createdUser = { id: 'admin-1', email: 'admin@example.com', role: 'admin' };
+    prisma.user.create.mockResolvedValue(createdUser);
+    const loginResult = { accessToken: 'acc', refreshToken: 'ref', user: createdUser };
+    (authService as Record<string, ReturnType<typeof vi.fn>>)['login'].mockResolvedValue(loginResult);
+    const controller = new AuthController(authService as never, prisma as never);
+
+    const req = { headers: { 'user-agent': 'test-ua' }, ip: '1.2.3.4' };
+    const res = makeRes();
+    const result = await controller.setup(req as never, res as never, {
+      email: 'admin@example.com',
+      password: 'Password123!',
+    });
+
+    expect(prisma.user.create).toHaveBeenCalled();
+    expect(authService.login).toHaveBeenCalledWith('admin@example.com', 'Password123!', {
+      userAgent: 'test-ua',
+      ipAddress: '1.2.3.4',
+    });
+    expect(res.cookie).toHaveBeenCalled();
+    expect(result).toMatchObject({ user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' } });
+  });
+
+  it('throws ForbiddenException when users already exist', async () => {
+    const { ForbiddenException } = await import('@nestjs/common');
+    const authService = makeAuthService();
+    const prisma = makePrisma();
+    prisma.user.count.mockResolvedValue(1);
+    const controller = new AuthController(authService as never, prisma as never);
+
+    const req = { headers: {}, ip: undefined };
+    const res = makeRes();
+    await expect(
+      controller.setup(req as never, res as never, { email: 'hacker@evil.com', password: 'P@ss1234' }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('passes null userAgent and ipAddress when headers/ip absent during setup', async () => {
+    const authService = makeAuthService();
+    const prisma = makePrisma();
+    prisma.user.count.mockResolvedValue(0);
+    const createdUser = { id: 'admin-2', email: 'a@b.com', role: 'admin' };
+    prisma.user.create.mockResolvedValue(createdUser);
+    const loginResult = { accessToken: 'a', refreshToken: 'r', user: createdUser };
+    (authService as Record<string, ReturnType<typeof vi.fn>>)['login'].mockResolvedValue(loginResult);
+    const controller = new AuthController(authService as never, prisma as never);
+
+    const req = { headers: {}, ip: undefined };
+    const res = makeRes();
+    await controller.setup(req as never, res as never, { email: 'a@b.com', password: 'P@ss1234!' });
+
+    expect(authService.login).toHaveBeenCalledWith('a@b.com', 'P@ss1234!', {
+      userAgent: null,
+      ipAddress: null,
     });
   });
 });

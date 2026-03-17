@@ -82,6 +82,11 @@ export class CreateMonitorDto {
   @IsString({ each: true })
   @MaxLength(50, { each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ description: 'Whether the monitor is enabled (default: true)', example: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
 
 export class UpdateMonitorDto {

@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+- **Web build config warning** — Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to align with Next.js 16 config schema. `npm run build` no longer prints `Invalid next.config.mjs options` warning.
+
 ---
 
 ## [1.0.1] — 2026-03-17

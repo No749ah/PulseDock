@@ -170,12 +170,10 @@ server {
         proxy_set_header    X-Forwarded-Proto $scheme;
         proxy_read_timeout  60s;
 
-        # Cache static assets
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
-            proxy_pass http://pulsedock_web;
-            proxy_cache_valid 200 7d;
-            add_header Cache-Control "public, max-age=604800, immutable";
-        }
+        # Static assets — do NOT add proxy_cache here.
+        # Next.js already sends correct Cache-Control headers (immutable with content hashes).
+        # Adding proxy_cache risks caching error responses (e.g. 500 during restarts)
+        # which are then served until the cache expires, even after the origin is fixed.
     }
 }
 ```

@@ -12,6 +12,10 @@ export interface MonitorTemplate {
   intervalSec: number;
   pluginId?: string;
   expectedText?: string;
+  config?: {
+    appVersionEndpoint?: string;
+    appAuthType?: 'none' | 'token';
+  };
   /** If true, template target is a placeholder URL and user must update it */
   requiresUrl?: boolean;
 }
@@ -105,6 +109,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://portainer.example.com/api/system/status",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/status', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -114,6 +119,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://gitea.example.com/api/healthz",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/v1/version', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -123,6 +129,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://gitlab.example.com/-/health",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/v4/version', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -132,6 +140,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://grafana.example.com/api/health",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/health', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -141,6 +150,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://nextcloud.example.com/status.php",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/status.php', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -150,6 +160,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://kuma.example.com/api/entry-page",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/entry-page', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -159,6 +171,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://argocd.example.com/healthz",
     intervalSec: 120,
+    config: { appVersionEndpoint: '/api/version', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -168,6 +181,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://vault.example.com/v1/sys/health",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/v1/sys/health', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -177,6 +191,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://chat.example.com/api/v4/system/ping",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/v4/config/client?format=old', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -186,6 +201,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://jellyfin.example.com/health",
     intervalSec: 120,
+    config: { appVersionEndpoint: '/System/Info/Public', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -195,6 +211,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://immich.example.com/api/server-info/ping",
     intervalSec: 120,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/server/info', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -204,6 +222,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://n8n.example.com/healthz",
     intervalSec: 120,
+    // Version requires auth
+    config: { appVersionEndpoint: '/rest/settings', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -213,6 +233,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://traefik.example.com/ping",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/version', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -222,6 +243,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://minio.example.com/minio/health/live",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/v1/service/status', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -231,6 +254,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://auth.example.com/health",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/admin/serverinfo', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -240,6 +265,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://homeassistant.example.com/api/",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/config', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -249,6 +276,7 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://prometheus.example.com/-/healthy",
     intervalSec: 60,
+    config: { appVersionEndpoint: '/api/v1/status/buildinfo', appAuthType: 'none' },
     requiresUrl: true,
   },
   {
@@ -258,6 +286,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://auth.example.com/-/health/ready/",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/-/api/v3/admin/version/', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -267,6 +297,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://auth.example.com/api/health",
     intervalSec: 60,
+    // Version requires auth
+    config: { appVersionEndpoint: '/api/configuration', appAuthType: 'token' },
     requiresUrl: true,
   },
   {
@@ -276,6 +308,8 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://analytics.example.com/api/health",
     intervalSec: 120,
+    // Version requires auth
+    config: { appVersionEndpoint: '', appAuthType: 'token' },
     requiresUrl: true,
   },
 ];

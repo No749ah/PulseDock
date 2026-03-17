@@ -1,6 +1,7 @@
 export type VersionSourceType =
   | 'github-releases'
   | 'github-tags'
+  | 'gitlab-releases'
   | 'docker-hub'
   | 'npm-registry'
   | 'pypi'
@@ -36,6 +37,8 @@ export interface VersionSource {
   type: VersionSourceType;
   /** GitHub owner/repo, docker image, npm package name, etc. */
   target?: string;
+  /** GitLab host for gitlab-releases (e.g. 'gitlab.com') */
+  host?: string;
   /** Template with {{instanceUrl}} placeholder */
   urlTemplate?: string;
   /** JSONPath expression to extract version from response */

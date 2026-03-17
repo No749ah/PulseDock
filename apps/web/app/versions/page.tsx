@@ -123,7 +123,7 @@ export default function VersionsPage() {
   const [appUrl, setAppUrl] = useState('');
   const [appToken, setAppToken] = useState('');
   const [appVersionEndpoint, setAppVersionEndpoint] = useState('');
-  const [appAuthType, setAppAuthType] = useState<'none' | 'token' | 'openvpn'>('token');
+  const [appAuthType, setAppAuthType] = useState<'none' | 'token' | 'openvpn'>('none');
   const [openvpnUsername, setOpenvpnUsername] = useState('');
   const [openvpnPassword, setOpenvpnPassword] = useState('');
   const showTokenField = false;
@@ -155,7 +155,7 @@ export default function VersionsPage() {
   const [editHasRepoToken, setEditHasRepoToken] = useState(false);
   const [editGitlabHost, setEditGitlabHost] = useState('');
   const [editAppUrl, setEditAppUrl] = useState('');
-  const [editAppAuthType, setEditAppAuthType] = useState<'none' | 'token' | 'openvpn'>('token');
+  const [editAppAuthType, setEditAppAuthType] = useState<'none' | 'token' | 'openvpn'>('none');
   const [editAppToken, setEditAppToken] = useState('');
   const [editHasAppToken, setEditHasAppToken] = useState(false);
   const [editOpenvpnUsername, setEditOpenvpnUsername] = useState('');
@@ -265,7 +265,7 @@ export default function VersionsPage() {
     setEditToken('');
     setEditGitlabHost(String(cfg.gitlabHost ?? ''));
     setEditAppUrl(String(cfg.appUrl ?? ''));
-    setEditAppAuthType((String(cfg.appAuthType ?? 'token') as 'none' | 'token' | 'openvpn') || 'token');
+    setEditAppAuthType((String(cfg.appAuthType ?? 'none') as 'none' | 'token' | 'openvpn') || 'none');
     setEditHasAppToken(Boolean(cfg.hasAppToken));
     setEditAppToken('');
     setEditOpenvpnUsername(String(cfg.openvpnUsername ?? ''));
@@ -394,6 +394,7 @@ export default function VersionsPage() {
     const providerMap: Record<string, typeof provider> = {
       'github-releases': 'github',
       'github-tags': 'github',
+      'gitlab-releases': 'gitlab',
       'docker-hub': 'docker',
       'npm-registry': 'npm',
       'pypi': 'pypi',
@@ -406,15 +407,21 @@ export default function VersionsPage() {
     setProvider(p);
     setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
     if (ls.target) setTarget(ls.target);
+    if (p === 'gitlab' && (ls as Record<string, unknown>).host) {
+      setGitlabHost((ls as Record<string, unknown>).host as string);
+    }
 
     // If it requires an instance URL, clear appUrl so user must enter their own instance
     if (tool.requiresInstanceUrl) {
       setAppUrl(''); // user must enter their own instance URL
+      setAppAuthType(tool.versionSource.authRequired ? 'token' : 'none');
       if (tool.versionSource.urlTemplate) {
         setAppVersionEndpoint(tool.versionSource.urlTemplate.replace('{{instanceUrl}}', '').replace(/^\//, ''));
       }
     } else {
       setAppUrl('');
+      setAppAuthType('none');
+      setAppVersionEndpoint('');
     }
 
     // Advance past the picker to step 0
@@ -471,7 +478,7 @@ export default function VersionsPage() {
     setTokenInput('');
     setGitlabHost('');
     setAppUrl('');
-    setAppAuthType('token');
+    setAppAuthType('none');
     setAppToken('');
     setOpenvpnUsername('');
     setOpenvpnPassword('');
@@ -910,12 +917,12 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                   )}
                 </div>
                 {appUrl && (
-                  <Select label="Application auth" value={appAuthType} onChange={(v) => setAppAuthType((v as 'none' | 'token' | 'openvpn') || 'token')} options={authOptions} />
+                  <Select label="Application auth" value={appAuthType} onChange={(v) => setAppAuthType((v as 'none' | 'token' | 'openvpn') || 'none')} options={authOptions} />
                 )}
                 {appUrl && appAuthType === 'token' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">Application token (optional)</label>
-                    <input className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} />
+                    <input type="password" className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} placeholder="Bearer token or API key" />
                   </div>
                 )}
                 {appUrl && appAuthType === 'openvpn' && (
@@ -936,8 +943,8 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                     <input className={inputClass} value={appVersionEndpoint} onChange={(e) => setAppVersionEndpoint(e.target.value)} placeholder="/api/system/version" />
                   </div>
                 )}
-                <Button variant="secondary" onClick={validateSetup}>Validate and detect versions</Button>
-                {testMessage && <p className="text-sm text-text-secondary">{testMessage}</p>}
+                <Button variant="primary" onClick={validateSetup}>✓ Verify connection</Button>
+                {testMessage && <p className={`text-sm ${sourceStatus === 'ok' ? 'text-success' : sourceStatus === 'fail' ? 'text-danger' : 'text-text-secondary'}`}>{testMessage}</p>}
                 {appDetectedFrom && <p className="text-xs text-text-secondary">App version source endpoint: {appDetectedFrom}</p>}
                 {!appDetectedFrom && appTriedEndpoints.length > 0 && <p className="text-xs text-text-secondary">Tried: {appTriedEndpoints.join(', ')}</p>}
                 {appUrl && !currentVersion && !detectTried && <p className="text-xs text-text-secondary">Tip: click &quot;Validate and detect versions&quot; to auto-read deployed app version first.</p>}
@@ -1037,7 +1044,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 <input className={inputClass} value={editAppUrl} onChange={(e) => setEditAppUrl(e.target.value)} placeholder="https://app.example.com" />
               </div>
               {editAppUrl && (
-                <Select label="Application auth" value={editAppAuthType} onChange={(v) => setEditAppAuthType((v as 'none' | 'token' | 'openvpn') || 'token')} options={authOptions} />
+                <Select label="Application auth" value={editAppAuthType} onChange={(v) => setEditAppAuthType((v as 'none' | 'token' | 'openvpn') || 'none')} options={authOptions} />
               )}
               {editAppUrl && editAppAuthType === 'token' && (
                 <>

@@ -9,6 +9,9 @@ export interface MonitorSummary {
   lastChecked: string | null;
   latencyMs: number | null;
   message: string | null;
+  folderId?: string | null;
+  folderName?: string | null;
+  tags?: string[];
 }
 
 export interface Widget {
@@ -65,9 +68,29 @@ function LevelBadge({ level }: { level: "green" | "yellow" | "red" }) {
 
 // ── Widget Components ────────────────────────────────────────────────────
 
+interface ExtraData {
+  incidents: Array<{
+    id: string; title: string; status: string; severity: string;
+    createdAt: string; resolvedAt: string | null;
+    updates: { id: string; message: string; status: string; createdAt: string }[];
+    monitors: { id: string; name: string }[];
+  }>;
+  maintenance: Array<{
+    id: string; name: string; description: string | null;
+    startsAt: string; endsAt: string;
+    monitors: { id: string; name: string }[];
+  }>;
+  recentChecks: Array<{
+    id: string; monitorId: string; monitorName: string;
+    checkedAt: string; ok: boolean; level: string;
+    latencyMs: number | null; message: string | null;
+  }>;
+}
+
 interface WidgetProps {
   widget: Widget;
   monitors: MonitorSummary[];
+  extra: ExtraData;
 }
 
 // Overall System Status — hero banner
@@ -113,29 +136,57 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
 
 // Current Status Badge — single monitor
 export function CurrentStatusBadge({ widget, monitors }: WidgetProps) {
-  const monitor = monitors.find((m) => m.id === widget.config.monitorId);
-  if (!monitor) {
+  // Support single monitorId or multiple monitorIds
+  const ids = widget.config.monitorIds as string[] | undefined;
+  const singleId = widget.config.monitorId as string | undefined;
+  const selected = ids?.length
+    ? monitors.filter(m => ids.includes(m.id))
+    : singleId
+      ? monitors.filter(m => m.id === singleId)
+      : monitors.slice(0, 1);
+
+  if (selected.length === 0) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
         <span className="text-sm text-text-secondary">No monitor selected</span>
       </div>
     );
   }
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
-      <div>
-        <p className="font-medium text-text-primary">{widget.config.label ?? monitor.name}</p>
-        {monitor.lastChecked && (
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Checked {formatRelative(monitor.lastChecked)}
-          </p>
-        )}
+
+  // Single monitor — detailed badge
+  if (selected.length === 1) {
+    const monitor = selected[0];
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+        <div>
+          <p className="font-medium text-text-primary">{widget.config.label ?? monitor.name}</p>
+          {monitor.lastChecked && (
+            <p className="mt-0.5 text-xs text-text-secondary">Checked {formatRelative(monitor.lastChecked)}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <LevelBadge level={monitor.level} />
+          {monitor.latencyMs !== null && (
+            <span className="text-xs tabular-nums text-text-secondary">{monitor.latencyMs}ms</span>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-1">
-        <LevelBadge level={monitor.level} />
-        {monitor.latencyMs !== null && (
-          <span className="text-xs tabular-nums text-text-secondary">{monitor.latencyMs}ms</span>
-        )}
+    );
+  }
+
+  // Multiple monitors — compact list
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {widget.config.label && <p className="text-sm font-semibold text-text-primary mb-2">{widget.config.label as string}</p>}
+      <div className="space-y-1.5">
+        {selected.map(m => (
+          <div key={m.id} className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+            <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+            {m.latencyMs !== null && <span className="text-xs font-mono text-text-secondary">{m.latencyMs}ms</span>}
+            <LevelBadge level={m.level} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -163,14 +214,35 @@ export function MultiMonitorStatusGrid({ monitors }: WidgetProps) {
 }
 
 // Active Incident Banner
-export function ActiveIncidentBanner({ monitors }: WidgetProps) {
+export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
+  const activeIncidents = extra.incidents.filter(i => i.status !== "resolved");
   const down = monitors.filter((m) => m.level === "red");
-  if (down.length === 0) return null;
+
+  if (activeIncidents.length === 0 && down.length === 0) {
+    return (
+      <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3">
+        <span className="h-3 w-3 rounded-full bg-success" />
+        <span className="text-sm font-medium text-success">All systems operational — no active incidents</span>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-      <p className="mb-3 font-semibold text-red-400">🔴 Active Incident{down.length > 1 ? "s" : ""}</p>
-      <ul className="space-y-1.5">
-        {down.map((m) => (
+      <p className="mb-3 font-semibold text-red-400">🔴 Active Incident{(activeIncidents.length + down.length) > 1 ? "s" : ""}</p>
+      <ul className="space-y-2">
+        {activeIncidents.map((i) => (
+          <li key={i.id} className="flex items-start gap-2 text-sm">
+            <span className="mt-1 h-2 w-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+            <div>
+              <span className="font-medium text-text-primary">{i.title}</span>
+              <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${i.severity === "critical" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning"}`}>{i.severity}</span>
+              {i.monitors.length > 0 && <p className="text-xs text-text-secondary">Affected: {i.monitors.map(m => m.name).join(", ")}</p>}
+              {i.updates[0] && <p className="text-xs text-text-secondary mt-0.5">{i.updates[0].message}</p>}
+            </div>
+          </li>
+        ))}
+        {down.filter(m => !activeIncidents.some(i => i.monitors.some(im => im.id === m.id))).map((m) => (
           <li key={m.id} className="flex items-center gap-2 text-sm text-text-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
             {m.name}
@@ -312,11 +384,12 @@ export function ResponseTimeChart({ widget, monitors }: WidgetProps) {
 }
 
 // Check History Feed
-export function CheckHistoryFeed({ monitors }: WidgetProps) {
-  if (monitors.length === 0) {
+export function CheckHistoryFeed({ extra }: WidgetProps) {
+  const checks = extra.recentChecks;
+  if (checks.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-secondary">
-        No monitor data available
+        No check history available yet
       </div>
     );
   }
@@ -325,17 +398,16 @@ export function CheckHistoryFeed({ monitors }: WidgetProps) {
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-medium text-text-primary">Recent Check Results</p>
       </div>
-      <ul className="divide-y divide-border/60">
-        {monitors.map((m) => (
-          <li key={m.id} className="flex items-center gap-3 px-4 py-3">
-            <LevelBadge level={m.level} />
-            <span className="flex-1 truncate text-sm text-text-primary">{m.name}</span>
-            {m.lastChecked && (
-              <span className="shrink-0 text-xs text-text-secondary">{formatRelative(m.lastChecked)}</span>
+      <ul className="divide-y divide-border/60 max-h-80 overflow-y-auto">
+        {checks.slice(0, 20).map((c) => (
+          <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+            <LevelBadge level={c.level as "green" | "yellow" | "red"} />
+            <span className="flex-1 truncate text-sm text-text-primary">{c.monitorName}</span>
+            {c.message && <span className="truncate max-w-[200px] text-xs text-text-secondary">{c.message}</span>}
+            {c.latencyMs !== null && (
+              <span className="shrink-0 tabular-nums text-xs text-text-secondary">{c.latencyMs}ms</span>
             )}
-            {m.latencyMs !== null && (
-              <span className="shrink-0 tabular-nums text-xs text-text-secondary">{m.latencyMs}ms</span>
-            )}
+            <span className="shrink-0 text-xs text-text-secondary">{formatRelative(c.checkedAt)}</span>
           </li>
         ))}
       </ul>
@@ -343,31 +415,52 @@ export function CheckHistoryFeed({ monitors }: WidgetProps) {
   );
 }
 
-// Incident History
-export function IncidentHistory({ monitors }: WidgetProps) {
-  const down = monitors.filter((m) => m.level !== "green");
+// Incident History — real incidents from API
+export function IncidentHistory({ extra }: WidgetProps) {
+  const incidents = extra.incidents;
+  const active = incidents.filter(i => i.status !== "resolved");
+  const resolved = incidents.filter(i => i.status === "resolved");
+
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
       <p className="mb-3 text-sm font-medium text-text-primary">Incident History</p>
-      {down.length === 0 ? (
+      {incidents.length === 0 ? (
         <div className="flex items-center gap-2 rounded-lg bg-green-500/5 px-3 py-2.5">
           <span className="h-2 w-2 rounded-full bg-green-400" />
-          <span className="text-sm text-green-400">No active incidents</span>
+          <span className="text-sm text-green-400">No incidents in the last 30 days</span>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {down.map((m) => (
-            <li key={m.id} className="flex items-start gap-2 rounded-lg bg-surface/80 px-3 py-2">
-              <span className={`mt-0.5 h-2 w-2 rounded-full ${m.level === "red" ? "bg-red-400" : "bg-yellow-400"}`} />
-              <div>
-                <p className="text-sm font-medium text-text-primary">{m.name}</p>
-                {m.message && <p className="text-xs text-text-secondary">{m.message}</p>}
-                {m.lastChecked && <p className="text-xs text-text-secondary">{formatRelative(m.lastChecked)}</p>}
-              </div>
-              <LevelBadge level={m.level} />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          {active.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-danger uppercase tracking-wide">Active</p>
+              {active.map(i => (
+                <div key={i.id} className="rounded-lg bg-danger/5 border border-danger/20 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
+                    <span className="text-sm font-medium text-text-primary">{i.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${i.severity === "critical" ? "bg-danger/15 text-danger" : i.severity === "major" ? "bg-warning/15 text-warning" : "bg-accent/15 text-accent"}`}>{i.severity}</span>
+                    <span className="ml-auto text-xs text-text-secondary">{formatRelative(i.createdAt)}</span>
+                  </div>
+                  {i.monitors.length > 0 && <p className="text-xs text-text-secondary mt-1">Affected: {i.monitors.map(m => m.name).join(", ")}</p>}
+                  {i.updates[0] && <p className="text-xs text-text-secondary mt-1">{i.updates[0].message}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          {resolved.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-success uppercase tracking-wide">Resolved</p>
+              {resolved.slice(0, 5).map(i => (
+                <div key={i.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-elevated/30">
+                  <span className="h-2 w-2 rounded-full bg-success" />
+                  <span className="text-sm text-text-primary flex-1 truncate">{i.title}</span>
+                  <span className="text-xs text-text-secondary">{formatRelative(i.resolvedAt ?? i.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -386,19 +479,51 @@ export function TextBlock({ widget }: WidgetProps) {
   );
 }
 
-// Scheduled Maintenance
-export function ScheduledMaintenance({ widget }: WidgetProps) {
-  const text = (widget.config.text as string) ?? "";
-  const label = (widget.config.label as string) ?? "Scheduled Maintenance";
-  return (
-    <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-yellow-400">🔧</span>
-        <p className="text-sm font-semibold text-yellow-400">{label}</p>
+// Scheduled Maintenance — real maintenance windows from API
+export function ScheduledMaintenance({ extra }: WidgetProps) {
+  const windows = extra.maintenance;
+  const now = Date.now();
+
+  if (windows.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-success">🔧</span>
+          <p className="text-sm font-semibold text-text-primary">Scheduled Maintenance</p>
+        </div>
+        <p className="mt-2 text-sm text-text-secondary">No upcoming maintenance scheduled</p>
       </div>
-      <p className="text-sm text-text-secondary">
-        {text || "No scheduled maintenance"}
-      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-yellow-400">🔧</span>
+        <p className="text-sm font-semibold text-yellow-400">Scheduled Maintenance</p>
+      </div>
+      {windows.map(mw => {
+        const start = new Date(mw.startsAt).getTime();
+        const end = new Date(mw.endsAt).getTime();
+        const isActive = now >= start && now <= end;
+        const isUpcoming = now < start;
+        return (
+          <div key={mw.id} className={`rounded-lg px-3 py-2.5 ${isActive ? "bg-warning/10 border border-warning/20" : "bg-surface-elevated/30"}`}>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-warning animate-pulse" : "bg-text-secondary/40"}`} />
+              <span className="text-sm font-medium text-text-primary">{mw.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isActive ? "bg-warning/15 text-warning" : "bg-surface-elevated text-text-secondary"}`}>
+                {isActive ? "In Progress" : isUpcoming ? "Upcoming" : "Completed"}
+              </span>
+            </div>
+            {mw.description && <p className="mt-1 text-xs text-text-secondary">{mw.description}</p>}
+            <p className="mt-1 text-xs text-text-muted">
+              {new Date(mw.startsAt).toLocaleString()} — {new Date(mw.endsAt).toLocaleString()}
+            </p>
+            {mw.monitors.length > 0 && <p className="mt-1 text-xs text-text-secondary">Affected: {mw.monitors.map(m => m.name).join(", ")}</p>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -408,11 +533,225 @@ export function Divider() {
   return <hr className="border-border my-2" />;
 }
 
+// ── Group / Multi Widgets ────────────────────────────────────────────────
+
+// Monitor Group — shows monitors grouped by tag or folder
+function MonitorGroup({ widget, monitors }: WidgetProps) {
+  const groupBy = (widget.config.groupBy as string) ?? "folder";
+  const filterTag = widget.config.tag as string | undefined;
+  const filterFolder = widget.config.folderId as string | undefined;
+  const label = widget.config.label as string | undefined;
+
+  let filtered = monitors;
+  if (filterTag) filtered = monitors.filter(m => m.tags?.includes(filterTag));
+  if (filterFolder) filtered = monitors.filter(m => m.folderId === filterFolder);
+
+  // Group monitors
+  const groups = new Map<string, MonitorSummary[]>();
+  for (const m of filtered) {
+    const key = groupBy === "tag"
+      ? (m.tags?.[0] ?? "Untagged")
+      : (m.folderName ?? "Ungrouped");
+    const list = groups.get(key) ?? [];
+    list.push(m);
+    groups.set(key, list);
+  }
+
+  if (groups.size === 0 && filtered.length > 0) {
+    groups.set(label ?? "All Monitors", filtered);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
+      {Array.from(groups.entries()).map(([groupName, items]) => {
+        const allGreen = items.every(m => m.level === "green");
+        const hasRed = items.some(m => m.level === "red");
+        return (
+          <div key={groupName}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`h-2.5 w-2.5 rounded-full ${hasRed ? "bg-danger" : allGreen ? "bg-success" : "bg-warning"}`} />
+              <span className="text-sm font-semibold text-text-primary">{groupName}</span>
+              <span className="text-xs text-text-secondary ml-auto">{items.filter(m => m.level === "green").length}/{items.length} operational</span>
+            </div>
+            <div className="space-y-1">
+              {items.map(m => (
+                <div key={m.id} className="flex items-center gap-2 pl-5">
+                  <div className={`h-1.5 w-1.5 rounded-full ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+                  <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+                  {m.latencyMs !== null && <span className="text-xs font-mono text-text-secondary">{m.latencyMs}ms</span>}
+                  <span className="text-xs text-text-secondary">{m.lastChecked ? formatRelative(m.lastChecked) : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Multi Status Badges — compact grid of all monitors with status
+function MultiStatusBadges({ widget, monitors }: WidgetProps) {
+  const filterTag = widget.config.tag as string | undefined;
+  const filterFolder = widget.config.folderId as string | undefined;
+  const filterType = widget.config.monitorType as string | undefined;
+  let filtered = monitors;
+  if (filterTag) filtered = filtered.filter(m => m.tags?.includes(filterTag));
+  if (filterFolder) filtered = filtered.filter(m => m.folderId === filterFolder);
+  if (filterType) filtered = filtered.filter(m => m.type === filterType);
+
+  const label = widget.config.label as string | undefined;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        {filtered.map(m => (
+          <div key={m.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+            m.level === "green" ? "border-success/20 bg-success/5" : m.level === "yellow" ? "border-warning/20 bg-warning/5" : "border-danger/20 bg-danger/5"
+          }`}>
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-text-primary truncate">{m.name}</p>
+              {m.latencyMs !== null && <p className="text-[10px] font-mono text-text-secondary">{m.latencyMs}ms</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Version Widgets ──────────────────────────────────────────────────────
+
+function parseVersionFromMessage(msg: string | null): { current: string | null; latest: string | null } {
+  if (!msg) return { current: null, latest: null };
+  const m = msg.match(/current\s+([^\s,]+)[,\s]+latest\s+([^\s,]+)/i);
+  return m ? { current: m[1], latest: m[2] } : { current: null, latest: null };
+}
+
+function classifyVersionDiff(current: string, latest: string): "up-to-date" | "patch" | "minor" | "major" {
+  const c = current.replace(/^v/i, "").split(".");
+  const l = latest.replace(/^v/i, "").split(".");
+  if (c[0] !== l[0]) return "major";
+  if (c[1] !== l[1]) return "minor";
+  if (c[2] !== l[2]) return "patch";
+  return "up-to-date";
+}
+
+// Version Status Grid — table showing all monitors with version info
+function VersionStatusGrid({ monitors }: WidgetProps) {
+  const versionMonitors = monitors.filter(m => m.message && /current/i.test(m.message));
+  if (versionMonitors.length === 0) return <div className="p-4 text-sm text-text-secondary text-center">No version checks configured</div>;
+
+  const upToDate = versionMonitors.filter(m => m.level === "green").length;
+  const updates = versionMonitors.length - upToDate;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-text-primary">Version Status</h3>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-success font-medium">{upToDate} up to date</span>
+          {updates > 0 && <span className="text-warning font-medium">{updates} update{updates > 1 ? "s" : ""} available</span>}
+        </div>
+      </div>
+      <div className="divide-y divide-border/50">
+        {versionMonitors.map(m => {
+          const { current, latest } = parseVersionFromMessage(m.message);
+          const diff = current && latest ? classifyVersionDiff(current, latest) : "up-to-date";
+          const diffColor = diff === "major" ? "text-danger" : diff === "minor" ? "text-warning" : diff === "patch" ? "text-accent" : "text-success";
+          const diffBg = diff === "major" ? "bg-danger/10" : diff === "minor" ? "bg-warning/10" : diff === "patch" ? "bg-accent/10" : "bg-success/10";
+          return (
+            <div key={m.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+              <span className="text-sm text-text-primary font-medium flex-1 truncate">{m.name}</span>
+              {current && <span className="text-xs font-mono text-text-secondary">{current}</span>}
+              {current && latest && current !== latest && (
+                <>
+                  <span className="text-xs text-text-muted">→</span>
+                  <span className={`text-xs font-mono font-medium ${diffColor}`}>{latest}</span>
+                </>
+              )}
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${diffBg} ${diffColor}`}>
+                {diff === "up-to-date" ? "✓ Current" : diff.charAt(0).toUpperCase() + diff.slice(1)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Version Check Badge — single monitor version status
+function VersionCheckBadge({ widget, monitors }: WidgetProps) {
+  const monitor = widget.config.monitorId ? monitors.find(m => m.id === widget.config.monitorId) : monitors.find(m => m.message && /current/i.test(m.message ?? ""));
+  if (!monitor) return <div className="rounded-xl border border-border bg-surface p-3 text-xs text-text-secondary">No version data</div>;
+  const { current, latest } = parseVersionFromMessage(monitor.message);
+  const diff = current && latest ? classifyVersionDiff(current, latest) : "up-to-date";
+  const statusColor = diff === "up-to-date" ? "text-success" : diff === "major" ? "text-danger" : "text-warning";
+  const statusBg = diff === "up-to-date" ? "bg-success/10" : diff === "major" ? "bg-danger/10" : "bg-warning/10";
+  return (
+    <div className={`rounded-xl border border-border ${statusBg} p-4 flex items-center gap-3`}>
+      <div className={`h-3 w-3 rounded-full flex-shrink-0 ${diff === "up-to-date" ? "bg-success" : diff === "major" ? "bg-danger" : "bg-warning"}`} />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-semibold text-text-primary">{widget.config.label || monitor.name}</span>
+        <span className="ml-2 text-xs font-mono text-text-secondary">{current ?? "?"}</span>
+      </div>
+      <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusBg} ${statusColor}`}>
+        {diff === "up-to-date" ? "✓ Up to date" : `${latest} available`}
+      </span>
+    </div>
+  );
+}
+
+// Update Summary — counts of up-to-date / minor / major
+function UpdateSummary({ monitors }: WidgetProps) {
+  const versionMonitors = monitors.filter(m => m.message && /current/i.test(m.message));
+  let upToDate = 0, minor = 0, major = 0, patch = 0;
+  for (const m of versionMonitors) {
+    const { current, latest } = parseVersionFromMessage(m.message);
+    if (!current || !latest) { upToDate++; continue; }
+    const diff = classifyVersionDiff(current, latest);
+    if (diff === "up-to-date") upToDate++;
+    else if (diff === "major") major++;
+    else if (diff === "minor") minor++;
+    else patch++;
+  }
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="flex items-center justify-center gap-8">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-success tabular-nums">{upToDate}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Up to date</div>
+        </div>
+        {patch > 0 && (
+          <div className="text-center">
+            <div className="text-2xl font-bold text-accent tabular-nums">{patch}</div>
+            <div className="text-xs text-text-secondary mt-0.5">Patch</div>
+          </div>
+        )}
+        <div className="text-center">
+          <div className="text-2xl font-bold text-warning tabular-nums">{minor}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Minor</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-danger tabular-nums">{major}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Major</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
-export function renderWidget(widget: Widget, monitors: MonitorSummary[]): React.ReactNode {
-  const props: WidgetProps = { widget, monitors };
+export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?: Partial<ExtraData>): React.ReactNode {
+  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], ...extra };
+  const props: WidgetProps = { widget, monitors, extra: fullExtra };
   switch (widget.type) {
+    case "overall-status":
     case "overall-system-status": return <OverallSystemStatus {...props} />;
     case "current-status-badge": return <CurrentStatusBadge {...props} />;
     case "multi-monitor-status-grid": return <MultiMonitorStatusGrid {...props} />;
@@ -425,6 +764,11 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[]): React.
     case "incident-history": return <IncidentHistory {...props} />;
     case "text-block": return <TextBlock {...props} />;
     case "scheduled-maintenance": return <ScheduledMaintenance {...props} />;
+    case "monitor-group": return <MonitorGroup {...props} />;
+    case "multi-status-badges": return <MultiStatusBadges {...props} />;
+    case "version-status-grid": return <VersionStatusGrid {...props} />;
+    case "version-check-badge": return <VersionCheckBadge {...props} />;
+    case "update-summary": return <UpdateSummary {...props} />;
     case "divider": return <Divider />;
     default: return (
       <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">

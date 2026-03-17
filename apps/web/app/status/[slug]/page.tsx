@@ -11,6 +11,37 @@ interface PageLayout {
   widgets: Widget[];
 }
 
+interface IncidentData {
+  id: string;
+  title: string;
+  status: string;
+  severity: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  updates: { id: string; message: string; status: string; createdAt: string }[];
+  monitors: { id: string; name: string }[];
+}
+
+interface MaintenanceData {
+  id: string;
+  name: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string;
+  monitors: { id: string; name: string }[];
+}
+
+interface CheckData {
+  id: string;
+  monitorId: string;
+  monitorName: string;
+  checkedAt: string;
+  ok: boolean;
+  level: string;
+  latencyMs: number | null;
+  message: string | null;
+}
+
 interface PublicPageData {
   id: string;
   slug: string;
@@ -19,6 +50,9 @@ interface PublicPageData {
   isPublished: boolean;
   layout: PageLayout;
   monitors: MonitorSummary[];
+  incidents?: IncidentData[];
+  maintenance?: MaintenanceData[];
+  recentChecks?: CheckData[];
 }
 
 // ── Metadata ─────────────────────────────────────────────────────────────
@@ -105,7 +139,11 @@ export default async function PublicStatusSlugPage({
             <div className="space-y-4">
               {sorted.map((widget) => (
                 <div key={widget.id}>
-                  {renderWidget(widget, data.monitors)}
+                  {renderWidget(widget, data.monitors, {
+                    incidents: data.incidents ?? [],
+                    maintenance: data.maintenance ?? [],
+                    recentChecks: data.recentChecks ?? [],
+                  })}
                 </div>
               ))}
             </div>

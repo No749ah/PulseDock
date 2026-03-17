@@ -17,17 +17,41 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 const ACCESS_TTL = 15 * 60 * 1000;        // 15 min
 const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function setAuthCookies(res: ExpressResponse, accessToken: string, refreshToken: string) {
+type RequestLike = {
+  secure?: boolean;
+  protocol?: string;
+  headers?: Record<string, string | string[] | undefined>;
+};
+
+function shouldUseSecureCookies(req?: RequestLike): boolean {
+  if (!IS_PROD) return false;
+
+  const forwardedProto = req?.headers?.['x-forwarded-proto'];
+  const proto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+  const reqProtocol = req?.protocol;
+  const publicUrl = process.env.PUBLIC_URL;
+
+  const isHttps = req?.secure === true
+    || reqProtocol === 'https'
+    || proto === 'https'
+    || (typeof publicUrl === 'string' && publicUrl.startsWith('https://'));
+
+  return isHttps;
+}
+
+function setAuthCookies(res: ExpressResponse, accessToken: string, refreshToken: string, req?: RequestLike) {
+  const secure = shouldUseSecureCookies(req);
+
   res.cookie('pulsedock_token', accessToken, {
     httpOnly: true,
-    secure: IS_PROD,
+    secure,
     sameSite: 'lax',
     maxAge: ACCESS_TTL,
     path: '/',
   });
   res.cookie('pulsedock_refresh', refreshToken, {
     httpOnly: true,
-    secure: IS_PROD,
+    secure,
     sameSite: 'lax',
     maxAge: REFRESH_TTL,
     path: '/',
@@ -84,7 +108,7 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return { ...result, user: { id: user.id, email: user.email, role: user.role, mustChangePassword: false } };
   }
 
@@ -103,7 +127,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful.' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or account locked.' })
   async login(
-    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string; protocol?: string; secure?: boolean },
     @Res({ passthrough: true }) res: ExpressResponse,
     @Body() body: LoginDto,
   ) {
@@ -111,7 +135,7 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return result;
   }
 
@@ -121,7 +145,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Token refreshed.' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token.' })
   async refresh(
-    @Req() req: { headers: Record<string, string | undefined>; ip?: string; cookies?: Record<string, string | undefined> },
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string; cookies?: Record<string, string | undefined>; protocol?: string; secure?: boolean },
     @Res({ passthrough: true }) res: ExpressResponse,
     @Body() body: RefreshDto,
   ) {
@@ -131,7 +155,7 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return result;
   }
 
@@ -150,12 +174,13 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Account created.' })
   @ApiResponse({ status: 400, description: 'Token invalid or expired.' })
   async acceptInvite(
+    @Req() req: { headers?: Record<string, string | undefined>; protocol?: string; secure?: boolean },
     @Res({ passthrough: true }) res: ExpressResponse,
     @Body() body: AcceptInviteDto,
   ) {
     const result = await this.authService.acceptInvite(body.token, body.password);
     if ('accessToken' in result && 'refreshToken' in result) {
-      setAuthCookies(res, result.accessToken as string, result.refreshToken as string);
+      setAuthCookies(res, result.accessToken as string, result.refreshToken as string, req);
     }
     return result;
   }
@@ -199,12 +224,13 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Password updated.' })
   @ApiResponse({ status: 400, description: 'Token invalid or expired.' })
   async resetPassword(
+    @Req() req: { headers?: Record<string, string | undefined>; protocol?: string; secure?: boolean },
     @Res({ passthrough: true }) res: ExpressResponse,
     @Body() body: ResetPasswordDto,
   ) {
     const result = await this.authService.resetPassword(body.token, body.newPassword);
     if (result && typeof result === 'object' && 'accessToken' in result && 'refreshToken' in result) {
-      setAuthCookies(res, result.accessToken as string, result.refreshToken as string);
+      setAuthCookies(res, result.accessToken as string, result.refreshToken as string, req);
     }
     return result;
   }
@@ -243,7 +269,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login completed.' })
   @ApiResponse({ status: 401, description: 'Invalid code or expired temp token.' })
   async verifyTotpLogin(
-    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string; protocol?: string; secure?: boolean },
     @Res({ passthrough: true }) res: ExpressResponse,
     @Body() body: VerifyTotpDto,
   ) {
@@ -251,7 +277,7 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
-    setAuthCookies(res, result.accessToken, result.refreshToken);
+    setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return result;
   }
 

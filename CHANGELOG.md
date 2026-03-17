@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+- **Degraded status visibility** — HTTP monitors with response-time threshold violations and version monitors with pending updates emit `level=yellow` (ok=true). Monitors list, dashboard table, monitor detail page, and sparkline bars previously showed these as "OK". Now all surfaces show "Degraded" (amber/warning) for yellow-level runs. Sparkline updated with amber bars at 65% height for degraded runs, and aria-label now includes degraded count.
+
 ---
 
 ## [1.0.0] — 2026-03-17

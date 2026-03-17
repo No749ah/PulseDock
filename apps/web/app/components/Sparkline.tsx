@@ -4,6 +4,7 @@ interface SparklineRun {
   ok: boolean;
   checkedAt: string;
   latencyMs?: number | null;
+  level?: "green" | "yellow" | "red" | null;
 }
 
 interface SparklineProps {
@@ -37,16 +38,18 @@ export function Sparkline({ runs, width = 120, height = 32 }: SparklineProps) {
   const gap = 1;
   const barWidth = (width - (N - 1) * gap) / N;
   const passing = last30.filter((r) => r.ok).length;
+  const degraded = last30.filter((r) => r.level === "yellow").length;
 
   return (
-    <svg width={width} height={height} aria-label={`${passing}/${N} passing`}>
-      <title>{`${passing}/${N} passing`}</title>
+    <svg width={width} height={height} aria-label={`${passing}/${N} passing${degraded > 0 ? `, ${degraded} degraded` : ""}`}>
+      <title>{`${passing}/${N} passing${degraded > 0 ? `, ${degraded} degraded` : ""}`}</title>
       {last30.map((run, i) => {
         const x = i * (barWidth + gap);
-        const barHeight = run.ok ? height : height / 2;
+        const isYellow = run.level === "yellow";
+        const barHeight = run.ok || isYellow ? (isYellow ? height * 0.65 : height) : height / 2;
         const y = height - barHeight;
-        const fill = run.ok ? "#22c55e" : "#ef4444";
-        const opacity = run.ok ? 0.7 : 0.8;
+        const fill = isYellow ? "#f59e0b" : run.ok ? "#22c55e" : "#ef4444";
+        const opacity = run.ok || isYellow ? 0.7 : 0.8;
         return (
           <rect
             key={i}

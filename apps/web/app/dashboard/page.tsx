@@ -30,6 +30,7 @@ interface MonitorRun {
   latencyMs?: number;
   message: string;
   checkedAt: string;
+  level?: "green" | "yellow" | "red";
 }
 
 interface DashboardStats {
@@ -297,9 +298,13 @@ export default function DashboardPage() {
                             <TableCell>
                               {monitor.enabled ? (
                                 lastRun ? (
-                                  <Badge variant={lastRun.ok ? "success" : "danger"}>
-                                    {lastRun.ok ? "OK" : "Failed"}
-                                  </Badge>
+                                  lastRun.level === "yellow" ? (
+                                    <Badge variant="warning">Degraded</Badge>
+                                  ) : lastRun.ok ? (
+                                    <Badge variant="success">OK</Badge>
+                                  ) : (
+                                    <Badge variant="danger">Failed</Badge>
+                                  )
                                 ) : (
                                   <Badge variant="default">Pending</Badge>
                                 )

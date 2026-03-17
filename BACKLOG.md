@@ -14,6 +14,8 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ## Recently Completed
 
+- [x] **Next.js build warning cleanup (`allowedHosts`)** — Removed unsupported `allowedHosts` key from `apps/web/next.config.mjs` (Next.js 16 no longer recognizes this option). Build is now clean without config warnings.
+
 - [x] **Coverage sweep: auth/checks/monitors edge branches** — Added focused unit tests for `AuthService` token/session/profile/verify edge paths, semver prerelease mixed-part comparison in `ChecksService`, and CSV/import parser edge cases in `MonitorsService`. API tests: 1308 → 1327 (total suite: 1349 incl. CLI+Agent), all green.
 
 - [x] **HTTP body keyword + expected status assertions** — `runHttpCheck()` now accepts `config.bodyContains` (response body must contain string, case-insensitive) and `config.expectedStatus` (exact status code or array of codes). Monitor create/edit UI shows both fields for HTTP monitors. 8 new tests (total: 1264). This enables monitoring JSON API health payloads without the plugin system.
@@ -397,6 +399,7 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-17 10:02 UTC):** Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to match Next.js 16 config schema. `npm run build` now runs without invalid-config warnings; restart + local/proxy route audits completed.
 - **This heartbeat (2026-03-17 09:02 UTC):** Coverage sweep completed — added edge-branch tests across auth/checks/monitors services (refresh TTL unit parsing, revoked session mapping, reset-password missing-user branch, profile conflict/trim handling, verify-email null-user post-consume path, semver prerelease number/string comparison paths, confirmations null fallback, CSV/import parser gaps). API tests: 1308 → 1327. Full suite: 1349 passing.
 - **This heartbeat (2026-03-17 06:02 UTC):** Coverage improvements — auth.service.spec.ts: 4 new tests covering verifyTotpLogin() branches (user not found, inactive user, 2FA not enabled, recovery code no match). monitors.service.spec.ts: 2 new tests covering parseCsv/importExternal gaps (cols[intervalIdx] undefined fallback, !item guard). API tests: 1286 → 1292. Branch coverage: 94.14% → 94.33%.
 - **This heartbeat (2026-03-17 05:02 UTC):** Coverage improvements — agent.controller.spec.ts created (4 tests, brings agent controller to 100% branch). agent.service.spec.ts extended (6 new tests: toolId config match, null configJson fallback, agentLastReport filter, numeric reportedAt, toolId fallback). auth.controller.spec.ts extended (7 new tests: setupStatus + setup endpoints, lines 54-88 previously uncovered). Agent branch coverage: 81.25% → 97.91%. 1269 → 1286 API tests. All 1291 total tests passing.

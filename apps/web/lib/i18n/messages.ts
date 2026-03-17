@@ -22,7 +22,7 @@ export const messages = {
       navHowItWorks: "How it works",
       signIn: "Sign in",
       getStarted: "Get Started",
-      heroBadge: "Open source · Self-hosted · Version intelligence",
+      heroBadge: "v1.0.0 · Open source · Self-hosted",
       heroTitleLine1: "Know when your",
       heroTitleAccent: "need attention",
       heroDescription:
@@ -88,7 +88,7 @@ export const messages = {
       navHowItWorks: "So funktioniert's",
       signIn: "Anmelden",
       getStarted: "Loslegen",
-      heroBadge: "Open Source · Self-hosted · Versions-Intelligenz",
+      heroBadge: "v1.0.0 · Open Source · Self-hosted",
       heroTitleLine1: "Erkenne, wann deine",
       heroTitleAccent: "Aufmerksamkeit brauchen",
       heroDescription:

@@ -25,6 +25,8 @@ This is the first stable production release of PulseDock. All major features are
 - **HTTP custom method, headers, and request body** — HTTP monitors support `httpMethod` (GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS), `requestHeaders` (custom headers map), and `requestBody`. Enables monitoring auth-protected APIs and POST-based health endpoints.
 - **HTTP body keyword + expected status assertions** — `bodyContains` and `expectedStatus` config fields for HTTP monitors. Enables monitoring JSON health APIs without the plugin system.
 - **Folder/project filter and assignment on Monitors page** — Monitors can be assigned to projects/folders from the monitors list. Filter bar supports folder-based filtering alongside tags and status.
+- **Agent package unit tests** — Added 12 unit tests to `@pulsedock/agent` covering BUILT_IN_CHECKS registry (tool count, command validity, specific tool assertions) and the structured logger (stdout/stderr routing, JSON format, extra fields, newline termination). Wired into root `npm run test`. Total: 1287 tests (1265 API + 10 CLI + 12 Agent).
+- **Landing page v1.0.0 badge** — Hero badge on landing page updated from "Open source · Self-hosted · Version intelligence" to "v1.0.0 · Open source · Self-hosted" in both EN and DE.
 
 ### Summary of all v1.0.0 capabilities
 - **Monitor types:** HTTP, TCP, SSL certificate, Heartbeat (push), Version check (GitHub, Docker Hub, npm, PyPI, Cargo, Maven, Helm, custom JSON-path)

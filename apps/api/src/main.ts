@@ -55,6 +55,11 @@ async function bootstrap() {
     },
   });
   
+  // Trust reverse proxy (Cloudflare/nginx/OpenResty) — required for secure cookies
+  // and correct client IP resolution behind a proxy.
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   // Cookie parser (must be before route handlers)
   app.use(cookieParser());
 

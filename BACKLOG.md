@@ -617,6 +617,92 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 - [ ] **Tool Registry expansion: 1302 → 2500+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
 
+  **ERP & Business:**
+  ERPNext, Odoo, Dolibarr, Tryton, Axelor, iDempiere, Metasfresh, Crater (invoicing), InvoiceNinja, Kimai (time tracking), Solidtime
+
+  **E-Commerce:**
+  Shopware, PrestaShop, Magento/Adobe Commerce, WooCommerce (REST API), Saleor, Medusa, Vendure, Bagisto, Sylius, Spree Commerce
+
+  **CRM:**
+  SuiteCRM, EspoCRM, Monica CRM, Twenty CRM, Corteza, Vtiger, CiviCRM, Chatwoot
+
+  **Identity & SSO:**
+  Keycloak, Authentik, Authelia, Zitadel, Casdoor, Logto, SuperTokens, FusionAuth, Gluu, Ory Kratos, Ory Hydra, LLDAP, Kanidm
+
+  **Search Engines:**
+  Elasticsearch, OpenSearch, Meilisearch, Typesense, Manticore Search, Sonic, Zinc, Quickwit, Tantivy, Toshi, Qdrant, Weaviate, Milvus, ChromaDB, Pinecone (self-hosted)
+
+  **Vector Databases & AI Infra:**
+  Qdrant, Weaviate, Milvus, ChromaDB, pgvector (via PostgreSQL), LanceDB, Marqo, Vespa, Jina, OpenSearch (vector), Chroma
+
+  **Log Management:**
+  Graylog, Loki + Grafana, ELK Stack (Elasticsearch+Logstash+Kibana), Fluentd, Fluent Bit, Vector, Alloy, OpenObserve, SigNoz, Seq, Papertrail (self-hosted)
+
+  **APM & Tracing:**
+  Jaeger, Zipkin, SigNoz, Uptrace, Grafana Tempo, OpenTelemetry Collector, Datadog Agent (self-hosted), NewRelic Agent, Elastic APM, Sentry (self-hosted), GlitchTip, Highlight.io
+
+  **Secrets Management:**
+  HashiCorp Vault, Infisical, Doppler (self-hosted), SOPS, Sealed Secrets, External Secrets Operator, CyberArk Conjur, Bitwarden Secrets Manager, 1Password Connect
+
+  **Service Mesh & API Gateway:**
+  Istio, Linkerd, Consul Connect, Cilium Service Mesh, Kong, APISIX, Tyk, KrakenD, Gravitee, Traefik Hub, Emissary-Ingress, Gloo Edge, Ambassador
+
+  **GitOps & Deployment:**
+  ArgoCD, FluxCD, Tekton, Spinnaker, Harness, Waypoint, Octopus Deploy, Capistrano, Kamal, Coolify, CapRover, Dokku, PaaS (self-hosted)
+
+  **Streaming & Event Processing:**
+  Apache Kafka, Redpanda, Apache Pulsar, NATS JetStream, RabbitMQ Streams, Apache Flink, Apache Spark Streaming, Benthos/Redpanda Connect, Debezium, Kafka Connect, ksqlDB
+
+  **Data Pipeline & ETL:**
+  Apache Airflow, Prefect, Dagster, Temporal, n8n, Node-RED, Windmill, Kestra, Apache NiFi, Airbyte, Meltano, Singer, Fivetran (self-hosted agent), dbt
+
+  **Scheduling & Jobs:**
+  Rundeck, Cronicle, Ofelia, Jobber, Agenda, Bull/BullMQ Dashboard, Celery Flower, Sidekiq, Faktory, Machinery
+
+  **Testing & QA:**
+  Selenium Grid, Playwright (grid), Cypress Dashboard (sorry.cypress), Testkube, Allure TestOps, Reportportal, Zalenium, Moon (Aerokube), Selenoid
+
+  **Documentation & API Docs:**
+  Swagger UI, Redoc, Stoplight, ReadMe, Docusaurus, Mintlify, Nextra, VitePress, Starlight, Fumadocs
+
+  **Password Management:**
+  Vaultwarden, Bitwarden, Passbolt, Teampass, Psono, Padloc, KeeWeb, AuthPass
+
+  **Media & Streaming (more):**
+  Jellyfin, Plex, Emby, Navidrome, Funkwhale, Ampache, Airsonic, Subsonic, Owncast, PeerTube, Ant Media, Janus Gateway, MediaMTX, Frigate, Shinobi, ZoneMinder, Moonlight/Sunshine
+
+  **Photo & Document Management:**
+  Immich, PhotoPrism, LibrePhotos, Pigallery2, Lychee, Piwigo, Paperless-ngx, Docspell, Teedy, Stirling PDF, Gotenberg
+
+  **Communication (more):**
+  Matrix Synapse, Element, Mattermost, Rocket.Chat, Zulip, Revolt, XMPP (ejabberd/Prosody), Jitsi Meet, BigBlueButton, LiveKit, Mumble, TeamSpeak, Gotify, ntfy, Apprise, Pushover
+
+  **Proxy & Load Balancer (more):**
+  Nginx, Nginx Proxy Manager, Traefik, Caddy, HAProxy, Envoy, Varnish, Squid, Pound, Sniproxy, frp, ngrok (self-hosted), rathole, bore, chisel
+
+  **Virtualization & Containers (more):**
+  Proxmox VE, XCP-ng, oVirt, Harvester, Rancher, Portainer, Yacht, Dockge, CasaOS, Umbrel, TrueNAS SCALE, Unraid, OpenMediaVault, Cockpit
+
+  **Network Monitoring:**
+  LibreNMS, Nagios, Zabbix, Checkmk, Observium, PRTG (self-hosted), Icinga2, NetBox, Netdata, Telegraf, Cacti, Smokeping, UptimeRobot (self-hosted agent), Gatus
+
+  **Compliance & Audit:**
+  OpenSCAP, Prowler, ScoutSuite, CloudSploit, Steampipe, InSpec, Drata Agent, Vanta Agent
+
+  **Blockchain & Web3:**
+  Ethereum (Geth/Besu/Nethermind), Bitcoin Core, Lightning Network (LND/CLN), IPFS, Filecoin Lotus, Substrate Node, Cosmos (Tendermint), Polygon Edge
+
+  **Education & LMS:**
+  Moodle, Canvas LMS, Open edX, Chamilo, ILIAS, Kolibri, LibreTexts
+
+  **Geospatial:**
+  GeoServer, MapServer, PostGIS, Nominatim, Pelias, Overpass API, tile38, Martin (vector tiles)
+
+  **Healthcare:**
+  OpenMRS, GNU Health, Bahmni, HAPI FHIR Server, Orthanc (DICOM)
+
+- [ ] **Tool Registry expansion: 1302 → 3000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+
 - [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
 
 ### P3 — Advanced Data & API

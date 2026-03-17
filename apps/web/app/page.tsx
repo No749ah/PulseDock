@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { getUser } from "../components/auth";
 import Link from "next/link";
 import { FadeIn } from "./components/FadeIn";
 import { GradientText } from "./components/GradientText";
@@ -158,6 +161,14 @@ const footerLinks = {
    ──────────────────────────────────────────────────────────── */
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  // Redirect logged-in users straight to dashboard
+  useEffect(() => {
+    const user = getUser();
+    if (user?.id) router.replace("/dashboard");
+  }, [router]);
+
   return (
     <main className="min-h-screen overflow-hidden">
       {/* ─── Navigation ─── */}

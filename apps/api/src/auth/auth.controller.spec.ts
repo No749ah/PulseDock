@@ -47,13 +47,19 @@ function makeAuthService() {
   };
 }
 
+function makePrisma() {
+  return {
+    user: { count: vi.fn().mockResolvedValue(1) },
+  };
+}
+
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: ReturnType<typeof makeAuthService>;
 
   beforeEach(() => {
     authService = makeAuthService();
-    controller = new AuthController(authService as never);
+    controller = new AuthController(authService as never, makePrisma() as never);
   });
 
   describe('register()', () => {
@@ -402,7 +408,7 @@ describe('AuthController', () => {
 describe('refresh() — null context fallbacks', () => {
   it('passes null userAgent and null ipAddress when headers and ip are missing', async () => {
     const authService = makeAuthService();
-    const controller = new AuthController(authService as never);
+    const controller = new AuthController(authService as never, makePrisma() as never);
     const tokens = { accessToken: 'acc2', refreshToken: 'ref2', user: { id: 'u1' } };
     authService.refresh.mockResolvedValue(tokens);
 

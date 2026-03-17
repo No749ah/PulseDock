@@ -390,11 +390,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ## Status Summary
-- **Codebase:** 1275 tests passing (1265 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1287 tests passing (1265 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.0 🎉
-- **This heartbeat (2026-03-17 00:02 UTC):** **v1.0.0 released!** Version bumped across all packages, CHANGELOG finalized. Added 12 unit tests to `@pulsedock/agent` package (BUILT_IN_CHECKS registry + logger), wired into root `npm run test`. Total: 1287 tests (1265 API + 10 CLI + 12 Agent). Landing page hero badge updated to v1.0.0. All 11 pages 200, public URL healthy, API reporting v1.0.0.
+- **This heartbeat (2026-03-17 01:02 UTC):** Fixed `@pulsedock/agent` tsc compilation — spec files were being compiled into `dist/`, causing vitest to pick up CJS spec artifacts and fail. Added `vitest.config.ts` with explicit `include: ['src/**/*.spec.ts']` and excluded specs from `tsconfig.json`. Also fixed 3 TypeScript strict errors in API specs: `confirmations: 1` added to Monitor fixtures in `alerts.service.spec.ts` + `checks.service.ssl.spec.ts`, `makePrisma()` mock added to `auth.controller.spec.ts` (AuthController now takes 2 constructor args). All 1287 tests green, zero TS errors, 11 pages 200.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
-- **Next Project:** v1.0.0 shipped. Ready to propose next project to Noah.
+- **Next Project:** v1.0.0 shipped. New project proposal sent to Noah — awaiting repo creation.

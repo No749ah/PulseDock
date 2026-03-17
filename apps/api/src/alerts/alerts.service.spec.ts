@@ -36,6 +36,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     target: 'https://api.example.com',
     intervalSec: 60,
     timeoutMs: 5000,
+    confirmations: 1,
     config: {},
     alertChannelIds: [],
     folderId: null,

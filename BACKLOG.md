@@ -988,3 +988,4 @@
 - [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
 - [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
 - [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
+- [ ] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.

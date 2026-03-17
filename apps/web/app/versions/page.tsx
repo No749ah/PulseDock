@@ -111,6 +111,7 @@ export default function VersionsPage() {
   const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
   const [toolSearch, setToolSearch] = useState('');
   const [toolCategory, setToolCategory] = useState('');
+  const [toolVisibleCount, setToolVisibleCount] = useState(50);
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<'GIT_RELEASE' | 'DOCKER_IMAGE'>('GIT_RELEASE');
@@ -195,6 +196,11 @@ export default function VersionsPage() {
       .then((d: { tools: ToolEntry[]; categories: string[]; total: number }) => setToolRegistry(d))
       .catch(() => null);
   }, [toolRegistry]);
+
+  useEffect(() => {
+    // Reset tool pagination when search/filter/modal state changes
+    setToolVisibleCount(50);
+  }, [toolSearch, toolCategory, createOpen, createStep]);
 
   useEffect(() => {
     if (!target.trim()) {
@@ -668,7 +674,14 @@ export default function VersionsPage() {
                   </select>
                 </div>
                 {/* Tool grid */}
-                <div className="max-h-80 overflow-y-auto -mx-1 px-1">
+                <div
+                  className="max-h-80 overflow-y-auto -mx-1 px-1"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+                    if (nearBottom) setToolVisibleCount((prev) => prev + 50);
+                  }}
+                >
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
                   ) : (() => {
@@ -678,26 +691,33 @@ export default function VersionsPage() {
                       if (!q) return cat;
                       return cat && (t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some((tag) => tag.includes(q)));
                     });
+                    const visible = filtered.slice(0, toolVisibleCount);
                     return filtered.length === 0 ? (
                       <p className="text-sm text-text-secondary text-center py-8">No tools found — try "manual config" to set up a custom check.</p>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {filtered.map((tool) => (
-                          <button
-                            key={tool.id}
-                            onClick={() => applyToolToForm(tool)}
-                            className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
-                          >
-                            <div className="flex items-center gap-2 w-full min-w-0">
-                              <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                              <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
-                              {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
-                            </div>
-                            <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <p className="text-xs text-text-secondary mb-2">Showing {visible.length} of {filtered.length} tools</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {visible.map((tool) => (
+                            <button
+                              key={tool.id}
+                              onClick={() => applyToolToForm(tool)}
+                              className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
+                            >
+                              <div className="flex items-center gap-2 w-full min-w-0">
+                                <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
+                                {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
+                              </div>
+                              <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {visible.length < filtered.length && (
+                          <p className="text-xs text-text-secondary text-center mt-3">Scroll to load more…</p>
+                        )}
+                      </>
                     );
                   })()}
                 </div>

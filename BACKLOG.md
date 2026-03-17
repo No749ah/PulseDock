@@ -956,3 +956,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) to wait on post-login app-ready signal, not only URL.
 - [ ] Add regression test for valid login path used in CI (`E2E_EMAIL/E2E_PASSWORD`).
 - [ ] Validate full E2E suite green in pipeline.
+
+### P1 — Tool Search Quality + Incremental Tool List UX
+- [ ] Improve tool search relevance/ranking (name exact/starts-with > tags > description).
+- [ ] Add debounced search + normalization (case/spacing/special chars) for consistent results.
+- [ ] Add empty-state suggestions (close matches / top tools in selected category).
+- [ ] Keep first render lightweight: show ~50 tools initially.
+- [ ] Infinite scroll in tool picker: load +50 on scroll until exhausted.
+- [ ] Add quick perf check for large registry filtering in browser.

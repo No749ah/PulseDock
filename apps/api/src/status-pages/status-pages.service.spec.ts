@@ -30,6 +30,9 @@ function makeMonitor(overrides: Record<string, unknown> = {}) {
     id: 'mon-1',
     name: 'Test Monitor',
     type: 'HTTP',
+    folderId: null,
+    folder: null,
+    monitorTags: [],
     runs: [
       {
         level: 'green',
@@ -50,7 +53,9 @@ function makePrisma(opts: {
 } = {}) {
   const page = opts.page !== undefined ? opts.page : makePage();
   const monitors = opts.monitors ?? [makeMonitor()];
-  const runs = opts.runs ?? [{ level: 'green' }, { level: 'green' }, { level: 'red' }];
+  const runs = opts.runs ?? [
+    { id: 'run-1', monitorId: 'mon-1', checkedAt: new Date(), ok: true, level: 'green', latencyMs: 100, message: 'OK', monitor: { name: 'Test Monitor' } },
+  ];
 
   return {
     publicStatusPage: {
@@ -84,6 +89,12 @@ function makePrisma(opts: {
     },
     monitorRun: {
       findMany: vi.fn().mockResolvedValue(runs),
+    },
+    incident: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    maintenanceWindow: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
 }

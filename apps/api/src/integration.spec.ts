@@ -142,6 +142,23 @@ const mockPrisma = {
     findUnique: vi.fn().mockResolvedValue(null),
     upsert: vi.fn(),
   },
+  incident: {
+    findMany: vi.fn().mockResolvedValue([]),
+    findFirst: vi.fn().mockResolvedValue(null),
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+  },
+  incidentUpdate: {
+    create: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  incidentMonitor: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    createMany: vi.fn().mockResolvedValue({ count: 0 }),
+  },
   maintenanceWindow: {
     findMany: vi.fn().mockResolvedValue([]),
     findFirst: vi.fn().mockResolvedValue(null),
@@ -869,6 +886,8 @@ describe('Status Pages', () => {
     const publishedPage = { ...MOCK_PAGE, isPublished: true };
     mockPrisma.publicStatusPage.findUnique.mockResolvedValueOnce(publishedPage);
     mockPrisma.monitor.findMany.mockResolvedValueOnce([]);
+    mockPrisma.incident.findMany.mockResolvedValueOnce([]);
+    mockPrisma.maintenanceWindow.findMany.mockResolvedValueOnce([]);
     mockPrisma.monitorRun.findMany.mockResolvedValueOnce([]);
 
     const res = await supertest(app.getHttpServer())

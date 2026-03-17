@@ -138,6 +138,41 @@ function PaletteWidget({ item }: { item: WidgetPaletteItem }) {
 
 // ── Canvas widget (draggable on canvas) ─────────────────────────────────
 
+/** Live preview content for widgets in the editor */
+function WidgetPreview({ type, config, w }: { type: string; config: Record<string, unknown>; w: number }) {
+  const label = (config.label as string) || "";
+  switch (type) {
+    case "overall-status":
+      return (<div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-success animate-pulse" /><span className="text-sm font-semibold text-success">{label || "All Systems Operational"}</span></div>);
+    case "current-status-badge":
+      return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium text-text-primary">{label || "Monitor"}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">Up</span></div>);
+    case "uptime-bar":
+      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className="text-success font-medium">99.9%</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className="h-full w-[99.9%] rounded-full bg-success/70" /></div></div>);
+    case "uptime-timeline":
+      return (<div className="space-y-1">{label && <span className="text-[10px] text-text-secondary">{label}</span>}<div className="flex gap-px">{Array.from({ length: Math.min(w * 3, 30) }).map((_, i) => (<div key={i} className={`flex-1 h-4 rounded-sm ${i === 18 ? "bg-warning/60" : i === 22 ? "bg-danger/60" : "bg-success/50"}`} />))}</div></div>);
+    case "response-time-chart":
+      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Response Time"}</span><span className="font-mono">~120ms</span></div><svg viewBox="0 0 100 20" className="w-full h-6 text-accent/60" preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" strokeWidth="1.5" points="0,15 10,12 20,14 30,10 40,8 50,11 60,7 70,9 80,6 90,8 100,5" /></svg></div>);
+    case "multi-monitor-grid":
+      return (<div className="flex flex-wrap gap-1">{["API", "Web", "DB", "Redis", "CDN", "Auth"].map((n) => (<div key={n} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-elevated text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">{n}</span></div>))}</div>);
+    case "incident-history":
+      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label || "Recent Incidents"}</span><div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">No incidents in the last 7 days</span></div></div>);
+    case "active-incident-banner":
+      return (<div className="flex items-center gap-2 px-2 py-1 rounded bg-success/10 border border-success/20"><div className="h-2 w-2 rounded-full bg-success" /><span className="text-[10px] font-medium text-success">{label || "All clear — no active incidents"}</span></div>);
+    case "text-block":
+      return <p className="text-xs text-text-secondary">{label || "Announcement text goes here..."}</p>;
+    case "metric-counter":
+      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">99.9%</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
+    case "last-updated-footer":
+      return <div className="text-[10px] text-text-muted text-center">Last updated: just now</div>;
+    case "custom-header":
+      return (<div><div className="text-sm font-bold text-text-primary">{label || "Status Page"}</div><div className="text-[10px] text-text-secondary">Subtitle or description</div></div>);
+    case "divider":
+      return <hr className="border-border my-1" />;
+    default:
+      return <span className="text-[10px] text-text-secondary/40 italic">{WIDGET_PALETTE.find(p => p.type === type)?.label ?? type}</span>;
+  }
+}
+
 interface CanvasWidgetProps {
   widget: Widget;
   isSelected: boolean;
@@ -201,9 +236,9 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: Canv
           <X className="h-3 w-3" />
         </button>
       </div>
-      {/* Widget body placeholder */}
-      <div className="flex flex-1 items-center justify-center p-3">
-        <span className="text-xs text-text-secondary/40">{paletteItem?.description}</span>
+      {/* Widget preview */}
+      <div className="flex-1 overflow-hidden p-2">
+        <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
       </div>
     </div>
   );

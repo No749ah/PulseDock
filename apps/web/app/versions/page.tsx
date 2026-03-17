@@ -394,6 +394,7 @@ export default function VersionsPage() {
     const providerMap: Record<string, typeof provider> = {
       'github-releases': 'github',
       'github-tags': 'github',
+      'gitlab-releases': 'gitlab',
       'docker-hub': 'docker',
       'npm-registry': 'npm',
       'pypi': 'pypi',
@@ -406,6 +407,9 @@ export default function VersionsPage() {
     setProvider(p);
     setType(p === 'docker' ? 'DOCKER_IMAGE' : 'GIT_RELEASE');
     if (ls.target) setTarget(ls.target);
+    if (p === 'gitlab' && (ls as Record<string, unknown>).host) {
+      setGitlabHost((ls as Record<string, unknown>).host as string);
+    }
 
     // If it requires an instance URL, clear appUrl so user must enter their own instance
     if (tool.requiresInstanceUrl) {

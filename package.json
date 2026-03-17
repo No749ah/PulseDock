@@ -1,7 +1,7 @@
 {
   "name": "pulsedock",
   "private": true,
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "PulseDock - Version intelligence dashboard",
   "workspaces": [
     "apps/*",
@@ -15,7 +15,7 @@
     "dev:web": "npm run dev -w @pulsedock/web",
     "dev:api": "npm run dev -w @pulsedock/api",
     "build": "npm run build -w @pulsedock/web && npm run build -w @pulsedock/api && npm run build -w @pulsedock/agent && npm run build -w @pulsedock/cli && npm run build -w @pulsedock/extension",
-    "test": "NODE_ENV=test npm run test -w @pulsedock/web && NODE_ENV=test npm run test -w @pulsedock/api && NODE_ENV=test npm run test -w @pulsedock/cli",
+    "test": "NODE_ENV=test npm run test -w @pulsedock/web && NODE_ENV=test npm run test -w @pulsedock/api && NODE_ENV=test npm run test -w @pulsedock/cli && NODE_ENV=test npm run test -w @pulsedock/agent",
     "start:web": "bash ./scripts/start-web.sh",
     "start:api": "bash ./scripts/start-api.sh",
     "stop:web": "bash ./scripts/stop-web.sh",

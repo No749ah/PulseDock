@@ -9,15 +9,40 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] — 2026-03-17
+
+This is the first stable production release of PulseDock. All major features are complete, tested, and documented. The API surface is stable, the frontend is accessible and responsive, and the Docker/Kubernetes deployment paths are production-hardened.
+
 ### Added
 - **Monitor detail — Run Now + Enable/Disable actions** — Monitor detail page was previously read-only. Added two action buttons in the header: "Run Now" (triggers an immediate check via `POST /v1/monitors/run`, auto-refreshes run history after 2.5s, disabled while monitor is paused) and "Enable/Disable" toggle (PATCH /v1/monitors/:id, color-coded warning/success). Toast notification on success (3s auto-dismiss), inline error display on failure.
 - **Monitor picker in Maintenance Windows + Incidents modals** — Create and Edit modals in both Maintenance Windows and Incidents pages now include a scrollable multi-select checklist of monitors. Selecting monitors sends `monitorIds` to the API (which already supported it — this closes the UI gap). Maintenance Windows table now shows "—" instead of "0" badge when no monitors are associated.
 - **Per-page document titles** — All 12 dashboard routes now have unique browser tab titles (e.g. "Dashboard — PulseDock", "Monitors — PulseDock") via Next.js layout.tsx metadata. Improves multi-tab workflows and browser history.
 - **Monitor detail — HTTP/SSL/TCP config panel** — Monitor detail page now shows a type-specific configuration card: HTTP monitors display method, expected status codes, response time threshold, confirmations, body assertion, request body, and custom headers; SSL monitors show host and warning threshold; TCP monitors show host and port. Run history expanded from 20 to 50 entries.
 - **Swagger API docs — CreateMonitorDto annotations** — All `CreateMonitorDto` fields documented with `@ApiProperty` including detailed `config` field examples for HTTP, HEARTBEAT, SSL, and version-provider monitors.
-- **HTTP response time threshold alerting** — HTTP monitors now support `responseTimeThresholdMs` config option. When set, checks that succeed but take longer than the threshold are marked **yellow (degraded)** instead of green, triggering degraded alerts. UI: new "Response time threshold (ms)" field in the HTTP section of the create/edit modal. Works with all existing HTTP config options (bodyContains, expectedStatus, custom method/headers). 5 new tests.
-- **HTTP custom method, headers, and request body** — HTTP monitors now support `httpMethod` (GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS), `requestHeaders` (custom headers map, e.g. Authorization, X-API-Key), and `requestBody` (for POST/PUT/PATCH). Enables monitoring auth-protected APIs and POST-based health endpoints. UI: method dropdown, headers textarea (one per line: `Name: Value`), body textarea (shown for POST/PUT/PATCH). 6 new tests.
-- **HTTP body keyword + expected status assertions** — HTTP monitors now support two new optional config fields: `bodyContains` (response body must contain string, case-insensitive) and `expectedStatus` (require specific HTTP status code or array of codes, e.g. 201 or [200, 201]). Useful for monitoring JSON health APIs without the plugin system. 8 new unit tests.
+- **HTTP response time threshold alerting** — HTTP monitors now support `responseTimeThresholdMs` config option. When set, checks that exceed the threshold are marked **yellow (degraded)** instead of green, triggering degraded alerts. UI: new "Response time threshold (ms)" field in the HTTP monitor form.
+- **HTTP custom method, headers, and request body** — HTTP monitors support `httpMethod` (GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS), `requestHeaders` (custom headers map), and `requestBody`. Enables monitoring auth-protected APIs and POST-based health endpoints.
+- **HTTP body keyword + expected status assertions** — `bodyContains` and `expectedStatus` config fields for HTTP monitors. Enables monitoring JSON health APIs without the plugin system.
+- **Folder/project filter and assignment on Monitors page** — Monitors can be assigned to projects/folders from the monitors list. Filter bar supports folder-based filtering alongside tags and status.
+- **Agent package unit tests** — Added 12 unit tests to `@pulsedock/agent` covering BUILT_IN_CHECKS registry (tool count, command validity, specific tool assertions) and the structured logger (stdout/stderr routing, JSON format, extra fields, newline termination). Wired into root `npm run test`. Total: 1287 tests (1265 API + 10 CLI + 12 Agent).
+- **Landing page v1.0.0 badge** — Hero badge on landing page updated from "Open source · Self-hosted · Version intelligence" to "v1.0.0 · Open source · Self-hosted" in both EN and DE.
+
+### Summary of all v1.0.0 capabilities
+- **Monitor types:** HTTP, TCP, SSL certificate, Heartbeat (push), Version check (GitHub, Docker Hub, npm, PyPI, Cargo, Maven, Helm, custom JSON-path)
+- **Alerting:** Webhook, Slack, Discord, Telegram, Email — with notification preferences, quiet hours, digest mode, recovery alerts, failure confirmations, maintenance window suppression
+- **Security:** 2FA/TOTP, CSRF protection, account lockout, email verification, password strength enforcement, strict rate limiting, audit log export, session anomaly detection, input sanitization, security headers
+- **Public features:** Status page builder (drag-and-drop, 20+ widget types), SVG status badges, public API (`/v1/public/*`)
+- **Incident management:** Full lifecycle (investigating → identified → monitoring → resolved), timeline updates, affected monitor linking
+- **Tool registry:** 1302+ pre-configured tools across all major self-hosted categories
+- **PulseDock Agent:** Local shell reporter (Docker + binary), 16 built-in checks for Proxmox, pfSense, Docker, databases, nginx, etc.
+- **CLI:** `pulsedock check <url>` + monitors CRUD + config
+- **Browser extension:** Chrome MV3, one-click monitor creation, API key auth
+- **PWA:** Service worker, offline fallback, installability banner
+- **API:** v1 + v2 versioning, 95 documented endpoints, Swagger UI at `/api/docs`
+- **Infrastructure:** Docker Compose (dev + prod), Kubernetes manifests, Helm chart
+- **Tests:** 1275 passing (1265 API + 10 CLI), 98%+ coverage, Playwright E2E
+- **i18n:** English + German UI translations
 
 ---
 

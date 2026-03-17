@@ -5,6 +5,13 @@ const nextConfig = {
 
   devIndicators: false,
 
+  // Allow reverse-proxy Host headers (Next.js 16+ validates Host by default)
+  allowedHosts: [
+    'localhost',
+    'oc-dev-test.no749ah.com',
+    'oc-web-test.no749ah.com',
+  ],
+
   // When dev is accessed via a public hostname/proxy, allow that origin to fetch /_next/*
   // (prevents "Cross origin request detected" warnings/errors)
   allowedDevOrigins: [

@@ -413,6 +413,81 @@ describe('StatusPagesService', () => {
       expect(result.monitors[0].level).toBe('green');
       expect(result.monitors[0].lastChecked).toBeNull();
     });
+
+    it('maps monitor tags from monitorTags relation', async () => {
+      prisma = makePrisma({
+        page: makePage({ isPublished: true }),
+        monitors: [makeMonitor({ monitorTags: [{ tag: { name: 'production' } }, { tag: { name: 'api' } }] })],
+      });
+      service = makeService(prisma);
+      const result = await service.findPublic('my-status-page');
+      expect(result.monitors[0].tags).toEqual(['production', 'api']);
+    });
+
+    it('maps incidents with updates and monitor links', async () => {
+      const page = makePage({ isPublished: true });
+      prisma = makePrisma({ page });
+      prisma.incident.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'inc-1',
+          title: 'API Down',
+          status: 'investigating',
+          severity: 'critical',
+          createdAt: new Date('2026-03-01'),
+          resolvedAt: null,
+          updates: [{ id: 'upd-1', body: 'Looking into it', status: 'investigating', createdAt: new Date('2026-03-01') }],
+          monitors: [{ monitor: { id: 'mon-1', name: 'API Monitor' } }],
+        },
+      ]);
+      service = makeService(prisma);
+      const result = await service.findPublic('my-status-page');
+      expect(result.incidents).toHaveLength(1);
+      expect(result.incidents[0].title).toBe('API Down');
+      expect(result.incidents[0].updates[0].message).toBe('Looking into it');
+      expect(result.incidents[0].monitors[0].name).toBe('API Monitor');
+    });
+
+    it('maps maintenance windows with monitor links', async () => {
+      const page = makePage({ isPublished: true });
+      prisma = makePrisma({ page });
+      prisma.maintenanceWindow.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'mw-1',
+          name: 'DB Maintenance',
+          description: 'Scheduled downtime',
+          startsAt: new Date('2026-04-01T00:00:00Z'),
+          endsAt: new Date('2026-04-01T02:00:00Z'),
+          monitors: [{ monitor: { id: 'mon-1', name: 'DB Monitor' } }],
+        },
+      ]);
+      service = makeService(prisma);
+      const result = await service.findPublic('my-status-page');
+      expect(result.maintenance).toHaveLength(1);
+      expect(result.maintenance[0].name).toBe('DB Maintenance');
+      expect(result.maintenance[0].monitors[0].name).toBe('DB Monitor');
+    });
+
+    it('maps recentChecks with monitor name', async () => {
+      const page = makePage({ isPublished: true });
+      prisma = makePrisma({ page });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        {
+          id: 'run-1',
+          monitorId: 'mon-1',
+          checkedAt: new Date('2026-03-17'),
+          ok: true,
+          level: 'green',
+          latencyMs: 55,
+          message: 'OK',
+          monitor: { name: 'Web Monitor' },
+        },
+      ]);
+      service = makeService(prisma);
+      const result = await service.findPublic('my-status-page');
+      expect(result.recentChecks).toHaveLength(1);
+      expect(result.recentChecks[0].monitorName).toBe('Web Monitor');
+      expect(result.recentChecks[0].latencyMs).toBe(55);
+    });
   });
 
   // ── getWidgetData() ───────────────────────────────────────────────────────

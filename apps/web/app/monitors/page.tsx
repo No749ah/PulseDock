@@ -965,9 +965,13 @@ function MonitorsPageInner() {
                               {!monitor.enabled ? (
                                 <Badge variant="warning">Disabled</Badge>
                               ) : lastRun ? (
-                                <Badge variant={lastRun.ok ? "success" : "danger"}>
-                                  {lastRun.ok ? "OK" : "Failed"}
-                                </Badge>
+                                lastRun.level === "yellow" ? (
+                                  <Badge variant="warning">Degraded</Badge>
+                                ) : lastRun.ok ? (
+                                  <Badge variant="success">OK</Badge>
+                                ) : (
+                                  <Badge variant="danger">Failed</Badge>
+                                )
                               ) : (
                                 <Badge>Pending</Badge>
                               )}

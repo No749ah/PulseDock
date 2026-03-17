@@ -80,6 +80,17 @@ interface Monitor {
   type: string;
 }
 
+interface TagOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface FolderOption {
+  id: string;
+  name: string;
+}
+
 interface WidgetPaletteItem {
   type: string;
   label: string;
@@ -352,11 +363,13 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
 interface ConfigPanelProps {
   widget: Widget | null;
   monitors: Monitor[];
+  tags: TagOption[];
+  folders: FolderOption[];
   onChange: (config: Widget["config"]) => void;
   onResize: (size: { w: number; h: number }) => void;
 }
 
-function ConfigPanel({ widget, monitors, onChange, onResize }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -437,8 +450,57 @@ function ConfigPanel({ widget, monitors, onChange, onResize }: ConfigPanelProps)
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
+          <p className="mt-1 text-[10px] text-text-secondary">
+            {(w.config.monitorIds as string[] | undefined)?.length ?? 0} selected
+          </p>
         </div>
       )}
+
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Filters</p>
+        <label className="block text-[10px] text-text-secondary">
+          Tag filter
+          <select
+            value={(w.config.tag as string) ?? ""}
+            onChange={(e) => update("tag", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.name}>{tag.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[10px] text-text-secondary">
+          Folder filter
+          <select
+            value={(w.config.folderId as string) ?? ""}
+            onChange={(e) => update("folderId", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All folders</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>{folder.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[10px] text-text-secondary">
+          Monitor type filter
+          <select
+            value={(w.config.monitorType as string) ?? ""}
+            onChange={(e) => update("monitorType", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All types</option>
+            <option value="HTTP">HTTP</option>
+            <option value="GIT_RELEASE">Version</option>
+            <option value="DOCKER_IMAGE">Docker Image</option>
+            <option value="TCP">TCP</option>
+            <option value="SSL_CERT">SSL Cert</option>
+            <option value="HEARTBEAT">Heartbeat</option>
+          </select>
+        </label>
+      </div>
 
       {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
         <div>
@@ -516,6 +578,8 @@ export default function StatusPageEditorPage() {
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [tags, setTags] = useState<TagOption[]>([]);
+  const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -529,6 +593,8 @@ export default function StatusPageEditorPage() {
     if (!u) router.replace("/login");
     fetchPage();
     fetchMonitors();
+    fetchTags();
+    fetchFolders();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -558,6 +624,24 @@ export default function StatusPageEditorPage() {
     try {
       const data = await api<Monitor[]>("/v1/monitors");
       setMonitors(data);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  async function fetchTags() {
+    try {
+      const data = await api<TagOption[]>("/v1/tags");
+      setTags(data);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  async function fetchFolders() {
+    try {
+      const data = await api<FolderOption[]>("/v1/folders");
+      setFolders(data);
     } catch {
       // Non-fatal
     }
@@ -825,6 +909,8 @@ export default function StatusPageEditorPage() {
             <ConfigPanel
               widget={selectedWidget}
               monitors={monitors}
+              tags={tags}
+              folders={folders}
               onChange={updateWidgetConfig}
               onResize={updateWidgetSize}
             />

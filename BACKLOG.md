@@ -1,9 +1,10 @@
-## Status Summary (2026-03-17 15:10 UTC)
+## Status Summary (2026-03-17 16:08 UTC)
 - **Build:** ✅ Clean, 1353 tests passing
 - **Deployment:** Live at https://oc-dev-test.no749ah.com
-- **This session:** Stabilization + status page editor config groundwork:
+- **This session:** Status page editor config panel progression:
   - Fixed: `auth.controller.spec.ts` reset/invite tests after controller signature update (`req` context now passed correctly)
   - Added: Universal widget config foundation in status page editor (global monitor scope selector, single/multi monitor targeting, and width/height controls)
+  - Added: Config sidebar tag/folder/type filter controls (with live options from `/v1/tags` + `/v1/folders`) for reusable widget targeting
   - Verified: Full restart + post-deploy health/proxy checks + page-level frontend curl audit (local + reverse proxy)
   - Fixed: Next.js 16 allowedHosts / standalone vs next start / proxy caching
   - Fixed: Modal focus trap stealing input focus (global fix)
@@ -38,7 +39,7 @@
 
 ## In Progress
 
-- [ ] **Universal Config Panel for ALL widget types** — phase 1 landed: shared monitor scope selector (single/multiple/all), reusable single/multi monitor targeting fields, and explicit width/height controls in the config sidebar. Next: add tag/folder/type filters, visibility rules, click actions, style/border/padding controls, and responsive behavior controls.
+- [ ] **Universal Config Panel for ALL widget types** — phase 1 landed: shared monitor scope selector (single/multiple/all), reusable single/multi monitor targeting fields, and explicit width/height controls in the config sidebar. Phase 2 progress: tag/folder/type filters now available in the shared panel with dynamic tag/folder options. Next: visibility rules, click actions, style/border/padding controls, and responsive behavior controls.
 
 ## Recently Completed
 

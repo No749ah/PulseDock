@@ -1,13 +1,19 @@
 ## Status Summary (2026-03-17 23:08 UTC)
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
 - **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** 🔄 Pending restart after this commit.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks green.
 - **This session:**
   - Completed **monitor-scope UX polish** for status widgets in the editor:
     - added widget-aware helper copy for multi-monitor mode
     - added sensible default monitor preselection when switching to multi mode (single-series widgets default to 1, aggregate widgets default up to 6)
     - normalized monitor-scope mode transitions (`single`/`multiple`/`all`) to prevent stale monitor ID config
   - Ran full heartbeat checks: `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`
+  - Post-deploy verification:
+    - local health/API: `/health` 200, `/v1/auth/me` with Bearer header 401 (expected invalid token)
+    - local web/proxy: `/login` 200, `/api/v1/monitors` via web proxy 401 (expected unauthenticated)
+    - local route audit: `/login /dashboard /monitors /alerts /account /projects /versions /admin` all 200
+    - reverse-proxy route audit: same routes on `https://oc-dev-test.no749ah.com` all 200
+    - reverse-proxy static assets from `/login` (`/_next/static/...`) all 200
 
 # PulseDock Backlog
 

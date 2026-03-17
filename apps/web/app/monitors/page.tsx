@@ -784,8 +784,8 @@ function MonitorsPageInner() {
                   onClick={() => setActiveTagFilter(activeTagFilter === tag.name ? null : tag.name)}
                   className="px-3 py-1 rounded-full text-xs font-medium transition-colors border"
                   style={{
-                    backgroundColor: activeTagFilter === tag.name ? tag.color + "33" : "transparent",
-                    borderColor: tag.color + "66",
+                    backgroundColor: activeTagFilter === tag.name ? tag.color + "40" : "transparent",
+                    borderColor: tag.color + "80",
                     color: activeTagFilter === tag.name ? tag.color : undefined,
                   }}
                 >
@@ -942,7 +942,7 @@ function MonitorsPageInner() {
                                   <span
                                     key={tag.id}
                                     className="px-1.5 py-0.5 rounded text-[10px] font-medium leading-none"
-                                    style={{ backgroundColor: tag.color + "22", color: tag.color }}
+                                    style={{ backgroundColor: tag.color + "30", color: tag.color, textShadow: "0 0 8px " + tag.color + "40" }}
                                   >
                                     {tag.name}
                                   </span>
@@ -1516,7 +1516,7 @@ function MonitorsPageInner() {
                       type="button"
                       onClick={() => setSelectedTags((prev) => [...prev, tag.name])}
                       className="px-2 py-0.5 rounded-full text-xs border transition-colors hover:opacity-80"
-                      style={{ borderColor: tag.color + "66", color: tag.color }}
+                      style={{ borderColor: tag.color + "80", color: tag.color }}
                     >
                       + {tag.name}
                     </button>

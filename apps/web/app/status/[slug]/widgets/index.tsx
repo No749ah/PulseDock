@@ -408,11 +408,135 @@ export function Divider() {
   return <hr className="border-border my-2" />;
 }
 
+// ── Version Widgets ──────────────────────────────────────────────────────
+
+function parseVersionFromMessage(msg: string | null): { current: string | null; latest: string | null } {
+  if (!msg) return { current: null, latest: null };
+  const m = msg.match(/current\s+([^\s,]+)[,\s]+latest\s+([^\s,]+)/i);
+  return m ? { current: m[1], latest: m[2] } : { current: null, latest: null };
+}
+
+function classifyVersionDiff(current: string, latest: string): "up-to-date" | "patch" | "minor" | "major" {
+  const c = current.replace(/^v/i, "").split(".");
+  const l = latest.replace(/^v/i, "").split(".");
+  if (c[0] !== l[0]) return "major";
+  if (c[1] !== l[1]) return "minor";
+  if (c[2] !== l[2]) return "patch";
+  return "up-to-date";
+}
+
+// Version Status Grid — table showing all monitors with version info
+function VersionStatusGrid({ monitors }: WidgetProps) {
+  const versionMonitors = monitors.filter(m => m.message && /current/i.test(m.message));
+  if (versionMonitors.length === 0) return <div className="p-4 text-sm text-text-secondary text-center">No version checks configured</div>;
+
+  const upToDate = versionMonitors.filter(m => m.level === "green").length;
+  const updates = versionMonitors.length - upToDate;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-text-primary">Version Status</h3>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-success font-medium">{upToDate} up to date</span>
+          {updates > 0 && <span className="text-warning font-medium">{updates} update{updates > 1 ? "s" : ""} available</span>}
+        </div>
+      </div>
+      <div className="divide-y divide-border/50">
+        {versionMonitors.map(m => {
+          const { current, latest } = parseVersionFromMessage(m.message);
+          const diff = current && latest ? classifyVersionDiff(current, latest) : "up-to-date";
+          const diffColor = diff === "major" ? "text-danger" : diff === "minor" ? "text-warning" : diff === "patch" ? "text-accent" : "text-success";
+          const diffBg = diff === "major" ? "bg-danger/10" : diff === "minor" ? "bg-warning/10" : diff === "patch" ? "bg-accent/10" : "bg-success/10";
+          return (
+            <div key={m.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+              <span className="text-sm text-text-primary font-medium flex-1 truncate">{m.name}</span>
+              {current && <span className="text-xs font-mono text-text-secondary">{current}</span>}
+              {current && latest && current !== latest && (
+                <>
+                  <span className="text-xs text-text-muted">→</span>
+                  <span className={`text-xs font-mono font-medium ${diffColor}`}>{latest}</span>
+                </>
+              )}
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${diffBg} ${diffColor}`}>
+                {diff === "up-to-date" ? "✓ Current" : diff.charAt(0).toUpperCase() + diff.slice(1)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Version Check Badge — single monitor version status
+function VersionCheckBadge({ widget, monitors }: WidgetProps) {
+  const monitor = widget.config.monitorId ? monitors.find(m => m.id === widget.config.monitorId) : monitors.find(m => m.message && /current/i.test(m.message ?? ""));
+  if (!monitor) return <div className="rounded-xl border border-border bg-surface p-3 text-xs text-text-secondary">No version data</div>;
+  const { current, latest } = parseVersionFromMessage(monitor.message);
+  const diff = current && latest ? classifyVersionDiff(current, latest) : "up-to-date";
+  const statusColor = diff === "up-to-date" ? "text-success" : diff === "major" ? "text-danger" : "text-warning";
+  const statusBg = diff === "up-to-date" ? "bg-success/10" : diff === "major" ? "bg-danger/10" : "bg-warning/10";
+  return (
+    <div className={`rounded-xl border border-border ${statusBg} p-4 flex items-center gap-3`}>
+      <div className={`h-3 w-3 rounded-full flex-shrink-0 ${diff === "up-to-date" ? "bg-success" : diff === "major" ? "bg-danger" : "bg-warning"}`} />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-semibold text-text-primary">{widget.config.label || monitor.name}</span>
+        <span className="ml-2 text-xs font-mono text-text-secondary">{current ?? "?"}</span>
+      </div>
+      <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusBg} ${statusColor}`}>
+        {diff === "up-to-date" ? "✓ Up to date" : `${latest} available`}
+      </span>
+    </div>
+  );
+}
+
+// Update Summary — counts of up-to-date / minor / major
+function UpdateSummary({ monitors }: WidgetProps) {
+  const versionMonitors = monitors.filter(m => m.message && /current/i.test(m.message));
+  let upToDate = 0, minor = 0, major = 0, patch = 0;
+  for (const m of versionMonitors) {
+    const { current, latest } = parseVersionFromMessage(m.message);
+    if (!current || !latest) { upToDate++; continue; }
+    const diff = classifyVersionDiff(current, latest);
+    if (diff === "up-to-date") upToDate++;
+    else if (diff === "major") major++;
+    else if (diff === "minor") minor++;
+    else patch++;
+  }
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="flex items-center justify-center gap-8">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-success tabular-nums">{upToDate}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Up to date</div>
+        </div>
+        {patch > 0 && (
+          <div className="text-center">
+            <div className="text-2xl font-bold text-accent tabular-nums">{patch}</div>
+            <div className="text-xs text-text-secondary mt-0.5">Patch</div>
+          </div>
+        )}
+        <div className="text-center">
+          <div className="text-2xl font-bold text-warning tabular-nums">{minor}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Minor</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-danger tabular-nums">{major}</div>
+          <div className="text-xs text-text-secondary mt-0.5">Major</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 export function renderWidget(widget: Widget, monitors: MonitorSummary[]): React.ReactNode {
   const props: WidgetProps = { widget, monitors };
   switch (widget.type) {
+    case "overall-status":
     case "overall-system-status": return <OverallSystemStatus {...props} />;
     case "current-status-badge": return <CurrentStatusBadge {...props} />;
     case "multi-monitor-status-grid": return <MultiMonitorStatusGrid {...props} />;
@@ -425,6 +549,9 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[]): React.
     case "incident-history": return <IncidentHistory {...props} />;
     case "text-block": return <TextBlock {...props} />;
     case "scheduled-maintenance": return <ScheduledMaintenance {...props} />;
+    case "version-status-grid": return <VersionStatusGrid {...props} />;
+    case "version-check-badge": return <VersionCheckBadge {...props} />;
+    case "update-summary": return <UpdateSummary {...props} />;
     case "divider": return <Divider />;
     default: return (
       <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">

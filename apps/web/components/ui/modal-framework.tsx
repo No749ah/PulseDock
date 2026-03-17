@@ -38,6 +38,20 @@ export function AppModal({
         stableOnClose();
         return;
       }
+      // Enter → click the last non-disabled button in the modal (primary action)
+      if (e.key === 'Enter' && dialogRef.current) {
+        const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+        if (tag !== 'textarea' && tag !== 'button' && tag !== 'a') {
+          const buttons = dialogRef.current.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+          // Skip the close X button (first button) — pick the last one as primary
+          const primary = buttons.length > 1 ? buttons[buttons.length - 1] : null;
+          if (primary) {
+            e.preventDefault();
+            primary.click();
+            return;
+          }
+        }
+      }
       if (e.key === 'Tab' && dialogRef.current) {
         const focusable = Array.from(
           dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)

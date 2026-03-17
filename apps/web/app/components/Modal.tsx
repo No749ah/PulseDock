@@ -39,21 +39,39 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  // Stable ref for onClose so the effect doesn't re-run on every render
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const stableOnClose = useCallback(() => onCloseRef.current(), []);
 
-  // Track whether the modal just opened (for initial focus only)
   const justOpened = useRef(false);
 
-  // Escape key + body scroll lock + focus trap
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         stableOnClose();
         return;
       }
+
+      // Enter → click the last (primary) non-disabled button in the footer actions.
+      // Skip if user is in a textarea (multi-line input) or already on a button.
+      if (e.key === "Enter" && dialogRef.current) {
+        const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+        if (tag === "textarea") return; // let Enter create newlines
+        if (tag === "button" || tag === "a") return; // let native click handle it
+
+        // Find the footer actions container and click the last button (= primary action)
+        const footer = dialogRef.current.querySelector('[data-modal-actions]');
+        if (footer) {
+          const buttons = footer.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+          const primary = buttons[buttons.length - 1]; // last button = primary by convention
+          if (primary) {
+            e.preventDefault();
+            primary.click();
+            return;
+          }
+        }
+      }
+
       // Focus trap: Tab / Shift+Tab stays within modal
       if (e.key === "Tab" && dialogRef.current) {
         const focusable = Array.from(
@@ -77,7 +95,6 @@ export function Modal({
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
-      // Focus the first focusable element ONLY when the modal first opens
       justOpened.current = true;
       requestAnimationFrame(() => {
         if (justOpened.current && dialogRef.current) {
@@ -127,9 +144,9 @@ export function Modal({
         {/* Content */}
         <div className="p-6 max-h-[75vh] overflow-y-auto">{children}</div>
 
-        {/* Footer */}
+        {/* Footer — data-modal-actions is used by Enter key handler */}
         {actions && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-border">
+          <div data-modal-actions className="flex items-center justify-end gap-3 p-6 border-t border-border">
             {actions}
           </div>
         )}

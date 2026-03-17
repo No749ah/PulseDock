@@ -1,3 +1,26 @@
+## Status Summary (2026-03-17 13:09 UTC)
+- **Build:** ✅ Clean, 1327 tests passing
+- **Deployment:** Live at https://oc-dev-test.no749ah.com
+- **This session:** Major bug fixes + features from Noah's live testing:
+  - Fixed: Next.js 16 allowedHosts / standalone vs next start / proxy caching
+  - Fixed: Modal focus trap stealing input focus (global fix)
+  - Fixed: Monitor create rejected enabled field
+  - Fixed: GitLab version check empty host + token field mismatch
+  - Fixed: Portainer version case-insensitive key extraction
+  - Fixed: Socket.io connecting direct to :4321 instead of through proxy
+  - Fixed: Badge embed snippets now include full domain URL
+  - Fixed: trust proxy for secure cookies behind reverse proxy
+  - Added: Live widget previews in status page editor
+  - Added: Auto-save (2s debounce) in status page editor
+  - Added: Version Grid / Badge / Summary widgets for status pages
+  - Added: Monitor Group + Multi Status Badges widgets
+  - Added: Real incidents/maintenance/checks data in all status page widgets
+  - Added: Tag/folder filtering for status page widgets
+  - Added: Global Enter key → submits primary modal button
+  - Added: VersionDiff simplified to compact single-line display
+  - Fixed: Version templates auth defaults (none by default, token only when needed)
+  - Fixed: All 19 self-hosted app version endpoints corrected
+
 # PulseDock Backlog
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-14)

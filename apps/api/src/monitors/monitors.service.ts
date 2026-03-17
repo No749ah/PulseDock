@@ -540,7 +540,7 @@ export class MonitorsService {
   }
 
   private parseGitlabTarget(target: string, host?: string) {
-    const fallbackHost = (host ?? 'gitlab.com').replace(/\/$/, '');
+    const fallbackHost = (host ?? 'gitlab.com').replace(/^https?:\/\//i, '').replace(/\/$/, '');
     if (target.startsWith('gitlab:')) {
       const projectPath = target.slice('gitlab:'.length).trim();
       if (!projectPath) return null;

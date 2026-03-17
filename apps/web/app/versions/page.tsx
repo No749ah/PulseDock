@@ -915,7 +915,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 {appUrl && appAuthType === 'token' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">Application token (optional)</label>
-                    <input className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} />
+                    <input type="password" className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} placeholder="glpat-xxx..." />
                   </div>
                 )}
                 {appUrl && appAuthType === 'openvpn' && (
@@ -936,8 +936,8 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                     <input className={inputClass} value={appVersionEndpoint} onChange={(e) => setAppVersionEndpoint(e.target.value)} placeholder="/api/system/version" />
                   </div>
                 )}
-                <Button variant="secondary" onClick={validateSetup}>Validate and detect versions</Button>
-                {testMessage && <p className="text-sm text-text-secondary">{testMessage}</p>}
+                <Button variant="primary" onClick={validateSetup}>✓ Verify connection</Button>
+                {testMessage && <p className={`text-sm ${sourceStatus === 'ok' ? 'text-success' : sourceStatus === 'fail' ? 'text-danger' : 'text-text-secondary'}`}>{testMessage}</p>}
                 {appDetectedFrom && <p className="text-xs text-text-secondary">App version source endpoint: {appDetectedFrom}</p>}
                 {!appDetectedFrom && appTriedEndpoints.length > 0 && <p className="text-xs text-text-secondary">Tried: {appTriedEndpoints.join(', ')}</p>}
                 {appUrl && !currentVersion && !detectTried && <p className="text-xs text-text-secondary">Tip: click &quot;Validate and detect versions&quot; to auto-read deployed app version first.</p>}

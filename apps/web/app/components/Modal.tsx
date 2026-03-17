@@ -125,7 +125,7 @@ export function Modal({
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">{children}</div>
+        <div className="p-6 max-h-[75vh] overflow-y-auto">{children}</div>
 
         {/* Footer */}
         {actions && (

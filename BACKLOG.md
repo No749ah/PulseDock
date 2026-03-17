@@ -818,6 +818,63 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 - [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
 
+### P0 — Landing Page Rework
+
+> Landing page is the first thing users see. Must be Apple-level quality. Multiple iteration runs until perfect.
+
+- [ ] **Hero section redesign** — Bold headline, animated gradient text, clear value prop in one sentence, CTA buttons (Get Started / Live Demo), hero illustration or animated dashboard mockup, trust badges (open-source, self-hosted, free)
+- [ ] **Feature showcase** — 6-8 feature cards with icons + animations on scroll: Version Intelligence, Uptime Monitoring, Status Pages, Alert Channels, Incident Management, Tool Registry (1300+ tools). Each with micro-animation on hover.
+- [ ] **How it works section** — 3-step visual flow: 1) Add monitors 2) Get alerts 3) Share status page. Animated connectors between steps.
+- [ ] **Live demo / Interactive preview** — Embedded mini-dashboard showing real data (or realistic mock). Animated charts, status dots, version badges. Users see what they get before signup.
+- [ ] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage vs Pingdom. Feature matrix with checkmarks. Highlight what's unique (version intelligence, tool registry, self-hosted).
+- [ ] **Testimonials / Social proof** — Placeholder section for future testimonials. GitHub stars counter, "Used by X developers", open-source badge.
+- [ ] **Pricing section** — Free (self-hosted, unlimited), Cloud (coming soon placeholder). Clean card design.
+- [ ] **Screenshot gallery** — Dark-themed screenshots of: Dashboard, Monitors, Status Page Builder, Version Checks, Incident Timeline. Smooth carousel or grid.
+- [ ] **Footer redesign** — Proper footer: product links, docs link, GitHub link, changelog, social links, newsletter signup placeholder, copyright.
+- [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
+- [ ] **SEO deep pass** — Structured data (JSON-LD), proper heading hierarchy, internal links, sitemap, meta descriptions per section.
+- [ ] **Animations polish** — Staggered FadeIn on scroll, parallax subtle effects, number count-up for stats, smooth section transitions, reduced motion support.
+- [ ] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
+- [ ] **i18n landing** — EN + DE fully translated for all landing page content.
+
+### P0 — Documentation & Codebase Cleanup
+
+> All docs must be current, accurate, and well-organized. No stale files. Everything in docs/.
+
+- [ ] **Consolidate all docs into docs/ folder** — Move any scattered .md files (root-level docs, random READMEs in packages) into `docs/`. Create proper structure:
+  ```
+  docs/
+  ├── README.md          (main project docs entry point)
+  ├── GETTING-STARTED.md (quick start guide)
+  ├── ARCHITECTURE.md    (system architecture, tech stack, data flow)
+  ├── API.md             (API reference, link to Swagger)
+  ├── DEPLOYMENT.md      (Docker, Kubernetes, bare metal)
+  ├── NGINX.md           (reverse proxy config — already exists)
+  ├── HELM.md            (Helm chart docs — already exists)
+  ├── AGENT.md           (PulseDock agent — already exists)
+  ├── CLI.md             (CLI tool — already exists)
+  ├── EXTENSION.md       (Browser extension — already exists)
+  ├── E2E.md             (E2E testing — already exists)
+  ├── LOGGING.md         (Log management — already exists)
+  ├── PLUGINS.md         (Plugin system — already exists)
+  ├── STATUS-PAGES.md    (Status page builder guide — NEW)
+  ├── VERSION-CHECKS.md  (Version monitoring guide — NEW)
+  ├── TOOL-REGISTRY.md   (Tool registry guide — NEW)
+  ├── SECURITY.md        (Security practices, CSP, CSRF, auth)
+  ├── CONTRIBUTING.md    (contribution guide)
+  ├── CHANGELOG.md       (release notes — move from root)
+  └── TROUBLESHOOTING.md (common issues + fixes)
+  ```
+- [ ] **Review and update ALL existing docs** — Go through every doc file: fix outdated info, add missing sections, verify all code samples work, update screenshots, ensure consistent formatting (headings, code blocks, tables).
+- [ ] **Delete stale/unused files** — Audit entire repo for: unused config files, dead code, orphaned components, test fixtures that aren't imported, duplicate files, build artifacts in git, temporary files. Remove everything that shouldn't be there.
+- [ ] **README.md overhaul** — Modern open-source README: logo, badges (build, coverage, version, license), one-paragraph description, screenshot, feature list, quick start (3 commands), links to all docs, contributing section, license.
+- [ ] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
+- [ ] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
+- [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
+- [ ] **API documentation audit** — Verify all 95 Swagger endpoints have accurate descriptions, correct request/response examples, proper error codes documented.
+- [ ] **Docker documentation** — Update docker-compose files, verify Dockerfiles build correctly, document all env vars, add docker-compose.override.yml example.
+- [ ] **.env.example** — Create/update .env.example with all env vars, defaults, and comments explaining each one.
+
 ### P2 — Frontend Polish (Enterprise-Grade UI)
 
 - [ ] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.

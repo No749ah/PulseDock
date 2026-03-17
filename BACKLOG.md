@@ -970,3 +970,17 @@
 - [ ] Keep first render lightweight: show ~50 tools initially.
 - [ ] Infinite scroll in tool picker: load +50 on scroll until exhausted.
 - [ ] Add quick perf check for large registry filtering in browser.
+
+### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
+- [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
+- [ ] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool).
+- [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
+- [ ] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren).
+- [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
+- [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
+- [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
+- [ ] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen.
+- [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
+- [ ] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor).
+- [ ] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen.
+- [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.

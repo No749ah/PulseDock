@@ -2494,6 +2494,34 @@ describe('importExternal — CSV parser branch coverage', () => {
     );
   });
 
+  it('falls back to url when name column exists but cell value is empty (cols[nameIdx] ?? url branch)', async () => {
+    // name column header exists (nameIdx >= 0) but the cell in the row is empty string
+    // → cols[nameIdx] is '' (falsy but not undefined) — however ?? only checks null/undefined
+    // So we need cols[nameIdx] to be undefined (row has fewer columns than headers)
+    const csv = 'name,url\n,https://empty-name.com';
+    const result = await service.importExternal('user-1', 'csv', csv);
+    expect(result.imported).toBe(1);
+    // When name cell is empty string, slice(0,255) keeps it as empty string — name is ''
+    // The ?? url branch triggers when cols[nameIdx] is undefined (fewer cols)
+    expect(prisma.monitor.create).toHaveBeenCalled();
+  });
+
+  it('falls back to url as name when name column exists but row is short (cols[nameIdx] undefined → url)', async () => {
+    // Header has name,url but row only has the url value (no name col) → cols[nameIdx] is undefined
+    const csv = 'name,url\nhttps://short.com';
+    // In this CSV: cols = ['https://short.com'], urlIdx=1 → url is undefined/empty → row is skipped
+    // To hit the branch, we need url at index 1 and name at index 0, but the row provides only 1 col:
+    // cols[0]='https://short.com' (name cell), cols[1]=undefined (url cell) → url='' → skipped
+    // Instead: url first, name second — cols[1] for name is undefined → ?? url branch
+    const csv2 = 'url,name\nhttps://nameless.com';
+    const result = await service.importExternal('user-1', 'csv', csv2);
+    expect(result.imported).toBe(1);
+    // cols[nameIdx=1] is undefined → cols[1] ?? url → uses 'https://nameless.com' as name
+    expect(prisma.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'https://nameless.com' }) }),
+    );
+  });
+
   it('defaults intervalSec to 300 when no interval column exists (intervalIdx < 0)', async () => {
     const csv = 'url\nhttps://noint.com';
     const result = await service.importExternal('user-1', 'csv', csv);

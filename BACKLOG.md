@@ -1,16 +1,18 @@
-## Status Summary (2026-03-17 18:10 UTC)
+## Status Summary (2026-03-17 20:10 UTC)
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
 - **Deployment:** ✅ Services restarted via `npm run restart`
 - **This session:**
-  - Implemented runtime behavior for universal widget config keys in public status pages:
-    - visibility rules (always/operational/degraded/outage)
-    - hide when no scoped monitor data
-    - click actions (monitor detail / external URL)
-    - responsive mobile behavior (hidden/full-width/collapsed)
-    - wrapper style hooks (border/padding/radius)
-  - Added per-widget conditional visibility in the editor config panel (hides irrelevant sections for divider/text/etc.)
-  - Ran health/deploy checks: local API/web healthy, local frontend page audit all 200
-  - Reverse proxy note: static asset URLs on `oc-dev-test.no749ah.com` still intermittently return cached 500 without cache-busting query params; fresh-query fetches return 200
+  - Implemented public status-page layout parity with editor grid:
+    - desktop now renders true 12-column grid using widget `x/y/w/h`
+    - tablet now renders 6-column responsive placement (collision-safe packing)
+    - mobile now renders clean single-column flow
+    - runtime-only visible widgets are filtered before layout (respects visibility + hide-when-no-data)
+  - Ran full heartbeat checks: `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`
+  - Deployed and verified:
+    - API health 200, Web login 200, frontend `/api` proxy path returns expected 401 without auth
+    - Local page audit: `/login /dashboard /monitors /alerts /account /projects /versions /admin` all 200
+    - Reverse-proxy audit: same routes on `https://oc-dev-test.no749ah.com` all 200
+    - Reverse-proxy static assets from login page (`/_next/static/...`) all 200
 
 # PulseDock Backlog
 
@@ -26,9 +28,11 @@
 
 ## In Progress
 
-- [ ] **Public status page layout parity with editor grid** — public renderer still uses simple y/x sort + stacked flow. Next step is to respect widget `w/h/x/y` and mobile behaviors in a true responsive grid so published pages visually match the editor canvas.
+- [ ] **Uptime Bar with real data** — replace placeholder uptime percentages with actual `MonitorRun`-derived math for selected monitor/range on public status widgets.
 
 ## Recently Completed
+
+- [x] **Public status page layout parity with editor grid** — public renderer now uses true responsive grid layout with editor coordinates (`x/y/w/h`): 12-col desktop, 6-col tablet with collision-safe placement, and 1-col mobile flow. Visibility/hide-no-data rules are applied before layout so only renderable widgets occupy grid slots.
 
 - [x] **Universal Config Panel for ALL widget types** — completed end-to-end: shared monitor scope selector + filters + visibility/click/style/responsive controls in editor, runtime wiring in public renderer (visibility filtering, hide-when-no-data, click actions, mobile behavior), and per-widget conditional control visibility in config panel.
 
@@ -421,9 +425,9 @@
 
 ### P0 — Config Panel + Multi-Monitor + Grid Layout
 
-- [ ] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
+- [x] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
 - [ ] **Multi-Monitor Picker component** — Reusable picker with: checkboxes for multiple monitors, "Select All" button, filter by tag dropdown, filter by folder dropdown, filter by type (HTTP/TCP/SSL/Version/Heartbeat), search input, selected count badge. Used by: Multi-Status Badges, Monitor Group, Version Grid, Check History, Status Badge (multi mode), Response Time Comparison, Uptime Comparison
-- [ ] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
+- [x] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
 - [ ] **Resize Handles in editor** — Drag corners/edges to resize widgets on canvas. Visual resize handles on hover. Minimum size constraints per widget type
 - [ ] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing (fallback when drag-resize isn't precise enough)
 

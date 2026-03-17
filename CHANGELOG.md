@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Status page editor — universal config panel phase 2 controls** — Extended the shared widget properties sidebar with visibility rules (always/operational/degraded/outage + hide-when-no-data), click actions (none/monitor-detail/external URL), style controls (border toggle, radius, padding), and mobile behavior controls (normal/full-width/collapsed/hidden).
+
 ---
 
 ## [1.0.2] — 2026-03-17

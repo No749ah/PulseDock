@@ -1,10 +1,11 @@
-## Status Summary (2026-03-17 16:08 UTC)
+## Status Summary (2026-03-17 17:10 UTC)
 - **Build:** ✅ Clean, 1353 tests passing
 - **Deployment:** Live at https://oc-dev-test.no749ah.com
 - **This session:** Status page editor config panel progression:
-  - Fixed: `auth.controller.spec.ts` reset/invite tests after controller signature update (`req` context now passed correctly)
-  - Added: Universal widget config foundation in status page editor (global monitor scope selector, single/multi monitor targeting, and width/height controls)
-  - Added: Config sidebar tag/folder/type filter controls (with live options from `/v1/tags` + `/v1/folders`) for reusable widget targeting
+  - Added: Visibility rules in universal widget config panel (always / operational / degraded / outage + hide-when-no-data)
+  - Added: Click actions in universal config panel (none / monitor detail / external URL)
+  - Added: Style controls in universal config panel (border toggle + radius + padding)
+  - Added: Responsive behavior selector in universal config panel (normal / full-width / collapsed / hidden on mobile)
   - Verified: Full restart + post-deploy health/proxy checks + page-level frontend curl audit (local + reverse proxy)
   - Fixed: Next.js 16 allowedHosts / standalone vs next start / proxy caching
   - Fixed: Modal focus trap stealing input focus (global fix)
@@ -39,7 +40,7 @@
 
 ## In Progress
 
-- [ ] **Universal Config Panel for ALL widget types** — phase 1 landed: shared monitor scope selector (single/multiple/all), reusable single/multi monitor targeting fields, and explicit width/height controls in the config sidebar. Phase 2 progress: tag/folder/type filters now available in the shared panel with dynamic tag/folder options. Next: visibility rules, click actions, style/border/padding controls, and responsive behavior controls.
+- [ ] **Universal Config Panel for ALL widget types** — phase 1 landed: shared monitor scope selector (single/multiple/all), reusable single/multi monitor targeting fields, and explicit width/height controls in the config sidebar. Phase 2 landed: tag/folder/type filters, visibility rules, click actions, style controls (border/radius/padding), and mobile behavior controls are now available in the shared panel. Next: wire these config keys into public widget rendering/runtime behavior + add per-widget conditional control visibility.
 
 ## Recently Completed
 

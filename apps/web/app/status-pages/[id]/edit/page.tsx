@@ -502,6 +502,114 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         </label>
       </div>
 
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Visibility</p>
+        <label className="block text-[10px] text-text-secondary">
+          Show widget when
+          <select
+            value={(w.config.visibility as string) ?? "always"}
+            onChange={(e) => update("visibility", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="always">Always visible</option>
+            <option value="operational">Only when operational</option>
+            <option value="degraded">Only when degraded</option>
+            <option value="outage">Only during outage</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-[10px] text-text-secondary">
+          <input
+            type="checkbox"
+            checked={Boolean(w.config.hideWhenNoData)}
+            onChange={(e) => update("hideWhenNoData", e.target.checked || undefined)}
+            className="h-3.5 w-3.5 rounded border-border bg-bg text-accent focus:ring-accent"
+          />
+          Hide when no monitor data is available
+        </label>
+      </div>
+
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Click action</p>
+        <label className="block text-[10px] text-text-secondary">
+          On click
+          <select
+            value={(w.config.clickAction as string) ?? "none"}
+            onChange={(e) => update("clickAction", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="none">Do nothing</option>
+            <option value="monitor-detail">Open monitor detail page</option>
+            <option value="external-url">Open external URL</option>
+          </select>
+        </label>
+        {(w.config.clickAction as string) === "external-url" && (
+          <label className="block text-[10px] text-text-secondary">
+            External URL
+            <input
+              type="url"
+              value={(w.config.clickUrl as string) ?? ""}
+              onChange={(e) => update("clickUrl", e.target.value || undefined)}
+              placeholder="https://status.example.com/details"
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </label>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Style</p>
+        <label className="flex items-center gap-2 text-[10px] text-text-secondary">
+          <input
+            type="checkbox"
+            checked={Boolean(w.config.showBorder)}
+            onChange={(e) => update("showBorder", e.target.checked || undefined)}
+            className="h-3.5 w-3.5 rounded border-border bg-bg text-accent focus:ring-accent"
+          />
+          Show border
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px] text-text-secondary">
+            Border radius
+            <input
+              type="number"
+              min={0}
+              max={32}
+              value={(w.config.borderRadius as number) ?? 12}
+              onChange={(e) => update("borderRadius", Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+          <label className="text-[10px] text-text-secondary">
+            Padding
+            <input
+              type="number"
+              min={0}
+              max={48}
+              value={(w.config.padding as number) ?? 8}
+              onChange={(e) => update("padding", Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Responsive</p>
+        <label className="block text-[10px] text-text-secondary">
+          Mobile behavior
+          <select
+            value={(w.config.mobileBehavior as string) ?? "normal"}
+            onChange={(e) => update("mobileBehavior", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="normal">Normal</option>
+            <option value="full-width">Force full-width</option>
+            <option value="collapsed">Collapsed (compact)</option>
+            <option value="hidden">Hide on mobile</option>
+          </select>
+        </label>
+      </div>
+
       {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>

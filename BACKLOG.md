@@ -23,11 +23,13 @@
 
 # PulseDock Backlog
 
-## ⚠️ INSTRUCTION FROM NOAH (2026-03-14)
+## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
-**The project is NOT feature-complete. Stop waiting for a new project.**
-**Re-evaluate everything critically. The backlog below has been expanded with all missing items.**
-**Work through these systematically, highest priority first. Do not mark the project done until all items below are checked.**
+**The project is NOT done. Not even close.**
+**Work on this until EVERYTHING is perfect — every enterprise tool in the registry, every widget type implemented, every UI pixel polished.**
+**Self-optimize: after every task, critically review your own work. Would a Fortune 500 pay for this? If not, improve.**
+**Keep adding to this backlog when you discover gaps. Never stop improving.**
+**Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
 
@@ -815,6 +817,50 @@ _(pick the highest priority unchecked item below and start immediately)_
 - [ ] **Tool Registry expansion: 1302 → 5000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
 
 - [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
+
+### P2 — Frontend Polish (Enterprise-Grade UI)
+
+- [ ] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
+- [ ] **Animation & Micro-interactions** — Page transitions (fade between routes), skeleton→content transitions, button press feedback, toast slide-in/out, modal enter/exit, hover lift effects on cards, number count-up animations on metrics
+- [ ] **Data Tables overhaul** — Sortable columns (click header), resizable columns (drag), column visibility toggle, row expansion, bulk select with shift-click range, sticky header on scroll, export to CSV/JSON, pagination options (10/25/50/100), empty state per table
+- [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
+- [ ] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
+- [ ] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
+- [ ] **Mobile UX deep audit** — Test every flow on 375px: create monitor, create alert, create incident, status page editor (simplified mobile mode), navigation drawer, bottom tab bar option, pull-to-refresh, swipe actions
+- [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
+- [ ] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
+- [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
+- [ ] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
+- [ ] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
+- [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
+
+### P2 — Self-Optimization & Continuous Improvement
+
+> **Standing instruction:** After completing any task, critically evaluate your own work. Ask: "Is this truly enterprise-ready? Would a Fortune 500 company pay for this?" If no — improve until yes.
+
+- [ ] **Automated self-testing cycle** — After every deployment: curl all pages, check for console errors (headless browser), verify API endpoints respond correctly, check response times < 500ms, verify no TypeScript errors, run full test suite
+- [ ] **Performance benchmarking** — Measure and track: First Contentful Paint (<1.5s), Time to Interactive (<3s), Lighthouse score (>90), API response times (<200ms p95), bundle size (<500KB gzipped). Set up alerts when metrics degrade.
+- [ ] **Code quality metrics** — Track: test coverage (>95%), TypeScript strict compliance, no `any` types, no eslint warnings, no unused exports, no circular dependencies. Run on every commit.
+- [ ] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes.
+- [ ] **UX self-review** — After every UI change: screenshot before/after, check on 3 viewports (mobile/tablet/desktop), verify dark mode, check color contrast (WCAG AA), test with keyboard only, check loading states
+- [ ] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness
+- [ ] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. List every feature they have that PulseDock doesn't. Prioritize and build.
+- [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
+
+### P2 — Enterprise Features (Beyond Monitoring)
+
+- [ ] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action
+- [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
+- [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
+- [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
+- [ ] **Webhook management UI** — Create/edit/test webhooks, delivery history, retry failed deliveries, payload templates, signature verification config
+- [ ] **Scheduled Reports** — Daily/weekly/monthly automated reports via email: uptime summary, incident summary, SLA compliance, version status. PDF + HTML formats.
+- [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
+- [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
+- [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
+- [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
+- [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
+- [ ] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 
 ### P3 — Advanced Data & API
 

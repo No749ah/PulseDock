@@ -1155,6 +1155,48 @@ describe('AuthService', () => {
       const recoveryEvent = auditCalls.find((c: unknown[]) => c[0] === 'auth.2fa_recovery_code_used');
       expect(recoveryEvent).toBeDefined();
     });
+
+    it('throws UnauthorizedException when user not found after token verify (line 644 branch)', async () => {
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'nonexistent', type: 'totp-pending' });
+      const prisma = makePrisma(null);
+      const svc = new AuthService(prisma as never, jwt as never, makeAudit() as never, makeMailer() as never, makeMetrics() as never);
+      await expect(svc.verifyTotpLogin('valid-temp', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when user is inactive (line 644 !isActive branch)', async () => {
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
+      const prisma = makePrisma(makeUser({ isActive: false, totpEnabled: true, totpSecret: 'SECRET' }));
+      const svc = new AuthService(prisma as never, jwt as never, makeAudit() as never, makeMailer() as never, makeMetrics() as never);
+      await expect(svc.verifyTotpLogin('valid-temp', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws BadRequestException when user has no 2FA enabled (line 645 branch)', async () => {
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
+      const prisma = makePrisma(makeUser({ totpEnabled: false, totpSecret: null }));
+      const svc = new AuthService(prisma as never, jwt as never, makeAudit() as never, makeMailer() as never, makeMetrics() as never);
+      await expect(svc.verifyTotpLogin('valid-temp', '123456')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws UnauthorizedException when recovery code does not match any hash (consumeRecoveryCode matchedIdx -1 branch, line 622)', async () => {
+      const { verify } = await import('otplib');
+      const { hashSync } = await import('bcryptjs');
+      vi.mocked(verify).mockResolvedValueOnce({ valid: false });
+
+      // Store a hash for a DIFFERENT code — so our submitted code won't match
+      const storedHash = hashSync('OTHER-CODE', 10);
+      const jwt = makeJwt();
+      jwt.verify.mockReturnValue({ sub: 'user-1', type: 'totp-pending' });
+      const prisma = makePrisma(makeUser({
+        totpEnabled: true,
+        totpSecret: 'MOCK_TOTP_SECRET',
+        totpRecoveryCodes: JSON.stringify([storedHash]),
+      }));
+      const svc = new AuthService(prisma as never, jwt as never, makeAudit() as never, makeMailer() as never, makeMetrics() as never);
+      await expect(svc.verifyTotpLogin('valid-temp', 'WRONG-CODE')).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   // ─── getActiveUserById() ────────────────────────────────────────────────────

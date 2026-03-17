@@ -386,6 +386,13 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
   }
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
+  const supportsLabel = w.type !== "divider";
+  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsVisibility = w.type !== "divider";
+  const supportsClickAction = w.type !== "divider";
+  const supportsStyle = w.type !== "divider";
+  const supportsResponsive = w.type !== "divider";
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -394,31 +401,35 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
-        <input
-          type="text"
-          value={(w.config.label as string) ?? ""}
-          onChange={(e) => update("label", e.target.value || undefined)}
-          placeholder="Optional custom label"
-          className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-        />
-      </div>
+      {supportsLabel && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
+          <input
+            type="text"
+            value={(w.config.label as string) ?? ""}
+            onChange={(e) => update("label", e.target.value || undefined)}
+            placeholder="Optional custom label"
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+        </div>
+      )}
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor scope</label>
-        <select
-          value={monitorMode}
-          onChange={(e) => update("monitorMode", e.target.value)}
-          className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
-        >
-          <option value="single">Single monitor</option>
-          <option value="multiple">Multiple monitors</option>
-          <option value="all">All monitors</option>
-        </select>
-      </div>
+      {supportsMonitorScope && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor scope</label>
+          <select
+            value={monitorMode}
+            onChange={(e) => update("monitorMode", e.target.value)}
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="single">Single monitor</option>
+            <option value="multiple">Multiple monitors</option>
+            <option value="all">All monitors</option>
+          </select>
+        </div>
+      )}
 
-      {monitorMode === "single" && (
+      {supportsMonitorScope && monitorMode === "single" && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
           <select
@@ -434,7 +445,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         </div>
       )}
 
-      {monitorMode === "multiple" && (
+      {supportsMonitorScope && monitorMode === "multiple" && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Monitors</label>
           <select
@@ -456,8 +467,9 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         </div>
       )}
 
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
-        <p className="text-[10px] font-medium text-text-secondary">Filters</p>
+      {supportsFilters && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Filters</p>
         <label className="block text-[10px] text-text-secondary">
           Tag filter
           <select
@@ -500,10 +512,12 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
             <option value="HEARTBEAT">Heartbeat</option>
           </select>
         </label>
-      </div>
+        </div>
+      )}
 
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
-        <p className="text-[10px] font-medium text-text-secondary">Visibility</p>
+      {supportsVisibility && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Visibility</p>
         <label className="block text-[10px] text-text-secondary">
           Show widget when
           <select
@@ -526,10 +540,12 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
           />
           Hide when no monitor data is available
         </label>
-      </div>
+        </div>
+      )}
 
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
-        <p className="text-[10px] font-medium text-text-secondary">Click action</p>
+      {supportsClickAction && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Click action</p>
         <label className="block text-[10px] text-text-secondary">
           On click
           <select
@@ -554,10 +570,12 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
             />
           </label>
         )}
-      </div>
+        </div>
+      )}
 
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
-        <p className="text-[10px] font-medium text-text-secondary">Style</p>
+      {supportsStyle && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Style</p>
         <label className="flex items-center gap-2 text-[10px] text-text-secondary">
           <input
             type="checkbox"
@@ -591,10 +609,12 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
             />
           </label>
         </div>
-      </div>
+        </div>
+      )}
 
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
-        <p className="text-[10px] font-medium text-text-secondary">Responsive</p>
+      {supportsResponsive && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Responsive</p>
         <label className="block text-[10px] text-text-secondary">
           Mobile behavior
           <select
@@ -608,7 +628,8 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
             <option value="hidden">Hide on mobile</option>
           </select>
         </label>
-      </div>
+        </div>
+      )}
 
       {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
         <div>

@@ -1,30 +1,16 @@
-## Status Summary (2026-03-17 17:10 UTC)
-- **Build:** ✅ Clean, 1353 tests passing
-- **Deployment:** Live at https://oc-dev-test.no749ah.com
-- **This session:** Status page editor config panel progression:
-  - Added: Visibility rules in universal widget config panel (always / operational / degraded / outage + hide-when-no-data)
-  - Added: Click actions in universal config panel (none / monitor detail / external URL)
-  - Added: Style controls in universal config panel (border toggle + radius + padding)
-  - Added: Responsive behavior selector in universal config panel (normal / full-width / collapsed / hidden on mobile)
-  - Verified: Full restart + post-deploy health/proxy checks + page-level frontend curl audit (local + reverse proxy)
-  - Fixed: Next.js 16 allowedHosts / standalone vs next start / proxy caching
-  - Fixed: Modal focus trap stealing input focus (global fix)
-  - Fixed: Monitor create rejected enabled field
-  - Fixed: GitLab version check empty host + token field mismatch
-  - Fixed: Portainer version case-insensitive key extraction
-  - Fixed: Socket.io connecting direct to :4321 instead of through proxy
-  - Fixed: Badge embed snippets now include full domain URL
-  - Fixed: trust proxy for secure cookies behind reverse proxy
-  - Added: Live widget previews in status page editor
-  - Added: Auto-save (2s debounce) in status page editor
-  - Added: Version Grid / Badge / Summary widgets for status pages
-  - Added: Monitor Group + Multi Status Badges widgets
-  - Added: Real incidents/maintenance/checks data in all status page widgets
-  - Added: Tag/folder filtering for status page widgets
-  - Added: Global Enter key → submits primary modal button
-  - Added: VersionDiff simplified to compact single-line display
-  - Fixed: Version templates auth defaults (none by default, token only when needed)
-  - Fixed: All 19 self-hosted app version endpoints corrected
+## Status Summary (2026-03-17 18:10 UTC)
+- **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
+- **Deployment:** ✅ Services restarted via `npm run restart`
+- **This session:**
+  - Implemented runtime behavior for universal widget config keys in public status pages:
+    - visibility rules (always/operational/degraded/outage)
+    - hide when no scoped monitor data
+    - click actions (monitor detail / external URL)
+    - responsive mobile behavior (hidden/full-width/collapsed)
+    - wrapper style hooks (border/padding/radius)
+  - Added per-widget conditional visibility in the editor config panel (hides irrelevant sections for divider/text/etc.)
+  - Ran health/deploy checks: local API/web healthy, local frontend page audit all 200
+  - Reverse proxy note: static asset URLs on `oc-dev-test.no749ah.com` still intermittently return cached 500 without cache-busting query params; fresh-query fetches return 200
 
 # PulseDock Backlog
 
@@ -40,9 +26,11 @@
 
 ## In Progress
 
-- [ ] **Universal Config Panel for ALL widget types** — phase 1 landed: shared monitor scope selector (single/multiple/all), reusable single/multi monitor targeting fields, and explicit width/height controls in the config sidebar. Phase 2 landed: tag/folder/type filters, visibility rules, click actions, style controls (border/radius/padding), and mobile behavior controls are now available in the shared panel. Next: wire these config keys into public widget rendering/runtime behavior + add per-widget conditional control visibility.
+- [ ] **Public status page layout parity with editor grid** — public renderer still uses simple y/x sort + stacked flow. Next step is to respect widget `w/h/x/y` and mobile behaviors in a true responsive grid so published pages visually match the editor canvas.
 
 ## Recently Completed
+
+- [x] **Universal Config Panel for ALL widget types** — completed end-to-end: shared monitor scope selector + filters + visibility/click/style/responsive controls in editor, runtime wiring in public renderer (visibility filtering, hide-when-no-data, click actions, mobile behavior), and per-widget conditional control visibility in config panel.
 
 - [x] **Auth controller spec stabilization (request context)** — Updated `auth.controller.spec.ts` invite/reset test calls to pass `req` alongside `res` after controller method signature changes. Test suite is green again.
 

@@ -747,33 +747,159 @@ function UpdateSummary({ monitors }: WidgetProps) {
 
 // ── Main renderer ────────────────────────────────────────────────────────
 
+function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
+  const ids = widget.config.monitorIds as string[] | undefined;
+  const singleId = widget.config.monitorId as string | undefined;
+  const tag = widget.config.tag as string | undefined;
+  const folderId = widget.config.folderId as string | undefined;
+  const monitorType = widget.config.monitorType as string | undefined;
+
+  let scoped = monitors;
+  if (ids?.length) scoped = scoped.filter((m) => ids.includes(m.id));
+  else if (singleId) scoped = scoped.filter((m) => m.id === singleId);
+  if (tag) scoped = scoped.filter((m) => m.tags?.includes(tag));
+  if (folderId) scoped = scoped.filter((m) => m.folderId === folderId);
+  if (monitorType) scoped = scoped.filter((m) => m.type === monitorType);
+  return scoped;
+}
+
+function passesVisibilityRule(widget: Widget, scopedMonitors: MonitorSummary[]): boolean {
+  const rule = (widget.config.visibility as string | undefined) ?? "always";
+  if (rule === "always") return true;
+  if (scopedMonitors.length === 0) return false;
+
+  const hasRed = scopedMonitors.some((m) => m.level === "red");
+  const hasYellow = scopedMonitors.some((m) => m.level === "yellow");
+
+  if (rule === "outage") return hasRed;
+  if (rule === "degraded") return !hasRed && hasYellow;
+  if (rule === "operational") return !hasRed && !hasYellow;
+  return true;
+}
+
+function monitorDetailHref(widget: Widget, scopedMonitors: MonitorSummary[]): string | null {
+  const singleId = widget.config.monitorId as string | undefined;
+  const firstId = singleId ?? (widget.config.monitorIds as string[] | undefined)?.[0] ?? scopedMonitors[0]?.id;
+  return firstId ? `/monitors/${firstId}` : null;
+}
+
 export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?: Partial<ExtraData>): React.ReactNode {
   const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], ...extra };
   const props: WidgetProps = { widget, monitors, extra: fullExtra };
+  const scopedMonitors = getScopedMonitors(widget, monitors);
+
+  if (Boolean(widget.config.hideWhenNoData) && scopedMonitors.length === 0) {
+    return null;
+  }
+  if (!passesVisibilityRule(widget, scopedMonitors)) {
+    return null;
+  }
+
+  let content: React.ReactNode;
   switch (widget.type) {
     case "overall-status":
-    case "overall-system-status": return <OverallSystemStatus {...props} />;
-    case "current-status-badge": return <CurrentStatusBadge {...props} />;
-    case "multi-monitor-status-grid": return <MultiMonitorStatusGrid {...props} />;
-    case "active-incident-banner": return <ActiveIncidentBanner {...props} />;
-    case "uptime-bar": return <UptimeBar {...props} />;
-    case "uptime-timeline": return <UptimeTimeline {...props} />;
-    case "sla-summary": return <SLASummary {...props} />;
-    case "response-time-chart": return <ResponseTimeChart {...props} />;
-    case "check-history-feed": return <CheckHistoryFeed {...props} />;
-    case "incident-history": return <IncidentHistory {...props} />;
-    case "text-block": return <TextBlock {...props} />;
-    case "scheduled-maintenance": return <ScheduledMaintenance {...props} />;
-    case "monitor-group": return <MonitorGroup {...props} />;
-    case "multi-status-badges": return <MultiStatusBadges {...props} />;
-    case "version-status-grid": return <VersionStatusGrid {...props} />;
-    case "version-check-badge": return <VersionCheckBadge {...props} />;
-    case "update-summary": return <UpdateSummary {...props} />;
-    case "divider": return <Divider />;
-    default: return (
-      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
-        Unknown widget: {widget.type}
-      </div>
-    );
+    case "overall-system-status":
+      content = <OverallSystemStatus {...props} />;
+      break;
+    case "current-status-badge":
+      content = <CurrentStatusBadge {...props} />;
+      break;
+    case "multi-monitor-status-grid":
+      content = <MultiMonitorStatusGrid {...props} />;
+      break;
+    case "active-incident-banner":
+      content = <ActiveIncidentBanner {...props} />;
+      break;
+    case "uptime-bar":
+      content = <UptimeBar {...props} />;
+      break;
+    case "uptime-timeline":
+      content = <UptimeTimeline {...props} />;
+      break;
+    case "sla-summary":
+      content = <SLASummary {...props} />;
+      break;
+    case "response-time-chart":
+      content = <ResponseTimeChart {...props} />;
+      break;
+    case "check-history-feed":
+      content = <CheckHistoryFeed {...props} />;
+      break;
+    case "incident-history":
+      content = <IncidentHistory {...props} />;
+      break;
+    case "text-block":
+      content = <TextBlock {...props} />;
+      break;
+    case "scheduled-maintenance":
+      content = <ScheduledMaintenance {...props} />;
+      break;
+    case "monitor-group":
+      content = <MonitorGroup {...props} />;
+      break;
+    case "multi-status-badges":
+      content = <MultiStatusBadges {...props} />;
+      break;
+    case "version-status-grid":
+      content = <VersionStatusGrid {...props} />;
+      break;
+    case "version-check-badge":
+      content = <VersionCheckBadge {...props} />;
+      break;
+    case "update-summary":
+      content = <UpdateSummary {...props} />;
+      break;
+    case "divider":
+      content = <Divider />;
+      break;
+    default:
+      content = (
+        <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+          Unknown widget: {widget.type}
+        </div>
+      );
+      break;
   }
+
+  const clickAction = (widget.config.clickAction as string | undefined) ?? "none";
+  const clickUrl = widget.config.clickUrl as string | undefined;
+  const href = clickAction === "external-url"
+    ? clickUrl
+    : clickAction === "monitor-detail"
+      ? monitorDetailHref(widget, scopedMonitors)
+      : undefined;
+
+  const mobileBehavior = (widget.config.mobileBehavior as string | undefined) ?? "normal";
+  const mobileClass =
+    mobileBehavior === "hidden"
+      ? "max-sm:hidden"
+      : mobileBehavior === "full-width"
+        ? "max-sm:w-full"
+        : mobileBehavior === "collapsed"
+          ? "max-sm:[&>*]:max-h-28 max-sm:[&>*]:overflow-hidden"
+          : "";
+
+  const wrapperStyle: React.CSSProperties = {
+    borderRadius: typeof widget.config.borderRadius === "number" ? `${widget.config.borderRadius}px` : undefined,
+    padding: typeof widget.config.padding === "number" ? `${widget.config.padding}px` : undefined,
+  };
+
+  const wrapperClass = [
+    mobileClass,
+    widget.config.showBorder === true ? "border border-border" : "",
+    href ? "cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{content}</div>;
+
+  if (!href) return wrapped;
+
+  const external = clickAction === "external-url";
+  return (
+    <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer noopener" : undefined}>
+      {wrapped}
+    </a>
+  );
 }

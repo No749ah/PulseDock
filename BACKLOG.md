@@ -701,7 +701,118 @@ _(pick the highest priority unchecked item below and start immediately)_
   **Healthcare:**
   OpenMRS, GNU Health, Bahmni, HAPI FHIR Server, Orthanc (DICOM)
 
-- [ ] **Tool Registry expansion: 1302 → 3000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+  **CDN & Edge:**
+  Cloudflare (API), Fastly, Bunny CDN, KeyCDN, StackPath, Varnish, Squid, nginx (caching), Apache Traffic Server, HAProxy (cache mode), Souin, Caddy-cache
+
+  **CI/CD Runners & Build:**
+  GitHub Actions Runner, GitLab Runner, Buildkite Agent, Drone Runner, Woodpecker Agent, Jenkins Agent, CircleCI Runner, Semaphore Agent, Earthly Satellite, Dagger Engine, Pants, Bazel Remote Cache, Gradle Enterprise, Nx Cloud, Turborepo Remote Cache
+
+  **Database Tools & Admin:**
+  pgAdmin, Adminer, phpMyAdmin, CloudBeaver, DBeaver (server), Bytebase, Atlas (schema), Flyway, Liquibase, SchemaHero, PgHero, Redis Commander, RedisInsight, Mongo Express, Elasticsearch HQ, Kibana, OpenSearch Dashboards, ClickHouse Keeper, CockroachDB Console
+
+  **Observability Collectors:**
+  OpenTelemetry Collector, Telegraf, Prometheus Node Exporter, Prometheus Blackbox Exporter, cAdvisor, kube-state-metrics, Thanos, Cortex, Mimir, VictoriaMetrics Agent, Datadog Agent, Grafana Alloy, Grafana Agent, Promtail, Filebeat, Metricbeat, Heartbeat (Elastic)
+
+  **Config Management:**
+  Ansible (AWX/Tower), Puppet Server, Chef Infra Server, SaltStack, CFEngine, Rudder, mgmt, Foreman, Katello, Spacewalk
+
+  **Infrastructure as Code:**
+  Terraform, OpenTofu, Pulumi, Crossplane, cdktf, AWS CDK, Atlantis, Spacelift, env0, Scalr, Terragrunt, Terramate
+
+  **Kubernetes Tools:**
+  Lens, k9s (API), Kubernetes Dashboard, Rancher, KubeSphere, OpenLens, Headlamp, Skooner, Kubeapps, Helm Dashboard, ArgoCD, Flux, kapp-controller, Kyverno, OPA Gatekeeper, Falco, Trivy Operator, Starboard, Polaris, Datree, Kubecost, OpenCost, Goldilocks, VPA, HPA, KEDA, Karpenter, Cluster Autoscaler
+
+  **Storage & Backup (more):**
+  Longhorn, OpenEBS, Rook/Ceph, Portworx, StorageOS, Linstor, MinIO, SeaweedFS, JuiceFS, GlusterFS, BeeGFS, Garage (S3), VAST Data, Weka
+
+  **Workflow & Automation:**
+  n8n, Node-RED, Windmill, Huginn, Activepieces, Automatisch, Make (self-hosted), Pipedream (self-hosted), StackStorm, Camunda, Zeebe, Flowable, Activiti, Apache Camel
+
+  **Form & Survey:**
+  Typebot, Formbricks, LimeSurvey, Survicate (self-hosted), Heyform, OpnForm, Tally (self-hosted), SurveyJS, OhMyForm
+
+  **Notification & Alerting:**
+  Gotify, ntfy, Apprise, Pushover (relay), AlertManager, PagerDuty (self-hosted agent), Opsgenie (agent), Grafana OnCall, Cabot, Alerta, ElastAlert, Healthchecks.io (self-hosted), Uptime Kuma, Gatus, Statping-ng
+
+  **Feature Flags & Experimentation:**
+  Unleash, FlagSmith, GrowthBook, LaunchDarkly Relay, Split (self-hosted), OpenFeature, Flipt, PostHog (feature flags), ConfigCat (self-hosted)
+
+  **Translation & i18n:**
+  Weblate, Pontoon, Traduora, Tolgee, Crowdin (self-hosted agent), Lokalise (CLI)
+
+  **Social & Community:**
+  Mastodon, Misskey, Pleroma, Akkoma, Lemmy, Kbin/Mbin, Discourse, Flarum, NodeBB, Vanilla Forums, HumHub, Friendica, Pixelfed, BookWyrm, Mobilizon
+
+  **Calendar & Scheduling:**
+  Cal.com, Calendso, Easy!Appointments, Rallly, Schej, Doodle (self-hosted), Radicale, Baikal, DAViCal, SabreDAV
+
+  **Paste & Snippet:**
+  PrivateBin, Hastebin, Pastebin (self-hosted), MicroBin, Opengist, Gitea (snippets), SnipBox, Snibox, ByteStash
+
+  **URL Shortener:**
+  Shlink, YOURLS, Kutt, Polr, Chhoto, GoShort, Lstu, Dub.co (self-hosted)
+
+  **Status Page (competitors — monitor them!):**
+  Uptime Kuma, Gatus, Cachet, Statusfy, Instatus, Cstate, StatPing, Vigil, Staytus, HetrixTools, Upptime, Statuspal
+
+  **PDF & Document Processing:**
+  Stirling PDF, Gotenberg, LibreOffice Online, ONLYOFFICE, Collabora Online, CryptPad, Etherpad, HedgeDoc, CodiMD
+
+  **Screenshot & Browser Automation:**
+  Browserless, Playwright (service), Puppeteer (service), Selenium Hub, Splash, PhantomJS Cloud, urlbox (self-hosted), Rendertron, Prerender.io (self-hosted)
+
+  **Image Processing:**
+  Imgproxy, Thumbor, ImageMagick (API wrapper), Sharp (service), Cloudinary (self-hosted), Kraken.io (agent), TinyPNG (agent)
+
+  **Caching:**
+  Redis, Valkey, KeyDB, Dragonfly, Memcached, Garnet, Hazelcast, Apache Ignite, Infinispan
+
+  **Time Series:**
+  InfluxDB, TimescaleDB, QuestDB, TDengine, Prometheus, VictoriaMetrics, Thanos, Cortex, Mimir, CrateDB, GridDB, Warp10, ClickHouse (time-series mode)
+
+  **Graph Databases:**
+  Neo4j, ArangoDB (graph mode), JanusGraph, Dgraph, TypeDB, Amazon Neptune (compatible), TigerGraph, Memgraph, TerminusDB, SurrealDB (graph mode)
+
+  **Key-Value & Document:**
+  Redis, etcd, Consul KV, ZooKeeper, BoltDB/bbolt, BadgerDB, TiKV, FoundationDB, CouchDB, PouchDB, RavenDB, LiteDB, UnQLite, LMDB
+
+  **Embedded & Edge Compute:**
+  EdgeX Foundry, KubeEdge, OpenYurt, k3s, MicroK8s, K0s, Akri, Azure IoT Edge, AWS Greengrass, Balena, Mender, UpdateHub
+
+  **Audio & Music:**
+  Navidrome, Funkwhale, Ampache, Airsonic-Advanced, LMS (Logitech), Mopidy, Snapcast, Roon Server, Lidarr, Headphones
+
+  **Reading & Books:**
+  Calibre-Web, Kavita, Komga, Audiobookshelf, Readarr, LazyLibrarian, Stump, Bookstack (library mode)
+
+  **Download & Torrent:**
+  qBittorrent, Transmission, Deluge, rTorrent/ruTorrent, SABnzbd, NZBGet, JDownloader, Aria2 (WebUI), Pyload, Sonarr, Radarr, Lidarr, Readarr, Prowlarr, Bazarr, Overseerr, Jellyseerr, Ombi, Petio
+
+  **Remote Access:**
+  Guacamole, RustDesk, MeshCentral, Apache Guacamole, noVNC, Teleport, Boundary, CloudFlare Tunnel, ngrok (self-hosted), frp, rathole, bore, chisel, Tailscale, Netbird
+
+  **Clipboard & Sync:**
+  Clipboard (self-hosted), Syncthing, Resilio Sync, Seafile, SparkleShare, Unison, rsync (daemon), Rclone (serve), KDE Connect (server)
+
+  **Diagramming & Whiteboard:**
+  Excalidraw, draw.io/diagrams.net, Mermaid Live, PlantUML Server, Lucidchart (self-hosted), Whimsical (self-hosted), tldraw, Miro (self-hosted plugin)
+
+  **Terminal & Shell:**
+  ttyd, Wetty, GateOne, Shellinabox, code-server (terminal), Coder, JupyterHub (terminal), WebSSH, sshwifty
+
+  **Fonts & Assets:**
+  Fontello, IcoFont, Google Fonts (self-hosted mirror), Bunny Fonts, Font Awesome Kit (self-hosted)
+
+  **Maps & Navigation:**
+  Nominatim, Pelias, Photon, OSRM, Valhalla, GraphHopper, OpenRouteService, tile38, Martin, Tileserver GL, MapLibre, Leaflet
+
+  **Scientific & Research:**
+  JupyterHub, JupyterLab, RStudio Server, Zeppelin, MATLAB Web (self-hosted), GNU Octave (web), SageMath, CoCalc
+
+  **Print & 3D:**
+  OctoPrint, Mainsail, Fluidd, Moonraker, Klipper, Repetier Server, Duet Web Control, CUPS
+
+- [ ] **Tool Registry expansion: 1302 → 5000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
 
 - [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
 

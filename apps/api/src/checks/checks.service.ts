@@ -164,14 +164,41 @@ export class ChecksService {
     // Config options:
     //   expectedStatus: number | number[]  — expected HTTP status code(s) (default: any 2xx)
     //   bodyContains: string               — response body must contain this string (case-insensitive)
+    //   httpMethod: string                 — HTTP method to use (default: GET)
+    //   requestHeaders: Record<string,string> — custom request headers to send
+    //   requestBody: string                — request body for POST/PUT/PATCH
+    //   responseTimeThresholdMs: number    — if response latency exceeds this, return yellow (degraded)
     const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
     const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
+    const responseTimeThresholdMs =
+      typeof config['responseTimeThresholdMs'] === 'number' && config['responseTimeThresholdMs'] > 0
+        ? config['responseTimeThresholdMs']
+        : undefined;
     const needsBody = !!bodyContains;
+    const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
+    const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
+    const requestHeaders: Record<string, string> = {};
+    if (config['requestHeaders'] && typeof config['requestHeaders'] === 'object' && !Array.isArray(config['requestHeaders'])) {
+      for (const [k, v] of Object.entries(config['requestHeaders'] as Record<string, unknown>)) {
+        if (typeof k === 'string' && typeof v === 'string' && k.trim()) {
+          requestHeaders[k.trim()] = v;
+        }
+      }
+    }
+    const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
 
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
-      const response = await fetch(url, { signal: controller.signal });
+      const fetchOptions: RequestInit = {
+        method: safeMethod,
+        signal: controller.signal,
+        headers: requestHeaders,
+      };
+      if (requestBody && ['POST', 'PUT', 'PATCH'].includes(safeMethod)) {
+        fetchOptions.body = requestBody;
+      }
+      const response = await fetch(url, fetchOptions);
       clearTimeout(timeout);
       const latencyMs = Date.now() - started;
 
@@ -210,6 +237,16 @@ export class ChecksService {
             level: 'red' as const,
           };
         }
+        // Check response time threshold even when body keyword matches
+        if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+          return {
+            ok: false,
+            statusCode: response.status,
+            latencyMs,
+            message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), body contains "${bodyContains}"`,
+            level: 'yellow' as const,
+          };
+        }
         return {
           ok: true,
           statusCode: response.status,
@@ -221,6 +258,18 @@ export class ChecksService {
 
       // Drain body
       await response.text().catch(() => undefined);
+
+      // Check response time threshold
+      if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+        return {
+          ok: false,
+          statusCode: response.status,
+          latencyMs,
+          message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms)`,
+          level: 'yellow' as const,
+        };
+      }
+
       return {
         ok: true,
         statusCode: response.status,

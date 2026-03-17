@@ -26,6 +26,12 @@ type MaintenanceWindow = {
   updatedAt: string;
 };
 
+type MonitorOption = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 const inputClass =
   'w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent';
 
@@ -53,19 +59,67 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function MonitorPicker({
+  monitors,
+  selectedIds,
+  onChange,
+}: {
+  monitors: MonitorOption[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+        Affected monitors <span className="text-text-secondary/50">(optional)</span>
+      </label>
+      {monitors.length === 0 ? (
+        <p className="text-xs text-text-secondary italic">No monitors yet</p>
+      ) : (
+        <div className="max-h-48 overflow-y-auto space-y-0.5 border border-border rounded-lg p-2">
+          {monitors.map((m) => (
+            <label
+              key={m.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-elevated cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                className="accent-accent flex-shrink-0"
+                checked={selectedIds.includes(m.id)}
+                onChange={(e) => {
+                  onChange(
+                    e.target.checked
+                      ? [...selectedIds, m.id]
+                      : selectedIds.filter((id) => id !== m.id),
+                  );
+                }}
+              />
+              <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+              <span className="text-xs text-text-secondary flex-shrink-0">{m.type.replace('_', ' ')}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MaintenancePage() {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [windows, setWindows] = useState<MaintenanceWindow[]>([]);
+  const [monitors, setMonitors] = useState<MonitorOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', startsAt: '', endsAt: '' });
+  const [createMonitorIds, setCreateMonitorIds] = useState<string[]>([]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<MaintenanceWindow | null>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', startsAt: '', endsAt: '' });
+  const [editMonitorIds, setEditMonitorIds] = useState<string[]>([]);
 
   useEffect(() => {
     const user = getUser();
@@ -75,7 +129,12 @@ export default function MaintenancePage() {
   async function load() {
     setLoading(true);
     try {
-      setWindows(await api<MaintenanceWindow[]>('/v1/maintenance'));
+      const [windowsData, monitorsData] = await Promise.all([
+        api<MaintenanceWindow[]>('/v1/maintenance'),
+        api<MonitorOption[]>('/v1/monitors'),
+      ]);
+      setWindows(windowsData);
+      setMonitors(monitorsData);
     } finally {
       setLoading(false);
     }
@@ -83,10 +142,11 @@ export default function MaintenancePage() {
 
   useEffect(() => {
     load().catch(() => router.push('/login'));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function resetCreateForm() {
     setForm({ name: '', description: '', startsAt: '', endsAt: '' });
+    setCreateMonitorIds([]);
   }
 
   async function createWindow() {
@@ -98,6 +158,7 @@ export default function MaintenancePage() {
           description: form.description || undefined,
           startsAt: new Date(form.startsAt).toISOString(),
           endsAt: new Date(form.endsAt).toISOString(),
+          monitorIds: createMonitorIds.length > 0 ? createMonitorIds : undefined,
         }),
       });
       setCreateOpen(false);
@@ -117,6 +178,7 @@ export default function MaintenancePage() {
       startsAt: toDatetimeLocal(w.startsAt),
       endsAt: toDatetimeLocal(w.endsAt),
     });
+    setEditMonitorIds(w.monitorIds ?? []);
     setEditOpen(true);
   }
 
@@ -130,6 +192,7 @@ export default function MaintenancePage() {
           description: editForm.description || undefined,
           startsAt: new Date(editForm.startsAt).toISOString(),
           endsAt: new Date(editForm.endsAt).toISOString(),
+          monitorIds: editMonitorIds,
         }),
       });
       setEditOpen(false);
@@ -215,6 +278,11 @@ export default function MaintenancePage() {
                   onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
                 />
               </div>
+              <MonitorPicker
+                monitors={monitors}
+                selectedIds={createMonitorIds}
+                onChange={setCreateMonitorIds}
+              />
             </div>
           </Modal>
 
@@ -266,6 +334,11 @@ export default function MaintenancePage() {
                   onChange={(e) => setEditForm({ ...editForm, endsAt: e.target.value })}
                 />
               </div>
+              <MonitorPicker
+                monitors={monitors}
+                selectedIds={editMonitorIds}
+                onChange={setEditMonitorIds}
+              />
             </div>
           </Modal>
 
@@ -339,7 +412,11 @@ export default function MaintenancePage() {
                         <TableCell>{new Date(w.startsAt).toLocaleString()}</TableCell>
                         <TableCell>{new Date(w.endsAt).toLocaleString()}</TableCell>
                         <TableCell>
-                          <Badge>{String(w.monitorCount)}</Badge>
+                          {w.monitorCount > 0 ? (
+                            <Badge>{String(w.monitorCount)}</Badge>
+                          ) : (
+                            <span className="text-text-secondary text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

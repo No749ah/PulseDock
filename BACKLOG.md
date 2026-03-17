@@ -390,13 +390,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 ---
 
 ## Status Summary
-- **Codebase:** 1264 tests passing (1254 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1275 tests passing (1265 API + 10 CLI), zero TypeScript errors, dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
-- **Version:** v0.8.0
-- **This heartbeat (2026-03-16 17:00 UTC):** HTTP body keyword + expected status code assertions — native `bodyContains` + `expectedStatus` config on HTTP monitors. No plugin needed. 8 new tests, 1264 total. Clean build + deploy.
+- **Version:** v0.9.0
+- **This heartbeat (2026-03-16 23:02 UTC):** Monitor detail page action buttons added. Run Now + Enable/Disable toggle now available inline on the detail page. Previously the page was fully read-only — users had to go back to the monitors list to take any action. Clean build, all 8 pages 200, public URL healthy.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** All major backlog items complete. Ready to consider next project when Noah approves.
-- **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain); SSH key restoration + dind restart needed to push/deploy
-- **Next Project:** PulsePing is ON HOLD. Focus entirely on PulseDock until it is genuinely production-ready.

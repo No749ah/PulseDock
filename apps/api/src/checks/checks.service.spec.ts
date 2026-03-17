@@ -414,6 +414,176 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — HTTP config: httpMethod + requestHeaders + requestBody ──
+
+  describe('runMonitor() — HTTP httpMethod + requestHeaders + requestBody config', () => {
+    it('sends POST method when httpMethod is POST', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'POST' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('sends custom request headers when requestHeaders is provided', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { requestHeaders: { 'Authorization': 'Bearer token123', 'X-API-Key': 'mykey' } } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Authorization': 'Bearer token123', 'X-API-Key': 'mykey' }),
+        }),
+      );
+    });
+
+    it('sends request body for POST when requestBody is provided', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'POST', requestBody: '{"ping":true}' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'POST', body: '{"ping":true}' }),
+      );
+    });
+
+    it('falls back to GET for unrecognized httpMethod values', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'INVALID_METHOD' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('ignores requestHeaders that are not objects', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { requestHeaders: 'not-an-object' } }),
+      );
+      expect(run.ok).toBe(true);
+      // Should still succeed, just with empty headers
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ headers: {} }),
+      );
+    });
+
+    it('does not send body for GET even if requestBody is set', async () => {
+      const service = makeService();
+      const fetchSpy = mockFetch([{ ok: true, status: 200 }]);
+      globalThis.fetch = fetchSpy;
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { httpMethod: 'GET', requestBody: 'should-be-ignored' } }),
+      );
+      expect(run.ok).toBe(true);
+      const callArgs = fetchSpy.mock.calls[0][1] as RequestInit;
+      expect(callArgs.body).toBeUndefined();
+    });
+  });
+
+  // ── runMonitor() — HTTP config: responseTimeThresholdMs ───────────────────
+
+  describe('runMonitor() — HTTP responseTimeThresholdMs config', () => {
+    it('returns green when latency is below threshold', async () => {
+      const service = makeService();
+      // Fake a fast response by making Date.now advance by 100ms
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 1100); // 100ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 500 } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns yellow (degraded) when latency exceeds threshold', async () => {
+      const service = makeService();
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 4000); // 3000ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 2000 } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toMatch(/exceeds threshold/);
+      expect(run.message).toMatch(/2000ms/);
+    });
+
+    it('returns yellow when latency exceeds threshold and bodyContains matches', async () => {
+      const service = makeService();
+      let calls = 0;
+      const origDateNow = Date.now;
+      Date.now = () => (calls++ === 0 ? 1000 : 4000); // 3000ms latency
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"ok"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 1000, bodyContains: 'ok' } }),
+      );
+      Date.now = origDateNow;
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toMatch(/exceeds threshold/);
+    });
+
+    it('ignores responseTimeThresholdMs of 0', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 0 } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('ignores non-numeric responseTimeThresholdMs', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { responseTimeThresholdMs: 'fast' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+  });
+
   // ── runMonitor() — GIT_RELEASE (GitHub) ───────────────────────────────────
 
   describe('runMonitor() — GIT_RELEASE type (GitHub)', () => {

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Folder } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Folder, ExternalLink } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -11,14 +11,17 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '.
 import { Select } from '../components/Select';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
+import Link from 'next/link';
 
 type Folder = { id: string; name: string; createdAt: string };
+type MonitorSummary = { id: string; folderId?: string | null };
 
 const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 export default function FoldersPage() {
   const router = useRouter();
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [monitors, setMonitors] = useState<MonitorSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -39,7 +42,12 @@ export default function FoldersPage() {
   async function load() {
     setLoading(true);
     try {
-      setFolders(await api<Folder[]>('/v1/folders'));
+      const [foldersData, monitorsData] = await Promise.all([
+        api<Folder[]>('/v1/folders'),
+        api<MonitorSummary[]>('/v1/monitors'),
+      ]);
+      setFolders(foldersData);
+      setMonitors(monitorsData);
     } finally {
       setLoading(false);
     }
@@ -189,14 +197,32 @@ export default function FoldersPage() {
               <TableHead>
                 <TableRow hover={false}>
                   <TableHeader>Name</TableHeader>
+                  <TableHeader>Monitors</TableHeader>
                   <TableHeader>Created</TableHeader>
                   <TableHeader>Actions</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {pageRows.map((f) => (
+                {pageRows.map((f) => {
+                  const monitorCount = monitors.filter((m) => m.folderId === f.id).length;
+                  return (
                   <TableRow key={f.id}>
                     <TableCell>{f.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-text-primary">{monitorCount}</span>
+                        {monitorCount > 0 && (
+                          <Link
+                            href={`/monitors?folder=${f.id}`}
+                            className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                            title="View monitors in this project"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View
+                          </Link>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{new Date(f.createdAt).toLocaleString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -209,7 +235,8 @@ export default function FoldersPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
 

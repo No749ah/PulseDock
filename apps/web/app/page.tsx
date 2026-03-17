@@ -13,7 +13,7 @@ import {
   ArrowRight,
   Bell,
   Check,
-  Chrome,
+
   ExternalLink,
   Github,
   Globe,
@@ -83,10 +83,10 @@ const features = [
       "Browse 1 300+ self-hosted tools. Find alternatives, compare features, track new releases.",
   },
   {
-    icon: Chrome,
-    title: "Browser Extension",
+    icon: Globe,
+    title: "Public API",
     description:
-      "Check service status and version info right from your browser toolbar. Zero context switching.",
+      "Integrate checks, status pages, incidents, and versions into your own tooling with a clean REST API.",
   },
   {
     icon: Terminal,
@@ -131,7 +131,7 @@ const comparisonFeatures = [
   { label: "Tool Registry (1 300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
-  { label: "Browser Extension", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "CLI Tool", pulsedock: true, uptimeKuma: false, betterStack: true, statuspage: false },
   { label: "100% Free", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
 ];
@@ -149,10 +149,10 @@ const footerLinks = {
     { label: "Community", href: "https://github.com/No749ah/PulseDock/discussions" },
     { label: "Report a Bug", href: "https://github.com/No749ah/PulseDock/issues" },
   ],
-  Legal: [
+  More: [
     { label: "MIT License", href: "https://github.com/No749ah/PulseDock/blob/main/LICENSE" },
-    { label: "Privacy", href: "#" },
-    { label: "Terms", href: "#" },
+    { label: "Roadmap", href: "/dashboard" },
+    { label: "Status", href: "/status/status" },
   ],
 };
 

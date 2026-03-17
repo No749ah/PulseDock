@@ -948,3 +948,11 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **This heartbeat (2026-03-17 04:02 UTC):** Coverage improvements — RealtimeGateway now 100% branch coverage (2 new tests: undefined cookie header + JWT payload missing sub). CSV parser branch gap closed (4 total new tests). 1265 → 1269 API tests.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.
+
+### P0 — CI/CD E2E Login Redirect Failures (GitHub Actions)
+- [ ] Reproduce `npm run test:e2e` failure locally in CI-like env.
+- [ ] Fix login redirect race (`waitForURL("**/dashboard")` timeout) by making auth success deterministic.
+- [ ] Ensure login submit handles setup-status/registration-disabled cases correctly in CI seed state.
+- [ ] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) to wait on post-login app-ready signal, not only URL.
+- [ ] Add regression test for valid login path used in CI (`E2E_EMAIL/E2E_PASSWORD`).
+- [ ] Validate full E2E suite green in pipeline.

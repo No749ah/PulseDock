@@ -30,64 +30,11 @@ function parseSemver(v: string): SemverParts | null {
  *  "GitHub current 1.2.3, latest 1.4.0"
  *  "Docker current 22.04, latest 24.04" */
 export function extractVersionsFromMessage(msg: string): { from: string | null; to: string | null } {
-  // Pattern: "current X, latest Y" or "current X.Y.Z, latest A.B.C"
   const m = msg.match(/current\s+([^\s,]+)[,\s]+latest\s+([^\s,]+)/i);
   if (m) return { from: m[1], to: m[2] };
-  // Pattern: "was X.Y.Z" / "New version: A.B.C (was X.Y.Z)"
   const m2 = msg.match(/New version[:\s]+([^\s(]+)\s*\(was\s+([^)]+)\)/i);
   if (m2) return { from: m2[2], to: m2[1] };
   return { from: null, to: null };
-}
-
-type SegmentDiffProps = {
-  label: string;
-  from: string | null;
-  to: string | null;
-  changed: boolean;
-  severity?: 'major' | 'minor' | 'patch' | 'pre' | 'none';
-};
-
-function SegmentDiff({ label, from, to, changed, severity = 'none' }: SegmentDiffProps) {
-  const severityColor =
-    severity === 'major'
-      ? 'text-danger'
-      : severity === 'minor'
-        ? 'text-warning'
-        : severity === 'patch'
-          ? 'text-success'
-          : 'text-accent';
-
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[10px] text-text-secondary uppercase tracking-wider font-medium mb-0.5">{label}</span>
-      <div className="flex items-center gap-1">
-        {from !== null && (
-          <span
-            className={`font-mono text-sm px-1.5 py-0.5 rounded ${
-              changed
-                ? 'bg-danger/10 text-danger line-through opacity-60'
-                : 'bg-surface-elevated text-text-secondary'
-            }`}
-          >
-            {from}
-          </span>
-        )}
-        {changed && to !== null && (
-          <>
-            <ArrowRight className="w-3 h-3 text-text-secondary flex-shrink-0" />
-            <span className={`font-mono text-sm px-1.5 py-0.5 rounded bg-${severity === 'major' ? 'danger' : severity === 'minor' ? 'warning' : severity === 'patch' ? 'success' : 'accent'}/15 ${severityColor} font-semibold`}>
-              {to}
-            </span>
-          </>
-        )}
-        {!changed && to !== null && from === null && (
-          <span className="font-mono text-sm px-1.5 py-0.5 rounded bg-surface-elevated text-text-secondary">
-            {to}
-          </span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 type VersionDiffProps = {
@@ -97,8 +44,8 @@ type VersionDiffProps = {
 };
 
 /**
- * VersionDiff — visual semver comparison with highlighted changed segments.
- * Major change → red, Minor → yellow, Patch → green, Prerelease → blue.
+ * VersionDiff — compact version comparison for table cells.
+ * Shows a severity badge (Major/Minor/Patch) + "from → to" on one line.
  */
 export function VersionDiff({ from, to, className = '' }: VersionDiffProps) {
   const fromParsed = parseSemver(from);
@@ -107,10 +54,10 @@ export function VersionDiff({ from, to, className = '' }: VersionDiffProps) {
   // If we can't parse semver, show a simple arrow diff
   if (!fromParsed || !toParsed) {
     return (
-      <div className={`flex items-center gap-2 font-mono text-sm ${className}`}>
-        <span className="px-1.5 py-0.5 rounded bg-danger/10 text-danger line-through opacity-60">{from}</span>
-        <ArrowRight className="w-3 h-3 text-text-secondary" />
-        <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent font-semibold">{to}</span>
+      <div className={`flex items-center gap-1.5 font-mono text-xs ${className}`}>
+        <span className="text-text-secondary">{from}</span>
+        <ArrowRight className="w-3 h-3 text-text-muted flex-shrink-0" />
+        <span className="text-accent font-medium">{to}</span>
       </div>
     );
   }
@@ -120,7 +67,6 @@ export function VersionDiff({ from, to, className = '' }: VersionDiffProps) {
   const patchChanged = !majorChanged && !minorChanged && fromParsed.patch !== toParsed.patch;
   const preChanged = !majorChanged && !minorChanged && !patchChanged && fromParsed.prerelease !== toParsed.prerelease;
 
-  // Determine overall severity label
   const severity = majorChanged
     ? 'major'
     : minorChanged
@@ -131,67 +77,25 @@ export function VersionDiff({ from, to, className = '' }: VersionDiffProps) {
           ? 'pre'
           : 'none';
 
-  const severityLabel =
+  const badge =
     severity === 'major'
-      ? { text: 'Major', cls: 'bg-danger/10 text-danger' }
+      ? { text: 'Major', cls: 'bg-danger/15 text-danger' }
       : severity === 'minor'
-        ? { text: 'Minor', cls: 'bg-warning/10 text-warning' }
+        ? { text: 'Minor', cls: 'bg-warning/15 text-warning' }
         : severity === 'patch'
-          ? { text: 'Patch', cls: 'bg-success/10 text-success' }
+          ? { text: 'Patch', cls: 'bg-success/15 text-success' }
           : severity === 'pre'
-            ? { text: 'Pre-release', cls: 'bg-accent/10 text-accent' }
-            : { text: 'No change', cls: 'bg-surface-elevated text-text-secondary' };
+            ? { text: 'Pre', cls: 'bg-accent/15 text-accent' }
+            : { text: 'Same', cls: 'bg-surface-elevated text-text-secondary' };
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      {/* Severity badge */}
-      <div className="flex items-center gap-2">
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${severityLabel.cls}`}>
-          {severityLabel.text} update
-        </span>
-        <span className="text-xs text-text-secondary font-mono">
-          {from} → {to}
-        </span>
-      </div>
-
-      {/* Segment-level diff */}
-      <div className="flex items-end gap-1.5 flex-wrap">
-        <SegmentDiff
-          label="major"
-          from={fromParsed.major}
-          to={toParsed.major}
-          changed={majorChanged}
-          severity="major"
-        />
-        <span className="text-text-secondary font-mono text-sm pb-1">.</span>
-        <SegmentDiff
-          label="minor"
-          from={fromParsed.minor}
-          to={toParsed.minor}
-          changed={minorChanged}
-          severity="minor"
-        />
-        <span className="text-text-secondary font-mono text-sm pb-1">.</span>
-        <SegmentDiff
-          label="patch"
-          from={fromParsed.patch}
-          to={toParsed.patch}
-          changed={patchChanged}
-          severity="patch"
-        />
-        {(fromParsed.prerelease || toParsed.prerelease) && (
-          <>
-            <span className="text-text-secondary font-mono text-sm pb-1">-</span>
-            <SegmentDiff
-              label="pre"
-              from={fromParsed.prerelease}
-              to={toParsed.prerelease}
-              changed={preChanged}
-              severity="pre"
-            />
-          </>
-        )}
-      </div>
+    <div className={`flex items-center gap-2 ${className}`}>
+      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badge.cls}`}>
+        {badge.text}
+      </span>
+      <span className="font-mono text-xs text-text-secondary whitespace-nowrap">
+        {from} <span className="text-text-muted">→</span> {to}
+      </span>
     </div>
   );
 }

@@ -229,7 +229,7 @@ export default function MonitorDetailPage() {
   const streakLabel =
     runs.length === 0
       ? "No runs yet"
-      : `${streak} × ${runs[0].ok ? "OK" : "Failed"}`;
+      : `${streak} × ${runs[0].level === "yellow" ? "Degraded" : runs[0].ok ? "OK" : "Failed"}`;
 
   const uptimeColor =
     uptime === null
@@ -425,9 +425,13 @@ export default function MonitorDetailPage() {
               <span className="text-xs text-text-secondary uppercase tracking-wider">Last Status</span>
               <div className="mt-1">
                 {lastRun ? (
-                  <Badge variant={lastRun.ok ? "success" : "danger"}>
-                    {lastRun.ok ? "OK" : "Failed"}
-                  </Badge>
+                  lastRun.level === "yellow" ? (
+                    <Badge variant="warning">Degraded</Badge>
+                  ) : lastRun.ok ? (
+                    <Badge variant="success">OK</Badge>
+                  ) : (
+                    <Badge variant="danger">Failed</Badge>
+                  )
                 ) : (
                   <Badge>Pending</Badge>
                 )}
@@ -648,9 +652,13 @@ export default function MonitorDetailPage() {
                           {relativeTime(run.checkedAt)}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={run.ok ? "success" : "danger"}>
-                            {run.ok ? "OK" : "Failed"}
-                          </Badge>
+                          {run.level === "yellow" ? (
+                            <Badge variant="warning">Degraded</Badge>
+                          ) : run.ok ? (
+                            <Badge variant="success">OK</Badge>
+                          ) : (
+                            <Badge variant="danger">Failed</Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm font-mono text-text-secondary">
                           {run.latencyMs !== null ? `${run.latencyMs}ms` : "—"}

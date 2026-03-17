@@ -1804,7 +1804,9 @@ function MonitorsPageInner() {
         </div>
       )}
       {/* Badge Embed Modal */}
-      {badgeMonitor && (
+      {badgeMonitor && (() => {
+        const badgeBase = typeof window !== "undefined" ? `${window.location.origin}/api/v1/public/badge` : "/api/v1/public/badge";
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="badge-modal-title">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -1835,13 +1837,13 @@ function MonitorsPageInner() {
                 <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Markdown (GitHub README)</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`![${badgeMonitor.name}](/api/v1/public/badge/${badgeMonitor.id}.svg)`}
+                    {`![${badgeMonitor.name}](${badgeBase}/${badgeMonitor.id}.svg)`}
                   </code>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      void navigator.clipboard.writeText(`![${badgeMonitor.name}](/api/v1/public/badge/${badgeMonitor.id}.svg)`);
+                      void navigator.clipboard.writeText(`![${badgeMonitor.name}](${badgeBase}/${badgeMonitor.id}.svg)`);
                       success("Markdown copied!");
                     }}
                   >
@@ -1854,14 +1856,33 @@ function MonitorsPageInner() {
                 <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">HTML</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`<img src="/api/v1/public/badge/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`}
+                    {`<img src="${badgeBase}/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`}
                   </code>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      void navigator.clipboard.writeText(`<img src="/api/v1/public/badge/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`);
+                      void navigator.clipboard.writeText(`<img src="${badgeBase}/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`);
                       success("HTML copied!");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+              {/* Direct URL */}
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Direct URL</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                    {`${badgeBase}/${badgeMonitor.id}.svg`}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`${badgeBase}/${badgeMonitor.id}.svg`);
+                      success("URL copied!");
                     }}
                   >
                     Copy
@@ -1887,7 +1908,8 @@ function MonitorsPageInner() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </AppFrame>
   );
 }

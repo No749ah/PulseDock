@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect, useId, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef } from 'react';
 import { Button } from '../../app/components/Button';
 
 const FOCUSABLE = [
@@ -27,12 +27,15 @@ export function AppModal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const stableOnClose = useCallback(() => onCloseRef.current(), []);
+  const justOpened = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!opened) return;
       if (e.key === 'Escape') {
-        onClose();
+        stableOnClose();
         return;
       }
       if (e.key === 'Tab' && dialogRef.current) {
@@ -56,15 +59,19 @@ export function AppModal({
     if (opened) {
       document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
+      justOpened.current = true;
       requestAnimationFrame(() => {
-        dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+        if (justOpened.current && dialogRef.current) {
+          justOpened.current = false;
+          dialogRef.current.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+        }
       });
     }
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [opened, onClose]);
+  }, [opened, stableOnClose]);
 
   if (!opened) return null;
 

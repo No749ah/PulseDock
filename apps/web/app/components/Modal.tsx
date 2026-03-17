@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -39,13 +39,19 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // Stable ref for onClose so the effect doesn't re-run on every render
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const stableOnClose = useCallback(() => onCloseRef.current(), []);
 
-  // Escape key + body scroll lock
+  // Track whether the modal just opened (for initial focus only)
+  const justOpened = useRef(false);
+
+  // Escape key + body scroll lock + focus trap
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
       if (e.key === "Escape") {
-        onClose();
+        stableOnClose();
         return;
       }
       // Focus trap: Tab / Shift+Tab stays within modal
@@ -59,11 +65,9 @@ export function Modal({
         const currentIdx = focusable.indexOf(document.activeElement as HTMLElement);
         e.preventDefault();
         if (e.shiftKey) {
-          // Shift+Tab: go backwards
           const prev = currentIdx <= 0 ? last : focusable[currentIdx - 1];
           prev.focus();
         } else {
-          // Tab: go forwards
           const next = currentIdx < 0 || currentIdx >= focusable.length - 1 ? first : focusable[currentIdx + 1];
           next.focus();
         }
@@ -73,9 +77,11 @@ export function Modal({
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
-      // Move focus into modal on open
+      // Focus the first focusable element ONLY when the modal first opens
+      justOpened.current = true;
       requestAnimationFrame(() => {
-        if (dialogRef.current) {
+        if (justOpened.current && dialogRef.current) {
+          justOpened.current = false;
           const first = dialogRef.current.querySelector<HTMLElement>(FOCUSABLE);
           first?.focus();
         }
@@ -85,7 +91,7 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, stableOnClose]);
 
   if (!isOpen) return null;
 

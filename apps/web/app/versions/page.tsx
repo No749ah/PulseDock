@@ -919,7 +919,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 {appUrl && appAuthType === 'token' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">Application token (optional)</label>
-                    <input type="password" className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} placeholder="glpat-xxx..." />
+                    <input type="password" className={inputClass} value={appToken} onChange={(e) => setAppToken(e.target.value)} placeholder="Bearer token or API key" />
                   </div>
                 )}
                 {appUrl && appAuthType === 'openvpn' && (

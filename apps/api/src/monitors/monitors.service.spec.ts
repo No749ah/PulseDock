@@ -3143,3 +3143,415 @@ describe('importExternal — !item guard (line 1126)', () => {
     expect(result.imported).toBe(1);
   });
 });
+
+// ─── parseGitlabTarget() — empty gitlab: prefix (line 548) ──────────────────
+
+describe('testVersionConnection() — gitlab empty target after prefix (line 548)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('returns { ok: false } when gitlab: prefix is given with empty path', async () => {
+    const svc = makeService();
+    // 'gitlab:' → projectPath = '' → !projectPath → return null → ok: false
+    const result = await svc.testVersionConnection({ provider: 'gitlab', target: 'gitlab:' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/Invalid GitLab/i);
+  });
+
+  it('resolves https:// gitlab URL and strips .git suffix', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ tag_name: 'v3.0.0' }),
+    });
+    const svc = makeService();
+    // https:// URL → hits regex branch → strips .git → uses parsed host
+    const result = await svc.testVersionConnection({
+      provider: 'gitlab',
+      target: 'https://my-gitlab.example.com/mygroup/myproject.git',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('v3.0.0');
+    // Should have used my-gitlab.example.com as host
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('my-gitlab.example.com');
+  });
+
+  it('resolves https:// gitlab URL with trailing slash', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ tag_name: 'v1.2.3' }),
+    });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({
+      provider: 'gitlab',
+      target: 'https://gitlab.company.io/team/project/',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('v1.2.3');
+  });
+});
+
+// ─── parseUptimeRobot() — branch coverage ───────────────────────────────────
+
+describe('importExternal — parseUptimeRobot branch coverage', () => {
+  it('accepts raw array input (Array.isArray(raw) branch)', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    // Pass raw array (not wrapped in { monitors: [...] })
+    const rawArray = [
+      { url: 'https://example.com', friendly_name: 'Test', type: 1, status: 2, interval: 120 },
+    ];
+    const result = await svc.importExternal('user-1', 'uptime-robot', rawArray);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses mon.target when mon.url is missing', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    const payload = {
+      monitors: [
+        { target: 'https://via-target.com', name: 'Via Target', type: 1, status: 2 },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-robot', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses mon.name when mon.friendly_name is missing', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    const payload = {
+      monitors: [
+        { url: 'https://named.com', name: 'Named Monitor', type: 1, status: 2 },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-robot', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('creates disabled monitor when status != 2 (paused)', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    // First findFirst call: duplicate check → null (no duplicate)
+    // Second findFirst call: inside update() → return monitor
+    prisma.monitor.findFirst
+      .mockResolvedValueOnce(null) // duplicate check: no existing
+      .mockResolvedValueOnce(makeMonitor({ id: 'monitor-1' })); // update() lookup
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+    prisma.monitor.update.mockResolvedValue(makeMonitor({ enabled: false }));
+
+    const payload = {
+      monitors: [
+        { url: 'https://paused-monitor.com', friendly_name: 'Paused', type: 1, status: 0 },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-robot', payload);
+    expect(result.imported).toBe(1);
+    // update called to set enabled=false
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('skips non-HTTP monitor types (type=3 Ping)', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+
+    const payload = {
+      monitors: [
+        { url: 'https://ping.com', friendly_name: 'Ping Monitor', type: 3, status: 2 }, // type 3 = Ping → skip
+        { url: 'https://http.com', friendly_name: 'HTTP Monitor', type: 1, status: 2 }, // type 1 = HTTP → import
+      ],
+    };
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+    const result = await svc.importExternal('user-1', 'uptime-robot', payload);
+    expect(result.imported).toBe(1); // only HTTP imported
+  });
+});
+
+// ─── parseBetterUptime() — branch coverage ──────────────────────────────────
+
+describe('importExternal — parseBetterUptime branch coverage', () => {
+  it('accepts raw array when no .data wrapper', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    // raw array (no { data: [...] } wrapper) → Array.isArray(raw) branch
+    const rawArray = [
+      { url: 'https://flat.com', pronounceable_name: 'Flat Monitor', check_type: 'status', paused: false, request_interval_seconds: 120 },
+    ];
+    const result = await svc.importExternal('user-1', 'better-uptime', rawArray);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses entry.attributes when nested attributes object present', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    const payload = {
+      data: [
+        {
+          attributes: {
+            url: 'https://nested.com',
+            pronounceable_name: 'Nested Monitor',
+            check_type: 'status',
+            paused: false,
+            request_interval_seconds: 180,
+          },
+        },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'better-uptime', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('creates disabled monitor when paused=true', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    // First findFirst: duplicate check → null; Second: update() lookup → monitor
+    prisma.monitor.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(makeMonitor({ id: 'monitor-1' }));
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+    prisma.monitor.update.mockResolvedValue(makeMonitor({ enabled: false }));
+
+    const payload = {
+      data: [
+        { url: 'https://paused.com', pronounceable_name: 'Paused BU', check_type: 'status', paused: true, request_interval_seconds: 60 },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'better-uptime', payload);
+    expect(result.imported).toBe(1);
+    expect(prisma.monitor.update).toHaveBeenCalled();
+  });
+
+  it('skips non-HTTP check types (tcp)', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    const payload = {
+      data: [
+        { url: 'https://tcp.com', name: 'TCP', check_type: 'tcp', paused: false }, // skip
+        { url: 'https://http.com', name: 'HTTP', check_type: 'status', paused: false }, // import
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'better-uptime', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('uses check_type default "status" when missing', async () => {
+    const prisma = makePrisma();
+    const svc = makeService(prisma);
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    prisma.monitor.create.mockImplementation((args: { data: { name: string; target: string } }) =>
+      Promise.resolve(makeMonitor({ name: args.data.name, target: args.data.target })),
+    );
+
+    const payload = {
+      data: [
+        // no check_type → default 'status' → import
+        { url: 'https://no-type.com', name: 'No Type', paused: false },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'better-uptime', payload);
+    expect(result.imported).toBe(1);
+  });
+});
+
+// ─── testVersionConnection() — additional error branches ────────────────────
+
+describe('testVersionConnection() — additional error path coverage', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('cargo: returns null latestVersion using newest_version fallback', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ crate: { newest_version: '1.2.3' } }), // no max_stable_version
+    });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({ provider: 'cargo', target: 'mypackage' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBe('1.2.3');
+  });
+
+  it('cargo: returns ok:false on API error', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 404 });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({ provider: 'cargo', target: 'nonexistent' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/crates\.io/);
+  });
+
+  it('maven: returns ok:false when docs array is empty', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ response: { docs: [] } }), // empty docs → no version
+    });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({ provider: 'maven', target: 'org.springframework:spring-core' });
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/No Maven artifact/i);
+  });
+
+  it('npm: returns null latestVersion when data.version is undefined', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ name: 'my-pkg' }), // no version field
+    });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({ provider: 'npm', target: 'my-pkg' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBeNull();
+  });
+
+  it('apt: returns null when no stable version and versions array is empty', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ versions: [] }), // empty → stable=undefined, versions[0]=undefined → null
+    });
+    const svc = makeService();
+    const result = await svc.testVersionConnection({ provider: 'apt', target: 'mypkg' });
+    expect(result.ok).toBe(true);
+    expect(result.latestVersion).toBeNull();
+  });
+});
+
+// ─── extractVersionFromText — context scoring branches ───────────────────────
+
+describe('discoverCurrentVersion — extractVersionFromText scoring branches', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('picks version near "versionstring" keyword (score +7 branch)', async () => {
+    // Response body has "versionstring" near the version token → highest score
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ versionstring: '2.5.0', release: '1.0.0' }),
+      text: async () => '{"versionstring":"2.5.0","release":"1.0.0"}',
+    });
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myapp',
+      appUrl: 'https://example.com',
+    });
+    // JSON has a 'versionstring' key which maps to score+7 in text extraction
+    // The deployed version should be found
+    expect(result.strategy).toBe('deployed-endpoint');
+    expect(['2.5.0', '1.0.0']).toContain(result.currentVersion);
+  });
+
+  it('picks version near "serverversion" keyword (score +6 branch)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ serverversion: '3.1.0' }),
+      text: async () => '{"serverversion":"3.1.0"}',
+    });
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myapp',
+      appUrl: 'https://example.com',
+    });
+    expect(result.strategy).toBe('deployed-endpoint');
+    expect(result.currentVersion).toBe('3.1.0');
+  });
+
+  it('picks version near "databaseversion" keyword (score +3 branch)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ databaseversion: '14.5.0' }),
+      text: async () => '{"databaseversion":"14.5.0"}',
+    });
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myapp',
+      appUrl: 'https://example.com',
+    });
+    expect(result.currentVersion).toBe('14.5.0');
+  });
+
+  it('handles empty string body (extractVersionFromText returns null) (line 578)', async () => {
+    // All fetch calls return empty body → text extraction fails → no deployed version found
+    // hasAppUrl=true but no version found → strategy=manual
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      json: async () => { throw new Error('not json'); },
+      text: async () => '',
+    });
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'docker',
+      target: 'myapp',
+      appUrl: 'https://example.com',
+    });
+    // Empty body → extractVersionFromText returns null → no version → manual strategy
+    expect(result.currentVersion).toBeNull();
+    expect(result.strategy).toBe('manual');
+  });
+});

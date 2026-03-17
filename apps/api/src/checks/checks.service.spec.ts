@@ -4143,3 +4143,83 @@ describe('runMonitor() — DOCKER_IMAGE non-Error catch branch (line 595)', () =
     expect(run.message).toBe('Docker check failed');
   });
 });
+
+// ── comparePrereleaseParts — mixed number/string branches (lines 82-94) ─────
+
+describe('compareSemver — mixed prerelease number/string parts (lines 82-94)', () => {
+  it('treats numeric prerelease as less than string prerelease (number vs string)', async () => {
+    // 1.0.0-1 vs 1.0.0-alpha: numeric part (1) compared to string (alpha)
+    // aNum && !bNum → return -1 (number < string in semver prerelease ordering)
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.0.0-alpha' }) },
+    ]);
+    // current = 1.0.0-1 (numeric prerelease), latest = 1.0.0-alpha
+    // compareSemver: same major/minor/patch, prerelease differs
+    // comparePrereleaseParts(1, 'alpha'): aNum && !bNum → -1 → current < latest → update available
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: 'v1.0.0-1' },
+    });
+    const run = await service.runMonitor(monitor);
+    // current is behind latest (numeric prerelease < string prerelease) → not green
+    expect(['yellow', 'red']).toContain(run.level);
+  });
+
+  it('treats string prerelease as greater than numeric prerelease (string vs number)', async () => {
+    // 1.0.0-alpha vs 1.0.0-1: string 'alpha' compared to number 1
+    // !aNum && bNum → return 1 (string > number in this ordering)
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.0.0-1' }) },
+    ]);
+    // current = 1.0.0-alpha (string prerelease), latest = 1.0.0-1 (numeric)
+    // comparePrereleaseParts('alpha', 1): !aNum && bNum → 1 → current > latest → up to date
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: 'v1.0.0-alpha' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.level).toBe('green');
+  });
+
+  it('handles prerelease with unequal length arrays (aPre shorter)', async () => {
+    // 1.0.0-1 vs 1.0.0-1.2: aPre shorter → aPre[1] undefined → return -1 (current behind)
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.0.0-1.2' }) },
+    ]);
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: 'v1.0.0-1' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(['yellow', 'red']).toContain(run.level);
+  });
+});
+
+// SSL_CERT branch coverage for mocked TLS paths lives in checks.service.ssl.spec.ts.
+
+// ── runMonitor() — confirmations null branch (line 969) ───────────────────────
+
+describe('runMonitor() — confirmations null falls back to 1 (line 969)', () => {
+  it('uses confirmations=1 when monitor.confirmations is null', async () => {
+    const service = makeService();
+    globalThis.fetch = mockFetch([
+      { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v2.0.0' }) },
+    ]);
+    // confirmations=null → Math.max(1, Math.min(10, null ?? 1)) = 1
+    const monitor = makeMonitor({
+      type: 'GIT_RELEASE',
+      target: 'owner/repo',
+      config: { currentVersion: 'v2.0.0' },
+      confirmations: null as never,
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run).toBeDefined();
+    expect(run.ok).toBe(true);
+  });
+});

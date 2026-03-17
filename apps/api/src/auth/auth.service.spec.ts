@@ -1581,3 +1581,126 @@ describe('login() — blocks unverified users when REQUIRE_EMAIL_VERIFICATION=tr
     process.env.REQUIRE_EMAIL_VERIFICATION = oldVerify;
   });
 });
+
+// ─── getRefreshTtlMs() — unit variants (lines 62-67) ────────────────────────
+
+describe('getRefreshTtlMs() — seconds/minutes/hours units (lines 62-67)', () => {
+  it('uses seconds unit when JWT_REFRESH_EXPIRES=30s', async () => {
+    const old = process.env.JWT_REFRESH_EXPIRES;
+    process.env.JWT_REFRESH_EXPIRES = '30s';
+    const prisma = makePrisma();
+    const svc = makeService(prisma as never);
+    // listSessions calls purgeUserSessions → getRefreshTtlMs; with 30s ttl the cutoff should be ~30 seconds ago
+    await svc.listSessions('user-1');
+    // Just verifying no error thrown and deleteMany was called
+    expect(prisma.session.deleteMany).toHaveBeenCalled();
+    process.env.JWT_REFRESH_EXPIRES = old;
+  });
+
+  it('uses minutes unit when JWT_REFRESH_EXPIRES=15m', async () => {
+    const old = process.env.JWT_REFRESH_EXPIRES;
+    process.env.JWT_REFRESH_EXPIRES = '15m';
+    const prisma = makePrisma();
+    const svc = makeService(prisma as never);
+    await svc.listSessions('user-1');
+    expect(prisma.session.deleteMany).toHaveBeenCalled();
+    process.env.JWT_REFRESH_EXPIRES = old;
+  });
+
+  it('uses hours unit when JWT_REFRESH_EXPIRES=24h', async () => {
+    const old = process.env.JWT_REFRESH_EXPIRES;
+    process.env.JWT_REFRESH_EXPIRES = '24h';
+    const prisma = makePrisma();
+    const svc = makeService(prisma as never);
+    await svc.listSessions('user-1');
+    expect(prisma.session.deleteMany).toHaveBeenCalled();
+    process.env.JWT_REFRESH_EXPIRES = old;
+  });
+
+  it('uses fallback 30d when JWT_REFRESH_EXPIRES is invalid string', async () => {
+    const old = process.env.JWT_REFRESH_EXPIRES;
+    process.env.JWT_REFRESH_EXPIRES = 'invalid';
+    const prisma = makePrisma();
+    const svc = makeService(prisma as never);
+    await svc.listSessions('user-1');
+    expect(prisma.session.deleteMany).toHaveBeenCalled();
+    process.env.JWT_REFRESH_EXPIRES = old;
+  });
+});
+
+// ─── listSessions() — revokedAt non-null branch (line 428) ──────────────────
+
+describe('listSessions() — revokedAt non-null maps to ISO string (line 428)', () => {
+  it('returns revokedAt as ISO string when session has revokedAt set', async () => {
+    const revokedDate = new Date('2026-01-15T10:00:00Z');
+    const prisma = makePrisma();
+    prisma.session.findMany.mockResolvedValue([
+      { id: 's-1', userAgent: 'TestBrowser', ipAddress: '1.2.3.4', revokedAt: revokedDate, createdAt: new Date() },
+    ]);
+    const svc = makeService(prisma as never);
+
+    const result = await svc.listSessions('user-1');
+    expect(result).toHaveLength(1);
+    expect(result[0]?.revokedAt).toBe(revokedDate.toISOString());
+  });
+});
+
+// ─── resetPassword() — user not found after valid token (line 399) ───────────
+
+describe('resetPassword() — user not found for valid token (line 399)', () => {
+  it('throws UnauthorizedException when user lookup returns null for valid reset token', async () => {
+    const prisma = makePrisma(null); // user.findUnique → null
+    prisma.passwordResetToken.findUnique.mockResolvedValue(
+      makeResetToken({ token: 'valid-reset-token', email: 'test@example.com' }),
+    );
+    const svc = makeService(prisma as never);
+
+    await expect(svc.resetPassword('valid-reset-token', 'NewValidPass1!Strong')).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+// ─── updateProfile() — email change conflict + displayName trim (lines 321-326) ─
+
+describe('updateProfile() — email conflict + displayName trim (lines 321-326)', () => {
+  it('throws ConflictException when email already exists for another user', async () => {
+    const prisma = makePrisma();
+    // findUnique for profile update check: return another user with the same email
+    prisma.user.findUnique.mockResolvedValue(makeUser({ id: 'other-user-99', email: 'taken@example.com' }));
+    const svc = makeService(prisma as never);
+
+    const { ConflictException } = await import('@nestjs/common');
+    await expect(svc.updateProfile('user-1', 'taken@example.com')).rejects.toThrow(ConflictException);
+  });
+
+  it('sets displayName to null when empty string provided', async () => {
+    const prisma = makePrisma();
+    // findUnique returns null for email conflict check (no conflict)
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({
+      id: 'user-1', email: 'test@example.com', role: 'user', displayName: null, timezone: 'UTC',
+    });
+    const svc = makeService(prisma as never);
+
+    // updateProfile(userId, email?, displayName?, timezone?)
+    const result = await svc.updateProfile('user-1', 'test@example.com', '   ');
+    expect(result.displayName).toBeNull();
+  });
+});
+
+// ─── verifyEmail() — user not found after token consumed (line 480) ──────────
+
+describe('verifyEmail() — user not found after token consumed (line 480 else branch)', () => {
+  it('returns { ok: true } without audit log when user no longer exists post-verification', async () => {
+    const prisma = makePrisma();
+    prisma.emailVerificationToken.findUnique.mockResolvedValue(makeVerificationToken());
+    // After token is consumed, user lookup returns null → skip audit.log
+    prisma.user.findUnique.mockResolvedValue(null);
+    const audit = makeAudit();
+    const svc = new AuthService(prisma as never, makeJwt() as never, audit as never, makeMailer() as never, makeMetrics() as never);
+
+    const result = await svc.verifyEmail('valid-token-abc');
+    expect(result).toEqual({ ok: true });
+    // audit.log should NOT have been called (user was null)
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+});

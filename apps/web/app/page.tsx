@@ -1,169 +1,449 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { FadeIn } from "./components/FadeIn";
 import { GradientText } from "./components/GradientText";
-import { LocaleSwitcher } from "./components/LocaleSwitcher";
-import { useI18n } from "../components/i18n-provider";
+import { Badge } from "./components/Badge";
 import {
   Activity,
+  AlertTriangle,
+  ArrowRight,
   Bell,
-  GitBranch,
+  Check,
+  Chrome,
+  ExternalLink,
+  Github,
   Globe,
-  Lock,
+  Heart,
+  LayoutDashboard,
   Monitor,
-  Package,
+  Search,
+  Server,
   Shield,
-  Zap,
+  Terminal,
+  X,
 } from "lucide-react";
+
+/* ────────────────────────────────────────────────────────────
+   Data
+   ──────────────────────────────────────────────────────────── */
+
+const navLinks = [
+  { label: "Features", href: "#features" },
+  { label: "How it Works", href: "#how" },
+  { label: "Status Pages", href: "#demo" },
+  { label: "Changelog", href: "https://github.com/No749ah/PulseDock/releases" },
+];
+
+const stats = [
+  { value: "1 300+", label: "Tools Tracked" },
+  { value: "20+", label: "Widgets" },
+  { value: "6", label: "Alert Channels" },
+  { value: "100%", label: "Free" },
+];
 
 const features = [
   {
     icon: Activity,
-    title: "Real-time Monitoring",
-    description: "Track version changes across all your apps with live status updates and instant notifications.",
+    title: "Version Intelligence",
+    description:
+      "Automatic version tracking for 1 300+ self-hosted tools. Know instantly when a new release drops.",
   },
   {
-    icon: GitBranch,
-    title: "Version Intelligence",
-    description: "Automatic changelog summaries and semantic version tracking for every dependency.",
+    icon: Server,
+    title: "Uptime Monitoring",
+    description:
+      "HTTP, TCP & ping checks with configurable intervals. Sub-second latency detection worldwide.",
+  },
+  {
+    icon: LayoutDashboard,
+    title: "Status Pages",
+    description:
+      "Beautiful, public-facing status pages you can share with your team or stakeholders.",
   },
   {
     icon: Bell,
-    title: "Smart Alerts",
-    description: "Get notified through email, Discord, Slack, or webhooks when critical updates land.",
+    title: "Smart Alerting",
+    description:
+      "Get notified via Email, Discord, Slack, Telegram, Webhooks, or Push — your choice.",
   },
   {
-    icon: Globe,
-    title: "Public Status Pages",
-    description: "Share beautiful, real-time status pages with your team or stakeholders.",
+    icon: AlertTriangle,
+    title: "Incident Management",
+    description:
+      "Create, track, and resolve incidents with real-time status updates and post-mortems.",
   },
   {
-    icon: Shield,
-    title: "Security First",
-    description: "Detect vulnerable versions instantly. Never miss a critical security patch.",
+    icon: Search,
+    title: "Tool Registry",
+    description:
+      "Browse 1 300+ self-hosted tools. Find alternatives, compare features, track new releases.",
   },
   {
-    icon: Package,
-    title: "Self-Hosted",
-    description: "Your data stays yours. Deploy on your infrastructure with Docker in minutes.",
+    icon: Chrome,
+    title: "Browser Extension",
+    description:
+      "Check service status and version info right from your browser toolbar. Zero context switching.",
+  },
+  {
+    icon: Terminal,
+    title: "CLI Tool",
+    description:
+      "Manage monitors, check status, and trigger incidents from your terminal. Built for automation.",
   },
 ];
 
-const stats = [
-  { value: "< 1s", labelKey: "landing.checkLatency" },
-  { value: "99.9%", labelKey: "landing.uptimeSla" },
-  { value: "∞", labelKey: "landing.monitorCount" },
-  { value: "0", labelKey: "landing.lockIn" },
-] as const;
+const steps = [
+  {
+    number: "01",
+    title: "Add Your Services",
+    description:
+      "Point PulseDock at your apps — HTTP endpoints, Docker containers, Git repos. One click or a single CLI command.",
+  },
+  {
+    number: "02",
+    title: "Get Alerts Instantly",
+    description:
+      "PulseDock monitors 24/7 and notifies you the moment something changes, breaks, or needs attention.",
+  },
+  {
+    number: "03",
+    title: "Share Your Status",
+    description:
+      "Publish beautiful status pages for your team, users, or stakeholders. Always up-to-date, zero effort.",
+  },
+];
+
+const demoServices = [
+  { name: "API Gateway", uptime: "99.98%" },
+  { name: "Web Application", uptime: "100%" },
+  { name: "Database Cluster", uptime: "99.99%" },
+  { name: "CDN / Assets", uptime: "100%" },
+];
+
+const comparisonFeatures = [
+  { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
+  { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
+  { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (1 300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
+  { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
+  { label: "Browser Extension", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "CLI Tool", pulsedock: true, uptimeKuma: false, betterStack: true, statuspage: false },
+  { label: "100% Free", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
+];
+
+const footerLinks = {
+  Product: [
+    { label: "Features", href: "#features" },
+    { label: "Status Pages", href: "#demo" },
+    { label: "Pricing", href: "#" },
+    { label: "Changelog", href: "https://github.com/No749ah/PulseDock/releases" },
+  ],
+  Resources: [
+    { label: "Documentation", href: "https://github.com/No749ah/PulseDock#readme" },
+    { label: "GitHub", href: "https://github.com/No749ah/PulseDock" },
+    { label: "Community", href: "https://github.com/No749ah/PulseDock/discussions" },
+    { label: "Report a Bug", href: "https://github.com/No749ah/PulseDock/issues" },
+  ],
+  Legal: [
+    { label: "MIT License", href: "https://github.com/No749ah/PulseDock/blob/main/LICENSE" },
+    { label: "Privacy", href: "#" },
+    { label: "Terms", href: "#" },
+  ],
+};
+
+/* ────────────────────────────────────────────────────────────
+   Component
+   ──────────────────────────────────────────────────────────── */
 
 export default function LandingPage() {
-  const { t } = useI18n();
-
   return (
     <main className="min-h-screen overflow-hidden">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border backdrop-blur-xl bg-bg/70">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 h-16">
-          <div className="flex items-center gap-2">
-            <Monitor className="w-5 h-5 text-accent" />
-            <span className="font-semibold text-lg tracking-tight">PulseDock</span>
-          </div>
+      {/* ─── Navigation ─── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border backdrop-blur-xl bg-bg/60">
+        <div className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Monitor className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
+            <span className="font-bold text-lg tracking-tight">PulseDock</span>
+          </Link>
+
+          {/* Nav Links */}
           <div className="hidden md:flex items-center gap-8 text-sm text-text-secondary">
-            <a href="#features" className="hover:text-text-primary transition-colors">{t("landing.navFeatures")}</a>
-            <a href="#how-it-works" className="hover:text-text-primary transition-colors">{t("landing.navHowItWorks")}</a>
-            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">{t("common.github")}</a>
+            {navLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                className="hover:text-text-primary transition-colors"
+                {...(link.href.startsWith("http")
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
-          <div className="flex items-center gap-3">
-            <LocaleSwitcher compact />
-            <Link href="/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-              {t("landing.signIn")}
-            </Link>
-            <Link href="/login" className="text-sm bg-accent hover:bg-accent-hover text-bg font-medium px-4 py-2 rounded-lg transition-colors">
-              {t("landing.getStarted")}
-            </Link>
-          </div>
+
+          {/* CTA */}
+          <Link
+            href="/login"
+            className="text-sm bg-accent hover:bg-accent-hover text-bg font-semibold px-5 py-2 rounded-lg transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative pt-32 pb-20 md:pt-44 md:pb-32">
-        {/* Background glow */}
+      {/* ─── Hero ─── */}
+      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32">
+        {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-20%] left-[10%] w-[600px] h-[600px] rounded-full bg-accent/5 blur-[120px]" />
-          <div className="absolute top-[-10%] right-[10%] w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[120px]" />
+          <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] animate-blob" />
+          <div className="absolute top-[5%] right-[10%] w-64 h-64 md:w-[450px] md:h-[450px] rounded-full bg-purple-500/8 blur-[100px] animate-blob animation-delay-2000" />
+          <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] animate-blob animation-delay-4000" />
         </div>
 
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
+        <div className="relative mx-auto max-w-5xl px-6 text-center">
           <FadeIn>
-            <div className="inline-flex items-center gap-2 bg-surface border border-border rounded-full px-4 py-1.5 text-sm text-text-secondary mb-8">
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              {t("landing.heroBadge")}
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={0.1}>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
-              {t("landing.heroTitleLine1")}
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] mb-6">
+              <span className="animated-gradient-text">
+                Version Intelligence
+              </span>
               <br />
-              apps <GradientText>{t("landing.heroTitleAccent")}</GradientText>
+              <span className="animated-gradient-text">
+                &amp; Uptime Monitoring
+              </span>
+              <br />
+              <span className="text-text-primary">for the Modern Stack</span>
             </h1>
           </FadeIn>
 
-          <FadeIn delay={0.2}>
+          <FadeIn delay={0.1}>
             <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              {t("landing.heroDescription")}
+              Monitor 1 300+ self-hosted tools, track versions, build beautiful
+              status pages. Open source, self-hosted, free.
             </p>
           </FadeIn>
 
-          <FadeIn delay={0.3}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
-                {t("landing.startMonitoring")}
+          <FadeIn delay={0.2}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+              <Link
+                href="/login"
+                className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-base flex items-center gap-2"
+              >
+                Get Started Free <ArrowRight className="w-4 h-4" />
               </Link>
-              <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base">
-                {t("landing.viewOnGithub")}
+              <a
+                href="#how"
+                className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base"
+              >
+                See How It Works
               </a>
             </div>
           </FadeIn>
 
-          {/* Dashboard preview */}
-          <FadeIn delay={0.5}>
-            <div className="mt-16 md:mt-24 relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent z-10 pointer-events-none" />
-              <div className="rounded-2xl border border-border bg-surface p-1.5 shadow-2xl shadow-black/50">
-                <div className="rounded-xl bg-surface-elevated overflow-hidden">
-                  {/* Mock dashboard header */}
-                  <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-danger/60" />
-                      <div className="w-3 h-3 rounded-full bg-warning/60" />
-                      <div className="w-3 h-3 rounded-full bg-success/60" />
-                    </div>
-                    <div className="flex-1 text-center text-xs text-text-muted">pulsedock.app/dashboard</div>
+          <FadeIn delay={0.3}>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Badge variant="success">
+                ✦ Open Source
+              </Badge>
+              <Badge variant="default">
+                ✦ Self-Hosted
+              </Badge>
+              <Badge variant="success">
+                ✦ Free Forever
+              </Badge>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ─── Stats Bar ─── */}
+      <section className="py-16 border-y border-border bg-surface/40">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+            {stats.map((stat, i) => (
+              <FadeIn key={stat.label} delay={i * 0.08}>
+                <div className="text-center">
+                  <div className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
+                    {stat.value}
                   </div>
-                  {/* Mock dashboard content */}
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{t("landing.monitors")}</span>
-                      <span className="text-xs text-text-muted">{t("landing.lastChecked")}</span>
-                    </div>
-                    {[
-                      { name: "next@16.1.6", status: "up-to-date", color: "bg-success" },
-                      { name: "prisma@7.4.0", status: "update available", color: "bg-warning" },
-                      { name: "nestjs@11.1.6", status: "up-to-date", color: "bg-success" },
-                      { name: "react@19.2.0", status: "up-to-date", color: "bg-success" },
-                    ].map((item) => (
-                      <div key={item.name} className="flex items-center justify-between py-2 px-3 rounded-lg bg-bg/50">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                          <span className="text-sm font-mono">{item.name}</span>
-                        </div>
-                        <span className="text-xs text-text-muted">{item.status}</span>
+                  <div className="text-sm text-text-muted mt-2 uppercase tracking-wider">
+                    {stat.label}
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Features Grid ─── */}
+      <section id="features" className="py-24 md:py-32">
+        <div className="mx-auto max-w-6xl px-6">
+          <FadeIn>
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+                Everything you need to{" "}
+                <GradientText from="#58a6ff" to="#a78bfa">
+                  stay ahead
+                </GradientText>
+              </h2>
+              <p className="text-text-secondary text-lg max-w-xl mx-auto">
+                A complete toolkit for monitoring, alerting, and sharing the
+                health of your infrastructure.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features.map((feature, i) => (
+              <FadeIn key={feature.title} delay={i * 0.06}>
+                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 transition-all duration-300 h-full">
+                  <feature.icon className="w-9 h-9 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-base font-semibold mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-text-secondary text-sm leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── How It Works ─── */}
+      <section id="how" className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-4xl px-6">
+          <FadeIn>
+            <div className="text-center mb-20">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+                Up and running in{" "}
+                <GradientText from="#3fb950" to="#58a6ff">
+                  three steps
+                </GradientText>
+              </h2>
+            </div>
+          </FadeIn>
+
+          <div className="relative">
+            {/* Connecting line */}
+            <div className="hidden md:block absolute left-[39px] top-8 bottom-8 w-px bg-gradient-to-b from-accent/40 via-accent/20 to-transparent" />
+
+            <div className="space-y-16 md:space-y-20">
+              {steps.map((step, i) => (
+                <FadeIn key={step.number} delay={i * 0.15}>
+                  <div className="flex gap-6 md:gap-10 items-start">
+                    {/* Number */}
+                    <div className="relative shrink-0">
+                      <div className="w-20 h-20 rounded-2xl bg-surface border border-border flex items-center justify-center">
+                        <span className="text-3xl font-bold text-accent">
+                          {step.number}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                    {/* Content */}
+                    <div className="pt-2">
+                      <h3 className="text-xl md:text-2xl font-semibold mb-3">
+                        {step.title}
+                      </h3>
+                      <p className="text-text-secondary text-base leading-relaxed max-w-lg">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Demo Preview ─── */}
+      <section id="demo" className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-4xl px-6">
+          <FadeIn>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+                Beautiful{" "}
+                <GradientText from="#58a6ff" to="#3fb950">
+                  Status Pages
+                </GradientText>
+              </h2>
+              <p className="text-text-secondary text-lg max-w-xl mx-auto">
+                Share real-time system health with your team or the world.
+                Always on, always accurate.
+              </p>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.15}>
+            <div className="rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40 overflow-hidden">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface-elevated">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-danger/50" />
+                  <div className="w-3 h-3 rounded-full bg-warning/50" />
+                  <div className="w-3 h-3 rounded-full bg-success/50" />
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="bg-bg/60 rounded-md px-3 py-1.5 text-xs text-text-muted text-center font-mono">
+                    status.yourcompany.com
+                  </div>
+                </div>
+              </div>
+
+              {/* Status page content */}
+              <div className="p-6 md:p-8 space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">System Status</h3>
+                    <p className="text-sm text-text-muted mt-0.5">
+                      Updated just now
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-full px-4 py-1.5">
+                    <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                    <span className="text-sm font-medium text-success">
+                      All Systems Operational
+                    </span>
+                  </div>
+                </div>
+
+                {/* Services */}
+                <div className="space-y-3">
+                  {demoServices.map((service) => (
+                    <div
+                      key={service.name}
+                      className="flex items-center justify-between py-3 px-4 rounded-xl bg-bg/50 border border-border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-2.5 h-2.5 rounded-full bg-success" />
+                        <span className="text-sm font-medium">
+                          {service.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {/* Mini uptime bars */}
+                        <div className="hidden sm:flex items-end gap-[2px] h-4">
+                          {Array.from({ length: 30 }, (_, j) => (
+                            <div
+                              key={j}
+                              className="w-[3px] rounded-full bg-success/60"
+                              style={{ height: `${60 + Math.random() * 40}%` }}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-text-muted tabular-nums w-14 text-right">
+                          {service.uptime}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -171,133 +451,210 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-16 border-y border-border">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, i) => (
-              <FadeIn key={stat.labelKey} delay={i * 0.1}>
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-text-primary">{stat.value}</div>
-                  <div className="text-sm text-text-muted mt-1">{t(stat.labelKey)}</div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 md:py-32">
-        <div className="mx-auto max-w-6xl px-6">
+      {/* ─── Comparison ─── */}
+      <section className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-5xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-                {t("landing.sectionTitleLine1")}
-                <br />
-                <GradientText from="#3fb950" to="#58a6ff">{t("landing.sectionTitleAccent")}</GradientText>
+                Why{" "}
+                <GradientText from="#58a6ff" to="#a78bfa">
+                  PulseDock
+                </GradientText>
+                ?
               </h2>
-              <p className="text-text-secondary text-lg max-w-xl mx-auto">
-                {t("landing.sectionDescription")}
+              <p className="text-text-secondary text-lg">
+                See how we compare to the alternatives.
               </p>
             </div>
           </FadeIn>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((feature, i) => (
-              <FadeIn key={feature.title} delay={i * 0.08}>
-                <div className="group p-6 rounded-2xl border border-border bg-surface hover:bg-surface-elevated hover:border-border-hover transition-all duration-300">
-                  <feature.icon className="w-10 h-10 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" className="py-24 md:py-32 border-t border-border">
-        <div className="mx-auto max-w-4xl px-6">
-          <FadeIn>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-center mb-16">
-              {t("landing.stepsTitle")} <GradientText>{t("landing.stepsTitleAccent")}</GradientText>
-            </h2>
-          </FadeIn>
-
-          <div className="space-y-12">
-            {[
-              {
-                step: "01",
-                title: "Deploy",
-                description: "Clone the repo, configure your .env, and run docker compose up. That's it.",
-                code: "docker compose up -d",
-              },
-              {
-                step: "02",
-                title: "Add Monitors",
-                description: "Point PulseDock at your apps — HTTP endpoints, Git repos, Docker images. Configure check intervals and alert thresholds.",
-                code: 'curl -X POST /api/v1/monitors -d \'{"name": "my-app", "type": "HTTP", "target": "https://my-app.com"}\'',
-              },
-              {
-                step: "03",
-                title: "Relax",
-                description: "PulseDock watches your stack 24/7. Get notified the moment something changes, breaks, or needs your attention.",
-                code: "# You'll get a notification. Go grab a coffee.",
-              },
-            ].map((item, i) => (
-              <FadeIn key={item.step} delay={i * 0.15}>
-                <div className="flex gap-8 items-start">
-                  <div className="text-5xl font-bold text-text-muted/30 tabular-nums select-none">{item.step}</div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                    <p className="text-text-secondary mb-4">{item.description}</p>
-                    <div className="bg-surface-elevated border border-border rounded-xl p-4 font-mono text-sm text-text-secondary overflow-x-auto">
-                      <span className="text-text-muted select-none">$ </span>{item.code}
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-24 md:py-32">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <FadeIn>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              {t("landing.ctaTitleLine1")}
-              <br />
-              <GradientText>{t("landing.ctaTitleAccent")}</GradientText>
-            </h2>
-            <p className="text-text-secondary text-lg mb-10 max-w-xl mx-auto">
-              {t("landing.ctaDescription")}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/login" className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.3)] text-base">
-                {t("landing.ctaGetStarted")}
-              </Link>
-              <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base flex items-center gap-2">
-                <Zap className="w-4 h-4" /> {t("landing.starOnGithub")}
-              </a>
+          <FadeIn delay={0.1}>
+            <div className="rounded-2xl border border-border bg-surface/60 backdrop-blur-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-4 px-6 font-medium text-text-muted">
+                        Feature
+                      </th>
+                      <th className="py-4 px-4 font-semibold text-accent text-center">
+                        PulseDock
+                      </th>
+                      <th className="py-4 px-4 font-medium text-text-secondary text-center">
+                        Uptime Kuma
+                      </th>
+                      <th className="py-4 px-4 font-medium text-text-secondary text-center">
+                        Better Stack
+                      </th>
+                      <th className="py-4 px-4 font-medium text-text-secondary text-center hidden sm:table-cell">
+                        Statuspage.io
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparisonFeatures.map((row) => (
+                      <tr
+                        key={row.label}
+                        className="border-b border-border/50 last:border-0"
+                      >
+                        <td className="py-3.5 px-6 text-text-primary font-medium">
+                          {row.label}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {row.pulsedock ? (
+                            <Check className="w-5 h-5 text-success mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-text-muted/40 mx-auto" />
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {row.uptimeKuma ? (
+                            <Check className="w-5 h-5 text-success/60 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-text-muted/40 mx-auto" />
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {row.betterStack ? (
+                            <Check className="w-5 h-5 text-success/60 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-text-muted/40 mx-auto" />
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center hidden sm:table-cell">
+                          {row.statuspage ? (
+                            <Check className="w-5 h-5 text-success/60 mx-auto" />
+                          ) : (
+                            <X className="w-5 h-5 text-text-muted/40 mx-auto" />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </FadeIn>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-12">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-text-muted text-sm">
-            <Monitor className="w-4 h-4" />
-            <span>© {new Date().getFullYear()} PulseDock</span>
+      {/* ─── Open Source Banner ─── */}
+      <section className="py-20 md:py-28 border-t border-border">
+        <div className="mx-auto max-w-4xl px-6">
+          <FadeIn>
+            <div className="relative rounded-3xl border border-border bg-surface/60 backdrop-blur-sm p-10 md:p-16 text-center overflow-hidden">
+              {/* Subtle glow */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-[-50%] left-[20%] w-[400px] h-[400px] rounded-full bg-accent/5 blur-[100px]" />
+              </div>
+
+              <div className="relative">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-elevated border border-border mb-6">
+                  <Heart className="w-8 h-8 text-accent" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                  Open Source &amp; Free Forever
+                </h2>
+                <p className="text-text-secondary text-lg max-w-lg mx-auto mb-8">
+                  PulseDock is MIT licensed. Run it on your own infrastructure,
+                  modify it, contribute — it&apos;s yours.
+                </p>
+                <a
+                  href="https://github.com/No749ah/PulseDock"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-surface-elevated hover:bg-surface-hover border border-border hover:border-border-hover text-text-primary font-semibold px-6 py-3 rounded-xl transition-all text-base"
+                >
+                  <Github className="w-5 h-5" />
+                  View on GitHub
+                  <ExternalLink className="w-4 h-4 text-text-muted" />
+                </a>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ─── Final CTA ─── */}
+      <section className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-3xl px-6 text-center">
+          <FadeIn>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              Ready to get started?
+            </h2>
+            <p className="text-text-secondary text-lg mb-10 max-w-xl mx-auto">
+              Deploy PulseDock in minutes. Monitor your entire stack. Never miss
+              an update again.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-bg font-semibold px-10 py-4 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-lg"
+            >
+              Get Started Free <ArrowRight className="w-5 h-5" />
+            </Link>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ─── Footer ─── */}
+      <footer className="border-t border-border py-16">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                <Monitor className="w-5 h-5 text-accent" />
+                <span className="font-bold text-lg tracking-tight">
+                  PulseDock
+                </span>
+              </div>
+              <p className="text-sm text-text-muted leading-relaxed">
+                Version intelligence &amp; uptime monitoring for the modern
+                stack. Open source, self-hosted, free.
+              </p>
+            </div>
+
+            {/* Link columns */}
+            {Object.entries(footerLinks).map(([heading, links]) => (
+              <div key={heading}>
+                <h4 className="text-sm font-semibold mb-4 text-text-secondary uppercase tracking-wider">
+                  {heading}
+                </h4>
+                <ul className="space-y-2.5">
+                  {links.map((link) => (
+                    <li key={link.label}>
+                      <a
+                        href={link.href}
+                        className="text-sm text-text-muted hover:text-text-primary transition-colors"
+                        {...(link.href.startsWith("http")
+                          ? { target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <div className="flex items-center gap-6 text-sm text-text-muted">
-            <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-primary transition-colors">{t("common.github")}</a>
-            <Link href="/login" className="hover:text-text-primary transition-colors">{t("common.dashboard")}</Link>
+
+          {/* Copyright */}
+          <div className="pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-text-muted">
+              © {new Date().getFullYear()} PulseDock. MIT License.
+            </p>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com/No749ah/PulseDock"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-muted hover:text-text-primary transition-colors"
+              >
+                <Github className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
       </footer>

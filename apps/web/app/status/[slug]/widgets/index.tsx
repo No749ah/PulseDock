@@ -9,6 +9,9 @@ export interface MonitorSummary {
   lastChecked: string | null;
   latencyMs: number | null;
   message: string | null;
+  folderId?: string | null;
+  folderName?: string | null;
+  tags?: string[];
 }
 
 export interface Widget {
@@ -133,29 +136,57 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
 
 // Current Status Badge — single monitor
 export function CurrentStatusBadge({ widget, monitors }: WidgetProps) {
-  const monitor = monitors.find((m) => m.id === widget.config.monitorId);
-  if (!monitor) {
+  // Support single monitorId or multiple monitorIds
+  const ids = widget.config.monitorIds as string[] | undefined;
+  const singleId = widget.config.monitorId as string | undefined;
+  const selected = ids?.length
+    ? monitors.filter(m => ids.includes(m.id))
+    : singleId
+      ? monitors.filter(m => m.id === singleId)
+      : monitors.slice(0, 1);
+
+  if (selected.length === 0) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
         <span className="text-sm text-text-secondary">No monitor selected</span>
       </div>
     );
   }
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
-      <div>
-        <p className="font-medium text-text-primary">{widget.config.label ?? monitor.name}</p>
-        {monitor.lastChecked && (
-          <p className="mt-0.5 text-xs text-text-secondary">
-            Checked {formatRelative(monitor.lastChecked)}
-          </p>
-        )}
+
+  // Single monitor — detailed badge
+  if (selected.length === 1) {
+    const monitor = selected[0];
+    return (
+      <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+        <div>
+          <p className="font-medium text-text-primary">{widget.config.label ?? monitor.name}</p>
+          {monitor.lastChecked && (
+            <p className="mt-0.5 text-xs text-text-secondary">Checked {formatRelative(monitor.lastChecked)}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <LevelBadge level={monitor.level} />
+          {monitor.latencyMs !== null && (
+            <span className="text-xs tabular-nums text-text-secondary">{monitor.latencyMs}ms</span>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-1">
-        <LevelBadge level={monitor.level} />
-        {monitor.latencyMs !== null && (
-          <span className="text-xs tabular-nums text-text-secondary">{monitor.latencyMs}ms</span>
-        )}
+    );
+  }
+
+  // Multiple monitors — compact list
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {widget.config.label && <p className="text-sm font-semibold text-text-primary mb-2">{widget.config.label as string}</p>}
+      <div className="space-y-1.5">
+        {selected.map(m => (
+          <div key={m.id} className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+            <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+            {m.latencyMs !== null && <span className="text-xs font-mono text-text-secondary">{m.latencyMs}ms</span>}
+            <LevelBadge level={m.level} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -502,6 +533,95 @@ export function Divider() {
   return <hr className="border-border my-2" />;
 }
 
+// ── Group / Multi Widgets ────────────────────────────────────────────────
+
+// Monitor Group — shows monitors grouped by tag or folder
+function MonitorGroup({ widget, monitors }: WidgetProps) {
+  const groupBy = (widget.config.groupBy as string) ?? "folder";
+  const filterTag = widget.config.tag as string | undefined;
+  const filterFolder = widget.config.folderId as string | undefined;
+  const label = widget.config.label as string | undefined;
+
+  let filtered = monitors;
+  if (filterTag) filtered = monitors.filter(m => m.tags?.includes(filterTag));
+  if (filterFolder) filtered = monitors.filter(m => m.folderId === filterFolder);
+
+  // Group monitors
+  const groups = new Map<string, MonitorSummary[]>();
+  for (const m of filtered) {
+    const key = groupBy === "tag"
+      ? (m.tags?.[0] ?? "Untagged")
+      : (m.folderName ?? "Ungrouped");
+    const list = groups.get(key) ?? [];
+    list.push(m);
+    groups.set(key, list);
+  }
+
+  if (groups.size === 0 && filtered.length > 0) {
+    groups.set(label ?? "All Monitors", filtered);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-4">
+      {Array.from(groups.entries()).map(([groupName, items]) => {
+        const allGreen = items.every(m => m.level === "green");
+        const hasRed = items.some(m => m.level === "red");
+        return (
+          <div key={groupName}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`h-2.5 w-2.5 rounded-full ${hasRed ? "bg-danger" : allGreen ? "bg-success" : "bg-warning"}`} />
+              <span className="text-sm font-semibold text-text-primary">{groupName}</span>
+              <span className="text-xs text-text-secondary ml-auto">{items.filter(m => m.level === "green").length}/{items.length} operational</span>
+            </div>
+            <div className="space-y-1">
+              {items.map(m => (
+                <div key={m.id} className="flex items-center gap-2 pl-5">
+                  <div className={`h-1.5 w-1.5 rounded-full ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+                  <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
+                  {m.latencyMs !== null && <span className="text-xs font-mono text-text-secondary">{m.latencyMs}ms</span>}
+                  <span className="text-xs text-text-secondary">{m.lastChecked ? formatRelative(m.lastChecked) : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Multi Status Badges — compact grid of all monitors with status
+function MultiStatusBadges({ widget, monitors }: WidgetProps) {
+  const filterTag = widget.config.tag as string | undefined;
+  const filterFolder = widget.config.folderId as string | undefined;
+  const filterType = widget.config.monitorType as string | undefined;
+  let filtered = monitors;
+  if (filterTag) filtered = filtered.filter(m => m.tags?.includes(filterTag));
+  if (filterFolder) filtered = filtered.filter(m => m.folderId === filterFolder);
+  if (filterType) filtered = filtered.filter(m => m.type === filterType);
+
+  const label = widget.config.label as string | undefined;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        {filtered.map(m => (
+          <div key={m.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+            m.level === "green" ? "border-success/20 bg-success/5" : m.level === "yellow" ? "border-warning/20 bg-warning/5" : "border-danger/20 bg-danger/5"
+          }`}>
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-text-primary truncate">{m.name}</p>
+              {m.latencyMs !== null && <p className="text-[10px] font-mono text-text-secondary">{m.latencyMs}ms</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Version Widgets ──────────────────────────────────────────────────────
 
 function parseVersionFromMessage(msg: string | null): { current: string | null; latest: string | null } {
@@ -644,6 +764,8 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "incident-history": return <IncidentHistory {...props} />;
     case "text-block": return <TextBlock {...props} />;
     case "scheduled-maintenance": return <ScheduledMaintenance {...props} />;
+    case "monitor-group": return <MonitorGroup {...props} />;
+    case "multi-status-badges": return <MultiStatusBadges {...props} />;
     case "version-status-grid": return <VersionStatusGrid {...props} />;
     case "version-check-badge": return <VersionCheckBadge {...props} />;
     case "update-summary": return <UpdateSummary {...props} />;

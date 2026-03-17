@@ -149,10 +149,9 @@ export class StatusPagesService {
     // Fetch monitor overview data for the page owner
     const monitors = await this.prisma.monitor.findMany({
       where: { userId: page.userId, enabled: true },
-      select: {
-        id: true,
-        name: true,
-        type: true,
+      include: {
+        folder: { select: { id: true, name: true } },
+        monitorTags: { include: { tag: { select: { id: true, name: true } } } },
         runs: {
           orderBy: { checkedAt: 'desc' },
           take: 1,
@@ -167,6 +166,9 @@ export class StatusPagesService {
         id: m.id,
         name: m.name,
         type: m.type,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        tags: m.monitorTags.map(t => t.tag.name),
         level: latest?.level ?? 'green',
         lastChecked: latest?.checkedAt ?? null,
         latencyMs: latest?.latencyMs ?? null,

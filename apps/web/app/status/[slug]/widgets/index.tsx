@@ -4483,7 +4483,7 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     .filter(Boolean)
     .join(" ");
 
-  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{content}</div>;
+  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{wrapError(content)}</div>;
 
   if (!href) return wrapped;
 

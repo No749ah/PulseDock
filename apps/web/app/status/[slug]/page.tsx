@@ -225,6 +225,7 @@ export default async function PublicStatusSlugPage({
   const tablet = buildResponsivePlacement(visible, 6);
 
   const now = new Date();
+  const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
 
   return (
     <>
@@ -322,7 +323,7 @@ export default async function PublicStatusSlugPage({
           {/* Footer */}
           <div className="pt-8 text-center text-xs text-text-secondary">
             <span>
-              Last updated: {now.toLocaleTimeString()} ·{" "}
+              Last updated: {lastUpdated} ·{" "}
             </span>
             <span>
               Powered by <span className="font-semibold text-accent">PulseDock</span>

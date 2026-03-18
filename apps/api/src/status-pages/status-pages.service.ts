@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { IncidentStatus } from '@prisma/client';
+import { IncidentStatus, IncidentSeverity, MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { CreateStatusPageDto, UpdateStatusPageDto } from './status-pages.dto';
 import { PageLayout, Widget } from './status-pages.types';
@@ -950,6 +950,278 @@ export class StatusPagesService {
           mttfMs: avgMs(greenDurations),
           recoveryCount: redDurations.length,
           failureCount: greenDurations.filter((_, i) => i < redDurations.length).length,
+          periodDays,
+        };
+      }
+
+      case 'sla-compliance-table': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const defaultTarget = Math.min(Math.max((widget.config.slaTarget as number) ?? 99.9, 0), 100);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+
+        const monitors = await this.prisma.monitor.findMany({
+          where,
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        });
+
+        if (monitors.length === 0) {
+          throw new BadRequestException('Widget missing monitorId(s) config or no monitors found');
+        }
+
+        const rows = await Promise.all(
+          monitors.map(async (m) => {
+            const runs = await this.prisma.monitorRun.findMany({
+              where: { monitorId: m.id, checkedAt: { gte: since } },
+              select: { level: true },
+            });
+            const total = runs.length;
+            const up = runs.filter((r) => r.level === 'green').length;
+            const actual = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+            const target = defaultTarget;
+            const pass = actual >= target;
+            return { monitorId: m.id, name: m.name, target, actual, pass };
+          }),
+        );
+
+        // Sort: failing first, then by actual ascending
+        rows.sort((a, b) => {
+          if (a.pass !== b.pass) return a.pass ? 1 : -1;
+          return a.actual - b.actual;
+        });
+
+        return { rows, periodDays, slaTarget: defaultTarget };
+      }
+
+      case 'uptime-heatmap': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const days = 7;
+        const since = new Date(Date.now() - days * 86_400_000);
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since } },
+          select: { level: true, checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        });
+
+        // Build 7 × 24 grid: [dayOffset 0-6][hour 0-23]
+        // dayOffset 0 = 7 days ago, dayOffset 6 = today
+        const now = new Date();
+        const todayStart = new Date(now);
+        todayStart.setUTCHours(0, 0, 0, 0);
+
+        type SlotStatus = 'green' | 'yellow' | 'red' | 'no-data';
+        const cells: Array<Array<{ green: number; yellow: number; red: number }>> =
+          Array.from({ length: days }, () =>
+            Array.from({ length: 24 }, () => ({ green: 0, yellow: 0, red: 0 })),
+          );
+
+        for (const run of runs) {
+          const d = run.checkedAt as Date;
+          const diffMs = todayStart.getTime() - d.getTime();
+          const diffDays = Math.floor(diffMs / 86_400_000);
+          const dayOffset = days - 1 - diffDays;
+          if (dayOffset < 0 || dayOffset >= days) continue;
+          const hour = d.getUTCHours();
+          const cell = cells[dayOffset][hour];
+          if (run.level === 'green') cell.green++;
+          else if (run.level === 'yellow') cell.yellow++;
+          else if (run.level === 'red') cell.red++;
+        }
+
+        const grid: SlotStatus[][] = cells.map((dayRow, di) => {
+          const dayDate = new Date(todayStart);
+          dayDate.setUTCDate(dayDate.getUTCDate() - (days - 1 - di));
+          return dayRow.map((c) => {
+            const total = c.green + c.yellow + c.red;
+            if (total === 0) return 'no-data';
+            const failRate = (c.yellow + c.red) / total;
+            if (c.red === total) return 'red';
+            if (failRate > 0) return 'yellow';
+            return 'green';
+          });
+        });
+
+        // Build day labels (date strings)
+        const dayLabels: string[] = Array.from({ length: days }, (_, i) => {
+          const d = new Date(todayStart);
+          d.setUTCDate(d.getUTCDate() - (days - 1 - i));
+          return d.toISOString().slice(0, 10);
+        });
+
+        return { monitorId, grid, dayLabels, days, hours: 24 };
+      }
+
+      case 'incident-timeline': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const limit = Math.min(Math.max((widget.config.limit as number) ?? 5, 1), 20);
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const incidentWhere = monitorIds?.length
+          ? {
+              userId,
+              createdAt: { gte: since },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, createdAt: { gte: since } };
+
+        const incidents = await this.prisma.incident.findMany({
+          where: incidentWhere,
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            severity: true,
+            createdAt: true,
+            resolvedAt: true,
+            updates: {
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, body: true, status: true, createdAt: true },
+            },
+            monitors: {
+              include: { monitor: { select: { id: true, name: true } } },
+            },
+          },
+        });
+
+        const result = incidents.map((i) => {
+          const durationMs =
+            i.resolvedAt && i.createdAt
+              ? i.resolvedAt.getTime() - (i.createdAt as Date).getTime()
+              : null;
+          return {
+            id: i.id,
+            title: i.title,
+            status: i.status,
+            severity: i.severity,
+            createdAt: i.createdAt,
+            resolvedAt: i.resolvedAt,
+            durationMs,
+            updates: i.updates.map((u) => ({
+              id: u.id,
+              message: u.body,
+              status: u.status,
+              createdAt: u.createdAt,
+            })),
+            monitors: i.monitors.map((im) => im.monitor),
+          };
+        });
+
+        return { incidents: result, total: result.length, periodDays };
+      }
+
+      case 'ssl-certificate-status': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const singleMonitorId = monitorId;
+
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, type: MonitorType.SSL_CERT, enabled: true }
+          : singleMonitorId
+            ? { userId, id: singleMonitorId, type: MonitorType.SSL_CERT, enabled: true }
+            : { userId, type: MonitorType.SSL_CERT, enabled: true };
+
+        const monitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            target: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+              select: { level: true, latencyMs: true, message: true, checkedAt: true },
+            },
+          },
+          take: 20,
+        });
+
+        if (monitors.length === 0) {
+          throw new BadRequestException('No SSL monitors found — configure monitors of type SSL_CERT');
+        }
+
+        const certs = monitors.map((m) => {
+          const run = m.runs[0];
+          const domain = m.target ?? m.name;
+          const daysRemaining = run?.latencyMs ?? null;
+          const level = run?.level ?? 'green';
+
+          let status: 'valid' | 'expiring-soon' | 'critical' | 'expired' | 'unknown' = 'unknown';
+          if (daysRemaining !== null) {
+            if (daysRemaining <= 0) status = 'expired';
+            else if (daysRemaining < 10) status = 'critical';
+            else if (daysRemaining < 30) status = 'expiring-soon';
+            else status = 'valid';
+          }
+
+          // Parse issuer from message if available
+          let issuer: string | null = null;
+          let expiresAt: string | null = null;
+          if (run?.message) {
+            const issuerMatch = run.message.match(/issuer[:\s]+([^\n,;]+)/i);
+            if (issuerMatch) issuer = issuerMatch[1].trim();
+            const expiresMatch = run.message.match(/expires?[:\s]+([^\n,;]+)/i);
+            if (expiresMatch) expiresAt = expiresMatch[1].trim();
+          }
+
+          return {
+            monitorId: m.id,
+            domain,
+            daysRemaining,
+            expiresAt,
+            issuer,
+            grade: level === 'green' ? 'A' : level === 'yellow' ? 'B' : 'F',
+            status,
+            lastChecked: run?.checkedAt ?? null,
+          };
+        });
+
+        // Sort: expired/critical first
+        certs.sort((a, b) => {
+          const order = { expired: 0, critical: 1, 'expiring-soon': 2, valid: 3, unknown: 4 };
+          return (order[a.status] ?? 4) - (order[b.status] ?? 4);
+        });
+
+        return { certs, total: certs.length };
+      }
+
+      case 'incident-severity-distribution': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const incidentWhere = monitorIds?.length
+          ? {
+              userId,
+              createdAt: { gte: since },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, createdAt: { gte: since } };
+
+        const incidents = await this.prisma.incident.findMany({
+          where: incidentWhere,
+          select: { id: true, severity: true },
+        });
+
+        let critical = 0, major = 0, minor = 0;
+        for (const inc of incidents) {
+          if (inc.severity === IncidentSeverity.CRITICAL) critical++;
+          else if (inc.severity === IncidentSeverity.HIGH) major++;
+          else minor++;
+        }
+
+        return {
+          critical,
+          major,
+          minor,
+          total: incidents.length,
           periodDays,
         };
       }

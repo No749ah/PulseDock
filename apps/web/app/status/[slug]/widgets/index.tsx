@@ -1546,6 +1546,510 @@ function MttrMttfCards({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── New P1 Status-Page Widgets ───────────────────────────────────────────
+
+// SLA Compliance Table
+function SLAComplianceTable({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    rows: Array<{ monitorId: string; name: string; target: number; actual: number; pass: boolean }>;
+    periodDays: number;
+    slaTarget: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  function actualColor(actual: number, target: number): string {
+    const diff = actual - target;
+    if (diff >= 0) return "text-green-400";
+    if (diff >= -1) return "text-yellow-400";
+    return "text-red-400";
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+        <p className="text-sm font-semibold text-text-primary">
+          {label ?? `SLA Compliance — Last ${data.periodDays}d`}
+        </p>
+        <span className="text-xs text-text-secondary">
+          {data.rows.filter((r) => r.pass).length}/{data.rows.length} passing
+        </span>
+      </div>
+      {data.rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-text-secondary">No monitors configured</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/30">
+                <th className="text-left px-4 py-2 text-text-secondary font-medium">Monitor</th>
+                <th className="text-right px-4 py-2 text-text-secondary font-medium">Target</th>
+                <th className="text-right px-4 py-2 text-text-secondary font-medium">Actual</th>
+                <th className="text-center px-4 py-2 text-text-secondary font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {data.rows.map((row) => (
+                <tr key={row.monitorId} className="hover:bg-surface-elevated/20 transition-colors">
+                  <td className="px-4 py-2.5 text-text-primary font-medium truncate max-w-[180px]">{row.name}</td>
+                  <td className="px-4 py-2.5 text-right text-text-secondary tabular-nums">{row.target}%</td>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${actualColor(row.actual, row.target)}`}>
+                    {row.actual.toFixed(2)}%
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {row.pass ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 text-green-400 ring-1 ring-green-500/30 px-2 py-0.5 text-xs font-semibold">
+                        ✓ Pass
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-400 ring-1 ring-red-500/30 px-2 py-0.5 text-xs font-semibold">
+                        ✗ Fail
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Uptime Heatmap — 7 days × 24 hours GitHub-style grid
+function UptimeHeatmap({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    grid: Array<Array<"green" | "yellow" | "red" | "no-data">>;
+    dayLabels: string[];
+    days: number;
+    hours: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  const HOUR_LABELS = [0, 6, 12, 18, 23];
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  function cellColor(status: string): string {
+    if (status === "green") return "bg-green-500/70";
+    if (status === "yellow") return "bg-yellow-500/70";
+    if (status === "red") return "bg-red-500/70";
+    return "bg-border/30";
+  }
+
+  function statusLabel(status: string): string {
+    if (status === "green") return "All OK";
+    if (status === "yellow") return "Some failures";
+    if (status === "red") return "All failed";
+    return "No data";
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  // Map day labels to Mon-Sun labels
+  const dayRows = data.grid.map((row, i) => {
+    const dateStr = data.dayLabels[i] ?? "";
+    const date = dateStr ? new Date(dateStr) : null;
+    const dayIdx = date ? date.getUTCDay() : i; // 0=Sun
+    // Convert Sun=0 to Mon=0 for display
+    const dayLabel = DAY_NAMES[(dayIdx + 6) % 7] ?? `D${i}`;
+    return { row, dayLabel, dateStr };
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full">
+          {/* Hour labels */}
+          <div className="flex pl-10 mb-1">
+            {Array.from({ length: 24 }, (_, h) => (
+              <div key={h} className="flex-1 text-center text-[9px] text-text-secondary/60 leading-none">
+                {HOUR_LABELS.includes(h) ? `${h}` : ""}
+              </div>
+            ))}
+          </div>
+          {/* Grid */}
+          {dayRows.map(({ row, dayLabel, dateStr }, di) => (
+            <div key={di} className="flex items-center mb-0.5">
+              <div className="w-10 text-[10px] text-text-secondary text-right pr-2 shrink-0">{dayLabel}</div>
+              {row.map((status, h) => (
+                <div
+                  key={h}
+                  className={`flex-1 aspect-square rounded-[2px] mx-px ${cellColor(status)} hover:opacity-80 transition-opacity`}
+                  title={`${dateStr} ${String(h).padStart(2, "0")}:00 UTC — ${statusLabel(status)}`}
+                />
+              ))}
+            </div>
+          ))}
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-2 pl-10">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-green-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Up</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-yellow-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Partial</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-red-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Down</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-border/30 inline-block" /><span className="text-[10px] text-text-secondary">No data</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Incident Timeline
+function IncidentTimeline({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    incidents: Array<{
+      id: string;
+      title: string;
+      status: string;
+      severity: string;
+      createdAt: string;
+      resolvedAt: string | null;
+      durationMs: number | null;
+      updates: Array<{ id: string; message: string; status: string; createdAt: string }>;
+      monitors: Array<{ id: string; name: string }>;
+    }>;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function severityColor(s: string): string {
+    if (s === "CRITICAL") return "bg-red-500/15 text-red-400 ring-red-500/30";
+    if (s === "HIGH") return "bg-orange-500/15 text-orange-400 ring-orange-500/30";
+    if (s === "MEDIUM") return "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30";
+    return "bg-blue-500/15 text-blue-400 ring-blue-500/30";
+  }
+
+  function statusIcon(s: string): string {
+    if (s === "RESOLVED") return "✓";
+    if (s === "MONITORING") return "◎";
+    if (s === "IDENTIFIED") return "⚑";
+    return "◉";
+  }
+
+  function formatDuration(ms: number): string {
+    const m = Math.floor(ms / 60000);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.incidents.length === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <span className="text-2xl">✓</span>
+        <p className="text-sm text-green-400 font-medium mt-2">No incidents in the last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "Incident Timeline"}</p>
+        <p className="text-xs text-text-secondary mt-0.5">{data.total} incident{data.total !== 1 ? "s" : ""} · last {data.periodDays}d</p>
+      </div>
+      <div className="divide-y divide-border/30 max-h-[480px] overflow-y-auto">
+        {data.incidents.map((inc) => (
+          <div key={inc.id} className="p-4">
+            {/* Incident header */}
+            <div className="flex items-start gap-3 mb-3">
+              <div className={`mt-0.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${inc.status !== "RESOLVED" ? "bg-red-400 animate-pulse" : "bg-green-400"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-text-primary">{inc.title}</span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${severityColor(inc.severity)}`}>
+                    {inc.severity}
+                  </span>
+                  {inc.durationMs !== null && (
+                    <span className="text-[10px] text-text-secondary">{formatDuration(inc.durationMs)}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-text-secondary">{formatRelative(inc.createdAt)}</span>
+                  {inc.monitors.length > 0 && (
+                    <span className="text-xs text-text-secondary">· {inc.monitors.map((m) => m.name).join(", ")}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Update timeline */}
+            {inc.updates.length > 0 && (
+              <div className="ml-5 pl-3 border-l border-border/40 space-y-2">
+                {inc.updates.map((u) => (
+                  <div key={u.id} className="flex items-start gap-2">
+                    <span className="text-xs mt-0.5 text-text-secondary flex-shrink-0">{statusIcon(u.status)}</span>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wide">{u.status}</span>
+                      <p className="text-xs text-text-primary mt-0.5">{u.message}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{formatRelative(u.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// SSL Certificate Status Widget
+function SSLCertificateStatus({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    certs: Array<{
+      monitorId: string;
+      domain: string;
+      daysRemaining: number | null;
+      expiresAt: string | null;
+      issuer: string | null;
+      grade: string;
+      status: "valid" | "expiring-soon" | "critical" | "expired" | "unknown";
+      lastChecked: string | null;
+    }>;
+    total: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function daysColor(days: number | null, status: string): string {
+    if (status === "expired" || (days !== null && days <= 0)) return "text-red-400";
+    if (status === "critical" || (days !== null && days < 10)) return "text-red-400";
+    if (status === "expiring-soon" || (days !== null && days < 30)) return "text-yellow-400";
+    return "text-green-400";
+  }
+
+  function statusBadge(status: string): { label: string; cls: string } {
+    if (status === "expired") return { label: "Expired", cls: "bg-red-500/15 text-red-400 ring-red-500/30" };
+    if (status === "critical") return { label: "Critical", cls: "bg-red-500/15 text-red-400 ring-red-500/30" };
+    if (status === "expiring-soon") return { label: "Expiring Soon", cls: "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30" };
+    if (status === "valid") return { label: "Valid", cls: "bg-green-500/15 text-green-400 ring-green-500/30" };
+    return { label: "Unknown", cls: "bg-border/15 text-text-secondary ring-border/30" };
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.certs.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No SSL monitors configured</p>
+      </div>
+    );
+  }
+
+  // Single cert — detailed card
+  if (data.certs.length === 1) {
+    const cert = data.certs[0];
+    const badge = statusBadge(cert.status);
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5">
+        {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-semibold text-text-primary">{cert.domain}</p>
+            {cert.issuer && <p className="text-xs text-text-secondary mt-0.5">Issuer: {cert.issuer}</p>}
+            {cert.expiresAt && <p className="text-xs text-text-secondary mt-0.5">Expires: {cert.expiresAt}</p>}
+            {cert.lastChecked && <p className="text-xs text-text-muted mt-0.5">Checked {formatRelative(cert.lastChecked)}</p>}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className={`text-4xl font-bold tabular-nums ${daysColor(cert.daysRemaining, cert.status)}`}>
+              {cert.daysRemaining !== null ? cert.daysRemaining : "—"}
+            </div>
+            <div className="text-xs text-text-secondary mt-0.5">days remaining</div>
+            <div className="mt-2">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${badge.cls}`}>
+                {badge.label}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple certs — table
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "SSL Certificates"}</p>
+      </div>
+      <div className="divide-y divide-border/30">
+        {data.certs.map((cert) => {
+          const badge = statusBadge(cert.status);
+          return (
+            <div key={cert.monitorId} className="flex items-center gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-primary truncate">{cert.domain}</p>
+                {cert.issuer && <p className="text-[10px] text-text-secondary truncate">{cert.issuer}</p>}
+              </div>
+              <div className={`text-lg font-bold tabular-nums flex-shrink-0 ${daysColor(cert.daysRemaining, cert.status)}`}>
+                {cert.daysRemaining !== null ? `${cert.daysRemaining}d` : "—"}
+              </div>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 flex-shrink-0 ${badge.cls}`}>
+                {badge.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Incident Severity Distribution — SVG donut chart
+function IncidentSeverityDistribution({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    critical: number;
+    major: number;
+    minor: number;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.total === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <div className="text-3xl mb-2">✓</div>
+        <p className="text-sm text-green-400 font-semibold">No incidents</p>
+        <p className="text-xs text-text-secondary mt-1">Last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  // SVG donut chart using stroke-dasharray technique
+  const r = 40;
+  const cx = 60;
+  const cy = 60;
+  const circumference = 2 * Math.PI * r;
+
+  const segments = [
+    { key: "critical", label: "Critical", value: data.critical, color: "#ef4444" },
+    { key: "major", label: "Major", value: data.major, color: "#f97316" },
+    { key: "minor", label: "Minor", value: data.minor, color: "#3b82f6" },
+  ].filter((s) => s.value > 0);
+
+  let offset = 0;
+  const arcs = segments.map((seg) => {
+    const fraction = seg.value / data.total;
+    const dash = fraction * circumference;
+    const gap = circumference - dash;
+    const arc = { ...seg, dash, gap, offset };
+    offset += dash;
+    return arc;
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center gap-6">
+        {/* Donut */}
+        <div className="relative flex-shrink-0">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            {/* Track */}
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
+            {/* Segments */}
+            {arcs.map((arc) => (
+              <circle
+                key={arc.key}
+                cx={cx} cy={cy} r={r}
+                fill="none"
+                stroke={arc.color}
+                strokeWidth="14"
+                strokeDasharray={`${arc.dash} ${arc.gap}`}
+                strokeDashoffset={-arc.offset}
+                transform={`rotate(-90 ${cx} ${cy})`}
+                strokeLinecap="butt"
+              />
+            ))}
+            {/* Center total */}
+            <text x={cx} y={cy - 4} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.9)", fontSize: 20, fontWeight: 700 }}>
+              {data.total}
+            </text>
+            <text x={cx} y={cy + 12} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.4)", fontSize: 9 }}>
+              total
+            </text>
+          </svg>
+        </div>
+        {/* Legend */}
+        <div className="space-y-2.5 flex-1">
+          {data.critical > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Critical</span>
+              <span className="text-sm font-bold tabular-nums text-red-400">{data.critical}</span>
+            </div>
+          )}
+          {data.major > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-orange-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Major</span>
+              <span className="text-sm font-bold tabular-nums text-orange-400">{data.major}</span>
+            </div>
+          )}
+          {data.minor > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-blue-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Minor</span>
+              <span className="text-sm font-bold tabular-nums text-blue-400">{data.minor}</span>
+            </div>
+          )}
+          <p className="text-[10px] text-text-muted pt-1 border-t border-border/30">Last {data.periodDays} days</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Group / Multi Widgets ────────────────────────────────────────────────
 
 // Monitor Group — shows monitors grouped by tag or folder
@@ -1894,6 +2398,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "mttr-mttf-cards":
       content = <MttrMttfCards {...props} />;
+      break;
+    case "sla-compliance-table":
+      content = <SLAComplianceTable {...props} />;
+      break;
+    case "uptime-heatmap":
+      content = <UptimeHeatmap {...props} />;
+      break;
+    case "incident-timeline":
+      content = <IncidentTimeline {...props} />;
+      break;
+    case "ssl-certificate-status":
+      content = <SSLCertificateStatus {...props} />;
+      break;
+    case "incident-severity-distribution":
+      content = <IncidentSeverityDistribution {...props} />;
       break;
     case "divider":
       content = <Divider />;

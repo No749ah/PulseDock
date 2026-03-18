@@ -455,10 +455,10 @@
 ### P1 — New Widgets (Status & Uptime)
 
 - [x] **Component Status List** — Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
-- [ ] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
+- [x] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
 - [ ] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
 - [x] **Status History Ribbon** — Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
-- [ ] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
+- [x] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
 - [x] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
 - [ ] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
 - [ ] **Region Status Map** — SVG world map with colored pins per monitor. Config: latitude/longitude or region (EU/US/APAC) per monitor
@@ -467,8 +467,8 @@
 
 ### P1 — New Widgets (Performance)
 
-- [ ] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
-- [ ] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period
+- [x] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
+- [x] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period (implemented 2026-03-18)
 - [ ] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
 - [ ] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
 - [ ] **Throughput Counter** — Checks per hour / requests per minute as live counter
@@ -480,8 +480,8 @@
 
 - [ ] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
 - [ ] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
-- [ ] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
-- [ ] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
+- [x] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
+- [x] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
 - [ ] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
 
 ### P1 — New Widgets (Incidents & Maintenance)
@@ -490,7 +490,7 @@
 - [ ] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
 - [ ] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
 - [ ] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
-- [ ] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
+- [x] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
 - [ ] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
 - [ ] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
 - [ ] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes

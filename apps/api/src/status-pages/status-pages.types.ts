@@ -30,7 +30,12 @@ export type WidgetType =
   | 'latency-percentiles-card'
   | 'downtime-log'
   | 'active-incident-count'
-  | 'mttr-mttf-cards';
+  | 'mttr-mttf-cards'
+  | 'sla-compliance-table'
+  | 'uptime-heatmap'
+  | 'incident-timeline'
+  | 'ssl-certificate-status'
+  | 'incident-severity-distribution';
 
 export interface Widget {
   id: string;

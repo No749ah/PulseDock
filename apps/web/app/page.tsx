@@ -40,10 +40,10 @@ const navLinks = [
 ];
 
 const stats = [
-  { value: "1 300+", label: "Tools Tracked" },
-  { value: "20+", label: "Widgets" },
-  { value: "6", label: "Alert Channels" },
-  { value: "100%", label: "Free" },
+  { value: "1300+", label: "Tools Tracked" },
+  { value: "20+", label: "Widget Types" },
+  { value: "6+", label: "Alert Channels" },
+  { value: "100%", label: "Free & Open Source" },
 ];
 
 const features = [
@@ -51,7 +51,7 @@ const features = [
     icon: Activity,
     title: "Version Intelligence",
     description:
-      "Automatic version tracking for 1 300+ self-hosted tools. Know instantly when a new release drops.",
+      "Automatic version tracking for 1300+ self-hosted tools. Know instantly when a new release drops.",
   },
   {
     icon: Server,
@@ -81,7 +81,7 @@ const features = [
     icon: Search,
     title: "Tool Registry",
     description:
-      "Browse 1 300+ self-hosted tools. Find alternatives, compare features, track new releases.",
+      "Browse 1300+ self-hosted tools. Find alternatives, compare features, track new releases.",
   },
   {
     icon: Globe,
@@ -155,7 +155,7 @@ const comparisonFeatures = [
   { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
-  { label: "Tool Registry (1 300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (1300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
@@ -300,7 +300,7 @@ export default function LandingPage() {
 
           <FadeIn delay={0.1}>
             <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              Monitor 1 300+ self-hosted tools, track versions, build beautiful
+              Monitor 1300+ self-hosted tools, track versions, build beautiful
               status pages. Open source, self-hosted, free.
             </p>
           </FadeIn>
@@ -403,7 +403,7 @@ export default function LandingPage() {
               <FadeIn key={stat.label} delay={i * 0.08}>
                 <div className="text-center">
                   <div className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
-                    {stat.value}
+                    <CountUp value={stat.value} duration={1600} />
                   </div>
                   <div className="text-sm text-text-muted mt-2 uppercase tracking-wider">
                     {stat.label}

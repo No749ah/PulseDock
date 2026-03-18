@@ -26,7 +26,11 @@ export type WidgetType =
   | 'status-history-ribbon'
   | 'uptime-percentage-card'
   | 'service-health-matrix'
-  | 'aggregate-health-score';
+  | 'aggregate-health-score'
+  | 'latency-percentiles-card'
+  | 'downtime-log'
+  | 'active-incident-count'
+  | 'mttr-mttf-cards';
 
 export interface Widget {
   id: string;

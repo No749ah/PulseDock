@@ -1256,4 +1256,133 @@ describe('StatusPagesService', () => {
       expect((data as { score: number }).score).toBe(75); // (100 + 50) / 2
     });
   });
+
+  // ── New P1 Widget Tests (latency-percentiles-card, downtime-log, active-incident-count, mttr-mttf-cards) ──
+
+  describe('getWidgetData — latency-percentiles-card', () => {
+    it('throws BadRequestException when monitorId is missing', async () => {
+      const layout = {
+        widgets: [{ id: 'lp1', type: 'latency-percentiles-card', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'lp1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns percentile data with sampleCount', async () => {
+      const layout = {
+        widgets: [{ id: 'lp2', type: 'latency-percentiles-card', config: { monitorId: 'mon-1', periodDays: 7 }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { latencyMs: 100 },
+        { latencyMs: 200 },
+        { latencyMs: 300 },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'lp2');
+      expect(result).toHaveProperty('p50');
+      expect(result).toHaveProperty('p95');
+      expect(result).toHaveProperty('p99');
+      expect(result.sampleCount).toBe(3);
+      expect(result.periodDays).toBe(7);
+    });
+  });
+
+  describe('getWidgetData — downtime-log', () => {
+    it('returns empty outages when no runs', async () => {
+      const layout = {
+        widgets: [{ id: 'dl1', type: 'downtime-log', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'dl1');
+      expect(result.outages).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('detects outage events from consecutive red runs', async () => {
+      const t0 = new Date('2026-03-18T10:00:00Z');
+      const t1 = new Date('2026-03-18T10:05:00Z');
+      const t2 = new Date('2026-03-18T10:10:00Z');
+      const layout = {
+        widgets: [{ id: 'dl2', type: 'downtime-log', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-1', level: 'red', checkedAt: t0, message: 'Down', monitor: { name: 'API' } },
+        { monitorId: 'mon-1', level: 'red', checkedAt: t1, message: 'Down', monitor: { name: 'API' } },
+        { monitorId: 'mon-1', level: 'green', checkedAt: t2, message: 'OK', monitor: { name: 'API' } },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'dl2');
+      const outages = result.outages as Array<{ monitorName: string; resolvedAt: unknown; durationMs: number }>;
+      expect(outages).toHaveLength(1);
+      expect(outages[0].monitorName).toBe('API');
+      expect(outages[0].resolvedAt).not.toBeNull();
+      expect(outages[0].durationMs).toBe(t2.getTime() - t0.getTime());
+    });
+  });
+
+  describe('getWidgetData — active-incident-count', () => {
+    it('returns 0 count when no active incidents', async () => {
+      const layout = {
+        widgets: [{ id: 'ai1', type: 'active-incident-count', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      // incident.findMany already returns [] in makePrisma
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ai1');
+      expect(result.count).toBe(0);
+      expect(result.incidents).toEqual([]);
+    });
+
+    it('returns correct count when active incidents exist', async () => {
+      const layout = {
+        widgets: [{ id: 'ai2', type: 'active-incident-count', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.incident.findMany = vi.fn().mockResolvedValue([
+        { id: 'inc-1', title: 'API Down', severity: 'critical', status: 'investigating', createdAt: new Date() },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ai2');
+      expect(result.count).toBe(1);
+      expect((result.incidents as unknown[]).length).toBe(1);
+    });
+  });
+
+  describe('getWidgetData — mttr-mttf-cards', () => {
+    it('returns null mttrMs when no outage runs', async () => {
+      const layout = {
+        widgets: [{ id: 'mttf1', type: 'mttr-mttf-cards', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      // Default runs in makePrisma: one green run → no red streaks
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mttf1');
+      expect(result.mttrMs).toBeNull();
+      expect(result.periodDays).toBe(30);
+    });
+
+    it('computes mttrMs from red streaks', async () => {
+      const layout = {
+        widgets: [{ id: 'mttf2', type: 'mttr-mttf-cards', config: { periodDays: 7 }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      const t0 = new Date('2026-03-18T10:00:00Z');
+      const t1 = new Date('2026-03-18T10:10:00Z');
+      const t2 = new Date('2026-03-18T10:20:00Z');
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-1', level: 'green', checkedAt: t0 },
+        { monitorId: 'mon-1', level: 'red', checkedAt: t1 },
+        { monitorId: 'mon-1', level: 'green', checkedAt: t2 },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mttf2');
+      // Red streak: t1→t2 = 10 minutes = 600000ms
+      expect(result.mttrMs).toBe(600000);
+    });
+  });
 });

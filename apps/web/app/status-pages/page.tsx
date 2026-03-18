@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -36,6 +36,8 @@ export default function StatusPagesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [createTitle, setCreateTitle] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const slugInputRef = useRef<HTMLInputElement>(null);
   const [createSlug, setCreateSlug] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -72,8 +74,10 @@ export default function StatusPagesPage() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const titleVal = createTitle.trim();
-    const slugVal = createSlug.trim();
+    // Read from DOM ref as well — 1Password and other autofill tools write directly
+    // to the DOM without triggering React's synthetic onChange, leaving React state stale.
+    const titleVal = (titleInputRef.current?.value ?? createTitle).trim();
+    const slugVal = (slugInputRef.current?.value ?? createSlug).trim();
 
     if (!titleVal) return;
     setCreating(true);
@@ -270,6 +274,7 @@ export default function StatusPagesPage() {
                   Page title <span className="text-red-400">*</span>
                 </label>
                 <input
+                  ref={titleInputRef}
                   type="text"
                   name="title"
                   value={createTitle}
@@ -290,6 +295,7 @@ export default function StatusPagesPage() {
                 <div className={`flex items-center gap-0 overflow-hidden rounded-xl border bg-bg focus-within:border-accent ${createSlug && createSlug.length < 3 ? 'border-danger' : 'border-border'}`}>
                   <span className="border-r border-border bg-surface px-3 py-2.5 text-xs text-text-secondary">/status/</span>
                   <input
+                    ref={slugInputRef}
                     type="text"
                     name="slug"
                     value={createSlug}

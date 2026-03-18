@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { IncidentStatus } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { CreateStatusPageDto, UpdateStatusPageDto } from './status-pages.dto';
 import { PageLayout, Widget } from './status-pages.types';
@@ -748,6 +749,209 @@ export class StatusPagesService {
         const status = down > 0 ? (down > monitors.length * 0.5 ? 'critical' : 'degraded') : degraded > 0 ? 'degraded' : 'healthy';
 
         return { score, total: monitors.length, down, degraded, status, breakdown };
+      }
+
+      case 'latency-percentiles-card': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periodDays = (widget.config.periodDays as number) ?? 7;
+        const currentSince = new Date(Date.now() - periodDays * 86_400_000);
+        const prevSince = new Date(Date.now() - 2 * periodDays * 86_400_000);
+        const [currentRuns, prevRuns] = await Promise.all([
+          this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: currentSince }, latencyMs: { not: null } },
+            select: { latencyMs: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: prevSince, lt: currentSince }, latencyMs: { not: null } },
+            select: { latencyMs: true },
+          }),
+        ]);
+
+        function calcPercentile(runs: { latencyMs: number | null }[], pct: number): number | null {
+          const sorted = runs
+            .map((r) => r.latencyMs as number)
+            .filter((v) => v !== null)
+            .sort((a, b) => a - b);
+          if (sorted.length === 0) return null;
+          const idx = Math.floor(sorted.length * pct);
+          return sorted[Math.min(idx, sorted.length - 1)];
+        }
+
+        return {
+          monitorId,
+          periodDays,
+          p50: calcPercentile(currentRuns, 0.5),
+          p95: calcPercentile(currentRuns, 0.95),
+          p99: calcPercentile(currentRuns, 0.99),
+          prevP50: calcPercentile(prevRuns, 0.5),
+          prevP95: calcPercentile(prevRuns, 0.95),
+          prevP99: calcPercentile(prevRuns, 0.99),
+          sampleCount: currentRuns.length,
+        };
+      }
+
+      case 'downtime-log': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const maxEntries = (widget.config.maxEntries as number) ?? 10;
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const where = monitorIds?.length
+          ? { monitorId: { in: monitorIds }, checkedAt: { gte: since } }
+          : { monitor: { userId }, checkedAt: { gte: since } };
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where,
+          select: { monitorId: true, level: true, checkedAt: true, message: true, monitor: { select: { name: true } } },
+          orderBy: { checkedAt: 'asc' },
+        });
+
+        // Group runs by monitorId
+        const byMonitor = new Map<string, { monitorId: string; monitorName: string; runs: { level: string; checkedAt: Date; message: string | null }[] }>();
+        for (const run of runs) {
+          if (!byMonitor.has(run.monitorId)) {
+            byMonitor.set(run.monitorId, {
+              monitorId: run.monitorId,
+              monitorName: (run.monitor as { name: string }).name,
+              runs: [],
+            });
+          }
+          byMonitor.get(run.monitorId)!.runs.push({
+            level: run.level,
+            checkedAt: run.checkedAt as Date,
+            message: run.message,
+          });
+        }
+
+        // Detect outage events: consecutive red runs per monitor
+        const outages: Array<{
+          monitorId: string;
+          monitorName: string;
+          startedAt: Date;
+          resolvedAt: Date | null;
+          durationMs: number | null;
+          message: string | null;
+        }> = [];
+
+        for (const { monitorId: mId, monitorName, runs: mRuns } of byMonitor.values()) {
+          let inOutage = false;
+          let outageStart: Date | null = null;
+          let outageMsg: string | null = null;
+
+          for (const run of mRuns) {
+            if (run.level === 'red') {
+              if (!inOutage) {
+                inOutage = true;
+                outageStart = run.checkedAt;
+                outageMsg = run.message;
+              }
+            } else {
+              if (inOutage && outageStart) {
+                outages.push({
+                  monitorId: mId,
+                  monitorName,
+                  startedAt: outageStart,
+                  resolvedAt: run.checkedAt,
+                  durationMs: run.checkedAt.getTime() - outageStart.getTime(),
+                  message: outageMsg,
+                });
+                inOutage = false;
+                outageStart = null;
+                outageMsg = null;
+              }
+            }
+          }
+
+          // Ongoing outage
+          if (inOutage && outageStart) {
+            outages.push({
+              monitorId: mId,
+              monitorName,
+              startedAt: outageStart,
+              resolvedAt: null,
+              durationMs: null,
+              message: outageMsg,
+            });
+          }
+        }
+
+        // Sort by startedAt descending
+        outages.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
+        const total = outages.length;
+
+        return {
+          outages: outages.slice(0, maxEntries),
+          total,
+          periodDays,
+        };
+      }
+
+      case 'active-incident-count': {
+        const incidents = await this.prisma.incident.findMany({
+          where: { userId, status: { not: IncidentStatus.RESOLVED } },
+          select: { id: true, title: true, severity: true, status: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        });
+        return {
+          count: incidents.length,
+          incidents,
+        };
+      }
+
+      case 'mttr-mttf-cards': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const where = monitorIds?.length
+          ? { monitorId: { in: monitorIds }, checkedAt: { gte: since } }
+          : { monitor: { userId }, checkedAt: { gte: since } };
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where,
+          select: { monitorId: true, level: true, checkedAt: true },
+          orderBy: [{ monitorId: 'asc' }, { checkedAt: 'asc' }],
+        });
+
+        // Group by monitor
+        const byMonitor = new Map<string, { level: string; checkedAt: Date }[]>();
+        for (const run of runs) {
+          if (!byMonitor.has(run.monitorId)) byMonitor.set(run.monitorId, []);
+          byMonitor.get(run.monitorId)!.push({ level: run.level, checkedAt: run.checkedAt as Date });
+        }
+
+        const redDurations: number[] = [];
+        const greenDurations: number[] = [];
+
+        for (const mRuns of byMonitor.values()) {
+          let streakStart: Date | null = null;
+          let streakColor: 'red' | 'green' | null = null;
+
+          for (const run of mRuns) {
+            const color = run.level === 'red' ? 'red' : 'green';
+            if (color !== streakColor) {
+              if (streakColor !== null && streakStart !== null) {
+                const dur = run.checkedAt.getTime() - streakStart.getTime();
+                if (streakColor === 'red') redDurations.push(dur);
+                else greenDurations.push(dur);
+              }
+              streakStart = run.checkedAt;
+              streakColor = color;
+            }
+          }
+        }
+
+        const avgMs = (arr: number[]): number | null =>
+          arr.length > 0 ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
+
+        return {
+          mttrMs: avgMs(redDurations),
+          mttfMs: avgMs(greenDurations),
+          recoveryCount: redDurations.length,
+          failureCount: greenDurations.filter((_, i) => i < redDurations.length).length,
+          periodDays,
+        };
       }
 
       default:

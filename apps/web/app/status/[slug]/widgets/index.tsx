@@ -1293,6 +1293,259 @@ function AggregateHealthScore({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── New P1 Widgets (latency, downtime, incidents, MTTR/MTTF) ─────────────
+
+// LatencyPercentilesCard — P50/P95/P99 big-number display with trend arrows
+function LatencyPercentilesCard({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    periodDays: number;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+    prevP50: number | null;
+    prevP95: number | null;
+    prevP99: number | null;
+    sampleCount: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  function latencyColor(ms: number | null): string {
+    if (ms === null) return "text-text-secondary";
+    if (ms < 200) return "text-green-400";
+    if (ms < 500) return "text-yellow-400";
+    return "text-red-400";
+  }
+
+  function trend(current: number | null, prev: number | null): React.ReactNode {
+    if (current === null || prev === null) return null;
+    if (current > prev) return <span className="text-red-400 text-sm">↑</span>;
+    if (current < prev) return <span className="text-green-400 text-sm">↓</span>;
+    return null;
+  }
+
+  const cells: Array<{ label: string; value: number | null; prev: number | null }> = [
+    { label: "P50", value: data.p50, prev: data.prevP50 },
+    { label: "P95", value: data.p95, prev: data.prevP95 },
+    { label: "P99", value: data.p99, prev: data.prevP99 },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-3 gap-3">
+        {cells.map((c) => (
+          <div key={c.label} className="text-center">
+            <p className="text-xs font-medium text-text-secondary mb-1">{c.label}</p>
+            <div className="flex items-center justify-center gap-1">
+              <span className={`text-2xl font-bold tabular-nums ${latencyColor(c.value)}`}>
+                {c.value !== null ? `${c.value}ms` : "—"}
+              </span>
+              {trend(c.value, c.prev)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[10px] text-text-muted text-center">
+        {data.sampleCount} samples · last {data.periodDays}d
+      </p>
+    </div>
+  );
+}
+
+// DowntimeLog — chronological outage list with duration, timestamps, ongoing indicator
+function DowntimeLog({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    outages: Array<{
+      monitorId: string;
+      monitorName: string;
+      startedAt: string;
+      resolvedAt: string | null;
+      durationMs: number | null;
+      message: string | null;
+    }>;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  function formatDur(ms: number): string {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "Downtime Log"}</p>
+        <span className="text-xs text-text-secondary">{data.total} event{data.total !== 1 ? "s" : ""} · {data.periodDays}d</span>
+      </div>
+      {data.outages.length === 0 ? (
+        <div className="flex items-center gap-2 px-4 py-6 justify-center">
+          <span className="h-3 w-3 rounded-full bg-green-400" />
+          <span className="text-sm text-green-400 font-medium">No downtime recorded</span>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border/40 max-h-80 overflow-y-auto">
+          {data.outages.map((o, i) => {
+            const ongoing = o.resolvedAt === null;
+            return (
+              <li
+                key={i}
+                className={`flex items-start gap-3 px-4 py-3 ${ongoing ? "border-l-2 border-red-500" : ""}`}
+              >
+                <span
+                  className={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                    ongoing ? "bg-red-400 animate-pulse" : "bg-red-400/60"
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-text-primary truncate">{o.monitorName}</span>
+                    {o.durationMs !== null && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                        {formatDur(o.durationMs)}
+                      </span>
+                    )}
+                    {ongoing && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                        Ongoing
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    {new Date(o.startedAt).toLocaleString()}
+                    {o.resolvedAt && ` → ${new Date(o.resolvedAt).toLocaleString()}`}
+                  </p>
+                  {o.message && <p className="text-xs text-text-muted mt-0.5 truncate">{o.message}</p>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ActiveIncidentCount — animated big-number counter
+function ActiveIncidentCount({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    count: number;
+    incidents: Array<{ id: string; title: string; severity: string; status: string; createdAt: string }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const countColor =
+    data.count === 0 ? "text-green-400" : data.count === 1 ? "text-yellow-400" : "text-red-400";
+  const pulse = data.count > 0;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 text-center">
+      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label ?? "Active Incidents"}</p>}
+      <div className={`text-6xl font-bold tabular-nums ${countColor} ${pulse ? "animate-pulse" : ""}`}>
+        {data.count}
+      </div>
+      <p className="text-xs text-text-secondary mt-2">Active Incidents</p>
+      {data.count === 0 ? (
+        <p className="mt-3 text-sm text-green-400 font-medium">All systems go ✓</p>
+      ) : (
+        <ul className="mt-3 space-y-1 text-left">
+          {data.incidents.slice(0, 3).map((inc) => (
+            <li key={inc.id} className="flex items-center gap-2 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+              <span className="text-text-primary truncate">{inc.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// MttrMttfCards — MTTR + MTTF side-by-side cards
+function MttrMttfCards({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    mttrMs: number | null;
+    mttfMs: number | null;
+    recoveryCount: number;
+    failureCount: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function formatDuration(ms: number | null): string {
+    if (ms === null) return "—";
+    const m = Math.floor(ms / 60000);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h${m % 60 > 0 ? `${m % 60}m` : ""}`;
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        {/* MTTR */}
+        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
+          <p className="text-xs font-medium text-text-secondary mb-1">MTTR</p>
+          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttrMs)}</p>
+          <p className="text-[10px] text-text-muted mt-1">Mean Time to Recovery</p>
+          <p className="text-[10px] text-text-muted">{data.recoveryCount} event{data.recoveryCount !== 1 ? "s" : ""}</p>
+        </div>
+        {/* MTTF */}
+        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
+          <p className="text-xs font-medium text-text-secondary mb-1">MTTF</p>
+          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttfMs)}</p>
+          <p className="text-[10px] text-text-muted mt-1">Mean Time to Failure</p>
+          <p className="text-[10px] text-text-muted">{data.failureCount} event{data.failureCount !== 1 ? "s" : ""}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] text-text-muted text-center">Last {data.periodDays}d</p>
+    </div>
+  );
+}
+
 // ── Group / Multi Widgets ────────────────────────────────────────────────
 
 // Monitor Group — shows monitors grouped by tag or folder
@@ -1629,6 +1882,18 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "aggregate-health-score":
       content = <AggregateHealthScore {...props} />;
+      break;
+    case "latency-percentiles-card":
+      content = <LatencyPercentilesCard {...props} />;
+      break;
+    case "downtime-log":
+      content = <DowntimeLog {...props} />;
+      break;
+    case "active-incident-count":
+      content = <ActiveIncidentCount {...props} />;
+      break;
+    case "mttr-mttf-cards":
+      content = <MttrMttfCards {...props} />;
       break;
     case "divider":
       content = <Divider />;

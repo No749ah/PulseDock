@@ -35,6 +35,11 @@ import {
   GripVertical,
   X,
   Settings,
+  CalendarDays,
+  FileText,
+  Image,
+  Table2,
+  Rss,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -166,6 +171,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
+  { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
+  { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];

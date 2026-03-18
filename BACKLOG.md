@@ -29,9 +29,11 @@
 
 ## In Progress
 
-- [ ] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Show last N checks or last N hours.
+- [ ] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
 
 ## Recently Completed
+
+- [x] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Bar chart: green=ok, red=failed. Dashed avg line + dotted p95 line. Header shows avg/p95 stats. API returns up to 60 (configurable) data points with avgMs/p95Ms/maxMs. 5 new tests. Total: 1341 passing.
 
 - [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown per UTC date bucket. Legend shows Up/Degraded/Down/No-data. Widget shows overall uptime% computed from real check data.
 
@@ -446,7 +448,6 @@
 
 - [x] **Uptime Bar with real data** — Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
 - [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
-- [ ] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Show last N checks or last N hours
 - [ ] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
 
 ### P1 — New Widgets (Status & Uptime)
@@ -950,6 +951,7 @@
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-18 08:20 UTC):** Implemented Response Time Chart with real MonitorRun data. API resolves last N latencyMs values from MonitorRun (configurable via points/periodHours), computes avg/p95/max. Widget renders SVG bar sparkline (green=ok, red=failed), dashed avg + dotted p95 overlay lines, header stats. 5 new tests. Total: 1341 passing. Services restarted, all routes 200, proxy healthy.
 - **This heartbeat (2026-03-18 08:11 UTC):** Implemented Uptime Timeline with real MonitorRun data. API resolves per-day UTC buckets (green/yellow/red/no-data) from MonitorRun records. Widget renders colored squares with tooltips, uptime% in header, legend row. 5 new tests. Total: 1358 passing. Services restarted, all routes 200, proxy healthy.
 - **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.
 - **This heartbeat (2026-03-17 13:02 UTC):** Fixed 4 failing tests (status-pages mock missing incident/maintenanceWindow/recentChecks). Added 5 new findPublic() coverage tests. Branch rotation — merged heartbeat/2026-03-17-maintenance → dev, created heartbeat/2026-03-17-coverage-cleanup. Bumped to v1.0.2 with CHANGELOG. All 1349 tests passing (98.73% stmt, 95.29% branch, 100% line).

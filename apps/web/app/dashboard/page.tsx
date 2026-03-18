@@ -14,6 +14,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from ".
 import { FadeIn } from "../components/FadeIn";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
+import { MiniSparkline } from "../../components/charts";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
 const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
@@ -335,6 +336,7 @@ export default function DashboardPage() {
                         <TableHeader>Name</TableHeader>
                         <TableHeader>Type</TableHeader>
                         <TableHeader>Status</TableHeader>
+                        <TableHeader>Trend</TableHeader>
                         <TableHeader>Last Check</TableHeader>
                         <TableHeader>Actions</TableHeader>
                       </tr>
@@ -370,6 +372,22 @@ export default function DashboardPage() {
                               ) : (
                                 <Badge variant="default">Pending</Badge>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <MiniSparkline
+                                data={runs
+                                  .filter((r) => r.monitorId === monitor.id)
+                                  .slice(0, 20)
+                                  .reverse()
+                                  .map((r) => ({ value: r.latencyMs ?? 0, ok: r.ok }))}
+                                height={28}
+                                color={
+                                  !lastRun || lastRun.ok
+                                    ? "#3fb950"
+                                    : "#f85149"
+                                }
+                                className="w-20"
+                              />
                             </TableCell>
                             <TableCell className="text-text-secondary text-sm">
                               {lastRun ? relativeTime(lastRun.checkedAt) : "Never"}

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -141,6 +141,8 @@ function MonitorsPageInner() {
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -676,6 +678,43 @@ function MonitorsPageInner() {
     return true;
   });
 
+  function handleSort(col: typeof sortBy) {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedMonitors = [...filteredMonitors].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    const runA = runs.find((r) => r.monitorId === a.id);
+    const runB = runs.find((r) => r.monitorId === b.id);
+    switch (sortBy) {
+      case "name":
+        return dir * a.name.localeCompare(b.name);
+      case "status": {
+        const order = { green: 0, yellow: 1, red: 2, undefined: 3 };
+        const la = (runA?.level ?? "undefined") as keyof typeof order;
+        const lb = (runB?.level ?? "undefined") as keyof typeof order;
+        return dir * ((order[la] ?? 3) - (order[lb] ?? 3));
+      }
+      case "latency": {
+        const la = runA?.latencyMs ?? Infinity;
+        const lb = runB?.latencyMs ?? Infinity;
+        return dir * (la - lb);
+      }
+      case "lastChecked": {
+        const ta = runA?.checkedAt ? new Date(runA.checkedAt).getTime() : 0;
+        const tb = runB?.checkedAt ? new Date(runB.checkedAt).getTime() : 0;
+        return dir * (ta - tb);
+      }
+      default:
+        return 0;
+    }
+  });
+
   if (!user) return null;
   if (loading)
     return (
@@ -960,17 +999,33 @@ function MonitorsPageInner() {
                             : <Square className="w-4 h-4" />}
                         </button>
                       </TableHeader>
-                      <TableHeader>Name</TableHeader>
+                      <TableHeader>
+                        <button onClick={() => handleSort("name")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Name
+                          {sortBy === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>
                       <TableHeader className="hidden sm:table-cell">Type</TableHeader>
                       <TableHeader className="hidden md:table-cell">Target</TableHeader>
                       <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
-                      <TableHeader>Status</TableHeader>
+                      <TableHeader>
+                        <button onClick={() => handleSort("status")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Status
+                          {sortBy === "status" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>
                       <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>
+                      <TableHeader>
+                        <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Last Check
+                          {sortBy === "lastChecked" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>
                       <TableHeader>Actions</TableHeader>
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {filteredMonitors.map((monitor) => {
+                    {sortedMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
                         <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>

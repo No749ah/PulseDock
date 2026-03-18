@@ -29,6 +29,14 @@ upstream pulsedock_backend {
     server 192.168.0.202:1234;
 }
 
+# Map upstream Cache-Control to avoid caching 404s on static assets.
+# If the upstream returns no-store (e.g. on a 404), pass it through.
+# Otherwise use immutable for real static asset 200 responses.
+map $upstream_http_cache_control $static_cache_header {
+    "~*no-store"  "no-store";
+    default       "public, max-age=31536000, immutable";
+}
+
 server {
     listen 80;
     listen [::]:80;
@@ -74,9 +82,13 @@ server {
         proxy_max_temp_file_size 2048m;
         proxy_temp_file_write_size 32k;
         
-        # Cache static assets for 1 year (content-hashed filenames)
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        # Pass upstream Cache-Control through, but use immutable for 200s.
+        # The map block above ensures 404s get no-store, 200s get immutable.
+        # NEVER use bare `expires 1y` here — it overrides 404 responses too,
+        # causing browsers/CDNs to permanently cache missing chunk 404s.
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control $static_cache_header;
+        expires off;
         
         # Long timeouts for large files
         proxy_connect_timeout 60s;

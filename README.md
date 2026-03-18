@@ -1,133 +1,157 @@
-# PulseDock
+<div align="center">
+  <h1>⚡ PulseDock</h1>
+  <p><strong>Open-source version intelligence &amp; uptime monitoring for your self-hosted stack</strong></p>
 
-> Open-source version intelligence & uptime monitoring for your applications
+  <p>
+    <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
+    <img src="https://img.shields.io/badge/tests-1440%20passing-brightgreen" alt="Tests: 1440 passing" />
+    <img src="https://img.shields.io/badge/tools-1300%2B-orange" alt="1300+ tools" />
+    <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
+    <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
+  </p>
 
-PulseDock monitors your apps for version updates, security patches, and uptime — then tells you exactly what changed and why it matters.
+  <p>
+    <a href="#quick-start">🚀 Get Started</a> ·
+    <a href="./docs">📖 Docs</a> ·
+    <a href="./docs/ARCHITECTURE.md">🏗️ Architecture</a> ·
+    <a href="https://github.com/No749ah/PulseDock/issues">🐛 Report Bug</a>
+  </p>
 
-**[🚀 Get Started](#quick-start)** • **[📖 Docs](./docs)** • **[🏗️ Architecture](./docs/ARCHITECTURE.md)** • **[🛠️ Development](./docs/WORKFLOW.md)**
+  <img src="https://oc-dev-test.no749ah.com" alt="PulseDock Dashboard" width="800" />
+</div>
+
+---
+
+## What is PulseDock?
+
+PulseDock is a **self-hosted monitoring tool** with a focus on version intelligence. It not only tells you when your services go down — it tells you when they need updating, tracks SLAs, and lets you build beautiful public status pages.
+
+Think **Uptime Kuma + release tracking + status page builder**, all in one package.
+
+### Why PulseDock?
+
+| Feature | PulseDock | Uptime Kuma | Better Stack | Statuspage |
+|---------|-----------|-------------|--------------|------------|
+| Open Source | ✅ | ✅ | ❌ | ❌ |
+| Self-Hosted | ✅ | ✅ | ❌ | ❌ |
+| **Version Tracking** | ✅ | ❌ | ❌ | ❌ |
+| **Tool Registry (1300+)** | ✅ | ❌ | ❌ | ❌ |
+| Status Pages | ✅ | ✅ | ✅ | ✅ |
+| Incident Management | ✅ | ✅ | ✅ | ✅ |
+| CLI Tool | ✅ | ❌ | ✅ | ❌ |
+| 100% Free | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
 ## Features
 
-✨ **Real-time Monitoring**
-- Track version changes across all your apps with live WebSocket status updates
-- Automatic changelog summaries and semantic version tracking
-- Paginated history via v2 API (`GET /v2/checks`, `GET /v2/monitors`)
+### 🔍 Version Intelligence
+- Track version updates for **1300+ self-hosted tools** — auto-configured, no manual setup
+- Providers: GitHub Releases, Docker Hub, npm, PyPI, Cargo, Maven, Helm
+- **PulseDock Agent** for tools without HTTP APIs (Proxmox, pfSense, OpenWRT, Unraid)
+- Semantic version comparison with prerelease awareness
 
-🔔 **Multi-channel Alerts**
-- Email, Discord, Slack, Telegram, and webhook notification channels
-- Per-monitor alert channel assignment
-- Alert test endpoint before saving
+### 📡 Uptime Monitoring
+- **HTTP, TCP, SSL Certificate, Heartbeat** monitor types
+- Configurable intervals, timeouts, confirmation rounds (reduce alert noise)
+- Response time tracking (avg, p95, max) per monitor
+- **Body keyword** and **expected status code** assertions for HTTP monitors
 
-🔒 **Security First**
-- Detect vulnerable versions instantly
-- Helmet, CORS, CSP, rate limiting, input validation on all endpoints
-- JWT sessions (httpOnly cookies), DB-backed revocation, audit trail
+### 📊 Public Status Pages
+- Drag-and-drop status page **editor** with 30+ widget types
+- Widgets: uptime bars, response time heatmaps, incident timelines, SLA summaries, and more
+- Real CSS grid layout (12-column, responsive)
+- Password protection, custom slugs, subscriber email forms
 
-🌐 **Public Status Pages**
-- Shareable real-time status pages — one URL per user, no auth required
+### 🔔 Smart Alerting
+- **6 channels:** Email, Discord, Slack, Telegram, Webhook, Push
+- Per-monitor channel assignment + quiet hours + digest frequency
+- Maintenance windows with automatic alert suppression
+- Incident management with status timeline and severity tracking
 
-🤖 **PulseDock Agent**
-- Lightweight daemon for tools without external HTTP APIs (Proxmox, pfSense, Unraid, OpenWRT, etc.)
-- Deploy via Docker or shell — runs local shell commands, reports versions via API key
-- 16 built-in checks: Proxmox VE, pfSense, Unraid, OpenWRT, VyOS, Docker, PostgreSQL, MySQL, nginx, and more
-- Tab-switcher UI (Docker Run / Compose / Shell) with one-click copy in the setup flow
-- See [AGENT.md](./docs/AGENT.md) for installation and configuration
+### 🛠️ Developer Tools
+- **CLI:** `pulsedock check <url>` — one-shot HTTP checks from the terminal
+- **Browser Extension:** Chrome MV3, one-click monitor creation from any tab
+- **REST API v1 + v2:** Full CRUD, paginated envelopes, Swagger docs at `/api/docs`
+- **Plugin System:** Custom monitor types with typed contracts and sandboxed execution
 
-🔌 **Plugin System**
-- Ship custom monitor types as plugins — typed contracts, sandboxed execution
-- Starter plugin: `http.response-match` (regex matching on response bodies)
-- See [PLUGINS.md](./docs/PLUGINS.md) for packaging and verification
-
-🖥️ **Browser Extension**
-- Chrome MV3 extension for one-click monitor creation from any tab
-- Context-menu integration, API key auth, dark-themed popup
-- See [EXTENSION.md](./docs/EXTENSION.md) for installation
-
-⌨️ **CLI Tool**
-- `pulsedock check <url>` — one-shot HTTP health check from the terminal
-- `pulsedock monitors list/check` — interact with your monitors via API key
-- See [CLI.md](./docs/CLI.md) for usage and configuration
-
-📱 **PWA Support**
-- Install banner (Chromium) and Add-to-Home-Screen hint (iOS)
-- Service worker with offline fallback page
-- Contextual skeleton loading on all major pages
-
-📦 **Self-Hosted**
-- Your data stays yours — deploy on your own infra with Docker or Kubernetes
-- `docker-compose.prod.yml` and `k8s/` manifests included
+### 🔒 Security
+- Helmet, CORS, CSP, strict rate limiting (5 req/min on auth routes)
+- 2FA/TOTP, CSRF protection, account lockout, email verification
+- Audit log with CSV/JSON export, session activity tracking
+- TypeScript strict mode — zero `any` types
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 20+
-- PostgreSQL 16+
-- Redis 7+
-- Docker (for containerized deployment)
+- Node.js 20+, PostgreSQL 16+, Redis 7+
+- Docker (recommended for services)
 
-### Development
+### 1. Clone & Install
 
 ```bash
-# Clone and setup
-git clone git@github.com:No749ah/PulseDock.git
+git clone https://github.com/No749ah/PulseDock.git
 cd PulseDock
 npm install
-
-# Configure environment (see docs/START.md for details)
-cp .env.example .env
-# Edit .env with your database + Redis credentials
-
-# Run services
-npm run restart
-# API: http://localhost:4321
-# Web: http://localhost:1234
 ```
 
-### Production
+### 2. Configure
 
-See [Deployment Guide](./docs/DEPLOYMENT.md).
-Kubernetes manifests are available in [`k8s/`](./k8s).
+```bash
+cp .env.example .env
+# Edit .env — set DATABASE_URL and REDIS_URL (minimum required)
+```
+
+### 3. Start
+
+```bash
+npm run restart
+# API:  http://localhost:4321
+# Web:  http://localhost:1234
+# Docs: http://localhost:4321/api/docs
+```
+
+### 4. Open the app
+Navigate to **http://localhost:1234** and complete the first-run setup.
+
+---
+
+## Docker Compose
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+For production deployment, see **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**.
+Kubernetes manifests are in **[k8s/](./k8s)** — Helm chart in **[helm/](./helm/pulsedock)**.
 
 ---
 
 ## Architecture
 
-PulseDock is built with modern, battle-tested tools:
+```
+PulseDock/
+├── apps/
+│   ├── api/          # NestJS + TypeScript (port 4321)
+│   └── web/          # Next.js 16 + React 19 + Tailwind (port 1234)
+├── packages/
+│   ├── tool-registry/ # 1300+ pre-configured tool definitions
+│   ├── agent/         # Local version reporter daemon
+│   ├── cli/           # @pulsedock/cli terminal tool
+│   ├── extension/     # Chrome MV3 browser extension
+│   └── e2e/           # Playwright end-to-end tests
+├── prisma/            # Schema + migrations
+├── k8s/               # Kubernetes manifests
+├── helm/              # Helm chart
+└── docs/              # Documentation
+```
 
-- **Frontend:** Next.js 16 + React 19 + Tailwind CSS + Framer Motion
-- **Backend:** NestJS + TypeScript + Prisma ORM
-- **Database:** PostgreSQL (versioned data, audit logs)
-- **Cache:** Redis (sessions, real-time updates)
-- **Security:** Helmet, CORS, CSP, rate limiting, structured logging
-- **Monitoring:** Prometheus metrics, health endpoints, request tracking
+**Stack:** NestJS · Next.js 16 · React 19 · Tailwind CSS · Framer Motion · Prisma · PostgreSQL · Redis · Socket.io
 
-Full architecture overview: [ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-
----
-
-## Development Workflow
-
-### Daily Work Cycle
-
-1. **Health Check** — `npm run build && npm audit`
-2. **Pick from BACKLOG** — Open `BACKLOG.md`, work on top item
-3. **Code & Test** — Write code, run `npm run build`, self-test
-4. **Restart Services** — `npm run restart` (API + Web)
-5. **Verify** — Health checks, API tests, browser checks
-6. **Commit & Push** — Conventional messages to heartbeat branch
-
-### Heartbeat Cycle (Twice Daily)
-
-At **~12:00 UTC** and **~00:00 UTC**:
-- Merge `heartbeat/YYYY-MM-DD-*` → `dev`
-- Delete old branch
-- Create new heartbeat branch from `dev`
-
-See [WORKFLOW.md](./docs/WORKFLOW.md) for details.
+Full overview: **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**
 
 ---
 
@@ -135,167 +159,91 @@ See [WORKFLOW.md](./docs/WORKFLOW.md) for details.
 
 ```bash
 # Development
-npm run dev:api      # NestJS with ts-node (watches changes)
-npm run dev:web      # Next.js dev server
-npm run restart      # Kill and restart both services (API then Web)
+npm run dev:api           # NestJS with hot reload
+npm run dev:web           # Next.js dev server
+npm run restart           # Restart both services (API → Web)
 
-# Building
-npm run build        # Build web + API for production
-npm run build -w @pulsedock/cli   # Build CLI
+# Build & Test
+npm run build             # Build everything (web + api + cli + extension)
+npm run test              # Run all tests (1440 tests)
+npm audit                 # Security vulnerability check
 
 # Database
-npm run prisma:generate   # Generate Prisma client
 npm run prisma:migrate    # Run pending migrations
-
-# Testing
-npm run test         # All tests (web TS check + API vitest + CLI vitest)
-npm audit            # Vulnerability check
+npm run prisma:generate   # Regenerate Prisma client
 
 # CLI (after build)
-node packages/cli/dist/index.js check <url>
-node packages/cli/dist/index.js monitors list
-```
-
-## API v1 / v2
-
-PulseDock ships two stable API versions:
-
-| Version | Status | Key features |
-|---------|--------|-------------|
-| `v1` | **stable** | Full CRUD — monitors, alerts, auth, API keys, dashboard, plugins |
-| `v2` | **stable** | Paginated envelopes `{ data, meta }` · filtering · sorting · extended system info |
-
-v2 endpoints: `GET /v2/monitors` · `GET /v2/alert-channels` · `GET /v2/checks` · `GET /v2/system/info` · `GET /v2/system/versions`
-
-Both versions run concurrently — v1 is never removed, v2 is additive only.
-
----
-
-## Project Structure
-
-```
-PulseDock/
-├── apps/
-│   ├── api/              # NestJS API (port 4321)
-│   │   └── src/
-│   │       ├── auth/         # JWT, sessions, invite flow, password reset
-│   │       ├── monitors/     # Monitor CRUD, version checks, export/import
-│   │       ├── alerts/       # Alert channels + multi-channel dispatch
-│   │       ├── checks/       # Scheduler, plugin sandbox, check history
-│   │       ├── apikeys/      # API key management (pdck_* tokens)
-│   │       ├── realtime/     # Socket.io gateway, live events
-│   │       ├── v2/           # V2 API (paginated envelopes, extended endpoints)
-│   │       └── common/       # Prisma, logging, guards, metrics, audit
-│   │
-│   └── web/              # Next.js 16 Frontend (port 1234)
-│       ├── app/
-│       │   ├── components/   # Skeleton, Card, Button, Table, Modal, Badge…
-│       │   ├── dashboard/    # Stats + realtime activity
-│       │   ├── monitors/     # CRUD, plugin config, alert assignment
-│       │   ├── alerts/       # Alert channel management
-│       │   ├── account/      # Profile, API keys, sessions
-│       │   ├── admin/        # User management, audit logs, health widget
-│       │   ├── versions/     # Version matrix
-│       │   ├── offline/      # PWA offline fallback page
-│       │   └── status/       # Public status page
-│       └── components/
-│           ├── app-frame.tsx       # Sidebar nav shell
-│           ├── pwa-install-banner.tsx  # Install prompt
-│           └── sw-register.tsx     # Service worker registration
-│
-├── packages/
-│   ├── cli/              # @pulsedock/cli — terminal tool
-│   │   └── src/          # check/monitors/config commands, 10 unit tests
-│   └── extension/        # @pulsedock/extension — Chrome MV3 extension
-│       └── src/          # popup, background worker, context menu
-│
-├── k8s/                 # Kubernetes manifests (base + prod overlay)
-├── prisma/              # Schema + migrations
-├── scripts/             # Service control (start/stop/restart/stop-api…)
-├── docs/               # Full documentation suite
-├── .env                # Root environment (shared by all apps)
-├── package.json        # npm workspace config
-└── BACKLOG.md          # Development roadmap
+npx pulsedock check <url>          # Quick HTTP health check
+npx pulsedock monitors list        # List your monitors
 ```
 
 ---
 
 ## Documentation
 
-- **[START.md](./docs/START.md)** — Complete setup guide (ports, env vars, databases)
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — System design & tech decisions
-- **[API.md](./docs/API.md)** — API endpoints, auth, error handling
-- **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — Docker Compose + Kubernetes production deployment
-- **[WORKFLOW.md](./docs/WORKFLOW.md)** — Heartbeat cycle, branching, development process
-- **[GITFLOW.md](./docs/GITFLOW.md)** — Git strategy (main/dev/heartbeat branches)
-- **[PROXY_SETUP.md](./docs/PROXY_SETUP.md)** — Nginx reverse proxy configuration
-- **[PLUGINS.md](./docs/PLUGINS.md)** — Plugin contracts, packaging, and verification
-- **[CLI.md](./docs/CLI.md)** — CLI tool usage and configuration
-- **[EXTENSION.md](./docs/EXTENSION.md)** — Browser extension installation and development
-
----
-
-## Tech Stack
-
-| Component | Tech | Version |
-|-----------|------|---------|
-| **Frontend** | Next.js | 16.1.6 |
-| | React | 19.2.0 |
-| | Tailwind CSS | 4.2.1 |
-| | Framer Motion | 12.35.2 |
-| **Backend** | NestJS | 11.1.6 |
-| | Prisma ORM | 7.4.0 |
-| | PostgreSQL | 16+ |
-| | Redis | 7+ |
-| **Node** | Node.js | 20+ |
-
----
-
-## Security
-
-- ✅ Helmet: HTTP security headers (CSP, HSTS, etc.)
-- ✅ Rate limiting: 120 req/min per IP
-- ✅ CORS: Configurable, locked down by default
-- ✅ Input validation: class-validator on all endpoints
-- ✅ JWT: Access + refresh token flow, httpOnly cookies support
-- ✅ Logging: Structured JSON logs (no console.log leaks)
-- ✅ Audit: Comprehensive audit trail for admin actions
-
----
-
-## Testing
-
-- ✅ **89 tests** — Vitest unit + integration tests across 7 test files
-- ✅ Unit tests for Auth, Monitors, Metrics, Alerts, Plugins, CLI
-- ✅ Integration tests for all API endpoints (v1 + v2), auth flows, and input validation
-- ✅ TypeScript strict mode — both apps compile cleanly under `strict: true`
-- ✅ GitHub Actions CI — runs build + lint + tests on every push and PR
-
-```bash
-npm run test          # All tests (web type-check + API vitest)
-npm run test -w @pulsedock/api  # API tests only
-npm run test -w @pulsedock/cli  # CLI tests only
-```
+| Guide | Description |
+|-------|-------------|
+| **[GETTING-STARTED.md](./docs/GETTING-STARTED.md)** | Full setup with env vars, ports, and first-run guide |
+| **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | System design, tech decisions, data flow |
+| **[API.md](./docs/API.md)** | REST API reference (also at `/api/docs`) |
+| **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)** | Docker Compose + Kubernetes production deployment |
+| **[SECURITY.md](./docs/SECURITY.md)** | Security practices, CSP, CSRF, auth hardening |
+| **[STATUS-PAGES.md](./docs/STATUS-PAGES.md)** | Status page builder guide, widget reference |
+| **[VERSION-CHECKS.md](./docs/VERSION-CHECKS.md)** | Version monitoring, provider setup, tool registry |
+| **[TOOL-REGISTRY.md](./docs/TOOL-REGISTRY.md)** | Tool registry format, adding tools, verified tools |
+| **[AGENT.md](./docs/AGENT.md)** | PulseDock Agent for tools without HTTP APIs |
+| **[CLI.md](./docs/CLI.md)** | CLI tool usage and configuration |
+| **[EXTENSION.md](./docs/EXTENSION.md)** | Browser extension installation and development |
+| **[NGINX.md](./docs/NGINX.md)** | Nginx/OpenResty reverse proxy configuration |
+| **[HELM.md](./docs/HELM.md)** | Helm chart values and deployment guide |
+| **[PLUGINS.md](./docs/PLUGINS.md)** | Plugin system: contracts, packaging, verification |
+| **[E2E.md](./docs/E2E.md)** | End-to-end testing with Playwright |
+| **[LOGGING.md](./docs/LOGGING.md)** | Log rotation, aggregation, structured logging |
+| **[CONTRIBUTING.md](./CONTRIBUTING.md)** | Development workflow, PR process, standards |
+| **[CHANGELOG.md](./CHANGELOG.md)** | Release history |
 
 ---
 
 ## Contributing
 
-Contributions welcome! For details, see [WORKFLOW.md](./docs/WORKFLOW.md).
+Contributions are welcome! Please read **[CONTRIBUTING.md](./CONTRIBUTING.md)** first.
+
+```bash
+# Fork, clone, create a branch
+git checkout -b feat/your-feature
+
+# Make changes, ensure tests pass
+npm run build && npm run test
+
+# Commit with conventional messages
+git commit -m "feat: add your feature"
+```
+
+---
+
+## Testing
+
+PulseDock has **1440 tests** across the full stack:
+
+```bash
+npm run test                        # All tests
+npm run test -w @pulsedock/api      # API tests only (1428 tests)
+npm run test -w @pulsedock/agent    # Agent tests only
+npm run test -w @pulsedock/cli      # CLI tests only
+```
+
+Coverage: ~90% line coverage on the API (strict mode throughout).
 
 ---
 
 ## License
 
-Apache License 2.0 — See [LICENSE](./LICENSE) file.
+[MIT License](./LICENSE) — © 2026 [No749ah](https://github.com/No749ah)
 
 ---
 
-## Community
-
-- **GitHub Issues:** [Report bugs or suggest features](https://github.com/No749ah/PulseDock/issues)
-- **GitHub Discussions:** [Ask questions or share ideas](https://github.com/No749ah/PulseDock/discussions)
-
----
-
-**Built with ⚡ by [No749ah](https://github.com/No749ah)**
+<div align="center">
+  <strong>Built with ⚡ by <a href="https://github.com/No749ah">No749ah</a></strong>
+  <br />
+  <sub>Self-hosted · Open source · Free forever</sub>
+</div>

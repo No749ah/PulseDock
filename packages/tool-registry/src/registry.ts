@@ -19302,17 +19302,62 @@ export function getToolById(id: string): ToolRegistryEntry | undefined {
   return TOOL_REGISTRY.find((t) => t.id === id);
 }
 
+/**
+ * Search the tool registry with ranked results.
+ *
+ * Ranking tiers (lower score = higher priority):
+ *  1  — exact name match (case-insensitive)
+ *  2  — name starts with query
+ *  3  — name contains query
+ *  4  — id exact or starts-with
+ *  5  — tags exact match
+ *  6  — tags contains query
+ *  7  — description contains query
+ *
+ * Within the same tier, verified tools sort before unverified, then alphabetical.
+ * Normalises the query: strips leading/trailing whitespace, collapses internal spaces.
+ */
 export function searchTools(query: string, category?: string): ToolRegistryEntry[] {
-  const q = query.toLowerCase().trim();
-  return TOOL_REGISTRY.filter((t) => {
+  const q = query.toLowerCase().trim().replace(/\s+/g, ' ');
+
+  const filtered = TOOL_REGISTRY.filter((t) => {
     const matchesCategory = !category || t.category === category;
     if (!q) return matchesCategory;
-    return matchesCategory && (
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.tags.some((tag) => tag.includes(q)) ||
-      t.id.includes(q)
+    if (!matchesCategory) return false;
+    const name = t.name.toLowerCase();
+    const desc = t.description.toLowerCase();
+    const id = t.id.toLowerCase();
+    return (
+      name === q ||
+      name.startsWith(q) ||
+      name.includes(q) ||
+      id === q ||
+      id.startsWith(q) ||
+      t.tags.some((tag) => tag.toLowerCase() === q || tag.toLowerCase().includes(q)) ||
+      desc.includes(q)
     );
+  });
+
+  if (!q) return filtered;
+
+  return filtered.sort((a, b) => {
+    const score = (t: ToolRegistryEntry): number => {
+      const name = t.name.toLowerCase();
+      const id = t.id.toLowerCase();
+      if (name === q) return 10;
+      if (name.startsWith(q)) return 20;
+      if (name.includes(q)) return 30;
+      if (id === q || id.startsWith(q)) return 40;
+      if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
+      if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
+      return 70; // description match
+    };
+    const sa = score(a);
+    const sb = score(b);
+    if (sa !== sb) return sa - sb;
+    // Within same tier: verified first, then alphabetical
+    if (a.verified !== b.verified) return a.verified ? -1 : 1;
+    return a.name.localeCompare(b.name);
   });
 }
 

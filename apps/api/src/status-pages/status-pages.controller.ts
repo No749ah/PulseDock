@@ -1,8 +1,10 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -98,6 +100,24 @@ export class StatusPagesController {
   @ApiQuery({ name: 'password', required: false, description: 'Password if page is protected' })
   findPublic(@Param('slug') slug: string, @Query('password') password?: string) {
     return this.statusPagesService.findPublic(slug, password);
+  }
+
+  @Post('public/status/:slug/subscribe')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Subscribe to status page updates (public)',
+    description: 'Adds email to subscriber list. Returns 201 on success, 409 if already subscribed.',
+  })
+  @ApiParam({ name: 'slug', description: 'Page slug' })
+  async subscribe(
+    @Param('slug') slug: string,
+    @Body() body: { email: string },
+  ) {
+    const result = await this.statusPagesService.subscribeToStatusPage(slug, body.email);
+    if (result.alreadySubscribed) {
+      throw new ConflictException('Already subscribed');
+    }
+    return { subscribed: true };
   }
 
   @Get('public/status/:slug/widget/:widgetId')

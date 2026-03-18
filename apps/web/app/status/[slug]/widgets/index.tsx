@@ -1,6 +1,9 @@
 // Widget renderer components for public status pages.
 // All widgets receive widget config + live monitor data from the API.
 
+import { SubscriberFormWidget } from "./SubscriberFormWidget";
+import { CountdownWidget } from "./CountdownWidget";
+
 export interface MonitorSummary {
   id: string;
   name: string;
@@ -587,6 +590,106 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
   );
 }
 
+// Response Time Heatmap — hour-of-day × day-of-week latency grid
+export function ResponseTimeHeatmap({ widget, monitors, extra }: WidgetProps) {
+  const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
+  const label = (widget.config.label as string) ?? monitor?.name ?? "Response Time Heatmap";
+
+  const data = extra.widgetDataById[widget.id] as {
+    grid?: Array<Array<number | null>>; // [dow 0-6][hour 0-23]
+    minMs?: number;
+    maxMs?: number;
+    avgMs?: number;
+    periodDays?: number;
+  } | undefined;
+
+  const grid = data?.grid;
+  const minMs = data?.minMs ?? 0;
+  const maxMs = data?.maxMs ?? 0;
+  const avgMs = data?.avgMs ?? 0;
+
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+  function latencyColor(ms: number | null): string {
+    if (ms === null) return "#1f2937"; // empty cell
+    if (maxMs === minMs) return "#22c55e";
+    const t = Math.min(1, Math.max(0, (ms - minMs) / (maxMs - minMs)));
+    // green (fast) → yellow → red (slow)
+    if (t < 0.5) {
+      const r = Math.round(34 + (250 - 34) * (t * 2));
+      const g = Math.round(197 + (204 - 197) * (t * 2));
+      return `rgb(${r},${g},34)`;
+    } else {
+      const r = Math.round(250 + (239 - 250) * ((t - 0.5) * 2));
+      const g = Math.round(204 + (68 - 204) * ((t - 0.5) * 2));
+      return `rgb(${r},${g},34)`;
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-sm font-semibold text-text-primary">{label}</span>
+        <div className="flex items-center gap-3">
+          {avgMs > 0 && <span className="text-xs text-text-secondary">avg <span className="font-semibold text-text-primary">{avgMs}ms</span></span>}
+          {maxMs > 0 && <span className="text-xs text-text-secondary">peak <span className="font-semibold text-warning">{maxMs}ms</span></span>}
+          {data?.periodDays && <span className="text-xs text-text-secondary">{data.periodDays}d</span>}
+        </div>
+      </div>
+
+      {!grid ? (
+        <div className="flex h-32 items-center justify-center rounded-lg bg-bg">
+          <span className="text-xs text-text-secondary">No latency data yet</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="inline-block min-w-full">
+            {/* Hour labels */}
+            <div className="flex pl-8 mb-0.5">
+              {HOURS.map((h) => (
+                <div key={h} className="flex-1 text-center text-[9px] text-text-secondary/60 leading-none">
+                  {h % 6 === 0 ? `${h}h` : ""}
+                </div>
+              ))}
+            </div>
+            {/* Grid rows */}
+            {DAYS.map((day, dow) => (
+              <div key={dow} className="flex items-center mb-0.5">
+                <div className="w-8 text-[10px] text-text-secondary shrink-0 text-right pr-1.5">{day}</div>
+                {HOURS.map((hour) => {
+                  const ms = grid[dow]?.[hour] ?? null;
+                  return (
+                    <div
+                      key={hour}
+                      className="flex-1 aspect-square rounded-[2px] mx-px"
+                      style={{ backgroundColor: latencyColor(ms) }}
+                      title={ms !== null ? `${day} ${hour}:00 UTC — ${ms}ms avg` : `${day} ${hour}:00 UTC — no data`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+            {/* Legend */}
+            <div className="flex items-center gap-1.5 mt-2 pl-8">
+              <span className="text-[9px] text-text-secondary">fast</span>
+              <div className="flex h-2 flex-1 max-w-[80px] rounded overflow-hidden">
+                {Array.from({ length: 20 }, (_, i) => {
+                  const t = i / 19;
+                  const r = t < 0.5 ? Math.round(34 + 216 * t * 2) : Math.round(250 - 11 * (t - 0.5) * 2);
+                  const g = t < 0.5 ? Math.round(197 + 7 * t * 2) : Math.round(204 - 136 * (t - 0.5) * 2);
+                  return <div key={i} className="flex-1" style={{ backgroundColor: `rgb(${r},${g},34)` }} />;
+                })}
+              </div>
+              <span className="text-[9px] text-text-secondary">slow</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Check History Feed
 export function CheckHistoryFeed({ extra }: WidgetProps) {
   const checks = extra.recentChecks;
@@ -989,6 +1092,1320 @@ function UptimePercentageCard({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── P1 New Widgets ──────────────────────────────────────────────────────
+
+// Service Health Matrix — monitors × environments/regions matrix table
+function ServiceHealthMatrix({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    mode: "auto" | "manual";
+    columns: string[];
+    matrix: Array<{
+      rowId: string;
+      rowName: string;
+      cells: Array<{ colLabel: string; level: string; latencyMs: number | null; lastChecked: unknown }>;
+    }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.matrix.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">No monitors configured</p>
+      </div>
+    );
+  }
+
+  const cellBg = (level: string) =>
+    level === "green" ? "bg-green-500/15 text-green-400"
+    : level === "yellow" ? "bg-yellow-500/15 text-yellow-400"
+    : level === "red" ? "bg-red-500/15 text-red-400"
+    : "bg-border/20 text-text-muted";
+
+  const cellDot = (level: string) =>
+    level === "green" ? "bg-green-400"
+    : level === "yellow" ? "bg-yellow-400"
+    : level === "red" ? "bg-red-400 animate-pulse"
+    : "bg-border";
+
+  const cellLabel = (level: string) =>
+    level === "green" ? "Operational"
+    : level === "yellow" ? "Degraded"
+    : level === "red" ? "Outage"
+    : "No data";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 overflow-x-auto">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left py-2 pr-4 text-text-secondary font-medium w-40">Service</th>
+            {data.columns.map((col) => (
+              <th key={col} className="text-center py-2 px-2 text-text-secondary font-medium min-w-[100px]">{col}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/30">
+          {data.matrix.map((row) => (
+            <tr key={row.rowId} className="group">
+              <td className="py-2.5 pr-4 font-medium text-text-primary truncate max-w-[160px]" title={row.rowName}>
+                {row.rowName}
+              </td>
+              {row.cells.map((cell, ci) => (
+                <td key={ci} className="py-2.5 px-2 text-center">
+                  <div
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${cellBg(cell.level)}`}
+                    title={cell.latencyMs ? `${cell.latencyMs}ms` : undefined}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${cellDot(cell.level)}`} />
+                    <span>{cellLabel(cell.level)}</span>
+                    {cell.latencyMs && <span className="text-[10px] opacity-70">{cell.latencyMs}ms</span>}
+                  </div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-3 pt-3 border-t border-border/30 mt-2">
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-green-400" /><span className="text-[10px] text-text-muted">Operational</span></div>
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-yellow-400" /><span className="text-[10px] text-text-muted">Degraded</span></div>
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-red-400" /><span className="text-[10px] text-text-muted">Outage</span></div>
+      </div>
+    </div>
+  );
+}
+
+// Aggregate Health Score — weighted score 0-100 with gauge visualization
+function AggregateHealthScore({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    score: number;
+    total: number;
+    down: number;
+    degraded: number;
+    status: "healthy" | "degraded" | "critical";
+    breakdown: Array<{ id: string; name: string; level: string; points: number; weight: number }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+  const showBreakdown = widget.config.showBreakdown as boolean | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const scoreColor = data.score >= 90 ? "text-green-400" : data.score >= 70 ? "text-yellow-400" : "text-red-400";
+  const scoreStroke = data.score >= 90 ? "#4ade80" : data.score >= 70 ? "#facc15" : "#f87171";
+  const statusLabel = data.status === "healthy" ? "All Systems Healthy" : data.status === "degraded" ? "Degraded" : "Critical Issues";
+  const statusColor = data.status === "healthy" ? "text-green-400" : data.status === "degraded" ? "text-yellow-400" : "text-red-400";
+
+  // SVG gauge: arc from -225deg to +45deg (270deg sweep)
+  const r = 52;
+  const cx = 70;
+  const cy = 70;
+  const circumference = 2 * Math.PI * r;
+  const sweep = (data.score / 100) * (270 / 360) * circumference;
+  const dashArray = `${sweep} ${circumference}`;
+  // -225deg start = 135deg in SVG coords
+  const startAngle = 135 * (Math.PI / 180);
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 text-center">{label}</p>}
+      <div className="flex items-center gap-6">
+        {/* Gauge */}
+        <div className="relative flex-shrink-0">
+          <svg width="140" height="140" viewBox="0 0 140 140" className="rotate-0">
+            {/* Track arc */}
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="10"
+              strokeDasharray={`${(270 / 360) * circumference} ${circumference}`}
+              strokeDashoffset={0}
+              strokeLinecap="round"
+              transform={`rotate(135 ${cx} ${cy})`}
+            />
+            {/* Score arc */}
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke={scoreStroke}
+              strokeWidth="10"
+              strokeDasharray={dashArray}
+              strokeDashoffset={0}
+              strokeLinecap="round"
+              transform={`rotate(135 ${cx} ${cy})`}
+              style={{ transition: "stroke-dasharray 0.8s ease" }}
+            />
+            {/* Score text */}
+            <text x={cx} y={cy - 4} textAnchor="middle" className="fill-current" style={{ fill: scoreStroke, fontSize: 26, fontWeight: 700, fontFamily: "inherit" }}>
+              {Math.round(data.score)}
+            </text>
+            <text x={cx} y={cy + 14} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "inherit" }}>
+              /100
+            </text>
+          </svg>
+        </div>
+        {/* Stats */}
+        <div className="flex-1 space-y-2">
+          <div className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</div>
+          <div className="text-xs text-text-secondary">{data.total} monitor{data.total !== 1 ? "s" : ""} tracked</div>
+          {data.down > 0 && (
+            <div className="text-xs text-red-400 font-medium">{data.down} down</div>
+          )}
+          {data.degraded > 0 && (
+            <div className="text-xs text-yellow-400 font-medium">{data.degraded} degraded</div>
+          )}
+          {data.down === 0 && data.degraded === 0 && (
+            <div className="text-xs text-green-400 font-medium">All operational ✓</div>
+          )}
+        </div>
+      </div>
+      {showBreakdown && data.breakdown.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider font-medium mb-2">Breakdown</p>
+          {data.breakdown.map((b) => (
+            <div key={b.id} className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${b.level === "green" ? "bg-green-400" : b.level === "yellow" ? "bg-yellow-400" : "bg-red-400"}`} />
+              <span className="text-xs text-text-primary flex-1 truncate">{b.name}</span>
+              <span className={`text-xs font-medium ${b.level === "green" ? "text-green-400" : b.level === "yellow" ? "text-yellow-400" : "text-red-400"}`}>{b.points}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── New P1 Widgets (latency, downtime, incidents, MTTR/MTTF) ─────────────
+
+// LatencyPercentilesCard — P50/P95/P99 big-number display with trend arrows
+function LatencyPercentilesCard({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    periodDays: number;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+    prevP50: number | null;
+    prevP95: number | null;
+    prevP99: number | null;
+    sampleCount: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  function latencyColor(ms: number | null): string {
+    if (ms === null) return "text-text-secondary";
+    if (ms < 200) return "text-green-400";
+    if (ms < 500) return "text-yellow-400";
+    return "text-red-400";
+  }
+
+  function trend(current: number | null, prev: number | null): React.ReactNode {
+    if (current === null || prev === null) return null;
+    if (current > prev) return <span className="text-red-400 text-sm">↑</span>;
+    if (current < prev) return <span className="text-green-400 text-sm">↓</span>;
+    return null;
+  }
+
+  const cells: Array<{ label: string; value: number | null; prev: number | null }> = [
+    { label: "P50", value: data.p50, prev: data.prevP50 },
+    { label: "P95", value: data.p95, prev: data.prevP95 },
+    { label: "P99", value: data.p99, prev: data.prevP99 },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-3 gap-3">
+        {cells.map((c) => (
+          <div key={c.label} className="text-center">
+            <p className="text-xs font-medium text-text-secondary mb-1">{c.label}</p>
+            <div className="flex items-center justify-center gap-1">
+              <span className={`text-2xl font-bold tabular-nums ${latencyColor(c.value)}`}>
+                {c.value !== null ? `${c.value}ms` : "—"}
+              </span>
+              {trend(c.value, c.prev)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[10px] text-text-muted text-center">
+        {data.sampleCount} samples · last {data.periodDays}d
+      </p>
+    </div>
+  );
+}
+
+// DowntimeLog — chronological outage list with duration, timestamps, ongoing indicator
+function DowntimeLog({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    outages: Array<{
+      monitorId: string;
+      monitorName: string;
+      startedAt: string;
+      resolvedAt: string | null;
+      durationMs: number | null;
+      message: string | null;
+    }>;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  function formatDur(ms: number): string {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "Downtime Log"}</p>
+        <span className="text-xs text-text-secondary">{data.total} event{data.total !== 1 ? "s" : ""} · {data.periodDays}d</span>
+      </div>
+      {data.outages.length === 0 ? (
+        <div className="flex items-center gap-2 px-4 py-6 justify-center">
+          <span className="h-3 w-3 rounded-full bg-green-400" />
+          <span className="text-sm text-green-400 font-medium">No downtime recorded</span>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border/40 max-h-80 overflow-y-auto">
+          {data.outages.map((o, i) => {
+            const ongoing = o.resolvedAt === null;
+            return (
+              <li
+                key={i}
+                className={`flex items-start gap-3 px-4 py-3 ${ongoing ? "border-l-2 border-red-500" : ""}`}
+              >
+                <span
+                  className={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                    ongoing ? "bg-red-400 animate-pulse" : "bg-red-400/60"
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-text-primary truncate">{o.monitorName}</span>
+                    {o.durationMs !== null && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                        {formatDur(o.durationMs)}
+                      </span>
+                    )}
+                    {ongoing && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                        Ongoing
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    {new Date(o.startedAt).toLocaleString()}
+                    {o.resolvedAt && ` → ${new Date(o.resolvedAt).toLocaleString()}`}
+                  </p>
+                  {o.message && <p className="text-xs text-text-muted mt-0.5 truncate">{o.message}</p>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ActiveIncidentCount — animated big-number counter
+function ActiveIncidentCount({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    count: number;
+    incidents: Array<{ id: string; title: string; severity: string; status: string; createdAt: string }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const countColor =
+    data.count === 0 ? "text-green-400" : data.count === 1 ? "text-yellow-400" : "text-red-400";
+  const pulse = data.count > 0;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 text-center">
+      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label ?? "Active Incidents"}</p>}
+      <div className={`text-6xl font-bold tabular-nums ${countColor} ${pulse ? "animate-pulse" : ""}`}>
+        {data.count}
+      </div>
+      <p className="text-xs text-text-secondary mt-2">Active Incidents</p>
+      {data.count === 0 ? (
+        <p className="mt-3 text-sm text-green-400 font-medium">All systems go ✓</p>
+      ) : (
+        <ul className="mt-3 space-y-1 text-left">
+          {data.incidents.slice(0, 3).map((inc) => (
+            <li key={inc.id} className="flex items-center gap-2 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+              <span className="text-text-primary truncate">{inc.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// MttrMttfCards — MTTR + MTTF side-by-side cards
+function MttrMttfCards({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    mttrMs: number | null;
+    mttfMs: number | null;
+    recoveryCount: number;
+    failureCount: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function formatDuration(ms: number | null): string {
+    if (ms === null) return "—";
+    const m = Math.floor(ms / 60000);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h${m % 60 > 0 ? `${m % 60}m` : ""}`;
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        {/* MTTR */}
+        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
+          <p className="text-xs font-medium text-text-secondary mb-1">MTTR</p>
+          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttrMs)}</p>
+          <p className="text-[10px] text-text-muted mt-1">Mean Time to Recovery</p>
+          <p className="text-[10px] text-text-muted">{data.recoveryCount} event{data.recoveryCount !== 1 ? "s" : ""}</p>
+        </div>
+        {/* MTTF */}
+        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
+          <p className="text-xs font-medium text-text-secondary mb-1">MTTF</p>
+          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttfMs)}</p>
+          <p className="text-[10px] text-text-muted mt-1">Mean Time to Failure</p>
+          <p className="text-[10px] text-text-muted">{data.failureCount} event{data.failureCount !== 1 ? "s" : ""}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] text-text-muted text-center">Last {data.periodDays}d</p>
+    </div>
+  );
+}
+
+// ── New P1 Status-Page Widgets ───────────────────────────────────────────
+
+// SLA Compliance Table
+function SLAComplianceTable({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    rows: Array<{ monitorId: string; name: string; target: number; actual: number; pass: boolean }>;
+    periodDays: number;
+    slaTarget: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  function actualColor(actual: number, target: number): string {
+    const diff = actual - target;
+    if (diff >= 0) return "text-green-400";
+    if (diff >= -1) return "text-yellow-400";
+    return "text-red-400";
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+        <p className="text-sm font-semibold text-text-primary">
+          {label ?? `SLA Compliance — Last ${data.periodDays}d`}
+        </p>
+        <span className="text-xs text-text-secondary">
+          {data.rows.filter((r) => r.pass).length}/{data.rows.length} passing
+        </span>
+      </div>
+      {data.rows.length === 0 ? (
+        <div className="px-4 py-6 text-center text-sm text-text-secondary">No monitors configured</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/30">
+                <th className="text-left px-4 py-2 text-text-secondary font-medium">Monitor</th>
+                <th className="text-right px-4 py-2 text-text-secondary font-medium">Target</th>
+                <th className="text-right px-4 py-2 text-text-secondary font-medium">Actual</th>
+                <th className="text-center px-4 py-2 text-text-secondary font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {data.rows.map((row) => (
+                <tr key={row.monitorId} className="hover:bg-surface-elevated/20 transition-colors">
+                  <td className="px-4 py-2.5 text-text-primary font-medium truncate max-w-[180px]">{row.name}</td>
+                  <td className="px-4 py-2.5 text-right text-text-secondary tabular-nums">{row.target}%</td>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${actualColor(row.actual, row.target)}`}>
+                    {row.actual.toFixed(2)}%
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {row.pass ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 text-green-400 ring-1 ring-green-500/30 px-2 py-0.5 text-xs font-semibold">
+                        ✓ Pass
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-400 ring-1 ring-red-500/30 px-2 py-0.5 text-xs font-semibold">
+                        ✗ Fail
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Uptime Heatmap — 7 days × 24 hours GitHub-style grid
+function UptimeHeatmap({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    grid: Array<Array<"green" | "yellow" | "red" | "no-data">>;
+    dayLabels: string[];
+    days: number;
+    hours: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  const HOUR_LABELS = [0, 6, 12, 18, 23];
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  function cellColor(status: string): string {
+    if (status === "green") return "bg-green-500/70";
+    if (status === "yellow") return "bg-yellow-500/70";
+    if (status === "red") return "bg-red-500/70";
+    return "bg-border/30";
+  }
+
+  function statusLabel(status: string): string {
+    if (status === "green") return "All OK";
+    if (status === "yellow") return "Some failures";
+    if (status === "red") return "All failed";
+    return "No data";
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  // Map day labels to Mon-Sun labels
+  const dayRows = data.grid.map((row, i) => {
+    const dateStr = data.dayLabels[i] ?? "";
+    const date = dateStr ? new Date(dateStr) : null;
+    const dayIdx = date ? date.getUTCDay() : i; // 0=Sun
+    // Convert Sun=0 to Mon=0 for display
+    const dayLabel = DAY_NAMES[(dayIdx + 6) % 7] ?? `D${i}`;
+    return { row, dayLabel, dateStr };
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full">
+          {/* Hour labels */}
+          <div className="flex pl-10 mb-1">
+            {Array.from({ length: 24 }, (_, h) => (
+              <div key={h} className="flex-1 text-center text-[9px] text-text-secondary/60 leading-none">
+                {HOUR_LABELS.includes(h) ? `${h}` : ""}
+              </div>
+            ))}
+          </div>
+          {/* Grid */}
+          {dayRows.map(({ row, dayLabel, dateStr }, di) => (
+            <div key={di} className="flex items-center mb-0.5">
+              <div className="w-10 text-[10px] text-text-secondary text-right pr-2 shrink-0">{dayLabel}</div>
+              {row.map((status, h) => (
+                <div
+                  key={h}
+                  className={`flex-1 aspect-square rounded-[2px] mx-px ${cellColor(status)} hover:opacity-80 transition-opacity`}
+                  title={`${dateStr} ${String(h).padStart(2, "0")}:00 UTC — ${statusLabel(status)}`}
+                />
+              ))}
+            </div>
+          ))}
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-2 pl-10">
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-green-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Up</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-yellow-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Partial</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-red-500/70 inline-block" /><span className="text-[10px] text-text-secondary">Down</span></span>
+            <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-border/30 inline-block" /><span className="text-[10px] text-text-secondary">No data</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Incident Timeline
+function IncidentTimeline({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    incidents: Array<{
+      id: string;
+      title: string;
+      status: string;
+      severity: string;
+      createdAt: string;
+      resolvedAt: string | null;
+      durationMs: number | null;
+      updates: Array<{ id: string; message: string; status: string; createdAt: string }>;
+      monitors: Array<{ id: string; name: string }>;
+    }>;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function severityColor(s: string): string {
+    if (s === "CRITICAL") return "bg-red-500/15 text-red-400 ring-red-500/30";
+    if (s === "HIGH") return "bg-orange-500/15 text-orange-400 ring-orange-500/30";
+    if (s === "MEDIUM") return "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30";
+    return "bg-blue-500/15 text-blue-400 ring-blue-500/30";
+  }
+
+  function statusIcon(s: string): string {
+    if (s === "RESOLVED") return "✓";
+    if (s === "MONITORING") return "◎";
+    if (s === "IDENTIFIED") return "⚑";
+    return "◉";
+  }
+
+  function formatDuration(ms: number): string {
+    const m = Math.floor(ms / 60000);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.incidents.length === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <span className="text-2xl">✓</span>
+        <p className="text-sm text-green-400 font-medium mt-2">No incidents in the last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "Incident Timeline"}</p>
+        <p className="text-xs text-text-secondary mt-0.5">{data.total} incident{data.total !== 1 ? "s" : ""} · last {data.periodDays}d</p>
+      </div>
+      <div className="divide-y divide-border/30 max-h-[480px] overflow-y-auto">
+        {data.incidents.map((inc) => (
+          <div key={inc.id} className="p-4">
+            {/* Incident header */}
+            <div className="flex items-start gap-3 mb-3">
+              <div className={`mt-0.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${inc.status !== "RESOLVED" ? "bg-red-400 animate-pulse" : "bg-green-400"}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-text-primary">{inc.title}</span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${severityColor(inc.severity)}`}>
+                    {inc.severity}
+                  </span>
+                  {inc.durationMs !== null && (
+                    <span className="text-[10px] text-text-secondary">{formatDuration(inc.durationMs)}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-text-secondary">{formatRelative(inc.createdAt)}</span>
+                  {inc.monitors.length > 0 && (
+                    <span className="text-xs text-text-secondary">· {inc.monitors.map((m) => m.name).join(", ")}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Update timeline */}
+            {inc.updates.length > 0 && (
+              <div className="ml-5 pl-3 border-l border-border/40 space-y-2">
+                {inc.updates.map((u) => (
+                  <div key={u.id} className="flex items-start gap-2">
+                    <span className="text-xs mt-0.5 text-text-secondary flex-shrink-0">{statusIcon(u.status)}</span>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-medium text-text-secondary uppercase tracking-wide">{u.status}</span>
+                      <p className="text-xs text-text-primary mt-0.5">{u.message}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{formatRelative(u.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// SSL Certificate Status Widget
+function SSLCertificateStatus({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    certs: Array<{
+      monitorId: string;
+      domain: string;
+      daysRemaining: number | null;
+      expiresAt: string | null;
+      issuer: string | null;
+      grade: string;
+      status: "valid" | "expiring-soon" | "critical" | "expired" | "unknown";
+      lastChecked: string | null;
+    }>;
+    total: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  function daysColor(days: number | null, status: string): string {
+    if (status === "expired" || (days !== null && days <= 0)) return "text-red-400";
+    if (status === "critical" || (days !== null && days < 10)) return "text-red-400";
+    if (status === "expiring-soon" || (days !== null && days < 30)) return "text-yellow-400";
+    return "text-green-400";
+  }
+
+  function statusBadge(status: string): { label: string; cls: string } {
+    if (status === "expired") return { label: "Expired", cls: "bg-red-500/15 text-red-400 ring-red-500/30" };
+    if (status === "critical") return { label: "Critical", cls: "bg-red-500/15 text-red-400 ring-red-500/30" };
+    if (status === "expiring-soon") return { label: "Expiring Soon", cls: "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30" };
+    if (status === "valid") return { label: "Valid", cls: "bg-green-500/15 text-green-400 ring-green-500/30" };
+    return { label: "Unknown", cls: "bg-border/15 text-text-secondary ring-border/30" };
+  }
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.certs.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No SSL monitors configured</p>
+      </div>
+    );
+  }
+
+  // Single cert — detailed card
+  if (data.certs.length === 1) {
+    const cert = data.certs[0];
+    const badge = statusBadge(cert.status);
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5">
+        {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-semibold text-text-primary">{cert.domain}</p>
+            {cert.issuer && <p className="text-xs text-text-secondary mt-0.5">Issuer: {cert.issuer}</p>}
+            {cert.expiresAt && <p className="text-xs text-text-secondary mt-0.5">Expires: {cert.expiresAt}</p>}
+            {cert.lastChecked && <p className="text-xs text-text-muted mt-0.5">Checked {formatRelative(cert.lastChecked)}</p>}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className={`text-4xl font-bold tabular-nums ${daysColor(cert.daysRemaining, cert.status)}`}>
+              {cert.daysRemaining !== null ? cert.daysRemaining : "—"}
+            </div>
+            <div className="text-xs text-text-secondary mt-0.5">days remaining</div>
+            <div className="mt-2">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${badge.cls}`}>
+                {badge.label}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple certs — table
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50">
+        <p className="text-sm font-semibold text-text-primary">{label ?? "SSL Certificates"}</p>
+      </div>
+      <div className="divide-y divide-border/30">
+        {data.certs.map((cert) => {
+          const badge = statusBadge(cert.status);
+          return (
+            <div key={cert.monitorId} className="flex items-center gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text-primary truncate">{cert.domain}</p>
+                {cert.issuer && <p className="text-[10px] text-text-secondary truncate">{cert.issuer}</p>}
+              </div>
+              <div className={`text-lg font-bold tabular-nums flex-shrink-0 ${daysColor(cert.daysRemaining, cert.status)}`}>
+                {cert.daysRemaining !== null ? `${cert.daysRemaining}d` : "—"}
+              </div>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 flex-shrink-0 ${badge.cls}`}>
+                {badge.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Incident Severity Distribution — SVG donut chart
+function IncidentSeverityDistribution({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    critical: number;
+    major: number;
+    minor: number;
+    total: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.total === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <div className="text-3xl mb-2">✓</div>
+        <p className="text-sm text-green-400 font-semibold">No incidents</p>
+        <p className="text-xs text-text-secondary mt-1">Last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  // SVG donut chart using stroke-dasharray technique
+  const r = 40;
+  const cx = 60;
+  const cy = 60;
+  const circumference = 2 * Math.PI * r;
+
+  const segments = [
+    { key: "critical", label: "Critical", value: data.critical, color: "#ef4444" },
+    { key: "major", label: "Major", value: data.major, color: "#f97316" },
+    { key: "minor", label: "Minor", value: data.minor, color: "#3b82f6" },
+  ].filter((s) => s.value > 0);
+
+  let offset = 0;
+  const arcs = segments.map((seg) => {
+    const fraction = seg.value / data.total;
+    const dash = fraction * circumference;
+    const gap = circumference - dash;
+    const arc = { ...seg, dash, gap, offset };
+    offset += dash;
+    return arc;
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center gap-6">
+        {/* Donut */}
+        <div className="relative flex-shrink-0">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            {/* Track */}
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
+            {/* Segments */}
+            {arcs.map((arc) => (
+              <circle
+                key={arc.key}
+                cx={cx} cy={cy} r={r}
+                fill="none"
+                stroke={arc.color}
+                strokeWidth="14"
+                strokeDasharray={`${arc.dash} ${arc.gap}`}
+                strokeDashoffset={-arc.offset}
+                transform={`rotate(-90 ${cx} ${cy})`}
+                strokeLinecap="butt"
+              />
+            ))}
+            {/* Center total */}
+            <text x={cx} y={cy - 4} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.9)", fontSize: 20, fontWeight: 700 }}>
+              {data.total}
+            </text>
+            <text x={cx} y={cy + 12} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.4)", fontSize: 9 }}>
+              total
+            </text>
+          </svg>
+        </div>
+        {/* Legend */}
+        <div className="space-y-2.5 flex-1">
+          {data.critical > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Critical</span>
+              <span className="text-sm font-bold tabular-nums text-red-400">{data.critical}</span>
+            </div>
+          )}
+          {data.major > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-orange-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Major</span>
+              <span className="text-sm font-bold tabular-nums text-orange-400">{data.major}</span>
+            </div>
+          )}
+          {data.minor > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-blue-500 flex-shrink-0" />
+              <span className="text-xs text-text-primary flex-1">Minor</span>
+              <span className="text-sm font-bold tabular-nums text-blue-400">{data.minor}</span>
+            </div>
+          )}
+          <p className="text-[10px] text-text-muted pt-1 border-t border-border/30">Last {data.periodDays} days</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Incident Duration Stats ──────────────────────────────────────────────
+
+function formatDuration(ms: number): string {
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const s = Math.floor((ms % 60_000) / 1_000);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function IncidentDurationStats({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    avg: number | null;
+    longest: number | null;
+    shortest: number | null;
+    count: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.count === 0 || data.avg === null) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No resolved incidents in the last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  const cards = [
+    { title: "Average", value: data.avg, color: "text-blue-400" },
+    { title: "Longest", value: data.longest!, color: "text-red-400" },
+    { title: "Shortest", value: data.shortest!, color: "text-green-400" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-3 gap-3">
+        {cards.map((card) => (
+          <div key={card.title} className="rounded-lg border border-border/50 bg-surface/60 p-3 text-center">
+            <p className="text-xs text-text-secondary mb-1">{card.title}</p>
+            <p className={`text-lg font-bold tabular-nums ${card.color}`}>{formatDuration(card.value)}</p>
+            <p className="text-[10px] text-text-muted mt-1">{data.count} incident{data.count !== 1 ? "s" : ""}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-text-muted mt-2 text-right">Last {data.periodDays} days</p>
+    </div>
+  );
+}
+
+// ── Post-Mortem Card ─────────────────────────────────────────────────────
+
+function PostMortemCard({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    incident: {
+      title: string;
+      severity: string;
+      resolvedAt: string;
+      durationMs: number | null;
+      affectedMonitors: { name: string }[];
+      updates: { status: string; message: string; createdAt: string }[];
+    } | null;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!data.incident) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <div className="text-3xl mb-2">✓</div>
+        <p className="text-sm text-green-400 font-semibold">No resolved incidents</p>
+      </div>
+    );
+  }
+
+  const inc = data.incident;
+  const severityColor =
+    inc.severity === "CRITICAL" ? "bg-red-500/20 text-red-400 border-red-500/30"
+    : inc.severity === "HIGH" ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+    : "bg-blue-500/20 text-blue-400 border-blue-500/30";
+
+  const statusColors: Record<string, string> = {
+    INVESTIGATING: "bg-yellow-500",
+    IDENTIFIED: "bg-orange-500",
+    MONITORING: "bg-blue-500",
+    RESOLVED: "bg-green-500",
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+      {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+      {/* Header */}
+      <div className="flex items-start gap-2">
+        <p className="text-sm font-semibold text-text-primary flex-1">{inc.title}</p>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${severityColor}`}>
+          {inc.severity}
+        </span>
+      </div>
+      {/* Meta */}
+      <div className="flex items-center gap-3 text-xs text-text-secondary">
+        {inc.durationMs !== null && <span>⏱ {formatDuration(inc.durationMs)}</span>}
+        <span>✓ {new Date(inc.resolvedAt).toLocaleDateString()}</span>
+      </div>
+      {/* Affected monitors */}
+      {inc.affectedMonitors.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {inc.affectedMonitors.map((m) => (
+            <span key={m.name} className="text-[10px] px-2 py-0.5 rounded-full bg-surface/80 border border-border/60 text-text-secondary">
+              {m.name}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Updates timeline */}
+      {inc.updates.length > 0 && (
+        <div className="space-y-2 pt-1 border-t border-border/30">
+          {inc.updates.map((u, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${statusColors[u.status] ?? "bg-surface"}`} />
+              <div>
+                <p className="text-[10px] font-semibold text-text-secondary uppercase">{u.status}</p>
+                <p className="text-xs text-text-primary">{u.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Performance Trend ────────────────────────────────────────────────────
+
+function PerformanceTrend({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    thisWeekAvg: number;
+    lastWeekAvg: number;
+    changePercent: number;
+    trend: "up" | "down" | "stable";
+    dataPoints: number[];
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  // trend "down" = latency decreased = improvement = green
+  const isImprovement = data.trend === "down";
+  const isStable = data.trend === "stable";
+  const trendColor = isStable ? "text-text-secondary" : isImprovement ? "text-green-400" : "text-red-400";
+  const arrow = isStable ? "→" : isImprovement ? "↓" : "↑";
+
+  // SVG sparkline (14 points)
+  const pts = data.dataPoints;
+  const maxVal = Math.max(...pts, 1);
+  const W = 200;
+  const H = 40;
+  const step = W / (pts.length - 1);
+  const pathD = pts
+    .map((v, i) => {
+      const x = i * step;
+      const y = H - (v / maxVal) * H;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-2">{label}</p>}
+      <div className="flex items-center gap-4">
+        <div>
+          <p className={`text-4xl font-bold tabular-nums ${trendColor}`}>
+            {arrow} {Math.abs(data.changePercent).toFixed(1)}%
+          </p>
+          <p className="text-xs text-text-secondary mt-1">vs last week</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {data.thisWeekAvg}ms → {data.lastWeekAvg}ms
+          </p>
+        </div>
+        <div className="flex-1">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 overflow-visible">
+            <path d={pathD} fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <p className="text-[10px] text-text-muted text-center mt-1">14-day latency</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Apdex Score ──────────────────────────────────────────────────────────
+
+function ApdexScore({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    score: number | null;
+    satisfied: number;
+    tolerating: number;
+    frustrated: number;
+    total: number;
+    rating: string | null;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.score === null || data.total === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No data available</p>
+      </div>
+    );
+  }
+
+  const ratingColor =
+    data.rating === "Excellent" ? "text-green-400"
+    : data.rating === "Good" ? "text-blue-400"
+    : data.rating === "Fair" ? "text-yellow-400"
+    : data.rating === "Poor" ? "text-orange-400"
+    : "text-red-400";
+
+  const satisfiedPct = data.total > 0 ? (data.satisfied / data.total) * 100 : 0;
+  const toleratingPct = data.total > 0 ? (data.tolerating / data.total) * 100 : 0;
+  const frustratedPct = data.total > 0 ? (data.frustrated / data.total) * 100 : 0;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center gap-4">
+        <div className="text-center">
+          <p className="text-5xl font-bold tabular-nums text-text-primary">{data.score.toFixed(2)}</p>
+          <p className={`text-sm font-semibold mt-1 ${ratingColor}`}>{data.rating}</p>
+          <p className="text-[10px] text-text-muted mt-0.5">Apdex Score</p>
+        </div>
+        <div className="flex-1 space-y-2">
+          {/* Breakdown bar */}
+          <div className="flex h-3 overflow-hidden rounded-full">
+            <div className="bg-green-500" style={{ width: `${satisfiedPct}%` }} title={`Satisfied: ${data.satisfied}`} />
+            <div className="bg-yellow-400" style={{ width: `${toleratingPct}%` }} title={`Tolerating: ${data.tolerating}`} />
+            <div className="bg-red-500" style={{ width: `${frustratedPct}%` }} title={`Frustrated: ${data.frustrated}`} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="text-text-secondary flex-1">Satisfied</span>
+              <span className="tabular-nums text-text-primary">{data.satisfied}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-yellow-400" />
+              <span className="text-text-secondary flex-1">Tolerating</span>
+              <span className="tabular-nums text-text-primary">{data.tolerating}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              <span className="text-text-secondary flex-1">Frustrated</span>
+              <span className="tabular-nums text-text-primary">{data.frustrated}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Throughput Counter ───────────────────────────────────────────────────
+
+function ThroughputCounter({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    current: number;
+    average: number;
+    peak: number;
+    dataPoints: { hour: string; count: number }[];
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const maxCount = Math.max(...data.dataPoints.map((p) => p.count), 1);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-2">{label}</p>}
+      <div className="flex items-end gap-4 mb-3">
+        <div>
+          <p className="text-4xl font-bold tabular-nums text-text-primary">{data.current}</p>
+          <p className="text-xs text-text-secondary mt-0.5">Checks / Hour</p>
+        </div>
+        <div className="space-y-0.5 text-right">
+          <p className="text-xs text-text-secondary">Avg <span className="text-text-primary font-semibold">{data.average}</span></p>
+          <p className="text-xs text-text-secondary">Peak <span className="text-text-primary font-semibold">{data.peak}</span></p>
+        </div>
+      </div>
+      {/* 24-bar sparkline */}
+      <div className="flex items-end gap-0.5 h-10">
+        {data.dataPoints.map((pt, i) => {
+          const heightPct = maxCount > 0 ? (pt.count / maxCount) * 100 : 0;
+          const isAboveAvg = pt.count >= data.average;
+          return (
+            <div
+              key={i}
+              className={`flex-1 rounded-sm min-h-[2px] ${isAboveAvg ? "bg-indigo-500" : "bg-indigo-500/40"}`}
+              style={{ height: `${Math.max(heightPct, 4)}%` }}
+              title={`${pt.hour}: ${pt.count}`}
+            />
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-text-muted mt-1">Last 24 hours</p>
+    </div>
+  );
+}
+
 // ── Group / Multi Widgets ────────────────────────────────────────────────
 
 // Monitor Group — shows monitors grouped by tag or folder
@@ -1201,6 +2618,1239 @@ function UpdateSummary({ monitors }: WidgetProps) {
   );
 }
 
+// ── Response Time Comparison ─────────────────────────────────────────────
+
+export function ResponseTimeComparison({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    monitors: { id: string; name: string; color: string; dataPoints: number[] }[];
+    labels: string[];
+    periodHours: number;
+  } | undefined;
+
+  if (!raw || !raw.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const { monitors: monitorLines, labels } = raw;
+  const title = (widget.config.label as string) || "Response Time Comparison";
+  const svgW = 600;
+  const svgH = 160;
+  const padL = 48;
+  const padR = 12;
+  const padT = 8;
+  const padB = 28;
+  const chartW = svgW - padL - padR;
+  const chartH = svgH - padT - padB;
+
+  const allPoints = monitorLines.flatMap((m) => m.dataPoints);
+  const maxVal = allPoints.length > 0 ? Math.max(...allPoints) : 1;
+  const minVal = 0;
+  const range = maxVal - minVal || 1;
+
+  const toX = (i: number, total: number) => padL + (i / Math.max(total - 1, 1)) * chartW;
+  const toY = (v: number) => padT + chartH - ((v - minVal) / range) * chartH;
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(minVal + t * range));
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto" style={{ maxHeight: 180 }}>
+        {/* Y-axis ticks */}
+        {yTicks.map((tick) => (
+          <g key={tick}>
+            <line x1={padL} x2={svgW - padR} y1={toY(tick)} y2={toY(tick)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+            <text x={padL - 4} y={toY(tick) + 4} textAnchor="end" fontSize={9} fill="rgba(255,255,255,0.35)">{tick}</text>
+          </g>
+        ))}
+        {/* X-axis labels */}
+        {labels.map((lbl, i) => {
+          const total = labels.length;
+          if (i % 6 !== 0 && i !== total - 1) return null;
+          return (
+            <text key={i} x={toX(i, total)} y={svgH - 4} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.35)">{lbl}</text>
+          );
+        })}
+        {/* Lines */}
+        {monitorLines.map((m) => {
+          const pts = m.dataPoints;
+          if (pts.length < 2) return null;
+          const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i, pts.length)} ${toY(v)}`).join(' ');
+          return <path key={m.id} d={d} stroke={m.color} strokeWidth={1.5} fill="none" strokeLinejoin="round" />;
+        })}
+      </svg>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3">
+        {monitorLines.map((m) => (
+          <div key={m.id} className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
+            {m.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Uptime Comparison Chart ──────────────────────────────────────────────
+
+export function UptimeComparisonChart({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    monitors: { id: string; name: string; uptimePct: number }[];
+    periodDays: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Uptime Comparison";
+
+  if (!raw || !raw.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const { monitors: monitorBars, periodDays } = raw;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">{periodDays}d</div>
+      </div>
+      <div className="space-y-2">
+        {monitorBars.map((m) => {
+          const barColor =
+            m.uptimePct >= 99.9
+              ? "bg-green-500"
+              : m.uptimePct >= 99
+              ? "bg-yellow-400"
+              : "bg-red-500";
+          const pct = m.uptimePct.toFixed(2);
+          return (
+            <div key={m.id} className="flex items-center gap-2">
+              <div className="w-28 flex-shrink-0 text-xs text-text-secondary truncate text-right">{m.name}</div>
+              <div className="flex-1 h-4 rounded bg-white/5 relative overflow-hidden">
+                <div
+                  className={`h-full rounded ${barColor} transition-all`}
+                  style={{ width: `${m.uptimePct}%` }}
+                />
+              </div>
+              <div className="w-14 flex-shrink-0 text-xs font-mono text-text-primary text-right">{pct}%</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Next Maintenance Countdown ───────────────────────────────────────────
+
+export function NextMaintenanceCountdown({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    none?: boolean;
+    name?: string;
+    description?: string | null;
+    startsAt?: string;
+    endsAt?: string;
+    affectedMonitors?: { name: string }[];
+    secondsUntil?: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Next Maintenance";
+
+  if (!raw || raw.none) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="flex items-center justify-center gap-2 text-green-400">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">No upcoming maintenance</span>
+        </div>
+      </div>
+    );
+  }
+
+  const seconds = raw.secondsUntil ?? 0;
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  const dateStr = raw.startsAt ? new Date(raw.startsAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="text-base font-bold text-text-primary">{raw.name}</div>
+      <div className="flex gap-3 justify-center">
+        {[{ v: days, u: "d" }, { v: hours, u: "h" }, { v: minutes, u: "m" }].map(({ v, u }) => (
+          <div key={u} className="flex flex-col items-center bg-white/5 rounded-lg px-3 py-2 min-w-[3rem]">
+            <span className="text-xl font-bold tabular-nums text-accent">{v}</span>
+            <span className="text-[10px] text-text-secondary">{u}</span>
+          </div>
+        ))}
+      </div>
+      <div className="text-xs text-text-secondary text-center">{dateStr}</div>
+      {raw.affectedMonitors && raw.affectedMonitors.length > 0 && (
+        <div className="flex flex-wrap gap-1 justify-center">
+          {raw.affectedMonitors.map((m) => (
+            <span key={m.name} className="inline-flex items-center rounded-full bg-white/5 px-2 py-0.5 text-xs text-text-secondary ring-1 ring-white/10">
+              {m.name}
+            </span>
+          ))}
+        </div>
+      )}
+      {raw.description && <div className="text-xs text-text-secondary">{raw.description}</div>}
+    </div>
+  );
+}
+
+// ── Maintenance Impact List ──────────────────────────────────────────────
+
+export function MaintenanceImpactList({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    windows: Array<{
+      name: string;
+      startsAt: string;
+      endsAt: string;
+      description: string | null;
+      affectedMonitors: { name: string; status: string }[];
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Maintenance Impact";
+
+  if (!raw || !raw.windows?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-sm text-text-secondary">No scheduled maintenance</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="space-y-3">
+        {raw.windows.map((w, i) => {
+          const start = new Date(w.startsAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+          const end = new Date(w.endsAt).toLocaleString(undefined, { timeStyle: "short" });
+          return (
+            <div key={i} className="rounded-lg border border-border bg-white/3 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-medium text-text-primary">{w.name}</div>
+                <div className="text-xs text-text-secondary flex-shrink-0">{start} – {end}</div>
+              </div>
+              {w.description && <div className="text-xs text-text-secondary">{w.description}</div>}
+              <div className="flex flex-wrap gap-1.5">
+                {w.affectedMonitors.map((m) => {
+                  const dot = m.status === "green" ? "bg-green-400" : m.status === "yellow" ? "bg-yellow-400" : "bg-red-400";
+                  return (
+                    <span key={m.name} className="flex items-center gap-1 text-xs text-text-secondary bg-white/5 rounded px-1.5 py-0.5">
+                      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                      {m.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Version Timeline ─────────────────────────────────────────────────────
+
+export function VersionTimeline({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    events: Array<{
+      monitorId: string;
+      name: string;
+      fromVersion: string;
+      toVersion: string;
+      detectedAt: string;
+    }>;
+    count: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Version Timeline";
+
+  if (!raw || !raw.events?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-sm text-text-secondary">No version changes recorded</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">{raw.count} changes</div>
+      </div>
+      <div className="relative">
+        <div className="absolute left-2 top-0 bottom-0 w-px bg-white/10" />
+        <div className="space-y-4 pl-7">
+          {raw.events.map((ev, i) => {
+            const when = formatRelative(ev.detectedAt);
+            return (
+              <div key={i} className="relative">
+                <div className="absolute -left-5 top-1.5 h-2 w-2 rounded-full bg-accent ring-2 ring-surface" />
+                <div className="text-xs font-medium text-text-primary mb-0.5">{ev.name}</div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-white/5 text-text-secondary ring-1 ring-white/10">
+                    {ev.fromVersion}
+                  </span>
+                  <svg className="h-3 w-3 text-text-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-accent/15 text-accent ring-1 ring-accent/30">
+                    {ev.toVersion}
+                  </span>
+                </div>
+                <div className="text-[10px] text-text-muted mt-0.5">{when}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Outdated Components Alert ────────────────────────────────────────────
+
+export function OutdatedComponentsAlert({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    outdated: Array<{
+      monitorId: string;
+      name: string;
+      currentVersion: string;
+      latestVersion: string;
+      severity: "critical" | "warning" | "info";
+    }>;
+    upToDate: number;
+    total: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Outdated Components";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  if (raw.outdated.length === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 flex items-center gap-3">
+        <span className="text-green-400 text-xl">✓</span>
+        <div>
+          <div className="text-sm font-semibold text-green-400">All components up to date</div>
+          <div className="text-xs text-text-secondary">{raw.total} monitor{raw.total !== 1 ? "s" : ""} checked</div>
+        </div>
+      </div>
+    );
+  }
+
+  const severityBadge = (s: "critical" | "warning" | "info") => {
+    const cfg = s === "critical"
+      ? "bg-red-500/15 text-red-400 ring-red-500/30"
+      : s === "warning"
+      ? "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30"
+      : "bg-blue-500/15 text-blue-400 ring-blue-500/30";
+    return (
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${cfg}`}>
+        {s}
+      </span>
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="flex items-center gap-2 text-xs text-text-secondary">
+          <span className="text-red-400 font-medium">{raw.outdated.length} outdated</span>
+          <span>·</span>
+          <span className="text-green-400">{raw.upToDate} up to date</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {raw.outdated.map((item) => (
+          <div key={item.monitorId} className="flex items-center justify-between gap-2 rounded-lg bg-white/3 border border-border px-3 py-2">
+            <div className="text-sm font-medium text-text-primary truncate">{item.name}</div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <code className="text-xs bg-white/5 rounded px-1.5 py-0.5 text-text-secondary font-mono">{item.currentVersion}</code>
+              <svg className="h-3 w-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              <code className="text-xs bg-accent/15 rounded px-1.5 py-0.5 text-accent font-mono ring-1 ring-accent/30">{item.latestVersion}</code>
+              {severityBadge(item.severity)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Version Comparison Table ─────────────────────────────────────────────
+
+export function VersionComparisonTable({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    rows: Array<{
+      monitorId: string;
+      name: string;
+      current: string;
+      latest: string;
+      upToDate: boolean;
+      lastChecked: string | null;
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Version Comparison";
+
+  if (!raw?.rows?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const lastChecked = raw.rows.map((r) => r.lastChecked).filter(Boolean)[0];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border text-text-secondary">
+              <th className="text-left py-1.5 pr-3 font-medium">Service</th>
+              <th className="text-left py-1.5 pr-3 font-medium">Current</th>
+              <th className="text-left py-1.5 pr-3 font-medium">Latest</th>
+              <th className="text-left py-1.5 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {raw.rows.map((row) => (
+              <tr key={row.monitorId} className="hover:bg-white/2">
+                <td className="py-2 pr-3 text-text-primary font-medium">{row.name}</td>
+                <td className="py-2 pr-3">
+                  <code className="bg-white/5 rounded px-1.5 py-0.5 font-mono text-text-secondary ring-1 ring-white/10">{row.current}</code>
+                </td>
+                <td className="py-2 pr-3">
+                  <code className={`rounded px-1.5 py-0.5 font-mono ring-1 ${row.upToDate ? "bg-white/5 text-text-secondary ring-white/10" : "bg-accent/15 text-accent ring-accent/30"}`}>{row.latest}</code>
+                </td>
+                <td className="py-2">
+                  {row.upToDate ? (
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-green-500/15 text-green-400 ring-1 ring-green-500/30">Up to date</span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30">Update available</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {lastChecked && (
+        <div className="text-[10px] text-text-muted">Last checked {formatRelative(lastChecked)}</div>
+      )}
+    </div>
+  );
+}
+
+// ── DNS Resolution Time ──────────────────────────────────────────────────
+
+export function DNSResolutionTime({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    avgMs: number;
+    p95Ms: number;
+    monitors: Array<{ name: string; avgMs: number; trend: "up" | "down" | "stable" }>;
+    periodHours: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "DNS Resolution Time";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  const trendIcon = (t: "up" | "down" | "stable") => {
+    if (t === "up") return <span className="text-red-400">↑</span>;
+    if (t === "down") return <span className="text-green-400">↓</span>;
+    return <span className="text-text-muted">–</span>;
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">Last {raw.periodHours}h</div>
+      </div>
+      <div className="flex items-end gap-6">
+        <div>
+          <div className="text-3xl font-bold text-text-primary tabular-nums">{raw.avgMs}<span className="text-base font-normal text-text-secondary ml-1">ms</span></div>
+          <div className="text-xs text-text-secondary mt-0.5">Avg Response (incl. DNS)</div>
+        </div>
+        <div className="pb-1">
+          <div className="text-lg font-semibold text-text-secondary tabular-nums">{raw.p95Ms}<span className="text-xs font-normal ml-1">ms</span></div>
+          <div className="text-[10px] text-text-muted">p95</div>
+        </div>
+      </div>
+      {raw.monitors.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs text-text-secondary font-medium mb-1">Per monitor</div>
+          {raw.monitors.map((m, i) => (
+            <div key={i} className="flex items-center justify-between text-xs rounded bg-white/3 px-2.5 py-1.5">
+              <span className="text-text-primary truncate mr-2">{m.name}</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="tabular-nums text-text-secondary">{m.avgMs}ms</span>
+                {trendIcon(m.trend)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Gauge / Speedometer ──────────────────────────────────────────────────
+
+export function Gauge({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    value: number;
+    metricType: string;
+    label: string;
+    thresholds: { green: number; yellow: number };
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Gauge";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  const { value, thresholds } = raw;
+  const color = value >= thresholds.green ? "#4ade80" : value >= thresholds.yellow ? "#facc15" : "#f87171";
+
+  // SVG semicircle gauge: arc from 180° → 0° (left → right)
+  // radius=70, center at (100, 100), arc: 0=left (180°), 100=right (0°)
+  const R = 70;
+  const cx = 100;
+  const cy = 100;
+  const clampedValue = Math.min(Math.max(value, 0), 100);
+  // Angle in radians: 0% = π (left), 100% = 0 (right)
+  const startAngle = Math.PI;
+  const endAngle = 0;
+  const valueAngle = startAngle - (clampedValue / 100) * Math.PI; // goes from π to 0
+
+  const polarToXY = (angle: number, r: number) => ({
+    x: cx + r * Math.cos(angle),
+    y: cy - r * Math.sin(angle),
+  });
+
+  const arcPath = (fromAngle: number, toAngle: number, r: number) => {
+    const start = polarToXY(fromAngle, r);
+    const end = polarToXY(toAngle, r);
+    const largeArc = fromAngle - toAngle > Math.PI ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+  };
+
+  // Background arc: full semicircle (180° to 0°)
+  const bgPath = arcPath(Math.PI, 0, R);
+  // Foreground arc: from 180° to valueAngle
+  const fgPath = clampedValue > 0 ? arcPath(Math.PI, valueAngle, R) : "";
+
+  // Needle: from center toward valueAngle
+  const needleTip = polarToXY(valueAngle, R - 8);
+  const needleBase1 = polarToXY(valueAngle + 0.15, 12);
+  const needleBase2 = polarToXY(valueAngle - 0.15, 12);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg viewBox="0 10 200 110" className="w-full max-w-[220px]">
+        {/* Background arc */}
+        <path d={bgPath} fill="none" stroke="#374151" strokeWidth={14} strokeLinecap="round" />
+        {/* Colored foreground arc */}
+        {fgPath && (
+          <path d={fgPath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
+        )}
+        {/* Needle */}
+        <polygon
+          points={`${needleTip.x},${needleTip.y} ${needleBase1.x},${needleBase1.y} ${needleBase2.x},${needleBase2.y}`}
+          fill={color}
+          opacity={0.9}
+        />
+        {/* Center dot */}
+        <circle cx={cx} cy={cy} r={5} fill={color} />
+        {/* Value text */}
+        <text x={cx} y={cy - 14} textAnchor="middle" fill="white" fontSize={22} fontWeight="bold" fontFamily="monospace">
+          {value.toFixed(1)}
+        </text>
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#9ca3af" fontSize={10}>
+          %
+        </text>
+      </svg>
+      <div className="text-xs text-text-secondary text-center">{raw.label}</div>
+      <div className="flex items-center gap-3 text-[10px] text-text-muted">
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1 align-middle" />
+          &lt;{thresholds.yellow}%
+        </span>
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1 align-middle" />
+          {thresholds.yellow}–{thresholds.green}%
+        </span>
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1 align-middle" />
+          ≥{thresholds.green}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Stats Grid ───────────────────────────────────────────────────────────
+
+export function StatsGrid({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    stats: Array<{
+      key: string;
+      label: string;
+      value: string;
+      icon: string;
+      trend?: string;
+      trendDir?: "up" | "down";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Stats Grid";
+  const visibleKeys = widget.config.visibleStats as string[] | undefined;
+
+  if (!raw?.stats?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const stats = visibleKeys?.length
+    ? raw.stats.filter((s) => visibleKeys.includes(s.key))
+    : raw.stats;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {stats.map((stat) => (
+          <div
+            key={stat.key}
+            className="rounded-lg border border-border/60 bg-white/3 backdrop-blur-sm p-3 space-y-1 hover:bg-white/5 transition-colors"
+            style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.2)" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-base leading-none">{stat.icon}</span>
+              {stat.trend && (
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${stat.trendDir === "down" ? "bg-red-500/15 text-red-400" : "bg-green-500/15 text-green-400"}`}>
+                  {stat.trendDir === "down" ? "↓" : "↑"} {stat.trend}
+                </span>
+              )}
+            </div>
+            <div className="text-lg font-bold text-text-primary tabular-nums leading-tight">{stat.value}</div>
+            <div className="text-[10px] text-text-secondary leading-tight">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Metric Comparison Row ────────────────────────────────────────────────
+
+export function MetricComparisonRow({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    metrics: Array<{
+      key: string;
+      label: string;
+      value: string;
+      unit: string;
+      color: "green" | "yellow" | "red" | "blue" | "default";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Metrics";
+
+  if (!data?.metrics?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const colorMap: Record<string, string> = {
+    green: "text-green-400",
+    yellow: "text-yellow-400",
+    red: "text-red-400",
+    blue: "text-blue-400",
+    default: "text-text-primary",
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
+        {data.metrics.map((m) => (
+          <div
+            key={m.key}
+            className="flex-1 rounded-lg border border-border/60 bg-white/3 backdrop-blur-sm p-3 space-y-1 text-center"
+          >
+            <div className="text-[10px] text-text-secondary uppercase tracking-wider leading-tight">{m.label}</div>
+            <div className={`text-2xl font-bold tabular-nums leading-tight ${colorMap[m.color] ?? colorMap.default}`}>
+              {m.value}
+              {m.unit && <span className="text-sm font-normal ml-0.5 text-text-secondary">{m.unit}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sparkline Row ────────────────────────────────────────────────────────
+
+function MiniSparkline({ dataPoints, color }: { dataPoints: number[]; color: string }) {
+  const points = dataPoints.length > 0 ? dataPoints : [0];
+  const w = 80;
+  const h = 40;
+  const max = Math.max(...points, 1);
+  const min = Math.min(...points, 0);
+  const range = max - min || 1;
+  const step = points.length > 1 ? w / (points.length - 1) : w;
+
+  const coords = points.map((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <polyline
+        points={coords.join(" ")}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function SparklineRow({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitors: Array<{
+      id: string;
+      name: string;
+      dataPoints: number[];
+      avgMs: number;
+      status: "up" | "down" | "degraded";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Sparklines";
+
+  if (!data?.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const statusColor = (s: "up" | "down" | "degraded") =>
+    s === "up" ? "#4ade80" : s === "degraded" ? "#facc15" : "#f87171";
+  const statusDot = (s: "up" | "down" | "degraded") =>
+    s === "up" ? "bg-green-400" : s === "degraded" ? "bg-yellow-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="flex flex-wrap gap-3">
+        {data.monitors.map((m) => (
+          <div
+            key={m.id}
+            className="flex-1 min-w-[120px] rounded-lg border border-border/60 bg-white/3 p-3 space-y-1"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${statusDot(m.status)}`} />
+              <span className="text-xs font-medium text-text-primary truncate">{m.name}</span>
+            </div>
+            <div className="flex justify-center">
+              <MiniSparkline dataPoints={m.dataPoints} color={statusColor(m.status)} />
+            </div>
+            <div className="text-[10px] text-text-secondary text-center">
+              avg {m.avgMs > 0 ? `${m.avgMs}ms` : "—"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Progress Ring ────────────────────────────────────────────────────────
+
+export function ProgressRing({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    value: number;
+    label: string;
+    color: "green" | "yellow" | "red";
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Progress Ring";
+
+  if (data === undefined) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const { value, label, color } = data;
+  const radius = 54;
+  const cx = 70;
+  const cy = 70;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(100, Math.max(0, value));
+  const strokeDashoffset = circumference * (1 - pct / 100);
+
+  const strokeColor =
+    color === "green" ? "#4ade80" : color === "yellow" ? "#facc15" : "#f87171";
+
+  const periodDays = (widget.config.periodDays as number) ?? 30;
+  const metricType = (widget.config.metricType as string) ?? "uptime";
+  const periodLabel = metricType === "custom" ? "" : `Last ${periodDays}d`;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg width={140} height={140} viewBox="0 0 140 140">
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={12} />
+        {/* Progress */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={12}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          transform={`rotate(-90 ${cx} ${cy})`}
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
+        />
+        {/* Center value */}
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize={22} fontWeight="bold" fontFamily="monospace">
+          {value.toFixed(value % 1 === 0 ? 0 : 1)}
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="white" fontSize={12} opacity={0.7}>
+          %
+        </text>
+        <text x={cx} y={cy + 26} textAnchor="middle" fill="#9ca3af" fontSize={9}>
+          {label}
+        </text>
+      </svg>
+      {periodLabel && (
+        <div className="text-[10px] text-text-secondary">{periodLabel}</div>
+      )}
+    </div>
+  );
+}
+
+// ── Announcement Bar ─────────────────────────────────────────────────────
+
+export function AnnouncementBar({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    message: string;
+    type: "info" | "warning" | "danger" | "success";
+    expiresAt?: string;
+    dismissable: boolean;
+    expired: boolean;
+  } | undefined;
+
+  // Client-side dismiss state — uses a simple React state trick via key
+  // Since we can't import useState here without "use client" directive we
+  // use a data attribute approach: a hidden checkbox toggles visibility.
+  if (!data || data.expired || !data.message) return null;
+
+  const { message, type, dismissable } = data;
+
+  const bgMap: Record<string, string> = {
+    info: "bg-blue-500/20 border-blue-500/40 text-blue-200",
+    warning: "bg-yellow-500/20 border-yellow-500/40 text-yellow-200",
+    danger: "bg-red-500/20 border-red-500/40 text-red-200",
+    success: "bg-green-500/20 border-green-500/40 text-green-200",
+  };
+
+  const iconMap: Record<string, string> = {
+    info: "ℹ️",
+    warning: "⚠️",
+    danger: "🚨",
+    success: "✅",
+  };
+
+  const cls = bgMap[type] ?? bgMap.info;
+  const icon = iconMap[type] ?? "ℹ️";
+
+  return (
+    <div className={`rounded-xl border p-3 flex items-start gap-3 ${cls}`} data-announcement-bar>
+      <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+      <span className="flex-1 text-sm font-medium leading-relaxed">{message}</span>
+      {dismissable && (
+        <button
+          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity ml-auto"
+          onClick={(e) => {
+            const bar = (e.target as HTMLElement).closest("[data-announcement-bar]") as HTMLElement | null;
+            if (bar) bar.style.display = "none";
+          }}
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Link List ────────────────────────────────────────────────────────────
+
+export function LinkList({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    links: Array<{ label: string; url: string; icon: string; description?: string }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Links";
+  const isEditor = (widget.config._editor as boolean) ?? false;
+
+  if (!data?.links?.length) {
+    if (isEditor) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface/30 p-4 text-center text-sm text-text-secondary">
+          No links configured. Add links in the widget settings.
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="divide-y divide-border/50">
+        {data.links.map((link, i) => (
+          <a
+            key={i}
+            href={link.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors group"
+          >
+            <span className="text-xl flex-shrink-0">{link.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">{link.label}</div>
+              {link.description && (
+                <div className="text-[11px] text-text-secondary truncate">{link.description}</div>
+              )}
+            </div>
+            <span className="text-text-secondary group-hover:text-white transition-colors flex-shrink-0">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── FAQ Accordion ────────────────────────────────────────────────────────
+
+export function FaqAccordion({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    items: Array<{ question: string; answer: string }>;
+  } | undefined;
+
+  const items = data?.items ?? (widget.config.items as Array<{ question: string; answer: string }> | undefined) ?? [];
+  const title = (widget.config.label as string) || undefined;
+  const isEditor = (widget.config._editor as boolean) ?? false;
+
+  if (!items.length) {
+    if (isEditor) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface/30 p-4 text-center text-sm text-text-secondary">
+          No FAQ items configured. Add Q&A pairs in the widget settings.
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4">
+      {title && <div className="mb-3 text-sm font-semibold text-text-primary">{title}</div>}
+      <div className="space-y-0">
+        {items.map((item, i) => (
+          <details
+            key={i}
+            className="group border-b border-border/50 last:border-0"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-left text-sm font-medium text-text-primary hover:text-white transition-colors select-none">
+              <span>{item.question}</span>
+              <svg
+                className="h-4 w-4 flex-shrink-0 text-text-secondary transition-transform duration-200 group-open:rotate-180"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="pb-3">
+              <p className="text-sm text-text-secondary leading-relaxed">{item.answer}</p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Social Links ─────────────────────────────────────────────────────────
+
+type SocialPlatform = "github" | "twitter" | "discord" | "linkedin" | "youtube" | "mastodon" | "bluesky" | "website";
+
+const SOCIAL_CONFIG: Record<SocialPlatform, { color: string; label: string; svgPath: string }> = {
+  github: {
+    color: "bg-neutral-700 hover:bg-neutral-600",
+    label: "GitHub",
+    svgPath: "M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.92.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z",
+  },
+  twitter: {
+    color: "bg-sky-700 hover:bg-sky-600",
+    label: "Twitter / X",
+    svgPath: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z",
+  },
+  discord: {
+    color: "bg-indigo-700 hover:bg-indigo-600",
+    label: "Discord",
+    svgPath: "M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z",
+  },
+  linkedin: {
+    color: "bg-blue-800 hover:bg-blue-700",
+    label: "LinkedIn",
+    svgPath: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z",
+  },
+  youtube: {
+    color: "bg-red-700 hover:bg-red-600",
+    label: "YouTube",
+    svgPath: "M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z",
+  },
+  mastodon: {
+    color: "bg-purple-700 hover:bg-purple-600",
+    label: "Mastodon",
+    svgPath: "M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 00.023-.043v-1.809a.052.052 0 00-.02-.041.053.053 0 00-.046-.01 20.282 20.282 0 01-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 01-.319-1.433.053.053 0 01.066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.67 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12z",
+  },
+  bluesky: {
+    color: "bg-sky-600 hover:bg-sky-500",
+    label: "Bluesky",
+    svgPath: "M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 01-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.204-.659-.299-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z",
+  },
+  website: {
+    color: "bg-gray-700 hover:bg-gray-600",
+    label: "Website",
+    svgPath: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
+  },
+};
+
+export function SocialLinks({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    links: Array<{ platform: string; url: string }>;
+  } | undefined;
+
+  const links = data?.links ?? (widget.config.socialLinks as Array<{ platform: string; url: string }> | undefined) ?? [];
+  const isEditor = (widget.config._editor as boolean) ?? false;
+
+  if (!links.length) {
+    if (isEditor) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface/30 p-4 text-center text-sm text-text-secondary">
+          No social links configured. Add platforms in the widget settings.
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4">
+      <div className="flex flex-wrap gap-2">
+        {links.map((link, i) => {
+          const platform = link.platform as SocialPlatform;
+          const cfg = SOCIAL_CONFIG[platform] ?? SOCIAL_CONFIG.website;
+          return (
+            <a
+              key={i}
+              href={link.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              title={cfg.label}
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${cfg.color}`}
+            >
+              <svg className="h-5 w-5 fill-white" viewBox="0 0 24 24" aria-hidden="true">
+                <path d={cfg.svgPath} />
+              </svg>
+              <span className="sr-only">{cfg.label}</span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Embed / iFrame Block ──────────────────────────────────────────────────
+
+export function EmbedIframe({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    url: string;
+    height: number;
+    title?: string;
+    sandbox: string;
+  } | undefined;
+
+  const url = data?.url ?? (widget.config.url as string | undefined) ?? "";
+  const height = data?.height ?? (widget.config.height as number | undefined) ?? 400;
+  const title = data?.title ?? (widget.config.title as string | undefined) ?? "Embedded content";
+  const sandbox = data?.sandbox ?? (widget.config.sandbox as string | undefined) ?? "allow-scripts allow-same-origin";
+
+  if (!url) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-surface/30 p-4 text-center text-sm text-text-secondary">
+        No URL configured for embed.
+      </div>
+    );
+  }
+
+  const isHttps = url.startsWith("https://");
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 overflow-hidden">
+      {!isHttps && (
+        <div className="flex items-center gap-2 bg-yellow-500/10 border-b border-yellow-500/30 px-3 py-2 text-xs text-yellow-400">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Non-HTTPS URL — content may be blocked by browsers.
+        </div>
+      )}
+      <div style={{ height }}>
+        <iframe
+          src={url}
+          title={title}
+          sandbox={sandbox}
+          className="w-full border-0 bg-surface/30"
+          style={{ height }}
+          loading="lazy"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Subscriber Form ───────────────────────────────────────────────────────
+
+export function SubscriberForm({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    title: string;
+    description: string;
+    buttonText: string;
+    successMessage: string;
+  } | undefined;
+
+  const slug = (widget.config._slug as string | undefined) ?? "";
+  const title = data?.title ?? (widget.config.title as string | undefined) ?? "Subscribe to Updates";
+  const description = data?.description ?? (widget.config.description as string | undefined) ?? "Get notified when incidents are created or resolved.";
+  const buttonText = data?.buttonText ?? (widget.config.buttonText as string | undefined) ?? "Subscribe";
+  const successMessage = data?.successMessage ?? (widget.config.successMessage as string | undefined) ?? "You are subscribed!";
+
+  return (
+    <SubscriberFormWidget
+      slug={slug}
+      title={title}
+      description={description}
+      buttonText={buttonText}
+      successMessage={successMessage}
+    />
+  );
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────
+
+export function Countdown({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    label: string;
+    targetAt: string | null;
+    secondsRemaining: number;
+    expired: boolean;
+    hideAfterExpiry: boolean;
+  } | undefined;
+
+  const label = data?.label ?? (widget.config.label as string | undefined) ?? "Event";
+  const targetAt = data?.targetAt ?? (widget.config.targetAt as string | undefined) ?? null;
+  const hideAfterExpiry = data?.hideAfterExpiry ?? (widget.config.hideAfterExpiry as boolean | undefined) ?? false;
+  const initialSeconds = data?.secondsRemaining ?? (
+    targetAt ? Math.max(0, Math.floor((new Date(targetAt).getTime() - Date.now()) / 1000)) : 0
+  );
+
+  return (
+    <CountdownWidget
+      label={label}
+      targetAt={targetAt}
+      initialSecondsRemaining={initialSeconds}
+      hideAfterExpiry={hideAfterExpiry}
+    />
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -1278,6 +3928,9 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "response-time-chart":
       content = <ResponseTimeChart {...props} />;
       break;
+    case "response-time-heatmap":
+      content = <ResponseTimeHeatmap {...props} />;
+      break;
     case "check-history-feed":
       content = <CheckHistoryFeed {...props} />;
       break;
@@ -1316,6 +3969,114 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "uptime-percentage-card":
       content = <UptimePercentageCard {...props} />;
+      break;
+    case "service-health-matrix":
+      content = <ServiceHealthMatrix {...props} />;
+      break;
+    case "aggregate-health-score":
+      content = <AggregateHealthScore {...props} />;
+      break;
+    case "latency-percentiles-card":
+      content = <LatencyPercentilesCard {...props} />;
+      break;
+    case "downtime-log":
+      content = <DowntimeLog {...props} />;
+      break;
+    case "active-incident-count":
+      content = <ActiveIncidentCount {...props} />;
+      break;
+    case "mttr-mttf-cards":
+      content = <MttrMttfCards {...props} />;
+      break;
+    case "sla-compliance-table":
+      content = <SLAComplianceTable {...props} />;
+      break;
+    case "uptime-heatmap":
+      content = <UptimeHeatmap {...props} />;
+      break;
+    case "incident-timeline":
+      content = <IncidentTimeline {...props} />;
+      break;
+    case "ssl-certificate-status":
+      content = <SSLCertificateStatus {...props} />;
+      break;
+    case "incident-severity-distribution":
+      content = <IncidentSeverityDistribution {...props} />;
+      break;
+    case "incident-duration-stats":
+      content = <IncidentDurationStats {...props} />;
+      break;
+    case "post-mortem-card":
+      content = <PostMortemCard {...props} />;
+      break;
+    case "performance-trend":
+      content = <PerformanceTrend {...props} />;
+      break;
+    case "apdex-score":
+      content = <ApdexScore {...props} />;
+      break;
+    case "throughput-counter":
+      content = <ThroughputCounter {...props} />;
+      break;
+    case "response-time-comparison":
+      content = <ResponseTimeComparison {...props} />;
+      break;
+    case "uptime-comparison-chart":
+      content = <UptimeComparisonChart {...props} />;
+      break;
+    case "next-maintenance-countdown":
+      content = <NextMaintenanceCountdown {...props} />;
+      break;
+    case "maintenance-impact-list":
+      content = <MaintenanceImpactList {...props} />;
+      break;
+    case "version-timeline":
+      content = <VersionTimeline {...props} />;
+      break;
+    case "outdated-components-alert":
+      content = <OutdatedComponentsAlert {...props} />;
+      break;
+    case "version-comparison-table":
+      content = <VersionComparisonTable {...props} />;
+      break;
+    case "dns-resolution-time":
+      content = <DNSResolutionTime {...props} />;
+      break;
+    case "gauge":
+      content = <Gauge {...props} />;
+      break;
+    case "stats-grid":
+      content = <StatsGrid {...props} />;
+      break;
+    case "metric-comparison-row":
+      content = <MetricComparisonRow {...props} />;
+      break;
+    case "sparkline-row":
+      content = <SparklineRow {...props} />;
+      break;
+    case "progress-ring":
+      content = <ProgressRing {...props} />;
+      break;
+    case "announcement-bar":
+      content = <AnnouncementBar {...props} />;
+      break;
+    case "link-list":
+      content = <LinkList {...props} />;
+      break;
+    case "faq-accordion":
+      content = <FaqAccordion {...props} />;
+      break;
+    case "social-links":
+      content = <SocialLinks {...props} />;
+      break;
+    case "embed-iframe":
+      content = <EmbedIframe {...props} />;
+      break;
+    case "subscriber-form":
+      content = <SubscriberForm {...props} />;
+      break;
+    case "countdown":
+      content = <Countdown {...props} />;
       break;
     case "divider":
       content = <Divider />;

@@ -325,7 +325,8 @@ export class PublicDashboardController {
     });
 
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
-    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.end(svg);
   }
 }

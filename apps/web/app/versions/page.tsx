@@ -793,15 +793,83 @@ export default function VersionsPage() {
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
                   ) : (() => {
-                    const q = toolSearch.toLowerCase();
-                    const filtered = toolRegistry.tools.filter((t) => {
-                      const cat = !toolCategory || t.category === toolCategory;
-                      if (!q) return cat;
-                      return cat && (t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some((tag) => tag.includes(q)));
-                    });
+                    const q = toolSearch.toLowerCase().trim().replace(/\s+/g, ' ');
+                    // Ranked filter: exact name > name starts-with > name contains > tag exact > tag contains > description
+                    const filtered = (() => {
+                      const all = toolRegistry.tools.filter((t) => {
+                        const cat = !toolCategory || t.category === toolCategory;
+                        if (!q) return cat;
+                        if (!cat) return false;
+                        const name = t.name.toLowerCase();
+                        const desc = t.description.toLowerCase();
+                        const id = t.id.toLowerCase();
+                        return (
+                          name === q || name.startsWith(q) || name.includes(q) ||
+                          id === q || id.startsWith(q) ||
+                          t.tags.some((tag) => tag.toLowerCase() === q || tag.toLowerCase().includes(q)) ||
+                          desc.includes(q)
+                        );
+                      });
+                      if (!q) return all;
+                      return all.sort((a, b) => {
+                        const score = (t: typeof a) => {
+                          const name = t.name.toLowerCase();
+                          const id = t.id.toLowerCase();
+                          if (name === q) return 10;
+                          if (name.startsWith(q)) return 20;
+                          if (name.includes(q)) return 30;
+                          if (id === q || id.startsWith(q)) return 40;
+                          if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
+                          if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
+                          return 70;
+                        };
+                        const sa = score(a), sb = score(b);
+                        if (sa !== sb) return sa - sb;
+                        if (a.verified !== b.verified) return a.verified ? -1 : 1;
+                        return a.name.localeCompare(b.name);
+                      });
+                    })();
                     const visible = filtered.slice(0, toolVisibleCount);
+                    // For empty results, find close matches (cross-category if category filter is active)
+                    const closeMatches = filtered.length === 0 && q
+                      ? toolRegistry.tools.filter((t) => {
+                          const name = t.name.toLowerCase();
+                          const id = t.id.toLowerCase();
+                          return name.includes(q) || id.includes(q) || t.tags.some((tag) => tag.toLowerCase().includes(q));
+                        }).slice(0, 4)
+                      : [];
                     return filtered.length === 0 ? (
-                      <p className="text-sm text-text-secondary text-center py-8">No tools found — try "manual config" to set up a custom check.</p>
+                      <div className="py-8 text-center space-y-3">
+                        <p className="text-sm text-text-secondary">
+                          No tools found for &ldquo;{toolSearch}&rdquo;{toolCategory ? ` in ${toolCategory}` : ''}.
+                        </p>
+                        {closeMatches.length > 0 && (
+                          <div>
+                            <p className="text-xs text-text-secondary mb-2">Did you mean:</p>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                              {closeMatches.map((t) => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => { setToolCategory(''); applyToolToForm(t); }}
+                                  className="text-xs px-3 py-1 rounded-full border border-border bg-surface-elevated text-text-primary hover:border-accent/50 transition-colors"
+                                >
+                                  {t.name}
+                                  {toolCategory && <span className="ml-1 text-text-secondary">({t.category})</span>}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-text-secondary">
+                          Not in the registry?{' '}
+                          <button
+                            className="text-accent hover:underline"
+                            onClick={() => { setToolSearch(''); setSelectedTool(null); }}
+                          >
+                            Use manual config
+                          </button>
+                        </p>
+                      </div>
                     ) : (
                       <>
                         <p className="text-xs text-text-secondary mb-2">Showing {visible.length} of {filtered.length} tools</p>

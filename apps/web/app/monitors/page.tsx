@@ -1978,7 +1978,6 @@ function MonitorsPageInner() {
                         src={`/api/v1/public/badge/${badgeMonitor.id}.svg?style=${s}`}
                         alt={s}
                         className={s === "for-the-badge" ? "h-7" : "h-5"}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                       <span className="text-xs text-text-secondary">{s}</span>
                     </div>

@@ -1,3 +1,14 @@
+## Status Summary (2026-03-18 22:07 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-18-widget-data (from dev after branch rotation at 22:06 UTC)
+- **This session (2026-03-18 22:07 UTC):**
+  - **Branch rotation**: Merged 27 commits from heartbeat/2026-03-18-landing-polish → dev, deleted old branch, created heartbeat/2026-03-18-widget-data
+  - **Widget save bug fixed**: `locked` field missing from WidgetDto caused `forbidNonWhitelisted` to reject saves silently
+  - **Widget data verified**: All 5 core widget API endpoints return real DB data (uptime%, latency, timeline, overall-status, comparison-chart)
+  - **Public status page**: Confirmed working end-to-end — real monitor data, all widget types render, error boundaries in place
+
 ## Status Summary (2026-03-18 13:20 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (transitive); no high/critical.

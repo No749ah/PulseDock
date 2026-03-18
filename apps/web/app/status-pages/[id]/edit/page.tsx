@@ -89,6 +89,7 @@ interface PageSettings {
   autoRefreshInterval?: number; // seconds, 0 = off
   showBranding?: boolean;
   logoUrl?: string;
+  faviconUrl?: string;
   accentColor?: string;
   theme?: "dark" | "light" | "system";
   fontFamily?: "inter" | "roboto" | "system" | "mono";
@@ -1829,6 +1830,19 @@ export default function StatusPageEditorPage() {
                   className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
                 />
                 <p className="mt-1 text-xs text-text-muted">Displayed above the page title. Leave empty to hide.</p>
+              </div>
+
+              {/* Favicon URL */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Favicon URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/favicon.ico"
+                  value={pageSettings.faviconUrl ?? ""}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, faviconUrl: e.target.value || undefined }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">Custom favicon for the public status page. Leave empty to use default.</p>
               </div>
 
               {/* Accent color */}

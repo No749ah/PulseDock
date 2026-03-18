@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
+import { PrintButton } from "./widgets/PrintButton";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -11,6 +12,7 @@ interface PageSettings {
   autoRefreshInterval?: number; // seconds, 0 = off
   showBranding?: boolean;
   logoUrl?: string;
+  faviconUrl?: string;
   accentColor?: string;
   theme?: "dark" | "light" | "system";
   fontFamily?: "inter" | "roboto" | "system" | "mono";
@@ -178,6 +180,7 @@ export async function generateMetadata({
     });
     if (!res.ok) return {};
     const data: PublicPageData = await res.json() as PublicPageData;
+    const settings = (data.layout?.settings ?? {}) as PageSettings;
     return {
       title: `${data.title} — Status`,
       description: data.description ?? `Live service status for ${data.title}`,
@@ -185,6 +188,9 @@ export async function generateMetadata({
         title: `${data.title} — Status`,
         description: data.description ?? `Live service status for ${data.title}`,
       },
+      icons: settings.faviconUrl
+        ? { icon: settings.faviconUrl, shortcut: settings.faviconUrl }
+        : undefined,
     };
   } catch {
     return {};
@@ -374,16 +380,20 @@ export default async function PublicStatusSlugPage({
           )}
 
           {/* Footer */}
-          <div className="pt-8 text-center text-xs text-text-secondary">
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
             <span>Last updated: {lastUpdated}</span>
             {showBranding && (
               <span>
                 {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>
               </span>
             )}
+            <span className="hidden sm:inline text-text-muted">·</span>
+            <PrintButton />
           </div>
         </div>
       </main>
+
+
     </>
   );
 }

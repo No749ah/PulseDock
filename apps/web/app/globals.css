@@ -218,3 +218,11 @@ html, body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ── Print styles (status pages) ─────────────────────────────────────── */
+@media print {
+  .print\:hidden { display: none !important; }
+  body { background: white !important; color: black !important; }
+  main { background: white !important; padding: 8px !important; }
+  @page { margin: 1cm; size: A4; }
+}

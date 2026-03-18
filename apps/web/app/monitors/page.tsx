@@ -19,7 +19,7 @@ import type { MonitorTemplate } from "../components/MonitorTemplates";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
-import { Sparkline } from "../components/Sparkline";
+import { MonitorStatusCell } from "../components/MonitorStatusCell";
 
 interface MonitorTag {
   id: string;
@@ -961,34 +961,12 @@ function MonitorsPageInner() {
                           </TableCell>
                           <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
                           <TableCell>
-                            <div className="flex flex-col gap-1">
-                              {!monitor.enabled ? (
-                                <Badge variant="warning">Disabled</Badge>
-                              ) : lastRun ? (
-                                (monitor.type === "GIT_RELEASE" || monitor.type === "DOCKER_IMAGE") ? (
-                                  lastRun.level === "green" ? (
-                                    <Badge variant="success">Up to date</Badge>
-                                  ) : lastRun.level === "yellow" ? (
-                                    <Badge variant="warning">Update available</Badge>
-                                  ) : (
-                                    <Badge variant="danger">Major update</Badge>
-                                  )
-                                ) : (
-                                  lastRun.level === "yellow" ? (
-                                    <Badge variant="warning">Degraded</Badge>
-                                  ) : lastRun.ok ? (
-                                    <Badge variant="success">Operational</Badge>
-                                  ) : (
-                                    <Badge variant="danger">Down</Badge>
-                                  )
-                                )
-                              ) : (
-                                <Badge>Pending</Badge>
-                              )}
-                              {(monitor.type !== "GIT_RELEASE" && monitor.type !== "DOCKER_IMAGE") && (
-                                <Sparkline runs={runs.filter((r) => r.monitorId === monitor.id).slice(0, 30)} width={80} height={16} />
-                              )}
-                            </div>
+                            <MonitorStatusCell
+                              monitorId={monitor.id}
+                              monitorType={monitor.type}
+                              enabled={monitor.enabled}
+                              runs={runs}
+                            />
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <button

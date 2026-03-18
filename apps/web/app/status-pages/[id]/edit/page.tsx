@@ -222,6 +222,7 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
   { type: "dependency-map", label: "Dependency Map", description: "Visual service dependency graph with live status on each node. Define edges between monitors in config.", icon: GitFork, category: "Status", defaultW: 12, defaultH: 5 },
   { type: "multi-environment-status", label: "Multi-Environment Status", description: "Side-by-side status comparison across environments (prod/staging/dev). Configure envMonitors mapping.", icon: Layers, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "tab-container", label: "Tab Container", description: "Multiple tabs each showing configurable text/content sections.", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 4 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -727,8 +728,9 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
-  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar"];
+  const supportsMonitorScope = !noScopeWidgets.includes(w.type);
+  const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
@@ -1054,6 +1056,24 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             </button>
           </div>
         </>
+      )}
+
+      {w.type === "tab-container" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Tabs (JSON)</label>
+          <textarea
+            value={JSON.stringify(
+              (w.config.tabs as unknown[] | undefined) ?? [{ title: "Tab 1", content: "" }, { title: "Tab 2", content: "" }],
+              null, 2
+            )}
+            onChange={(e) => {
+              try { update("tabs", JSON.parse(e.target.value)); } catch {}
+            }}
+            rows={6}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {`{title, content}`} — content supports newlines</p>
+        </div>
       )}
 
       {w.type === "dependency-map" && (

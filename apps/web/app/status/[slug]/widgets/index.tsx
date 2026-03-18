@@ -1,6 +1,7 @@
 // Widget renderer components for public status pages.
 // All widgets receive widget config + live monitor data from the API.
 
+import React from "react";
 import { SubscriberFormWidget } from "./SubscriberFormWidget";
 import { CountdownWidget } from "./CountdownWidget";
 import { AnnouncementBarClient } from "./AnnouncementBarClient";
@@ -4217,6 +4218,53 @@ export function CollapsibleSection({ widget }: WidgetProps) {
   );
 }
 
+// ── Tab Container ────────────────────────────────────────────────────────
+
+export function TabContainer({ widget }: WidgetProps) {
+  const tabs = (widget.config.tabs as Array<{ title: string; content: string }> | undefined) ?? [
+    { title: "Tab 1", content: "" },
+    { title: "Tab 2", content: "" },
+  ];
+  const label = widget.config.label as string | undefined;
+  const [active, setActive] = React.useState(0);
+  const activeIndex = Math.min(active, tabs.length - 1);
+  const tab = tabs[activeIndex];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      {label && <p className="text-sm font-semibold text-text-primary px-4 pt-4">{label}</p>}
+      {/* Tab bar */}
+      <div className="flex border-b border-border bg-surface-elevated/40 overflow-x-auto">
+        {tabs.map((t, i) => (
+          <button
+            key={i}
+            onClick={() => setActive(i)}
+            className={[
+              "relative shrink-0 px-4 py-2.5 text-sm font-medium transition-colors select-none",
+              i === activeIndex
+                ? "text-text-primary"
+                : "text-text-muted hover:text-text-secondary",
+            ].join(" ")}
+          >
+            {t.title || `Tab ${i + 1}`}
+            {i === activeIndex && (
+              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+      {/* Tab content */}
+      <div className="px-5 py-4 min-h-[60px]">
+        {tab?.content ? (
+          <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">{tab.content}</div>
+        ) : (
+          <p className="text-sm text-text-muted italic">No content configured for this tab.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Dependency Map ───────────────────────────────────────────────────────
 
 export function DependencyMap({ widget, extra }: WidgetProps) {
@@ -4640,6 +4688,9 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "multi-environment-status":
       content = <MultiEnvironmentStatus {...props} />;
+      break;
+    case "tab-container":
+      content = <TabContainer {...props} />;
       break;
     default:
       content = (

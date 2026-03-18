@@ -69,7 +69,8 @@ export type WidgetType =
   | 'code-block'
   | 'video-embed'
   | 'dependency-map'
-  | 'multi-environment-status';
+  | 'multi-environment-status'
+  | 'tab-container';
 
 export interface Widget {
   id: string;

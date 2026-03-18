@@ -240,13 +240,18 @@ interface CanvasWidgetProps {
   colWidth: number;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResize }: CanvasWidgetProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
   });
+
+  // Mutable ref so the mousemove handler always reads the latest widget dimensions
+  const widgetRef = useRef(widget);
+  widgetRef.current = widget;
 
   const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
   const Icon = paletteItem?.icon ?? LayoutGrid;
@@ -262,12 +267,43 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: Canv
     zIndex: isDragging ? 10 : isSelected ? 5 : 1,
   };
 
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = widgetRef.current.w;
+      const startH = widgetRef.current.h;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (colWidth <= 0) return;
+        const newW = Math.max(1, Math.min(COL_COUNT - widgetRef.current.x, startW + Math.round((ev.clientX - startX) / colWidth)));
+        const newH = Math.max(1, Math.min(10, startH + Math.round((ev.clientY - startY) / ROW_H)));
+        onResize(widgetRef.current.id, { w: newW, h: newH });
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "nwse-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [colWidth, onResize]
+  );
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       onClick={(e) => { e.stopPropagation(); onSelect(widget.id); }}
-      className={`group rounded-xl border-2 bg-surface transition-colors ${
+      className={`group relative flex flex-col rounded-xl border-2 bg-surface transition-colors ${
         isSelected ? "border-accent shadow-lg shadow-accent/10" : "border-border hover:border-accent/40"
       }`}
     >
@@ -301,6 +337,21 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: Canv
       <div className="flex-1 overflow-hidden p-2">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
       </div>
+      {/* Resize handle — bottom-right corner */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        onClick={(e) => e.stopPropagation()}
+        title={`Drag to resize · ${widget.w} cols × ${widget.h} rows`}
+        className={`absolute bottom-1 right-1 flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded transition-opacity ${
+          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+        }`}
+      >
+        <svg viewBox="0 0 10 10" className="h-3.5 w-3.5 text-text-secondary/60" aria-hidden="true">
+          <circle cx="8" cy="8" r="1.1" fill="currentColor" />
+          <circle cx="4.5" cy="8" r="1.1" fill="currentColor" />
+          <circle cx="8" cy="4.5" r="1.1" fill="currentColor" />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -314,9 +365,10 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onResize }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -385,6 +437,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
+            onResize={onResize}
           />
         );
       })}

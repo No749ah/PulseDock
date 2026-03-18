@@ -7,6 +7,7 @@ import Link from "next/link";
 import { FadeIn } from "./components/FadeIn";
 import { GradientText } from "./components/GradientText";
 import { Badge } from "./components/Badge";
+import { CountUp } from "./components/CountUp";
 import {
   Activity,
   AlertTriangle,

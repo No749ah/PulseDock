@@ -78,13 +78,14 @@ export default function StatusPagesPage() {
     if (!titleVal) return;
     setCreating(true);
     try {
+      // Only send slug if user explicitly typed one (min 3 chars).
+      // If empty, let the API auto-generate from the title — avoids stale timestamp collisions.
+      const body: Record<string, string> = { title: titleVal };
+      if (slugVal && slugVal.length >= 3) body.slug = slugVal;
       const page = await api<StatusPage>("/v1/status-pages", undefined, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: titleVal,
-          slug: slugVal || autoSlug(titleVal),
-        }),
+        body: JSON.stringify(body),
       });
       setShowCreate(false);
       setCreateTitle("");

@@ -887,4 +887,87 @@ describe('StatusPagesService', () => {
       );
     });
   });
+
+  describe('getWidgetData — response-time-chart', () => {
+    it('returns dataPoints with avgMs, p95Ms, maxMs from MonitorRun latencyMs', async () => {
+      const now = new Date();
+      const runs = [
+        { checkedAt: new Date(now.getTime() - 5000), latencyMs: 100, level: 'green' },
+        { checkedAt: new Date(now.getTime() - 4000), latencyMs: 200, level: 'green' },
+        { checkedAt: new Date(now.getTime() - 3000), latencyMs: 300, level: 'green' },
+        { checkedAt: new Date(now.getTime() - 2000), latencyMs: 400, level: 'red' },
+        { checkedAt: new Date(now.getTime() - 1000), latencyMs: 500, level: 'green' },
+      ];
+      const layout = {
+        widgets: [{ id: 'rt1', type: 'response-time-chart', config: { monitorId: 'mon-1', points: 5 }, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([...runs].reverse()); // desc order from DB
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'rt1');
+      expect(result.monitorId).toBe('mon-1');
+      const dp = result.dataPoints as Array<{ t: string; ms: number | null; ok: boolean }>;
+      expect(dp).toHaveLength(5);
+      expect(dp[0].ms).toBe(100);
+      expect(dp[3].ok).toBe(false); // red level
+      expect(result.avgMs).toBe(300); // (100+200+300+400+500)/5
+      expect(result.maxMs).toBe(500);
+      expect(result.p95Ms).toBe(500); // 95th percentile of [100,200,300,400,500]
+    });
+
+    it('returns null stats when all latencyMs are null', async () => {
+      const runs = [
+        { checkedAt: new Date(), latencyMs: null, level: 'green' },
+        { checkedAt: new Date(), latencyMs: null, level: 'green' },
+      ];
+      const layout = {
+        widgets: [{ id: 'rt2', type: 'response-time-chart', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'rt2');
+      expect(result.avgMs).toBeNull();
+      expect(result.p95Ms).toBeNull();
+      expect(result.maxMs).toBeNull();
+    });
+
+    it('returns empty dataPoints when no runs exist', async () => {
+      const layout = {
+        widgets: [{ id: 'rt3', type: 'response-time-chart', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'rt3');
+      expect(result.dataPoints).toHaveLength(0);
+      expect(result.avgMs).toBeNull();
+    });
+
+    it('throws BadRequestException when monitorId is missing', async () => {
+      const layout = {
+        widgets: [{ id: 'rt4', type: 'response-time-chart', config: {}, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'rt4')).rejects.toThrow(BadRequestException);
+    });
+
+    it('respects periodHours config to filter by time range', async () => {
+      const layout = {
+        widgets: [{ id: 'rt5', type: 'response-time-chart', config: { monitorId: 'mon-1', periodHours: 1 }, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      const runs = [{ checkedAt: new Date(), latencyMs: 150, level: 'green' }];
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'rt5');
+      // Verify findMany was called with a time filter (gte)
+      const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+        where: { checkedAt?: { gte: Date } };
+      };
+      expect(call.where.checkedAt?.gte).toBeDefined();
+      expect(result.avgMs).toBe(150);
+    });
+  });
 });

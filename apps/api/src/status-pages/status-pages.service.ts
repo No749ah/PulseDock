@@ -368,6 +368,46 @@ export class StatusPagesService {
         return { status, monitorsDown: down, monitorsDegraded: degraded, total: monitors.length };
       }
 
+      case 'response-time-chart': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        // Default: last 60 data points (configurable via periodHours or points)
+        const points = Math.min(Math.max((widget.config.points as number) ?? 60, 10), 200);
+        const periodHours = (widget.config.periodHours as number) ?? 0; // 0 = use last N points
+        let where: Record<string, unknown> = { monitorId };
+        if (periodHours > 0) {
+          const since = new Date(Date.now() - periodHours * 3_600_000);
+          where = { monitorId, checkedAt: { gte: since } };
+        }
+        const runs = await this.prisma.monitorRun.findMany({
+          where,
+          select: { checkedAt: true, latencyMs: true, level: true },
+          orderBy: { checkedAt: 'desc' },
+          take: points,
+        });
+        // Reverse to chronological order (oldest → newest)
+        runs.reverse();
+        const dataPoints = runs.map((r: { checkedAt: unknown; latencyMs: number | null; level: string }) => ({
+          t: (r.checkedAt as Date).toISOString(),
+          ms: r.latencyMs,
+          ok: r.level !== 'red',
+        }));
+        const withLatency = dataPoints.filter((d) => d.ms !== null);
+        const avgMs =
+          withLatency.length > 0
+            ? Math.round(withLatency.reduce((s, d) => s + (d.ms as number), 0) / withLatency.length)
+            : null;
+        const p95Ms =
+          withLatency.length > 0
+            ? (() => {
+                const sorted = [...withLatency].sort((a, b) => (a.ms as number) - (b.ms as number));
+                const idx = Math.floor(sorted.length * 0.95);
+                return sorted[idx]?.ms ?? sorted[sorted.length - 1]?.ms ?? null;
+              })()
+            : null;
+        const maxMs = withLatency.length > 0 ? Math.max(...withLatency.map((d) => d.ms as number)) : null;
+        return { monitorId, dataPoints, avgMs, p95Ms, maxMs };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

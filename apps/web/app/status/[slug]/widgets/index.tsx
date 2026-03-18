@@ -407,24 +407,131 @@ export function SLASummary({ widget, monitors }: WidgetProps) {
   );
 }
 
-// Response Time Chart
-export function ResponseTimeChart({ widget, monitors }: WidgetProps) {
+// Response Time Chart — real SVG sparkline from MonitorRun latencyMs values
+export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const label = widget.config.label ?? monitor?.name ?? "Response Time";
 
+  const widgetData = extra.widgetDataById[widget.id] as {
+    dataPoints?: Array<{ t: string; ms: number | null; ok: boolean }>;
+    avgMs?: number | null;
+    p95Ms?: number | null;
+    maxMs?: number | null;
+  } | undefined;
+
+  const dataPoints = widgetData?.dataPoints ?? [];
+  const avgMs = widgetData?.avgMs ?? null;
+  const p95Ms = widgetData?.p95Ms ?? null;
+  const maxMs = widgetData?.maxMs ?? null;
+
+  const withLatency = dataPoints.filter((d) => d.ms !== null);
+
+  // SVG sparkline params
+  const W = 600;
+  const H = 80;
+  const N = dataPoints.length;
+  const barW = N > 0 ? Math.max(1, (W - (N - 1) * 2) / N) : 0;
+
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="mb-2 text-sm font-medium text-text-primary">{label}</p>
-      {monitor?.latencyMs !== null && monitor?.latencyMs !== undefined ? (
-        <div>
-          <p className="text-3xl font-semibold text-text-primary">
-            {monitor.latencyMs}
-            <span className="ml-1 text-base font-normal text-text-secondary">ms</span>
-          </p>
-          <p className="mt-1 text-xs text-text-secondary">Latest response time</p>
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-text-primary">{label}</span>
+        <div className="flex items-center gap-3">
+          {avgMs !== null && (
+            <span className="text-xs text-text-secondary tabular-nums">
+              avg <span className="font-semibold text-text-primary">{avgMs}ms</span>
+            </span>
+          )}
+          {p95Ms !== null && (
+            <span className="text-xs text-text-secondary tabular-nums">
+              p95 <span className="font-semibold text-text-primary">{p95Ms}ms</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Chart */}
+      {withLatency.length === 0 ? (
+        <div className="flex h-20 items-center justify-center rounded-lg bg-bg">
+          <span className="text-xs text-text-secondary">No latency data yet</span>
         </div>
       ) : (
-        <p className="text-2xl font-semibold text-text-secondary">—</p>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          width="100%"
+          height={H}
+          aria-label={`Response time sparkline, avg ${avgMs}ms`}
+          className="rounded-lg overflow-hidden"
+        >
+          <title>{`Response time chart — avg ${avgMs}ms, p95 ${p95Ms}ms`}</title>
+
+          {/* Background */}
+          <rect x={0} y={0} width={W} height={H} fill="transparent" />
+
+          {/* Bars */}
+          {dataPoints.map((d, i) => {
+            const x = i * (barW + 2);
+            const fill = d.ms === null ? "#374151" : d.ok ? "#22c55e" : "#ef4444";
+            const barH =
+              d.ms === null || maxMs === null || maxMs === 0
+                ? 3
+                : Math.max(3, (d.ms / maxMs) * (H - 4));
+            const y = H - barH;
+            return (
+              <rect key={i} x={x} y={y} width={barW} height={barH} fill={fill} rx={1} opacity={0.85}>
+                <title>{d.ms !== null ? `${new Date(d.t).toLocaleTimeString()} · ${d.ms}ms${!d.ok ? " (failed)" : ""}` : "No data"}</title>
+              </rect>
+            );
+          })}
+
+          {/* Average dashed line */}
+          {avgMs !== null && maxMs !== null && maxMs > 0 && (
+            <line
+              x1={0}
+              y1={H - (avgMs / maxMs) * (H - 4) - 2}
+              x2={W}
+              y2={H - (avgMs / maxMs) * (H - 4) - 2}
+              stroke="#94a3b8"
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              opacity={0.7}
+            />
+          )}
+
+          {/* P95 line */}
+          {p95Ms !== null && maxMs !== null && maxMs > 0 && p95Ms !== avgMs && (
+            <line
+              x1={0}
+              y1={H - (p95Ms / maxMs) * (H - 4) - 2}
+              x2={W}
+              y2={H - (p95Ms / maxMs) * (H - 4) - 2}
+              stroke="#f59e0b"
+              strokeWidth={1}
+              strokeDasharray="2 4"
+              opacity={0.5}
+            />
+          )}
+        </svg>
+      )}
+
+      {/* Footer stats */}
+      {withLatency.length > 0 && (
+        <div className="mt-2 flex items-center gap-4 text-[10px] text-text-secondary">
+          <span>{dataPoints.length} checks</span>
+          {maxMs !== null && <span>max {maxMs}ms</span>}
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-1.5 w-3 rounded-full" style={{ background: "#94a3b8", opacity: 0.7 }} />
+            avg
+          </span>
+          {p95Ms !== null && p95Ms !== avgMs && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-1.5 w-3 rounded-full" style={{ background: "#f59e0b", opacity: 0.5 }} />
+              p95
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

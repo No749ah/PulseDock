@@ -1890,7 +1890,12 @@ function MonitorsPageInner() {
                   {(["flat", "flat-square", "for-the-badge"] as const).map((s) => (
                     <div key={s} className="flex flex-col items-center gap-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`/api/v1/public/badge/${badgeMonitor.id}.svg?style=${s}`} alt={s} className="h-6" />
+                      <img
+                        src={`/api/v1/public/badge/${badgeMonitor.id}.svg?style=${s}`}
+                        alt={s}
+                        className={s === "for-the-badge" ? "h-7" : "h-5"}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
                       <span className="text-xs text-text-secondary">{s}</span>
                     </div>
                   ))}

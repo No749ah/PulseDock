@@ -30,8 +30,14 @@ interface BadgeParams {
 }
 
 function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams): string {
-  const lw = textWidth(label) + 20;  // padding 10px each side
-  const rw = textWidth(message) + 20;
+  // Upper-case label text for for-the-badge style BEFORE computing widths
+  const displayLabel = style === 'for-the-badge' ? label.toUpperCase() : label;
+  const displayMessage = style === 'for-the-badge' ? message.toUpperCase() : message;
+
+  // Scale factor: for-the-badge uses ~1.1× wider chars (uppercase + bold)
+  const widthScale = style === 'for-the-badge' ? 1.15 : 1;
+  const lw = Math.round(textWidth(displayLabel) * widthScale) + 20;
+  const rw = Math.round(textWidth(displayMessage) * widthScale) + 20;
   const totalW = lw + rw;
   const height = style === 'for-the-badge' ? 28 : 20;
   const radius = style === 'flat-square' || style === 'for-the-badge' ? 0 : 3;
@@ -41,10 +47,6 @@ function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams
   const textY = Math.round(height / 2) + 1;
   const labelX = Math.round(lw / 2);
   const messageX = lw + Math.round(rw / 2);
-
-  // Upper-case label text for for-the-badge style
-  const displayLabel = style === 'for-the-badge' ? label.toUpperCase() : label;
-  const displayMessage = style === 'for-the-badge' ? message.toUpperCase() : message;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${height}" role="img" aria-label="${escapeXml(label)}: ${escapeXml(message)}">
   <title>${escapeXml(label)}: ${escapeXml(message)}</title>
@@ -61,10 +63,10 @@ function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams
     ${style !== 'flat-square' && style !== 'for-the-badge' ? `<rect width="${totalW}" height="${height}" fill="url(#s)"/>` : ''}
   </g>
   <g fill="#fff" text-anchor="middle" font-family="${fontFamily}" font-weight="${fontWeight}" font-size="${fontSize}">
-    <text x="${labelX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
-    <text x="${labelX}" y="${textY}" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
-    <text x="${messageX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
-    <text x="${messageX}" y="${textY}" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
+    <text x="${labelX}" y="${textY + 1}" fill="#010101" fill-opacity=".3">${escapeXml(displayLabel)}</text>
+    <text x="${labelX}" y="${textY}">${escapeXml(displayLabel)}</text>
+    <text x="${messageX}" y="${textY + 1}" fill="#010101" fill-opacity=".3">${escapeXml(displayMessage)}</text>
+    <text x="${messageX}" y="${textY}">${escapeXml(displayMessage)}</text>
   </g>
 </svg>`;
 }

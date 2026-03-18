@@ -158,10 +158,7 @@ server {
         proxy_buffering     off;
     }
 
-    # ── CRITICAL: Static assets — separate block with buffering ON ────────────
-    # proxy_buffering off (set for socket.io/main block) breaks static file delivery.
-    # Without this block, /_next/static/*.css|js return 404 through the proxy.
-    # This is the RECURRING root cause — always keep this block.
+    # Static assets — separate location block required
     location ~* ^/_next/static/ {
         proxy_pass          http://pulsedock_web;
         proxy_http_version  1.1;

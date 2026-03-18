@@ -52,9 +52,6 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     # ── Static assets (/‌_next/static/) ──────────────────────────────────────
-    # MUST be a separate location block with proxy_buffering ON.
-    # The global proxy_buffering off on location / breaks static file serving
-    # and causes 404s for JS/CSS chunks. This has been the recurring root cause.
     location ~* ^/_next/static/ {
         proxy_pass http://pulsedock_backend;
         proxy_http_version 1.1;

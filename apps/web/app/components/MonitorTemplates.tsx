@@ -155,13 +155,12 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
   },
   {
     label: "Uptime Kuma",
-    description: "Uptime Kuma API status",
+    description: "Uptime Kuma uptime check",
     name: "Uptime Kuma Health",
     type: "HTTP",
-    target: "https://kuma.example.com/api/entry-page",
+    target: "https://kuma.example.com",
     intervalSec: 60,
-    // Version requires auth
-    config: { appVersionEndpoint: '/api/entry-page', appAuthType: 'token' },
+    config: {},
     requiresUrl: true,
   },
   {

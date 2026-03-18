@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Activity, AlertTriangle, BarChart2, ChevronLeft, ChevronRight,
+  Activity, AlertTriangle, BarChart2, Check, ChevronLeft, ChevronRight,
   CheckCircle, ClipboardList, Copy, Database, KeyRound, Link2,
   Mail, Monitor, RefreshCw, Server, Shield, Trash2, UserCog,
-  Users, XCircle, Zap,
+  Users, X, XCircle, Zap,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
@@ -239,17 +239,30 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-2 rounded-xl bg-accent/10"><UserCog className="w-5 h-5 text-accent" /></div>
-          <div>
-            <h2 className="text-base font-semibold text-text-primary">Edit User</h2>
-            <p className="text-xs text-text-secondary">{u.email}</p>
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header — avatar + identity */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-sm font-bold text-accent uppercase">
+            {u.email[0]}
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text-primary truncate">{u.email}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface-elevated border-border'}`}>
+                {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
+              </span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.isActive !== false ? 'text-success bg-success/10 border-success/30' : 'text-danger bg-danger/10 border-danger/30'}`}>
+                {u.isActive !== false ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="px-5 py-4 space-y-4">
           {/* Email */}
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
@@ -261,54 +274,62 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
             />
           </div>
 
-          {/* Role */}
+          {/* Role — pill selector matching display style */}
           <div>
-            <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
+            <label className="block text-xs font-medium text-text-secondary mb-2">Role</label>
             <div className="flex gap-2">
-              {(['user', 'admin'] as const).map((r) => (
-                <button
-                  key={r}
-                  disabled={isSelf && r !== u.role}
-                  onClick={() => setRole(r)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${role === r ? 'bg-accent text-white border-accent' : 'bg-bg border-border text-text-secondary hover:text-text-primary hover:border-accent/50'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  {r === 'admin' ? '🛡 Admin' : '👤 User'}
-                </button>
-              ))}
+              {(['user', 'admin'] as const).map((r) => {
+                const isSelected = role === r;
+                const isAdmin = r === 'admin';
+                return (
+                  <button
+                    key={r}
+                    disabled={isSelf}
+                    onClick={() => setRole(r)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
+                      isSelected
+                        ? isAdmin
+                          ? 'text-accent bg-accent/10 border-accent/40 ring-1 ring-accent/30'
+                          : 'text-text-primary bg-surface-elevated border-border ring-1 ring-border'
+                        : 'text-text-secondary bg-transparent border-border/50 hover:border-border hover:text-text-primary'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    {isAdmin ? '🛡' : '👤'} {isAdmin ? 'Admin' : 'User'}
+                    {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                  </button>
+                );
+              })}
             </div>
             {isSelf && <p className="text-xs text-text-secondary mt-1.5">You cannot change your own role.</p>}
           </div>
 
           {/* Account status */}
-          <div className="p-4 rounded-xl bg-surface-elevated border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-text-primary">Account status</p>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  {u.isActive !== false ? 'Active — user can sign in' : 'Disabled — all sessions revoked'}
-                </p>
-              </div>
-              <button
-                disabled={isSelf || saving}
-                onClick={toggleActive}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive !== false
-                  ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
-                  : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                }`}
-              >
-                {u.isActive !== false ? 'Disable account' : 'Enable account'}
-              </button>
+          <div className="flex items-center justify-between py-3 px-3.5 rounded-xl bg-surface-elevated border border-border">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Account status</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {u.isActive !== false ? 'User can sign in' : 'All sessions revoked'}
+              </p>
             </div>
-            {isSelf && <p className="text-xs text-danger mt-2">You cannot disable your own account.</p>}
+            <button
+              disabled={isSelf || saving}
+              onClick={toggleActive}
+              className={`ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive !== false
+                ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
+                : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+              }`}
+            >
+              {u.isActive !== false ? 'Disable' : 'Enable'}
+            </button>
           </div>
 
           {error && <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>}
         </div>
 
-        <div className="flex gap-3 mt-5">
+        <div className="flex gap-2 px-5 pb-5">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
           <button onClick={handleSave} disabled={saving || !email.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors">
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -471,12 +492,27 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
-                <div className="flex gap-2">
-                  {(['user', 'admin'] as const).map((r) => (
-                    <button key={r} onClick={() => setInviteRole(r)} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${inviteRole === r ? 'bg-accent text-white border-accent' : 'bg-bg border-border text-text-secondary hover:border-accent/50'}`}>
-                      {r === 'admin' ? '🛡 Admin' : '👤 User'}
-                    </button>
-                  ))}
+                <div className="flex gap-2 pt-0.5">
+                  {(['user', 'admin'] as const).map((r) => {
+                    const isSelected = inviteRole === r;
+                    const isAdmin = r === 'admin';
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setInviteRole(r)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
+                          isSelected
+                            ? isAdmin
+                              ? 'text-accent bg-accent/10 border-accent/40 ring-1 ring-accent/30'
+                              : 'text-text-primary bg-surface-elevated border-border ring-1 ring-border'
+                            : 'text-text-secondary bg-transparent border-border/50 hover:border-border hover:text-text-primary'
+                        }`}
+                      >
+                        {isAdmin ? '🛡' : '👤'} {isAdmin ? 'Admin' : 'User'}
+                        {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

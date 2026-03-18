@@ -363,3 +363,13 @@ model IncidentMonitor {
 
   @@id([incidentId, monitorId])
 }
+
+model StatusPageSubscriber {
+  id           String   @id @default(cuid())
+  statusPageId String
+  email        String
+  createdAt    DateTime @default(now())
+
+  @@unique([statusPageId, email])
+  @@index([statusPageId])
+}

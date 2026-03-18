@@ -160,6 +160,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "progress-ring", label: "Progress Ring", description: "Circular Apple Watch-style ring showing uptime%, SLA compliance, or custom value", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
   { type: "announcement-bar", label: "Announcement Bar", description: "Full-width colored info/warning/danger/success banner for important messages", icon: AlertTriangle, category: "Content", defaultW: 12, defaultH: 1 },
   { type: "link-list", label: "Link List", description: "List of external links with icons: Docs, Support, Changelog, API Status", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "faq-accordion", label: "FAQ / Accordion", description: "Collapsible Q&A sections — config-driven, no monitor data needed", icon: Type, category: "Content", defaultW: 8, defaultH: 4 },
+  { type: "social-links", label: "Social Links", description: "Row of social media icon buttons (GitHub, Twitter/X, Discord, LinkedIn, etc.)", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "embed-iframe", label: "Embed / iFrame", description: "Embed external dashboards or Grafana panels in an iframe", icon: Type, category: "Content", defaultW: 12, defaultH: 6 },
+  { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
 ];
 

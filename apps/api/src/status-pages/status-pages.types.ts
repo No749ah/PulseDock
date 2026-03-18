@@ -55,7 +55,12 @@ export type WidgetType =
   | 'sparkline-row'
   | 'progress-ring'
   | 'announcement-bar'
-  | 'link-list';
+  | 'link-list'
+  | 'faq-accordion'
+  | 'social-links'
+  | 'embed-iframe'
+  | 'subscriber-form'
+  | 'countdown';
 
 export interface Widget {
   id: string;

@@ -2276,4 +2276,146 @@ describe('StatusPagesService', () => {
       expect(upStat?.value).toBe('2/3');
     });
   });
+
+  // ── faq-accordion ─────────────────────────────────────────────────────────
+
+  describe('getWidgetData — faq-accordion', () => {
+    it('returns items array from config', async () => {
+      const items = [
+        { question: 'What is PulseDock?', answer: 'An uptime monitoring tool.' },
+        { question: 'How do I add a monitor?', answer: 'Go to the monitors section.' },
+      ];
+      const layout = {
+        widgets: [{ id: 'faq1', type: 'faq-accordion', config: { items }, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'faq1');
+      expect((result.items as { question: string }[])).toHaveLength(2);
+      expect((result.items as { question: string }[])[0].question).toBe('What is PulseDock?');
+    });
+
+    it('returns empty items array when no items configured', async () => {
+      const layout = {
+        widgets: [{ id: 'faq2', type: 'faq-accordion', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'faq2');
+      expect(result.items).toEqual([]);
+    });
+  });
+
+  // ── social-links ──────────────────────────────────────────────────────────
+
+  describe('getWidgetData — social-links', () => {
+    it('returns socialLinks as links from config', async () => {
+      const socialLinks = [
+        { platform: 'github', url: 'https://github.com/example' },
+        { platform: 'twitter', url: 'https://twitter.com/example' },
+      ];
+      const layout = {
+        widgets: [{ id: 'sl1', type: 'social-links', config: { socialLinks }, x: 0, y: 0, w: 6, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sl1');
+      expect((result.links as { platform: string }[])).toHaveLength(2);
+      expect((result.links as { platform: string }[])[0].platform).toBe('github');
+    });
+
+    it('returns empty links array when no socialLinks configured', async () => {
+      const layout = {
+        widgets: [{ id: 'sl2', type: 'social-links', config: {}, x: 0, y: 0, w: 6, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sl2');
+      expect(result.links).toEqual([]);
+    });
+  });
+
+  // ── embed-iframe ──────────────────────────────────────────────────────────
+
+  describe('getWidgetData — embed-iframe', () => {
+    it('returns url, height, sandbox from config', async () => {
+      const layout = {
+        widgets: [{ id: 'ei1', type: 'embed-iframe', config: { url: 'https://grafana.example.com/d/abc', height: 600, sandbox: 'allow-scripts' }, x: 0, y: 0, w: 12, h: 6 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ei1');
+      expect(result.url).toBe('https://grafana.example.com/d/abc');
+      expect(result.height).toBe(600);
+      expect(result.sandbox).toBe('allow-scripts');
+    });
+
+    it('throws BadRequestException when url is missing', async () => {
+      const layout = {
+        widgets: [{ id: 'ei2', type: 'embed-iframe', config: {}, x: 0, y: 0, w: 12, h: 6 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'ei2')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ── subscriber-form ───────────────────────────────────────────────────────
+
+  describe('getWidgetData — subscriber-form', () => {
+    it('returns form config with defaults when no config provided', async () => {
+      const layout = {
+        widgets: [{ id: 'sf1', type: 'subscriber-form', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sf1');
+      expect(typeof result.title).toBe('string');
+      expect(typeof result.description).toBe('string');
+      expect(typeof result.buttonText).toBe('string');
+      expect(typeof result.successMessage).toBe('string');
+    });
+
+    it('returns form config from widget config when set', async () => {
+      const layout = {
+        widgets: [{ id: 'sf2', type: 'subscriber-form', config: { title: 'Get Notified', buttonText: 'Sign Up', successMessage: 'Thanks!', description: 'Stay in the loop.' }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sf2');
+      expect(result.title).toBe('Get Notified');
+      expect(result.buttonText).toBe('Sign Up');
+      expect(result.successMessage).toBe('Thanks!');
+    });
+  });
+
+  // ── countdown ─────────────────────────────────────────────────────────────
+
+  describe('getWidgetData — countdown', () => {
+    it('returns expired=false and positive secondsRemaining for future targetAt', async () => {
+      const futureDate = new Date(Date.now() + 3600 * 1000).toISOString();
+      const layout = {
+        widgets: [{ id: 'cd1', type: 'countdown', config: { label: 'Launch', targetAt: futureDate, hideAfterExpiry: false }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'cd1');
+      expect(result.expired).toBe(false);
+      expect((result.secondsRemaining as number) > 0).toBe(true);
+      expect(result.label).toBe('Launch');
+    });
+
+    it('returns expired=true and secondsRemaining=0 for past targetAt', async () => {
+      const pastDate = new Date(Date.now() - 3600 * 1000).toISOString();
+      const layout = {
+        widgets: [{ id: 'cd2', type: 'countdown', config: { label: 'Old event', targetAt: pastDate, hideAfterExpiry: true }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'cd2');
+      expect(result.expired).toBe(true);
+      expect(result.secondsRemaining).toBe(0);
+      expect(result.hideAfterExpiry).toBe(true);
+    });
+  });
 });

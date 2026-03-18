@@ -260,6 +260,26 @@ export class StatusPagesService {
     };
   }
 
+  async subscribeToStatusPage(slug: string, email: string): Promise<{ subscribed: boolean; alreadySubscribed: boolean }> {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    const existing = await this.prisma.statusPageSubscriber.findUnique({
+      where: { statusPageId_email: { statusPageId: page.id, email } },
+    });
+
+    if (existing) {
+      return { subscribed: false, alreadySubscribed: true };
+    }
+
+    await this.prisma.statusPageSubscriber.create({
+      data: { statusPageId: page.id, email },
+    });
+
+    this.logger.log(`New subscriber for status page ${page.id}: ${email}`);
+    return { subscribed: true, alreadySubscribed: false };
+  }
+
   async getWidgetData(slug: string, widgetId: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -2203,6 +2223,46 @@ export class StatusPagesService {
       case 'link-list': {
         const links = (widget.config.links as Array<{ label: string; url: string; icon: string; description?: string }>) ?? [];
         return { links };
+      }
+
+      case 'faq-accordion': {
+        const items = (widget.config.items as Array<{ question: string; answer: string }>) ?? [];
+        return { items };
+      }
+
+      case 'social-links': {
+        const links = (widget.config.socialLinks as Array<{ platform: string; url: string }>) ?? [];
+        return { links };
+      }
+
+      case 'embed-iframe': {
+        const url = widget.config.url as string | undefined;
+        if (!url) throw new BadRequestException('embed-iframe widget missing url config');
+        const height = (widget.config.height as number) ?? 400;
+        const title = widget.config.title as string | undefined;
+        const sandbox = (widget.config.sandbox as string) ?? 'allow-scripts allow-same-origin';
+        return { url, height, title, sandbox };
+      }
+
+      case 'subscriber-form': {
+        return {
+          title: (widget.config.title as string) ?? 'Subscribe to Updates',
+          description: (widget.config.description as string) ?? 'Get notified when incidents are created or resolved.',
+          buttonText: (widget.config.buttonText as string) ?? 'Subscribe',
+          successMessage: (widget.config.successMessage as string) ?? 'You are subscribed!',
+        };
+      }
+
+      case 'countdown': {
+        const label = (widget.config.label as string) ?? 'Event';
+        const targetAt = widget.config.targetAt as string | undefined;
+        const hideAfterExpiry = (widget.config.hideAfterExpiry as boolean) ?? false;
+        if (!targetAt) {
+          return { label, targetAt: null, secondsRemaining: 0, expired: true, hideAfterExpiry };
+        }
+        const secondsRemaining = Math.max(0, Math.floor((new Date(targetAt).getTime() - Date.now()) / 1000));
+        const expired = secondsRemaining === 0;
+        return { label, targetAt, secondsRemaining, expired, hideAfterExpiry };
       }
 
       default:

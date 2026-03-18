@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff } from "lucide-react";
+import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
@@ -243,15 +244,12 @@ export default function MonitorDetailPage() {
   return (
     <AppFrame title={monitor.name}>
       <div className="space-y-6">
-        {/* Back link */}
+        {/* Breadcrumb */}
         <FadeIn>
-          <Link
-            href="/monitors"
-            className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Monitors
-          </Link>
+          <Breadcrumb items={[
+            { label: "Monitors", href: "/monitors" },
+            { label: monitor.name },
+          ]} />
         </FadeIn>
 
         {/* Header */}

@@ -897,6 +897,9 @@ export default function StatusPageEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+  const savedWidgetsRef = useRef<string>('[]'); // JSON snapshot of last saved state
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
@@ -931,7 +934,9 @@ export default function StatusPageEditorPage() {
     try {
       const data = await api<StatusPage>(`/v1/status-pages/${id}`);
       setPage(data);
-      setWidgets(data.layout?.widgets ?? []);
+      const loadedWidgets = data.layout?.widgets ?? [];
+      setWidgets(loadedWidgets);
+      savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
@@ -975,7 +980,7 @@ export default function StatusPageEditorPage() {
     }
   }
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (opts?: { silent?: boolean }) => {
     if (!page) return;
     setSaving(true);
     try {
@@ -984,7 +989,11 @@ export default function StatusPageEditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ layout: { widgets } }),
       });
-      toastCtx.success("Saved");
+      // Mark as clean after successful save
+      savedWidgetsRef.current = JSON.stringify(widgets);
+      setIsDirty(false);
+      // Only show toast on manual save
+      if (!opts?.silent) toastCtx.success("Saved");
     } catch {
       toastCtx.error("Failed to save");
     } finally {
@@ -992,14 +1001,21 @@ export default function StatusPageEditorPage() {
     }
   }, [page, id, widgets, toastCtx]);
 
-  // Auto-save 2 seconds after widget changes (skip initial load)
+  // Track dirty state whenever widgets change
   const initialLoad = useRef(true);
   useEffect(() => {
     if (initialLoad.current) { initialLoad.current = false; return; }
-    if (!page || widgets.length === 0) return;
-    const timer = setTimeout(() => { handleSave(); }, 2000);
+    const current = JSON.stringify(widgets);
+    setIsDirty(current !== savedWidgetsRef.current);
+  }, [widgets]);
+
+  // Auto-save 2 seconds after widget changes (silent — no toast)
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    if (!isDirty || !page) return;
+    const timer = setTimeout(() => { handleSave({ silent: true }); }, 2000);
     return () => clearTimeout(timer);
-  }, [widgets, page, handleSave]);
+  }, [isDirty, widgets, page, handleSave, autoSaveEnabled]);
 
   async function handleTogglePublish() {
     if (!page) return;
@@ -1264,13 +1280,25 @@ export default function StatusPageEditorPage() {
             >
               <Redo2 className="h-3.5 w-3.5" />
             </button>
+            {/* Auto-save toggle */}
             <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
+              onClick={() => setAutoSaveEnabled(v => !v)}
+              title={autoSaveEnabled ? "Auto-save is ON — click to disable" : "Auto-save is OFF — click to enable"}
+              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${autoSaveEnabled ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border bg-bg text-text-secondary hover:text-text-primary'}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${autoSaveEnabled ? 'bg-accent animate-pulse' : 'bg-text-secondary/40'}`} />
+              Auto
+            </button>
+
+            {/* Manual save button — greyed when no changes */}
+            <button
+              onClick={() => handleSave()}
+              disabled={saving || !isDirty}
+              title={isDirty ? "Save changes" : "No unsaved changes"}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-40 disabled:cursor-default"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving…" : isDirty ? "Save*" : "Saved"}
             </button>
           </div>
         </header>

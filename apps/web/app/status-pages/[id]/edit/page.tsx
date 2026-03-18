@@ -40,6 +40,9 @@ import {
   Image,
   Table2,
   Rss,
+  Copy,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -291,10 +294,11 @@ interface CanvasWidgetProps {
   colWidth: number;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResize }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize }: CanvasWidgetProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
@@ -378,6 +382,13 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResi
           </span>
         )}
         <button
+          onClick={(e) => { e.stopPropagation(); onDuplicate(widget.id); }}
+          className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-accent/10 hover:text-accent group-hover:opacity-100"
+          title="Duplicate widget"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onDelete(widget.id); }}
           className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
         >
@@ -416,10 +427,11 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onResize }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onDuplicate, onResize }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -488,6 +500,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
+            onDuplicate={onDuplicate}
             onResize={onResize}
           />
         );
@@ -505,9 +518,11 @@ interface ConfigPanelProps {
   folders: FolderOption[];
   onChange: (config: Widget["config"]) => void;
   onResize: (size: { w: number; h: number }) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -848,6 +863,23 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         </div>
         <p className="text-[10px] text-text-primary">Position: ({w.x}, {w.y})</p>
       </div>
+
+      <div className="space-y-1.5 pt-2">
+        <button
+          onClick={() => onDuplicate(w.id)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Duplicate Widget
+        </button>
+        <button
+          onClick={() => onDelete(w.id)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10"
+        >
+          <X className="h-3.5 w-3.5" />
+          Delete Widget
+        </button>
+      </div>
     </div>
   );
 }
@@ -871,8 +903,14 @@ export default function StatusPageEditorPage() {
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [paletteSearch, setPaletteSearch] = useState("");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
+
+  // Undo/Redo history
+  const historyRef = useRef<Widget[][]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const isUndoRedoRef = useRef<boolean>(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -1005,6 +1043,70 @@ export default function StatusPageEditorPage() {
     setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
     if (selectedId === widgetId) setSelectedId(null);
   }
+
+  function duplicateWidget(widgetId: string) {
+    const src = widgets.find((w) => w.id === widgetId);
+    if (!src) return;
+    const { x, y } = autoPlace(src.w, src.h);
+    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y };
+    setWidgets((prev) => [...prev, copy]);
+    setSelectedId(copy.id);
+  }
+
+  function pushHistory(newWidgets: Widget[]) {
+    if (isUndoRedoRef.current) return;
+    const hist = historyRef.current;
+    const sliced = hist.slice(0, historyIndexRef.current + 1);
+    sliced.push(newWidgets);
+    if (sliced.length > 50) sliced.shift();
+    historyRef.current = sliced;
+    historyIndexRef.current = sliced.length - 1;
+  }
+
+  useEffect(() => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    if (widgets.length === 0 && historyIndexRef.current === -1) return;
+    pushHistory(widgets);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgets]);
+
+  function undo() {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    isUndoRedoRef.current = true;
+    setWidgets(historyRef.current[historyIndexRef.current]);
+  }
+
+  function redo() {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    isUndoRedoRef.current = true;
+    setWidgets(historyRef.current[historyIndexRef.current]);
+  }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      if (meta && e.key === "d") { e.preventDefault(); if (selectedId) duplicateWidget(selectedId); }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedId && tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          deleteWidget(selectedId);
+        }
+      }
+      if (e.key === "Escape") setSelectedId(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, widgets]);
 
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
@@ -1149,6 +1251,20 @@ export default function StatusPageEditorPage() {
               )}
             </button>
             <button
+              onClick={undo}
+              title="Undo (Ctrl+Z)"
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={redo}
+              title="Redo (Ctrl+Y)"
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </button>
+            <button
               onClick={handleSave}
               disabled={saving}
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
@@ -1166,27 +1282,56 @@ export default function StatusPageEditorPage() {
             <div className="border-b border-border px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Widgets</p>
             </div>
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-1 border-b border-border p-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                    activeCategory === cat
-                      ? "bg-accent text-white"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            {/* Search input */}
+            <div className="border-b border-border p-2">
+              <input
+                type="text"
+                placeholder="Search widgets..."
+                value={paletteSearch}
+                onChange={(e) => setPaletteSearch(e.target.value)}
+                className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
             </div>
+            {/* Category tabs — hidden when searching */}
+            {!paletteSearch && (
+              <div className="flex flex-wrap gap-1 border-b border-border p-2">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                      activeCategory === cat
+                        ? "bg-accent text-white"
+                        : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Widget list */}
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {WIDGET_PALETTE.filter((w) => w.category === activeCategory).map((widget) => (
-                <PaletteWidget key={widget.type} item={widget} />
-              ))}
+              {(() => {
+                const filtered = paletteSearch
+                  ? WIDGET_PALETTE.filter((w) => {
+                      const q = paletteSearch.toLowerCase();
+                      return (
+                        w.label.toLowerCase().includes(q) ||
+                        w.description.toLowerCase().includes(q) ||
+                        w.type.toLowerCase().includes(q)
+                      );
+                    })
+                  : WIDGET_PALETTE.filter((w) => w.category === activeCategory);
+                if (filtered.length === 0) {
+                  return (
+                    <p className="py-4 text-center text-xs text-text-secondary/60">No widgets found</p>
+                  );
+                }
+                return filtered.map((widget) => (
+                  <PaletteWidget key={widget.type} item={widget} />
+                ));
+              })()}
             </div>
           </aside>
 
@@ -1199,6 +1344,7 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               onSelect={setSelectedId}
               onDelete={deleteWidget}
+              onDuplicate={duplicateWidget}
               onResize={resizeWidgetById}
             />
           </main>
@@ -1216,6 +1362,8 @@ export default function StatusPageEditorPage() {
               folders={folders}
               onChange={updateWidgetConfig}
               onResize={updateWidgetSize}
+              onDelete={deleteWidget}
+              onDuplicate={duplicateWidget}
             />
           </aside>
         </div>

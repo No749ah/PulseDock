@@ -1,8 +1,12 @@
-## Status Summary (2026-03-18 12:47 UTC)
+## Status Summary (2026-03-18 13:02 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** ✅ All 12 routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
-- **Branch:** heartbeat/2026-03-18-landing-polish
+- **Deployment:** ✅ All 11 routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-registry-and-docs
+- **This session (2026-03-18 13:02 UTC):**
+  - **Build fix**: Split tool-registry into 4 parts (1385 tools, was hitting TS2590 union type complexity limit). Fixed invalid category 'Photo/Docs' → 'Media', added missing `requiresInstanceUrl` (83 entries) and `verified` (17 entries) fields.
+  - **Branch rotation**: Merged heartbeat/2026-03-18-landing-polish → dev, created heartbeat/2026-03-18-registry-and-docs
+  - **P2 Editor UX**: Widget Lock (lock/unlock per widget, disables drag+resize), Responsive Preview (Desktop/Tablet/Mobile viewport toggle in toolbar), Canvas Zoom (Ctrl+scroll + toolbar buttons, 30%–200%)
 - **This session (2026-03-18 12:47 UTC):**
   - **5 new status-page widgets** (65 total): MaintenanceCalendar, ChangelogWidget, ImageBanner, DataTable, RssFeedWidget
   - **BACKLOG sync**: 29 already-implemented widgets marked [x]
@@ -555,14 +559,14 @@
 
 ### P2 — Editor UX
 
-- [ ] **Widget Duplication** — Copy button per widget (same config, auto-placed)
-- [ ] **Widget Lock** — Lock toggle to prevent accidental drag/resize
+- [x] **Widget Duplication** — Copy button per widget (same config, auto-placed)
+- [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
 - [ ] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete/align
-- [ ] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
+- [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
 - [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
 - [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
-- [ ] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
-- [ ] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
+- [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
+- [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
 - [ ] **Template Gallery** — 10+ preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Service Status, Dev/Ops Dashboard, Customer-Facing, Internal Team, Executive Summary
 - [ ] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Arrow=Nudge 1px, Shift+Arrow=Nudge 10px, Ctrl+A=Select All, Ctrl+L=Lock
 - [ ] **Widget Search in Palette** — Filter palette by name/category

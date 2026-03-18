@@ -49,7 +49,10 @@ export class StatusPagesController {
   @Post('status-pages')
   @ApiOperation({ summary: 'Create a status page' })
   @ApiResponse({ status: 201, description: 'Status page created' })
-  create(@Req() req: AuthRequest, @Body() body: CreateStatusPageDto) {
+  create(@Req() req: AuthRequest, @Body() body: CreateStatusPageDto, @Req() rawReq: import('express').Request) {
+    // Temporary debug: log raw body to diagnose browser sending empty title
+    const logger = new (require('@nestjs/common').Logger)('StatusPagesController');
+    logger.debug(`POST /v1/status-pages — body: ${JSON.stringify(body)} | content-type: ${rawReq.headers['content-type']} | user: ${req.user.id}`);
     return this.statusPagesService.create(req.user.id, body);
   }
 

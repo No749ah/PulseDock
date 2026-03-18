@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, LayoutGrid, List } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -143,6 +143,7 @@ function MonitorsPageInner() {
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -755,6 +756,23 @@ function MonitorsPageInner() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {/* View toggle */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`p-1.5 transition-colors ${viewMode === "table" ? "bg-accent/20 text-accent" : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+                  title="Table view"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 transition-colors ${viewMode === "grid" ? "bg-accent/20 text-accent" : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -983,6 +1001,46 @@ function MonitorsPageInner() {
                 </button>
               </div>
             )}
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedMonitors.map((monitor) => {
+                  const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                  const level = lastRun?.level ?? "green";
+                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : "bg-danger";
+                  return (
+                    <Card key={monitor.id} className="relative hover:-translate-y-0.5 transition-transform duration-200">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-text-primary truncate text-sm">{monitor.name}</p>
+                          <p className="text-xs text-text-muted font-mono truncate mt-0.5">{monitor.target}</p>
+                        </div>
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 ${dotCls}`} />
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs bg-surface-elevated border border-border/60 px-2 py-0.5 rounded-full text-text-muted">{monitor.type}</span>
+                        {lastRun && (
+                          <span className="text-xs text-text-muted">{lastRun.latencyMs != null ? `${lastRun.latencyMs}ms` : "—"}</span>
+                        )}
+                        {monitor.tags?.map((t: { id: string; name: string }) => (
+                          <span key={t.id} className="text-xs bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 rounded-full">{t.name}</span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/60">
+                        <button onClick={() => { setEditingMonitor(monitor); setModalMode("edit"); setShowModal(true); setShowTemplates(false); }} className="text-xs text-text-secondary hover:text-accent transition-colors flex items-center gap-1">
+                          <Pencil className="w-3 h-3" /> Edit
+                        </button>
+                        <button onClick={() => { setSelectedIds(new Set([monitor.id])); handleBulkAction("run"); }} className="text-xs text-text-secondary hover:text-accent transition-colors flex items-center gap-1">
+                          <PlayCircle className="w-3 h-3" /> Run
+                        </button>
+                        <button onClick={() => handleDelete(monitor.id)} className="text-xs text-danger/70 hover:text-danger transition-colors flex items-center gap-1 ml-auto">
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
             <Card className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -1164,6 +1222,7 @@ function MonitorsPageInner() {
                 </Table>
               </div>
             </Card>
+            )}
           </FadeIn>
         )}
 

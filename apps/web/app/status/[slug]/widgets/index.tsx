@@ -3,6 +3,9 @@
 
 import { SubscriberFormWidget } from "./SubscriberFormWidget";
 import { CountdownWidget } from "./CountdownWidget";
+import { AnnouncementBarClient } from "./AnnouncementBarClient";
+import { RssFeedCopyButton } from "./RssFeedCopyButton";
+import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 
 export interface MonitorSummary {
   id: string;
@@ -3512,47 +3515,14 @@ export function AnnouncementBar({ widget, extra }: WidgetProps) {
     expired: boolean;
   } | undefined;
 
-  // Client-side dismiss state — uses a simple React state trick via key
-  // Since we can't import useState here without "use client" directive we
-  // use a data attribute approach: a hidden checkbox toggles visibility.
   if (!data || data.expired || !data.message) return null;
 
-  const { message, type, dismissable } = data;
-
-  const bgMap: Record<string, string> = {
-    info: "bg-blue-500/20 border-blue-500/40 text-blue-200",
-    warning: "bg-yellow-500/20 border-yellow-500/40 text-yellow-200",
-    danger: "bg-red-500/20 border-red-500/40 text-red-200",
-    success: "bg-green-500/20 border-green-500/40 text-green-200",
-  };
-
-  const iconMap: Record<string, string> = {
-    info: "ℹ️",
-    warning: "⚠️",
-    danger: "🚨",
-    success: "✅",
-  };
-
-  const cls = bgMap[type] ?? bgMap.info;
-  const icon = iconMap[type] ?? "ℹ️";
-
   return (
-    <div className={`rounded-xl border p-3 flex items-start gap-3 ${cls}`} data-announcement-bar>
-      <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
-      <span className="flex-1 text-sm font-medium leading-relaxed">{message}</span>
-      {dismissable && (
-        <button
-          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity ml-auto"
-          onClick={(e) => {
-            const bar = (e.target as HTMLElement).closest("[data-announcement-bar]") as HTMLElement | null;
-            if (bar) bar.style.display = "none";
-          }}
-          aria-label="Dismiss"
-        >
-          ✕
-        </button>
-      )}
-    </div>
+    <AnnouncementBarClient
+      message={data.message}
+      type={data.type}
+      dismissable={data.dismissable}
+    />
   );
 }
 
@@ -4133,12 +4103,6 @@ export function RssFeedWidget({ widget }: WidgetProps) {
     : "Configure slug in widget settings";
   const isPlaceholder = !slugOverride;
 
-  function handleCopy() {
-    if (!isPlaceholder && typeof navigator !== "undefined") {
-      void navigator.clipboard.writeText(feedUrl);
-    }
-  }
-
   return (
     <div className="bg-surface/50 border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -4149,14 +4113,7 @@ export function RssFeedWidget({ widget }: WidgetProps) {
       </div>
       <div className="rounded-lg bg-surface border border-border p-2 flex items-center justify-between gap-2">
         <code className="text-xs font-mono text-text-secondary truncate">{feedUrl}</code>
-        {!isPlaceholder && (
-          <button
-            onClick={handleCopy}
-            className="shrink-0 text-xs px-2 py-0.5 rounded bg-surface/80 border border-border text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Copy
-          </button>
-        )}
+        {!isPlaceholder && <RssFeedCopyButton feedUrl={feedUrl} />}
       </div>
       <p className="text-xs text-text-secondary">Subscribe in your RSS reader to receive status updates.</p>
     </div>
@@ -4282,6 +4239,10 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
   }
 
   let content: React.ReactNode;
+  // Wrap in error boundary so one broken widget doesn't crash the page
+  const wrapError = (node: React.ReactNode) => (
+    <WidgetErrorBoundary widgetType={widget.type}>{node}</WidgetErrorBoundary>
+  );
   switch (widget.type) {
     case "overall-status":
     case "overall-system-status":

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, LayoutGrid, List } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -141,6 +141,11 @@ function MonitorsPageInner() {
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
+    try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
+  });
   const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -672,12 +677,37 @@ function MonitorsPageInner() {
     if (statusFilter === "enabled" && !m.enabled) return false;
     if (statusFilter === "disabled" && m.enabled) return false;
     if (folderFilter && m.folderId !== folderFilter) return false;
+    if (typeFilter !== "all" && m.type !== typeFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
     }
     return true;
   });
+
+  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"] as const;
+
+  function saveCurrentPreset() {
+    const name = prompt("Save filter preset as:");
+    if (!name?.trim()) return;
+    const preset = { name: name.trim(), filters: { statusFilter, typeFilter, activeTagFilter: activeTagFilter ?? "", folderFilter: folderFilter ?? "" } };
+    const next = [...savedPresets, preset];
+    setSavedPresets(next);
+    try { localStorage.setItem("monitor-filter-presets", JSON.stringify(next)); } catch {}
+  }
+
+  function applyPreset(preset: (typeof savedPresets)[number]) {
+    setStatusFilter((preset.filters.statusFilter as "all" | "enabled" | "disabled") || "all");
+    setTypeFilter(preset.filters.typeFilter || "all");
+    setActiveTagFilter(preset.filters.activeTagFilter || null);
+    setFolderFilter(preset.filters.folderFilter || null);
+  }
+
+  function deletePreset(idx: number) {
+    const next = savedPresets.filter((_, i) => i !== idx);
+    setSavedPresets(next);
+    try { localStorage.setItem("monitor-filter-presets", JSON.stringify(next)); } catch {}
+  }
 
   function handleSort(col: typeof sortBy) {
     if (sortBy === col) {
@@ -879,8 +909,87 @@ function MonitorsPageInner() {
                 ))}
               </select>
             )}
+            <button
+              onClick={() => setShowAdvancedFilters((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${showAdvancedFilters || typeFilter !== "all" ? "bg-accent/10 border-accent/40 text-accent" : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"}`}
+              aria-label="Advanced filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Filters</span>
+              {typeFilter !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+            </button>
           </div>
         </FadeIn>
+
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <FadeIn>
+            <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-text-primary">Advanced Filters</span>
+                <div className="flex items-center gap-2">
+                  {savedPresets.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {savedPresets.map((preset, idx) => (
+                        <div key={idx} className="flex items-center gap-0.5 bg-surface-elevated border border-border rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => applyPreset(preset)}
+                            className="px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                          >
+                            <Bookmark className="w-3 h-3 inline mr-1" />
+                            {preset.name}
+                          </button>
+                          <button
+                            onClick={() => deletePreset(idx)}
+                            className="px-1.5 py-1 text-text-muted hover:text-danger transition-colors"
+                            aria-label={`Delete preset ${preset.name}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={saveCurrentPreset}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-surface-elevated text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    <BookmarkPlus className="w-3.5 h-3.5" />
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setTypeFilter("all"); setStatusFilter("all"); setActiveTagFilter(null); setFolderFilter(null); }}
+                    className="text-xs text-text-muted hover:text-danger transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <button
+                      onClick={() => setTypeFilter("all")}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
+                    >
+                      All
+                    </button>
+                    {MONITOR_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTypeFilter(typeFilter === t ? "all" : t)}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === t ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
+                      >
+                        {t === "SSL_CERT" ? "SSL" : t === "HEARTBEAT" ? "Heartbeat" : t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        )}
 
         {allTags.length > 0 && (
           <FadeIn>

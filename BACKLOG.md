@@ -29,11 +29,13 @@
 
 ## In Progress
 
-- [ ] **Landing page P0 rework** — Dashboard mockup hero, pricing section, screenshot gallery, improved How It Works cards, animations polish
-
-- [x] **SLA Summary with real data** — API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.
+*(next: continue landing page polish — SEO, Lighthouse, mobile audit — or move to P1 status-page widgets)*
 
 ## Recently Completed
+
+- [x] **Landing page P0 rework** — Hero dashboard mockup (glassmorphic browser chrome, stat cards, monitors table, sparklines), improved How-It-Works (3 cards with inline visual elements), Screenshot Gallery (2×2 mock UIs with hover-lift), Pricing section (self-hosted free + cloud coming soon). Build clean, all routes 200.
+
+- [x] **SLA Summary with real data** — API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.
 
 ## Recently Completed
 
@@ -955,7 +957,8 @@
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
-- **This heartbeat (2026-03-18 08:26 UTC):** Implemented SLA Summary with real MonitorRun data. API computes uptimePct, pass/fail, allowedDownMinutes, remainingDownMinutes budget. Widget renders actual vs target, downtime budget bar. 5 new tests. Total: 1346 passing. Services restarted, routes 200. Sub-agent spawned for landing page P0 rework.
+- **This heartbeat (2026-03-18 08:35 UTC):** Landing page P0 rework complete via sub-agent. Hero mockup dashboard, improved How-It-Works cards, 2×2 screenshot gallery, pricing section (free/cloud). Build clean, proxy 200.
+- **This heartbeat (2026-03-18 08:26 UTC):** Implemented SLA Summary with real MonitorRun data. API computes uptimePct, pass/fail, allowedDownMinutes, remainingDownMinutes budget. Widget renders actual vs target, downtime budget bar. 5 new tests. Total: 1346 passing. Services restarted, routes 200.
 - **This heartbeat (2026-03-18 08:20 UTC):** Implemented Response Time Chart with real MonitorRun data. API resolves last N latencyMs values from MonitorRun (configurable via points/periodHours), computes avg/p95/max. Widget renders SVG bar sparkline (green=ok, red=failed), dashed avg + dotted p95 overlay lines, header stats. 5 new tests. Total: 1341 passing. Services restarted, all routes 200, proxy healthy.
 - **This heartbeat (2026-03-18 08:11 UTC):** Implemented Uptime Timeline with real MonitorRun data. API resolves per-day UTC buckets (green/yellow/red/no-data) from MonitorRun records. Widget renders colored squares with tooltips, uptime% in header, legend row. 5 new tests. Total: 1358 passing. Services restarted, all routes 200, proxy healthy.
 - **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.

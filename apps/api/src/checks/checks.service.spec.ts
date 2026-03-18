@@ -206,7 +206,10 @@ describe('ChecksService', () => {
       expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
     });
 
-    it('respects confirmations: does not re-alert after threshold already crossed', async () => {
+    it('respects confirmations: re-alerts after threshold already crossed (notifyOn in alerts.service filters)', async () => {
+      // After the threshold is crossed (2+ consecutive failures), notifyMonitorFailure
+      // IS called on every run. The per-channel notifyOn filter (ON_CHANGE, ALWAYS etc.)
+      // in alerts.service decides whether to actually dispatch — not checks.service.
       const prisma = makePrisma({ recentRuns: [{ level: 'red' }, { level: 'red' }] });
       const alerts = makeAlerts();
       const service = makeService({ prisma, alerts });
@@ -214,7 +217,10 @@ describe('ChecksService', () => {
       globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
 
       await service.runMonitor(makeMonitor({ type: 'HTTP', confirmations: 2 }));
-      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const ctx = alerts.notifyMonitorFailure.mock.calls[0][2] as { levelChanged: boolean };
+      // levelChanged=false because previous was also red — alerts.service ON_CHANGE filter handles this
+      expect(ctx.levelChanged).toBe(false);
     });
 
     it('still alerts immediately when confirmations=1 (default)', async () => {
@@ -2559,8 +2565,11 @@ describe('ChecksService', () => {
         config: { currentVersion: '1.4.0' },
       });
       await service.runMonitor(monitor);
-      // Previous was yellow, result is yellow → levelChanged=false → no alert
-      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+      // Previous was yellow, result is yellow → levelChanged=false
+      // notifyMonitorFailure IS called but with levelChanged=false so ON_CHANGE channels won't fire
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalledOnce();
+      const ctx = alerts.notifyMonitorFailure.mock.calls[0][2] as { levelChanged: boolean };
+      expect(ctx.levelChanged).toBe(false);
     });
   });
 

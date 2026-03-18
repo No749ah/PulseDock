@@ -622,11 +622,11 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     icon: `${SI}/uptimekuma`,
     description: 'Self-hosted uptime monitoring tool',
     homepage: 'https://github.com/louislam/uptime-kuma',
-    // Version requires auth
-    versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/entry-page', jsonPath: '$.buildVersion', authRequired: true },
+    // No public unauthenticated REST version endpoint — track via Docker Hub tag
+    versionSource: { type: 'docker-hub', target: 'louislam/uptime-kuma' },
     latestSource: { type: 'github-releases', target: 'louislam/uptime-kuma' },
     checkInterval: 3600,
-    requiresInstanceUrl: true,
+    requiresInstanceUrl: false,
     verified: true,
   },
   {
@@ -17861,18 +17861,18 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
   },
   {
     // Docs: https://uptime.kuma.pet/docs/
-    id: 'uptime-kuma',
+    id: 'uptime-kuma-v2',
     name: 'Uptime Kuma',
     category: 'Observability',
     tags: ['uptime', 'monitoring', 'self-hosted'],
     icon: `${SI}/uptimekuma`,
     description: 'Self-hosted uptime monitoring tool',
     homepage: 'https://uptime.kuma.pet/',
-    // Version requires auth
-    versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/entry-page', jsonPath: '$.buildVersion', authRequired: true },
+    // No public unauthenticated REST version endpoint — track via Docker Hub tag
+    versionSource: { type: 'docker-hub', target: 'louislam/uptime-kuma' },
     latestSource: { type: 'github-releases', target: 'louislam/uptime-kuma' },
     checkInterval: 3600,
-    requiresInstanceUrl: true,
+    requiresInstanceUrl: false,
     verified: true,
   },
 

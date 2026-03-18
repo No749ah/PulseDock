@@ -177,8 +177,24 @@ export class MonitorsController {
     @Req() req: { user: { id: string } },
     @Param('id') id: string,
     @Param('channelId') channelId: string,
+    @Body() body: { notifyOn?: string },
   ) {
-    return this.monitorsService.addMonitorAlert(req.user.id, id, channelId);
+    return this.monitorsService.addMonitorAlert(req.user.id, id, channelId, body?.notifyOn);
+  }
+
+  @Patch(':id/alerts/:channelId')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Update notifyOn setting for an assigned alert channel' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'channelId', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'notifyOn updated.' })
+  updateAlert(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('channelId') channelId: string,
+    @Body() body: { notifyOn: string },
+  ) {
+    return this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
   }
 
   @Delete(':id/alerts/:channelId')

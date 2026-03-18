@@ -7,16 +7,35 @@ import { PrismaService } from '../common/prisma.service';
 // SVG Badge helpers
 // ---------------------------------------------------------------------------
 
-/** Approximate text width in pixels for a given string at font-size 11px (Verdana) */
-function textWidth(text: string): number {
-  const widths: Record<string, number> = {
-    f: 5.2, i: 3.8, j: 3.8, l: 3.8, r: 5.2, t: 5.2, ' ': 3.5,
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+/**
+ * Approximate Verdana 11px character widths (px).
+ * Upper-case letters are ~20% wider on average.
+ */
+function textWidth(text: string, uppercase = false): number {
+  // Per-char widths at 11px Verdana (normal case)
+  const lowerWidths: Record<string, number> = {
+    ' ': 3.3, '!': 4, '"': 5, '#': 9, '$': 7, '%': 9, '&': 8, "'": 3,
+    '(': 4, ')': 4, '*': 6, '+': 9, ',': 4, '-': 4, '.': 4, '/': 5,
+    '0': 7, '1': 7, '2': 7, '3': 7, '4': 7, '5': 7, '6': 7, '7': 7,
+    '8': 7, '9': 7, ':': 4, ';': 4, '<': 9, '=': 9, '>': 9, '?': 6,
+    '@': 11, a: 6, b: 7, c: 6, d: 7, e: 6, f: 4, g: 7, h: 7, i: 3,
+    j: 3, k: 7, l: 3, m: 11, n: 7, o: 7, p: 7, q: 7, r: 5, s: 5,
+    t: 5, u: 7, v: 7, w: 9, x: 7, y: 7, z: 6,
+    A: 8, B: 7, C: 7, D: 8, E: 6, F: 6, G: 8, H: 8, I: 3, J: 5,
+    K: 7, L: 6, M: 9, N: 8, O: 8, P: 7, Q: 8, R: 7, S: 6, T: 6,
+    U: 8, V: 8, W: 11, X: 7, Y: 7, Z: 7,
   };
   let w = 0;
   for (const ch of text) {
-    w += widths[ch] ?? 7;
+    const key = uppercase ? ch.toUpperCase() : ch;
+    w += lowerWidths[key] ?? lowerWidths[ch.toLowerCase()] ?? 7;
   }
-  return Math.round(w);
+  // for-the-badge uses bold — add ~10% for bold weight
+  return Math.ceil(w * (uppercase ? 1.1 : 1));
 }
 
 type BadgeStyle = 'flat' | 'flat-square' | 'for-the-badge';
@@ -24,53 +43,58 @@ type BadgeStyle = 'flat' | 'flat-square' | 'for-the-badge';
 interface BadgeParams {
   label: string;
   message: string;
-  color: string;     // hex
-  labelColor: string; // hex
+  color: string;
+  labelColor: string;
   style: BadgeStyle;
 }
 
 function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams): string {
-  const lw = textWidth(label) + 20;  // padding 10px each side
-  const rw = textWidth(message) + 20;
+  const isFtb = style === 'for-the-badge';
+
+  // for-the-badge: uppercase + bold
+  const displayLabel = isFtb ? label.toUpperCase() : label;
+  const displayMessage = isFtb ? message.toUpperCase() : message;
+
+  // Compute text widths with correct casing
+  const padding = isFtb ? 22 : 16;
+  const lw = textWidth(displayLabel, isFtb) + padding;
+  const rw = textWidth(displayMessage, isFtb) + padding;
   const totalW = lw + rw;
-  const height = style === 'for-the-badge' ? 28 : 20;
-  const radius = style === 'flat-square' || style === 'for-the-badge' ? 0 : 3;
-  const fontFamily = style === 'for-the-badge' ? '"DejaVu Sans",Verdana,Geneva,sans-serif' : 'Verdana,Geneva,DejaVu Sans,sans-serif';
-  const fontSize = style === 'for-the-badge' ? 10 : 11;
-  const fontWeight = style === 'for-the-badge' ? 'bold' : 'normal';
-  const textY = Math.round(height / 2) + 1;
+
+  const height = isFtb ? 28 : 20;
+  const radius = isFtb || style === 'flat-square' ? 0 : 3;
+  // Use safe font-family — no raw double-quotes inside attribute
+  const fontFamily = isFtb ? 'DejaVu Sans,Verdana,Geneva,sans-serif' : 'Verdana,Geneva,DejaVu Sans,sans-serif';
+  const fontSize = isFtb ? 11 : 11;
+  const fontWeight = isFtb ? 'bold' : 'normal';
+  const letterSpacing = isFtb ? '0.5' : '0';
+  const textY = Math.round(height * 0.68); // vertically centered, slightly below midpoint
   const labelX = Math.round(lw / 2);
   const messageX = lw + Math.round(rw / 2);
 
-  // Upper-case label text for for-the-badge style
-  const displayLabel = style === 'for-the-badge' ? label.toUpperCase() : label;
-  const displayMessage = style === 'for-the-badge' ? message.toUpperCase() : message;
+  const gradientOverlay = style === 'flat'
+    ? `<rect width="${totalW}" height="${height}" fill="url(#s)"/>`
+    : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${height}" role="img" aria-label="${escapeXml(label)}: ${escapeXml(message)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${height}" role="img" aria-label="${escapeXml(displayLabel)}: ${escapeXml(displayMessage)}">
   <title>${escapeXml(label)}: ${escapeXml(message)}</title>
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
-  <clipPath id="r">
-    <rect width="${totalW}" height="${height}" rx="${radius}" fill="#fff"/>
-  </clipPath>
+  <clipPath id="r"><rect width="${totalW}" height="${height}" rx="${radius}" fill="#fff"/></clipPath>
   <g clip-path="url(#r)">
-    <rect width="${lw}" height="${height}" fill="${labelColor}"/>
-    <rect x="${lw}" width="${rw}" height="${height}" fill="${color}"/>
-    ${style !== 'flat-square' && style !== 'for-the-badge' ? `<rect width="${totalW}" height="${height}" fill="url(#s)"/>` : ''}
+    <rect width="${lw}" height="${height}" fill="${escapeXml(labelColor)}"/>
+    <rect x="${lw}" width="${rw}" height="${height}" fill="${escapeXml(color)}"/>
+    ${gradientOverlay}
   </g>
-  <g fill="#fff" text-anchor="middle" font-family="${fontFamily}" font-weight="${fontWeight}" font-size="${fontSize}">
-    <text x="${labelX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
-    <text x="${labelX}" y="${textY}" textLength="${lw - 16}" lengthAdjust="spacing">${escapeXml(displayLabel)}</text>
-    <text x="${messageX}" y="${textY + 1}" fill="#010101" fill-opacity=".3" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
-    <text x="${messageX}" y="${textY}" textLength="${rw - 16}" lengthAdjust="spacing">${escapeXml(displayMessage)}</text>
+  <g fill="#fff" text-anchor="middle" font-family="${escapeXml(fontFamily)}" font-size="${fontSize}" font-weight="${fontWeight}" letter-spacing="${letterSpacing}">
+    <text x="${labelX}" y="${textY + 1}" fill="#010101" fill-opacity=".25">${escapeXml(displayLabel)}</text>
+    <text x="${labelX}" y="${textY}">${escapeXml(displayLabel)}</text>
+    <text x="${messageX}" y="${textY + 1}" fill="#010101" fill-opacity=".25">${escapeXml(displayMessage)}</text>
+    <text x="${messageX}" y="${textY}">${escapeXml(displayMessage)}</text>
   </g>
 </svg>`;
-}
-
-function escapeXml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 @ApiTags('Public')

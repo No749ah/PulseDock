@@ -33,8 +33,6 @@ server {
     listen 80;
     listen [::]:80;
     server_name oc-dev-test.no749ah.com;
-    
-    # Redirect to HTTPS
     return 301 https://$server_name$request_uri;
 }
 
@@ -43,75 +41,57 @@ server {
     listen [::]:443 ssl http2;
     server_name oc-dev-test.no749ah.com;
 
-    # SSL Certificates (use Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/oc-dev-test.no749ah.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/oc-dev-test.no749ah.com/privkey.pem;
-
-    # SSL Configuration (modern, secure)
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 
-    # HSTS (optional but recommended)
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    # Static assets — enable buffering for better performance
+    # ── Static assets (/‌_next/static/) ──────────────────────────────────────
     location ~* ^/_next/static/ {
         proxy_pass http://pulsedock_backend;
-        
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Enable buffering for static assets
+
+        # Buffering MUST be on for static assets — off breaks chunk delivery
         proxy_buffering on;
         proxy_buffer_size 128k;
         proxy_buffers 256 16k;
         proxy_max_temp_file_size 2048m;
         proxy_temp_file_write_size 32k;
-        
-        # Cache static assets for 1 year (content-hashed filenames)
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        
-        # Long timeouts for large files
+
+        # Let Next.js set Cache-Control (it sends public, immutable for real files).
+        # Do NOT override with expires or add_header here — that would cache 404s too.
         proxy_connect_timeout 60s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
     }
 
-    # Single location block for all other traffic
+    # ── Everything else ───────────────────────────────────────────────────────
     location / {
         proxy_pass http://pulsedock_backend;
-        
-        # Required headers for proper proxying
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # WebSocket support (if added later)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        
-        # Disable buffering for dynamic content (streaming, server-sent events)
+
+        # Buffering off for dynamic content / WebSocket
         proxy_buffering off;
-        
-        # Timeouts
+
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-
-    # Optional: Deny direct access to internal endpoints
-    # location /api/admin {
-    #     deny all;
-    # }
 }
 ```
 

@@ -8,6 +8,7 @@ export type WidgetType =
   | 'incident-history'
   | 'active-incident-banner'
   | 'monitor-group-status'
+  | 'monitor-group'
   | 'overall-system-status'
   | 'sla-summary'
   | 'check-history-feed'
@@ -15,7 +16,15 @@ export type WidgetType =
   | 'scheduled-maintenance'
   | 'last-updated-footer'
   | 'metric-counter'
-  | 'divider';
+  | 'divider'
+  | 'version-status-grid'
+  | 'version-check-badge'
+  | 'update-summary'
+  | 'multi-status-badges'
+  | 'component-status-list'
+  | 'rolling-uptime-cards'
+  | 'status-history-ribbon'
+  | 'uptime-percentage-card';
 
 export interface Widget {
   id: string;

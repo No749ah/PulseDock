@@ -108,6 +108,7 @@ export default function AccountPage() {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditExpanded, setAuditExpanded] = useState(false);
+  const [sessionsExpanded, setSessionsExpanded] = useState(false);
 
   // Notification preferences state
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreference | null>(null);
@@ -414,7 +415,7 @@ export default function AccountPage() {
 
   return (
     <AppFrame title="Account" subtitle="Manage your profile and security">
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-5xl mx-auto">
         {loadError && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
@@ -423,6 +424,10 @@ export default function AccountPage() {
             </div>
           </FadeIn>
         )}
+
+        {/* Two-column layout: profile/security/activity left, keys/sessions/notif right */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="space-y-6">
 
         {/* Profile Section */}
         <FadeIn>
@@ -634,6 +639,77 @@ export default function AccountPage() {
           </Card>
         </FadeIn>
 
+        {/* Activity Log Section — left column */}
+        <FadeIn delay={0.3}>
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-surface-elevated">
+                  <Activity className="w-5 h-5 text-text-secondary" />
+                </div>
+                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("csv")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("json")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  JSON
+                </Button>
+              </div>
+            </div>
+
+            {auditLog.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">No activity recorded yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {(auditExpanded ? auditLog : auditLog.slice(0, 8)).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-text-primary font-mono">{entry.action}</p>
+                        <p className="text-[11px] text-text-secondary mt-0.5">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {auditLog.length > 8 && (
+                  <button
+                    onClick={() => setAuditExpanded((v) => !v)}
+                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
+                  </button>
+                )}
+              </>
+            )}
+          </Card>
+        </FadeIn>
+
+        </div>{/* end left column */}
+        <div className="space-y-6">
+
         {/* API Keys Section */}
         <FadeIn delay={0.3}>
           <Card>
@@ -710,11 +786,29 @@ export default function AccountPage() {
         {/* Sessions Section */}
         <FadeIn delay={0.4}>
           <Card>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 rounded-xl bg-surface-elevated">
-                <LogOut className="w-5 h-5 text-text-secondary" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-surface-elevated">
+                  <LogOut className="w-5 h-5 text-text-secondary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">Active Sessions</h2>
+                  {sessions.filter((s) => !s.revokedAt).length > 0 && (
+                    <p className="text-xs text-text-secondary mt-0.5">{sessions.filter((s) => !s.revokedAt).length} active</p>
+                  )}
+                </div>
               </div>
-              <h2 className="text-xl font-bold text-text-primary">Active Sessions</h2>
+              {sessions.filter((s) => !s.revokedAt).length > 1 && (
+                <button
+                  onClick={async () => {
+                    const others = sessions.filter((s) => !s.revokedAt).slice(1);
+                    for (const s of others) await handleRevokeSession(s.id);
+                  }}
+                  className="text-xs text-danger hover:text-danger/80 transition-colors"
+                >
+                  Revoke others
+                </button>
+              )}
             </div>
 
             {sessions.length === 0 ? (
@@ -722,37 +816,47 @@ export default function AccountPage() {
                 <p className="text-text-secondary text-sm">No active sessions found</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated/50 border border-border"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-text-primary truncate">
-                        {session.userAgent || "Unknown device"}
-                      </p>
-                      <p className="text-xs text-text-secondary mt-1">
-                        {session.ipAddress && `IP: ${session.ipAddress} · `}
-                        {new Date(session.createdAt).toLocaleString()}
-                      </p>
-                      {session.revokedAt && (
-                        <Badge variant="danger">Revoked</Badge>
+              <>
+                <div className="space-y-2">
+                  {(sessionsExpanded ? sessions : sessions.slice(0, 5)).map((session, i) => (
+                    <div
+                      key={session.id}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${!session.revokedAt ? 'bg-success' : 'bg-danger'}`} />
+                        <div className="min-w-0">
+                          <p className="text-xs text-text-primary truncate">
+                            {i === 0 ? <span className="text-accent font-medium">Current — </span> : ''}
+                            {session.userAgent ? session.userAgent.replace(/\s*\(.*?\)/g, '').trim() || 'Unknown device' : 'Unknown device'}
+                          </p>
+                          <p className="text-[11px] text-text-secondary mt-0.5">
+                            {session.ipAddress ? `${session.ipAddress} · ` : ''}
+                            {new Date(session.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      {!session.revokedAt && i !== 0 && (
+                        <button
+                          onClick={() => handleRevokeSession(session.id)}
+                          className="ml-2 p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                          title="Revoke session"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
-                    {!session.revokedAt && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRevokeSession(session.id)}
-                        className="text-danger hover:text-danger ml-3 shrink-0"
-                      >
-                        <LogOut className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {sessions.length > 5 && (
+                  <button
+                    onClick={() => setSessionsExpanded((v) => !v)}
+                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    {sessionsExpanded ? 'Show less' : `Show all ${sessions.length} sessions`}
+                  </button>
+                )}
+              </>
             )}
           </Card>
         </FadeIn>
@@ -914,73 +1018,8 @@ export default function AccountPage() {
           </Card>
         </FadeIn>
 
-        {/* Activity Log Section */}
-        <FadeIn delay={0.6}>
-          <Card>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-surface-elevated">
-                  <Activity className="w-5 h-5 text-text-secondary" />
-                </div>
-                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("csv")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  CSV
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("json")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  JSON
-                </Button>
-              </div>
-            </div>
-
-            {auditLog.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-text-secondary text-sm">No activity recorded yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {(auditExpanded ? auditLog : auditLog.slice(0, 10)).map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-start justify-between px-4 py-3 rounded-lg bg-surface-elevated/50 border border-border"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text-primary font-mono">{entry.action}</p>
-                        <p className="text-xs text-text-secondary mt-0.5">
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {auditLog.length > 10 && (
-                  <button
-                    onClick={() => setAuditExpanded((v) => !v)}
-                    className="mt-4 text-sm text-accent hover:text-accent-hover transition-colors"
-                  >
-                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
-                  </button>
-                )}
-              </>
-            )}
-          </Card>
-        </FadeIn>
+        </div>{/* end right column */}
+        </div>{/* end grid */}
       </div>
 
       {/* Create API Key Modal */}

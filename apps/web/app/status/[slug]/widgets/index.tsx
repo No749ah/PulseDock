@@ -85,6 +85,7 @@ interface ExtraData {
     checkedAt: string; ok: boolean; level: string;
     latencyMs: number | null; message: string | null;
   }>;
+  widgetDataById: Record<string, unknown>;
 }
 
 interface WidgetProps {
@@ -255,11 +256,19 @@ export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
 }
 
 // Uptime Bar — simplified stat
-export function UptimeBar({ widget, monitors }: WidgetProps) {
+export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
-  const periodDays = (widget.config.periodDays as number) ?? 30;
-  const uptimePct =
-    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0;
+  const widgetData = extra.widgetDataById[widget.id] as {
+    uptimePct?: number;
+    periodDays?: number;
+    total?: number;
+  } | undefined;
+
+  const periodDays = widgetData?.periodDays ?? (widget.config.periodDays as number) ?? 30;
+  const uptimePctRaw =
+    widgetData?.uptimePct ??
+    (!monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0);
+  const uptimePct = Math.max(0, Math.min(100, Math.round(uptimePctRaw * 100) / 100));
   const label = widget.config.label ?? monitor?.name ?? "Uptime";
 
   const barColor =
@@ -281,103 +290,298 @@ export function UptimeBar({ widget, monitors }: WidgetProps) {
           style={{ width: `${uptimePct}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-text-secondary">Last {periodDays} days</p>
+      <p className="mt-2 text-xs text-text-secondary">Last {periodDays} days{typeof widgetData?.total === "number" ? ` · ${widgetData.total} checks` : ""}</p>
     </div>
   );
 }
 
-// Uptime Timeline — 90 squares
-export function UptimeTimeline({ widget, monitors }: WidgetProps) {
+// Uptime Timeline — per-day status bars from real MonitorRun data
+export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId);
-  const days = 90;
   const label = widget.config.label ?? monitor?.name ?? "Uptime Timeline";
 
-  const squares = Array.from({ length: days }, (_, i) => {
-    // Last square = current status, rest = green (simplified)
-    const isLast = i === days - 1;
-    if (!isLast || !monitor) return "green";
-    return monitor.level;
-  });
+  // Real data from API
+  const widgetData = extra.widgetDataById[widget.id] as {
+    days?: number;
+    timeline?: Array<{ date: string; level: "green" | "yellow" | "red" | "no-data"; counts?: { green: number; yellow: number; red: number } }>;
+  } | null | undefined;
+
+  const days = widgetData?.days ?? (widget.config.days as number) ?? 90;
+  const timeline = widgetData?.timeline;
+
+  // Fallback: simple placeholder squares when no data yet
+  const squares: Array<{ date: string; level: string; title: string }> = timeline
+    ? timeline.map((d) => ({
+        date: d.date,
+        level: d.level,
+        title: d.level === "no-data"
+          ? `${d.date}: No data`
+          : d.level === "green"
+          ? `${d.date}: All checks passed${d.counts ? ` (${d.counts.green} ok)` : ""}`
+          : d.level === "yellow"
+          ? `${d.date}: Some failures${d.counts ? ` (${d.counts.yellow + d.counts.red} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`
+          : `${d.date}: Majority failed${d.counts ? ` (${d.counts.red + d.counts.yellow} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`,
+      }))
+    : Array.from({ length: days }, (_, i) => ({
+        date: `Day ${i + 1}`,
+        level: "no-data",
+        title: `Day ${i + 1}: No data`,
+      }));
+
+  const upDays = squares.filter((s) => s.level === "green").length;
+  const dataDays = squares.filter((s) => s.level !== "no-data").length;
+  const uptimePct = dataDays > 0 ? Math.round((upDays / dataDays) * 1000) / 10 : null;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-text-primary">{label}</span>
-        <span className="text-xs text-text-secondary">90-day history</span>
+        <span className="text-xs text-text-secondary">
+          {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}
+        </span>
       </div>
-      <div className="flex gap-0.5 flex-wrap">
-        {squares.map((level, i) => (
+      <div className="flex gap-[3px] flex-wrap">
+        {squares.map((s, i) => (
           <div
             key={i}
-            className={`h-3 w-3 rounded-sm ${
-              level === "green" ? "bg-green-500/70" : level === "yellow" ? "bg-yellow-500/70" : "bg-red-500/70"
+            className={`h-3 w-3 rounded-sm transition-opacity hover:opacity-80 ${
+              s.level === "green"
+                ? "bg-green-500"
+                : s.level === "yellow"
+                ? "bg-yellow-500"
+                : s.level === "red"
+                ? "bg-red-500"
+                : "bg-border"
             }`}
-            title={`Day ${i + 1}`}
+            title={s.title}
           />
         ))}
+      </div>
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-text-secondary">
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-green-500" />Up</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-yellow-500" />Degraded</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-red-500" />Down</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-border" />No data</span>
       </div>
     </div>
   );
 }
 
 // SLA Summary
-export function SLASummary({ widget, monitors }: WidgetProps) {
+export function SLASummary({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
-  const periodDays = (widget.config.periodDays as number) ?? 30;
   const label = widget.config.label ?? monitor?.name ?? "SLA";
-  const target = 99.9;
-  const actual =
-    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0;
-  const pass = actual >= target;
+
+  const widgetData = extra.widgetDataById[widget.id] as {
+    uptimePct?: number;
+    periodDays?: number;
+    slaTarget?: number;
+    total?: number;
+    up?: number;
+    down?: number;
+    pass?: boolean;
+    allowedDownMinutes?: number;
+    remainingDownMinutes?: number;
+  } | undefined;
+
+  const periodDays = widgetData?.periodDays ?? (widget.config.periodDays as number) ?? 30;
+  const target = widgetData?.slaTarget ?? (widget.config.slaTarget as number) ?? 99.9;
+  const actual = widgetData?.uptimePct ?? (
+    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0
+  );
+  const pass = widgetData?.pass ?? (actual >= target);
+  const totalChecks = widgetData?.total ?? null;
+  const remainingDownMin = widgetData?.remainingDownMinutes ?? null;
+  const allowedDownMin = widgetData?.allowedDownMinutes ?? null;
+
+  function formatMinutes(min: number): string {
+    if (min < 1) return `${Math.round(min * 60)}s`;
+    if (min < 60) return `${Math.round(min)}m`;
+    const h = Math.floor(min / 60);
+    const m = Math.round(min % 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // Progress bar: how much of the allowed downtime budget is used
+  const budgetUsed = allowedDownMin !== null && remainingDownMin !== null && allowedDownMin > 0
+    ? Math.min(100, Math.round(((allowedDownMin - remainingDownMin) / allowedDownMin) * 100))
+    : null;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="mb-3 text-sm font-medium text-text-primary">{label}</p>
-      <div className="flex items-end gap-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium text-text-primary">{label}</p>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            pass
+              ? "bg-green-500/15 text-green-400"
+              : "bg-red-500/15 text-red-400"
+          }`}
+        >
+          {pass ? "✓ Met" : "✗ Missed"}
+        </span>
+      </div>
+      <div className="flex items-end gap-4 mb-3">
         <div>
-          <p className={`text-3xl font-semibold ${pass ? "text-green-400" : "text-red-400"}`}>
-            {actual.toFixed(1)}%
+          <p className={`text-3xl font-semibold tabular-nums ${pass ? "text-green-400" : "text-red-400"}`}>
+            {actual.toFixed(2)}%
           </p>
-          <p className="text-xs text-text-secondary">Actual · {periodDays}d</p>
+          <p className="text-xs text-text-secondary">
+            Actual · {periodDays}d
+            {totalChecks !== null ? ` · ${totalChecks} checks` : ""}
+          </p>
         </div>
-        <div>
-          <p className="text-lg font-medium text-text-secondary">{target}%</p>
+        <div className="pb-0.5">
+          <p className="text-lg font-medium text-text-secondary tabular-nums">{target}%</p>
           <p className="text-xs text-text-secondary">Target</p>
         </div>
-        <div className="ml-auto">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-              pass
-                ? "bg-green-500/15 text-green-400"
-                : "bg-red-500/15 text-red-400"
-            }`}
-          >
-            {pass ? "✓ Met" : "✗ Missed"}
-          </span>
-        </div>
       </div>
+      {/* Downtime budget bar */}
+      {budgetUsed !== null && allowedDownMin !== null && (
+        <div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg mb-1">
+            <div
+              className={`h-full rounded-full transition-all ${budgetUsed >= 90 ? "bg-red-400" : budgetUsed >= 60 ? "bg-yellow-400" : "bg-green-400"}`}
+              style={{ width: `${budgetUsed}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-text-secondary">
+            <span>Budget used: {budgetUsed}%</span>
+            {remainingDownMin !== null && (
+              <span>{formatMinutes(remainingDownMin)} remaining of {formatMinutes(allowedDownMin)} allowed</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Response Time Chart
-export function ResponseTimeChart({ widget, monitors }: WidgetProps) {
+// Response Time Chart — real SVG sparkline from MonitorRun latencyMs values
+export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const label = widget.config.label ?? monitor?.name ?? "Response Time";
 
+  const widgetData = extra.widgetDataById[widget.id] as {
+    dataPoints?: Array<{ t: string; ms: number | null; ok: boolean }>;
+    avgMs?: number | null;
+    p95Ms?: number | null;
+    maxMs?: number | null;
+  } | undefined;
+
+  const dataPoints = widgetData?.dataPoints ?? [];
+  const avgMs = widgetData?.avgMs ?? null;
+  const p95Ms = widgetData?.p95Ms ?? null;
+  const maxMs = widgetData?.maxMs ?? null;
+
+  const withLatency = dataPoints.filter((d) => d.ms !== null);
+
+  // SVG sparkline params
+  const W = 600;
+  const H = 80;
+  const N = dataPoints.length;
+  const barW = N > 0 ? Math.max(1, (W - (N - 1) * 2) / N) : 0;
+
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="mb-2 text-sm font-medium text-text-primary">{label}</p>
-      {monitor?.latencyMs !== null && monitor?.latencyMs !== undefined ? (
-        <div>
-          <p className="text-3xl font-semibold text-text-primary">
-            {monitor.latencyMs}
-            <span className="ml-1 text-base font-normal text-text-secondary">ms</span>
-          </p>
-          <p className="mt-1 text-xs text-text-secondary">Latest response time</p>
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-text-primary">{label}</span>
+        <div className="flex items-center gap-3">
+          {avgMs !== null && (
+            <span className="text-xs text-text-secondary tabular-nums">
+              avg <span className="font-semibold text-text-primary">{avgMs}ms</span>
+            </span>
+          )}
+          {p95Ms !== null && (
+            <span className="text-xs text-text-secondary tabular-nums">
+              p95 <span className="font-semibold text-text-primary">{p95Ms}ms</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Chart */}
+      {withLatency.length === 0 ? (
+        <div className="flex h-20 items-center justify-center rounded-lg bg-bg">
+          <span className="text-xs text-text-secondary">No latency data yet</span>
         </div>
       ) : (
-        <p className="text-2xl font-semibold text-text-secondary">—</p>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          width="100%"
+          height={H}
+          aria-label={`Response time sparkline, avg ${avgMs}ms`}
+          className="rounded-lg overflow-hidden"
+        >
+          <title>{`Response time chart — avg ${avgMs}ms, p95 ${p95Ms}ms`}</title>
+
+          {/* Background */}
+          <rect x={0} y={0} width={W} height={H} fill="transparent" />
+
+          {/* Bars */}
+          {dataPoints.map((d, i) => {
+            const x = i * (barW + 2);
+            const fill = d.ms === null ? "#374151" : d.ok ? "#22c55e" : "#ef4444";
+            const barH =
+              d.ms === null || maxMs === null || maxMs === 0
+                ? 3
+                : Math.max(3, (d.ms / maxMs) * (H - 4));
+            const y = H - barH;
+            return (
+              <rect key={i} x={x} y={y} width={barW} height={barH} fill={fill} rx={1} opacity={0.85}>
+                <title>{d.ms !== null ? `${new Date(d.t).toLocaleTimeString()} · ${d.ms}ms${!d.ok ? " (failed)" : ""}` : "No data"}</title>
+              </rect>
+            );
+          })}
+
+          {/* Average dashed line */}
+          {avgMs !== null && maxMs !== null && maxMs > 0 && (
+            <line
+              x1={0}
+              y1={H - (avgMs / maxMs) * (H - 4) - 2}
+              x2={W}
+              y2={H - (avgMs / maxMs) * (H - 4) - 2}
+              stroke="#94a3b8"
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              opacity={0.7}
+            />
+          )}
+
+          {/* P95 line */}
+          {p95Ms !== null && maxMs !== null && maxMs > 0 && p95Ms !== avgMs && (
+            <line
+              x1={0}
+              y1={H - (p95Ms / maxMs) * (H - 4) - 2}
+              x2={W}
+              y2={H - (p95Ms / maxMs) * (H - 4) - 2}
+              stroke="#f59e0b"
+              strokeWidth={1}
+              strokeDasharray="2 4"
+              opacity={0.5}
+            />
+          )}
+        </svg>
+      )}
+
+      {/* Footer stats */}
+      {withLatency.length > 0 && (
+        <div className="mt-2 flex items-center gap-4 text-[10px] text-text-secondary">
+          <span>{dataPoints.length} checks</span>
+          {maxMs !== null && <span>max {maxMs}ms</span>}
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-1.5 w-3 rounded-full" style={{ background: "#94a3b8", opacity: 0.7 }} />
+            avg
+          </span>
+          {p95Ms !== null && p95Ms !== avgMs && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-1.5 w-3 rounded-full" style={{ background: "#f59e0b", opacity: 0.5 }} />
+              p95
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
@@ -531,6 +735,258 @@ export function ScheduledMaintenance({ extra }: WidgetProps) {
 // Divider
 export function Divider() {
   return <hr className="border-border my-2" />;
+}
+
+// ── New P1 Widgets ───────────────────────────────────────────────────────
+
+// Component Status List — per-component status: Operational / Degraded / Partial Outage / Major Outage
+function ComponentStatusList({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    components: Array<{
+      id: string; name: string; type: string;
+      status: string; level: "green" | "yellow" | "red";
+      lastChecked: string | null; latencyMs: number | null;
+    }>;
+    overallStatus: string;
+    total: number;
+    downCount: number;
+    degradedCount: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  const overallLabel = (s: string) =>
+    s === "major-outage" ? "Major Outage"
+    : s === "partial-outage" ? "Partial Outage"
+    : s === "degraded" ? "Degraded"
+    : "All Systems Operational";
+
+  const overallColor = (s: string) =>
+    s === "major-outage" ? "text-red-400"
+    : s === "partial-outage" || s === "degraded" ? "text-yellow-400"
+    : "text-green-400";
+
+  const overallBorder = (s: string) =>
+    s === "major-outage" ? "border-red-500/30"
+    : s === "partial-outage" || s === "degraded" ? "border-yellow-500/30"
+    : "border-green-500/30";
+
+  const overallBg = (s: string) =>
+    s === "major-outage" ? "bg-red-500/5"
+    : s === "partial-outage" || s === "degraded" ? "bg-yellow-500/5"
+    : "bg-green-500/5";
+
+  const componentStatus = (status: string) =>
+    status === "major-outage" ? "Major Outage"
+    : status === "partial-outage" ? "Partial Outage"
+    : status === "degraded" ? "Degraded"
+    : "Operational";
+
+  const componentColor = (status: string) =>
+    status === "major-outage" ? "text-red-400"
+    : status === "degraded" ? "text-yellow-400"
+    : "text-green-400";
+
+  const dotColor = (level: string) =>
+    level === "red" ? "bg-danger animate-pulse"
+    : level === "yellow" ? "bg-warning"
+    : "bg-success";
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading component status...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-xl border ${overallBorder(data.overallStatus)} ${overallBg(data.overallStatus)} overflow-hidden`}>
+      {/* Overall header */}
+      <div className="px-4 py-3 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <div className={`h-2.5 w-2.5 rounded-full ${dotColor(data.downCount > 0 ? "red" : data.degradedCount > 0 ? "yellow" : "green")}`} />
+          <span className={`text-sm font-bold ${overallColor(data.overallStatus)}`}>
+            {label ?? overallLabel(data.overallStatus)}
+          </span>
+        </div>
+      </div>
+      {/* Component rows */}
+      <div className="divide-y divide-border/30">
+        {data.components.map((c) => (
+          <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor(c.level)}`} />
+            <span className="text-sm text-text-primary flex-1 truncate">{c.name}</span>
+            {c.latencyMs !== null && (
+              <span className="text-xs font-mono text-text-secondary">{c.latencyMs}ms</span>
+            )}
+            <span className={`text-xs font-medium ${componentColor(c.status)}`}>
+              {componentStatus(c.status)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Rolling Uptime Cards — row of cards: 24h / 7d / 30d / 90d uptime%
+function RollingUptimeCards({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    cards: Array<{ label: string; days: number; uptimePct: number; total: number }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  const uptimeColor = (pct: number) =>
+    pct >= 99.9 ? "text-green-400" : pct >= 99 ? "text-yellow-400" : "text-red-400";
+  const uptimeBg = (pct: number) =>
+    pct >= 99.9 ? "bg-green-500/8" : pct >= 99 ? "bg-yellow-500/8" : "bg-red-500/8";
+  const uptimeBorder = (pct: number) =>
+    pct >= 99.9 ? "border-green-500/20" : pct >= 99 ? "border-yellow-500/20" : "border-red-500/20";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {data.cards.map((c) => (
+          <div key={c.label} className={`rounded-lg border ${uptimeBorder(c.uptimePct)} ${uptimeBg(c.uptimePct)} p-3 text-center`}>
+            <div className={`text-xl font-bold tabular-nums ${uptimeColor(c.uptimePct)}`}>
+              {c.uptimePct.toFixed(c.uptimePct >= 99.9 ? 2 : 1)}%
+            </div>
+            <div className="text-xs text-text-secondary mt-0.5 font-medium">{c.label}</div>
+            {c.total > 0 && (
+              <div className="text-[10px] text-text-muted mt-0.5">{c.total} checks</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Status History Ribbon — per monitor: last N days as horizontal colored bar (like GitHub status)
+function StatusHistoryRibbon({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    days: number;
+    rows: Array<{
+      id: string;
+      name: string;
+      ribbon: Array<{ date: string; level: "green" | "yellow" | "red" | "no-data" }>;
+    }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">Loading...</p>
+      </div>
+    );
+  }
+
+  const dayColor = (level: string) =>
+    level === "green" ? "bg-green-500/70"
+    : level === "yellow" ? "bg-yellow-500/70"
+    : level === "red" ? "bg-red-500/70"
+    : "bg-border/40";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+      {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+      {data.rows.map((row) => {
+        const upDays = row.ribbon.filter((d) => d.level === "green").length;
+        const pct = row.ribbon.filter((d) => d.level !== "no-data").length > 0
+          ? Math.round((upDays / row.ribbon.filter((d) => d.level !== "no-data").length) * 1000) / 10
+          : 100;
+        return (
+          <div key={row.id}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-text-primary truncate">{row.name}</span>
+              <span className="text-xs text-text-secondary ml-2 flex-shrink-0">{pct.toFixed(1)}%</span>
+            </div>
+            <div className="flex gap-px w-full overflow-hidden rounded-sm">
+              {row.ribbon.map((day) => (
+                <div
+                  key={day.date}
+                  className={`flex-1 h-4 ${dayColor(day.level)} rounded-[1px]`}
+                  title={`${day.date}: ${day.level === "no-data" ? "No data" : day.level === "green" ? "Operational" : day.level === "yellow" ? "Degraded" : "Outage"}`}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
+              <span>{data.days}d ago</span>
+              <span>Today</span>
+            </div>
+          </div>
+        );
+      })}
+      <div className="flex items-center gap-3 pt-1 border-t border-border/30">
+        <div className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-green-500/70" /><span className="text-[10px] text-text-muted">Up</span></div>
+        <div className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-yellow-500/70" /><span className="text-[10px] text-text-muted">Degraded</span></div>
+        <div className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-red-500/70" /><span className="text-[10px] text-text-muted">Down</span></div>
+        <div className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-sm bg-border/40" /><span className="text-[10px] text-text-muted">No data</span></div>
+      </div>
+    </div>
+  );
+}
+
+// Uptime Percentage Card — big number display with trend arrow
+function UptimePercentageCard({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitorId: string;
+    periodDays: number;
+    uptimePct: number;
+    previousPct: number;
+    trend: "up" | "down" | "flat";
+    delta: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const uptimeColor = data.uptimePct >= 99.9 ? "text-green-400" : data.uptimePct >= 99 ? "text-yellow-400" : "text-red-400";
+  const trendColor = data.trend === "up" ? "text-green-400" : data.trend === "down" ? "text-red-400" : "text-text-secondary";
+  const trendArrow = data.trend === "up" ? "↑" : data.trend === "down" ? "↓" : "→";
+  const trendLabel = data.trend === "flat"
+    ? "No change"
+    : `${data.trend === "up" ? "+" : ""}${data.delta.toFixed(2)}% vs prev ${data.periodDays}d`;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 text-center">
+      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
+      <div className={`text-5xl font-bold tabular-nums ${uptimeColor}`}>
+        {data.uptimePct.toFixed(2)}%
+      </div>
+      <div className="text-xs text-text-secondary mt-2">
+        Uptime — last {data.periodDays}d
+      </div>
+      {data.trend !== "flat" || data.previousPct !== 100 ? (
+        <div className={`mt-2 text-sm font-medium ${trendColor}`}>
+          {trendArrow} {trendLabel}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 // ── Group / Multi Widgets ────────────────────────────────────────────────
@@ -747,33 +1203,171 @@ function UpdateSummary({ monitors }: WidgetProps) {
 
 // ── Main renderer ────────────────────────────────────────────────────────
 
+function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
+  const ids = widget.config.monitorIds as string[] | undefined;
+  const singleId = widget.config.monitorId as string | undefined;
+  const tag = widget.config.tag as string | undefined;
+  const folderId = widget.config.folderId as string | undefined;
+  const monitorType = widget.config.monitorType as string | undefined;
+
+  let scoped = monitors;
+  if (ids?.length) scoped = scoped.filter((m) => ids.includes(m.id));
+  else if (singleId) scoped = scoped.filter((m) => m.id === singleId);
+  if (tag) scoped = scoped.filter((m) => m.tags?.includes(tag));
+  if (folderId) scoped = scoped.filter((m) => m.folderId === folderId);
+  if (monitorType) scoped = scoped.filter((m) => m.type === monitorType);
+  return scoped;
+}
+
+function passesVisibilityRule(widget: Widget, scopedMonitors: MonitorSummary[]): boolean {
+  const rule = (widget.config.visibility as string | undefined) ?? "always";
+  if (rule === "always") return true;
+  if (scopedMonitors.length === 0) return false;
+
+  const hasRed = scopedMonitors.some((m) => m.level === "red");
+  const hasYellow = scopedMonitors.some((m) => m.level === "yellow");
+
+  if (rule === "outage") return hasRed;
+  if (rule === "degraded") return !hasRed && hasYellow;
+  if (rule === "operational") return !hasRed && !hasYellow;
+  return true;
+}
+
+function monitorDetailHref(widget: Widget, scopedMonitors: MonitorSummary[]): string | null {
+  const singleId = widget.config.monitorId as string | undefined;
+  const firstId = singleId ?? (widget.config.monitorIds as string[] | undefined)?.[0] ?? scopedMonitors[0]?.id;
+  return firstId ? `/monitors/${firstId}` : null;
+}
+
 export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?: Partial<ExtraData>): React.ReactNode {
-  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], ...extra };
+  const fullExtra: ExtraData = { incidents: [], maintenance: [], recentChecks: [], widgetDataById: {}, ...extra };
   const props: WidgetProps = { widget, monitors, extra: fullExtra };
+  const scopedMonitors = getScopedMonitors(widget, monitors);
+
+  if (Boolean(widget.config.hideWhenNoData) && scopedMonitors.length === 0) {
+    return null;
+  }
+  if (!passesVisibilityRule(widget, scopedMonitors)) {
+    return null;
+  }
+
+  let content: React.ReactNode;
   switch (widget.type) {
     case "overall-status":
-    case "overall-system-status": return <OverallSystemStatus {...props} />;
-    case "current-status-badge": return <CurrentStatusBadge {...props} />;
-    case "multi-monitor-status-grid": return <MultiMonitorStatusGrid {...props} />;
-    case "active-incident-banner": return <ActiveIncidentBanner {...props} />;
-    case "uptime-bar": return <UptimeBar {...props} />;
-    case "uptime-timeline": return <UptimeTimeline {...props} />;
-    case "sla-summary": return <SLASummary {...props} />;
-    case "response-time-chart": return <ResponseTimeChart {...props} />;
-    case "check-history-feed": return <CheckHistoryFeed {...props} />;
-    case "incident-history": return <IncidentHistory {...props} />;
-    case "text-block": return <TextBlock {...props} />;
-    case "scheduled-maintenance": return <ScheduledMaintenance {...props} />;
-    case "monitor-group": return <MonitorGroup {...props} />;
-    case "multi-status-badges": return <MultiStatusBadges {...props} />;
-    case "version-status-grid": return <VersionStatusGrid {...props} />;
-    case "version-check-badge": return <VersionCheckBadge {...props} />;
-    case "update-summary": return <UpdateSummary {...props} />;
-    case "divider": return <Divider />;
-    default: return (
-      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
-        Unknown widget: {widget.type}
-      </div>
-    );
+    case "overall-system-status":
+      content = <OverallSystemStatus {...props} />;
+      break;
+    case "current-status-badge":
+      content = <CurrentStatusBadge {...props} />;
+      break;
+    case "multi-monitor-status-grid":
+      content = <MultiMonitorStatusGrid {...props} />;
+      break;
+    case "active-incident-banner":
+      content = <ActiveIncidentBanner {...props} />;
+      break;
+    case "uptime-bar":
+      content = <UptimeBar {...props} />;
+      break;
+    case "uptime-timeline":
+      content = <UptimeTimeline {...props} />;
+      break;
+    case "sla-summary":
+      content = <SLASummary {...props} />;
+      break;
+    case "response-time-chart":
+      content = <ResponseTimeChart {...props} />;
+      break;
+    case "check-history-feed":
+      content = <CheckHistoryFeed {...props} />;
+      break;
+    case "incident-history":
+      content = <IncidentHistory {...props} />;
+      break;
+    case "text-block":
+      content = <TextBlock {...props} />;
+      break;
+    case "scheduled-maintenance":
+      content = <ScheduledMaintenance {...props} />;
+      break;
+    case "monitor-group":
+      content = <MonitorGroup {...props} />;
+      break;
+    case "multi-status-badges":
+      content = <MultiStatusBadges {...props} />;
+      break;
+    case "version-status-grid":
+      content = <VersionStatusGrid {...props} />;
+      break;
+    case "version-check-badge":
+      content = <VersionCheckBadge {...props} />;
+      break;
+    case "update-summary":
+      content = <UpdateSummary {...props} />;
+      break;
+    case "component-status-list":
+      content = <ComponentStatusList {...props} />;
+      break;
+    case "rolling-uptime-cards":
+      content = <RollingUptimeCards {...props} />;
+      break;
+    case "status-history-ribbon":
+      content = <StatusHistoryRibbon {...props} />;
+      break;
+    case "uptime-percentage-card":
+      content = <UptimePercentageCard {...props} />;
+      break;
+    case "divider":
+      content = <Divider />;
+      break;
+    default:
+      content = (
+        <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+          Unknown widget: {widget.type}
+        </div>
+      );
+      break;
   }
+
+  const clickAction = (widget.config.clickAction as string | undefined) ?? "none";
+  const clickUrl = widget.config.clickUrl as string | undefined;
+  const href = clickAction === "external-url"
+    ? clickUrl
+    : clickAction === "monitor-detail"
+      ? monitorDetailHref(widget, scopedMonitors)
+      : undefined;
+
+  const mobileBehavior = (widget.config.mobileBehavior as string | undefined) ?? "normal";
+  const mobileClass =
+    mobileBehavior === "hidden"
+      ? "max-sm:hidden"
+      : mobileBehavior === "full-width"
+        ? "max-sm:w-full"
+        : mobileBehavior === "collapsed"
+          ? "max-sm:[&>*]:max-h-28 max-sm:[&>*]:overflow-hidden"
+          : "";
+
+  const wrapperStyle: React.CSSProperties = {
+    borderRadius: typeof widget.config.borderRadius === "number" ? `${widget.config.borderRadius}px` : undefined,
+    padding: typeof widget.config.padding === "number" ? `${widget.config.padding}px` : undefined,
+  };
+
+  const wrapperClass = [
+    mobileClass,
+    widget.config.showBorder === true ? "border border-border" : "",
+    href ? "cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{content}</div>;
+
+  if (!href) return wrapped;
+
+  const external = clickAction === "external-url";
+  return (
+    <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer noopener" : undefined}>
+      {wrapped}
+    </a>
+  );
 }

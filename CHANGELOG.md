@@ -9,8 +9,36 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+- **Status page editor — universal config panel phase 2 controls** — Extended the shared widget properties sidebar with visibility rules (always/operational/degraded/outage + hide-when-no-data), click actions (none/monitor-detail/external URL), style controls (border toggle, radius, padding), and mobile behavior controls (normal/full-width/collapsed/hidden).
+
+---
+
+## [1.0.2] — 2026-03-17
+
+### Added
+- **Status page — monitor groups, multi-status badges** — Status page public view now renders `monitor-group-status` and `multi-monitor-status-grid` widgets using live monitor tag/folder data. Group status aggregates across monitors (Operational / Degraded / Outage) with colour-coded badge counts.
+- **Status page — version widgets** — `update-status-badge` and `version-comparison-table` widgets now show real version data (current vs latest, up-to-date / update-available state) with live API polling.
+- **Status page — live widget previews in editor** — Editor renders live data previews for all widget types while editing, not just a static placeholder. Auto-save on every layout change (2s debounce).
+- **Monitors page — monitor groups + tag/folder filtering** — Monitors list has a collapsible group sidebar (tag and folder groups). Group rows show aggregate status badge. Tag filter bar updated to support group-level filtering.
+- **Status page — Enter key submits modals** — All modals now submit the primary action on Enter key, consistent with platform conventions.
+
 ### Fixed
-- **Web build config warning** — Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to align with Next.js 16 config schema. `npm run build` no longer prints `Invalid next.config.mjs options` warning.
+- **Next.js build config warning** — Removed unsupported `allowedHosts` key from `apps/web/next.config.mjs`. `npm run build` no longer prints `Invalid next.config.mjs options` warning.
+- **Trust proxy for secure cookies** — API now calls `app.set('trust proxy', 1)` so secure/SameSite cookies work correctly behind nginx/Cloudflare reverse proxies.
+- **GitLab version check** — GitLab CE uses `gitlab-releases` provider (not `github-releases`). Fixed auth defaults and version endpoint for GitLab self-hosted instances.
+- **Case-insensitive version key extraction** — `extractVersion()` now matches `version`, `Version`, `VERSION`, etc. in JSON responses.
+- **Badge embed snippets** — Embed Markdown/HTML/URL snippets now include the full domain URL (not just the path).
+- **Modal focus trap regression** — Fixed Tab/Shift+Tab focus trap stealing focus from text inputs on every keystroke. Focus is now only trapped when Tab reaches the boundary.
+- **socket.io proxy path** — Client socket.io path corrected to match nginx `/api/socket.io/` routing.
+- **VersionDiff display** — Simplified to a compact single-line format (`v1.2.3 → v1.2.4`) rather than a large two-line diff block.
+- **Tag color contrast** — Tag badges now use proper accessible color contrast across all monitor list, group, and filter surfaces.
+- **Monitor template version endpoints** — Corrected version endpoints and auth defaults for all 19 self-hosted app monitor templates.
+- **Status page mock coverage** — Fixed `findPublic()` unit tests: added missing `incident`, `maintenanceWindow`, and `monitorRun` (with monitor relation) mock entries that were causing 3 unit test failures and 1 integration test failure.
+
+### Tests
+- **Status-pages service spec** — Added 5 new tests covering `findPublic()` return shape: monitor tags from monitorTags relation, incident timeline mapping, maintenance window monitor links, recentChecks monitorName, and null last-run defaults.
+- **Coverage** — API test suite stable at 1327 tests (1349 total incl. CLI+Agent). Statement coverage: 98.73%, branch: 95.29%, line: 100%.
 
 ---
 

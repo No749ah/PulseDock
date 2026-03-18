@@ -45,7 +45,7 @@ server {
     # ... ssl certs, other config ...
 
     # WebSocket — Socket.io (real-time updates)
-    location /api/socket.io/ {
+    location ~ ^/api/socket\.io {
         proxy_pass          http://localhost:4321/socket.io/;
         proxy_http_version  1.1;
 
@@ -144,7 +144,7 @@ server {
     client_max_body_size 10m;
 
     # WebSocket — Socket.io path (REQUIRED for real-time updates)
-    location /api/socket.io/ {
+    location ~ ^/api/socket\.io {
         proxy_pass          http://pulsedock_api/socket.io/;
         proxy_http_version  1.1;
         proxy_set_header    Upgrade           $http_upgrade;
@@ -158,6 +158,26 @@ server {
         proxy_buffering     off;
     }
 
+    # Static assets — separate location block required
+    location ~* ^/_next/static/ {
+        proxy_pass          http://pulsedock_web;
+        proxy_http_version  1.1;
+        proxy_set_header    Host              $host;
+        proxy_set_header    X-Real-IP         $remote_addr;
+        proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto $scheme;
+
+        proxy_buffering         on;
+        proxy_buffer_size       128k;
+        proxy_buffers           256 16k;
+        proxy_max_temp_file_size 2048m;
+        proxy_temp_file_write_size 32k;
+
+        proxy_connect_timeout   60s;
+        proxy_send_timeout      300s;
+        proxy_read_timeout      300s;
+    }
+
     # Main web frontend
     location / {
         proxy_pass          http://pulsedock_web;
@@ -169,11 +189,7 @@ server {
         proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header    X-Forwarded-Proto $scheme;
         proxy_read_timeout  60s;
-
-        # Static assets — do NOT add proxy_cache here.
-        # Next.js already sends correct Cache-Control headers (immutable with content hashes).
-        # Adding proxy_cache risks caching error responses (e.g. 500 during restarts)
-        # which are then served until the cache expires, even after the origin is fixed.
+        proxy_buffering     off;
     }
 }
 ```
@@ -224,3 +240,29 @@ Ensure `CORS_ORIGINS` environment variable is set to your public domain in the A
 ```env
 CORS_ORIGINS=https://pulsedock.example.com
 ```
+
+## Known Issues & Prevention
+
+### Socket.io 404 (most common issue)
+
+**Root cause:** Next.js 308-redirects `/api/socket.io/` → `/api/socket.io` (strips trailing slash) before rewrites fire. The generic `/api/:path*` rewrite requires at least one path segment — bare `/api/socket.io` doesn't match, so Next.js returns 404.
+
+**Fix applied (already in codebase):**
+1. `realtime.ts`: client path is `/api/socket.io` (no trailing slash) — avoids the redirect
+2. `next.config.mjs`: explicit rewrite `/api/socket.io` → `http://localhost:4321/socket.io/` (trailing slash required by engine.io)
+3. `next.config.mjs`: `skipTrailingSlashRedirect: true` — prevents the 308 loop
+4. nginx: `location ~ ^/api/socket\.io` (regex, matches with or without slash) — routes directly to API, bypasses Next.js entirely in production
+
+**Prevention:** Never change the socket.io client path to `/api/socket.io/` (with trailing slash). Never remove `skipTrailingSlashRedirect`. Never remove the explicit socket.io rewrite rules.
+
+### Stale CSS/JS hash 404 after rebuild
+
+**Root cause:** Browser or Cloudflare served a cached HTML page that references old `_next/static/` chunk hashes. After `npm run build`, new hashes are generated; old filenames no longer exist.
+
+**Fix:** 
+- HTML pages are served with `Cache-Control: no-cache, no-store, must-revalidate` — browsers must revalidate on every load
+- Static assets (`/_next/static/`) use `immutable` caching (content-hash filenames never change)
+- After a deploy, do a hard refresh (Ctrl+Shift+R) if you see stale CSS errors
+- Cloudflare: set the cache rule for `*.no749ah.com` to "Bypass" for HTML (non-static) paths, or purge the Cloudflare cache after each deploy
+
+**Never do:** Do not add proxy_cache to the `/` nginx location block. Nginx caching HTML breaks the hash invalidation chain.

@@ -35,14 +35,14 @@ describe('NotificationsController', () => {
 
   describe('getPreference()', () => {
     it('returns notification preferences for the user', async () => {
-      const req = { user: { sub: 'user-1' } };
+      const req = { user: { id: 'user-1' } };
       const result = await controller.getPreference(req);
       expect(notificationsService.getPreference).toHaveBeenCalledWith('user-1');
       expect(result).toMatchObject({ userId: 'user-1', emailEnabled: true });
     });
 
-    it('uses req.user.sub as userId', async () => {
-      const req = { user: { sub: 'user-abc' } };
+    it('uses req.user.id as userId', async () => {
+      const req = { user: { id: 'user-abc' } };
       await controller.getPreference(req);
       expect(notificationsService.getPreference).toHaveBeenCalledWith('user-abc');
     });
@@ -50,7 +50,7 @@ describe('NotificationsController', () => {
 
   describe('updatePreference()', () => {
     it('updates and returns preferences', async () => {
-      const req = { user: { sub: 'user-1' } };
+      const req = { user: { id: 'user-1' } };
       const dto = { notifyOnDown: false, frequency: 'hourly_digest' as const };
       const result = await controller.updatePreference(req, dto);
       expect(notificationsService.updatePreference).toHaveBeenCalledWith('user-1', dto);
@@ -58,7 +58,7 @@ describe('NotificationsController', () => {
     });
 
     it('passes partial update DTO to service', async () => {
-      const req = { user: { sub: 'user-2' } };
+      const req = { user: { id: 'user-2' } };
       const dto = { quietHoursStart: 22, quietHoursEnd: 8 };
       await controller.updatePreference(req, dto);
       expect(notificationsService.updatePreference).toHaveBeenCalledWith('user-2', dto);

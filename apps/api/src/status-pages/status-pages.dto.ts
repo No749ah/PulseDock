@@ -25,6 +25,7 @@ const VALID_WIDGET_TYPES: WidgetType[] = [
   'incident-history',
   'active-incident-banner',
   'monitor-group-status',
+  'monitor-group',           // alias used by frontend palette
   'overall-system-status',
   'sla-summary',
   'check-history-feed',
@@ -33,6 +34,17 @@ const VALID_WIDGET_TYPES: WidgetType[] = [
   'last-updated-footer',
   'metric-counter',
   'divider',
+  // Version monitor widgets
+  'version-status-grid',
+  'version-check-badge',
+  'update-summary',
+  // Multi-status
+  'multi-status-badges',
+  // New P1 widgets
+  'component-status-list',
+  'rolling-uptime-cards',
+  'status-history-ribbon',
+  'uptime-percentage-card',
 ];
 
 export class WidgetDto {
@@ -60,9 +72,10 @@ export class WidgetDto {
   @IsNumber()
   h!: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsObject()
-  config!: Record<string, unknown>;
+  config?: Record<string, unknown>;
 }
 
 export class PageLayoutDto {

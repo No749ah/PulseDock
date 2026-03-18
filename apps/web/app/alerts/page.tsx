@@ -36,7 +36,14 @@ export default function AlertsPage() {
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const [form, setForm] = useState({ name: '', type: 'discord' as AlertType, a: '', b: '', secret: '' });
+  const [form, setForm] = useState({
+    name: '', type: 'discord' as AlertType,
+    a: '', b: '', secret: '',
+    // Discord extras
+    username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '',
+    // Telegram extras
+    parseMode: 'HTML',
+  });
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -45,6 +52,13 @@ export default function AlertsPage() {
   const [editA, setEditA] = useState('');
   const [editB, setEditB] = useState('');
   const [editSecret, setEditSecret] = useState('');
+  // Edit extras
+  const [editUsername, setEditUsername] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [editMentionRoleId, setEditMentionRoleId] = useState('');
+  const [editMentionUserId, setEditMentionUserId] = useState('');
+  const [editMessageTemplate, setEditMessageTemplate] = useState('');
+  const [editParseMode, setEditParseMode] = useState('HTML');
 
   useEffect(() => {
     const user = getUser();
@@ -64,7 +78,7 @@ export default function AlertsPage() {
 
   function resetCreateForm() {
     setWizardStep(0);
-    setForm({ name: '', type: 'discord', a: '', b: '', secret: '' });
+    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML' });
   }
 
   function next() {
@@ -75,20 +89,35 @@ export default function AlertsPage() {
     setWizardStep((s) => Math.max(0, s - 1));
   }
 
-  function buildConfig(type: AlertType, a: string, b: string, secret?: string) {
-    if (type === 'discord' || type === 'slack') return { webhookUrl: a };
+  function buildConfig(type: AlertType, a: string, b: string, secret?: string, extras?: {
+    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string;
+  }) {
+    if (type === 'discord') {
+      const cfg: Record<string, string> = { webhookUrl: a };
+      if (extras?.username?.trim()) cfg.username = extras.username.trim();
+      if (extras?.avatarUrl?.trim()) cfg.avatarUrl = extras.avatarUrl.trim();
+      if (extras?.mentionRoleId?.trim()) cfg.mentionRoleId = extras.mentionRoleId.trim();
+      if (extras?.mentionUserId?.trim()) cfg.mentionUserId = extras.mentionUserId.trim();
+      if (extras?.messageTemplate?.trim()) cfg.messageTemplate = extras.messageTemplate.trim();
+      return cfg;
+    }
+    if (type === 'slack') return { webhookUrl: a };
     if (type === 'webhook') {
       const cfg: Record<string, string> = { url: a };
       if (secret?.trim()) cfg.secret = secret.trim();
       return cfg;
     }
-    if (type === 'telegram') return { botToken: a, chatId: b };
+    if (type === 'telegram') {
+      const cfg: Record<string, string> = { botToken: a, chatId: b };
+      if (extras?.parseMode) cfg.parseMode = extras.parseMode;
+      return cfg;
+    }
     return { to: a };
   }
 
   async function createChannel() {
     try {
-      const config = buildConfig(form.type, form.a, form.b, form.secret);
+      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode });
       await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
       setWizardOpen(false);
       resetCreateForm();
@@ -111,6 +140,12 @@ export default function AlertsPage() {
   function openEdit(channel: AlertChannel) {
     setSelected(channel);
     setEditName(channel.name);
+    setEditUsername(String(channel.config.username ?? ''));
+    setEditAvatarUrl(String(channel.config.avatarUrl ?? ''));
+    setEditMentionRoleId(String(channel.config.mentionRoleId ?? ''));
+    setEditMentionUserId(String(channel.config.mentionUserId ?? ''));
+    setEditMessageTemplate(String(channel.config.messageTemplate ?? ''));
+    setEditParseMode(String(channel.config.parseMode ?? 'HTML'));
     if (channel.type === 'discord' || channel.type === 'slack') {
       setEditA(String(channel.config.webhookUrl ?? ''));
       setEditB('');
@@ -132,7 +167,7 @@ export default function AlertsPage() {
   async function saveEdit() {
     if (!selected) return;
     try {
-      const config = buildConfig(selected.type, editA, editB, editSecret);
+      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode });
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
         body: JSON.stringify({ name: editName, config }),
@@ -225,27 +260,62 @@ export default function AlertsPage() {
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
                 {form.type === 'telegram' && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
-                    <input className={inputClass} value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
+                      <input className={inputClass} value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Parse mode</label>
+                      <select className={inputClass} value={form.parseMode} onChange={(e) => setForm({ ...form, parseMode: e.target.value })}>
+                        <option value="HTML">HTML (default — bold, code formatting)</option>
+                        <option value="Markdown">Markdown</option>
+                        <option value="">Plain text</option>
+                      </select>
+                    </div>
+                  </>
                 )}
                 {form.type === 'webhook' && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">
                       Signing secret <span className="text-text-secondary font-normal">(optional)</span>
                     </label>
-                    <input
-                      className={inputClass}
-                      type="password"
-                      placeholder="e.g. whsec_abc123…"
-                      value={form.secret}
-                      onChange={(e) => setForm({ ...form, secret: e.target.value })}
-                    />
+                    <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
                     <p className="mt-1.5 text-xs text-text-secondary">
-                      When set, PulseDock adds an <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> header so your endpoint can verify delivery authenticity.
+                      PulseDock adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
                     </p>
                   </div>
+                )}
+                {form.type === 'discord' && (
+                  <>
+                    <div className="border-t border-border pt-3">
+                      <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Discord Options</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot name <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="PulseDock" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Avatar URL <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="https://…/avatar.png" value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Ping role ID <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="123456789012345678" value={form.mentionRoleId} onChange={(e) => setForm({ ...form, mentionRoleId: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">Role will be pinged on every alert. Right-click the role → Copy ID.</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Ping user ID <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="123456789012345678" value={form.mentionUserId} onChange={(e) => setForm({ ...form, mentionUserId: e.target.value })} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Custom message <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="{monitor} is {status}: {message}" value={form.messageTemplate} onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">Variables: <code className="text-accent">{"{monitor}"}</code> <code className="text-accent">{"{status}"}</code> <code className="text-accent">{"{message}"}</code> <code className="text-accent">{"{latency}"}</code></p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -292,26 +362,57 @@ export default function AlertsPage() {
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>
               {selected?.type === 'telegram' && (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
-                  <input className={inputClass} value={editB} onChange={(e) => setEditB(e.target.value)} />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Chat ID</label>
+                    <input className={inputClass} value={editB} onChange={(e) => setEditB(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Parse mode</label>
+                    <select className={inputClass} value={editParseMode} onChange={(e) => setEditParseMode(e.target.value)}>
+                      <option value="HTML">HTML (bold, code formatting)</option>
+                      <option value="Markdown">Markdown</option>
+                      <option value="">Plain text</option>
+                    </select>
+                  </div>
+                </>
               )}
               {selected?.type === 'webhook' && (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
                     Signing secret <span className="text-text-secondary font-normal">(optional)</span>
                   </label>
-                  <input
-                    className={inputClass}
-                    type="password"
-                    placeholder="Leave blank to keep existing, or enter a new secret"
-                    value={editSecret}
-                    onChange={(e) => setEditSecret(e.target.value)}
-                  />
-                  <p className="mt-1.5 text-xs text-text-secondary">
-                    PulseDock will send <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> with every webhook payload.
-                  </p>
+                  <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
+                  <p className="mt-1.5 text-xs text-text-secondary">PulseDock adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
+                </div>
+              )}
+              {selected?.type === 'discord' && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Discord Options</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot name <span className="font-normal">(optional)</span></label>
+                      <input className={inputClass} placeholder="PulseDock" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Avatar URL <span className="font-normal">(optional)</span></label>
+                      <input className={inputClass} placeholder="https://…/avatar.png" value={editAvatarUrl} onChange={(e) => setEditAvatarUrl(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Ping role ID <span className="font-normal">(optional)</span></label>
+                      <input className={inputClass} placeholder="123456789012345678" value={editMentionRoleId} onChange={(e) => setEditMentionRoleId(e.target.value)} />
+                      <p className="mt-1 text-xs text-text-secondary">Right-click the role in Discord → Copy ID.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Ping user ID <span className="font-normal">(optional)</span></label>
+                      <input className={inputClass} placeholder="123456789012345678" value={editMentionUserId} onChange={(e) => setEditMentionUserId(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Custom message <span className="font-normal">(optional)</span></label>
+                      <input className={inputClass} placeholder="{monitor} is {status}: {message}" value={editMessageTemplate} onChange={(e) => setEditMessageTemplate(e.target.value)} />
+                      <p className="mt-1 text-xs text-text-secondary">Variables: <code className="text-accent">{"{monitor}"}</code> <code className="text-accent">{"{status}"}</code> <code className="text-accent">{"{message}"}</code> <code className="text-accent">{"{latency}"}</code></p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

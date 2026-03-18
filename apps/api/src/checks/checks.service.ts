@@ -1015,6 +1015,7 @@ export class ChecksService {
       id: created.id,
       userId: created.userId,
       monitorId: created.monitorId,
+      monitorType: monitor.type,
       checkedAt: created.checkedAt.toISOString(),
       ok: created.ok,
       statusCode: created.status,
@@ -1043,10 +1044,19 @@ export class ChecksService {
     const crossedFailureThreshold = previousUnhealthyStreak < confirmations && consecutiveFailures >= confirmations;
     const shouldAlertFailure = isCurrentUnhealthy && crossedFailureThreshold;
 
-    if (shouldAlertFailure) {
-      await this.alerts.notifyMonitorFailure(monitor, run);
+    const alertContext = {
+      levelChanged,
+      previousLevel: prev?.level ?? null,
+      failureStreak: consecutiveFailures,
+    };
+
+    // Call notifyMonitorFailure for every unhealthy run (after confirmation threshold)
+    // AND for recoveries. The alerts service's notifyOn filter decides per-channel
+    // whether to actually dispatch (ON_CHANGE, ALWAYS, FIRST_ONLY, DAILY_DIGEST, etc.)
+    if (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations)) {
+      await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     } else if (isRecovery) {
-      await this.alerts.notifyMonitorFailure(monitor, run);
+      await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     }
 
     this.realtime.monitorChecked(monitor.userId, {

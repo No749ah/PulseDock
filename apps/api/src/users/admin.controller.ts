@@ -145,8 +145,20 @@ export class AdminController {
       this.prisma.user.count({ where: { isActive: true } }),
       this.prisma.monitor.count(),
       this.prisma.monitor.count({ where: { enabled: true } }),
-      this.prisma.monitorRun.count({ where: { checkedAt: { gte: todayStart } } }),
-      this.prisma.monitorRun.count({ where: { checkedAt: { gte: todayStart }, ok: false } }),
+      // Exclude version monitors (GIT_RELEASE, DOCKER_IMAGE) — being outdated is not an uptime failure
+      this.prisma.monitorRun.count({
+        where: {
+          checkedAt: { gte: todayStart },
+          monitor: { type: { notIn: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
+        },
+      }),
+      this.prisma.monitorRun.count({
+        where: {
+          checkedAt: { gte: todayStart },
+          ok: false,
+          monitor: { type: { notIn: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
+        },
+      }),
     ]);
 
     const errorRatePct = checksToday > 0 ? Math.round((failedToday / checksToday) * 1000) / 10 : 0;

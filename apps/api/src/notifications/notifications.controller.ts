@@ -5,7 +5,7 @@ import { NotificationsService } from './notifications.service';
 import { NotificationPreferenceResponseDto, UpdateNotificationPreferenceDto } from './notifications.dto';
 
 interface AuthRequest {
-  user: { sub: string };
+  user: { id: string };
 }
 
 @ApiTags('Notification Preferences')
@@ -24,7 +24,7 @@ export class NotificationsController {
   })
   @ApiResponse({ status: 200, description: 'Notification preferences', type: NotificationPreferenceResponseDto })
   getPreference(@Req() req: AuthRequest) {
-    return this.notificationsService.getPreference(req.user.sub);
+    return this.notificationsService.getPreference(req.user.id);
   }
 
   @Patch()
@@ -37,6 +37,6 @@ export class NotificationsController {
   @ApiResponse({ status: 200, description: 'Updated notification preferences', type: NotificationPreferenceResponseDto })
   @ApiResponse({ status: 400, description: 'Validation error' })
   updatePreference(@Req() req: AuthRequest, @Body() dto: UpdateNotificationPreferenceDto) {
-    return this.notificationsService.updatePreference(req.user.sub, dto);
+    return this.notificationsService.updatePreference(req.user.id, dto);
   }
 }

@@ -163,6 +163,9 @@ model AlertChannel {
 model MonitorAlert {
   monitorId      String
   alertChannelId String
+  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
+  notifyOn       String    @default("ON_CHANGE")
+  lastNotifiedAt DateTime?
 
   monitor      Monitor      @relation(fields: [monitorId], references: [id], onDelete: Cascade)
   alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)

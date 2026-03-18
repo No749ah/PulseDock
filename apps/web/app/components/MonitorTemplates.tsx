@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, Server, Globe, Package } from "lucide-react";
+import { Zap, Server, Globe } from "lucide-react";
 
 export interface MonitorTemplate {
   label: string;
@@ -155,13 +155,12 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
   },
   {
     label: "Uptime Kuma",
-    description: "Uptime Kuma API status",
+    description: "Uptime Kuma uptime check",
     name: "Uptime Kuma Health",
     type: "HTTP",
-    target: "https://kuma.example.com/api/entry-page",
+    target: "https://kuma.example.com",
     intervalSec: 60,
-    // Version requires auth
-    config: { appVersionEndpoint: '/api/entry-page', appAuthType: 'token' },
+    config: {},
     requiresUrl: true,
   },
   {
@@ -316,7 +315,6 @@ const SELF_HOSTED_TEMPLATES: MonitorTemplate[] = [
 
 export const MONITOR_TEMPLATES: MonitorTemplate[] = [
   ...GENERAL_TEMPLATES,
-  ...VERSION_TEMPLATES,
   ...SELF_HOSTED_TEMPLATES,
 ];
 
@@ -332,12 +330,6 @@ const TEMPLATE_GROUPS: TemplateGroup[] = [
     label: "Self-Hosted Apps",
     icon: <Server className="w-4 h-4" />,
     templates: SELF_HOSTED_TEMPLATES,
-  },
-  {
-    id: "version",
-    label: "Version Tracking",
-    icon: <Package className="w-4 h-4" />,
-    templates: VERSION_TEMPLATES,
   },
 ];
 

@@ -70,17 +70,20 @@ export default function StatusPagesPage() {
     return slug.length >= 3 ? slug : `page-${Date.now().toString(36)}`;
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!createTitle.trim()) return;
+    const titleVal = createTitle.trim();
+    const slugVal = createSlug.trim();
+
+    if (!titleVal) return;
     setCreating(true);
     try {
       const page = await api<StatusPage>("/v1/status-pages", undefined, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: createTitle.trim(),
-          slug: createSlug.trim() || autoSlug(createTitle),
+          title: titleVal,
+          slug: slugVal || autoSlug(titleVal),
         }),
       });
       setShowCreate(false);
@@ -267,6 +270,7 @@ export default function StatusPagesPage() {
                 </label>
                 <input
                   type="text"
+                  name="title"
                   value={createTitle}
                   onChange={(e) => {
                     setCreateTitle(e.target.value);
@@ -286,6 +290,7 @@ export default function StatusPagesPage() {
                   <span className="border-r border-border bg-surface px-3 py-2.5 text-xs text-text-secondary">/status/</span>
                   <input
                     type="text"
+                    name="slug"
                     value={createSlug}
                     onChange={(e) => setCreateSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                     placeholder="my-service-status"

@@ -1,18 +1,55 @@
+## Status Summary (2026-03-18 10:14 UTC)
+- **Build/Test:** ✅ Clean build, 1354 tests passing (API+CLI+Agent) — +8 from this session
+- **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks green.
+- **This session (2026-03-18 10:14 UTC):**
+  - Committed unstaged widget schema changes (monitor-group alias + version/multi-status types)
+  - Implemented **4 new P1 status-page widgets**: ComponentStatusList, RollingUptimeCards, StatusHistoryRibbon, UptimePercentageCard
+  - Full backend resolvers with Prisma queries, frontend components with proper dark-theme styling
+  - 4 new palette items in editor, WidgetType union extended, 8 new tests
+  - Post-deploy verification: local all routes 200, reverse-proxy all routes 200
+
 # PulseDock Backlog
 
-## ⚠️ INSTRUCTION FROM NOAH (2026-03-14)
+## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
-**The project is NOT feature-complete. Stop waiting for a new project.**
-**Re-evaluate everything critically. The backlog below has been expanded with all missing items.**
-**Work through these systematically, highest priority first. Do not mark the project done until all items below are checked.**
+**The project is NOT done. Not even close.**
+**Work on this until EVERYTHING is perfect — every enterprise tool in the registry, every widget type implemented, every UI pixel polished.**
+**Self-optimize: after every task, critically review your own work. Would a Fortune 500 pay for this? If not, improve.**
+**Keep adding to this backlog when you discover gaps. Never stop improving.**
+**Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
 
 ## In Progress
 
-_(pick the highest priority unchecked item below and start immediately)_
+*(next: continue landing page polish — SEO, Lighthouse, mobile audit — or move to P1 status-page widgets)*
 
 ## Recently Completed
+
+- [x] **Landing page P0 rework** — Hero dashboard mockup (glassmorphic browser chrome, stat cards, monitors table, sparklines), improved How-It-Works (3 cards with inline visual elements), Screenshot Gallery (2×2 mock UIs with hover-lift), Pricing section (self-hosted free + cloud coming soon). Build clean, all routes 200.
+
+- [x] **SLA Summary with real data** — API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.
+
+## Recently Completed
+
+- [x] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Bar chart: green=ok, red=failed. Dashed avg line + dotted p95 line. Header shows avg/p95 stats. API returns up to 60 (configurable) data points with avgMs/p95Ms/maxMs. 5 new tests. Total: 1341 passing.
+
+- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown per UTC date bucket. Legend shows Up/Degraded/Down/No-data. Widget shows overall uptime% computed from real check data.
+
+## Recently Completed
+
+- [x] **Monitor-scope UX polish for status widgets** — Added widget-specific multi-monitor helper text, sensible default monitor preselection on mode switch, and clean monitor-scope mode transitions (`single`/`multiple`/`all`) so config stays coherent.
+
+- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
+
+- [x] **Uptime Bar with real data** — public status-page uptime widget now consumes live per-widget API data (`/v1/public/status/:slug/widget/:widgetId`) and renders real `uptimePct` + period + check count instead of status-derived placeholders.
+
+- [x] **Public status page layout parity with editor grid** — public renderer now uses true responsive grid layout with editor coordinates (`x/y/w/h`): 12-col desktop, 6-col tablet with collision-safe placement, and 1-col mobile flow. Visibility/hide-no-data rules are applied before layout so only renderable widgets occupy grid slots.
+
+- [x] **Universal Config Panel for ALL widget types** — completed end-to-end: shared monitor scope selector + filters + visibility/click/style/responsive controls in editor, runtime wiring in public renderer (visibility filtering, hide-when-no-data, click actions, mobile behavior), and per-widget conditional control visibility in config panel.
+
+- [x] **Auth controller spec stabilization (request context)** — Updated `auth.controller.spec.ts` invite/reset test calls to pass `req` alongside `res` after controller method signature changes. Test suite is green again.
 
 - [x] **Next.js build warning cleanup (`allowedHosts`)** — Removed unsupported `allowedHosts` key from `apps/web/next.config.mjs` (Next.js 16 no longer recognizes this option). Build is now clean without config warnings.
 
@@ -393,12 +430,535 @@ _(pick the highest priority unchecked item below and start immediately)_
 
 ---
 
+---
+
+## 🔴 STATUS PAGE — Enterprise-Ready (PRIORITY)
+
+> **Instruction from Noah (2026-03-17):** Status pages must be 100% configurable, unlimited widgets, every monitor/group/project/tag displayable, multiple layouts, compete with Uptime Kuma and beyond. 11/10 quality. Continuously improve — add new widgets/features when you see room for improvement.
+
+### P0 — Config Panel + Multi-Monitor + Grid Layout
+
+- [x] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
+- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
+- [x] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
+- [x] **Resize Handles in editor** — Bottom-right corner drag handle on every canvas widget. Appears on hover (always visible when selected). Snaps to grid (cols × ROW_H rows). Min 1 col/row, max 12 cols/10 rows.
+- [x] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing in Properties panel (w: 1-12, h: 1-10).
+
+### P0 — Fix Existing Widget Data
+
+- [x] **Uptime Bar with real data** — Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
+- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
+- [x] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
+
+### P1 — New Widgets (Status & Uptime)
+
+- [x] **Component Status List** — Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
+- [ ] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
+- [ ] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
+- [x] **Status History Ribbon** — Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
+- [ ] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
+- [x] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
+- [ ] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
+- [ ] **Region Status Map** — SVG world map with colored pins per monitor. Config: latitude/longitude or region (EU/US/APAC) per monitor
+- [ ] **Third-Party Dependencies** — Show status of external services. Config: URLs to check (GitHub status, AWS health, Cloudflare status etc.)
+- [x] **Rolling Uptime Cards** — Row of cards: 24h / 7d / 30d / 90d uptime percentages side by side
+
+### P1 — New Widgets (Performance)
+
+- [ ] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
+- [ ] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period
+- [ ] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
+- [ ] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
+- [ ] **Throughput Counter** — Checks per hour / requests per minute as live counter
+- [ ] **Apdex Score** — Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
+- [ ] **SSL Certificate Status** — Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
+- [ ] **DNS Resolution Time** — DNS lookup latency tracker (separate from HTTP latency)
+
+### P1 — New Widgets (SLA & Uptime Deep)
+
+- [ ] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
+- [ ] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
+- [ ] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
+- [ ] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
+- [ ] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
+
+### P1 — New Widgets (Incidents & Maintenance)
+
+- [ ] **Incident Timeline** — Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
+- [ ] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
+- [ ] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
+- [ ] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
+- [ ] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
+- [ ] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
+- [ ] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
+- [ ] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes
+
+### P1 — New Widgets (Versions)
+
+- [ ] **Version Timeline** — Chronological list of all version updates detected across monitors
+- [ ] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
+- [ ] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
+- [ ] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
+- [ ] **Security Advisory Widget** — Checks if current version has known CVEs (via GitHub advisories API)
+
+### P1 — New Widgets (Metrics & Data)
+
+- [ ] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
+- [ ] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
+- [ ] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
+- [ ] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
+- [ ] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
+- [ ] **Progress Ring** — Circular progress (like Apple Watch rings). For uptime, SLA compliance
+- [ ] **Data Table** — Configurable tabular data display with sorting and pagination
+
+### P1 — New Widgets (Content & Branding)
+
+- [ ] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
+- [ ] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
+- [ ] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs
+- [ ] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
+- [ ] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.)
+- [ ] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, sandbox policy
+- [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
+- [ ] **Code Block** — Display API response or config snippet with syntax highlighting
+- [ ] **Subscriber Form** — Email input for status update subscriptions. Backend: subscriber table, email notifications on status change
+- [ ] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
+
+### P1 — New Widgets (Layout & Navigation)
+
+- [ ] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, which widgets per tab
+- [ ] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
+- [ ] **Column Layout** — 2/3/4 column container for sub-widget grouping within a row
+- [ ] **Sticky Header** — Stays fixed at top while scrolling. Shows overall status + page title
+- [ ] **Table of Contents** — Auto-generated from section/header widgets with anchor links
+- [ ] **Page Navigation** — Links to other status pages in the account. For multi-page setups
+
+### P2 — Editor UX
+
+- [ ] **Widget Duplication** — Copy button per widget (same config, auto-placed)
+- [ ] **Widget Lock** — Lock toggle to prevent accidental drag/resize
+- [ ] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete/align
+- [ ] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
+- [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
+- [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
+- [ ] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
+- [ ] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
+- [ ] **Template Gallery** — 10+ preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Service Status, Dev/Ops Dashboard, Customer-Facing, Internal Team, Executive Summary
+- [ ] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Arrow=Nudge 1px, Shift+Arrow=Nudge 10px, Ctrl+A=Select All, Ctrl+L=Lock
+- [ ] **Widget Search in Palette** — Filter palette by name/category
+- [ ] **Layer Management** — Z-index ordering, bring to front/send to back
+- [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
+- [ ] **Version History** — Last 10 saves with preview + one-click restore
+- [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
+
+### P2 — Page-Level Configuration
+
+- [ ] **Multiple Status Pages** — Already supported, improve page list UX with thumbnails
+- [ ] **Page Themes** — Light/Dark/System/Custom. Accent color picker, font selector (Inter/Roboto/System), custom CSS editor (advanced)
+- [ ] **Page Header Config** — Logo upload (base64 or URL), title, subtitle, banner image, background gradient
+- [ ] **Custom Favicon** — Per status page, override site default
+- [ ] **Custom Slug** — Already supported, add availability checker
+- [ ] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex)
+- [ ] **Branding Toggle** — Show/hide "Powered by PulseDock" footer
+- [ ] **Auto-Refresh Config** — Interval picker: 10s / 30s / 60s / 5min / off
+- [ ] **Password Protection UX** — Improve password set/remove flow in editor
+- [ ] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
+
+### P2 — Public Page Rendering
+
+- [ ] **Smooth Data Transitions** — Animate value changes (number count-up, color transitions)
+- [ ] **Real-time via WebSocket** — Live data push instead of 60s polling. Instant status updates
+- [ ] **Print-friendly CSS** — @media print stylesheet for reporting/PDF export
+- [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
+- [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
+- [ ] **Export as Image** — Download current status page as PNG (html2canvas or server-side render)
+- [ ] **Export as PDF** — Generate PDF report of current status
+
+### P1 — Tool Registry & Templates Expansion
+
+> Current: 1302 registry tools, 33 monitor templates. Target: 2500+ tools, 100+ templates.
+
+- [ ] **Monitor Templates expansion: 33 → 100+** — Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
+
+  **Code Quality & Analysis:**
+  SonarQube (`/api/system/status`→version, no auth), SonarCloud, Codacy, CodeClimate, Snyk, Semgrep, Checkmarx, Veracode, Fortify, PMD, ESLint (daemon), Prettier (daemon), Stylelint
+
+  **Security & Scanning:**
+  Trivy, Clair, Anchore/Grype, Falco, OSSEC/Wazuh, CrowdSec, Fail2Ban (API), OpenVAS/Greenbone, Nessus, Qualys, Lynis, RKHunter, ClamAV (clamd), VirusTotal API
+
+  **Backup & Recovery:**
+  Duplicati, Restic (rest-server), Borg (borgmatic API), Velero, Veeam, Bareos, Amanda, Bacula, Urbackup, Kopia, Rclone (rcd), Syncthing
+
+  **VPN & Networking:**
+  WireGuard (wg-json), OpenVPN (management), Tailscale (API), Netbird, ZeroTier, Headscale, Netmaker, Firezone, Pritunl, SoftEther, StrongSwan, PiVPN
+
+  **DNS:**
+  Pi-hole (`/admin/api.php?summary`), AdGuard Home (`/control/status`), Unbound, CoreDNS, Technitium DNS, PowerDNS, Bind9, Knot DNS, dnsmasq, Blocky
+
+  **Mail:**
+  Mailcow (`/api/v1/get/status/version`), Mailu, Stalwart Mail, iRedMail, Postfix (postconf), Dovecot, Roundcube, Rainloop, Mailpit, MailHog, Maddy
+
+  **Analytics & BI:**
+  Plausible, Umami, Matomo, PostHog, Fathom, GoAccess, Countly, Mixpanel (self-hosted), Metabase, Redash, Apache Superset, Lightdash, Cube.js
+
+  **AI/ML:**
+  Ollama (`/api/version`), LocalAI, text-generation-webui, Stable Diffusion WebUI, ComfyUI, LiteLLM, vLLM, Triton Inference Server, MLflow, Kubeflow, Seldon Core, BentoML, Ray Serve, Hugging Face TGI
+
+  **IoT & Home Automation:**
+  Home Assistant (`/api/config`→version, auth required), Node-RED (`/red/`), Mosquitto, EMQX, HiveMQ, OpenHAB, Domoticz, Zigbee2MQTT, ESPHome, Tasmota (HTTP API), ioBroker
+
+  **Game Servers:**
+  Pterodactyl (`/api/application/info`), PufferPanel, AMP/CubeCoders, Crafty Controller, MineOS, LinuxGSM (API), GameDig, Pelican Panel
+
+  **Project Management:**
+  Vikunja, Focalboard, Taiga, OpenProject, WeKan, Kanboard, Leantime, Plane, Huly
+
+  **Wikis & Docs:**
+  Wiki.js, BookStack, Outline, Docusaurus, MkDocs, Gitbook (self-hosted), DokuWiki, MediaWiki, Confluence (DC), XWiki
+
+  **File Sharing & Storage:**
+  Nextcloud, Seafile, ownCloud, FileBrowser, ProjectSend, Pydio Cells, Ceph Dashboard, MinIO Console, Garage
+
+  **Dashboards & Portals:**
+  Heimdall, Homer, Dashy, Homarr, Organizr, Flame, Fenrus, Glances (web), Cockpit (Linux)
+
+  **Databases (more):**
+  PgBouncer, ProxySQL, Percona PMM, phpMyAdmin, pgAdmin, Adminer, CloudBeaver, Redis Commander, RedisInsight, Mongo Express, Elasticsearch HQ
+
+  **Container & Orchestration (more):**
+  Yacht, Dockge, Lazydocker (API), Diun, Watchtower, Ouroboros, Podman (API), LXD/Incus, Proxmox VE (`/api2/json/version`), TrueNAS SCALE API
+
+- [ ] **Tool Registry expansion: 1302 → 2500+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+
+  **ERP & Business:**
+  ERPNext, Odoo, Dolibarr, Tryton, Axelor, iDempiere, Metasfresh, Crater (invoicing), InvoiceNinja, Kimai (time tracking), Solidtime
+
+  **E-Commerce:**
+  Shopware, PrestaShop, Magento/Adobe Commerce, WooCommerce (REST API), Saleor, Medusa, Vendure, Bagisto, Sylius, Spree Commerce
+
+  **CRM:**
+  SuiteCRM, EspoCRM, Monica CRM, Twenty CRM, Corteza, Vtiger, CiviCRM, Chatwoot
+
+  **Identity & SSO:**
+  Keycloak, Authentik, Authelia, Zitadel, Casdoor, Logto, SuperTokens, FusionAuth, Gluu, Ory Kratos, Ory Hydra, LLDAP, Kanidm
+
+  **Search Engines:**
+  Elasticsearch, OpenSearch, Meilisearch, Typesense, Manticore Search, Sonic, Zinc, Quickwit, Tantivy, Toshi, Qdrant, Weaviate, Milvus, ChromaDB, Pinecone (self-hosted)
+
+  **Vector Databases & AI Infra:**
+  Qdrant, Weaviate, Milvus, ChromaDB, pgvector (via PostgreSQL), LanceDB, Marqo, Vespa, Jina, OpenSearch (vector), Chroma
+
+  **Log Management:**
+  Graylog, Loki + Grafana, ELK Stack (Elasticsearch+Logstash+Kibana), Fluentd, Fluent Bit, Vector, Alloy, OpenObserve, SigNoz, Seq, Papertrail (self-hosted)
+
+  **APM & Tracing:**
+  Jaeger, Zipkin, SigNoz, Uptrace, Grafana Tempo, OpenTelemetry Collector, Datadog Agent (self-hosted), NewRelic Agent, Elastic APM, Sentry (self-hosted), GlitchTip, Highlight.io
+
+  **Secrets Management:**
+  HashiCorp Vault, Infisical, Doppler (self-hosted), SOPS, Sealed Secrets, External Secrets Operator, CyberArk Conjur, Bitwarden Secrets Manager, 1Password Connect
+
+  **Service Mesh & API Gateway:**
+  Istio, Linkerd, Consul Connect, Cilium Service Mesh, Kong, APISIX, Tyk, KrakenD, Gravitee, Traefik Hub, Emissary-Ingress, Gloo Edge, Ambassador
+
+  **GitOps & Deployment:**
+  ArgoCD, FluxCD, Tekton, Spinnaker, Harness, Waypoint, Octopus Deploy, Capistrano, Kamal, Coolify, CapRover, Dokku, PaaS (self-hosted)
+
+  **Streaming & Event Processing:**
+  Apache Kafka, Redpanda, Apache Pulsar, NATS JetStream, RabbitMQ Streams, Apache Flink, Apache Spark Streaming, Benthos/Redpanda Connect, Debezium, Kafka Connect, ksqlDB
+
+  **Data Pipeline & ETL:**
+  Apache Airflow, Prefect, Dagster, Temporal, n8n, Node-RED, Windmill, Kestra, Apache NiFi, Airbyte, Meltano, Singer, Fivetran (self-hosted agent), dbt
+
+  **Scheduling & Jobs:**
+  Rundeck, Cronicle, Ofelia, Jobber, Agenda, Bull/BullMQ Dashboard, Celery Flower, Sidekiq, Faktory, Machinery
+
+  **Testing & QA:**
+  Selenium Grid, Playwright (grid), Cypress Dashboard (sorry.cypress), Testkube, Allure TestOps, Reportportal, Zalenium, Moon (Aerokube), Selenoid
+
+  **Documentation & API Docs:**
+  Swagger UI, Redoc, Stoplight, ReadMe, Docusaurus, Mintlify, Nextra, VitePress, Starlight, Fumadocs
+
+  **Password Management:**
+  Vaultwarden, Bitwarden, Passbolt, Teampass, Psono, Padloc, KeeWeb, AuthPass
+
+  **Media & Streaming (more):**
+  Jellyfin, Plex, Emby, Navidrome, Funkwhale, Ampache, Airsonic, Subsonic, Owncast, PeerTube, Ant Media, Janus Gateway, MediaMTX, Frigate, Shinobi, ZoneMinder, Moonlight/Sunshine
+
+  **Photo & Document Management:**
+  Immich, PhotoPrism, LibrePhotos, Pigallery2, Lychee, Piwigo, Paperless-ngx, Docspell, Teedy, Stirling PDF, Gotenberg
+
+  **Communication (more):**
+  Matrix Synapse, Element, Mattermost, Rocket.Chat, Zulip, Revolt, XMPP (ejabberd/Prosody), Jitsi Meet, BigBlueButton, LiveKit, Mumble, TeamSpeak, Gotify, ntfy, Apprise, Pushover
+
+  **Proxy & Load Balancer (more):**
+  Nginx, Nginx Proxy Manager, Traefik, Caddy, HAProxy, Envoy, Varnish, Squid, Pound, Sniproxy, frp, ngrok (self-hosted), rathole, bore, chisel
+
+  **Virtualization & Containers (more):**
+  Proxmox VE, XCP-ng, oVirt, Harvester, Rancher, Portainer, Yacht, Dockge, CasaOS, Umbrel, TrueNAS SCALE, Unraid, OpenMediaVault, Cockpit
+
+  **Network Monitoring:**
+  LibreNMS, Nagios, Zabbix, Checkmk, Observium, PRTG (self-hosted), Icinga2, NetBox, Netdata, Telegraf, Cacti, Smokeping, UptimeRobot (self-hosted agent), Gatus
+
+  **Compliance & Audit:**
+  OpenSCAP, Prowler, ScoutSuite, CloudSploit, Steampipe, InSpec, Drata Agent, Vanta Agent
+
+  **Blockchain & Web3:**
+  Ethereum (Geth/Besu/Nethermind), Bitcoin Core, Lightning Network (LND/CLN), IPFS, Filecoin Lotus, Substrate Node, Cosmos (Tendermint), Polygon Edge
+
+  **Education & LMS:**
+  Moodle, Canvas LMS, Open edX, Chamilo, ILIAS, Kolibri, LibreTexts
+
+  **Geospatial:**
+  GeoServer, MapServer, PostGIS, Nominatim, Pelias, Overpass API, tile38, Martin (vector tiles)
+
+  **Healthcare:**
+  OpenMRS, GNU Health, Bahmni, HAPI FHIR Server, Orthanc (DICOM)
+
+  **CDN & Edge:**
+  Cloudflare (API), Fastly, Bunny CDN, KeyCDN, StackPath, Varnish, Squid, nginx (caching), Apache Traffic Server, HAProxy (cache mode), Souin, Caddy-cache
+
+  **CI/CD Runners & Build:**
+  GitHub Actions Runner, GitLab Runner, Buildkite Agent, Drone Runner, Woodpecker Agent, Jenkins Agent, CircleCI Runner, Semaphore Agent, Earthly Satellite, Dagger Engine, Pants, Bazel Remote Cache, Gradle Enterprise, Nx Cloud, Turborepo Remote Cache
+
+  **Database Tools & Admin:**
+  pgAdmin, Adminer, phpMyAdmin, CloudBeaver, DBeaver (server), Bytebase, Atlas (schema), Flyway, Liquibase, SchemaHero, PgHero, Redis Commander, RedisInsight, Mongo Express, Elasticsearch HQ, Kibana, OpenSearch Dashboards, ClickHouse Keeper, CockroachDB Console
+
+  **Observability Collectors:**
+  OpenTelemetry Collector, Telegraf, Prometheus Node Exporter, Prometheus Blackbox Exporter, cAdvisor, kube-state-metrics, Thanos, Cortex, Mimir, VictoriaMetrics Agent, Datadog Agent, Grafana Alloy, Grafana Agent, Promtail, Filebeat, Metricbeat, Heartbeat (Elastic)
+
+  **Config Management:**
+  Ansible (AWX/Tower), Puppet Server, Chef Infra Server, SaltStack, CFEngine, Rudder, mgmt, Foreman, Katello, Spacewalk
+
+  **Infrastructure as Code:**
+  Terraform, OpenTofu, Pulumi, Crossplane, cdktf, AWS CDK, Atlantis, Spacelift, env0, Scalr, Terragrunt, Terramate
+
+  **Kubernetes Tools:**
+  Lens, k9s (API), Kubernetes Dashboard, Rancher, KubeSphere, OpenLens, Headlamp, Skooner, Kubeapps, Helm Dashboard, ArgoCD, Flux, kapp-controller, Kyverno, OPA Gatekeeper, Falco, Trivy Operator, Starboard, Polaris, Datree, Kubecost, OpenCost, Goldilocks, VPA, HPA, KEDA, Karpenter, Cluster Autoscaler
+
+  **Storage & Backup (more):**
+  Longhorn, OpenEBS, Rook/Ceph, Portworx, StorageOS, Linstor, MinIO, SeaweedFS, JuiceFS, GlusterFS, BeeGFS, Garage (S3), VAST Data, Weka
+
+  **Workflow & Automation:**
+  n8n, Node-RED, Windmill, Huginn, Activepieces, Automatisch, Make (self-hosted), Pipedream (self-hosted), StackStorm, Camunda, Zeebe, Flowable, Activiti, Apache Camel
+
+  **Form & Survey:**
+  Typebot, Formbricks, LimeSurvey, Survicate (self-hosted), Heyform, OpnForm, Tally (self-hosted), SurveyJS, OhMyForm
+
+  **Notification & Alerting:**
+  Gotify, ntfy, Apprise, Pushover (relay), AlertManager, PagerDuty (self-hosted agent), Opsgenie (agent), Grafana OnCall, Cabot, Alerta, ElastAlert, Healthchecks.io (self-hosted), Uptime Kuma, Gatus, Statping-ng
+
+  **Feature Flags & Experimentation:**
+  Unleash, FlagSmith, GrowthBook, LaunchDarkly Relay, Split (self-hosted), OpenFeature, Flipt, PostHog (feature flags), ConfigCat (self-hosted)
+
+  **Translation & i18n:**
+  Weblate, Pontoon, Traduora, Tolgee, Crowdin (self-hosted agent), Lokalise (CLI)
+
+  **Social & Community:**
+  Mastodon, Misskey, Pleroma, Akkoma, Lemmy, Kbin/Mbin, Discourse, Flarum, NodeBB, Vanilla Forums, HumHub, Friendica, Pixelfed, BookWyrm, Mobilizon
+
+  **Calendar & Scheduling:**
+  Cal.com, Calendso, Easy!Appointments, Rallly, Schej, Doodle (self-hosted), Radicale, Baikal, DAViCal, SabreDAV
+
+  **Paste & Snippet:**
+  PrivateBin, Hastebin, Pastebin (self-hosted), MicroBin, Opengist, Gitea (snippets), SnipBox, Snibox, ByteStash
+
+  **URL Shortener:**
+  Shlink, YOURLS, Kutt, Polr, Chhoto, GoShort, Lstu, Dub.co (self-hosted)
+
+  **Status Page (competitors — monitor them!):**
+  Uptime Kuma, Gatus, Cachet, Statusfy, Instatus, Cstate, StatPing, Vigil, Staytus, HetrixTools, Upptime, Statuspal
+
+  **PDF & Document Processing:**
+  Stirling PDF, Gotenberg, LibreOffice Online, ONLYOFFICE, Collabora Online, CryptPad, Etherpad, HedgeDoc, CodiMD
+
+  **Screenshot & Browser Automation:**
+  Browserless, Playwright (service), Puppeteer (service), Selenium Hub, Splash, PhantomJS Cloud, urlbox (self-hosted), Rendertron, Prerender.io (self-hosted)
+
+  **Image Processing:**
+  Imgproxy, Thumbor, ImageMagick (API wrapper), Sharp (service), Cloudinary (self-hosted), Kraken.io (agent), TinyPNG (agent)
+
+  **Caching:**
+  Redis, Valkey, KeyDB, Dragonfly, Memcached, Garnet, Hazelcast, Apache Ignite, Infinispan
+
+  **Time Series:**
+  InfluxDB, TimescaleDB, QuestDB, TDengine, Prometheus, VictoriaMetrics, Thanos, Cortex, Mimir, CrateDB, GridDB, Warp10, ClickHouse (time-series mode)
+
+  **Graph Databases:**
+  Neo4j, ArangoDB (graph mode), JanusGraph, Dgraph, TypeDB, Amazon Neptune (compatible), TigerGraph, Memgraph, TerminusDB, SurrealDB (graph mode)
+
+  **Key-Value & Document:**
+  Redis, etcd, Consul KV, ZooKeeper, BoltDB/bbolt, BadgerDB, TiKV, FoundationDB, CouchDB, PouchDB, RavenDB, LiteDB, UnQLite, LMDB
+
+  **Embedded & Edge Compute:**
+  EdgeX Foundry, KubeEdge, OpenYurt, k3s, MicroK8s, K0s, Akri, Azure IoT Edge, AWS Greengrass, Balena, Mender, UpdateHub
+
+  **Audio & Music:**
+  Navidrome, Funkwhale, Ampache, Airsonic-Advanced, LMS (Logitech), Mopidy, Snapcast, Roon Server, Lidarr, Headphones
+
+  **Reading & Books:**
+  Calibre-Web, Kavita, Komga, Audiobookshelf, Readarr, LazyLibrarian, Stump, Bookstack (library mode)
+
+  **Download & Torrent:**
+  qBittorrent, Transmission, Deluge, rTorrent/ruTorrent, SABnzbd, NZBGet, JDownloader, Aria2 (WebUI), Pyload, Sonarr, Radarr, Lidarr, Readarr, Prowlarr, Bazarr, Overseerr, Jellyseerr, Ombi, Petio
+
+  **Remote Access:**
+  Guacamole, RustDesk, MeshCentral, Apache Guacamole, noVNC, Teleport, Boundary, CloudFlare Tunnel, ngrok (self-hosted), frp, rathole, bore, chisel, Tailscale, Netbird
+
+  **Clipboard & Sync:**
+  Clipboard (self-hosted), Syncthing, Resilio Sync, Seafile, SparkleShare, Unison, rsync (daemon), Rclone (serve), KDE Connect (server)
+
+  **Diagramming & Whiteboard:**
+  Excalidraw, draw.io/diagrams.net, Mermaid Live, PlantUML Server, Lucidchart (self-hosted), Whimsical (self-hosted), tldraw, Miro (self-hosted plugin)
+
+  **Terminal & Shell:**
+  ttyd, Wetty, GateOne, Shellinabox, code-server (terminal), Coder, JupyterHub (terminal), WebSSH, sshwifty
+
+  **Fonts & Assets:**
+  Fontello, IcoFont, Google Fonts (self-hosted mirror), Bunny Fonts, Font Awesome Kit (self-hosted)
+
+  **Maps & Navigation:**
+  Nominatim, Pelias, Photon, OSRM, Valhalla, GraphHopper, OpenRouteService, tile38, Martin, Tileserver GL, MapLibre, Leaflet
+
+  **Scientific & Research:**
+  JupyterHub, JupyterLab, RStudio Server, Zeppelin, MATLAB Web (self-hosted), GNU Octave (web), SageMath, CoCalc
+
+  **Print & 3D:**
+  OctoPrint, Mainsail, Fluidd, Moonraker, Klipper, Repetier Server, Duet Web Control, CUPS
+
+- [ ] **Tool Registry expansion: 1302 → 5000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+
+- [ ] **Fix Simple Icons 404s** — Audit all icon slugs in registry against `https://cdn.simpleicons.org/{slug}`. Replace broken slugs with correct ones or use fallback generic icons. Test each icon URL.
+
+### P0 — Landing Page Rework
+
+> Landing page is the first thing users see. Must be Apple-level quality. Multiple iteration runs until perfect.
+
+- [ ] **Hero section redesign** — Bold headline, animated gradient text, clear value prop in one sentence, CTA buttons (Get Started / Live Demo), hero illustration or animated dashboard mockup, trust badges (open-source, self-hosted, free)
+- [ ] **Feature showcase** — 6-8 feature cards with icons + animations on scroll: Version Intelligence, Uptime Monitoring, Status Pages, Alert Channels, Incident Management, Tool Registry (1300+ tools). Each with micro-animation on hover.
+- [ ] **How it works section** — 3-step visual flow: 1) Add monitors 2) Get alerts 3) Share status page. Animated connectors between steps.
+- [ ] **Live demo / Interactive preview** — Embedded mini-dashboard showing real data (or realistic mock). Animated charts, status dots, version badges. Users see what they get before signup.
+- [ ] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage vs Pingdom. Feature matrix with checkmarks. Highlight what's unique (version intelligence, tool registry, self-hosted).
+- [ ] **Testimonials / Social proof** — Placeholder section for future testimonials. GitHub stars counter, "Used by X developers", open-source badge.
+- [ ] **Pricing section** — Free (self-hosted, unlimited), Cloud (coming soon placeholder). Clean card design.
+- [ ] **Screenshot gallery** — Dark-themed screenshots of: Dashboard, Monitors, Status Page Builder, Version Checks, Incident Timeline. Smooth carousel or grid.
+- [ ] **Footer redesign** — Proper footer: product links, docs link, GitHub link, changelog, social links, newsletter signup placeholder, copyright.
+- [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
+- [ ] **SEO deep pass** — Structured data (JSON-LD), proper heading hierarchy, internal links, sitemap, meta descriptions per section.
+- [ ] **Animations polish** — Staggered FadeIn on scroll, parallax subtle effects, number count-up for stats, smooth section transitions, reduced motion support.
+- [ ] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
+- [ ] **i18n landing** — EN + DE fully translated for all landing page content.
+
+### P0 — Documentation & Codebase Cleanup
+
+> All docs must be current, accurate, and well-organized. No stale files. Everything in docs/.
+
+- [ ] **Consolidate all docs into docs/ folder** — Move any scattered .md files (root-level docs, random READMEs in packages) into `docs/`. Create proper structure:
+  ```
+  docs/
+  ├── README.md          (main project docs entry point)
+  ├── GETTING-STARTED.md (quick start guide)
+  ├── ARCHITECTURE.md    (system architecture, tech stack, data flow)
+  ├── API.md             (API reference, link to Swagger)
+  ├── DEPLOYMENT.md      (Docker, Kubernetes, bare metal)
+  ├── NGINX.md           (reverse proxy config — already exists)
+  ├── HELM.md            (Helm chart docs — already exists)
+  ├── AGENT.md           (PulseDock agent — already exists)
+  ├── CLI.md             (CLI tool — already exists)
+  ├── EXTENSION.md       (Browser extension — already exists)
+  ├── E2E.md             (E2E testing — already exists)
+  ├── LOGGING.md         (Log management — already exists)
+  ├── PLUGINS.md         (Plugin system — already exists)
+  ├── STATUS-PAGES.md    (Status page builder guide — NEW)
+  ├── VERSION-CHECKS.md  (Version monitoring guide — NEW)
+  ├── TOOL-REGISTRY.md   (Tool registry guide — NEW)
+  ├── SECURITY.md        (Security practices, CSP, CSRF, auth)
+  ├── CONTRIBUTING.md    (contribution guide)
+  ├── CHANGELOG.md       (release notes — move from root)
+  └── TROUBLESHOOTING.md (common issues + fixes)
+  ```
+- [ ] **Review and update ALL existing docs** — Go through every doc file: fix outdated info, add missing sections, verify all code samples work, update screenshots, ensure consistent formatting (headings, code blocks, tables).
+- [ ] **Delete stale/unused files** — Audit entire repo for: unused config files, dead code, orphaned components, test fixtures that aren't imported, duplicate files, build artifacts in git, temporary files. Remove everything that shouldn't be there.
+- [ ] **README.md overhaul** — Modern open-source README: logo, badges (build, coverage, version, license), one-paragraph description, screenshot, feature list, quick start (3 commands), links to all docs, contributing section, license.
+- [ ] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
+- [ ] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
+- [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
+- [ ] **API documentation audit** — Verify all 95 Swagger endpoints have accurate descriptions, correct request/response examples, proper error codes documented.
+- [ ] **Docker documentation** — Update docker-compose files, verify Dockerfiles build correctly, document all env vars, add docker-compose.override.yml example.
+- [ ] **.env.example** — Create/update .env.example with all env vars, defaults, and comments explaining each one.
+
+### P2 — Frontend Polish (Enterprise-Grade UI)
+
+- [ ] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
+- [ ] **Animation & Micro-interactions** — Page transitions (fade between routes), skeleton→content transitions, button press feedback, toast slide-in/out, modal enter/exit, hover lift effects on cards, number count-up animations on metrics
+- [ ] **Data Tables overhaul** — Sortable columns (click header), resizable columns (drag), column visibility toggle, row expansion, bulk select with shift-click range, sticky header on scroll, export to CSV/JSON, pagination options (10/25/50/100), empty state per table
+- [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
+- [ ] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
+- [ ] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
+- [ ] **Mobile UX deep audit** — Test every flow on 375px: create monitor, create alert, create incident, status page editor (simplified mobile mode), navigation drawer, bottom tab bar option, pull-to-refresh, swipe actions
+- [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
+- [ ] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
+- [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
+- [ ] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
+- [ ] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
+- [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
+
+### P2 — Self-Optimization & Continuous Improvement
+
+> **Standing instruction:** After completing any task, critically evaluate your own work. Ask: "Is this truly enterprise-ready? Would a Fortune 500 company pay for this?" If no — improve until yes.
+
+- [ ] **Automated self-testing cycle** — After every deployment: curl all pages, check for console errors (headless browser), verify API endpoints respond correctly, check response times < 500ms, verify no TypeScript errors, run full test suite
+- [ ] **Performance benchmarking** — Measure and track: First Contentful Paint (<1.5s), Time to Interactive (<3s), Lighthouse score (>90), API response times (<200ms p95), bundle size (<500KB gzipped). Set up alerts when metrics degrade.
+- [ ] **Code quality metrics** — Track: test coverage (>95%), TypeScript strict compliance, no `any` types, no eslint warnings, no unused exports, no circular dependencies. Run on every commit.
+- [ ] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes.
+- [ ] **UX self-review** — After every UI change: screenshot before/after, check on 3 viewports (mobile/tablet/desktop), verify dark mode, check color contrast (WCAG AA), test with keyboard only, check loading states
+- [ ] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness
+- [ ] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. List every feature they have that PulseDock doesn't. Prioritize and build.
+- [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
+
+### P2 — Enterprise Features (Beyond Monitoring)
+
+- [ ] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action
+- [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
+- [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
+- [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
+- [ ] **Webhook management UI** — Create/edit/test webhooks, delivery history, retry failed deliveries, payload templates, signature verification config
+- [ ] **Scheduled Reports** — Daily/weekly/monthly automated reports via email: uptime summary, incident summary, SLA compliance, version status. PDF + HTML formats.
+- [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
+- [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
+- [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
+- [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
+- [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
+- [ ] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
+
+### P3 — Advanced Data & API
+
+- [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
+- [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
+- [ ] **Public JSON API** — `GET /api/v1/public/status/:slug/json` for third-party integrations
+- [ ] **Webhook on Status Change** — Push notifications when overall status changes
+- [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
+- [ ] **Slack/Discord Integration** — Auto-post status changes to channels
+- [ ] **Embeddable Widget** — `<script>` tag to embed single widget on external sites
+- [ ] **Status Page Badge** — "Status: Operational" badge for README/websites (already have SVG badges, extend to status page level)
+- [ ] **Historical Data Retention** — Configure how long to keep check data (7d/30d/90d/1y)
+- [ ] **Aggregation Pipelines** — Pre-compute hourly/daily rollups for fast chart rendering
+
+---
+
 ## Status Summary
-- **Codebase:** 1349 tests passing (1327 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1346 tests passing (1324 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-18 10:14 UTC):** 4 new P1 status-page widgets: ComponentStatusList, RollingUptimeCards, StatusHistoryRibbon, UptimePercentageCard. Full backend resolvers + frontend components + editor palette items + 8 new tests. 1354 tests passing, build clean, all routes 200.
+- **This heartbeat (2026-03-18 09:57 UTC):** Drag-to-resize handles on canvas widgets in status page editor. Bottom-right corner grip, snaps to grid, min/max constraints. Fixed notifications.controller.spec.ts (req.user.sub→id, 4 tests). 1346 tests passing, build clean, all routes 200.
+- **This heartbeat (2026-03-18 08:35 UTC):** Landing page P0 rework complete via sub-agent. Hero mockup dashboard, improved How-It-Works cards, 2×2 screenshot gallery, pricing section (free/cloud). Build clean, proxy 200.
+- **This heartbeat (2026-03-18 08:26 UTC):** Implemented SLA Summary with real MonitorRun data. API computes uptimePct, pass/fail, allowedDownMinutes, remainingDownMinutes budget. Widget renders actual vs target, downtime budget bar. 5 new tests. Total: 1346 passing. Services restarted, routes 200.
+- **This heartbeat (2026-03-18 08:20 UTC):** Implemented Response Time Chart with real MonitorRun data. API resolves last N latencyMs values from MonitorRun (configurable via points/periodHours), computes avg/p95/max. Widget renders SVG bar sparkline (green=ok, red=failed), dashed avg + dotted p95 overlay lines, header stats. 5 new tests. Total: 1341 passing. Services restarted, all routes 200, proxy healthy.
+- **This heartbeat (2026-03-18 08:11 UTC):** Implemented Uptime Timeline with real MonitorRun data. API resolves per-day UTC buckets (green/yellow/red/no-data) from MonitorRun records. Widget renders colored squares with tooltips, uptime% in header, legend row. 5 new tests. Total: 1358 passing. Services restarted, all routes 200, proxy healthy.
+- **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.
+- **This heartbeat (2026-03-17 13:02 UTC):** Fixed 4 failing tests (status-pages mock missing incident/maintenanceWindow/recentChecks). Added 5 new findPublic() coverage tests. Branch rotation — merged heartbeat/2026-03-17-maintenance → dev, created heartbeat/2026-03-17-coverage-cleanup. Bumped to v1.0.2 with CHANGELOG. All 1349 tests passing (98.73% stmt, 95.29% branch, 100% line).
 - **This heartbeat (2026-03-17 10:02 UTC):** Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to match Next.js 16 config schema. `npm run build` now runs without invalid-config warnings; restart + local/proxy route audits completed.
 - **This heartbeat (2026-03-17 09:02 UTC):** Coverage sweep completed — added edge-branch tests across auth/checks/monitors services (refresh TTL unit parsing, revoked session mapping, reset-password missing-user branch, profile conflict/trim handling, verify-email null-user post-consume path, semver prerelease number/string comparison paths, confirmations null fallback, CSV/import parser gaps). API tests: 1308 → 1327. Full suite: 1349 passing.
 - **This heartbeat (2026-03-17 06:02 UTC):** Coverage improvements — auth.service.spec.ts: 4 new tests covering verifyTotpLogin() branches (user not found, inactive user, 2FA not enabled, recovery code no match). monitors.service.spec.ts: 2 new tests covering parseCsv/importExternal gaps (cols[intervalIdx] undefined fallback, !item guard). API tests: 1286 → 1292. Branch coverage: 94.14% → 94.33%.
@@ -406,3 +966,38 @@ _(pick the highest priority unchecked item below and start immediately)_
 - **This heartbeat (2026-03-17 04:02 UTC):** Coverage improvements — RealtimeGateway now 100% branch coverage (2 new tests: undefined cookie header + JWT payload missing sub). CSV parser branch gap closed (4 total new tests). 1265 → 1269 API tests.
 - **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
 - **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.
+
+### P0 — CI/CD E2E Login Redirect Failures (GitHub Actions)
+- [ ] Reproduce `npm run test:e2e` failure locally in CI-like env.
+- [ ] Fix login redirect race (`waitForURL("**/dashboard")` timeout) by making auth success deterministic.
+- [ ] Ensure login submit handles setup-status/registration-disabled cases correctly in CI seed state.
+- [ ] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) to wait on post-login app-ready signal, not only URL.
+- [ ] Add regression test for valid login path used in CI (`E2E_EMAIL/E2E_PASSWORD`).
+- [ ] Validate full E2E suite green in pipeline.
+
+### P1 — Tool Search Quality + Incremental Tool List UX
+- [ ] Improve tool search relevance/ranking (name exact/starts-with > tags > description).
+- [ ] Add debounced search + normalization (case/spacing/special chars) for consistent results.
+- [ ] Add empty-state suggestions (close matches / top tools in selected category).
+- [ ] Keep first render lightweight: show ~50 tools initially.
+- [ ] Infinite scroll in tool picker: load +50 on scroll until exhausted.
+- [ ] Add quick perf check for large registry filtering in browser.
+
+### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
+- [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
+- [ ] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool).
+- [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
+- [ ] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren).
+- [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
+- [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
+- [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
+- [ ] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen.
+- [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
+- [ ] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor).
+- [ ] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen.
+- [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
+- [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
+- [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
+- [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
+- [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
+- [ ] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.

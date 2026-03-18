@@ -131,9 +131,18 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
         localStorage.setItem('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
       }
       response = await run();
+    } else {
+      // Refresh failed — session is fully expired.
+      // Clear local state and hard-redirect to /login.
+      // A hard redirect (location.href) avoids any React re-render loop that could
+      // cause repeated 401 calls before the component has a chance to push to /login.
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('pulsedock_user');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+        // Throw to prevent the calling code from continuing while navigating away
+        throw new Error('Session expired');
+      }
     }
-    // If refresh fails: do nothing here. The 401 will bubble up and callers
-    // redirect to /login on error (existing pattern in all pages).
   }
 
   if (!response.ok) {

@@ -53,6 +53,7 @@ export interface MonitorRun {
   id: string;
   userId: string;
   monitorId: string;
+  monitorType?: string | null;
   checkedAt: string;
   ok: boolean;
   statusCode: number;

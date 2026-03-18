@@ -134,15 +134,17 @@ describe('AuthController', () => {
   describe('acceptInvite()', () => {
     it('delegates to authService.acceptInvite', async () => {
       authService.acceptInvite.mockResolvedValue({ accessToken: 'tok', refreshToken: 'ref', user: {} });
+      const req = makeReq();
       const res = makeRes();
-      await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
+      await controller.acceptInvite(req as never, res, { token: 'tok', password: 'Passw0rd!!' });
       expect(authService.acceptInvite).toHaveBeenCalledWith('tok', 'Passw0rd!!');
     });
 
     it('does not set cookies when result has no tokens', async () => {
       authService.acceptInvite.mockResolvedValue({ message: 'invite accepted, awaiting approval' });
+      const req = makeReq();
       const res = makeRes();
-      const result = await controller.acceptInvite(res, { token: 'tok', password: 'Passw0rd!!' });
+      const result = await controller.acceptInvite(req as never, res, { token: 'tok', password: 'Passw0rd!!' });
       expect(res.cookie).not.toHaveBeenCalled();
       expect(result).toEqual({ message: 'invite accepted, awaiting approval' });
     });
@@ -192,16 +194,18 @@ describe('AuthController', () => {
   describe('resetPassword()', () => {
     it('delegates to authService.resetPassword and sets cookies if tokens returned', async () => {
       authService.resetPassword.mockResolvedValue({ accessToken: 'acc', refreshToken: 'ref', ok: true });
+      const req = makeReq();
       const res = makeRes();
-      const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
+      const result = await controller.resetPassword(req as never, res, { token: 'reset-tok', newPassword: 'NewPass123!' });
       expect(authService.resetPassword).toHaveBeenCalledWith('reset-tok', 'NewPass123!');
       expect(res.cookie).toHaveBeenCalledWith('pulsedock_token', 'acc', expect.any(Object));
     });
 
     it('does not set cookies when reset result has no tokens', async () => {
       authService.resetPassword.mockResolvedValue({ ok: true });
+      const req = makeReq();
       const res = makeRes();
-      const result = await controller.resetPassword(res, { token: 'reset-tok', newPassword: 'NewPass123!' });
+      const result = await controller.resetPassword(req as never, res, { token: 'reset-tok', newPassword: 'NewPass123!' });
       expect(res.cookie).not.toHaveBeenCalled();
       expect(result).toEqual({ ok: true });
     });

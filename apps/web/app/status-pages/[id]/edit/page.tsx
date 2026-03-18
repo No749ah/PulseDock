@@ -39,6 +39,7 @@ import {
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
 import { useToast } from "../../../../components/ui/toast";
+import { MultiMonitorPicker } from "../../components/MultiMonitorPicker";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ interface Widget {
   config: {
     monitorId?: string;
     monitorIds?: string[];
+    monitorMode?: "single" | "multiple" | "all";
     label?: string;
     periodDays?: number;
     text?: string;
@@ -77,6 +79,19 @@ interface Monitor {
   id: string;
   name: string;
   type: string;
+  folderId?: string | null;
+  tags?: { id: string; name: string; color?: string }[];
+}
+
+interface TagOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface FolderOption {
+  id: string;
+  name: string;
 }
 
 interface WidgetPaletteItem {
@@ -109,6 +124,10 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "version-status-grid", label: "Version Grid", description: "Grid showing current vs latest version for all monitors", icon: BarChart2, category: "Versions", defaultW: 12, defaultH: 4 },
   { type: "version-check-badge", label: "Version Badge", description: "Single monitor version status badge", icon: CheckCircle, category: "Versions", defaultW: 6, defaultH: 2 },
   { type: "update-summary", label: "Update Summary", description: "Overview: up-to-date / minor / major updates available", icon: TrendingUp, category: "Versions", defaultW: 12, defaultH: 2 },
+  { type: "component-status-list", label: "Component Status", description: "Per-service Operational / Degraded / Outage with overall header", icon: CheckCircle, category: "Status", defaultW: 8, defaultH: 4 },
+  { type: "rolling-uptime-cards", label: "Rolling Uptime", description: "Uptime % cards: 24h / 7d / 30d / 90d side by side", icon: Activity, category: "Uptime", defaultW: 12, defaultH: 2 },
+  { type: "status-history-ribbon", label: "Status Ribbon", description: "GitHub-style daily status bars per monitor for the last 90 days", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
+  { type: "uptime-percentage-card", label: "Uptime %", description: "Big number uptime display with trend arrow vs previous period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
 ];
 
@@ -116,6 +135,37 @@ const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
 
 const ROW_H = 80;
 const COL_COUNT = 12;
+const MULTI_MODE_PRIMARY_WIDGETS = new Set([
+  "uptime-bar",
+  "uptime-timeline",
+  "sla-summary",
+  "response-time-chart",
+  "version-check-badge",
+]);
+
+function getMultiModeHelperText(widgetType: string): string {
+  if (MULTI_MODE_PRIMARY_WIDGETS.has(widgetType)) {
+    return "This widget uses the first selected monitor as its primary series in multi-monitor mode.";
+  }
+
+  return "This widget will render data for all selected monitors.";
+}
+
+function getDefaultMultiMonitorIds(widget: Widget, monitors: Monitor[]): string[] {
+  const configured = Array.isArray(widget.config.monitorIds)
+    ? widget.config.monitorIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+    : [];
+
+  if (configured.length > 0) return configured;
+
+  const singleId = typeof widget.config.monitorId === "string" ? widget.config.monitorId : undefined;
+  const ordered = [singleId, ...monitors.map((m) => m.id)].filter(
+    (id): id is string => typeof id === "string" && id.length > 0,
+  );
+  const unique = Array.from(new Set(ordered));
+  const limit = MULTI_MODE_PRIMARY_WIDGETS.has(widget.type) ? 1 : 6;
+  return unique.slice(0, limit);
+}
 
 // ── Palette widget (draggable from sidebar) ──────────────────────────────
 
@@ -194,13 +244,18 @@ interface CanvasWidgetProps {
   colWidth: number;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResize }: CanvasWidgetProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
   });
+
+  // Mutable ref so the mousemove handler always reads the latest widget dimensions
+  const widgetRef = useRef(widget);
+  widgetRef.current = widget;
 
   const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
   const Icon = paletteItem?.icon ?? LayoutGrid;
@@ -216,12 +271,43 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: Canv
     zIndex: isDragging ? 10 : isSelected ? 5 : 1,
   };
 
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = widgetRef.current.w;
+      const startH = widgetRef.current.h;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (colWidth <= 0) return;
+        const newW = Math.max(1, Math.min(COL_COUNT - widgetRef.current.x, startW + Math.round((ev.clientX - startX) / colWidth)));
+        const newH = Math.max(1, Math.min(10, startH + Math.round((ev.clientY - startY) / ROW_H)));
+        onResize(widgetRef.current.id, { w: newW, h: newH });
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "nwse-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [colWidth, onResize]
+  );
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       onClick={(e) => { e.stopPropagation(); onSelect(widget.id); }}
-      className={`group rounded-xl border-2 bg-surface transition-colors ${
+      className={`group relative flex flex-col rounded-xl border-2 bg-surface transition-colors ${
         isSelected ? "border-accent shadow-lg shadow-accent/10" : "border-border hover:border-accent/40"
       }`}
     >
@@ -255,6 +341,21 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete }: Canv
       <div className="flex-1 overflow-hidden p-2">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
       </div>
+      {/* Resize handle — bottom-right corner */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        onClick={(e) => e.stopPropagation()}
+        title={`Drag to resize · ${widget.w} cols × ${widget.h} rows`}
+        className={`absolute bottom-1 right-1 flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded transition-opacity ${
+          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+        }`}
+      >
+        <svg viewBox="0 0 10 10" className="h-3.5 w-3.5 text-text-secondary/60" aria-hidden="true">
+          <circle cx="8" cy="8" r="1.1" fill="currentColor" />
+          <circle cx="4.5" cy="8" r="1.1" fill="currentColor" />
+          <circle cx="8" cy="4.5" r="1.1" fill="currentColor" />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -268,9 +369,10 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onResize }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -339,6 +441,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
+            onResize={onResize}
           />
         );
       })}
@@ -351,10 +454,13 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
 interface ConfigPanelProps {
   widget: Widget | null;
   monitors: Monitor[];
+  tags: TagOption[];
+  folders: FolderOption[];
   onChange: (config: Widget["config"]) => void;
+  onResize: (size: { w: number; h: number }) => void;
 }
 
-function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -364,11 +470,49 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
   }
 
   const paletteItem = WIDGET_PALETTE.find((p) => p.type === widget.type);
+  const w = widget;
 
-  // widget is non-null here — early return above handles the null case
-  const w = widget!;
   function update(key: string, value: unknown) {
     onChange({ ...w.config, [key]: value });
+  }
+
+  const monitorMode = (w.config.monitorMode as string) ?? "single";
+  const supportsLabel = w.type !== "divider";
+  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsVisibility = w.type !== "divider";
+  const supportsClickAction = w.type !== "divider";
+  const supportsStyle = w.type !== "divider";
+  const supportsResponsive = w.type !== "divider";
+
+  function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
+    if (nextMode === "multiple") {
+      onChange({
+        ...w.config,
+        monitorMode: "multiple",
+        monitorId: undefined,
+        monitorIds: getDefaultMultiMonitorIds(w, monitors),
+      });
+      return;
+    }
+
+    if (nextMode === "single") {
+      const firstSelected = Array.isArray(w.config.monitorIds) ? w.config.monitorIds[0] : undefined;
+      onChange({
+        ...w.config,
+        monitorMode: "single",
+        monitorId: (w.config.monitorId as string | undefined) ?? firstSelected,
+        monitorIds: undefined,
+      });
+      return;
+    }
+
+    onChange({
+      ...w.config,
+      monitorMode: "all",
+      monitorId: undefined,
+      monitorIds: undefined,
+    });
   }
 
   return (
@@ -378,20 +522,35 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
 
-      {/* Label */}
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
-        <input
-          type="text"
-          value={(w.config.label as string) ?? ""}
-          onChange={(e) => update("label", e.target.value || undefined)}
-          placeholder="Optional custom label"
-          className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-        />
-      </div>
+      {supportsLabel && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
+          <input
+            type="text"
+            value={(w.config.label as string) ?? ""}
+            onChange={(e) => update("label", e.target.value || undefined)}
+            placeholder="Optional custom label"
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+        </div>
+      )}
 
-      {/* Monitor picker */}
-      {["current-status-badge", "uptime-bar", "sla-summary", "response-time-chart", "uptime-timeline"].includes(w.type) && (
+      {supportsMonitorScope && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor scope</label>
+          <select
+            value={monitorMode}
+            onChange={(e) => handleMonitorModeChange(e.target.value as "single" | "multiple" | "all")}
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="single">Single monitor</option>
+            <option value="multiple">Multiple monitors</option>
+            <option value="all">All monitors</option>
+          </select>
+        </div>
+      )}
+
+      {supportsMonitorScope && monitorMode === "single" && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
           <select
@@ -407,7 +566,185 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Period days */}
+      {supportsMonitorScope && monitorMode === "multiple" && (
+        <div className="space-y-2">
+          <p className="text-[10px] text-text-secondary">
+            {getMultiModeHelperText(w.type)}
+          </p>
+          <MultiMonitorPicker
+            monitors={monitors}
+            selectedIds={(w.config.monitorIds as string[]) ?? []}
+            onChange={(values) => update("monitorIds", values)}
+            tags={tags}
+            folders={folders}
+          />
+        </div>
+      )}
+
+      {supportsFilters && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Filters</p>
+        <label className="block text-[10px] text-text-secondary">
+          Tag filter
+          <select
+            value={(w.config.tag as string) ?? ""}
+            onChange={(e) => update("tag", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.name}>{tag.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[10px] text-text-secondary">
+          Folder filter
+          <select
+            value={(w.config.folderId as string) ?? ""}
+            onChange={(e) => update("folderId", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All folders</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>{folder.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[10px] text-text-secondary">
+          Monitor type filter
+          <select
+            value={(w.config.monitorType as string) ?? ""}
+            onChange={(e) => update("monitorType", e.target.value || undefined)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="">All types</option>
+            <option value="HTTP">HTTP</option>
+            <option value="GIT_RELEASE">Version</option>
+            <option value="DOCKER_IMAGE">Docker Image</option>
+            <option value="TCP">TCP</option>
+            <option value="SSL_CERT">SSL Cert</option>
+            <option value="HEARTBEAT">Heartbeat</option>
+          </select>
+        </label>
+        </div>
+      )}
+
+      {supportsVisibility && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Visibility</p>
+        <label className="block text-[10px] text-text-secondary">
+          Show widget when
+          <select
+            value={(w.config.visibility as string) ?? "always"}
+            onChange={(e) => update("visibility", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="always">Always visible</option>
+            <option value="operational">Only when operational</option>
+            <option value="degraded">Only when degraded</option>
+            <option value="outage">Only during outage</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-[10px] text-text-secondary">
+          <input
+            type="checkbox"
+            checked={Boolean(w.config.hideWhenNoData)}
+            onChange={(e) => update("hideWhenNoData", e.target.checked || undefined)}
+            className="h-3.5 w-3.5 rounded border-border bg-bg text-accent focus:ring-accent"
+          />
+          Hide when no monitor data is available
+        </label>
+        </div>
+      )}
+
+      {supportsClickAction && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Click action</p>
+        <label className="block text-[10px] text-text-secondary">
+          On click
+          <select
+            value={(w.config.clickAction as string) ?? "none"}
+            onChange={(e) => update("clickAction", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="none">Do nothing</option>
+            <option value="monitor-detail">Open monitor detail page</option>
+            <option value="external-url">Open external URL</option>
+          </select>
+        </label>
+        {(w.config.clickAction as string) === "external-url" && (
+          <label className="block text-[10px] text-text-secondary">
+            External URL
+            <input
+              type="url"
+              value={(w.config.clickUrl as string) ?? ""}
+              onChange={(e) => update("clickUrl", e.target.value || undefined)}
+              placeholder="https://status.example.com/details"
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </label>
+        )}
+        </div>
+      )}
+
+      {supportsStyle && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Style</p>
+        <label className="flex items-center gap-2 text-[10px] text-text-secondary">
+          <input
+            type="checkbox"
+            checked={Boolean(w.config.showBorder)}
+            onChange={(e) => update("showBorder", e.target.checked || undefined)}
+            className="h-3.5 w-3.5 rounded border-border bg-bg text-accent focus:ring-accent"
+          />
+          Show border
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px] text-text-secondary">
+            Border radius
+            <input
+              type="number"
+              min={0}
+              max={32}
+              value={(w.config.borderRadius as number) ?? 12}
+              onChange={(e) => update("borderRadius", Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+          <label className="text-[10px] text-text-secondary">
+            Padding
+            <input
+              type="number"
+              min={0}
+              max={48}
+              value={(w.config.padding as number) ?? 8}
+              onChange={(e) => update("padding", Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+        </div>
+        </div>
+      )}
+
+      {supportsResponsive && (
+        <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+          <p className="text-[10px] font-medium text-text-secondary">Responsive</p>
+        <label className="block text-[10px] text-text-secondary">
+          Mobile behavior
+          <select
+            value={(w.config.mobileBehavior as string) ?? "normal"}
+            onChange={(e) => update("mobileBehavior", e.target.value)}
+            className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+          >
+            <option value="normal">Normal</option>
+            <option value="full-width">Force full-width</option>
+            <option value="collapsed">Collapsed (compact)</option>
+            <option value="hidden">Hide on mobile</option>
+          </select>
+        </label>
+        </div>
+      )}
+
       {["uptime-bar", "uptime-timeline", "sla-summary"].includes(w.type) && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>
@@ -423,7 +760,6 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Text content */}
       {["text-block", "scheduled-maintenance"].includes(w.type) && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Content</label>
@@ -437,12 +773,33 @@ function ConfigPanel({ widget, monitors, onChange }: ConfigPanelProps) {
         </div>
       )}
 
-      {/* Size info */}
-      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5">
-        <p className="text-[10px] font-medium text-text-secondary">Size</p>
-        <p className="mt-0.5 text-xs text-text-primary">
-          {widget.w} col × {widget.h} row{widget.h > 1 ? "s" : ""} &nbsp;·&nbsp; ({widget.x}, {widget.y})
-        </p>
+      <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
+        <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px] text-text-secondary">
+            Width (cols)
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={w.w}
+              onChange={(e) => onResize({ w: Number(e.target.value), h: w.h })}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+          <label className="text-[10px] text-text-secondary">
+            Height (rows)
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={w.h}
+              onChange={(e) => onResize({ w: w.w, h: Number(e.target.value) })}
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+            />
+          </label>
+        </div>
+        <p className="text-[10px] text-text-primary">Position: ({w.x}, {w.y})</p>
       </div>
     </div>
   );
@@ -464,6 +821,8 @@ export default function StatusPageEditorPage() {
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [tags, setTags] = useState<TagOption[]>([]);
+  const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -477,6 +836,8 @@ export default function StatusPageEditorPage() {
     if (!u) router.replace("/login");
     fetchPage();
     fetchMonitors();
+    fetchTags();
+    fetchFolders();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -506,6 +867,24 @@ export default function StatusPageEditorPage() {
     try {
       const data = await api<Monitor[]>("/v1/monitors");
       setMonitors(data);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  async function fetchTags() {
+    try {
+      const data = await api<TagOption[]>("/v1/tags");
+      setTags(data);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  async function fetchFolders() {
+    try {
+      const data = await api<FolderOption[]>("/v1/folders");
+      setFolders(data);
     } catch {
       // Non-fatal
     }
@@ -583,6 +962,30 @@ export default function StatusPageEditorPage() {
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
       prev.map((w) => (w.id === selectedId ? { ...w, config } : w))
+    );
+  }
+
+  function updateWidgetSize(size: { w: number; h: number }) {
+    const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
+    const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (w.id !== selectedId) return w;
+        const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
+        return { ...w, w: nextW, h: nextH, x: boundedX };
+      })
+    );
+  }
+
+  function resizeWidgetById(widgetId: string, size: { w: number; h: number }) {
+    const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
+    const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (w.id !== widgetId) return w;
+        const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
+        return { ...w, w: nextW, h: nextH, x: boundedX };
+      })
     );
   }
 
@@ -749,6 +1152,7 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               onSelect={setSelectedId}
               onDelete={deleteWidget}
+              onResize={resizeWidgetById}
             />
           </main>
 
@@ -761,7 +1165,10 @@ export default function StatusPageEditorPage() {
             <ConfigPanel
               widget={selectedWidget}
               monitors={monitors}
+              tags={tags}
+              folders={folders}
               onChange={updateWidgetConfig}
+              onResize={updateWidgetSize}
             />
           </aside>
         </div>

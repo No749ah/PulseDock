@@ -158,8 +158,8 @@ describe('MonitorsController', () => {
 
   it('addAlert() delegates to service.addMonitorAlert', async () => {
     service.addMonitorAlert.mockResolvedValue({ ok: true });
-    await controller.addAlert(makeReq(), 'm-1', 'ch-1');
-    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1');
+    await controller.addAlert(makeReq(), 'm-1', 'ch-1', {});
+    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', undefined);
   });
 
   it('removeAlert() delegates to service.removeMonitorAlert', async () => {

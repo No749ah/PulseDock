@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -14,6 +14,13 @@ import { VersionDiff, extractVersionsFromMessage } from '../components/VersionDi
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 
+type AlertChannelSummary = {
+  id: string;
+  name: string;
+  type: string;
+  notifyOn: string;
+};
+
 type VersionItem = {
   id: string;
   name: string;
@@ -24,6 +31,7 @@ type VersionItem = {
   level: 'green' | 'yellow' | 'red';
   checkedAt: string | null;
   intervalSec: number;
+  alertChannels?: AlertChannelSummary[];
 };
 
 type MonitorDetails = {
@@ -34,6 +42,16 @@ type MonitorDetails = {
   intervalSec: number;
   timeoutMs: number;
   config: Record<string, unknown>;
+  alertChannels?: AlertChannelSummary[];
+};
+
+type AlertChannelFull = {
+  id: string;
+  name: string;
+  type: string;
+  config: Record<string, unknown>;
+  createdAt: string;
+  notifyOn?: string;
 };
 
 type MonitorRun = {
@@ -69,6 +87,24 @@ type ToolEntry = {
   requiresInstanceUrl: boolean;
   verified: boolean;
   agentInstallHint?: string;
+};
+
+const CHANNEL_TYPE_COLORS: Record<string, string> = {
+  discord: 'text-indigo-400',
+  slack: 'text-green-400',
+  webhook: 'text-blue-400',
+  telegram: 'text-sky-400',
+  email: 'text-yellow-400',
+};
+
+const VERSION_NOTIFY_OPTIONS = [
+  { value: 'VERSION_ANY',   label: 'Any update (minor + major)' },
+  { value: 'VERSION_MAJOR', label: 'Major updates only' },
+];
+
+const NOTIFY_ON_LABELS: Record<string, string> = {
+  VERSION_ANY:   'Any update',
+  VERSION_MAJOR: 'Major only',
 };
 
 function stripLeadingV(version: string) {
@@ -111,6 +147,7 @@ export default function VersionsPage() {
   const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
   const [toolSearch, setToolSearch] = useState('');
   const [toolCategory, setToolCategory] = useState('');
+  const [toolVisibleCount, setToolVisibleCount] = useState(50);
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<'GIT_RELEASE' | 'DOCKER_IMAGE'>('GIT_RELEASE');
@@ -118,6 +155,7 @@ export default function VersionsPage() {
   const [target, setTarget] = useState('');
   const [currentVersion, setCurrentVersion] = useState('');
   const [intervalSec, setIntervalSec] = useState(86400);
+  const [intervalInput, setIntervalInput] = useState(String(Math.round(86400 / 60)));
   const [tokenInput, setTokenInput] = useState('');
   const [gitlabHost, setGitlabHost] = useState('');
   const [appUrl, setAppUrl] = useState('');
@@ -151,6 +189,7 @@ export default function VersionsPage() {
   const [editTarget, setEditTarget] = useState('');
   const [editCurrentVersion, setEditCurrentVersion] = useState('');
   const [editIntervalSec, setEditIntervalSec] = useState(86400);
+  const [editIntervalInput, setEditIntervalInput] = useState(String(Math.round(86400 / 60)));
   const [editToken, setEditToken] = useState('');
   const [editHasRepoToken, setEditHasRepoToken] = useState(false);
   const [editGitlabHost, setEditGitlabHost] = useState('');
@@ -163,6 +202,13 @@ export default function VersionsPage() {
   const [editOpenvpnPassword, setEditOpenvpnPassword] = useState('');
   const [editAppVersionEndpoint, setEditAppVersionEndpoint] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  // Alert panel state
+  const [alertPanelMonitor, setAlertPanelMonitor] = useState<VersionItem | null>(null);
+  const [assignedChannels, setAssignedChannels] = useState<AlertChannelFull[]>([]);
+  const [allChannels, setAllChannels] = useState<AlertChannelFull[]>([]);
+  const [alertPanelLoading, setAlertPanelLoading] = useState(false);
+  const [alertPanelError, setAlertPanelError] = useState('');
 
   useEffect(() => {
     const user = getUser();
@@ -187,6 +233,66 @@ export default function VersionsPage() {
 
   useEffect(() => { load().catch(() => router.push('/login')); }, []);
 
+  // ── Alert panel handlers ───────────────────────────────────────────────────
+  const openAlertPanel = async (monitor: VersionItem) => {
+    setAlertPanelMonitor(monitor);
+    setAlertPanelLoading(true);
+    setAlertPanelError('');
+    const userId = getUser()?.id;
+    try {
+      const [assigned, all] = await Promise.all([
+        api<AlertChannelFull[]>(`/v1/monitors/${monitor.id}/alerts`, userId),
+        api<AlertChannelFull[]>('/v1/alert-channels', userId),
+      ]);
+      setAssignedChannels(assigned);
+      setAllChannels(all);
+    } catch (e) {
+      setAlertPanelError(e instanceof Error ? e.message : 'Failed to load alerts');
+    } finally {
+      setAlertPanelLoading(false);
+    }
+  };
+
+  const assignChannel = async (channelId: string) => {
+    if (!alertPanelMonitor) return;
+    const userId = getUser()?.id;
+    try {
+      await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, userId, { method: 'POST' });
+      const updated = await api<AlertChannelFull[]>(`/v1/monitors/${alertPanelMonitor.id}/alerts`, userId);
+      setAssignedChannels(updated);
+      await load();
+    } catch (e) {
+      setAlertPanelError(e instanceof Error ? e.message : 'Failed to assign channel');
+    }
+  };
+
+  const unassignChannel = async (channelId: string) => {
+    if (!alertPanelMonitor) return;
+    const userId = getUser()?.id;
+    try {
+      await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, userId, { method: 'DELETE' });
+      setAssignedChannels((prev) => prev.filter((c) => c.id !== channelId));
+      await load();
+    } catch (e) {
+      setAlertPanelError(e instanceof Error ? e.message : 'Failed to unassign channel');
+    }
+  };
+
+  const updateNotifyOn = async (channelId: string, notifyOn: string) => {
+    if (!alertPanelMonitor) return;
+    const userId = getUser()?.id;
+    try {
+      await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, userId, {
+        method: 'PATCH',
+        body: JSON.stringify({ notifyOn }),
+      });
+      setAssignedChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, notifyOn } : c));
+      await load();
+    } catch (e) {
+      setAlertPanelError(e instanceof Error ? e.message : 'Failed to update notification setting');
+    }
+  };
+
   // Load tool registry once (public endpoint, no auth needed)
   useEffect(() => {
     if (toolRegistry) return;
@@ -195,6 +301,11 @@ export default function VersionsPage() {
       .then((d: { tools: ToolEntry[]; categories: string[]; total: number }) => setToolRegistry(d))
       .catch(() => null);
   }, [toolRegistry]);
+
+  useEffect(() => {
+    // Reset tool pagination when search/filter/modal state changes
+    setToolVisibleCount(50);
+  }, [toolSearch, toolCategory, createOpen, createStep]);
 
   useEffect(() => {
     if (!target.trim()) {
@@ -261,6 +372,7 @@ export default function VersionsPage() {
     setEditTarget(item.target);
     setEditCurrentVersion(String(cfg.currentVersion ?? item.currentVersion ?? ''));
     setEditIntervalSec(item.intervalSec || 86400);
+    setEditIntervalInput(String(Math.round((item.intervalSec || 86400) / 60)));
     setEditHasRepoToken(Boolean(cfg.hasRepoToken));
     setEditToken('');
     setEditGitlabHost(String(cfg.gitlabHost ?? ''));
@@ -388,6 +500,7 @@ export default function VersionsPage() {
     setSelectedTool(tool);
     setName(tool.name);
     setIntervalSec(tool.checkInterval);
+    setIntervalInput(String(Math.round((tool.checkInterval) / 60)));
 
     // Map latestSource type → provider
     const ls = tool.latestSource;
@@ -475,6 +588,7 @@ export default function VersionsPage() {
     setTarget('');
     setCurrentVersion('');
     setIntervalSec(86400);
+    setIntervalInput(String(Math.round(86400 / 60)));
     setTokenInput('');
     setGitlabHost('');
     setAppUrl('');
@@ -668,7 +782,14 @@ export default function VersionsPage() {
                   </select>
                 </div>
                 {/* Tool grid */}
-                <div className="max-h-80 overflow-y-auto -mx-1 px-1">
+                <div
+                  className="max-h-80 overflow-y-auto -mx-1 px-1"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+                    if (nearBottom) setToolVisibleCount((prev) => prev + 50);
+                  }}
+                >
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
                   ) : (() => {
@@ -678,26 +799,33 @@ export default function VersionsPage() {
                       if (!q) return cat;
                       return cat && (t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some((tag) => tag.includes(q)));
                     });
+                    const visible = filtered.slice(0, toolVisibleCount);
                     return filtered.length === 0 ? (
                       <p className="text-sm text-text-secondary text-center py-8">No tools found — try "manual config" to set up a custom check.</p>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {filtered.map((tool) => (
-                          <button
-                            key={tool.id}
-                            onClick={() => applyToolToForm(tool)}
-                            className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
-                          >
-                            <div className="flex items-center gap-2 w-full min-w-0">
-                              <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                              <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
-                              {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
-                            </div>
-                            <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
-                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <p className="text-xs text-text-secondary mb-2">Showing {visible.length} of {filtered.length} tools</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {visible.map((tool) => (
+                            <button
+                              key={tool.id}
+                              onClick={() => applyToolToForm(tool)}
+                              className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
+                            >
+                              <div className="flex items-center gap-2 w-full min-w-0">
+                                <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
+                                {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
+                              </div>
+                              <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {visible.length < filtered.length && (
+                          <p className="text-xs text-text-secondary text-center mt-3">Scroll to load more…</p>
+                        )}
+                      </>
                     );
                   })()}
                 </div>
@@ -972,7 +1100,19 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 {advanced && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
-                    <input type="number" className={inputClass} value={Math.max(1, Math.round(intervalSec / 60))} min={1} onChange={(e) => setIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+                    <input
+                      type="number"
+                      className={inputClass}
+                      value={intervalInput}
+                      min={1}
+                      onChange={(e) => setIntervalInput(e.target.value)}
+                      onBlur={() => {
+                        const mins = parseInt(intervalInput, 10);
+                        const safe = isNaN(mins) || mins < 1 ? 1 : mins;
+                        setIntervalInput(String(safe));
+                        setIntervalSec(safe * 60);
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -1086,7 +1226,19 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
-                <input type="number" className={inputClass} value={Math.max(1, Math.round(editIntervalSec / 60))} min={1} onChange={(e) => setEditIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+                <input
+                  type="number"
+                  className={inputClass}
+                  value={editIntervalInput}
+                  min={1}
+                  onChange={(e) => setEditIntervalInput(e.target.value)}
+                  onBlur={() => {
+                    const mins = parseInt(editIntervalInput, 10);
+                    const safe = isNaN(mins) || mins < 1 ? 1 : mins;
+                    setEditIntervalInput(String(safe));
+                    setEditIntervalSec(safe * 60);
+                  }}
+                />
               </div>
             </div>
           </Modal>
@@ -1230,6 +1382,17 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             <Button variant="secondary" size="sm" loading={runningId === item.id} onClick={() => runNow(item.id)}>
                               <span className="flex items-center gap-1"><Play className="w-3 h-3" /> Run</span>
                             </Button>
+                            <button
+                              className="relative p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-surface-elevated transition-colors"
+                              onClick={() => openAlertPanel(item)}
+                              aria-label="Alert channels"
+                              title="Manage alert channels"
+                            >
+                              <Bell className="w-4 h-4" />
+                              {item.alertChannels && item.alertChannels.length > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-accent rounded-full" />
+                              )}
+                            </button>
                             <button className="p-1.5 rounded-lg text-accent hover:bg-surface-elevated transition-colors" onClick={() => openEdit(item)} aria-label="Edit">
                               <Edit className="w-4 h-4" />
                             </button>
@@ -1328,6 +1491,109 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
           </>
           )}
         </>
+      )}
+      {/* Alert channel panel */}
+      {alertPanelMonitor && (
+        <div className="fixed inset-0 z-40 flex justify-end" onClick={() => setAlertPanelMonitor(null)}>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative z-50 w-full max-w-sm bg-bg border-l border-border h-full flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <h3 className="font-semibold text-text-primary">Alert Channels</h3>
+                <p className="text-xs text-text-secondary mt-0.5 truncate max-w-[200px]">{alertPanelMonitor.name}</p>
+              </div>
+              <button onClick={() => setAlertPanelMonitor(null)} className="p-1.5 rounded-lg hover:bg-surface-elevated text-text-secondary transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {alertPanelError && (
+                <div className="px-3 py-2 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">{alertPanelError}</div>
+              )}
+              {alertPanelLoading ? (
+                <p className="text-sm text-text-secondary">Loading…</p>
+              ) : (
+                <>
+                  {/* Assigned channels */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-widest text-text-secondary mb-3">Assigned Channels</h4>
+                    {assignedChannels.length === 0 ? (
+                      <p className="text-sm text-text-secondary italic">No channels assigned yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {assignedChannels.map((channel) => (
+                          <div key={channel.id} className="rounded-lg bg-surface-elevated border border-border/50 overflow-hidden">
+                            <div className="flex items-center justify-between px-3 pt-3 pb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`text-[11px] font-bold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? 'text-text-secondary'}`}>
+                                  {channel.type}
+                                </span>
+                                <span className="text-sm text-text-primary truncate">{channel.name}</span>
+                              </div>
+                              <button
+                                onClick={() => unassignChannel(channel.id)}
+                                className="ml-2 p-1 rounded hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors shrink-0"
+                                aria-label={`Remove ${channel.name}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <div className="px-3 pb-3">
+                              <label className="block text-[10px] text-text-secondary uppercase tracking-wide mb-1">Notify when</label>
+                              <select
+                                value={channel.notifyOn ?? 'VERSION_ANY'}
+                                onChange={(e) => updateNotifyOn(channel.id, e.target.value)}
+                                className="w-full text-xs bg-bg border border-border rounded-lg px-2 py-1.5 text-text-primary focus:outline-none focus:border-accent"
+                              >
+                                {VERSION_NOTIFY_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Available channels */}
+                  {allChannels.filter((c) => !assignedChannels.some((a) => a.id === c.id)).length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-widest text-text-secondary mb-3">Add Channel</h4>
+                      <div className="space-y-2">
+                        {allChannels.filter((c) => !assignedChannels.some((a) => a.id === c.id)).map((channel) => (
+                          <div
+                            key={channel.id}
+                            className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated border border-border/50 hover:border-accent/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`text-[11px] font-bold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? 'text-text-secondary'}`}>
+                                {channel.type}
+                              </span>
+                              <span className="text-sm text-text-primary truncate">{channel.name}</span>
+                            </div>
+                            <button
+                              onClick={() => assignChannel(channel.id)}
+                              className="ml-2 p-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent transition-colors shrink-0"
+                              aria-label={`Assign ${channel.name}`}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </AppFrame>
   );

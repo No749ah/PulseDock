@@ -1,3 +1,8 @@
+// Force all pages to be dynamic (server-rendered on every request).
+// This prevents Next.js from pre-rendering HTML with cached chunk hashes that
+// become stale after a rebuild, causing 404s on /_next/static/*.css|js files.
+export const dynamic = 'force-dynamic';
+
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";

@@ -1089,6 +1089,210 @@ function UptimePercentageCard({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── P1 New Widgets ──────────────────────────────────────────────────────
+
+// Service Health Matrix — monitors × environments/regions matrix table
+function ServiceHealthMatrix({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    mode: "auto" | "manual";
+    columns: string[];
+    matrix: Array<{
+      rowId: string;
+      rowName: string;
+      cells: Array<{ colLabel: string; level: string; latencyMs: number | null; lastChecked: unknown }>;
+    }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.matrix.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary text-center py-4">No monitors configured</p>
+      </div>
+    );
+  }
+
+  const cellBg = (level: string) =>
+    level === "green" ? "bg-green-500/15 text-green-400"
+    : level === "yellow" ? "bg-yellow-500/15 text-yellow-400"
+    : level === "red" ? "bg-red-500/15 text-red-400"
+    : "bg-border/20 text-text-muted";
+
+  const cellDot = (level: string) =>
+    level === "green" ? "bg-green-400"
+    : level === "yellow" ? "bg-yellow-400"
+    : level === "red" ? "bg-red-400 animate-pulse"
+    : "bg-border";
+
+  const cellLabel = (level: string) =>
+    level === "green" ? "Operational"
+    : level === "yellow" ? "Degraded"
+    : level === "red" ? "Outage"
+    : "No data";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 overflow-x-auto">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr>
+            <th className="text-left py-2 pr-4 text-text-secondary font-medium w-40">Service</th>
+            {data.columns.map((col) => (
+              <th key={col} className="text-center py-2 px-2 text-text-secondary font-medium min-w-[100px]">{col}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/30">
+          {data.matrix.map((row) => (
+            <tr key={row.rowId} className="group">
+              <td className="py-2.5 pr-4 font-medium text-text-primary truncate max-w-[160px]" title={row.rowName}>
+                {row.rowName}
+              </td>
+              {row.cells.map((cell, ci) => (
+                <td key={ci} className="py-2.5 px-2 text-center">
+                  <div
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${cellBg(cell.level)}`}
+                    title={cell.latencyMs ? `${cell.latencyMs}ms` : undefined}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${cellDot(cell.level)}`} />
+                    <span>{cellLabel(cell.level)}</span>
+                    {cell.latencyMs && <span className="text-[10px] opacity-70">{cell.latencyMs}ms</span>}
+                  </div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-3 pt-3 border-t border-border/30 mt-2">
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-green-400" /><span className="text-[10px] text-text-muted">Operational</span></div>
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-yellow-400" /><span className="text-[10px] text-text-muted">Degraded</span></div>
+        <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-red-400" /><span className="text-[10px] text-text-muted">Outage</span></div>
+      </div>
+    </div>
+  );
+}
+
+// Aggregate Health Score — weighted score 0-100 with gauge visualization
+function AggregateHealthScore({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    score: number;
+    total: number;
+    down: number;
+    degraded: number;
+    status: "healthy" | "degraded" | "critical";
+    breakdown: Array<{ id: string; name: string; level: string; points: number; weight: number }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+  const showBreakdown = widget.config.showBreakdown as boolean | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const scoreColor = data.score >= 90 ? "text-green-400" : data.score >= 70 ? "text-yellow-400" : "text-red-400";
+  const scoreStroke = data.score >= 90 ? "#4ade80" : data.score >= 70 ? "#facc15" : "#f87171";
+  const statusLabel = data.status === "healthy" ? "All Systems Healthy" : data.status === "degraded" ? "Degraded" : "Critical Issues";
+  const statusColor = data.status === "healthy" ? "text-green-400" : data.status === "degraded" ? "text-yellow-400" : "text-red-400";
+
+  // SVG gauge: arc from -225deg to +45deg (270deg sweep)
+  const r = 52;
+  const cx = 70;
+  const cy = 70;
+  const circumference = 2 * Math.PI * r;
+  const sweep = (data.score / 100) * (270 / 360) * circumference;
+  const dashArray = `${sweep} ${circumference}`;
+  // -225deg start = 135deg in SVG coords
+  const startAngle = 135 * (Math.PI / 180);
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 text-center">{label}</p>}
+      <div className="flex items-center gap-6">
+        {/* Gauge */}
+        <div className="relative flex-shrink-0">
+          <svg width="140" height="140" viewBox="0 0 140 140" className="rotate-0">
+            {/* Track arc */}
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="10"
+              strokeDasharray={`${(270 / 360) * circumference} ${circumference}`}
+              strokeDashoffset={0}
+              strokeLinecap="round"
+              transform={`rotate(135 ${cx} ${cy})`}
+            />
+            {/* Score arc */}
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke={scoreStroke}
+              strokeWidth="10"
+              strokeDasharray={dashArray}
+              strokeDashoffset={0}
+              strokeLinecap="round"
+              transform={`rotate(135 ${cx} ${cy})`}
+              style={{ transition: "stroke-dasharray 0.8s ease" }}
+            />
+            {/* Score text */}
+            <text x={cx} y={cy - 4} textAnchor="middle" className="fill-current" style={{ fill: scoreStroke, fontSize: 26, fontWeight: 700, fontFamily: "inherit" }}>
+              {Math.round(data.score)}
+            </text>
+            <text x={cx} y={cy + 14} textAnchor="middle" style={{ fill: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "inherit" }}>
+              /100
+            </text>
+          </svg>
+        </div>
+        {/* Stats */}
+        <div className="flex-1 space-y-2">
+          <div className={`text-sm font-semibold ${statusColor}`}>{statusLabel}</div>
+          <div className="text-xs text-text-secondary">{data.total} monitor{data.total !== 1 ? "s" : ""} tracked</div>
+          {data.down > 0 && (
+            <div className="text-xs text-red-400 font-medium">{data.down} down</div>
+          )}
+          {data.degraded > 0 && (
+            <div className="text-xs text-yellow-400 font-medium">{data.degraded} degraded</div>
+          )}
+          {data.down === 0 && data.degraded === 0 && (
+            <div className="text-xs text-green-400 font-medium">All operational ✓</div>
+          )}
+        </div>
+      </div>
+      {showBreakdown && data.breakdown.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider font-medium mb-2">Breakdown</p>
+          {data.breakdown.map((b) => (
+            <div key={b.id} className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${b.level === "green" ? "bg-green-400" : b.level === "yellow" ? "bg-yellow-400" : "bg-red-400"}`} />
+              <span className="text-xs text-text-primary flex-1 truncate">{b.name}</span>
+              <span className={`text-xs font-medium ${b.level === "green" ? "text-green-400" : b.level === "yellow" ? "text-yellow-400" : "text-red-400"}`}>{b.points}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Group / Multi Widgets ────────────────────────────────────────────────
 
 // Monitor Group — shows monitors grouped by tag or folder
@@ -1419,6 +1623,12 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "uptime-percentage-card":
       content = <UptimePercentageCard {...props} />;
+      break;
+    case "service-health-matrix":
+      content = <ServiceHealthMatrix {...props} />;
+      break;
+    case "aggregate-health-score":
+      content = <AggregateHealthScore {...props} />;
       break;
     case "divider":
       content = <Divider />;

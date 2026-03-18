@@ -1165,4 +1165,95 @@ describe('StatusPagesService', () => {
       await expect(service.getWidgetData('my-status-page', 'upc2')).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('getWidgetData — service-health-matrix', () => {
+    it('returns auto-mode matrix when no columns/rows configured', async () => {
+      const layout = {
+        widgets: [{ id: 'shm1', type: 'service-health-matrix', config: {}, x: 0, y: 0, w: 12, h: 4 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'green', checkedAt: new Date(), latencyMs: 45 }] }),
+          makeMonitor({ id: 'mon-2', name: 'DB', runs: [{ level: 'red', checkedAt: new Date(), latencyMs: null }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'shm1');
+      expect(data).toMatchObject({ mode: 'auto', columns: ['Production'] });
+      expect(Array.isArray((data as { matrix: unknown[] }).matrix)).toBe(true);
+      expect((data as { matrix: unknown[] }).matrix).toHaveLength(2);
+    });
+
+    it('returns empty matrix gracefully when no monitors', async () => {
+      const layout = {
+        widgets: [{ id: 'shm2', type: 'service-health-matrix', config: {}, x: 0, y: 0, w: 12, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }), monitors: [] });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'shm2');
+      expect(data).toMatchObject({ mode: 'auto', matrix: [] });
+    });
+  });
+
+  describe('getWidgetData — aggregate-health-score', () => {
+    it('returns 100 score when all monitors are green', async () => {
+      const layout = {
+        widgets: [{ id: 'ahs1', type: 'aggregate-health-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'green', latencyMs: 50 }] }),
+          makeMonitor({ id: 'mon-2', name: 'DB', runs: [{ level: 'green', latencyMs: 10 }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'ahs1');
+      expect(data).toMatchObject({ score: 100, status: 'healthy', down: 0, degraded: 0 });
+    });
+
+    it('returns score 0 when all monitors are red', async () => {
+      const layout = {
+        widgets: [{ id: 'ahs2', type: 'aggregate-health-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'red', latencyMs: null }] }),
+          makeMonitor({ id: 'mon-2', name: 'DB', runs: [{ level: 'red', latencyMs: null }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'ahs2');
+      expect(data).toMatchObject({ score: 0, status: 'critical', down: 2 });
+    });
+
+    it('returns healthy score 100 when no monitors configured', async () => {
+      const layout = {
+        widgets: [{ id: 'ahs3', type: 'aggregate-health-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }), monitors: [] });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'ahs3');
+      expect(data).toMatchObject({ score: 100, total: 0 });
+    });
+
+    it('returns degraded status with 75 score when one green one yellow', async () => {
+      const layout = {
+        widgets: [{ id: 'ahs4', type: 'aggregate-health-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({
+        page: makePage({ isPublished: true, layout }),
+        monitors: [
+          makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'green', latencyMs: 50 }] }),
+          makeMonitor({ id: 'mon-2', name: 'DB', runs: [{ level: 'yellow', latencyMs: 200 }] }),
+        ],
+      });
+      service = makeService(prisma);
+      const data = await service.getWidgetData('my-status-page', 'ahs4');
+      expect(data).toMatchObject({ status: 'degraded', degraded: 1, down: 0 });
+      expect((data as { score: number }).score).toBe(75); // (100 + 50) / 2
+    });
+  });
 });

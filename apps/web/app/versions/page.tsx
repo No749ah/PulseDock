@@ -119,6 +119,7 @@ export default function VersionsPage() {
   const [target, setTarget] = useState('');
   const [currentVersion, setCurrentVersion] = useState('');
   const [intervalSec, setIntervalSec] = useState(86400);
+  const [intervalInput, setIntervalInput] = useState(String(Math.round(86400 / 60)));
   const [tokenInput, setTokenInput] = useState('');
   const [gitlabHost, setGitlabHost] = useState('');
   const [appUrl, setAppUrl] = useState('');
@@ -152,6 +153,7 @@ export default function VersionsPage() {
   const [editTarget, setEditTarget] = useState('');
   const [editCurrentVersion, setEditCurrentVersion] = useState('');
   const [editIntervalSec, setEditIntervalSec] = useState(86400);
+  const [editIntervalInput, setEditIntervalInput] = useState(String(Math.round(86400 / 60)));
   const [editToken, setEditToken] = useState('');
   const [editHasRepoToken, setEditHasRepoToken] = useState(false);
   const [editGitlabHost, setEditGitlabHost] = useState('');
@@ -267,6 +269,7 @@ export default function VersionsPage() {
     setEditTarget(item.target);
     setEditCurrentVersion(String(cfg.currentVersion ?? item.currentVersion ?? ''));
     setEditIntervalSec(item.intervalSec || 86400);
+    setEditIntervalInput(String(Math.round((item.intervalSec || 86400) / 60)));
     setEditHasRepoToken(Boolean(cfg.hasRepoToken));
     setEditToken('');
     setEditGitlabHost(String(cfg.gitlabHost ?? ''));
@@ -394,6 +397,7 @@ export default function VersionsPage() {
     setSelectedTool(tool);
     setName(tool.name);
     setIntervalSec(tool.checkInterval);
+    setIntervalInput(String(Math.round((tool.checkInterval) / 60)));
 
     // Map latestSource type → provider
     const ls = tool.latestSource;
@@ -481,6 +485,7 @@ export default function VersionsPage() {
     setTarget('');
     setCurrentVersion('');
     setIntervalSec(86400);
+    setIntervalInput(String(Math.round(86400 / 60)));
     setTokenInput('');
     setGitlabHost('');
     setAppUrl('');
@@ -992,7 +997,19 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 {advanced && (
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
-                    <input type="number" className={inputClass} value={Math.max(1, Math.round(intervalSec / 60))} min={1} onChange={(e) => setIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+                    <input
+                      type="number"
+                      className={inputClass}
+                      value={intervalInput}
+                      min={1}
+                      onChange={(e) => setIntervalInput(e.target.value)}
+                      onBlur={() => {
+                        const mins = parseInt(intervalInput, 10);
+                        const safe = isNaN(mins) || mins < 1 ? 1 : mins;
+                        setIntervalInput(String(safe));
+                        setIntervalSec(safe * 60);
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -1106,7 +1123,19 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Interval (minutes)</label>
-                <input type="number" className={inputClass} value={Math.max(1, Math.round(editIntervalSec / 60))} min={1} onChange={(e) => setEditIntervalSec(Math.max(60, Number(e.target.value || 1) * 60))} />
+                <input
+                  type="number"
+                  className={inputClass}
+                  value={editIntervalInput}
+                  min={1}
+                  onChange={(e) => setEditIntervalInput(e.target.value)}
+                  onBlur={() => {
+                    const mins = parseInt(editIntervalInput, 10);
+                    const safe = isNaN(mins) || mins < 1 ? 1 : mins;
+                    setEditIntervalInput(String(safe));
+                    setEditIntervalSec(safe * 60);
+                  }}
+                />
               </div>
             </div>
           </Modal>

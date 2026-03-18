@@ -973,6 +973,18 @@ export default function StatusPageEditorPage() {
     );
   }
 
+  function resizeWidgetById(widgetId: string, size: { w: number; h: number }) {
+    const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
+    const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (w.id !== widgetId) return w;
+        const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
+        return { ...w, w: nextW, h: nextH, x: boundedX };
+      })
+    );
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(event.active.id as string);
   }
@@ -1136,6 +1148,7 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               onSelect={setSelectedId}
               onDelete={deleteWidget}
+              onResize={resizeWidgetById}
             />
           </main>
 

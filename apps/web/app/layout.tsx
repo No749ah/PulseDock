@@ -11,6 +11,7 @@ import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
 import { PWAInstallBanner } from "../components/pwa-install-banner";
 import { I18nProvider } from "../components/i18n-provider";
+import { KeyboardShortcuts } from "../components/keyboard-shortcuts";
 import { CommandPalette } from "../components/command-palette";
 
 export const viewport: Viewport = {
@@ -138,6 +139,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <ToastProvider>
               {children}
               <CommandPalette />
+              <KeyboardShortcuts />
               <PWAInstallBanner />
               <SWRegister />
             </ToastProvider>

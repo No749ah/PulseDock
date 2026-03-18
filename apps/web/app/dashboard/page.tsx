@@ -153,7 +153,6 @@ export default function DashboardPage() {
   const uptimeMonitors = monitors.filter((m) => UPTIME_TYPES.has(m.type));
   const versionMonitors = monitors.filter((m) => VERSION_TYPES.has(m.type));
   const uptimeRuns = runs.filter((r) => !r.monitorType || UPTIME_TYPES.has(r.monitorType));
-  const versionRuns = runs.filter((r) => r.monitorType && VERSION_TYPES.has(r.monitorType));
 
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
@@ -400,13 +399,8 @@ export default function DashboardPage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {/* Uptime activity */}
                 {uptimeRuns.length > 0 && (
                   <Card>
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
-                      <Activity className="w-4 h-4 text-text-secondary" />
-                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Uptime Checks</span>
-                    </div>
                     <div className="space-y-1">
                       {uptimeRuns.slice(0, 5).map((run) => (
                         <div key={run.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0">
@@ -426,32 +420,6 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <Badge variant={run.ok ? "success" : "danger"}>{String(run.statusCode)}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                )}
-
-                {/* Version activity */}
-                {versionRuns.length > 0 && (
-                  <Card>
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
-                      <GitBranch className="w-4 h-4 text-text-secondary" />
-                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Version Checks</span>
-                    </div>
-                    <div className="space-y-1">
-                      {versionRuns.slice(0, 5).map((run) => (
-                        <div key={run.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-1.5 rounded-full ${run.level === "green" ? "bg-success/10" : run.level === "yellow" ? "bg-warning/10" : "bg-danger/10"}`}>
-                              <GitBranch className={`w-4 h-4 ${run.level === "green" ? "text-success" : run.level === "yellow" ? "text-warning" : "text-danger"}`} />
-                            </div>
-                            <div>
-                              <p className="font-medium text-text-primary">{run.message}</p>
-                              <p className="text-text-secondary text-xs">{relativeTime(run.checkedAt)}</p>
-                            </div>
-                          </div>
-                          {versionStatusBadge(run.level)}
                         </div>
                       ))}
                     </div>

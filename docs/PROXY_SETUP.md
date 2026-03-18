@@ -29,20 +29,10 @@ upstream pulsedock_backend {
     server 192.168.0.202:1234;
 }
 
-# Map upstream Cache-Control to avoid caching 404s on static assets.
-# If the upstream returns no-store (e.g. on a 404), pass it through.
-# Otherwise use immutable for real static asset 200 responses.
-map $upstream_http_cache_control $static_cache_header {
-    "~*no-store"  "no-store";
-    default       "public, max-age=31536000, immutable";
-}
-
 server {
     listen 80;
     listen [::]:80;
     server_name oc-dev-test.no749ah.com;
-    
-    # Redirect to HTTPS
     return 301 https://$server_name$request_uri;
 }
 
@@ -51,79 +41,60 @@ server {
     listen [::]:443 ssl http2;
     server_name oc-dev-test.no749ah.com;
 
-    # SSL Certificates (use Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/oc-dev-test.no749ah.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/oc-dev-test.no749ah.com/privkey.pem;
-
-    # SSL Configuration (modern, secure)
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 
-    # HSTS (optional but recommended)
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    # Static assets — enable buffering for better performance
+    # ── Static assets (/‌_next/static/) ──────────────────────────────────────
+    # MUST be a separate location block with proxy_buffering ON.
+    # The global proxy_buffering off on location / breaks static file serving
+    # and causes 404s for JS/CSS chunks. This has been the recurring root cause.
     location ~* ^/_next/static/ {
         proxy_pass http://pulsedock_backend;
-        
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Enable buffering for static assets
+
+        # Buffering MUST be on for static assets — off breaks chunk delivery
         proxy_buffering on;
         proxy_buffer_size 128k;
         proxy_buffers 256 16k;
         proxy_max_temp_file_size 2048m;
         proxy_temp_file_write_size 32k;
-        
-        # Pass upstream Cache-Control through, but use immutable for 200s.
-        # The map block above ensures 404s get no-store, 200s get immutable.
-        # NEVER use bare `expires 1y` here — it overrides 404 responses too,
-        # causing browsers/CDNs to permanently cache missing chunk 404s.
-        proxy_hide_header Cache-Control;
-        add_header Cache-Control $static_cache_header;
-        expires off;
-        
-        # Long timeouts for large files
+
+        # Let Next.js set Cache-Control (it sends public, immutable for real files).
+        # Do NOT override with expires or add_header here — that would cache 404s too.
         proxy_connect_timeout 60s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
     }
 
-    # Single location block for all other traffic
+    # ── Everything else ───────────────────────────────────────────────────────
     location / {
         proxy_pass http://pulsedock_backend;
-        
-        # Required headers for proper proxying
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # WebSocket support (if added later)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        
-        # Disable buffering for dynamic content (streaming, server-sent events)
+
+        # Buffering off for dynamic content / WebSocket
         proxy_buffering off;
-        
-        # Timeouts
+
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-
-    # Optional: Deny direct access to internal endpoints
-    # location /api/admin {
-    #     deny all;
-    # }
 }
 ```
 

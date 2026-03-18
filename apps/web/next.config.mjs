@@ -35,12 +35,11 @@ const nextConfig = {
       },
       {
         // Static assets ARE cached (content-hashed filenames = immutable)
+        // CDN-Cache-Control tells Cloudflare specifically; Cache-Control is the fallback.
         source: '/_next/static/(.*)',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'CDN-Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ];

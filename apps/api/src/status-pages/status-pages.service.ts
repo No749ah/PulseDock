@@ -440,6 +440,159 @@ export class StatusPagesService {
         return { monitorId, dataPoints, avgMs, p95Ms, maxMs };
       }
 
+      case 'component-status-list': {
+        // Returns per-monitor status: Operational / Degraded / Partial Outage / Major Outage
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+        const monitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+              select: { level: true, checkedAt: true, latencyMs: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+        const components = monitors.map((m) => {
+          const run = m.runs[0];
+          const level = run?.level ?? 'green';
+          const status =
+            level === 'red' ? 'major-outage'
+            : level === 'yellow' ? 'degraded'
+            : 'operational';
+          return {
+            id: m.id,
+            name: m.name,
+            type: m.type,
+            status,
+            level,
+            lastChecked: run?.checkedAt ?? null,
+            latencyMs: run?.latencyMs ?? null,
+          };
+        });
+        const downCount = components.filter((c) => c.status === 'major-outage').length;
+        const degradedCount = components.filter((c) => c.status === 'degraded').length;
+        const overallStatus =
+          downCount > 0 ? 'major-outage'
+          : degradedCount > 0 ? 'partial-outage'
+          : 'operational';
+        return { components, overallStatus, total: components.length, downCount, degradedCount };
+      }
+
+      case 'rolling-uptime-cards': {
+        // Returns uptime% for multiple periods: 24h / 7d / 30d / 90d
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periods = [
+          { label: '24h', days: 1 },
+          { label: '7d', days: 7 },
+          { label: '30d', days: 30 },
+          { label: '90d', days: 90 },
+        ];
+        const cards = await Promise.all(
+          periods.map(async ({ label, days }) => {
+            const since = new Date(Date.now() - days * 86_400_000);
+            const runs = await this.prisma.monitorRun.findMany({
+              where: { monitorId, checkedAt: { gte: since } },
+              select: { level: true },
+            });
+            const total = runs.length;
+            const up = runs.filter((r) => r.level === 'green').length;
+            const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+            return { label, days, uptimePct, total };
+          }),
+        );
+        return { monitorId, cards };
+      }
+
+      case 'status-history-ribbon': {
+        // Per monitor: last 90 days as horizontal colored bar (like GitHub status)
+        const monitorIds = (widget.config.monitorIds as string[] | undefined) ??
+          (monitorId ? [monitorId] : []);
+        if (monitorIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+        const days = Math.min(Math.max((widget.config.days as number) ?? 90, 7), 180);
+        const since = new Date(Date.now() - days * 86_400_000);
+        // Fetch all runs for all monitors in one query
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: monitorIds }, checkedAt: { gte: since } },
+          select: { monitorId: true, level: true, checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        });
+        const monitors = await this.prisma.monitor.findMany({
+          where: { id: { in: monitorIds }, userId },
+          select: { id: true, name: true },
+        });
+        // Build day buckets
+        const now = new Date();
+        const bucketKeys: string[] = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const d = new Date(now);
+          d.setUTCHours(0, 0, 0, 0);
+          d.setUTCDate(d.getUTCDate() - i);
+          bucketKeys.push(d.toISOString().slice(0, 10));
+        }
+        // Group by monitorId → day key
+        const byMonitor = new Map<string, Map<string, { green: number; yellow: number; red: number }>>();
+        for (const run of runs) {
+          const key = (run.checkedAt as Date).toISOString().slice(0, 10);
+          if (!byMonitor.has(run.monitorId)) byMonitor.set(run.monitorId, new Map());
+          const mMap = byMonitor.get(run.monitorId)!;
+          const bucket = mMap.get(key) ?? { green: 0, yellow: 0, red: 0 };
+          if (run.level === 'green') bucket.green++;
+          else if (run.level === 'yellow') bucket.yellow++;
+          else if (run.level === 'red') bucket.red++;
+          mMap.set(key, bucket);
+        }
+        const rows = monitors.map((m) => {
+          const mMap = byMonitor.get(m.id);
+          const ribbon = bucketKeys.map((date) => {
+            const counts = mMap?.get(date);
+            if (!counts) return { date, level: 'no-data' as const };
+            const total = counts.green + counts.yellow + counts.red;
+            if (total === 0) return { date, level: 'no-data' as const };
+            const failRate = (counts.yellow + counts.red) / total;
+            const level = failRate >= 0.5 ? 'red' as const : failRate > 0 ? 'yellow' as const : 'green' as const;
+            return { date, level };
+          });
+          return { id: m.id, name: m.name, ribbon };
+        });
+        return { days, rows };
+      }
+
+      case 'uptime-percentage-card': {
+        // Big number display: "99.97%" with trend arrow vs previous period
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const currentSince = new Date(Date.now() - periodDays * 86_400_000);
+        const prevSince = new Date(Date.now() - 2 * periodDays * 86_400_000);
+        const [currentRuns, prevRuns] = await Promise.all([
+          this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: currentSince } },
+            select: { level: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: prevSince, lt: currentSince } },
+            select: { level: true },
+          }),
+        ]);
+        const toUptimePct = (runs: { level: string }[]) => {
+          const t = runs.length;
+          const u = runs.filter((r) => r.level === 'green').length;
+          return t > 0 ? Math.round((u / t) * 10000) / 100 : 100;
+        };
+        const current = toUptimePct(currentRuns);
+        const previous = toUptimePct(prevRuns);
+        const trend = current > previous ? 'up' : current < previous ? 'down' : 'flat';
+        const delta = Math.round((current - previous) * 100) / 100;
+        return { monitorId, periodDays, uptimePct: current, previousPct: previous, trend, delta };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

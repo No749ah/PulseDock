@@ -40,6 +40,11 @@ const VALID_WIDGET_TYPES: WidgetType[] = [
   'update-summary',
   // Multi-status
   'multi-status-badges',
+  // New P1 widgets
+  'component-status-list',
+  'rolling-uptime-cards',
+  'status-history-ribbon',
+  'uptime-percentage-card',
 ];
 
 export class WidgetDto {

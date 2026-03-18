@@ -20,7 +20,11 @@ export type WidgetType =
   | 'version-status-grid'
   | 'version-check-badge'
   | 'update-summary'
-  | 'multi-status-badges';
+  | 'multi-status-badges'
+  | 'component-status-list'
+  | 'rolling-uptime-cards'
+  | 'status-history-ribbon'
+  | 'uptime-percentage-card';
 
 export interface Widget {
   id: string;

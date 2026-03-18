@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -139,6 +139,8 @@ export default function VersionsPage() {
   const [runsLoadingId, setRunsLoadingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningId, setRunningId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'lastChecked'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
   const [createOpen, setCreateOpen] = useState(false);
@@ -695,7 +697,32 @@ export default function VersionsPage() {
   }
   const pages = Math.max(1, Math.ceil(total / size));
   const safePage = Math.min(page, pages);
-  const visible = (summary?.items ?? []).slice((safePage - 1) * size, safePage * size);
+
+  function handleVersionSort(col: typeof sortBy) {
+    if (sortBy === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(col); setSortDir('asc'); }
+    setPage(1);
+  }
+
+  function statusSortKey(level: 'green' | 'yellow' | 'red') {
+    if (level === 'green') return 1;
+    if (level === 'yellow') return 2;
+    return 0; // red = worst first when asc
+  }
+
+  const sortedItems = [...(summary?.items ?? [])].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    if (sortBy === 'name') return dir * a.name.localeCompare(b.name);
+    if (sortBy === 'status') return dir * (statusSortKey(a.level) - statusSortKey(b.level));
+    if (sortBy === 'lastChecked') {
+      const ta = a.checkedAt ? new Date(a.checkedAt).getTime() : 0;
+      const tb = b.checkedAt ? new Date(b.checkedAt).getTime() : 0;
+      return dir * (ta - tb);
+    }
+    return 0;
+  });
+
+  const visible = sortedItems.slice((safePage - 1) * size, safePage * size);
 
   const providerOptions = [
     { value: 'github', label: 'GitHub releases' },
@@ -1385,13 +1412,25 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
             <Table>
               <TableHead>
                 <TableRow hover={false}>
-                  <TableHeader>Name</TableHeader>
+                  <TableHeader>
+                    <button onClick={() => handleVersionSort('name')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Name {sortBy === 'name' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
                   <TableHeader className="hidden sm:table-cell">Type</TableHeader>
                   <TableHeader className="hidden md:table-cell">Target</TableHeader>
                   <TableHeader className="hidden sm:table-cell">Current</TableHeader>
                   <TableHeader>Latest</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader className="hidden lg:table-cell">Last check</TableHeader>
+                  <TableHeader>
+                    <button onClick={() => handleVersionSort('status')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Status {sortBy === 'status' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
+                  <TableHeader className="hidden lg:table-cell">
+                    <button onClick={() => handleVersionSort('lastChecked')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Last check {sortBy === 'lastChecked' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
                   <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
                   <TableHeader>Action</TableHeader>
                 </TableRow>

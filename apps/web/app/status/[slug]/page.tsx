@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
 import { PrintButton } from "./widgets/PrintButton";
 import { OfflineBanner } from "./widgets/OfflineBanner";
+import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -286,9 +287,8 @@ export default async function PublicStatusSlugPage({
   return (
     <>
       <OfflineBanner />
-      {/* Auto-refresh — configurable interval */}
-      {/* eslint-disable-next-line @next/next/no-head-element */}
-      <meta httpEquiv="refresh" content={String(autoRefreshSec)} />
+      {/* Live refresh client component replaces meta http-equiv refresh */}
+      <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
       <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
@@ -383,7 +383,7 @@ export default async function PublicStatusSlugPage({
 
           {/* Footer */}
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
-            <span>Last updated: {lastUpdated}</span>
+            <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
             {showBranding && (
               <span>
                 {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>

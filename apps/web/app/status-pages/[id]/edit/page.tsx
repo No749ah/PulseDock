@@ -51,6 +51,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  LayoutTemplate,
+  Code2,
+  Play,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -190,9 +193,118 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
   { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
   { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
+  { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
+
+// ── Template Gallery ────────────────────────────────────────────────────────
+
+interface StatusTemplate {
+  id: string;
+  name: string;
+  description: string;
+  preview: string;
+  widgets: Omit<Widget, 'id'>[];
+}
+
+const STATUS_TEMPLATES: StatusTemplate[] = [
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Clean overall status + uptime bar. Perfect for simple status pages.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'uptime-bar', x: 0, y: 2, w: 12, h: 2, config: { periodDays: 30 } },
+    ],
+  },
+  {
+    id: 'full-dashboard',
+    name: 'Full Dashboard',
+    description: 'Comprehensive status page with uptime, performance, and incidents.',
+    preview: '📊',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-banner', x: 0, y: 2, w: 12, h: 2, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 4, w: 12, h: 2, config: {} },
+      { type: 'uptime-timeline', x: 0, y: 6, w: 8, h: 3, config: { periodDays: 90 } },
+      { type: 'response-time-chart', x: 8, y: 6, w: 4, h: 3, config: {} },
+      { type: 'component-status-list', x: 0, y: 9, w: 6, h: 4, config: {} },
+      { type: 'incident-history', x: 6, y: 9, w: 6, h: 4, config: {} },
+      { type: 'status-history-ribbon', x: 0, y: 13, w: 12, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'sla-report',
+    name: 'SLA Report',
+    description: 'SLA compliance, uptime percentages, and downtime statistics.',
+    preview: '📈',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'sla-compliance-table', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 6, w: 12, h: 2, config: {} },
+      { type: 'uptime-heatmap', x: 0, y: 8, w: 12, h: 3, config: {} },
+      { type: 'mttr-mttf-cards', x: 0, y: 11, w: 6, h: 3, config: {} },
+      { type: 'downtime-log', x: 6, y: 11, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'incident-page',
+    name: 'Incident Page',
+    description: 'Focus on active incidents, timeline, and post-mortems.',
+    preview: '🚨',
+    widgets: [
+      { type: 'active-incident-banner', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-count', x: 0, y: 2, w: 4, h: 3, config: {} },
+      { type: 'incident-timeline', x: 4, y: 2, w: 8, h: 5, config: {} },
+      { type: 'incident-history', x: 0, y: 7, w: 8, h: 4, config: {} },
+      { type: 'incident-severity-distribution', x: 8, y: 7, w: 4, h: 4, config: {} },
+      { type: 'post-mortem-card', x: 0, y: 11, w: 12, h: 5, config: {} },
+    ],
+  },
+  {
+    id: 'version-overview',
+    name: 'Version Overview',
+    description: 'Track versions of all your tools and services.',
+    preview: '🏷️',
+    widgets: [
+      { type: 'update-summary', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'version-status-grid', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'outdated-components-alert', x: 0, y: 6, w: 6, h: 4, config: {} },
+      { type: 'version-timeline', x: 6, y: 6, w: 6, h: 4, config: {} },
+    ],
+  },
+  {
+    id: 'performance',
+    name: 'Performance',
+    description: 'Response times, latency percentiles, and performance trends.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'latency-percentiles-card', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'apdex-score', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'response-time-chart', x: 0, y: 5, w: 12, h: 3, config: {} },
+      { type: 'response-time-heatmap', x: 0, y: 8, w: 12, h: 4, config: {} },
+      { type: 'performance-trend', x: 0, y: 12, w: 6, h: 3, config: {} },
+      { type: 'throughput-counter', x: 6, y: 12, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'maintenance',
+    name: 'Maintenance',
+    description: 'Scheduled maintenance windows and countdowns.',
+    preview: '🔧',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'scheduled-maintenance', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'maintenance-calendar', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'next-maintenance-countdown', x: 0, y: 5, w: 6, h: 3, config: {} },
+      { type: 'maintenance-impact-list', x: 6, y: 5, w: 6, h: 3, config: {} },
+    ],
+  },
+];
 
 const ROW_H = 80;
 const COL_COUNT = 12;
@@ -966,6 +1078,7 @@ export default function StatusPageEditorPage() {
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -1088,6 +1201,19 @@ export default function StatusPageEditorPage() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  function applyTemplate(tmpl: StatusTemplate) {
+    if (widgets.length > 0) {
+      if (!confirm(`Replace current ${widgets.length} widget(s) with the "${tmpl.name}" template?`)) return;
+    }
+    const newWidgets = tmpl.widgets.map((w) => ({
+      ...w,
+      id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }));
+    setWidgets(newWidgets);
+    setSelectedId(null);
+    setShowTemplateGallery(false);
   }
 
   function autoPlace(w: number, h: number): { x: number; y: number } {
@@ -1402,6 +1528,15 @@ export default function StatusPageEditorPage() {
               </button>
             </div>
 
+            {/* Template gallery button */}
+            <button
+              onClick={() => setShowTemplateGallery(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              Templates
+            </button>
+
             {/* Auto-save toggle */}
             <button
               onClick={() => setAutoSaveEnabled(v => !v)}
@@ -1549,6 +1684,40 @@ export default function StatusPageEditorPage() {
           </div>
         )}
       </DragOverlay>
+
+      {/* Template Gallery Modal */}
+      {showTemplateGallery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Template Gallery</h2>
+                <p className="text-xs text-text-muted mt-0.5">Start from a preset layout. This will replace your current canvas.</p>
+              </div>
+              <button
+                onClick={() => setShowTemplateGallery(false)}
+                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6 grid grid-cols-2 gap-4">
+              {STATUS_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => applyTemplate(tmpl)}
+                  className="text-left rounded-xl border border-border bg-bg/60 p-4 hover:border-accent/50 hover:bg-accent/5 transition-all group"
+                >
+                  <div className="text-2xl mb-2">{tmpl.preview}</div>
+                  <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition">{tmpl.name}</p>
+                  <p className="text-xs text-text-muted mt-1">{tmpl.description}</p>
+                  <p className="text-xs text-text-secondary/60 mt-2">{tmpl.widgets.length} widgets</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 }

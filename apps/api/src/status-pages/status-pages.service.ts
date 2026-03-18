@@ -2269,4 +2269,67 @@ export class StatusPagesService {
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }
   }
+
+  async getRssFeed(slug: string): Promise<string> {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    // Fetch recent incidents for this user
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId: page.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        updates: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    const pageTitle = this.escapeXml(page.title);
+    const pageUrl = `${process.env.APP_URL ?? 'https://localhost'}/status/${slug}`;
+    const feedUrl = `${process.env.APP_URL ?? 'https://localhost'}/v1/public/status/${slug}/feed.xml`;
+    const now = new Date().toUTCString();
+
+    const items = incidents.map((inc) => {
+      const title = this.escapeXml(inc.title);
+      const status = inc.resolvedAt ? 'Resolved' : 'Active';
+      const lastUpdate = inc.updates[0]?.body ?? '';
+      const description = this.escapeXml(
+        `Status: ${status}. Severity: ${inc.severity}. ${lastUpdate}`.trim()
+      );
+      const pubDate = new Date(inc.createdAt).toUTCString();
+      const link = `${pageUrl}#incident-${inc.id}`;
+      return `    <item>
+      <title>[${status}] ${title}</title>
+      <link>${link}</link>
+      <description>${description}</description>
+      <pubDate>${pubDate}</pubDate>
+      <guid isPermaLink="true">${link}</guid>
+    </item>`;
+    });
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${pageTitle} — Status Updates</title>
+    <link>${pageUrl}</link>
+    <description>Incident updates for ${pageTitle}</description>
+    <language>en</language>
+    <lastBuildDate>${now}</lastBuildDate>
+    <atom:link href="${feedUrl}" rel="self" type="application/rss+xml"/>
+${items.join('\n')}
+  </channel>
+</rss>`;
+  }
+
+  private escapeXml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
 }

@@ -4163,6 +4163,74 @@ export function RssFeedWidget({ widget }: WidgetProps) {
   );
 }
 
+// ── Content widgets ──────────────────────────────────────────────────────
+
+export function CodeBlock({ widget }: WidgetProps) {
+  const code = (widget.config.code as string) ?? "";
+  const language = (widget.config.language as string) ?? "bash";
+  const label = (widget.config.label as string) ?? "Code";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-text-secondary">{label}</span>
+        <span className="text-xs bg-surface-elevated border border-border/60 px-2 py-0.5 rounded font-mono text-text-muted">{language}</span>
+      </div>
+      <pre className="bg-bg/80 rounded-lg p-4 overflow-x-auto">
+        <code className="text-xs font-mono text-text-primary whitespace-pre">{code || "# Add code in the config panel"}</code>
+      </pre>
+    </div>
+  );
+}
+
+export function VideoEmbed({ widget }: WidgetProps) {
+  const url = (widget.config.videoUrl as string) ?? "";
+  const label = (widget.config.label as string) ?? "";
+  const height = (widget.config.height as number) ?? 300;
+
+  function toEmbedUrl(rawUrl: string): string | null {
+    if (!rawUrl) return null;
+    try {
+      const u = new URL(rawUrl);
+      if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
+        return `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
+      }
+      if (u.hostname.includes('youtu.be')) {
+        return `https://www.youtube.com/embed${u.pathname}`;
+      }
+      if (u.hostname.includes('vimeo.com')) {
+        const id = u.pathname.split('/').filter(Boolean).pop();
+        return `https://player.vimeo.com/video/${id}`;
+      }
+      return rawUrl;
+    } catch {
+      return null;
+    }
+  }
+
+  const embedUrl = toEmbedUrl(url);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 overflow-hidden">
+      {label && <div className="px-4 py-2 border-b border-border text-sm font-medium text-text-secondary">{label}</div>}
+      {embedUrl ? (
+        <iframe
+          src={embedUrl}
+          style={{ height: `${height}px`, width: '100%' }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="block"
+          title={label || "Video"}
+        />
+      ) : (
+        <div className="flex items-center justify-center text-text-muted text-sm" style={{ height: `${height}px` }}>
+          Add a YouTube or Vimeo URL in config
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {

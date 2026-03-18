@@ -4,14 +4,17 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -134,5 +137,18 @@ export class StatusPagesController {
     @Query('password') password?: string,
   ) {
     return this.statusPagesService.getWidgetData(slug, widgetId, password);
+  }
+
+  @Get('public/status/:slug/feed.xml')
+  @Header('Content-Type', 'application/rss+xml; charset=utf-8')
+  @Header('Cache-Control', 'public, max-age=300')
+  @ApiOperation({
+    summary: 'RSS feed for status page incidents (public)',
+    description: 'Returns an RSS 2.0 feed of incidents for the given status page. No auth required.',
+  })
+  @ApiParam({ name: 'slug', description: 'Page slug' })
+  async getRssFeed(@Param('slug') slug: string, @Res() res: Response) {
+    const xml = await this.statusPagesService.getRssFeed(slug);
+    res.send(xml);
   }
 }

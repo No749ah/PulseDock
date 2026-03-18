@@ -2050,6 +2050,359 @@ function IncidentSeverityDistribution({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── Incident Duration Stats ──────────────────────────────────────────────
+
+function formatDuration(ms: number): string {
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const s = Math.floor((ms % 60_000) / 1_000);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function IncidentDurationStats({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    avg: number | null;
+    longest: number | null;
+    shortest: number | null;
+    count: number;
+    periodDays: number;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.count === 0 || data.avg === null) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No resolved incidents in the last {data.periodDays} days</p>
+      </div>
+    );
+  }
+
+  const cards = [
+    { title: "Average", value: data.avg, color: "text-blue-400" },
+    { title: "Longest", value: data.longest!, color: "text-red-400" },
+    { title: "Shortest", value: data.shortest!, color: "text-green-400" },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="grid grid-cols-3 gap-3">
+        {cards.map((card) => (
+          <div key={card.title} className="rounded-lg border border-border/50 bg-surface/60 p-3 text-center">
+            <p className="text-xs text-text-secondary mb-1">{card.title}</p>
+            <p className={`text-lg font-bold tabular-nums ${card.color}`}>{formatDuration(card.value)}</p>
+            <p className="text-[10px] text-text-muted mt-1">{data.count} incident{data.count !== 1 ? "s" : ""}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-text-muted mt-2 text-right">Last {data.periodDays} days</p>
+    </div>
+  );
+}
+
+// ── Post-Mortem Card ─────────────────────────────────────────────────────
+
+function PostMortemCard({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    incident: {
+      title: string;
+      severity: string;
+      resolvedAt: string;
+      durationMs: number | null;
+      affectedMonitors: { name: string }[];
+      updates: { status: string; message: string; createdAt: string }[];
+    } | null;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!data.incident) {
+    return (
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <div className="text-3xl mb-2">✓</div>
+        <p className="text-sm text-green-400 font-semibold">No resolved incidents</p>
+      </div>
+    );
+  }
+
+  const inc = data.incident;
+  const severityColor =
+    inc.severity === "CRITICAL" ? "bg-red-500/20 text-red-400 border-red-500/30"
+    : inc.severity === "HIGH" ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+    : "bg-blue-500/20 text-blue-400 border-blue-500/30";
+
+  const statusColors: Record<string, string> = {
+    INVESTIGATING: "bg-yellow-500",
+    IDENTIFIED: "bg-orange-500",
+    MONITORING: "bg-blue-500",
+    RESOLVED: "bg-green-500",
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+      {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+      {/* Header */}
+      <div className="flex items-start gap-2">
+        <p className="text-sm font-semibold text-text-primary flex-1">{inc.title}</p>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${severityColor}`}>
+          {inc.severity}
+        </span>
+      </div>
+      {/* Meta */}
+      <div className="flex items-center gap-3 text-xs text-text-secondary">
+        {inc.durationMs !== null && <span>⏱ {formatDuration(inc.durationMs)}</span>}
+        <span>✓ {new Date(inc.resolvedAt).toLocaleDateString()}</span>
+      </div>
+      {/* Affected monitors */}
+      {inc.affectedMonitors.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {inc.affectedMonitors.map((m) => (
+            <span key={m.name} className="text-[10px] px-2 py-0.5 rounded-full bg-surface/80 border border-border/60 text-text-secondary">
+              {m.name}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Updates timeline */}
+      {inc.updates.length > 0 && (
+        <div className="space-y-2 pt-1 border-t border-border/30">
+          {inc.updates.map((u, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${statusColors[u.status] ?? "bg-surface"}`} />
+              <div>
+                <p className="text-[10px] font-semibold text-text-secondary uppercase">{u.status}</p>
+                <p className="text-xs text-text-primary">{u.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Performance Trend ────────────────────────────────────────────────────
+
+function PerformanceTrend({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    thisWeekAvg: number;
+    lastWeekAvg: number;
+    changePercent: number;
+    trend: "up" | "down" | "stable";
+    dataPoints: number[];
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  // trend "down" = latency decreased = improvement = green
+  const isImprovement = data.trend === "down";
+  const isStable = data.trend === "stable";
+  const trendColor = isStable ? "text-text-secondary" : isImprovement ? "text-green-400" : "text-red-400";
+  const arrow = isStable ? "→" : isImprovement ? "↓" : "↑";
+
+  // SVG sparkline (14 points)
+  const pts = data.dataPoints;
+  const maxVal = Math.max(...pts, 1);
+  const W = 200;
+  const H = 40;
+  const step = W / (pts.length - 1);
+  const pathD = pts
+    .map((v, i) => {
+      const x = i * step;
+      const y = H - (v / maxVal) * H;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-2">{label}</p>}
+      <div className="flex items-center gap-4">
+        <div>
+          <p className={`text-4xl font-bold tabular-nums ${trendColor}`}>
+            {arrow} {Math.abs(data.changePercent).toFixed(1)}%
+          </p>
+          <p className="text-xs text-text-secondary mt-1">vs last week</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {data.thisWeekAvg}ms → {data.lastWeekAvg}ms
+          </p>
+        </div>
+        <div className="flex-1">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 overflow-visible">
+            <path d={pathD} fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <p className="text-[10px] text-text-muted text-center mt-1">14-day latency</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Apdex Score ──────────────────────────────────────────────────────────
+
+function ApdexScore({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    score: number | null;
+    satisfied: number;
+    tolerating: number;
+    frustrated: number;
+    total: number;
+    rating: string | null;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (data.score === null || data.total === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center">
+        {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+        <p className="text-sm text-text-secondary">No data available</p>
+      </div>
+    );
+  }
+
+  const ratingColor =
+    data.rating === "Excellent" ? "text-green-400"
+    : data.rating === "Good" ? "text-blue-400"
+    : data.rating === "Fair" ? "text-yellow-400"
+    : data.rating === "Poor" ? "text-orange-400"
+    : "text-red-400";
+
+  const satisfiedPct = data.total > 0 ? (data.satisfied / data.total) * 100 : 0;
+  const toleratingPct = data.total > 0 ? (data.tolerating / data.total) * 100 : 0;
+  const frustratedPct = data.total > 0 ? (data.frustrated / data.total) * 100 : 0;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center gap-4">
+        <div className="text-center">
+          <p className="text-5xl font-bold tabular-nums text-text-primary">{data.score.toFixed(2)}</p>
+          <p className={`text-sm font-semibold mt-1 ${ratingColor}`}>{data.rating}</p>
+          <p className="text-[10px] text-text-muted mt-0.5">Apdex Score</p>
+        </div>
+        <div className="flex-1 space-y-2">
+          {/* Breakdown bar */}
+          <div className="flex h-3 overflow-hidden rounded-full">
+            <div className="bg-green-500" style={{ width: `${satisfiedPct}%` }} title={`Satisfied: ${data.satisfied}`} />
+            <div className="bg-yellow-400" style={{ width: `${toleratingPct}%` }} title={`Tolerating: ${data.tolerating}`} />
+            <div className="bg-red-500" style={{ width: `${frustratedPct}%` }} title={`Frustrated: ${data.frustrated}`} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="text-text-secondary flex-1">Satisfied</span>
+              <span className="tabular-nums text-text-primary">{data.satisfied}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-yellow-400" />
+              <span className="text-text-secondary flex-1">Tolerating</span>
+              <span className="tabular-nums text-text-primary">{data.tolerating}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              <span className="text-text-secondary flex-1">Frustrated</span>
+              <span className="tabular-nums text-text-primary">{data.frustrated}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Throughput Counter ───────────────────────────────────────────────────
+
+function ThroughputCounter({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    current: number;
+    average: number;
+    peak: number;
+    dataPoints: { hour: string; count: number }[];
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  const maxCount = Math.max(...data.dataPoints.map((p) => p.count), 1);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-2">{label}</p>}
+      <div className="flex items-end gap-4 mb-3">
+        <div>
+          <p className="text-4xl font-bold tabular-nums text-text-primary">{data.current}</p>
+          <p className="text-xs text-text-secondary mt-0.5">Checks / Hour</p>
+        </div>
+        <div className="space-y-0.5 text-right">
+          <p className="text-xs text-text-secondary">Avg <span className="text-text-primary font-semibold">{data.average}</span></p>
+          <p className="text-xs text-text-secondary">Peak <span className="text-text-primary font-semibold">{data.peak}</span></p>
+        </div>
+      </div>
+      {/* 24-bar sparkline */}
+      <div className="flex items-end gap-0.5 h-10">
+        {data.dataPoints.map((pt, i) => {
+          const heightPct = maxCount > 0 ? (pt.count / maxCount) * 100 : 0;
+          const isAboveAvg = pt.count >= data.average;
+          return (
+            <div
+              key={i}
+              className={`flex-1 rounded-sm min-h-[2px] ${isAboveAvg ? "bg-indigo-500" : "bg-indigo-500/40"}`}
+              style={{ height: `${Math.max(heightPct, 4)}%` }}
+              title={`${pt.hour}: ${pt.count}`}
+            />
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-text-muted mt-1">Last 24 hours</p>
+    </div>
+  );
+}
+
 // ── Group / Multi Widgets ────────────────────────────────────────────────
 
 // Monitor Group — shows monitors grouped by tag or folder
@@ -2413,6 +2766,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "incident-severity-distribution":
       content = <IncidentSeverityDistribution {...props} />;
+      break;
+    case "incident-duration-stats":
+      content = <IncidentDurationStats {...props} />;
+      break;
+    case "post-mortem-card":
+      content = <PostMortemCard {...props} />;
+      break;
+    case "performance-trend":
+      content = <PerformanceTrend {...props} />;
+      break;
+    case "apdex-score":
+      content = <ApdexScore {...props} />;
+      break;
+    case "throughput-counter":
+      content = <ThroughputCounter {...props} />;
       break;
     case "divider":
       content = <Divider />;

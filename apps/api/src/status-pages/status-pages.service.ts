@@ -1226,6 +1226,231 @@ export class StatusPagesService {
         };
       }
 
+      case 'incident-duration-stats': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const incidentWhere = monitorIds?.length
+          ? {
+              userId,
+              resolvedAt: { not: null },
+              createdAt: { gte: since },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, resolvedAt: { not: null }, createdAt: { gte: since } };
+
+        const incidents = await this.prisma.incident.findMany({
+          where: incidentWhere,
+          select: { createdAt: true, resolvedAt: true },
+        });
+
+        if (incidents.length === 0) {
+          return { avg: null, longest: null, shortest: null, count: 0, periodDays };
+        }
+
+        const durations = incidents.map((i) => {
+          const resolved = i.resolvedAt as Date;
+          return resolved.getTime() - (i.createdAt as Date).getTime();
+        });
+
+        const avg = Math.round(durations.reduce((s, v) => s + v, 0) / durations.length);
+        const longest = Math.max(...durations);
+        const shortest = Math.min(...durations);
+
+        return { avg, longest, shortest, count: durations.length, periodDays };
+      }
+
+      case 'post-mortem-card': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+
+        const incidentWhere = monitorIds?.length
+          ? {
+              userId,
+              resolvedAt: { not: null },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, resolvedAt: { not: null } };
+
+        const incident = await this.prisma.incident.findFirst({
+          where: incidentWhere,
+          orderBy: { resolvedAt: 'desc' },
+          select: {
+            id: true,
+            title: true,
+            severity: true,
+            createdAt: true,
+            resolvedAt: true,
+            description: true,
+            updates: {
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, body: true, status: true, createdAt: true },
+            },
+            monitors: {
+              include: { monitor: { select: { id: true, name: true } } },
+            },
+          },
+        });
+
+        if (!incident) {
+          return { incident: null };
+        }
+
+        const durationMs =
+          incident.resolvedAt && incident.createdAt
+            ? (incident.resolvedAt as Date).getTime() - (incident.createdAt as Date).getTime()
+            : null;
+
+        return {
+          incident: {
+            title: incident.title,
+            severity: incident.severity,
+            resolvedAt: incident.resolvedAt,
+            durationMs,
+            affectedMonitors: incident.monitors.map((im) => ({ name: im.monitor.name })),
+            updates: incident.updates.map((u) => ({
+              status: u.status,
+              message: u.body,
+              createdAt: u.createdAt,
+            })),
+          },
+        };
+      }
+
+      case 'performance-trend': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const days = 14;
+        const since = new Date(Date.now() - days * 86_400_000);
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since }, latencyMs: { not: null } },
+          select: { latencyMs: true, checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        });
+
+        // Build daily avg for the 14-day sparkline
+        const now = new Date();
+        const todayStart = new Date(now);
+        todayStart.setUTCHours(0, 0, 0, 0);
+
+        const dailyBuckets: { sum: number; count: number }[] = Array.from({ length: days }, () => ({ sum: 0, count: 0 }));
+
+        for (const run of runs) {
+          const d = run.checkedAt as Date;
+          const diffMs = todayStart.getTime() - d.getTime();
+          const diffDays = Math.floor(diffMs / 86_400_000);
+          const dayIndex = days - 1 - diffDays;
+          if (dayIndex < 0 || dayIndex >= days) continue;
+          dailyBuckets[dayIndex].sum += run.latencyMs ?? 0;
+          dailyBuckets[dayIndex].count++;
+        }
+
+        const dataPoints = dailyBuckets.map((b) => (b.count > 0 ? Math.round(b.sum / b.count) : 0));
+
+        // Last 7 days = indices 7-13, prev 7 = indices 0-6
+        const lastWeekRuns = dataPoints.slice(0, 7).filter((v) => v > 0);
+        const thisWeekRuns = dataPoints.slice(7).filter((v) => v > 0);
+
+        const avgMs = (arr: number[]) =>
+          arr.length > 0 ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0;
+
+        const thisWeekAvg = avgMs(thisWeekRuns);
+        const lastWeekAvg = avgMs(lastWeekRuns);
+
+        let changePercent = 0;
+        let trend: 'up' | 'down' | 'stable' = 'stable';
+
+        if (lastWeekAvg > 0) {
+          changePercent = Math.round(((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 1000) / 10;
+          if (Math.abs(changePercent) < 1) trend = 'stable';
+          else if (thisWeekAvg > lastWeekAvg) trend = 'up';
+          else trend = 'down';
+        }
+
+        return { thisWeekAvg, lastWeekAvg, changePercent, trend, dataPoints };
+      }
+
+      case 'apdex-score': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 7, 1), 90);
+        const satisfiedThresholdMs = (widget.config.satisfiedThresholdMs as number) ?? 200;
+        const toleratingThresholdMs = (widget.config.toleratingThresholdMs as number) ?? 800;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since }, latencyMs: { not: null } },
+          select: { latencyMs: true },
+        });
+
+        if (runs.length === 0) {
+          return { score: null, satisfied: 0, tolerating: 0, frustrated: 0, total: 0, rating: null };
+        }
+
+        let satisfied = 0;
+        let tolerating = 0;
+        let frustrated = 0;
+
+        for (const run of runs) {
+          const ms = run.latencyMs ?? 0;
+          if (ms < satisfiedThresholdMs) satisfied++;
+          else if (ms < toleratingThresholdMs) tolerating++;
+          else frustrated++;
+        }
+
+        const total = runs.length;
+        const score = Math.round(((satisfied + tolerating / 2) / total) * 100) / 100;
+
+        let rating: string;
+        if (score >= 0.94) rating = 'Excellent';
+        else if (score >= 0.85) rating = 'Good';
+        else if (score >= 0.70) rating = 'Fair';
+        else if (score >= 0.50) rating = 'Poor';
+        else rating = 'Unacceptable';
+
+        return { score, satisfied, tolerating, frustrated, total, rating };
+      }
+
+      case 'throughput-counter': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const since = new Date(Date.now() - 24 * 3_600_000);
+
+        const where = monitorIds?.length
+          ? { monitorId: { in: monitorIds }, checkedAt: { gte: since } }
+          : { monitor: { userId }, checkedAt: { gte: since } };
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where,
+          select: { checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        });
+
+        // Group by UTC hour
+        const hourBuckets = new Map<string, number>();
+        for (const run of runs) {
+          const d = run.checkedAt as Date;
+          const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}T${String(d.getUTCHours()).padStart(2, '0')}`;
+          hourBuckets.set(key, (hourBuckets.get(key) ?? 0) + 1);
+        }
+
+        // Build 24-slot array for the last 24 hours
+        const nowMs = Date.now();
+        const dataPoints: { hour: string; count: number }[] = [];
+        for (let h = 23; h >= 0; h--) {
+          const slotMs = nowMs - h * 3_600_000;
+          const slotDate = new Date(slotMs);
+          const key = `${slotDate.getUTCFullYear()}-${String(slotDate.getUTCMonth() + 1).padStart(2, '0')}-${String(slotDate.getUTCDate()).padStart(2, '0')}T${String(slotDate.getUTCHours()).padStart(2, '0')}`;
+          const hour = `${String(slotDate.getUTCHours()).padStart(2, '0')}:00`;
+          dataPoints.push({ hour, count: hourBuckets.get(key) ?? 0 });
+        }
+
+        const counts = dataPoints.map((p) => p.count);
+        const current = counts[counts.length - 2] ?? 0; // last complete hour
+        const average = Math.round(counts.reduce((s, v) => s + v, 0) / counts.length);
+        const peak = Math.max(...counts);
+
+        return { current, average, peak, dataPoints };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

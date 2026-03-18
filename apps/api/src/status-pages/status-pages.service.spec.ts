@@ -1570,4 +1570,176 @@ describe('StatusPagesService', () => {
       expect(result.periodDays).toBe(7);
     });
   });
+
+  // ── incident-duration-stats ──────────────────────────────────────────────
+
+  describe('getWidgetData — incident-duration-stats', () => {
+    it('returns zero count when no resolved incidents', async () => {
+      const layout = {
+        widgets: [{ id: 'ids1', type: 'incident-duration-stats', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.incident.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ids1');
+      expect(result.count).toBe(0);
+      expect(result.avg).toBeNull();
+      expect(result.longest).toBeNull();
+      expect(result.shortest).toBeNull();
+    });
+
+    it('computes avg/longest/shortest from resolved incidents', async () => {
+      const layout = {
+        widgets: [{ id: 'ids2', type: 'incident-duration-stats', config: { periodDays: 30 }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      const base = new Date('2026-01-01T00:00:00Z');
+      prisma.incident.findMany = vi.fn().mockResolvedValue([
+        { createdAt: base, resolvedAt: new Date(base.getTime() + 3_600_000) },       // 1h
+        { createdAt: base, resolvedAt: new Date(base.getTime() + 7_200_000) },       // 2h
+        { createdAt: base, resolvedAt: new Date(base.getTime() + 1_800_000) },       // 30m
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ids2');
+      expect(result.count).toBe(3);
+      expect(result.longest).toBe(7_200_000);
+      expect(result.shortest).toBe(1_800_000);
+      expect(result.avg).toBe(4_200_000); // (3_600_000 + 7_200_000 + 1_800_000) / 3
+    });
+  });
+
+  // ── post-mortem-card ─────────────────────────────────────────────────────
+
+  describe('getWidgetData — post-mortem-card', () => {
+    it('returns null incident when none resolved', async () => {
+      const layout = {
+        widgets: [{ id: 'pmc1', type: 'post-mortem-card', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.incident.findFirst = vi.fn().mockResolvedValue(null);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'pmc1');
+      expect(result.incident).toBeNull();
+    });
+
+    it('returns latest resolved incident with updates and monitors', async () => {
+      const layout = {
+        widgets: [{ id: 'pmc2', type: 'post-mortem-card', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      const createdAt = new Date('2026-01-01T10:00:00Z');
+      const resolvedAt = new Date('2026-01-01T12:30:00Z');
+      prisma.incident.findFirst = vi.fn().mockResolvedValue({
+        id: 'inc-1',
+        title: 'DB Outage',
+        severity: 'CRITICAL',
+        createdAt,
+        resolvedAt,
+        description: 'Database went down',
+        updates: [
+          { id: 'u1', body: 'Investigating', status: 'INVESTIGATING', createdAt: new Date('2026-01-01T10:05:00Z') },
+          { id: 'u2', body: 'Fixed', status: 'RESOLVED', createdAt: new Date('2026-01-01T12:30:00Z') },
+        ],
+        monitors: [{ monitor: { id: 'mon-1', name: 'DB Monitor' } }],
+      });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'pmc2');
+      expect(result.incident).not.toBeNull();
+      expect(result.incident.title).toBe('DB Outage');
+      expect(result.incident.durationMs).toBe(9_000_000);
+      expect(result.incident.affectedMonitors).toHaveLength(1);
+      expect(result.incident.updates).toHaveLength(2);
+    });
+  });
+
+  // ── performance-trend ────────────────────────────────────────────────────
+
+  describe('getWidgetData — performance-trend', () => {
+    it('throws BadRequestException when no monitorId', async () => {
+      const layout = {
+        widgets: [{ id: 'pt1', type: 'performance-trend', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'pt1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns trend data with dataPoints array of length 14', async () => {
+      const layout = {
+        widgets: [{ id: 'pt2', type: 'performance-trend', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'pt2');
+      expect(result.dataPoints).toHaveLength(14);
+      expect(result.trend).toBe('stable');
+    });
+  });
+
+  // ── apdex-score ──────────────────────────────────────────────────────────
+
+  describe('getWidgetData — apdex-score', () => {
+    it('throws BadRequestException when no monitorId', async () => {
+      const layout = {
+        widgets: [{ id: 'as1', type: 'apdex-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'as1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('computes Apdex score correctly', async () => {
+      const layout = {
+        widgets: [{ id: 'as2', type: 'apdex-score', config: { monitorId: 'mon-1', satisfiedThresholdMs: 200, toleratingThresholdMs: 800 }, x: 0, y: 0, w: 4, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      // 8 satisfied (<200ms), 2 tolerating (200-799ms), 0 frustrated — score = (8 + 2/2)/10 = 0.9
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        ...Array.from({ length: 8 }, () => ({ latencyMs: 100 })),
+        ...Array.from({ length: 2 }, () => ({ latencyMs: 400 })),
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'as2');
+      expect(result.score).toBe(0.9);
+      expect(result.satisfied).toBe(8);
+      expect(result.tolerating).toBe(2);
+      expect(result.frustrated).toBe(0);
+      expect(result.rating).toBe('Good');
+    });
+  });
+
+  // ── throughput-counter ───────────────────────────────────────────────────
+
+  describe('getWidgetData — throughput-counter', () => {
+    it('returns 24-slot dataPoints array', async () => {
+      const layout = {
+        widgets: [{ id: 'tc1', type: 'throughput-counter', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'tc1');
+      expect(result.dataPoints).toHaveLength(24);
+      expect(result.current).toBe(0);
+      expect(result.average).toBe(0);
+      expect(result.peak).toBe(0);
+    });
+
+    it('counts runs per hour correctly', async () => {
+      const layout = {
+        widgets: [{ id: 'tc2', type: 'throughput-counter', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      // Create 5 runs all in the same hour (2 hours ago)
+      const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(
+        Array.from({ length: 5 }, () => ({ checkedAt: twoHoursAgo })),
+      );
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'tc2');
+      expect(result.dataPoints).toHaveLength(24);
+      expect(result.peak).toBe(5);
+    });
+  });
 });

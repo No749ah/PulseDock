@@ -35,7 +35,12 @@ export type WidgetType =
   | 'uptime-heatmap'
   | 'incident-timeline'
   | 'ssl-certificate-status'
-  | 'incident-severity-distribution';
+  | 'incident-severity-distribution'
+  | 'incident-duration-stats'
+  | 'post-mortem-card'
+  | 'performance-trend'
+  | 'apdex-score'
+  | 'throughput-counter';
 
 export interface Widget {
   id: string;

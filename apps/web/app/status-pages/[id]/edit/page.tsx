@@ -56,6 +56,7 @@ import {
   Play,
   Settings2,
   RefreshCw,
+  History,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -1107,6 +1108,15 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   );
 }
 
+// ── Version History ───────────────────────────────────────────────────────
+
+interface VersionEntry {
+  ts: number;
+  widgetCount: number;
+  widgets: Widget[];
+  settings: PageSettings;
+}
+
 // ── Main page ────────────────────────────────────────────────────────────
 
 export default function StatusPageEditorPage() {
@@ -1135,7 +1145,14 @@ export default function StatusPageEditorPage() {
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const [showPageSettings, setShowPageSettings] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
+
+  const versionHistoryKey = `sp-vhist-${id}`;
+  const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(`sp-vhist-${id}`) || "[]") as VersionEntry[]; } catch { return []; }
+  });
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -1222,6 +1239,17 @@ export default function StatusPageEditorPage() {
       // Mark as clean after successful save
       savedWidgetsRef.current = JSON.stringify(widgets);
       setIsDirty(false);
+
+      // Record version history (localStorage, keep last 10)
+      if (!opts?.silent) {
+        setVersionHistory((prev) => {
+          const entry: VersionEntry = { ts: Date.now(), widgetCount: widgets.length, widgets, settings: pageSettings };
+          const next = [entry, ...prev].slice(0, 10);
+          try { localStorage.setItem(`sp-vhist-${id}`, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      }
+
       // Only show toast on manual save
       if (!opts?.silent) toastCtx.success("Saved");
     } catch {
@@ -1229,7 +1257,7 @@ export default function StatusPageEditorPage() {
     } finally {
       setSaving(false);
     }
-  }, [page, id, widgets, pageSettings, toastCtx]);
+  }, [page, id, widgets, pageSettings, toastCtx, versionHistoryKey]);
 
   // Track dirty state whenever widgets change
   const initialLoad = useRef(true);
@@ -1297,6 +1325,16 @@ export default function StatusPageEditorPage() {
     };
     setWidgets((prev) => [...prev, newWidget]);
     setSelectedId(newWidget.id);
+  }
+
+  function restoreVersion(entry: VersionEntry) {
+    if (!confirm(`Restore this version (${entry.widgetCount} widgets from ${new Date(entry.ts).toLocaleTimeString()})? Current unsaved changes will be lost.`)) return;
+    setWidgets(entry.widgets);
+    setPageSettings(entry.settings);
+    setSelectedId(null);
+    setSelectedIds(new Set());
+    setShowVersionHistory(false);
+    toastCtx.success("Version restored — save to apply");
   }
 
   function handleWidgetSelect(id: string | null, shiftKey?: boolean) {
@@ -1637,6 +1675,19 @@ export default function StatusPageEditorPage() {
                 <Maximize2 className="h-3 w-3" />
               </button>
             </div>
+
+            {/* Version history button */}
+            <button
+              onClick={() => setShowVersionHistory(true)}
+              title={`Version history — ${versionHistory.length} save${versionHistory.length !== 1 ? "s" : ""} stored`}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <History className="h-3.5 w-3.5" />
+              History
+              {versionHistory.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">{versionHistory.length}</span>
+              )}
+            </button>
 
             {/* Template gallery button */}
             <button
@@ -2004,6 +2055,51 @@ export default function StatusPageEditorPage() {
                   <p className="text-xs text-text-secondary/60 mt-2">{tmpl.widgets.length} widgets</p>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Version History Modal */}
+      {showVersionHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Version History</h2>
+                <p className="text-xs text-text-muted mt-0.5">Last {versionHistory.length} manual saves. Click restore to roll back.</p>
+              </div>
+              <button onClick={() => setShowVersionHistory(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-2">
+              {versionHistory.length === 0 ? (
+                <div className="py-8 text-center text-sm text-text-secondary">
+                  <History className="h-8 w-8 mx-auto mb-2 text-text-muted/40" />
+                  <p>No saves recorded yet.</p>
+                  <p className="text-xs text-text-muted mt-1">Save your page to start tracking history.</p>
+                </div>
+              ) : versionHistory.map((entry, i) => {
+                const d = new Date(entry.ts);
+                const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={entry.ts} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
+                    <div>
+                      <p className="text-xs font-medium text-text-primary flex items-center gap-2">
+                        {i === 0 && <span className="text-[10px] rounded-full bg-accent/15 text-accent px-1.5 py-0.5 font-semibold">Latest</span>}
+                        {label}
+                      </p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{entry.widgetCount} widget{entry.widgetCount !== 1 ? "s" : ""}</p>
+                    </div>
+                    <button
+                      onClick={() => restoreVersion(entry)}
+                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -554,7 +554,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Screenshot Gallery ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="Screenshots" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-6xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -700,7 +700,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Demo Preview ─── */}
-      <section id="demo" className="py-24 md:py-32 border-t border-border">
+      <section id="demo" aria-label="Demo" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="text-center mb-12">
@@ -780,7 +780,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Comparison ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="Comparison" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-5xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -851,7 +851,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Open Source Banner ─── */}
-      <section className="py-20 md:py-28 border-t border-border">
+      <section aria-label="Open source" className="py-20 md:py-28 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="relative rounded-3xl border border-border bg-surface/60 backdrop-blur-sm p-10 md:p-16 text-center overflow-hidden">
@@ -886,8 +886,67 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── Social Proof ─── */}
+      <section aria-label="Social proof" className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-5xl px-6">
+          <FadeIn>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                Why Developers Trust PulseDock
+              </h2>
+              <p className="text-text-secondary text-lg max-w-xl mx-auto">
+                Open, transparent, and built for the community — no surprises.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <FadeIn delay={0.1}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Shield className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Open Source &amp; Private</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  MIT licensed. No telemetry, no phone home, no vendor lock-in. Your data stays yours.
+                </p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Users className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Community-Driven</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  Backed by an active GitHub community. Open issues, discussions, and PRs welcome.
+                </p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.3}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Server className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Built for Self-Hosters</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  Docker, Kubernetes, bare metal — runs anywhere. Documented and production-ready.
+                </p>
+              </div>
+            </FadeIn>
+          </div>
+          <FadeIn delay={0.4}>
+            <div className="text-center">
+              <a
+                href="https://github.com/No749ah/PulseDock"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-surface-elevated hover:bg-surface-hover border border-border hover:border-border-hover text-text-primary font-semibold px-6 py-3 rounded-xl transition-all text-base"
+              >
+                <Github className="w-5 h-5" />
+                Star us on GitHub
+                <ExternalLink className="w-4 h-4 text-text-muted" />
+              </a>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ─── Pricing ─── */}
-      <section id="pricing" className="py-24 md:py-32 border-t border-border">
+      <section id="pricing" aria-label="Pricing" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -979,7 +1038,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Final CTA ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="CTA" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">

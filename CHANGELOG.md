@@ -10,7 +10,17 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- **Tool registry expanded 1303 → 1385 tools (+82)** — New tool categories: AI/ML platforms, ERP/Business software, Search/Vector databases, IoT/Edge devices, Photo/Document services.
+- **Landing page — Social Proof section** — Three-card grid (Open Source & Private, Community-Driven, Built for Self-Hosters) with GitHub CTA, placed between Open Source Banner and Pricing sections.
+- **Branded 404 page** — Replaced interactive easter-egg 404 with a clean, branded `not-found.tsx` using PulseDock logo, accent-coloured 404 heading, and Dashboard/Home CTAs.
+- **Breadcrumbs component** — New `apps/web/app/components/Breadcrumbs.tsx` generic breadcrumb nav component for use across dashboard pages.
 - **Status page editor — universal config panel phase 2 controls** — Extended the shared widget properties sidebar with visibility rules (always/operational/degraded/outage + hide-when-no-data), click actions (none/monitor-detail/external URL), style controls (border toggle, radius, padding), and mobile behavior controls (normal/full-width/collapsed/hidden).
+
+### Fixed
+- **44 broken Simple Icons slugs** — Corrected icon slug mappings in the tool registry to match current Simple Icons v13 naming conventions.
+
+### Changed
+- **Accessibility improvements** — All hero section background blob animations changed from `animate-blob` to `motion-safe:animate-blob`. Added `aria-label` attributes to all major `<section>` elements on the landing page (Hero, Stats, Features, How it works, Screenshots, Demo, Comparison, Open source, Social proof, Pricing, CTA).
 
 ---
 

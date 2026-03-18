@@ -72,12 +72,8 @@ export default function StatusPagesPage() {
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Read directly from the form element to avoid any stale-closure issues
-    const formEl = e.currentTarget;
-    const titleEl = formEl.querySelector<HTMLInputElement>('input[name="title"]');
-    const slugEl = formEl.querySelector<HTMLInputElement>('input[name="slug"]');
-    const titleVal = (titleEl?.value ?? createTitle).trim();
-    const slugVal = (slugEl?.value ?? createSlug).trim();
+    const titleVal = createTitle.trim();
+    const slugVal = createSlug.trim();
 
     if (!titleVal) return;
     setCreating(true);

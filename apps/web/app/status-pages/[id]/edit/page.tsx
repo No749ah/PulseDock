@@ -57,6 +57,12 @@ import {
   Settings2,
   RefreshCw,
   History,
+  AlignStartVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignEndHorizontal,
+  AlignCenterVertical,
+  AlignCenterHorizontal,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -629,18 +635,17 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
       style={{ minHeight }}
       onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-widget]')) onSelect(null); }}
     >
-      {/* Grid guide lines when dragging */}
-      {isDraggingOverCanvas && (
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: `
-              repeating-linear-gradient(to right, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
-              repeating-linear-gradient(to bottom, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent ${ROW_H}px)
-            `,
-          }}
-        />
-      )}
+      {/* Grid guide lines — always visible (subtle), brighter when dragging */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
+            repeating-linear-gradient(to bottom, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
+          `,
+          transition: "opacity 0.15s ease",
+        }}
+      />
 
       {widgets.length === 0 && !isOver && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -1432,7 +1437,25 @@ export default function StatusPageEditorPage() {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
-      if (meta && e.key === "d") { e.preventDefault(); if (selectedId) duplicateWidget(selectedId); }
+      if (meta && e.key === "d") {
+        e.preventDefault();
+        // Group duplicate: duplicate all selected, or single if only one
+        const allSelected = new Set(selectedIds);
+        if (selectedId) allSelected.add(selectedId);
+        if (allSelected.size > 1) {
+          const maxY = Math.max(...widgets.map((w) => w.y + w.h), 0);
+          const copies: Widget[] = [];
+          allSelected.forEach((sid) => {
+            const src = widgets.find((w) => w.id === sid);
+            if (src) copies.push({ ...src, id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`, y: maxY + src.y, locked: false });
+          });
+          setWidgets((prev) => [...prev, ...copies]);
+          setSelectedIds(new Set(copies.map((c) => c.id)));
+          setSelectedId(copies[0]?.id ?? null);
+        } else if (selectedId) {
+          duplicateWidget(selectedId);
+        }
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (tag !== "INPUT" && tag !== "TEXTAREA") {
           e.preventDefault();
@@ -1486,6 +1509,32 @@ export default function StatusPageEditorPage() {
     );
   }
 
+  /** Align all multi-selected widgets (including primary selectedId) */
+  function alignSelected(dir: "left" | "right" | "top" | "bottom" | "center-h" | "center-v") {
+    const allSelected = new Set(selectedIds);
+    if (selectedId) allSelected.add(selectedId);
+    if (allSelected.size < 2) return;
+    const sel = widgets.filter((w) => allSelected.has(w.id));
+    const minX = Math.min(...sel.map((w) => w.x));
+    const maxX = Math.max(...sel.map((w) => w.x + w.w));
+    const minY = Math.min(...sel.map((w) => w.y));
+    const maxY = Math.max(...sel.map((w) => w.y + w.h));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (!allSelected.has(w.id)) return w;
+        switch (dir) {
+          case "left": return { ...w, x: minX };
+          case "right": return { ...w, x: Math.max(0, maxX - w.w) };
+          case "top": return { ...w, y: minY };
+          case "bottom": return { ...w, y: Math.max(0, maxY - w.h) };
+          case "center-h": return { ...w, x: Math.round((minX + maxX) / 2 - w.w / 2) };
+          case "center-v": return { ...w, y: Math.round((minY + maxY) / 2 - w.h / 2) };
+          default: return w;
+        }
+      })
+    );
+  }
+
   function resizeWidgetById(widgetId: string, size: { w: number; h: number }) {
     const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
     const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
@@ -1526,9 +1575,14 @@ export default function StatusPageEditorPage() {
 
       if (deltaCol === 0 && deltaRow === 0) return;
 
+      // Collect all widget IDs to move (multi-select group or single)
+      const allSelected = new Set(selectedIds);
+      if (selectedId) allSelected.add(selectedId);
+      const moveSet = allSelected.size > 1 ? allSelected : new Set([widgetId]);
+
       setWidgets((prev) =>
         prev.map((w) => {
-          if (w.id !== widgetId) return w;
+          if (!moveSet.has(w.id) || w.locked) return w;
           const newX = Math.max(0, Math.min(COL_COUNT - w.w, w.x + deltaCol));
           const newY = Math.max(0, w.y + deltaRow);
           return { ...w, x: newX, y: newY };
@@ -1586,18 +1640,46 @@ export default function StatusPageEditorPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-secondary/60">{widgets.length} widget{widgets.length !== 1 ? "s" : ""}</span>
-            {selectedIds.size > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
-                {selectedIds.size + (selectedId && !selectedIds.has(selectedId) ? 1 : 0)} selected
-                <button
-                  onClick={() => { setSelectedId(null); setSelectedIds(new Set()); }}
-                  className="ml-1 hover:text-accent/70 transition"
-                  title="Deselect all"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
-              </span>
-            )}
+            {selectedIds.size > 0 && (() => {
+              const allSelected = new Set(selectedIds);
+              if (selectedId) allSelected.add(selectedId);
+              const count = allSelected.size;
+              return (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+                    {count} selected
+                    <button
+                      onClick={() => { setSelectedId(null); setSelectedIds(new Set()); }}
+                      className="ml-1 hover:text-accent/70 transition"
+                      title="Deselect all"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                  {count >= 2 && (
+                    <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden" title="Align selected widgets">
+                      {([
+                        { icon: AlignStartVertical, dir: "left" as const, title: "Align left edges" },
+                        { icon: AlignCenterVertical, dir: "center-h" as const, title: "Center horizontally" },
+                        { icon: AlignEndVertical, dir: "right" as const, title: "Align right edges" },
+                        { icon: AlignStartHorizontal, dir: "top" as const, title: "Align top edges" },
+                        { icon: AlignCenterHorizontal, dir: "center-v" as const, title: "Center vertically" },
+                        { icon: AlignEndHorizontal, dir: "bottom" as const, title: "Align bottom edges" },
+                      ] as const).map(({ icon: Icon, dir, title }) => (
+                        <button
+                          key={dir}
+                          onClick={() => alignSelected(dir)}
+                          title={title}
+                          className="flex items-center justify-center px-2 py-1.5 text-text-secondary/60 transition hover:bg-accent/10 hover:text-accent"
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {page.isPublished && (
               <a
                 href={`${publicBase}/status/${page.slug}`}

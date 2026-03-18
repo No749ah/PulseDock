@@ -1,3 +1,20 @@
+## Status Summary (2026-03-18 13:20 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
+- **Security/Audit:** ⚠️ 10 moderate vulns (transitive); no high/critical.
+- **Deployment:** ✅ All routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-registry-and-docs (7 commits ahead of dev)
+- **This session (2026-03-18 13:20 UTC):**
+  - **Registry**: 1303 → 1385 tools (+82: AI/ML, ERP/Business, Search/Vector, IoT/Edge, Photo/Docs). Fixed 40+ broken Simple Icons slugs.
+  - **Editor UX P2**: Widget Lock, Responsive Preview toggle (Desktop/Tablet/Mobile), Canvas Zoom (30%-200%, Ctrl+scroll)
+  - **Template Gallery**: 7 preset status page layouts (Minimal, Full Dashboard, SLA Report, Incident, Version Overview, Performance, Maintenance)
+  - **New widgets**: code-block (monospace display), video-embed (YouTube/Vimeo)
+  - **RSS Feed**: `GET /v1/public/status/:slug/feed.xml` — RSS 2.0 incident feed
+  - **Landing page**: Updated stats (1400+ tools, 65+ widgets, 86+ templates)
+  - **Keyboard shortcuts**: `?` key opens global shortcuts help dialog
+  - **Breadcrumbs**: Navigation breadcrumb component wired into monitor detail page
+  - **Monitor card view**: Grid/table toggle for monitors page
+  - **Live notification bell**: Shows real recent failure count (not static)
+
 ## Status Summary (2026-03-18 13:02 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.

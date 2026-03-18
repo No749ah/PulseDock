@@ -86,12 +86,15 @@ export class MonitorsController {
   @Get('runs')
   @ApiOperation({ summary: 'Recent check runs', description: 'Returns recent check results across all monitors for the authenticated user.' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max results (default: 10)' })
+  @ApiQuery({ name: 'since', required: false, description: 'ISO-8601 timestamp — only return runs after this time' })
   @ApiResponse({ status: 200, description: 'Recent runs returned.' })
   getRecentRuns(
     @Req() req: { user: { id: string } },
     @Query('limit') limit?: string,
+    @Query('since') since?: string,
   ) {
-    return this.monitorsService.getRecentRuns(req.user.id, Number(limit) || 10);
+    const sinceDate = since ? new Date(since) : undefined;
+    return this.monitorsService.getRecentRuns(req.user.id, Number(limit) || 10, sinceDate);
   }
 
   @Get(':id/runs')

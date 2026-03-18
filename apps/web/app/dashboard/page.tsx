@@ -64,10 +64,13 @@ export default function DashboardPage() {
   const [hasAlertChannels, setHasAlertChannels] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30); // seconds: 10, 30, 60, 300
+  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d" | "30d">("24h");
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setTick] = useState(0); // force re-render for "last updated" text
+
+  const timeRangeToMs: Record<string, number> = { "1h": 3600000, "6h": 21600000, "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
 
   const loadDashboard = useCallback(async (silent = false) => {
     try {
@@ -76,7 +79,9 @@ export default function DashboardPage() {
       setError("");
 
       const monitorsData = await api<Monitor[]>("/v1/monitors");
-      const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=50");
+      const sinceMs = timeRangeToMs[timeRange] ?? 86400000;
+      const since = new Date(Date.now() - sinceMs).toISOString();
+      const runsData = await api<MonitorRun[]>(`/v1/monitors/runs?limit=200&since=${encodeURIComponent(since)}`);
       if (!silent) {
         try {
           const channels = await api<{ id: string }[]>("/v1/alert-channels");
@@ -96,7 +101,8 @@ export default function DashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -201,8 +207,26 @@ export default function DashboardPage() {
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
       <div className="space-y-8">
-        {/* Auto-refresh controls */}
-        <div className="flex items-center justify-end gap-2">
+        {/* Controls row: time range + auto-refresh */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Time range selector */}
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface overflow-hidden">
+            {(["1h", "6h", "24h", "7d", "30d"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setTimeRange(r)}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  timeRange === r
+                    ? "bg-accent/10 text-accent"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
           {lastRefreshedText && (
             <span className="text-xs text-text-secondary opacity-60">{lastRefreshedText}</span>
           )}
@@ -233,6 +257,7 @@ export default function DashboardPage() {
             <RefreshCw className="w-3 h-3" />
             Refresh
           </button>
+          </div>
         </div>
         {error && (
           <FadeIn>

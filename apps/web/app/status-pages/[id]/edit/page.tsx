@@ -43,6 +43,14 @@ import {
   Copy,
   Undo2,
   Redo2,
+  Lock,
+  Unlock,
+  Monitor,
+  Tablet,
+  Smartphone,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -58,6 +66,7 @@ interface Widget {
   y: number;
   w: number;
   h: number;
+  locked?: boolean;
   config: {
     monitorId?: string;
     monitorIds?: string[];
@@ -68,6 +77,8 @@ interface Widget {
     [key: string]: unknown;
   };
 }
+
+type ViewportMode = "desktop" | "tablet" | "mobile";
 
 interface PageLayout {
   widgets: Widget[];
@@ -296,12 +307,15 @@ interface CanvasWidgetProps {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
+  const isLocked = Boolean(widget.locked);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
+    disabled: isLocked,
   });
 
   // Mutable ref so the mousemove handler always reads the latest widget dimensions
@@ -365,14 +379,15 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
       {/* Header bar with drag handle + title */}
       <div className="flex items-center gap-1 border-b border-border/60 px-3 py-2">
         <div
-          {...listeners}
-          {...attributes}
-          className="cursor-grab p-0.5 text-text-secondary/40 hover:text-text-secondary active:cursor-grabbing"
+          {...(isLocked ? {} : { ...listeners, ...attributes })}
+          className={`p-0.5 text-text-secondary/40 ${isLocked ? "cursor-not-allowed opacity-30" : "cursor-grab hover:text-text-secondary active:cursor-grabbing"}`}
           onClick={(e) => e.stopPropagation()}
+          title={isLocked ? "Widget is locked — unlock to move" : "Drag to move"}
         >
           <GripVertical className="h-3.5 w-3.5" />
         </div>
         <Icon className="h-3 w-3 text-accent/70" />
+        {isLocked && <Lock className="h-2.5 w-2.5 text-amber-400/70 flex-shrink-0" aria-label="Locked" />}
         <span className="flex-1 text-xs font-medium text-text-secondary">
           {paletteItem?.label ?? widget.type}
         </span>
@@ -381,6 +396,17 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
             {widget.config.label as string}
           </span>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleLock(widget.id); }}
+          className={`ml-1 flex h-5 w-5 items-center justify-center rounded transition ${
+            isLocked
+              ? "text-amber-400 opacity-100"
+              : "text-text-secondary/40 opacity-0 hover:bg-amber-500/10 hover:text-amber-400 group-hover:opacity-100"
+          }`}
+          title={isLocked ? "Unlock widget" : "Lock widget (prevent accidental moves)"}
+        >
+          {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+        </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDuplicate(widget.id); }}
           className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-accent/10 hover:text-accent group-hover:opacity-100"
@@ -399,7 +425,8 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
       <div className="flex-1 overflow-hidden p-2">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
       </div>
-      {/* Resize handle — bottom-right corner */}
+      {/* Resize handle — bottom-right corner (hidden when locked) */}
+      {!isLocked && (
       <div
         onMouseDown={handleResizeMouseDown}
         onClick={(e) => e.stopPropagation()}
@@ -414,6 +441,7 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
           <circle cx="8" cy="4.5" r="1.1" fill="currentColor" />
         </svg>
       </div>
+      )}
     </div>
   );
 }
@@ -425,13 +453,16 @@ interface CanvasProps {
   selectedId: string | null;
   isDraggingOverCanvas: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
+  zoom: number;
+  viewportMode: ViewportMode;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onDuplicate, onResize }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -447,12 +478,23 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
     }
   }, [setNodeRef, canvasRef]);
 
+  const viewportWidth = viewportMode === "mobile" ? 375 : viewportMode === "tablet" ? 768 : undefined;
+
   return (
+    <div
+      style={{
+        transform: `scale(${zoom})`,
+        transformOrigin: "top center",
+        width: viewportWidth ? `${viewportWidth}px` : "100%",
+        margin: viewportWidth ? "0 auto" : undefined,
+        transition: "transform 0.15s ease, width 0.2s ease",
+      }}
+    >
     <div
       ref={combinedRef}
       className={`relative w-full transition-colors ${
         isOver ? "bg-accent/5" : ""
-      }`}
+      } ${viewportWidth ? "border-x border-border/40 shadow-xl shadow-black/20" : ""}`}
       style={{ minHeight }}
       onClick={() => onSelect(null)}
     >
@@ -502,9 +544,11 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             onDelete={onDelete}
             onDuplicate={onDuplicate}
             onResize={onResize}
+            onToggleLock={onToggleLock}
           />
         );
       })}
+    </div>
     </div>
   );
 }
@@ -520,9 +564,10 @@ interface ConfigPanelProps {
   onResize: (size: { w: number; h: number }) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -866,6 +911,18 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
       <div className="space-y-1.5 pt-2">
         <button
+          onClick={() => onToggleLock(w.id)}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            w.locked
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+              : "border-border bg-bg text-text-secondary hover:text-text-primary"
+          }`}
+          title={w.locked ? "Unlock this widget to allow moving and resizing" : "Lock this widget to prevent accidental moves"}
+        >
+          {w.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+          {w.locked ? "Unlock Widget" : "Lock Widget"}
+        </button>
+        <button
           onClick={() => onDuplicate(w.id)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
         >
@@ -907,6 +964,8 @@ export default function StatusPageEditorPage() {
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [paletteSearch, setPaletteSearch] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -1064,10 +1123,20 @@ export default function StatusPageEditorPage() {
     const src = widgets.find((w) => w.id === widgetId);
     if (!src) return;
     const { x, y } = autoPlace(src.w, src.h);
-    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y };
+    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y, locked: false };
     setWidgets((prev) => [...prev, copy]);
     setSelectedId(copy.id);
   }
+
+  function toggleWidgetLock(widgetId: string) {
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === widgetId ? { ...w, locked: !w.locked } : w))
+    );
+  }
+
+  function zoomIn() { setZoom((z) => Math.min(2, parseFloat((z + 0.1).toFixed(1)))); }
+  function zoomOut() { setZoom((z) => Math.max(0.3, parseFloat((z - 0.1).toFixed(1)))); }
+  function zoomReset() { setZoom(1); }
 
   function pushHistory(newWidgets: Widget[]) {
     if (isUndoRedoRef.current) return;
@@ -1119,8 +1188,21 @@ export default function StatusPageEditorPage() {
       }
       if (e.key === "Escape") setSelectedId(null);
     }
+    function handleWheel(e: WheelEvent) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom((z) => {
+          const delta = e.deltaY > 0 ? -0.1 : 0.1;
+          return Math.max(0.3, Math.min(2, parseFloat((z + delta).toFixed(1))));
+        });
+      }
+    }
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, widgets]);
 
@@ -1170,8 +1252,10 @@ export default function StatusPageEditorPage() {
         addWidget(type);
       }
     } else if (activeId.startsWith("canvas-")) {
-      // Move existing widget
+      // Move existing widget (skip if locked)
       const widgetId = activeId.replace("canvas-", "");
+      const movingWidget = widgets.find((w) => w.id === widgetId);
+      if (movingWidget?.locked) return;
       if (!canvasRef.current) return;
       const containerWidth = canvasRef.current.getBoundingClientRect().width;
       const colWidth = containerWidth / COL_COUNT;
@@ -1280,6 +1364,44 @@ export default function StatusPageEditorPage() {
             >
               <Redo2 className="h-3.5 w-3.5" />
             </button>
+            {/* Viewport mode (responsive preview) */}
+            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
+              {([
+                { mode: "desktop" as ViewportMode, icon: Monitor, title: "Desktop view" },
+                { mode: "tablet" as ViewportMode, icon: Tablet, title: "Tablet view (768px)" },
+                { mode: "mobile" as ViewportMode, icon: Smartphone, title: "Mobile view (375px)" },
+              ] as const).map(({ mode, icon: Icon, title }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewportMode(mode)}
+                  title={title}
+                  className={`flex items-center justify-center px-2.5 py-1.5 text-xs transition ${
+                    viewportMode === mode
+                      ? "bg-accent/10 text-accent"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+
+            {/* Canvas zoom controls */}
+            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
+              <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={zoomReset} title="Reset zoom" className="px-2 py-1.5 text-xs font-mono text-text-secondary hover:text-text-primary transition min-w-[40px] text-center">
+                {Math.round(zoom * 100)}%
+              </button>
+              <button onClick={zoomIn} title="Zoom in (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => { zoomReset(); setViewportMode("desktop"); }} title="Fit to screen" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition border-l border-border">
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            </div>
+
             {/* Auto-save toggle */}
             <button
               onClick={() => setAutoSaveEnabled(v => !v)}
@@ -1365,15 +1487,26 @@ export default function StatusPageEditorPage() {
 
           {/* Canvas */}
           <main className="flex-1 overflow-auto bg-bg/50 p-6">
+            {viewportMode !== "desktop" && (
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                  {viewportMode === "tablet" ? <Tablet className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
+                  {viewportMode === "tablet" ? "Tablet preview — 768px" : "Mobile preview — 375px"}
+                </span>
+              </div>
+            )}
             <CanvasDropZone
               widgets={widgets}
               selectedId={selectedId}
               isDraggingOverCanvas={isDraggingOverCanvas}
               canvasRef={canvasRef}
+              zoom={zoom}
+              viewportMode={viewportMode}
               onSelect={setSelectedId}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
               onResize={resizeWidgetById}
+              onToggleLock={toggleWidgetLock}
             />
           </main>
 
@@ -1392,6 +1525,7 @@ export default function StatusPageEditorPage() {
               onResize={updateWidgetSize}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
+              onToggleLock={toggleWidgetLock}
             />
           </aside>
         </div>

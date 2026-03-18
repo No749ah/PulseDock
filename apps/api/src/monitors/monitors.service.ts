@@ -391,11 +391,13 @@ export class MonitorsService {
       where: { monitor: { userId } },
       orderBy: { checkedAt: 'desc' },
       take: limit,
+      include: { monitor: { select: { type: true } } },
     });
     return runs.map((r) => ({
       id: r.id,
       userId: r.userId,
       monitorId: r.monitorId,
+      monitorType: r.monitor?.type ?? null,
       checkedAt: r.checkedAt.toISOString(),
       ok: r.ok,
       statusCode: r.status,
@@ -406,11 +408,17 @@ export class MonitorsService {
   }
 
   async runs(userId: string) {
-    const runs = await this.prisma.monitorRun.findMany({ where: { userId }, orderBy: { checkedAt: 'desc' }, take: 200 });
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId },
+      orderBy: { checkedAt: 'desc' },
+      take: 200,
+      include: { monitor: { select: { type: true } } },
+    });
     return runs.map((r) => ({
       id: r.id,
       userId: r.userId,
       monitorId: r.monitorId,
+      monitorType: r.monitor?.type ?? null,
       checkedAt: r.checkedAt.toISOString(),
       ok: r.ok,
       statusCode: r.status,

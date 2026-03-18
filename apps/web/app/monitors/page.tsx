@@ -965,17 +965,29 @@ function MonitorsPageInner() {
                               {!monitor.enabled ? (
                                 <Badge variant="warning">Disabled</Badge>
                               ) : lastRun ? (
-                                lastRun.level === "yellow" ? (
-                                  <Badge variant="warning">Degraded</Badge>
-                                ) : lastRun.ok ? (
-                                  <Badge variant="success">OK</Badge>
+                                (monitor.type === "GIT_RELEASE" || monitor.type === "DOCKER_IMAGE") ? (
+                                  lastRun.level === "green" ? (
+                                    <Badge variant="success">Up to date</Badge>
+                                  ) : lastRun.level === "yellow" ? (
+                                    <Badge variant="warning">Update available</Badge>
+                                  ) : (
+                                    <Badge variant="danger">Major update</Badge>
+                                  )
                                 ) : (
-                                  <Badge variant="danger">Failed</Badge>
+                                  lastRun.level === "yellow" ? (
+                                    <Badge variant="warning">Degraded</Badge>
+                                  ) : lastRun.ok ? (
+                                    <Badge variant="success">Operational</Badge>
+                                  ) : (
+                                    <Badge variant="danger">Down</Badge>
+                                  )
                                 )
                               ) : (
                                 <Badge>Pending</Badge>
                               )}
-                              <Sparkline runs={runs.filter((r) => r.monitorId === monitor.id).slice(0, 30)} width={80} height={16} />
+                              {(monitor.type !== "GIT_RELEASE" && monitor.type !== "DOCKER_IMAGE") && (
+                                <Sparkline runs={runs.filter((r) => r.monitorId === monitor.id).slice(0, 30)} width={80} height={16} />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">

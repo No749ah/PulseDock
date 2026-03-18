@@ -294,6 +294,52 @@ export class StatusPagesService {
         return { monitorId, uptimePct, periodDays, total };
       }
 
+      case 'uptime-timeline': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const days = Math.min(Math.max((widget.config.days as number) ?? 90, 7), 365);
+        const now = new Date();
+        // Build day buckets: index 0 = oldest, index (days-1) = today
+        const buckets: Array<{ date: string; level: 'green' | 'yellow' | 'red' | 'no-data' }> = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const d = new Date(now);
+          d.setUTCHours(0, 0, 0, 0);
+          d.setUTCDate(d.getUTCDate() - i);
+          buckets.push({
+            date: d.toISOString().slice(0, 10),
+            level: 'no-data',
+          });
+        }
+        const since = new Date(now);
+        since.setUTCHours(0, 0, 0, 0);
+        since.setUTCDate(since.getUTCDate() - (days - 1));
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since } },
+          select: { level: true, checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        });
+        // Group runs by date string
+        const byDate = new Map<string, { green: number; yellow: number; red: number }>();
+        for (const run of runs) {
+          const key = (run.checkedAt as Date).toISOString().slice(0, 10);
+          const bucket = byDate.get(key) ?? { green: 0, yellow: 0, red: 0 };
+          if (run.level === 'green') bucket.green++;
+          else if (run.level === 'yellow') bucket.yellow++;
+          else if (run.level === 'red') bucket.red++;
+          byDate.set(key, bucket);
+        }
+        const timeline = buckets.map((b) => {
+          const counts = byDate.get(b.date);
+          if (!counts) return { date: b.date, level: 'no-data' as const };
+          const total = counts.green + counts.yellow + counts.red;
+          if (total === 0) return { date: b.date, level: 'no-data' as const };
+          // Majority-failed → red; any failure → yellow; all ok → green
+          const failRate = (counts.yellow + counts.red) / total;
+          const level = failRate >= 0.5 ? 'red' : failRate > 0 ? 'yellow' : 'green';
+          return { date: b.date, level, counts };
+        });
+        return { monitorId, days, timeline };
+      }
+
       case 'current-status-badge': {
         if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
         const monitor = await this.prisma.monitor.findFirst({

@@ -798,5 +798,93 @@ describe('StatusPagesService', () => {
         NotFoundException,
       );
     });
+
+    it('uptime-timeline returns timeline with correct level for all-green day', async () => {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const layout = {
+        widgets: [{ id: 'wt1', type: 'uptime-timeline', config: { monitorId: 'mon-1', days: 7 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { level: 'green', checkedAt: today },
+        { level: 'green', checkedAt: today },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'wt1');
+      expect(result.days).toBe(7);
+      expect(Array.isArray(result.timeline)).toBe(true);
+      const timeline = result.timeline as Array<{ date: string; level: string }>;
+      expect(timeline).toHaveLength(7);
+      const todayKey = today.toISOString().slice(0, 10);
+      const todayEntry = timeline.find((t) => t.date === todayKey);
+      expect(todayEntry?.level).toBe('green');
+    });
+
+    it('uptime-timeline marks day as red when majority of checks failed', async () => {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const layout = {
+        widgets: [{ id: 'wt2', type: 'uptime-timeline', config: { monitorId: 'mon-1', days: 7 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      const runsForToday = [
+        { level: 'red', checkedAt: today },
+        { level: 'red', checkedAt: today },
+        { level: 'green', checkedAt: today },
+      ];
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runsForToday);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'wt2');
+      const timeline = result.timeline as Array<{ date: string; level: string }>;
+      const todayKey = today.toISOString().slice(0, 10);
+      const todayEntry = timeline.find((t) => t.date === todayKey);
+      expect(todayEntry?.level).toBe('red');
+    });
+
+    it('uptime-timeline marks day as yellow when minority of checks failed', async () => {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const layout = {
+        widgets: [{ id: 'wt3', type: 'uptime-timeline', config: { monitorId: 'mon-1', days: 7 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      const runsForToday = [
+        { level: 'red', checkedAt: today },
+        { level: 'green', checkedAt: today },
+        { level: 'green', checkedAt: today },
+        { level: 'green', checkedAt: today },
+      ];
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runsForToday);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'wt3');
+      const timeline = result.timeline as Array<{ date: string; level: string }>;
+      const todayKey = today.toISOString().slice(0, 10);
+      const todayEntry = timeline.find((t) => t.date === todayKey);
+      expect(todayEntry?.level).toBe('yellow');
+    });
+
+    it('uptime-timeline returns no-data for days with no runs', async () => {
+      const layout = {
+        widgets: [{ id: 'wt4', type: 'uptime-timeline', config: { monitorId: 'mon-1', days: 7 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'wt4');
+      const timeline = result.timeline as Array<{ date: string; level: string }>;
+      expect(timeline.every((t) => t.level === 'no-data')).toBe(true);
+    });
+
+    it('uptime-timeline throws BadRequestException without monitorId', async () => {
+      const layout = {
+        widgets: [{ id: 'wt5', type: 'uptime-timeline', config: {}, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'wt5')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 });

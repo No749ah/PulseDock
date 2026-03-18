@@ -295,35 +295,73 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
   );
 }
 
-// Uptime Timeline — 90 squares
-export function UptimeTimeline({ widget, monitors }: WidgetProps) {
+// Uptime Timeline — per-day status bars from real MonitorRun data
+export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId);
-  const days = 90;
   const label = widget.config.label ?? monitor?.name ?? "Uptime Timeline";
 
-  const squares = Array.from({ length: days }, (_, i) => {
-    // Last square = current status, rest = green (simplified)
-    const isLast = i === days - 1;
-    if (!isLast || !monitor) return "green";
-    return monitor.level;
-  });
+  // Real data from API
+  const widgetData = extra.widgetDataById[widget.id] as {
+    days?: number;
+    timeline?: Array<{ date: string; level: "green" | "yellow" | "red" | "no-data"; counts?: { green: number; yellow: number; red: number } }>;
+  } | null | undefined;
+
+  const days = widgetData?.days ?? (widget.config.days as number) ?? 90;
+  const timeline = widgetData?.timeline;
+
+  // Fallback: simple placeholder squares when no data yet
+  const squares: Array<{ date: string; level: string; title: string }> = timeline
+    ? timeline.map((d) => ({
+        date: d.date,
+        level: d.level,
+        title: d.level === "no-data"
+          ? `${d.date}: No data`
+          : d.level === "green"
+          ? `${d.date}: All checks passed${d.counts ? ` (${d.counts.green} ok)` : ""}`
+          : d.level === "yellow"
+          ? `${d.date}: Some failures${d.counts ? ` (${d.counts.yellow + d.counts.red} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`
+          : `${d.date}: Majority failed${d.counts ? ` (${d.counts.red + d.counts.yellow} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`,
+      }))
+    : Array.from({ length: days }, (_, i) => ({
+        date: `Day ${i + 1}`,
+        level: "no-data",
+        title: `Day ${i + 1}: No data`,
+      }));
+
+  const upDays = squares.filter((s) => s.level === "green").length;
+  const dataDays = squares.filter((s) => s.level !== "no-data").length;
+  const uptimePct = dataDays > 0 ? Math.round((upDays / dataDays) * 1000) / 10 : null;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-text-primary">{label}</span>
-        <span className="text-xs text-text-secondary">90-day history</span>
+        <span className="text-xs text-text-secondary">
+          {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}
+        </span>
       </div>
-      <div className="flex gap-0.5 flex-wrap">
-        {squares.map((level, i) => (
+      <div className="flex gap-[3px] flex-wrap">
+        {squares.map((s, i) => (
           <div
             key={i}
-            className={`h-3 w-3 rounded-sm ${
-              level === "green" ? "bg-green-500/70" : level === "yellow" ? "bg-yellow-500/70" : "bg-red-500/70"
+            className={`h-3 w-3 rounded-sm transition-opacity hover:opacity-80 ${
+              s.level === "green"
+                ? "bg-green-500"
+                : s.level === "yellow"
+                ? "bg-yellow-500"
+                : s.level === "red"
+                ? "bg-red-500"
+                : "bg-border"
             }`}
-            title={`Day ${i + 1}`}
+            title={s.title}
           />
         ))}
+      </div>
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-text-secondary">
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-green-500" />Up</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-yellow-500" />Degraded</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-red-500" />Down</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-border" />No data</span>
       </div>
     </div>
   );

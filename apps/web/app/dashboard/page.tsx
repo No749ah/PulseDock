@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, Clock, Plus, TrendingUp } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, Clock, Plus, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -15,6 +15,9 @@ import { FadeIn } from "../components/FadeIn";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 
+const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
+const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+
 interface Monitor {
   id: string;
   name: string;
@@ -25,6 +28,7 @@ interface Monitor {
 interface MonitorRun {
   id: string;
   monitorId: string;
+  monitorType?: string | null;
   ok: boolean;
   statusCode: number;
   latencyMs?: number;
@@ -35,9 +39,17 @@ interface MonitorRun {
 
 interface DashboardStats {
   totalMonitors: number;
-  activeMonitors: number;
-  uptime: number;
-  lastCheck: string;
+  // Uptime monitors
+  uptimeMonitors: number;
+  uptimePct: number;
+  uptimeGreen: number;
+  uptimeYellow: number;
+  uptimeRed: number;
+  // Version monitors
+  versionMonitors: number;
+  versionUpToDate: number;
+  versionUpdateAvailable: number;
+  versionMajorBehind: number;
 }
 
 export default function DashboardPage() {
@@ -58,37 +70,23 @@ export default function DashboardPage() {
       return;
     }
 
-    const computeStats = (monitorsData: Monitor[], runsData: MonitorRun[]) => {
-      const active = monitorsData.filter((m) => m.enabled).length;
-      const upMonitors = runsData.filter((r) => r.ok).length;
-      const uptime = runsData.length > 0 ? Math.round((upMonitors / runsData.length) * 100) : 100;
-
-      setStats({
-        totalMonitors: monitorsData.length,
-        activeMonitors: active,
-        uptime,
-        lastCheck: new Date().toISOString(),
-      });
-    };
-
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
 
         const monitorsData = await api<Monitor[]>("/v1/monitors");
-        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=10");
-        // Check if user has any alert channels (for onboarding)
+        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=20");
         try {
           const channels = await api<{ id: string }[]>("/v1/alert-channels");
           setHasAlertChannels(Array.isArray(channels) && channels.length > 0);
         } catch {
-          // non-critical, ignore
+          // non-critical
         }
 
         setMonitors(monitorsData);
         setRuns(runsData);
-        computeStats(monitorsData, runsData);
+        setStats(computeStats(monitorsData, runsData));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load dashboard");
       } finally {
@@ -99,19 +97,12 @@ export default function DashboardPage() {
     loadDashboard();
 
     const socket = createRealtimeSocket(currentUser.id);
-
-    socket.on("connect", () => {
-      socket.emit("subscribe", { userId: currentUser.id });
-    });
+    socket.on("connect", () => { socket.emit("subscribe", { userId: currentUser.id }); });
 
     socket.on("monitor.created", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev];
-        setStats((existing) =>
-          existing
-            ? { ...existing, totalMonitors: next.length, activeMonitors: next.filter((m) => m.enabled).length }
-            : existing,
-        );
+        setStats(computeStats(next, runs));
         return next;
       });
     });
@@ -119,9 +110,7 @@ export default function DashboardPage() {
     socket.on("monitor.updated", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.map((m) => (m.id === payload.id ? payload : m));
-        setStats((existing) =>
-          existing ? { ...existing, activeMonitors: next.filter((m) => m.enabled).length } : existing,
-        );
+        setStats(computeStats(next, runs));
         return next;
       });
     });
@@ -129,36 +118,28 @@ export default function DashboardPage() {
     socket.on("monitor.deleted", (payload: { id: string }) => {
       setMonitors((prev) => {
         const next = prev.filter((m) => m.id !== payload.id);
-        setStats((existing) =>
-          existing
-            ? { ...existing, totalMonitors: next.length, activeMonitors: next.filter((m) => m.enabled).length }
-            : existing,
-        );
+        const nextRuns = runs.filter((r) => r.monitorId !== payload.id);
+        setRuns(nextRuns);
+        setStats(computeStats(next, nextRuns));
         return next;
       });
-      setRuns((prev) => prev.filter((r) => r.monitorId !== payload.id));
     });
 
     socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
       if (!payload?.run) return;
       setRuns((prev) => {
-        const nextRuns = [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 10);
-        setStats((existing) => {
-          if (!existing) return existing;
-          const upMonitors = nextRuns.filter((r) => r.ok).length;
-          const uptime = nextRuns.length > 0 ? Math.round((upMonitors / nextRuns.length) * 100) : 100;
-          return { ...existing, uptime, lastCheck: payload.run.checkedAt };
-        });
+        const nextRuns = [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 20);
+        setStats((existing) => existing ? computeStats(monitors, nextRuns) : existing);
         return nextRuns;
       });
     });
 
-    return () => {
-      socket.disconnect();
-    };
+    return () => { socket.disconnect(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   if (!user) return null;
+
   if (loading) {
     return (
       <AppFrame title="Dashboard" subtitle="Loading...">
@@ -169,10 +150,14 @@ export default function DashboardPage() {
     );
   }
 
+  const uptimeMonitors = monitors.filter((m) => UPTIME_TYPES.has(m.type));
+  const versionMonitors = monitors.filter((m) => VERSION_TYPES.has(m.type));
+  const uptimeRuns = runs.filter((r) => !r.monitorType || UPTIME_TYPES.has(r.monitorType));
+  const versionRuns = runs.filter((r) => r.monitorType && VERSION_TYPES.has(r.monitorType));
+
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
       <div className="space-y-8">
-        {/* Error */}
         {error && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
@@ -182,7 +167,6 @@ export default function DashboardPage() {
           </FadeIn>
         )}
 
-        {/* Onboarding Checklist — shown to new users */}
         <FadeIn>
           <OnboardingChecklist
             userId={user.id}
@@ -191,67 +175,125 @@ export default function DashboardPage() {
           />
         </FadeIn>
 
-        {/* Stats Grid */}
+        {/* ── Uptime Monitors ─────────────────────────────────────── */}
         {stats && (
           <FadeIn>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-text-secondary text-sm mb-1">Total Monitors</p>
-                    <p className="text-3xl font-bold text-text-primary">{stats.totalMonitors}</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-text-secondary" />
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
+                <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Monitors</p>
+                      <p className="text-3xl font-bold text-text-primary">{stats.uptimeMonitors}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-accent/10">
+                      <Activity className="w-6 h-6 text-accent" />
+                    </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-accent/10">
-                    <Activity className="w-6 h-6 text-accent" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-text-secondary text-sm mb-1">Active</p>
-                    <p className="text-3xl font-bold text-text-primary">{stats.activeMonitors}</p>
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Uptime</p>
+                      <p className="text-3xl font-bold text-text-primary">
+                        {stats.uptimePct}
+                        <span className="text-lg text-text-secondary">%</span>
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-accent/10">
+                      <TrendingUp className="w-6 h-6 text-accent" />
+                    </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-success/10">
-                    <CheckCircle2 className="w-6 h-6 text-success" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-text-secondary text-sm mb-1">Uptime</p>
-                    <p className="text-3xl font-bold text-text-primary">
-                      {stats.uptime}
-                      <span className="text-lg text-text-secondary">%</span>
-                    </p>
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Operational</p>
+                      <p className="text-3xl font-bold text-success">{stats.uptimeGreen}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-success/10">
+                      <CheckCircle2 className="w-6 h-6 text-success" />
+                    </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-accent/10">
-                    <TrendingUp className="w-6 h-6 text-accent" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-text-secondary text-sm mb-1">Last Check</p>
-                    <p className="text-lg font-mono text-text-primary mt-1">
-                      {relativeTime(stats.lastCheck)}
-                    </p>
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Down / Degraded</p>
+                      <p className="text-3xl font-bold text-danger">{stats.uptimeRed + stats.uptimeYellow}</p>
+                    </div>
+                    <div className={`p-3 rounded-xl ${stats.uptimeRed + stats.uptimeYellow > 0 ? "bg-danger/10" : "bg-surface-elevated"}`}>
+                      <AlertCircle className={`w-6 h-6 ${stats.uptimeRed + stats.uptimeYellow > 0 ? "text-danger" : "text-text-secondary"}`} />
+                    </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-surface-elevated">
-                    <Clock className="w-6 h-6 text-text-secondary" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
             </div>
           </FadeIn>
         )}
 
-        {/* Monitors Section */}
+        {/* ── Version / Release Monitors ───────────────────────────── */}
+        {stats && stats.versionMonitors > 0 && (
+          <FadeIn>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-text-secondary" />
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Version Tracking</h2>
+                <span className="text-xs text-text-secondary opacity-60">Git releases · Docker images</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Tracked</p>
+                      <p className="text-3xl font-bold text-text-primary">{stats.versionMonitors}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-accent/10">
+                      <GitBranch className="w-6 h-6 text-accent" />
+                    </div>
+                  </div>
+                </Card>
+
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Up to Date</p>
+                      <p className="text-3xl font-bold text-success">{stats.versionUpToDate}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-success/10">
+                      <PackageCheck className="w-6 h-6 text-success" />
+                    </div>
+                  </div>
+                </Card>
+
+                <Card>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-text-secondary text-sm mb-1">Updates Available</p>
+                      <p className="text-3xl font-bold text-warning">{stats.versionUpdateAvailable + stats.versionMajorBehind}</p>
+                      {stats.versionMajorBehind > 0 && (
+                        <p className="text-xs text-danger mt-1">{stats.versionMajorBehind} major version{stats.versionMajorBehind !== 1 ? "s" : ""} behind</p>
+                      )}
+                    </div>
+                    <div className={`p-3 rounded-xl ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "bg-warning/10" : "bg-surface-elevated"}`}>
+                      <GitBranch className={`w-6 h-6 ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "text-warning" : "text-text-secondary"}`} />
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </FadeIn>
+        )}
+
+        {/* ── Monitors quick list ──────────────────────────────────── */}
         <FadeIn delay={0.1}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -291,25 +333,33 @@ export default function DashboardPage() {
                     <TableBody>
                       {monitors.map((monitor) => {
                         const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                        const isVersion = VERSION_TYPES.has(monitor.type);
                         return (
                           <TableRow key={monitor.id}>
                             <TableCell className="font-medium">{monitor.name}</TableCell>
-                            <TableCell className="text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
+                            <TableCell className="text-text-secondary">
+                              <div className="flex items-center gap-1.5">
+                                {isVersion && <GitBranch className="w-3.5 h-3.5 text-text-secondary opacity-60" />}
+                                {formatMonitorType(monitor.type)}
+                              </div>
+                            </TableCell>
                             <TableCell>
-                              {monitor.enabled ? (
-                                lastRun ? (
+                              {!monitor.enabled ? (
+                                <Badge variant="warning">Disabled</Badge>
+                              ) : lastRun ? (
+                                isVersion ? (
+                                  versionStatusBadge(lastRun.level)
+                                ) : (
                                   lastRun.level === "yellow" ? (
                                     <Badge variant="warning">Degraded</Badge>
                                   ) : lastRun.ok ? (
-                                    <Badge variant="success">OK</Badge>
+                                    <Badge variant="success">Operational</Badge>
                                   ) : (
-                                    <Badge variant="danger">Failed</Badge>
+                                    <Badge variant="danger">Down</Badge>
                                   )
-                                ) : (
-                                  <Badge variant="default">Pending</Badge>
                                 )
                               ) : (
-                                <Badge variant="warning">Disabled</Badge>
+                                <Badge variant="default">Pending</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-text-secondary text-sm">
@@ -319,7 +369,7 @@ export default function DashboardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push(`/monitors?id=${monitor.id}`)}
+                                onClick={() => router.push(isVersion ? `/versions` : `/monitors?id=${monitor.id}`)}
                                 className="text-accent hover:text-accent-hover"
                               >
                                 View →
@@ -336,7 +386,7 @@ export default function DashboardPage() {
           </div>
         </FadeIn>
 
-        {/* Recent Activity */}
+        {/* ── Recent Activity ──────────────────────────────────────── */}
         <FadeIn delay={0.2}>
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
@@ -349,36 +399,121 @@ export default function DashboardPage() {
                 <p className="text-text-secondary text-sm">Monitor runs will appear here once checks start running</p>
               </Card>
             ) : (
-              <Card>
-                <div className="space-y-1">
-                  {runs.slice(0, 5).map((run) => (
-                    <div key={run.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0">
-                      <div className="flex items-center gap-3">
-                        {run.ok ? (
-                          <div className="p-1.5 rounded-full bg-success/10">
-                            <CheckCircle2 className="w-4 h-4 text-success" />
-                          </div>
-                        ) : (
-                          <div className="p-1.5 rounded-full bg-danger/10">
-                            <AlertCircle className="w-4 h-4 text-danger" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-text-primary">{run.message}</p>
-                          <p className="text-text-secondary text-xs">
-                            {relativeTime(run.checkedAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={run.ok ? "success" : "danger"}>{String(run.statusCode)}</Badge>
+              <div className="space-y-4">
+                {/* Uptime activity */}
+                {uptimeRuns.length > 0 && (
+                  <Card>
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+                      <Activity className="w-4 h-4 text-text-secondary" />
+                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Uptime Checks</span>
                     </div>
-                  ))}
-                </div>
-              </Card>
+                    <div className="space-y-1">
+                      {uptimeRuns.slice(0, 5).map((run) => (
+                        <div key={run.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0">
+                          <div className="flex items-center gap-3">
+                            {run.ok ? (
+                              <div className="p-1.5 rounded-full bg-success/10">
+                                <CheckCircle2 className="w-4 h-4 text-success" />
+                              </div>
+                            ) : (
+                              <div className="p-1.5 rounded-full bg-danger/10">
+                                <AlertCircle className="w-4 h-4 text-danger" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-text-primary">{run.message}</p>
+                              <p className="text-text-secondary text-xs">{relativeTime(run.checkedAt)}</p>
+                            </div>
+                          </div>
+                          <Badge variant={run.ok ? "success" : "danger"}>{String(run.statusCode)}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Version activity */}
+                {versionRuns.length > 0 && (
+                  <Card>
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+                      <GitBranch className="w-4 h-4 text-text-secondary" />
+                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Version Checks</span>
+                    </div>
+                    <div className="space-y-1">
+                      {versionRuns.slice(0, 5).map((run) => (
+                        <div key={run.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-full ${run.level === "green" ? "bg-success/10" : run.level === "yellow" ? "bg-warning/10" : "bg-danger/10"}`}>
+                              <GitBranch className={`w-4 h-4 ${run.level === "green" ? "text-success" : run.level === "yellow" ? "text-warning" : "text-danger"}`} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-text-primary">{run.message}</p>
+                              <p className="text-text-secondary text-xs">{relativeTime(run.checkedAt)}</p>
+                            </div>
+                          </div>
+                          {versionStatusBadge(run.level)}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
             )}
           </div>
         </FadeIn>
       </div>
     </AppFrame>
   );
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function computeStats(monitorsData: Monitor[], runsData: MonitorRun[]): DashboardStats {
+  const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
+  const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+
+  const uptimeMonitors = monitorsData.filter((m) => UPTIME_TYPES.has(m.type));
+  const versionMonitors = monitorsData.filter((m) => VERSION_TYPES.has(m.type));
+
+  // Uptime: use latest run per monitor from runsData
+  let uptimeGreen = 0, uptimeYellow = 0, uptimeRed = 0;
+  for (const m of uptimeMonitors) {
+    if (!m.enabled) continue;
+    const latest = runsData.find((r) => r.monitorId === m.id);
+    if (!latest || latest.level === "green") uptimeGreen++;
+    else if (latest.level === "yellow") uptimeYellow++;
+    else uptimeRed++;
+  }
+  const uptimeTotal = uptimeMonitors.length;
+  const uptimePct = uptimeTotal === 0 ? 100 : Math.round((uptimeGreen / uptimeTotal) * 10000) / 100;
+
+  // Version: use latest run per monitor
+  let versionUpToDate = 0, versionUpdateAvailable = 0, versionMajorBehind = 0;
+  for (const m of versionMonitors) {
+    if (!m.enabled) continue;
+    const latest = runsData.find((r) => r.monitorId === m.id);
+    if (!latest || latest.level === "green") versionUpToDate++;
+    else if (latest.level === "yellow") versionUpdateAvailable++;
+    else versionMajorBehind++;
+  }
+
+  return {
+    totalMonitors: monitorsData.length,
+    uptimeMonitors: uptimeTotal,
+    uptimePct,
+    uptimeGreen,
+    uptimeYellow,
+    uptimeRed,
+    versionMonitors: versionMonitors.length,
+    versionUpToDate,
+    versionUpdateAvailable,
+    versionMajorBehind,
+  };
+}
+
+function versionStatusBadge(level?: "green" | "yellow" | "red") {
+  if (level === "green") return <Badge variant="success">Up to date</Badge>;
+  if (level === "yellow") return <Badge variant="warning">Update available</Badge>;
+  if (level === "red") return <Badge variant="danger">Major update</Badge>;
+  return <Badge variant="default">Pending</Badge>;
 }

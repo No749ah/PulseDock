@@ -90,6 +90,10 @@ interface PageSettings {
   showBranding?: boolean;
   logoUrl?: string;
   accentColor?: string;
+  theme?: "dark" | "light" | "system";
+  fontFamily?: "inter" | "roboto" | "system" | "mono";
+  backgroundStyle?: "solid" | "gradient" | "grid-dots";
+  backgroundColor?: string;
 }
 
 interface PageLayout {
@@ -205,6 +209,7 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
   { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
   { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
+  { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -424,15 +429,16 @@ function WidgetPreview({ type, config, w }: { type: string; config: Record<strin
 interface CanvasWidgetProps {
   widget: Widget;
   isSelected: boolean;
+  isMultiSelected: boolean;
   colWidth: number;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, shiftKey: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
   onToggleLock: (id: string) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
   const isLocked = Boolean(widget.locked);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
@@ -493,9 +499,9 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
     <div
       ref={setNodeRef}
       style={style}
-      onClick={(e) => { e.stopPropagation(); onSelect(widget.id); }}
+      onClick={(e) => { e.stopPropagation(); onSelect(widget.id, e.shiftKey); }}
       className={`group relative flex flex-col rounded-xl border-2 bg-surface transition-colors ${
-        isSelected ? "border-accent shadow-lg shadow-accent/10" : "border-border hover:border-accent/40"
+        isSelected ? "border-accent shadow-lg shadow-accent/10" : isMultiSelected ? "border-accent/60 shadow shadow-accent/10 bg-accent/5" : "border-border hover:border-accent/40"
       }`}
     >
       {/* Header bar with drag handle + title */}
@@ -573,18 +579,19 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
 interface CanvasProps {
   widgets: Widget[];
   selectedId: string | null;
+  selectedIds: Set<string>;
   isDraggingOverCanvas: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   zoom: number;
   viewportMode: ViewportMode;
-  onSelect: (id: string | null) => void;
+  onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -618,7 +625,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
         isOver ? "bg-accent/5" : ""
       } ${viewportWidth ? "border-x border-border/40 shadow-xl shadow-black/20" : ""}`}
       style={{ minHeight }}
-      onClick={() => onSelect(null)}
+      onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-widget]')) onSelect(null); }}
     >
       {/* Grid guide lines when dragging */}
       {isDraggingOverCanvas && (
@@ -657,10 +664,11 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
           ? canvasRef.current.getBoundingClientRect().width / COL_COUNT
           : 0;
         return (
+          <div key={widget.id} data-widget="true">
           <CanvasWidget
-            key={widget.id}
             widget={widget}
             isSelected={selectedId === widget.id}
+            isMultiSelected={selectedIds.has(widget.id)}
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
@@ -668,6 +676,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             onResize={onResize}
             onToggleLock={onToggleLock}
           />
+          </div>
         );
       })}
     </div>
@@ -707,8 +716,8 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
-  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
+  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
   const supportsVisibility = w.type !== "divider";
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
@@ -1002,6 +1011,40 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         </div>
       )}
 
+      {w.type === "collapsible-section" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Section Title</label>
+            <input
+              type="text"
+              value={(w.config.title as string) ?? ""}
+              onChange={(e) => update("title", e.target.value || undefined)}
+              placeholder="Section title…"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Content</label>
+            <textarea
+              value={(w.config.description as string) ?? ""}
+              onChange={(e) => update("description", e.target.value || undefined)}
+              placeholder="Content text (supports newlines)…"
+              rows={4}
+              className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-3 py-2">
+            <p className="text-xs font-medium text-text-primary">Open by default</p>
+            <button
+              onClick={() => update("defaultOpen", !(w.config.defaultOpen !== false))}
+              className={`relative h-5 w-9 rounded-full transition-colors ${(w.config.defaultOpen !== false) ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(w.config.defaultOpen !== false) ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        </>
+      )}
+
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
         <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
         <div className="grid grid-cols-2 gap-2">
@@ -1081,6 +1124,7 @@ export default function StatusPageEditorPage() {
   const savedWidgetsRef = useRef<string>('[]'); // JSON snapshot of last saved state
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
@@ -1226,6 +1270,7 @@ export default function StatusPageEditorPage() {
     }));
     setWidgets(newWidgets);
     setSelectedId(null);
+    setSelectedIds(new Set());
     setShowTemplateGallery(false);
   }
 
@@ -1253,9 +1298,38 @@ export default function StatusPageEditorPage() {
     setSelectedId(newWidget.id);
   }
 
+  function handleWidgetSelect(id: string | null, shiftKey?: boolean) {
+    if (id === null) {
+      setSelectedId(null);
+      setSelectedIds(new Set());
+      return;
+    }
+    if (shiftKey) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+          // If we removed the primary selected, pick a different one
+          if (selectedId === id) setSelectedId(next.size > 0 ? [...next][0] : null);
+        } else {
+          next.add(id);
+          // Also include primary selectedId if it exists
+          if (selectedId) next.add(selectedId);
+        }
+        return next;
+      });
+      // Don't change primary selectedId on shift-click unless it's empty
+      setSelectedId((prev) => prev ?? id);
+    } else {
+      setSelectedId(id);
+      setSelectedIds(new Set());
+    }
+  }
+
   function deleteWidget(widgetId: string) {
     setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
     if (selectedId === widgetId) setSelectedId(null);
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(widgetId); return next; });
   }
 
   function duplicateWidget(widgetId: string) {
@@ -1265,6 +1339,7 @@ export default function StatusPageEditorPage() {
     const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y, locked: false };
     setWidgets((prev) => [...prev, copy]);
     setSelectedId(copy.id);
+    setSelectedIds(new Set());
   }
 
   function toggleWidgetLock(widgetId: string) {
@@ -1320,12 +1395,21 @@ export default function StatusPageEditorPage() {
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
       if (meta && e.key === "d") { e.preventDefault(); if (selectedId) duplicateWidget(selectedId); }
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedId && tag !== "INPUT" && tag !== "TEXTAREA") {
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
           e.preventDefault();
-          deleteWidget(selectedId);
+          // Group delete: delete all selectedIds if multiple, else single selectedId
+          if (selectedIds.size > 0) {
+            const toDelete = new Set(selectedIds);
+            if (selectedId) toDelete.add(selectedId);
+            setWidgets((prev) => prev.filter((w) => !toDelete.has(w.id)));
+            setSelectedId(null);
+            setSelectedIds(new Set());
+          } else if (selectedId) {
+            deleteWidget(selectedId);
+          }
         }
       }
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Escape") { setSelectedId(null); setSelectedIds(new Set()); }
     }
     function handleWheel(e: WheelEvent) {
       if (e.ctrlKey || e.metaKey) {
@@ -1343,7 +1427,7 @@ export default function StatusPageEditorPage() {
       window.removeEventListener("wheel", handleWheel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, widgets]);
+  }, [selectedId, selectedIds, widgets]);
 
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
@@ -1463,6 +1547,18 @@ export default function StatusPageEditorPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-secondary/60">{widgets.length} widget{widgets.length !== 1 ? "s" : ""}</span>
+            {selectedIds.size > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+                {selectedIds.size + (selectedId && !selectedIds.has(selectedId) ? 1 : 0)} selected
+                <button
+                  onClick={() => { setSelectedId(null); setSelectedIds(new Set()); }}
+                  className="ml-1 hover:text-accent/70 transition"
+                  title="Deselect all"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            )}
             {page.isPublished && (
               <a
                 href={`${publicBase}/status/${page.slug}`}
@@ -1655,11 +1751,12 @@ export default function StatusPageEditorPage() {
             <CanvasDropZone
               widgets={widgets}
               selectedId={selectedId}
+              selectedIds={selectedIds}
               isDraggingOverCanvas={isDraggingOverCanvas}
               canvasRef={canvasRef}
               zoom={zoom}
               viewportMode={viewportMode}
-              onSelect={setSelectedId}
+              onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
               onResize={resizeWidgetById}
@@ -1714,7 +1811,7 @@ export default function StatusPageEditorPage() {
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-text-primary">Page Settings</h2>
-                <p className="text-xs text-text-muted mt-0.5">Configure auto-refresh, branding, and appearance.</p>
+                <p className="text-xs text-text-muted mt-0.5">Configure theme, appearance, auto-refresh, and branding.</p>
               </div>
               <button onClick={() => setShowPageSettings(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
                 <X className="h-4 w-4" />
@@ -1773,6 +1870,66 @@ export default function StatusPageEditorPage() {
                   <option value={300}>Every 5 minutes</option>
                   <option value={600}>Every 10 minutes</option>
                 </select>
+              </div>
+
+              {/* Theme selector */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Theme</label>
+                <div className="flex rounded-lg border border-border bg-bg overflow-hidden">
+                  {(["dark", "light", "system"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setPageSettings((s) => ({ ...s, theme: t }))}
+                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.theme ?? "dark") === t ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                    >{t}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font selector */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Font</label>
+                <select
+                  value={pageSettings.fontFamily ?? "inter"}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, fontFamily: e.target.value as PageSettings["fontFamily"] }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="inter">Inter (default)</option>
+                  <option value="roboto">Roboto</option>
+                  <option value="system">System UI</option>
+                  <option value="mono">Monospace</option>
+                </select>
+              </div>
+
+              {/* Background style */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Background</label>
+                <div className="flex rounded-lg border border-border bg-bg overflow-hidden mb-2">
+                  {(["solid", "gradient", "grid-dots"] as const).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setPageSettings((s) => ({ ...s, backgroundStyle: style }))}
+                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.backgroundStyle ?? "solid") === style ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                    >{style === "grid-dots" ? "Grid Dots" : style}</button>
+                  ))}
+                </div>
+                {(pageSettings.backgroundStyle ?? "solid") === "solid" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={pageSettings.backgroundColor ?? "#0f1117"}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value }))}
+                      className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#0f1117"
+                      value={pageSettings.backgroundColor ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value || undefined }))}
+                      className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Branding toggle */}

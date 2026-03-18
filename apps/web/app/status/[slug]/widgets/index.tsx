@@ -4188,6 +4188,35 @@ export function VideoEmbed({ widget }: WidgetProps) {
   );
 }
 
+export function CollapsibleSection({ widget }: WidgetProps) {
+  const title = (widget.config.title as string) ?? "Section";
+  const description = (widget.config.description as string) ?? "";
+  const defaultOpen = (widget.config.defaultOpen as boolean) ?? true;
+
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-xl border border-border bg-surface/50 overflow-hidden"
+    >
+      <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4 font-semibold text-text-primary hover:bg-surface-elevated/40 transition-colors list-none">
+        <span>{title}</span>
+        <svg
+          className="h-4 w-4 text-text-secondary transition-transform duration-200 group-open:rotate-180"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </summary>
+      <div className="border-t border-border px-5 py-4 text-sm text-text-secondary leading-relaxed">
+        {description.split("\n").map((line, i) => (
+          <span key={i}>{line}{i < description.split("\n").length - 1 && <br />}</span>
+        ))}
+        {!description && <span className="italic text-text-muted">No content configured.</span>}
+      </div>
+    </details>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -4442,6 +4471,9 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "video-embed":
       content = <VideoEmbed {...props} />;
+      break;
+    case "collapsible-section":
+      content = <CollapsibleSection {...props} />;
       break;
     default:
       content = (

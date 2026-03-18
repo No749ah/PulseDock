@@ -12,6 +12,10 @@ interface PageSettings {
   showBranding?: boolean;
   logoUrl?: string;
   accentColor?: string;
+  theme?: "dark" | "light" | "system";
+  fontFamily?: "inter" | "roboto" | "system" | "mono";
+  backgroundStyle?: "solid" | "gradient" | "grid-dots";
+  backgroundColor?: string;
 }
 
 interface PageLayout {
@@ -243,7 +247,34 @@ export default async function PublicStatusSlugPage({
   const now = new Date();
   const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
 
-  const accentStyle = accentColor ? ({ '--color-accent': accentColor } as React.CSSProperties) : undefined;
+  const theme = settings.theme ?? "dark";
+  const fontFamily = settings.fontFamily ?? "inter";
+  const backgroundStyle = settings.backgroundStyle ?? "solid";
+  const backgroundColor = settings.backgroundColor ?? null;
+
+  const fontFamilyMap: Record<string, string> = {
+    inter: "'Inter', 'system-ui', sans-serif",
+    roboto: "'Roboto', 'system-ui', sans-serif",
+    system: "system-ui, sans-serif",
+    mono: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+  };
+
+  const containerStyle: React.CSSProperties = {
+    ...(accentColor ? { '--color-accent': accentColor } as React.CSSProperties : {}),
+    fontFamily: fontFamilyMap[fontFamily] ?? fontFamilyMap.inter,
+    ...(backgroundColor && backgroundStyle === "solid" ? { backgroundColor } : {}),
+  };
+
+  const bgClass =
+    backgroundStyle === "gradient"
+      ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+      : backgroundStyle === "grid-dots"
+      ? "bg-bg [background-image:radial-gradient(circle,_rgba(99,102,241,0.15)_1px,_transparent_1px)] [background-size:24px_24px]"
+      : theme === "light"
+      ? "bg-white text-gray-900"
+      : "bg-bg";
+
+  const themeClass = theme === "light" ? "text-gray-900" : "";
 
   return (
     <>
@@ -251,7 +282,7 @@ export default async function PublicStatusSlugPage({
       {/* eslint-disable-next-line @next/next/no-head-element */}
       <meta httpEquiv="refresh" content={String(autoRefreshSec)} />
 
-      <main className="min-h-screen bg-bg px-4 pb-16 pt-8" style={accentStyle}>
+      <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
           <div className="mb-8 text-center">

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
 import { PrintButton } from "./widgets/PrintButton";
+import { OfflineBanner } from "./widgets/OfflineBanner";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -284,6 +285,7 @@ export default async function PublicStatusSlugPage({
 
   return (
     <>
+      <OfflineBanner />
       {/* Auto-refresh — configurable interval */}
       {/* eslint-disable-next-line @next/next/no-head-element */}
       <meta httpEquiv="refresh" content={String(autoRefreshSec)} />

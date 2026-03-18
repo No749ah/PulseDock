@@ -38,7 +38,7 @@ interface TagItem {
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -613,6 +613,8 @@ function MonitorsPageInner() {
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
 
   const filteredMonitors = monitors.filter((m) => {
+    // Version-type monitors belong on the Versions page — never show here
+    if (m.type === "GIT_RELEASE" || m.type === "DOCKER_IMAGE") return false;
     if (activeTagFilter && !m.tags?.some((t) => t.name === activeTagFilter)) return false;
     if (statusFilter === "enabled" && !m.enabled) return false;
     if (statusFilter === "disabled" && m.enabled) return false;
@@ -658,9 +660,9 @@ function MonitorsPageInner() {
         <FadeIn>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-bold text-text-primary">Monitors</h2>
+              <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
               <p className="text-text-secondary text-sm mt-1">
-                {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} active
+                {monitors.filter((m) => m.type !== "GIT_RELEASE" && m.type !== "DOCKER_IMAGE").length} monitors
               </p>
             </div>
             <div className="flex items-center gap-2">

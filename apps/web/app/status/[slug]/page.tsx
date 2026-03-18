@@ -7,8 +7,16 @@ const API_BASE =
   process.env.API_BASE_URL ||
   "http://localhost:4321";
 
+interface PageSettings {
+  autoRefreshInterval?: number; // seconds, 0 = off
+  showBranding?: boolean;
+  logoUrl?: string;
+  accentColor?: string;
+}
+
 interface PageLayout {
   widgets: Widget[];
+  settings?: PageSettings;
 }
 
 interface IncidentData {
@@ -198,6 +206,14 @@ export default async function PublicStatusSlugPage({
   const data: PublicPageData = await res.json() as PublicPageData;
 
   const widgets = data.layout?.widgets ?? [];
+  const settings = data.layout?.settings ?? {};
+  const autoRefreshSec = typeof settings.autoRefreshInterval === 'number' && settings.autoRefreshInterval > 0
+    ? settings.autoRefreshInterval
+    : 60;
+  const showBranding = settings.showBranding !== false; // default true
+  const logoUrl = settings.logoUrl ?? null;
+  const accentColor = settings.accentColor ?? null;
+
   const sorted = [...widgets].sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
   const visible = sorted.filter((w) => shouldRenderWidget(w, data.monitors));
 
@@ -227,16 +243,22 @@ export default async function PublicStatusSlugPage({
   const now = new Date();
   const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
 
+  const accentStyle = accentColor ? ({ '--color-accent': accentColor } as React.CSSProperties) : undefined;
+
   return (
     <>
-      {/* Auto-refresh every 60 seconds */}
+      {/* Auto-refresh — configurable interval */}
       {/* eslint-disable-next-line @next/next/no-head-element */}
-      <meta httpEquiv="refresh" content="60" />
+      <meta httpEquiv="refresh" content={String(autoRefreshSec)} />
 
-      <main className="min-h-screen bg-bg px-4 pb-16 pt-8">
+      <main className="min-h-screen bg-bg px-4 pb-16 pt-8" style={accentStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
           <div className="mb-8 text-center">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={data.title} className="mx-auto mb-4 h-12 w-auto object-contain" />
+            )}
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
               Status Page
             </div>

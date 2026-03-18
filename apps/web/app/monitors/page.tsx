@@ -590,17 +590,35 @@ function MonitorsPageInner() {
     setShowTemplates(false);
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: "json" | "csv" = "json") => {
     try {
-      const data = await api<{ version: string; exportedAt: string; monitors: unknown[] }>("/v1/monitors/export", user?.id);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const data = await api<{ version: string; exportedAt: string; monitors: MonitorItem[] }>("/v1/monitors/export", user?.id);
+      let blob: Blob;
+      let filename: string;
+      if (format === "csv") {
+        const headers = ["name", "type", "target", "enabled", "interval", "tags"];
+        const rows = data.monitors.map((m) => [
+          `"${(m.name ?? "").replace(/"/g, '""')}"`,
+          m.type ?? "",
+          `"${(m.target ?? "").replace(/"/g, '""')}"`,
+          m.enabled ? "true" : "false",
+          m.intervalSec ?? "",
+          `"${(m.tags ?? []).map((t: { name: string }) => t.name).join(", ")}"`,
+        ]);
+        const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+        blob = new Blob([csv], { type: "text/csv" });
+        filename = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.csv`;
+      } else {
+        blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        filename = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.json`;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      success("Monitors exported");
+      success(`Monitors exported as ${format.toUpperCase()}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Export failed");
     }
@@ -803,16 +821,25 @@ function MonitorsPageInner() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleExport}
-                className="flex items-center gap-2"
-                title="Export monitors as JSON"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
+              <div className="flex items-center gap-0.5 bg-surface-elevated border border-border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => handleExport("json")}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+                  title="Export monitors as JSON"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">JSON</span>
+                </button>
+                <div className="w-px h-4 bg-border" />
+                <button
+                  onClick={() => handleExport("csv")}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+                  title="Export monitors as CSV"
+                >
+                  <span className="hidden sm:inline">CSV</span>
+                  <span className="sm:hidden"><Download className="w-3.5 h-3.5" /></span>
+                </button>
+              </div>
               <Button
                 variant="secondary"
                 size="sm"

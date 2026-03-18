@@ -2015,6 +2015,196 @@ export class StatusPagesService {
         return { stats };
       }
 
+      case 'metric-comparison-row': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+
+        const scopeMonitors = await this.prisma.monitor.findMany({
+          where,
+          select: { id: true },
+        });
+
+        if (scopeMonitors.length === 0) {
+          throw new BadRequestException('No monitors in scope for metric-comparison-row');
+        }
+
+        const ids = scopeMonitors.map((m) => m.id);
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 3_600_000);
+        const startOfToday = new Date(now);
+        startOfToday.setUTCHours(0, 0, 0, 0);
+
+        const [uptimeRuns, latencyRuns, todayRuns, activeIncidents] = await Promise.all([
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: ids }, checkedAt: { gte: thirtyDaysAgo } },
+            select: { level: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: ids }, checkedAt: { gte: twentyFourHoursAgo }, latencyMs: { not: null } },
+            select: { latencyMs: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: ids }, checkedAt: { gte: startOfToday } },
+            select: { id: true },
+          }),
+          this.prisma.incident.findMany({
+            where: { userId, status: { not: IncidentStatus.RESOLVED } },
+            select: { id: true },
+          }),
+        ]);
+
+        // Uptime %
+        const uptimeTotal = uptimeRuns.length;
+        const uptimeUp = uptimeRuns.filter((r) => r.level === 'green').length;
+        const uptimePct = uptimeTotal > 0 ? Math.round((uptimeUp / uptimeTotal) * 10000) / 100 : 100;
+        const uptimeColor = uptimePct >= 99.9 ? 'green' : uptimePct >= 99 ? 'yellow' : 'red';
+
+        // Avg Latency
+        const avgMs = latencyRuns.length > 0
+          ? Math.round(latencyRuns.reduce((s, r) => s + (r.latencyMs ?? 0), 0) / latencyRuns.length)
+          : 0;
+        const latencyColor = avgMs < 200 ? 'green' : avgMs < 800 ? 'yellow' : 'red';
+
+        // Total Checks Today
+        const checksToday = todayRuns.length;
+
+        // Active Incidents
+        const incidentCount = activeIncidents.length;
+        const incidentColor = incidentCount === 0 ? 'green' : 'red';
+
+        return {
+          metrics: [
+            { key: 'uptime', label: 'Uptime (30d)', value: `${uptimePct}`, unit: '%', color: uptimeColor },
+            { key: 'avg-latency', label: 'Avg Latency (24h)', value: avgMs > 0 ? String(avgMs) : 'N/A', unit: avgMs > 0 ? 'ms' : '', color: latencyColor },
+            { key: 'checks-today', label: 'Checks Today', value: String(checksToday), unit: '', color: 'blue' },
+            { key: 'active-incidents', label: 'Active Incidents', value: String(incidentCount), unit: '', color: incidentColor },
+          ],
+        };
+      }
+
+      case 'sparkline-row': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+
+        const scopeMonitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true } },
+          },
+          orderBy: { name: 'asc' },
+          take: 6,
+        });
+
+        if (scopeMonitors.length === 0) {
+          throw new BadRequestException('No monitors in scope for sparkline-row');
+        }
+
+        const monitors = await Promise.all(
+          scopeMonitors.map(async (m) => {
+            const latencyRuns = await this.prisma.monitorRun.findMany({
+              where: { monitorId: m.id, latencyMs: { not: null } },
+              orderBy: { checkedAt: 'desc' },
+              take: 24,
+              select: { latencyMs: true },
+            });
+            latencyRuns.reverse();
+            const dataPoints = latencyRuns.map((r) => r.latencyMs ?? 0);
+            const avgMs = dataPoints.length > 0
+              ? Math.round(dataPoints.reduce((s, v) => s + v, 0) / dataPoints.length)
+              : 0;
+            const level = m.runs[0]?.level ?? 'green';
+            const status: 'up' | 'down' | 'degraded' =
+              level === 'red' ? 'down' : level === 'yellow' ? 'degraded' : 'up';
+            return { id: m.id, name: m.name, dataPoints, avgMs, status };
+          }),
+        );
+
+        return { monitors };
+      }
+
+      case 'progress-ring': {
+        const metricType = (widget.config.metricType as string | undefined) ?? 'uptime';
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+
+        if (metricType === 'custom') {
+          const customValue = Math.min(100, Math.max(0, (widget.config.customValue as number) ?? 100));
+          const label = (widget.config.label as string) ?? 'Custom';
+          const color = customValue >= 99 ? 'green' : customValue >= 95 ? 'yellow' : 'red';
+          return { value: customValue, label, color };
+        }
+
+        const scopeWhere = (() => {
+          const ids = widget.config.monitorIds as string[] | undefined;
+          const singleId = widget.config.monitorId as string | undefined;
+          if (ids?.length) return { userId, id: { in: ids }, enabled: true };
+          if (singleId) return { userId, id: singleId, enabled: true };
+          return { userId, enabled: true };
+        })();
+
+        const monitors = await this.prisma.monitor.findMany({
+          where: scopeWhere,
+          select: { id: true },
+        });
+
+        if (monitors.length === 0) {
+          throw new BadRequestException('No monitors configured for progress-ring');
+        }
+
+        const ids = monitors.map((m) => m.id);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: ids }, checkedAt: { gte: since } },
+          select: { level: true },
+        });
+
+        const total = runs.length;
+        const up = runs.filter((r) => r.level === 'green').length;
+        const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+
+        let value: number;
+        let label: string;
+
+        if (metricType === 'sla') {
+          const slaTarget = (widget.config.slaTarget as number) ?? 99.9;
+          value = Math.round(Math.min((uptimePct / slaTarget) * 100, 100) * 10) / 10;
+          label = `SLA Compliance`;
+        } else {
+          value = uptimePct;
+          label = `Uptime (${periodDays}d)`;
+        }
+
+        const color = value >= 99 ? 'green' : value >= 95 ? 'yellow' : 'red';
+        return { value, label, color };
+      }
+
+      case 'announcement-bar': {
+        const message = (widget.config.message as string) ?? '';
+        const type = (widget.config.type as string) ?? 'info';
+        const expiresAt = widget.config.expiresAt as string | undefined;
+        const dismissable = (widget.config.dismissable as boolean) ?? false;
+        const expired = expiresAt ? new Date(expiresAt) <= new Date() : false;
+        return {
+          message,
+          type,
+          expiresAt,
+          dismissable,
+          expired,
+        };
+      }
+
+      case 'link-list': {
+        const links = (widget.config.links as Array<{ label: string; url: string; icon: string; description?: string }>) ?? [];
+        return { links };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

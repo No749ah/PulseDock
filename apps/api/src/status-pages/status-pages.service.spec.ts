@@ -2066,6 +2066,165 @@ describe('StatusPagesService', () => {
     });
   });
 
+  // ── metric-comparison-row ─────────────────────────────────────────────────
+
+  describe('getWidgetData — metric-comparison-row', () => {
+    it('returns 4 metrics with correct keys', async () => {
+      const layout = {
+        widgets: [{ id: 'mcr1', type: 'metric-comparison-row', config: {}, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1' }]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { level: 'green', latencyMs: 100 },
+        { level: 'green', latencyMs: 200 },
+      ]);
+      prisma.incident.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mcr1');
+      const metrics = result.metrics as { key: string }[];
+      expect(metrics).toHaveLength(4);
+      expect(metrics.map((m) => m.key)).toEqual(['uptime', 'avg-latency', 'checks-today', 'active-incidents']);
+    });
+
+    it('colors active incidents red when count > 0', async () => {
+      const layout = {
+        widgets: [{ id: 'mcr2', type: 'metric-comparison-row', config: {}, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1' }]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      prisma.incident.findMany = vi.fn().mockResolvedValue([{ id: 'inc-1' }, { id: 'inc-2' }]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mcr2');
+      const metrics = result.metrics as { key: string; value: string; color: string }[];
+      const incMetric = metrics.find((m) => m.key === 'active-incidents');
+      expect(incMetric?.value).toBe('2');
+      expect(incMetric?.color).toBe('red');
+    });
+  });
+
+  // ── sparkline-row ─────────────────────────────────────────────────────────
+
+  describe('getWidgetData — sparkline-row', () => {
+    it('returns monitors with dataPoints and status', async () => {
+      const layout = {
+        widgets: [{ id: 'spr1', type: 'sparkline-row', config: {}, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API', runs: [{ level: 'green' }] },
+        { id: 'mon-2', name: 'DB', runs: [{ level: 'red' }] },
+      ]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { latencyMs: 100 }, { latencyMs: 200 },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'spr1');
+      const monitors = result.monitors as { id: string; status: string }[];
+      expect(monitors).toHaveLength(2);
+      expect(monitors[0].status).toBe('up');
+      expect(monitors[1].status).toBe('down');
+    });
+
+    it('throws BadRequestException when no monitors in scope', async () => {
+      const layout = {
+        widgets: [{ id: 'spr2', type: 'sparkline-row', config: {}, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'spr2')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ── progress-ring ─────────────────────────────────────────────────────────
+
+  describe('getWidgetData — progress-ring', () => {
+    it('returns uptime value with green color for 100% uptime', async () => {
+      const layout = {
+        widgets: [{ id: 'pr1', type: 'progress-ring', config: { metricType: 'uptime' }, x: 0, y: 0, w: 4, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1' }]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { level: 'green' }, { level: 'green' }, { level: 'green' },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'pr1');
+      expect(result.value).toBe(100);
+      expect(result.color).toBe('green');
+    });
+
+    it('returns custom value directly for metricType=custom', async () => {
+      const layout = {
+        widgets: [{ id: 'pr2', type: 'progress-ring', config: { metricType: 'custom', customValue: 97, label: 'Score' }, x: 0, y: 0, w: 4, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'pr2');
+      expect(result.value).toBe(97);
+      expect(result.label).toBe('Score');
+      expect(result.color).toBe('yellow');
+    });
+  });
+
+  // ── announcement-bar ──────────────────────────────────────────────────────
+
+  describe('getWidgetData — announcement-bar', () => {
+    it('returns config as data with expired=false when no expiresAt', async () => {
+      const layout = {
+        widgets: [{ id: 'ab1', type: 'announcement-bar', config: { message: 'Hello world', type: 'info', dismissable: true }, x: 0, y: 0, w: 12, h: 1 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ab1');
+      expect(result.message).toBe('Hello world');
+      expect(result.type).toBe('info');
+      expect(result.dismissable).toBe(true);
+      expect(result.expired).toBe(false);
+    });
+
+    it('sets expired=true when expiresAt is in the past', async () => {
+      const layout = {
+        widgets: [{ id: 'ab2', type: 'announcement-bar', config: { message: 'Old message', type: 'warning', dismissable: false, expiresAt: '2020-01-01T00:00:00Z' }, x: 0, y: 0, w: 12, h: 1 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ab2');
+      expect(result.expired).toBe(true);
+    });
+  });
+
+  // ── link-list ─────────────────────────────────────────────────────────────
+
+  describe('getWidgetData — link-list', () => {
+    it('returns links array from config', async () => {
+      const links = [
+        { label: 'Docs', url: 'https://docs.example.com', icon: '📚', description: 'Documentation' },
+        { label: 'Support', url: 'https://support.example.com', icon: '💬' },
+      ];
+      const layout = {
+        widgets: [{ id: 'll1', type: 'link-list', config: { links }, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'll1');
+      expect(result.links).toHaveLength(2);
+      expect((result.links as { label: string }[])[0].label).toBe('Docs');
+    });
+
+    it('returns empty links array when config has no links', async () => {
+      const layout = {
+        widgets: [{ id: 'll2', type: 'link-list', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'll2');
+      expect(result.links).toEqual([]);
+    });
+  });
+
   // ── stats-grid ───────────────────────────────────────────────────────────
 
   describe('getWidgetData — stats-grid', () => {

@@ -155,6 +155,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "dns-resolution-time", label: "DNS Resolution Time", description: "Avg DNS/response latency tracker with trend and per-monitor breakdown", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 4 },
   { type: "gauge", label: "Gauge / Speedometer", description: "Circular gauge for uptime%, SLA compliance%, or Apdex score", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
   { type: "stats-grid", label: "Stats Grid", description: "2×2/3×3 grid of key metrics: uptime, incidents, response time, alerts", icon: Grid, category: "Metrics", defaultW: 12, defaultH: 3 },
+  { type: "metric-comparison-row", label: "Metric Comparison Row", description: "Horizontal strip of metric counters: uptime, latency, checks, incidents", icon: BarChart2, category: "Metrics", defaultW: 12, defaultH: 2 },
+  { type: "sparkline-row", label: "Sparkline Row", description: "Mini sparkline charts side by side for quick latency comparison across monitors", icon: TrendingUp, category: "Metrics", defaultW: 12, defaultH: 3 },
+  { type: "progress-ring", label: "Progress Ring", description: "Circular Apple Watch-style ring showing uptime%, SLA compliance, or custom value", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
+  { type: "announcement-bar", label: "Announcement Bar", description: "Full-width colored info/warning/danger/success banner for important messages", icon: AlertTriangle, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "link-list", label: "Link List", description: "List of external links with icons: Docs, Support, Changelog, API Status", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
 ];
 

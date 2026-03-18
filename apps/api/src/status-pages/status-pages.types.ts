@@ -50,7 +50,12 @@ export type WidgetType =
   | 'version-comparison-table'
   | 'dns-resolution-time'
   | 'gauge'
-  | 'stats-grid';
+  | 'stats-grid'
+  | 'metric-comparison-row'
+  | 'sparkline-row'
+  | 'progress-ring'
+  | 'announcement-bar'
+  | 'link-list';
 
 export interface Widget {
   id: string;

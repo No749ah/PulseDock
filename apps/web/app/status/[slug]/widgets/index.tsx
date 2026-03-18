@@ -3291,6 +3291,316 @@ export function StatsGrid({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── Metric Comparison Row ────────────────────────────────────────────────
+
+export function MetricComparisonRow({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    metrics: Array<{
+      key: string;
+      label: string;
+      value: string;
+      unit: string;
+      color: "green" | "yellow" | "red" | "blue" | "default";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Metrics";
+
+  if (!data?.metrics?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const colorMap: Record<string, string> = {
+    green: "text-green-400",
+    yellow: "text-yellow-400",
+    red: "text-red-400",
+    blue: "text-blue-400",
+    default: "text-text-primary",
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3">
+        {data.metrics.map((m) => (
+          <div
+            key={m.key}
+            className="flex-1 rounded-lg border border-border/60 bg-white/3 backdrop-blur-sm p-3 space-y-1 text-center"
+          >
+            <div className="text-[10px] text-text-secondary uppercase tracking-wider leading-tight">{m.label}</div>
+            <div className={`text-2xl font-bold tabular-nums leading-tight ${colorMap[m.color] ?? colorMap.default}`}>
+              {m.value}
+              {m.unit && <span className="text-sm font-normal ml-0.5 text-text-secondary">{m.unit}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sparkline Row ────────────────────────────────────────────────────────
+
+function MiniSparkline({ dataPoints, color }: { dataPoints: number[]; color: string }) {
+  const points = dataPoints.length > 0 ? dataPoints : [0];
+  const w = 80;
+  const h = 40;
+  const max = Math.max(...points, 1);
+  const min = Math.min(...points, 0);
+  const range = max - min || 1;
+  const step = points.length > 1 ? w / (points.length - 1) : w;
+
+  const coords = points.map((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <polyline
+        points={coords.join(" ")}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function SparklineRow({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    monitors: Array<{
+      id: string;
+      name: string;
+      dataPoints: number[];
+      avgMs: number;
+      status: "up" | "down" | "degraded";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Sparklines";
+
+  if (!data?.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const statusColor = (s: "up" | "down" | "degraded") =>
+    s === "up" ? "#4ade80" : s === "degraded" ? "#facc15" : "#f87171";
+  const statusDot = (s: "up" | "down" | "degraded") =>
+    s === "up" ? "bg-green-400" : s === "degraded" ? "bg-yellow-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="flex flex-wrap gap-3">
+        {data.monitors.map((m) => (
+          <div
+            key={m.id}
+            className="flex-1 min-w-[120px] rounded-lg border border-border/60 bg-white/3 p-3 space-y-1"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${statusDot(m.status)}`} />
+              <span className="text-xs font-medium text-text-primary truncate">{m.name}</span>
+            </div>
+            <div className="flex justify-center">
+              <MiniSparkline dataPoints={m.dataPoints} color={statusColor(m.status)} />
+            </div>
+            <div className="text-[10px] text-text-secondary text-center">
+              avg {m.avgMs > 0 ? `${m.avgMs}ms` : "—"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Progress Ring ────────────────────────────────────────────────────────
+
+export function ProgressRing({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    value: number;
+    label: string;
+    color: "green" | "yellow" | "red";
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Progress Ring";
+
+  if (data === undefined) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const { value, label, color } = data;
+  const radius = 54;
+  const cx = 70;
+  const cy = 70;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(100, Math.max(0, value));
+  const strokeDashoffset = circumference * (1 - pct / 100);
+
+  const strokeColor =
+    color === "green" ? "#4ade80" : color === "yellow" ? "#facc15" : "#f87171";
+
+  const periodDays = (widget.config.periodDays as number) ?? 30;
+  const metricType = (widget.config.metricType as string) ?? "uptime";
+  const periodLabel = metricType === "custom" ? "" : `Last ${periodDays}d`;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg width={140} height={140} viewBox="0 0 140 140">
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={12} />
+        {/* Progress */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={12}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          transform={`rotate(-90 ${cx} ${cy})`}
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
+        />
+        {/* Center value */}
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize={22} fontWeight="bold" fontFamily="monospace">
+          {value.toFixed(value % 1 === 0 ? 0 : 1)}
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="white" fontSize={12} opacity={0.7}>
+          %
+        </text>
+        <text x={cx} y={cy + 26} textAnchor="middle" fill="#9ca3af" fontSize={9}>
+          {label}
+        </text>
+      </svg>
+      {periodLabel && (
+        <div className="text-[10px] text-text-secondary">{periodLabel}</div>
+      )}
+    </div>
+  );
+}
+
+// ── Announcement Bar ─────────────────────────────────────────────────────
+
+export function AnnouncementBar({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    message: string;
+    type: "info" | "warning" | "danger" | "success";
+    expiresAt?: string;
+    dismissable: boolean;
+    expired: boolean;
+  } | undefined;
+
+  // Client-side dismiss state — uses a simple React state trick via key
+  // Since we can't import useState here without "use client" directive we
+  // use a data attribute approach: a hidden checkbox toggles visibility.
+  if (!data || data.expired || !data.message) return null;
+
+  const { message, type, dismissable } = data;
+
+  const bgMap: Record<string, string> = {
+    info: "bg-blue-500/20 border-blue-500/40 text-blue-200",
+    warning: "bg-yellow-500/20 border-yellow-500/40 text-yellow-200",
+    danger: "bg-red-500/20 border-red-500/40 text-red-200",
+    success: "bg-green-500/20 border-green-500/40 text-green-200",
+  };
+
+  const iconMap: Record<string, string> = {
+    info: "ℹ️",
+    warning: "⚠️",
+    danger: "🚨",
+    success: "✅",
+  };
+
+  const cls = bgMap[type] ?? bgMap.info;
+  const icon = iconMap[type] ?? "ℹ️";
+
+  return (
+    <div className={`rounded-xl border p-3 flex items-start gap-3 ${cls}`} data-announcement-bar>
+      <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+      <span className="flex-1 text-sm font-medium leading-relaxed">{message}</span>
+      {dismissable && (
+        <button
+          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity ml-auto"
+          onClick={(e) => {
+            const bar = (e.target as HTMLElement).closest("[data-announcement-bar]") as HTMLElement | null;
+            if (bar) bar.style.display = "none";
+          }}
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Link List ────────────────────────────────────────────────────────────
+
+export function LinkList({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    links: Array<{ label: string; url: string; icon: string; description?: string }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Links";
+  const isEditor = (widget.config._editor as boolean) ?? false;
+
+  if (!data?.links?.length) {
+    if (isEditor) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface/30 p-4 text-center text-sm text-text-secondary">
+          No links configured. Add links in the widget settings.
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="divide-y divide-border/50">
+        {data.links.map((link, i) => (
+          <a
+            key={i}
+            href={link.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors group"
+          >
+            <span className="text-xl flex-shrink-0">{link.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-text-primary group-hover:text-white transition-colors">{link.label}</div>
+              {link.description && (
+                <div className="text-[11px] text-text-secondary truncate">{link.description}</div>
+              )}
+            </div>
+            <span className="text-text-secondary group-hover:text-white transition-colors flex-shrink-0">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -3487,6 +3797,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "stats-grid":
       content = <StatsGrid {...props} />;
+      break;
+    case "metric-comparison-row":
+      content = <MetricComparisonRow {...props} />;
+      break;
+    case "sparkline-row":
+      content = <SparklineRow {...props} />;
+      break;
+    case "progress-ring":
+      content = <ProgressRing {...props} />;
+      break;
+    case "announcement-bar":
+      content = <AnnouncementBar {...props} />;
+      break;
+    case "link-list":
+      content = <LinkList {...props} />;
       break;
     case "divider":
       content = <Divider />;

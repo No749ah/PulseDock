@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { clearSession, getCachedUser, getUser } from './auth';
 import { useTheme } from './theme-provider';
+import { api } from '../lib/api';
 
 type NavItem = {
   href: string;
@@ -82,12 +83,22 @@ export function AppFrame({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string; message: string; level: string; checkedAt: string; ok: boolean;
+  }>>([]);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUser(getCachedUser() ?? getUser());
     setMounted(true);
+    // Fetch recent failed monitor runs as notifications
+    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean }>>(
+      '/v1/monitors/runs?limit=10'
+    ).then((runs) => {
+      const failed = runs.filter((r) => !r.ok).slice(0, 5);
+      setNotifications(failed);
+    }).catch(() => { /* non-critical */ });
   }, []);
 
   // Close sidebar on route change
@@ -265,22 +276,53 @@ export function AppFrame({
                 aria-haspopup="true"
               >
                 <Bell className="w-4 h-4" />
-                {/* Badge */}
-                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white leading-none">
-                  3
-                </span>
+                {/* Badge — shows count of recent failures */}
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
+                    {notifications.length > 9 ? "9+" : notifications.length}
+                  </span>
+                )}
               </button>
 
               {notifOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                    <p className="text-sm font-semibold text-text-primary">Notifications</p>
-                    <span className="text-xs text-text-muted bg-accent/15 text-accent px-2 py-0.5 rounded-full font-medium">3 new</span>
+                    <p className="text-sm font-semibold text-text-primary">Recent Failures</p>
+                    {notifications.length > 0 && (
+                      <span className="text-xs bg-danger/15 text-danger px-2 py-0.5 rounded-full font-medium">{notifications.length} alert{notifications.length !== 1 ? "s" : ""}</span>
+                    )}
                   </div>
-                  <div className="py-6 flex flex-col items-center gap-2 text-center">
-                    <Bell className="w-8 h-8 text-text-muted/40" />
-                    <p className="text-sm text-text-secondary">Notifications coming soon</p>
-                    <p className="text-xs text-text-muted">Alert history and system events will appear here.</p>
+                  {notifications.length === 0 ? (
+                    <div className="py-6 flex flex-col items-center gap-2 text-center">
+                      <Bell className="w-8 h-8 text-text-muted/40" />
+                      <p className="text-sm text-text-secondary">All monitors are healthy</p>
+                      <p className="text-xs text-text-muted">Recent failures will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
+                      {notifications.map((n) => (
+                        <div key={n.id} className="px-4 py-3 flex items-start gap-3 hover:bg-surface-elevated/50 transition-colors">
+                          <span className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-danger" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-text-primary truncate">{n.message || "Monitor check failed"}</p>
+                            <p className="text-[10px] text-text-muted mt-0.5">
+                              {(() => {
+                                const diff = Date.now() - new Date(n.checkedAt).getTime();
+                                const m = Math.floor(diff / 60000);
+                                if (m < 1) return "just now";
+                                if (m < 60) return `${m}m ago`;
+                                return `${Math.floor(m / 60)}h ago`;
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="px-4 py-2 border-t border-border">
+                    <Link href="/alerts" className="text-xs text-accent hover:text-accent/80 transition-colors" onClick={() => setNotifOpen(false)}>
+                      View all alerts →
+                    </Link>
                   </div>
                 </div>
               )}

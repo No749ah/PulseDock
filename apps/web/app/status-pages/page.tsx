@@ -88,7 +88,6 @@ export default function StatusPagesPage() {
       if (slugVal && slugVal.length >= 3) body.slug = slugVal;
       const page = await api<StatusPage>("/v1/status-pages", undefined, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       setShowCreate(false);

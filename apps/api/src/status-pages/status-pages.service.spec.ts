@@ -1932,4 +1932,189 @@ describe('StatusPagesService', () => {
       expect(events[0].toVersion).toBe('v2.0.0');
     });
   });
+
+  // ── outdated-components-alert ────────────────────────────────────────────
+
+  describe('getWidgetData — outdated-components-alert', () => {
+    it('throws BadRequestException when no VERSION monitors configured', async () => {
+      const layout = {
+        widgets: [{ id: 'oca1', type: 'outdated-components-alert', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'oca1')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns outdated list and upToDate count when versions differ', async () => {
+      const layout = {
+        widgets: [{ id: 'oca2', type: 'outdated-components-alert', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API', configJson: { latestVersion: 'v2.0.0' }, runs: [{ message: 'v1.9.0' }] },
+        { id: 'mon-2', name: 'Web', configJson: { latestVersion: 'v1.5.0' }, runs: [{ message: 'v1.5.0' }] },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'oca2');
+      expect(result.total).toBe(2);
+      expect(result.upToDate).toBe(1);
+      const outdated = result.outdated as { name: string; severity: string }[];
+      expect(outdated).toHaveLength(1);
+      expect(outdated[0].name).toBe('API');
+    });
+  });
+
+  // ── version-comparison-table ─────────────────────────────────────────────
+
+  describe('getWidgetData — version-comparison-table', () => {
+    it('throws BadRequestException when no VERSION monitors configured', async () => {
+      const layout = {
+        widgets: [{ id: 'vct1', type: 'version-comparison-table', config: {}, x: 0, y: 0, w: 10, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'vct1')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns rows with upToDate flag and lastChecked', async () => {
+      const layout = {
+        widgets: [{ id: 'vct2', type: 'version-comparison-table', config: {}, x: 0, y: 0, w: 10, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      const checkedAt = new Date('2026-03-01T00:00:00Z');
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API', configJson: { latestVersion: 'v2.0.0' }, runs: [{ message: 'v1.9.0', checkedAt }] },
+        { id: 'mon-2', name: 'Web', configJson: { latestVersion: 'v1.5.0' }, runs: [{ message: 'v1.5.0', checkedAt }] },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'vct2');
+      const rows = result.rows as { name: string; upToDate: boolean; current: string }[];
+      expect(rows).toHaveLength(2);
+      const apiRow = rows.find((r) => r.name === 'API');
+      const webRow = rows.find((r) => r.name === 'Web');
+      expect(apiRow?.upToDate).toBe(false);
+      expect(webRow?.upToDate).toBe(true);
+    });
+  });
+
+  // ── dns-resolution-time ──────────────────────────────────────────────────
+
+  describe('getWidgetData — dns-resolution-time', () => {
+    it('throws BadRequestException when no HTTP monitors configured', async () => {
+      const layout = {
+        widgets: [{ id: 'dns1', type: 'dns-resolution-time', config: {}, x: 0, y: 0, w: 6, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'dns1')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns avgMs, p95Ms, and per-monitor breakdown', async () => {
+      const layout = {
+        widgets: [{ id: 'dns2', type: 'dns-resolution-time', config: { periodHours: 24 }, x: 0, y: 0, w: 6, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API' },
+      ]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { latencyMs: 100, checkedAt: new Date('2026-03-01T00:00:00Z') },
+        { latencyMs: 200, checkedAt: new Date('2026-03-01T01:00:00Z') },
+        { latencyMs: 300, checkedAt: new Date('2026-03-01T02:00:00Z') },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'dns2');
+      expect(result.avgMs).toBe(200);
+      expect(result.p95Ms).toBeGreaterThanOrEqual(200);
+      expect((result.monitors as { name: string }[])[0].name).toBe('API');
+    });
+  });
+
+  // ── gauge ────────────────────────────────────────────────────────────────
+
+  describe('getWidgetData — gauge', () => {
+    it('throws BadRequestException when no monitors configured', async () => {
+      const layout = {
+        widgets: [{ id: 'g1', type: 'gauge', config: { monitorId: 'nonexistent' }, x: 0, y: 0, w: 4, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'g1')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns value, metricType, label, and thresholds for uptime', async () => {
+      const layout = {
+        widgets: [{ id: 'g2', type: 'gauge', config: { metricType: 'uptime' }, x: 0, y: 0, w: 4, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1' }]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { level: 'green', latencyMs: 100 },
+        { level: 'green', latencyMs: 120 },
+        { level: 'red', latencyMs: 500 },
+        { level: 'red', latencyMs: 400 },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'g2');
+      expect(result.value).toBe(50);
+      expect(result.metricType).toBe('uptime');
+      expect(result.thresholds).toMatchObject({ green: 90, yellow: 70 });
+    });
+  });
+
+  // ── stats-grid ───────────────────────────────────────────────────────────
+
+  describe('getWidgetData — stats-grid', () => {
+    it('returns all 8 stats', async () => {
+      const layout = {
+        widgets: [{ id: 'sg1', type: 'stats-grid', config: {}, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', runs: [{ level: 'green' }] },
+        { id: 'mon-2', runs: [{ level: 'red' }] },
+      ]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      prisma.incident = {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      } as unknown as typeof prisma.incident;
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sg1');
+      const stats = result.stats as { key: string }[];
+      expect(stats).toHaveLength(8);
+      const keys = stats.map((s) => s.key);
+      expect(keys).toContain('total-monitors');
+      expect(keys).toContain('currently-up');
+      expect(keys).toContain('sla-compliance');
+    });
+
+    it('includes correct total monitor count and up/down values', async () => {
+      const layout = {
+        widgets: [{ id: 'sg2', type: 'stats-grid', config: {}, x: 0, y: 0, w: 12, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', runs: [{ level: 'green' }] },
+        { id: 'mon-2', runs: [{ level: 'green' }] },
+        { id: 'mon-3', runs: [{ level: 'red' }] },
+      ]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      prisma.incident = {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(1),
+      } as unknown as typeof prisma.incident;
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sg2');
+      const stats = result.stats as { key: string; value: string }[];
+      const totalStat = stats.find((s) => s.key === 'total-monitors');
+      const upStat = stats.find((s) => s.key === 'currently-up');
+      expect(totalStat?.value).toBe('3');
+      expect(upStat?.value).toBe('2/3');
+    });
+  });
 });

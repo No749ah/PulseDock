@@ -150,6 +150,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "next-maintenance-countdown", label: "Maintenance Countdown", description: "Countdown timer to the next scheduled maintenance window", icon: Clock, category: "Maintenance", defaultW: 6, defaultH: 3 },
   { type: "maintenance-impact-list", label: "Maintenance Impact", description: "List of upcoming maintenance windows with affected services", icon: AlertTriangle, category: "Maintenance", defaultW: 8, defaultH: 4 },
   { type: "version-timeline", label: "Version Timeline", description: "Chronological list of version updates detected across services", icon: TrendingUp, category: "Versions", defaultW: 8, defaultH: 5 },
+  { type: "outdated-components-alert", label: "Outdated Components", description: "Highlights monitors where current ≠ latest version with severity badges", icon: AlertTriangle, category: "Versions", defaultW: 8, defaultH: 4 },
+  { type: "version-comparison-table", label: "Version Comparison", description: "Side-by-side table: Service | Current | Latest | Status", icon: BarChart2, category: "Versions", defaultW: 10, defaultH: 4 },
+  { type: "dns-resolution-time", label: "DNS Resolution Time", description: "Avg DNS/response latency tracker with trend and per-monitor breakdown", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 4 },
+  { type: "gauge", label: "Gauge / Speedometer", description: "Circular gauge for uptime%, SLA compliance%, or Apdex score", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
+  { type: "stats-grid", label: "Stats Grid", description: "2×2/3×3 grid of key metrics: uptime, incidents, response time, alerts", icon: Grid, category: "Metrics", defaultW: 12, defaultH: 3 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
 ];
 

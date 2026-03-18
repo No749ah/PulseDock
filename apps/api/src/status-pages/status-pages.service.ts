@@ -1677,6 +1677,344 @@ export class StatusPagesService {
         };
       }
 
+      case 'outdated-components-alert': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, type: MonitorType.GIT_RELEASE, enabled: true }
+          : { userId, type: MonitorType.GIT_RELEASE, enabled: true };
+
+        const versionMonitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            configJson: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+              select: { message: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        if (versionMonitors.length === 0) {
+          throw new BadRequestException('No VERSION monitors configured');
+        }
+
+        type OutdatedEntry = {
+          monitorId: string;
+          name: string;
+          currentVersion: string;
+          latestVersion: string;
+          severity: 'critical' | 'warning' | 'info';
+        };
+
+        const outdated: OutdatedEntry[] = [];
+        let upToDate = 0;
+
+        for (const m of versionMonitors) {
+          const run = m.runs[0];
+          const currentVersion = (run?.message ?? '').trim();
+          const cfg = (m.configJson ?? {}) as Record<string, unknown>;
+          const latestVersion = (
+            (cfg.latestVersion as string | undefined) ?? ''
+          ).trim();
+
+          if (!currentVersion || !latestVersion) {
+            upToDate++;
+            continue;
+          }
+
+          if (currentVersion === latestVersion) {
+            upToDate++;
+            continue;
+          }
+
+          // Parse semver components for severity calculation
+          const parseSemver = (v: string) => {
+            const clean = v.replace(/^[^0-9]*/, '');
+            const parts = clean.split('.').map((p) => parseInt(p, 10) || 0);
+            return { major: parts[0] ?? 0, minor: parts[1] ?? 0, patch: parts[2] ?? 0 };
+          };
+
+          const current = parseSemver(currentVersion);
+          const latest = parseSemver(latestVersion);
+
+          let severity: 'critical' | 'warning' | 'info';
+          const majorDiff = latest.major - current.major;
+          if (majorDiff > 2) {
+            severity = 'critical';
+          } else if (majorDiff > 0 || latest.minor !== current.minor) {
+            severity = 'warning';
+          } else {
+            severity = 'info';
+          }
+
+          outdated.push({ monitorId: m.id, name: m.name, currentVersion, latestVersion, severity });
+        }
+
+        return { outdated, upToDate, total: versionMonitors.length };
+      }
+
+      case 'version-comparison-table': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, type: MonitorType.GIT_RELEASE, enabled: true }
+          : { userId, type: MonitorType.GIT_RELEASE, enabled: true };
+
+        const versionMonitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            configJson: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' },
+              take: 1,
+              select: { message: true, checkedAt: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        if (versionMonitors.length === 0) {
+          throw new BadRequestException('No VERSION monitors configured');
+        }
+
+        const rows = versionMonitors.map((m) => {
+          const run = m.runs[0];
+          const current = (run?.message ?? '').trim() || 'unknown';
+          const cfg = (m.configJson ?? {}) as Record<string, unknown>;
+          const latest = (
+            (cfg.latestVersion as string | undefined) ?? current
+          ).trim();
+          return {
+            monitorId: m.id,
+            name: m.name,
+            current,
+            latest,
+            upToDate: current === latest,
+            lastChecked: (run?.checkedAt as Date | null)?.toISOString() ?? null,
+          };
+        });
+
+        return { rows };
+      }
+
+      case 'dns-resolution-time': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const periodHours = Math.min(Math.max((widget.config.periodHours as number) ?? 24, 1), 168);
+        const since = new Date(Date.now() - periodHours * 3_600_000);
+
+        const whereMonitors = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, type: MonitorType.HTTP, enabled: true }
+          : { userId, type: MonitorType.HTTP, enabled: true };
+
+        const httpMonitors = await this.prisma.monitor.findMany({
+          where: whereMonitors,
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+          take: 50,
+        });
+
+        if (httpMonitors.length === 0) {
+          throw new BadRequestException('No HTTP monitors configured');
+        }
+
+        type MonitorStats = { name: string; avgMs: number; trend: 'up' | 'down' | 'stable' };
+
+        const monitorStats: MonitorStats[] = [];
+        const allLatencies: number[] = [];
+
+        for (const m of httpMonitors) {
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId: m.id, checkedAt: { gte: since }, latencyMs: { not: null } },
+            select: { latencyMs: true, checkedAt: true },
+            orderBy: { checkedAt: 'asc' },
+          });
+
+          const latencies = runs.map((r) => r.latencyMs as number);
+          allLatencies.push(...latencies);
+
+          if (latencies.length === 0) continue;
+
+          const avgMs = Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length);
+
+          // Trend: compare first half vs second half
+          const mid = Math.floor(latencies.length / 2);
+          const firstHalf = latencies.slice(0, mid);
+          const secondHalf = latencies.slice(mid);
+          const firstAvg = firstHalf.length > 0 ? firstHalf.reduce((s, v) => s + v, 0) / firstHalf.length : avgMs;
+          const secondAvg = secondHalf.length > 0 ? secondHalf.reduce((s, v) => s + v, 0) / secondHalf.length : avgMs;
+          const diff = secondAvg - firstAvg;
+          const trend: 'up' | 'down' | 'stable' = Math.abs(diff) < firstAvg * 0.05 ? 'stable' : diff > 0 ? 'up' : 'down';
+
+          monitorStats.push({ name: m.name, avgMs, trend });
+        }
+
+        const avgMs = allLatencies.length > 0
+          ? Math.round(allLatencies.reduce((s, v) => s + v, 0) / allLatencies.length)
+          : 0;
+
+        const sorted = [...allLatencies].sort((a, b) => a - b);
+        const p95Ms = sorted.length > 0
+          ? sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)]
+          : 0;
+
+        return { avgMs, p95Ms, monitors: monitorStats, periodHours };
+      }
+
+      case 'gauge': {
+        const metricType = (widget.config.metricType as string | undefined) ?? 'uptime';
+        const thresholdGreen = (widget.config.thresholdGreen as number | undefined) ?? 90;
+        const thresholdYellow = (widget.config.thresholdYellow as number | undefined) ?? 70;
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const slaTarget = (widget.config.slaTarget as number | undefined) ?? 99.9;
+
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const scopeWhere = (() => {
+          const ids = widget.config.monitorIds as string[] | undefined;
+          const singleId = widget.config.monitorId as string | undefined;
+          if (ids?.length) return { userId, id: { in: ids }, enabled: true };
+          if (singleId) return { userId, id: singleId, enabled: true };
+          return { userId, enabled: true };
+        })();
+
+        const monitors = await this.prisma.monitor.findMany({
+          where: scopeWhere,
+          select: { id: true },
+        });
+
+        if (monitors.length === 0) {
+          throw new BadRequestException('No monitors configured for gauge');
+        }
+
+        const ids = monitors.map((m) => m.id);
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: ids }, checkedAt: { gte: since }, latencyMs: { not: null } },
+          select: { level: true, latencyMs: true },
+        });
+
+        let value: number;
+        let label: string;
+
+        if (metricType === 'sla') {
+          const total = runs.length;
+          const up = runs.filter((r) => r.level === 'green').length;
+          const uptimePct = total > 0 ? (up / total) * 100 : 100;
+          value = Math.round(Math.min((uptimePct / slaTarget) * 100, 100) * 10) / 10;
+          label = `SLA Compliance (target ${slaTarget}%)`;
+        } else if (metricType === 'apdex') {
+          const satisfiedMs = (widget.config.satisfiedThresholdMs as number | undefined) ?? 200;
+          const toleratingMs = (widget.config.toleratingThresholdMs as number | undefined) ?? 800;
+          const total = runs.length;
+          if (total === 0) {
+            value = 100;
+          } else {
+            let satisfied = 0;
+            let tolerating = 0;
+            for (const r of runs) {
+              const ms = r.latencyMs ?? 0;
+              if (ms < satisfiedMs) satisfied++;
+              else if (ms < toleratingMs) tolerating++;
+            }
+            value = Math.round(((satisfied + tolerating / 2) / total) * 100 * 10) / 10;
+          }
+          label = 'Apdex Score';
+        } else {
+          // uptime (default)
+          const total = runs.length;
+          const up = runs.filter((r) => r.level === 'green').length;
+          value = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+          label = `Uptime (${periodDays}d)`;
+        }
+
+        return {
+          value,
+          metricType,
+          label,
+          thresholds: { green: thresholdGreen, yellow: thresholdYellow },
+        };
+      }
+
+      case 'stats-grid': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const whereMonitors = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 3_600_000);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfToday = new Date(now);
+        startOfToday.setUTCHours(0, 0, 0, 0);
+
+        const monitors = await this.prisma.monitor.findMany({
+          where: whereMonitors,
+          select: {
+            id: true,
+            runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true } },
+          },
+        });
+
+        const total = monitors.length;
+        const up = monitors.filter((m) => m.runs[0]?.level === 'green').length;
+
+        // avg uptime 30d
+        const allIds = monitors.map((m) => m.id);
+        const [uptimeRuns, incidentRuns, responseRuns, todayRuns] = await Promise.all([
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: allIds }, checkedAt: { gte: thirtyDaysAgo } },
+            select: { level: true },
+          }),
+          this.prisma.incident.findMany({
+            where: { userId, createdAt: { gte: startOfMonth } },
+            select: { id: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: allIds }, checkedAt: { gte: twentyFourHoursAgo }, latencyMs: { not: null } },
+            select: { latencyMs: true },
+          }),
+          this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: allIds }, checkedAt: { gte: startOfToday } },
+            select: { id: true },
+          }),
+        ]);
+
+        const uptimeTotal = uptimeRuns.length;
+        const uptimeUp = uptimeRuns.filter((r) => r.level === 'green').length;
+        const avgUptimePct = uptimeTotal > 0 ? Math.round((uptimeUp / uptimeTotal) * 10000) / 100 : 100;
+
+        const avgResponseMs = responseRuns.length > 0
+          ? Math.round(responseRuns.reduce((s, r) => s + (r.latencyMs ?? 0), 0) / responseRuns.length)
+          : 0;
+
+        const activeAlerts = await this.prisma.incident.count({
+          where: { userId, status: { not: IncidentStatus.RESOLVED } },
+        });
+
+        const slaTarget = (widget.config.slaTarget as number | undefined) ?? 99.9;
+        const slaCompliance = uptimeTotal > 0
+          ? Math.round(Math.min((avgUptimePct / slaTarget) * 100, 100) * 10) / 10
+          : 100;
+
+        const stats = [
+          { key: 'total-monitors', label: 'Total Monitors', value: String(total), icon: '📡', trend: undefined, trendDir: undefined },
+          { key: 'currently-up', label: 'Currently Up', value: `${up}/${total}`, icon: '✅', trend: up === total ? 'all healthy' : `${total - up} down`, trendDir: up < total ? 'down' as const : undefined },
+          { key: 'avg-uptime', label: 'Avg Uptime (30d)', value: `${avgUptimePct}%`, icon: '📈', trend: undefined, trendDir: undefined },
+          { key: 'incidents-month', label: 'Incidents This Month', value: String(incidentRuns.length), icon: '🚨', trend: incidentRuns.length > 0 ? 'active' : 'clear', trendDir: incidentRuns.length > 0 ? 'down' as const : undefined },
+          { key: 'avg-response', label: 'Avg Response (24h)', value: avgResponseMs > 0 ? `${avgResponseMs}ms` : 'N/A', icon: '⚡', trend: undefined, trendDir: undefined },
+          { key: 'active-alerts', label: 'Active Alerts', value: String(activeAlerts), icon: '🔔', trend: activeAlerts > 0 ? 'open' : 'none', trendDir: activeAlerts > 0 ? 'down' as const : undefined },
+          { key: 'checks-today', label: 'Checks Today', value: String(todayRuns.length), icon: '🔍', trend: undefined, trendDir: undefined },
+          { key: 'sla-compliance', label: 'SLA Compliance', value: `${slaCompliance}%`, icon: '📋', trend: slaCompliance >= slaTarget ? 'passing' : 'failing', trendDir: slaCompliance < slaTarget ? 'down' as const : undefined },
+        ];
+
+        return { stats };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

@@ -2927,6 +2927,370 @@ export function VersionTimeline({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── Outdated Components Alert ────────────────────────────────────────────
+
+export function OutdatedComponentsAlert({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    outdated: Array<{
+      monitorId: string;
+      name: string;
+      currentVersion: string;
+      latestVersion: string;
+      severity: "critical" | "warning" | "info";
+    }>;
+    upToDate: number;
+    total: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Outdated Components";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  if (raw.outdated.length === 0) {
+    return (
+      <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 flex items-center gap-3">
+        <span className="text-green-400 text-xl">✓</span>
+        <div>
+          <div className="text-sm font-semibold text-green-400">All components up to date</div>
+          <div className="text-xs text-text-secondary">{raw.total} monitor{raw.total !== 1 ? "s" : ""} checked</div>
+        </div>
+      </div>
+    );
+  }
+
+  const severityBadge = (s: "critical" | "warning" | "info") => {
+    const cfg = s === "critical"
+      ? "bg-red-500/15 text-red-400 ring-red-500/30"
+      : s === "warning"
+      ? "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30"
+      : "bg-blue-500/15 text-blue-400 ring-blue-500/30";
+    return (
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${cfg}`}>
+        {s}
+      </span>
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="flex items-center gap-2 text-xs text-text-secondary">
+          <span className="text-red-400 font-medium">{raw.outdated.length} outdated</span>
+          <span>·</span>
+          <span className="text-green-400">{raw.upToDate} up to date</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {raw.outdated.map((item) => (
+          <div key={item.monitorId} className="flex items-center justify-between gap-2 rounded-lg bg-white/3 border border-border px-3 py-2">
+            <div className="text-sm font-medium text-text-primary truncate">{item.name}</div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <code className="text-xs bg-white/5 rounded px-1.5 py-0.5 text-text-secondary font-mono">{item.currentVersion}</code>
+              <svg className="h-3 w-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              <code className="text-xs bg-accent/15 rounded px-1.5 py-0.5 text-accent font-mono ring-1 ring-accent/30">{item.latestVersion}</code>
+              {severityBadge(item.severity)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Version Comparison Table ─────────────────────────────────────────────
+
+export function VersionComparisonTable({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    rows: Array<{
+      monitorId: string;
+      name: string;
+      current: string;
+      latest: string;
+      upToDate: boolean;
+      lastChecked: string | null;
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Version Comparison";
+
+  if (!raw?.rows?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const lastChecked = raw.rows.map((r) => r.lastChecked).filter(Boolean)[0];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border text-text-secondary">
+              <th className="text-left py-1.5 pr-3 font-medium">Service</th>
+              <th className="text-left py-1.5 pr-3 font-medium">Current</th>
+              <th className="text-left py-1.5 pr-3 font-medium">Latest</th>
+              <th className="text-left py-1.5 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {raw.rows.map((row) => (
+              <tr key={row.monitorId} className="hover:bg-white/2">
+                <td className="py-2 pr-3 text-text-primary font-medium">{row.name}</td>
+                <td className="py-2 pr-3">
+                  <code className="bg-white/5 rounded px-1.5 py-0.5 font-mono text-text-secondary ring-1 ring-white/10">{row.current}</code>
+                </td>
+                <td className="py-2 pr-3">
+                  <code className={`rounded px-1.5 py-0.5 font-mono ring-1 ${row.upToDate ? "bg-white/5 text-text-secondary ring-white/10" : "bg-accent/15 text-accent ring-accent/30"}`}>{row.latest}</code>
+                </td>
+                <td className="py-2">
+                  {row.upToDate ? (
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-green-500/15 text-green-400 ring-1 ring-green-500/30">Up to date</span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30">Update available</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {lastChecked && (
+        <div className="text-[10px] text-text-muted">Last checked {formatRelative(lastChecked)}</div>
+      )}
+    </div>
+  );
+}
+
+// ── DNS Resolution Time ──────────────────────────────────────────────────
+
+export function DNSResolutionTime({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    avgMs: number;
+    p95Ms: number;
+    monitors: Array<{ name: string; avgMs: number; trend: "up" | "down" | "stable" }>;
+    periodHours: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "DNS Resolution Time";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  const trendIcon = (t: "up" | "down" | "stable") => {
+    if (t === "up") return <span className="text-red-400">↑</span>;
+    if (t === "down") return <span className="text-green-400">↓</span>;
+    return <span className="text-text-muted">–</span>;
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">Last {raw.periodHours}h</div>
+      </div>
+      <div className="flex items-end gap-6">
+        <div>
+          <div className="text-3xl font-bold text-text-primary tabular-nums">{raw.avgMs}<span className="text-base font-normal text-text-secondary ml-1">ms</span></div>
+          <div className="text-xs text-text-secondary mt-0.5">Avg Response (incl. DNS)</div>
+        </div>
+        <div className="pb-1">
+          <div className="text-lg font-semibold text-text-secondary tabular-nums">{raw.p95Ms}<span className="text-xs font-normal ml-1">ms</span></div>
+          <div className="text-[10px] text-text-muted">p95</div>
+        </div>
+      </div>
+      {raw.monitors.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs text-text-secondary font-medium mb-1">Per monitor</div>
+          {raw.monitors.map((m, i) => (
+            <div key={i} className="flex items-center justify-between text-xs rounded bg-white/3 px-2.5 py-1.5">
+              <span className="text-text-primary truncate mr-2">{m.name}</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="tabular-nums text-text-secondary">{m.avgMs}ms</span>
+                {trendIcon(m.trend)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Gauge / Speedometer ──────────────────────────────────────────────────
+
+export function Gauge({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    value: number;
+    metricType: string;
+    label: string;
+    thresholds: { green: number; yellow: number };
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Gauge";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title}
+      </div>
+    );
+  }
+
+  const { value, thresholds } = raw;
+  const color = value >= thresholds.green ? "#4ade80" : value >= thresholds.yellow ? "#facc15" : "#f87171";
+
+  // SVG semicircle gauge: arc from 180° → 0° (left → right)
+  // radius=70, center at (100, 100), arc: 0=left (180°), 100=right (0°)
+  const R = 70;
+  const cx = 100;
+  const cy = 100;
+  const clampedValue = Math.min(Math.max(value, 0), 100);
+  // Angle in radians: 0% = π (left), 100% = 0 (right)
+  const startAngle = Math.PI;
+  const endAngle = 0;
+  const valueAngle = startAngle - (clampedValue / 100) * Math.PI; // goes from π to 0
+
+  const polarToXY = (angle: number, r: number) => ({
+    x: cx + r * Math.cos(angle),
+    y: cy - r * Math.sin(angle),
+  });
+
+  const arcPath = (fromAngle: number, toAngle: number, r: number) => {
+    const start = polarToXY(fromAngle, r);
+    const end = polarToXY(toAngle, r);
+    const largeArc = fromAngle - toAngle > Math.PI ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+  };
+
+  // Background arc: full semicircle (180° to 0°)
+  const bgPath = arcPath(Math.PI, 0, R);
+  // Foreground arc: from 180° to valueAngle
+  const fgPath = clampedValue > 0 ? arcPath(Math.PI, valueAngle, R) : "";
+
+  // Needle: from center toward valueAngle
+  const needleTip = polarToXY(valueAngle, R - 8);
+  const needleBase1 = polarToXY(valueAngle + 0.15, 12);
+  const needleBase2 = polarToXY(valueAngle - 0.15, 12);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg viewBox="0 10 200 110" className="w-full max-w-[220px]">
+        {/* Background arc */}
+        <path d={bgPath} fill="none" stroke="#374151" strokeWidth={14} strokeLinecap="round" />
+        {/* Colored foreground arc */}
+        {fgPath && (
+          <path d={fgPath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
+        )}
+        {/* Needle */}
+        <polygon
+          points={`${needleTip.x},${needleTip.y} ${needleBase1.x},${needleBase1.y} ${needleBase2.x},${needleBase2.y}`}
+          fill={color}
+          opacity={0.9}
+        />
+        {/* Center dot */}
+        <circle cx={cx} cy={cy} r={5} fill={color} />
+        {/* Value text */}
+        <text x={cx} y={cy - 14} textAnchor="middle" fill="white" fontSize={22} fontWeight="bold" fontFamily="monospace">
+          {value.toFixed(1)}
+        </text>
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#9ca3af" fontSize={10}>
+          %
+        </text>
+      </svg>
+      <div className="text-xs text-text-secondary text-center">{raw.label}</div>
+      <div className="flex items-center gap-3 text-[10px] text-text-muted">
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1 align-middle" />
+          &lt;{thresholds.yellow}%
+        </span>
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1 align-middle" />
+          {thresholds.yellow}–{thresholds.green}%
+        </span>
+        <span>
+          <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1 align-middle" />
+          ≥{thresholds.green}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Stats Grid ───────────────────────────────────────────────────────────
+
+export function StatsGrid({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    stats: Array<{
+      key: string;
+      label: string;
+      value: string;
+      icon: string;
+      trend?: string;
+      trendDir?: "up" | "down";
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Stats Grid";
+  const visibleKeys = widget.config.visibleStats as string[] | undefined;
+
+  if (!raw?.stats?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
+        {title} — no data
+      </div>
+    );
+  }
+
+  const stats = visibleKeys?.length
+    ? raw.stats.filter((s) => visibleKeys.includes(s.key))
+    : raw.stats;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {stats.map((stat) => (
+          <div
+            key={stat.key}
+            className="rounded-lg border border-border/60 bg-white/3 backdrop-blur-sm p-3 space-y-1 hover:bg-white/5 transition-colors"
+            style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.2)" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-base leading-none">{stat.icon}</span>
+              {stat.trend && (
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${stat.trendDir === "down" ? "bg-red-500/15 text-red-400" : "bg-green-500/15 text-green-400"}`}>
+                  {stat.trendDir === "down" ? "↓" : "↑"} {stat.trend}
+                </span>
+              )}
+            </div>
+            <div className="text-lg font-bold text-text-primary tabular-nums leading-tight">{stat.value}</div>
+            <div className="text-[10px] text-text-secondary leading-tight">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -3108,6 +3472,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "version-timeline":
       content = <VersionTimeline {...props} />;
+      break;
+    case "outdated-components-alert":
+      content = <OutdatedComponentsAlert {...props} />;
+      break;
+    case "version-comparison-table":
+      content = <VersionComparisonTable {...props} />;
+      break;
+    case "dns-resolution-time":
+      content = <DNSResolutionTime {...props} />;
+      break;
+    case "gauge":
+      content = <Gauge {...props} />;
+      break;
+    case "stats-grid":
+      content = <StatsGrid {...props} />;
       break;
     case "divider":
       content = <Divider />;

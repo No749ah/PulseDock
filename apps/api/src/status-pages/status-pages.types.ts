@@ -45,7 +45,12 @@ export type WidgetType =
   | 'uptime-comparison-chart'
   | 'next-maintenance-countdown'
   | 'maintenance-impact-list'
-  | 'version-timeline';
+  | 'version-timeline'
+  | 'outdated-components-alert'
+  | 'version-comparison-table'
+  | 'dns-resolution-time'
+  | 'gauge'
+  | 'stats-grid';
 
 export interface Widget {
   id: string;

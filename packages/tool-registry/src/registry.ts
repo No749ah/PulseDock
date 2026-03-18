@@ -2,9 +2,8 @@ import type { ToolRegistryEntry } from './types';
 
 const SI = 'https://cdn.simpleicons.org'; // Simple Icons CDN
 
-export const TOOL_REGISTRY: ToolRegistryEntry[] = [
 
-  // ── Container ───────────────────────────────────────────────────
+const REGISTRY_PART1: ToolRegistryEntry[] = [
   {
     id: 'portainer',
     name: 'Portainer',
@@ -145,8 +144,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── CI/CD ───────────────────────────────────────────────────────
   {
     id: 'gitlab-ce',
     name: 'GitLab CE',
@@ -330,8 +327,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Database ────────────────────────────────────────────────────
   {
     id: 'postgresql',
     name: 'PostgreSQL',
@@ -584,8 +579,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Observability ───────────────────────────────────────────────
   {
     id: 'grafana',
     name: 'Grafana',
@@ -797,8 +790,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Security ────────────────────────────────────────────────────
   {
     id: 'keycloak',
     name: 'Keycloak',
@@ -984,8 +975,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Networking ──────────────────────────────────────────────────
   {
     id: 'nginx',
     name: 'Nginx',
@@ -1182,8 +1171,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Storage ─────────────────────────────────────────────────────
   {
     id: 'minio',
     name: 'MinIO',
@@ -1311,8 +1298,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-  // ── CMS ─────────────────────────────────────────────────────────
   {
     id: 'wordpress',
     name: 'WordPress',
@@ -1439,8 +1424,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Communication ───────────────────────────────────────────────
   {
     id: 'mattermost',
     name: 'Mattermost',
@@ -1539,8 +1522,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Media ───────────────────────────────────────────────────────
   {
     id: 'jellyfin',
     name: 'Jellyfin',
@@ -1668,8 +1649,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Infrastructure ──────────────────────────────────────────────
   {
     id: 'terraform',
     name: 'Terraform',
@@ -1782,8 +1761,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Messaging ───────────────────────────────────────────────────
   {
     id: 'rabbitmq',
     name: 'RabbitMQ',
@@ -1868,8 +1845,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Dev Tools ───────────────────────────────────────────────────
   {
     id: 'n8n',
     name: 'n8n',
@@ -2025,8 +2000,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Cloud ───────────────────────────────────────────────────────
   {
     id: 'nestjs',
     name: 'NestJS',
@@ -2069,8 +2042,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Maven Central ───────────────────────────────────────────────
   {
     id: 'spring-boot',
     name: 'Spring Boot',
@@ -2141,8 +2112,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Helm ────────────────────────────────────────────────────────
   {
     id: 'helm-postgresql',
     name: 'PostgreSQL (Bitnami Helm)',
@@ -2241,8 +2210,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── API / Backend ──────────────────────────────────────────────────
   {
     id: 'kong',
     name: 'Kong Gateway',
@@ -2327,8 +2294,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Container (extra) ───────────────────────────────────────────
   {
     id: 'containerd',
     name: 'containerd',
@@ -2441,8 +2406,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── CI/CD (extra) ───────────────────────────────────────────────
   {
     id: 'argo-workflows',
     name: 'Argo Workflows',
@@ -2555,8 +2518,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Database (extra) ─────────────────────────────────────────────
   {
     id: 'couchdb',
     name: 'Apache CouchDB',
@@ -2725,9 +2686,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-
-  // ── Observability (extra) ────────────────────────────────────────
   {
     id: 'kibana',
     name: 'Kibana',
@@ -2868,8 +2826,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Security (extra) ─────────────────────────────────────────────
   {
     id: 'opa',
     name: 'Open Policy Agent',
@@ -3038,8 +2994,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Networking (extra) ──────────────────────────────────────────
   {
     id: 'cilium',
     name: 'Cilium',
@@ -3194,8 +3148,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Storage (extra) ──────────────────────────────────────────────
   {
     id: 'openebs',
     name: 'OpenEBS',
@@ -3322,8 +3274,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── CMS (extra) ──────────────────────────────────────────────────
   {
     id: 'keystonejs',
     name: 'KeystoneJS',
@@ -3408,8 +3358,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Communication (extra) ────────────────────────────────────────
   {
     id: 'jitsi-meet',
     name: 'Jitsi Meet',
@@ -3536,8 +3484,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Media (extra) ────────────────────────────────────────────────
   {
     id: 'kavita',
     name: 'Kavita',
@@ -3706,8 +3652,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-  // ── Dev Tools (extra) ────────────────────────────────────────────
   {
     id: 'deno',
     name: 'Deno',
@@ -3960,8 +3904,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Infrastructure (extra) ───────────────────────────────────────
   {
     id: 'vagrant',
     name: 'Vagrant',
@@ -4074,8 +4016,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Messaging (extra) ────────────────────────────────────────────
   {
     id: 'apache-pulsar',
     name: 'Apache Pulsar',
@@ -4160,8 +4100,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── API (extra) ──────────────────────────────────────────────────
   {
     id: 'krakend',
     name: 'KrakenD',
@@ -4246,8 +4184,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Cloud ────────────────────────────────────────────────────────
   {
     id: 'k3d',
     name: 'k3d',
@@ -4304,8 +4240,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Email Servers ────────────────────────────────────────────────
   {
     id: 'mailcow',
     name: 'Mailcow',
@@ -4376,8 +4310,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Home Automation ──────────────────────────────────────────────
   {
     id: 'openhab',
     name: 'openHAB',
@@ -4448,8 +4380,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Dashboard / Start Pages ──────────────────────────────────────
   {
     id: 'homarr',
     name: 'Homarr',
@@ -4520,8 +4450,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-  // ── Personal Finance ─────────────────────────────────────────────
   {
     id: 'firefly-iii',
     name: 'Firefly III',
@@ -4550,8 +4478,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── RSS / Feed Readers ───────────────────────────────────────────
   {
     id: 'freshrss',
     name: 'FreshRSS',
@@ -4594,8 +4520,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Bookmark Managers ────────────────────────────────────────────
   {
     id: 'linkding',
     name: 'Linkding',
@@ -4638,8 +4562,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-  // ── Photo Galleries ──────────────────────────────────────────────
   {
     id: 'lychee',
     name: 'Lychee',
@@ -4696,8 +4618,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Notes & Knowledge ────────────────────────────────────────────
   {
     id: 'memos',
     name: 'Memos',
@@ -4740,8 +4660,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Project Management ───────────────────────────────────────────
   {
     id: 'openproject',
     name: 'OpenProject',
@@ -4798,8 +4716,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Database Admin ───────────────────────────────────────────────
   {
     id: 'pgadmin',
     name: 'pgAdmin',
@@ -4842,8 +4758,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Network Tools ────────────────────────────────────────────────
   {
     id: 'netbox',
     name: 'NetBox',
@@ -4915,8 +4829,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Deployment / PaaS ────────────────────────────────────────────
   {
     id: 'coolify',
     name: 'Coolify',
@@ -4959,8 +4871,9 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
+];
 
-  // ── Monitoring (additional) ──────────────────────────────────────
+const REGISTRY_PART2: ToolRegistryEntry[] = [
   {
     id: 'telegraf',
     name: 'Telegraf',
@@ -5031,8 +4944,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Identity / Directory ─────────────────────────────────────────
   {
     id: 'lldap',
     name: 'LLDAP',
@@ -5061,8 +4972,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Home / Lifestyle ─────────────────────────────────────────────
   {
     id: 'paperless-ngx',
     name: 'Paperless-ngx',
@@ -5133,8 +5042,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Media (additional) ───────────────────────────────────────────
   {
     id: 'jellyseerr',
     name: 'Jellyseerr',
@@ -5191,8 +5098,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
-  // ── Fediverse / Social ───────────────────────────────────────────
   {
     id: 'mastodon',
     name: 'Mastodon',
@@ -5263,8 +5168,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Dev Tools (additional) ───────────────────────────────────────
   {
     id: 'clair',
     name: 'Clair',
@@ -5350,8 +5253,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Databases (additional) ───────────────────────────────────────
   {
     id: 'influxdb2',
     name: 'InfluxDB 2.x',
@@ -5380,8 +5281,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── CI/CD (additional) ───────────────────────────────────────────
   {
     id: 'harness',
     name: 'Harness (Open Source)',
@@ -5396,8 +5295,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-  // ── Container (additional) ───────────────────────────────────────
   {
     id: 'yacht',
     name: 'Yacht',
@@ -5454,8 +5351,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── CMS (additional) ─────────────────────────────────────────────
   {
     id: 'plone',
     name: 'Plone',
@@ -5470,7 +5365,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
   {
     id: 'proxmox-ve',
     name: 'Proxmox VE',
@@ -5486,7 +5380,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'truenas-core',
     name: 'TrueNAS CORE',
@@ -5501,7 +5394,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'unraid',
     name: 'Unraid',
@@ -5517,7 +5409,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'gitbucket',
     name: 'GitBucket',
@@ -5532,7 +5423,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'mikrotik-routeros',
     name: 'MikroTik RouterOS',
@@ -5547,7 +5437,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'vyos',
     name: 'VyOS',
@@ -5563,7 +5452,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'bitwarden-server',
     name: 'Bitwarden Server',
@@ -5578,7 +5466,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'teleport',
     name: 'Teleport',
@@ -5593,7 +5480,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'wireguard-ui',
     name: 'WireGuard UI',
@@ -5608,7 +5494,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cert-manager',
     name: 'cert-manager',
@@ -5623,7 +5508,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'postgresql-docker',
     name: 'PostgreSQL (Docker)',
@@ -5638,7 +5522,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'nginx-docker',
     name: 'Nginx (Docker)',
@@ -5653,7 +5536,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'apache-httpd',
     name: 'Apache HTTPD (Docker)',
@@ -5668,7 +5550,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'bind9',
     name: 'BIND9',
@@ -5683,7 +5564,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'frrouting',
     name: 'FRRouting',
@@ -5698,7 +5578,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'nginx-unit',
     name: 'Nginx Unit',
@@ -5713,7 +5592,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'planetscale-cli',
     name: 'PlanetScale CLI',
@@ -5728,7 +5606,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'turso-cli',
     name: 'Turso CLI',
@@ -5743,7 +5620,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'sqlite',
     name: 'SQLite',
@@ -5758,7 +5634,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pydio-cells',
     name: 'Pydio Cells',
@@ -5773,7 +5648,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'glusterfs',
     name: 'GlusterFS',
@@ -5788,7 +5662,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'teamspeak',
     name: 'TeamSpeak',
@@ -5803,7 +5676,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'listmonk',
     name: 'Listmonk',
@@ -5818,7 +5690,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'kapowarr',
     name: 'Kapowarr',
@@ -5833,7 +5704,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'recyclarr',
     name: 'Recyclarr',
@@ -5848,7 +5718,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'benthos',
     name: 'Benthos / Redpanda Connect',
@@ -5863,7 +5732,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kafka-ui',
     name: 'Kafka UI',
@@ -5878,7 +5746,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'ory-hydra',
     name: 'Ory Hydra',
@@ -5893,7 +5760,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'ory-kratos',
     name: 'Ory Kratos',
@@ -5908,7 +5774,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: false,
   },
-
   {
     id: 'nodejs',
     name: 'Node.js',
@@ -5923,7 +5788,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'golang',
     name: 'Go',
@@ -5938,7 +5802,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'java-openjdk',
     name: 'OpenJDK',
@@ -5953,7 +5816,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'r-lang',
     name: 'R Language',
@@ -5968,7 +5830,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cli',
     name: 'npm CLI',
@@ -5983,7 +5844,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tool',
     name: 'Cargo',
@@ -5998,7 +5858,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'github-cli',
     name: 'GitHub CLI',
@@ -6013,7 +5872,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'gitlab-cli',
     name: 'GitLab CLI',
@@ -6028,7 +5886,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'openssh',
     name: 'OpenSSH',
@@ -6043,7 +5900,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'gnupg',
     name: 'GnuPG',
@@ -6058,7 +5914,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react',
     name: 'react (npm)',
@@ -6073,7 +5928,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react-dom',
     name: 'react-dom (npm)',
@@ -6088,7 +5942,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vue',
     name: 'vue (npm)',
@@ -6103,7 +5956,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vue-cli',
     name: '@vue/cli (npm)',
@@ -6118,7 +5970,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-angular',
     name: 'angular (npm)',
@@ -6133,7 +5984,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-angular-cli',
     name: '@angular/cli (npm)',
@@ -6148,7 +5998,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-svelte',
     name: 'svelte (npm)',
@@ -6163,7 +6012,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-solid-js',
     name: 'solid-js (npm)',
@@ -6178,7 +6026,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-preact',
     name: 'preact (npm)',
@@ -6193,7 +6040,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lit',
     name: 'lit (npm)',
@@ -6208,7 +6054,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-express',
     name: 'express (npm)',
@@ -6223,7 +6068,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-fastify',
     name: 'fastify (npm)',
@@ -6238,7 +6082,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-koa',
     name: 'koa (npm)',
@@ -6253,7 +6096,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-hapi',
     name: 'hapi (npm)',
@@ -6268,7 +6110,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nestjs',
     name: 'nestjs (npm)',
@@ -6283,7 +6124,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-next',
     name: 'next (npm)',
@@ -6298,7 +6138,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nuxt',
     name: 'nuxt (npm)',
@@ -6313,7 +6152,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-remix',
     name: 'remix (npm)',
@@ -6328,7 +6166,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-astro',
     name: 'astro (npm)',
@@ -6343,7 +6180,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-gatsby',
     name: 'gatsby (npm)',
@@ -6358,7 +6194,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-typescript',
     name: 'typescript (npm)',
@@ -6373,7 +6208,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ts-node',
     name: 'ts-node (npm)',
@@ -6388,7 +6222,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tsx',
     name: 'tsx (npm)',
@@ -6403,7 +6236,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-babel',
     name: 'babel (npm)',
@@ -6418,7 +6250,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-babel-core',
     name: '@babel/core (npm)',
@@ -6433,7 +6264,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint',
     name: 'eslint (npm)',
@@ -6448,7 +6278,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-prettier',
     name: 'prettier (npm)',
@@ -6463,7 +6292,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-stylelint',
     name: 'stylelint (npm)',
@@ -6478,7 +6306,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vite',
     name: 'vite (npm)',
@@ -6493,7 +6320,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-webpack',
     name: 'webpack (npm)',
@@ -6508,7 +6334,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-rollup',
     name: 'rollup (npm)',
@@ -6523,7 +6348,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-esbuild',
     name: 'esbuild (npm)',
@@ -6538,7 +6362,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-parcel',
     name: 'parcel (npm)',
@@ -6553,7 +6376,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-swc',
     name: 'swc (npm)',
@@ -6568,7 +6390,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vitest',
     name: 'vitest (npm)',
@@ -6583,7 +6404,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-jest',
     name: 'jest (npm)',
@@ -6598,7 +6418,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mocha',
     name: 'mocha (npm)',
@@ -6613,7 +6432,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ava',
     name: 'ava (npm)',
@@ -6628,7 +6446,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cypress',
     name: 'cypress (npm)',
@@ -6643,7 +6460,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-playwright',
     name: 'playwright (npm)',
@@ -6658,7 +6474,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook',
     name: 'storybook (npm)',
@@ -6673,7 +6488,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tailwindcss',
     name: 'tailwindcss (npm)',
@@ -6688,7 +6502,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-postcss',
     name: 'postcss (npm)',
@@ -6703,7 +6516,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-autoprefixer',
     name: 'autoprefixer (npm)',
@@ -6718,7 +6530,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sass',
     name: 'sass (npm)',
@@ -6733,7 +6544,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-less',
     name: 'less (npm)',
@@ -6748,7 +6558,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-styled-components',
     name: 'styled-components (npm)',
@@ -6763,7 +6572,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-emotion',
     name: 'emotion (npm)',
@@ -6778,7 +6586,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-framer-motion',
     name: 'framer-motion (npm)',
@@ -6793,7 +6600,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-three',
     name: 'three (npm)',
@@ -6808,7 +6614,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-prisma',
     name: 'prisma (npm)',
@@ -6823,7 +6628,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-typeorm',
     name: 'typeorm (npm)',
@@ -6838,7 +6642,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sequelize',
     name: 'sequelize (npm)',
@@ -6853,7 +6656,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mongoose',
     name: 'mongoose (npm)',
@@ -6868,7 +6670,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-knex',
     name: 'knex (npm)',
@@ -6883,7 +6684,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-drizzle-orm',
     name: 'drizzle-orm (npm)',
@@ -6898,7 +6698,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-supabase-js',
     name: 'supabase-js (npm)',
@@ -6913,7 +6712,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-supabase-supabase-js',
     name: '@supabase/supabase-js (npm)',
@@ -6928,7 +6726,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-redis',
     name: 'redis (npm)',
@@ -6943,7 +6740,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ioredis',
     name: 'ioredis (npm)',
@@ -6958,7 +6754,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-axios',
     name: 'axios (npm)',
@@ -6973,7 +6768,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-got',
     name: 'got (npm)',
@@ -6988,7 +6782,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-undici',
     name: 'undici (npm)',
@@ -7003,7 +6796,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-graphql',
     name: 'graphql (npm)',
@@ -7018,7 +6810,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-apollo-server',
     name: 'apollo-server (npm)',
@@ -7033,7 +6824,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-apollo-client',
     name: '@apollo/client (npm)',
@@ -7048,7 +6838,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-urql',
     name: 'urql (npm)',
@@ -7063,7 +6852,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tanstack-query',
     name: 'tanstack-query (npm)',
@@ -7078,7 +6866,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-zustand',
     name: 'zustand (npm)',
@@ -7093,7 +6880,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-redux',
     name: 'redux (npm)',
@@ -7108,7 +6894,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pnpm',
     name: 'pnpm (npm)',
@@ -7123,7 +6908,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-yarn',
     name: 'yarn (npm)',
@@ -7138,7 +6922,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-npm',
     name: 'npm (npm)',
@@ -7153,7 +6936,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nx',
     name: 'nx (npm)',
@@ -7168,7 +6950,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-turbo',
     name: 'turbo (npm)',
@@ -7183,7 +6964,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lerna',
     name: 'lerna (npm)',
@@ -7198,7 +6978,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-changesets',
     name: 'changesets (npm)',
@@ -7213,7 +6992,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-semantic-release',
     name: 'semantic-release (npm)',
@@ -7228,7 +7006,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-release-it',
     name: 'release-it (npm)',
@@ -7243,7 +7020,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-husky',
     name: 'husky (npm)',
@@ -7258,7 +7034,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lint-staged',
     name: 'lint-staged (npm)',
@@ -7273,7 +7048,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-commitlint',
     name: 'commitlint (npm)',
@@ -7288,7 +7062,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-conventional-changelog-cli',
     name: 'conventional-changelog-cli (npm)',
@@ -7303,7 +7076,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nodemon',
     name: 'nodemon (npm)',
@@ -7318,7 +7090,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pm2',
     name: 'pm2 (npm)',
@@ -7333,7 +7104,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tsup',
     name: 'tsup (npm)',
@@ -7348,7 +7118,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-unbuild',
     name: 'unbuild (npm)',
@@ -7363,7 +7132,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-microbundle',
     name: 'microbundle (npm)',
@@ -7378,7 +7146,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-electron',
     name: 'electron (npm)',
@@ -7393,7 +7160,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tauri',
     name: 'tauri (npm)',
@@ -7408,7 +7174,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-electron-builder',
     name: 'electron-builder (npm)',
@@ -7423,7 +7188,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vitepress',
     name: 'vitepress (npm)',
@@ -7438,7 +7202,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-docusaurus',
     name: 'docusaurus (npm)',
@@ -7453,7 +7216,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mdx',
     name: 'mdx (npm)',
@@ -7468,7 +7230,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-remark',
     name: 'remark (npm)',
@@ -7483,7 +7244,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-rehype',
     name: 'rehype (npm)',
@@ -7498,7 +7258,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-marked',
     name: 'marked (npm)',
@@ -7513,7 +7272,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-markdown-it',
     name: 'markdown-it (npm)',
@@ -7528,7 +7286,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-i18next',
     name: 'i18next (npm)',
@@ -7543,7 +7300,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-date-fns',
     name: 'date-fns (npm)',
@@ -7558,7 +7314,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-moment',
     name: 'moment (npm)',
@@ -7573,7 +7328,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-dayjs',
     name: 'dayjs (npm)',
@@ -7588,7 +7342,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-zod',
     name: 'zod (npm)',
@@ -7603,7 +7356,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-yup',
     name: 'yup (npm)',
@@ -7618,7 +7370,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-joi',
     name: 'joi (npm)',
@@ -7633,7 +7384,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-class-validator',
     name: 'class-validator (npm)',
@@ -7648,7 +7398,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-openapi-typescript',
     name: 'openapi-typescript (npm)',
@@ -7663,7 +7412,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-swagger-jsdoc',
     name: 'swagger-jsdoc (npm)',
@@ -7678,7 +7426,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-swagger-ui-express',
     name: 'swagger-ui-express (npm)',
@@ -7693,7 +7440,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-dotenv',
     name: 'dotenv (npm)',
@@ -7708,7 +7454,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-dotenv-cli',
     name: 'dotenv-cli (npm)',
@@ -7723,7 +7468,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cross-env',
     name: 'cross-env (npm)',
@@ -7738,7 +7482,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-concurrently',
     name: 'concurrently (npm)',
@@ -7753,7 +7496,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-execa',
     name: 'execa (npm)',
@@ -7768,7 +7510,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-shelljs',
     name: 'shelljs (npm)',
@@ -7783,7 +7524,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-chalk',
     name: 'chalk (npm)',
@@ -7798,7 +7538,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ora',
     name: 'ora (npm)',
@@ -7813,7 +7552,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-commander',
     name: 'commander (npm)',
@@ -7828,7 +7566,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-yargs',
     name: 'yargs (npm)',
@@ -7843,7 +7580,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-inquirer',
     name: 'inquirer (npm)',
@@ -7858,7 +7594,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-socket-io',
     name: 'socket.io (npm)',
@@ -7873,7 +7608,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ws',
     name: 'ws (npm)',
@@ -7888,7 +7622,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-uwebsockets-js',
     name: 'uWebSockets.js (npm)',
@@ -7903,7 +7636,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mqtt',
     name: 'mqtt (npm)',
@@ -7918,7 +7650,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-amqplib',
     name: 'amqplib (npm)',
@@ -7933,7 +7664,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-kafkajs',
     name: 'kafkajs (npm)',
@@ -7948,7 +7678,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-bullmq',
     name: 'bullmq (npm)',
@@ -7963,7 +7692,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-agenda',
     name: 'agenda (npm)',
@@ -7978,7 +7706,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-node-cron',
     name: 'node-cron (npm)',
@@ -7993,7 +7720,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cron',
     name: 'cron (npm)',
@@ -8008,7 +7734,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sharp',
     name: 'sharp (npm)',
@@ -8023,7 +7748,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-jimp',
     name: 'jimp (npm)',
@@ -8038,7 +7762,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pdfkit',
     name: 'pdfkit (npm)',
@@ -8053,7 +7776,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-puppeteer',
     name: 'puppeteer (npm)',
@@ -8068,7 +7790,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cheerio',
     name: 'cheerio (npm)',
@@ -8083,7 +7804,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-jsdom',
     name: 'jsdom (npm)',
@@ -8098,7 +7818,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-xml2js',
     name: 'xml2js (npm)',
@@ -8113,7 +7832,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-fast-xml-parser',
     name: 'fast-xml-parser (npm)',
@@ -8128,7 +7846,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-csv-parse',
     name: 'csv-parse (npm)',
@@ -8143,7 +7860,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-papaparse',
     name: 'papaparse (npm)',
@@ -8158,7 +7874,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-uuid',
     name: 'uuid (npm)',
@@ -8173,7 +7888,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nanoid',
     name: 'nanoid (npm)',
@@ -8188,7 +7902,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-bcrypt',
     name: 'bcrypt (npm)',
@@ -8203,7 +7916,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-argon2',
     name: 'argon2 (npm)',
@@ -8218,7 +7930,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-jsonwebtoken',
     name: 'jsonwebtoken (npm)',
@@ -8233,7 +7944,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-passport',
     name: 'passport (npm)',
@@ -8248,7 +7958,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-passport-jwt',
     name: 'passport-jwt (npm)',
@@ -8263,7 +7972,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-casbin',
     name: 'casbin (npm)',
@@ -8278,7 +7986,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-winston',
     name: 'winston (npm)',
@@ -8293,7 +8000,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pino',
     name: 'pino (npm)',
@@ -8308,7 +8014,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-loglevel',
     name: 'loglevel (npm)',
@@ -8323,7 +8028,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-prom-client',
     name: 'prom-client (npm)',
@@ -8338,7 +8042,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-opentelemetry',
     name: 'opentelemetry (npm)',
@@ -8353,7 +8056,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-opentelemetry-api',
     name: '@opentelemetry/api (npm)',
@@ -8368,7 +8070,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-opentelemetry-sdk-node',
     name: '@opentelemetry/sdk-node (npm)',
@@ -8383,7 +8084,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sentry',
     name: 'sentry (npm)',
@@ -8398,7 +8098,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sentry-node',
     name: '@sentry/node (npm)',
@@ -8413,7 +8112,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-newrelic',
     name: 'newrelic (npm)',
@@ -8428,7 +8126,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-datadog-metrics',
     name: 'datadog-metrics (npm)',
@@ -8443,7 +8140,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-node-exporter',
     name: 'node_exporter (npm)',
@@ -8458,7 +8154,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react-router',
     name: 'react-router (npm)',
@@ -8473,7 +8168,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react-hook-form',
     name: 'react-hook-form (npm)',
@@ -8488,7 +8182,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-formik',
     name: 'formik (npm)',
@@ -8503,7 +8196,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react-table',
     name: 'react-table (npm)',
@@ -8518,7 +8210,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tanstack-table',
     name: 'tanstack-table (npm)',
@@ -8533,7 +8224,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ag-grid-community',
     name: 'ag-grid-community (npm)',
@@ -8548,7 +8238,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-echarts',
     name: 'echarts (npm)',
@@ -8563,7 +8252,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-chart-js',
     name: 'chart.js (npm)',
@@ -8578,7 +8266,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-recharts',
     name: 'recharts (npm)',
@@ -8593,7 +8280,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-victory',
     name: 'victory (npm)',
@@ -8608,7 +8294,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-bootstrap',
     name: 'bootstrap (npm)',
@@ -8623,7 +8308,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-bulma',
     name: 'bulma (npm)',
@@ -8638,7 +8322,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-material-ui',
     name: 'material-ui (npm)',
@@ -8653,7 +8336,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-antd',
     name: 'antd (npm)',
@@ -8668,7 +8350,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-chakra-ui',
     name: 'chakra-ui (npm)',
@@ -8683,7 +8364,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mantine',
     name: 'mantine (npm)',
@@ -8698,7 +8378,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-radix-ui',
     name: 'radix-ui (npm)',
@@ -8713,7 +8392,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-headlessui',
     name: 'headlessui (npm)',
@@ -8728,7 +8406,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lucide-react',
     name: 'lucide-react (npm)',
@@ -8743,7 +8420,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-heroicons',
     name: 'heroicons (npm)',
@@ -8758,7 +8434,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-openid-client',
     name: 'openid-client (npm)',
@@ -8773,7 +8448,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-oauth4webapi',
     name: 'oauth4webapi (npm)',
@@ -8788,7 +8462,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-keycloak-js',
     name: 'keycloak-js (npm)',
@@ -8803,7 +8476,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-auth0-js',
     name: 'auth0-js (npm)',
@@ -8818,7 +8490,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-firebase',
     name: 'firebase (npm)',
@@ -8833,7 +8504,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-aws-sdk',
     name: 'aws-sdk (npm)',
@@ -8848,7 +8518,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-aws-sdk-client-s3',
     name: '@aws-sdk/client-s3 (npm)',
@@ -8863,7 +8532,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-googleapis',
     name: 'googleapis (npm)',
@@ -8878,7 +8546,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-azure-identity',
     name: '@azure/identity (npm)',
@@ -8893,7 +8560,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-google-cloud-storage',
     name: '@google-cloud/storage (npm)',
@@ -8908,7 +8574,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-serverless',
     name: 'serverless (npm)',
@@ -8923,7 +8588,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cdktf',
     name: 'cdktf (npm)',
@@ -8938,7 +8602,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-aws-cdk',
     name: 'aws-cdk (npm)',
@@ -8953,7 +8616,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pulumi',
     name: 'pulumi (npm)',
@@ -8968,7 +8630,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-terraformer',
     name: 'terraformer (npm)',
@@ -8983,7 +8644,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-crossplane',
     name: 'crossplane (npm)',
@@ -8998,7 +8658,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-helm',
     name: 'helm (npm)',
@@ -9013,7 +8672,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-kubectl',
     name: 'kubectl (npm)',
@@ -9028,7 +8686,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-kubernetes-client',
     name: 'kubernetes-client (npm)',
@@ -9043,7 +8700,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-kubernetes-client-node',
     name: '@kubernetes/client-node (npm)',
@@ -9058,7 +8714,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-gotify-js',
     name: 'gotify-js (npm)',
@@ -9073,7 +8728,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-matrix-js-sdk',
     name: 'matrix-js-sdk (npm)',
@@ -9088,7 +8742,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-discord-js',
     name: 'discord.js (npm)',
@@ -9103,7 +8756,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-slack-sdk',
     name: 'slack-sdk (npm)',
@@ -9118,7 +8770,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-telegram',
     name: 'telegram (npm)',
@@ -9133,7 +8784,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-node-telegram-bot-api',
     name: 'node-telegram-bot-api (npm)',
@@ -9148,7 +8798,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-twilio',
     name: 'twilio (npm)',
@@ -9163,7 +8812,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mailgun-js',
     name: 'mailgun-js (npm)',
@@ -9178,7 +8826,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sendgrid',
     name: 'sendgrid (npm)',
@@ -9193,7 +8840,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nodemailer',
     name: 'nodemailer (npm)',
@@ -9208,7 +8854,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-immer',
     name: 'immer (npm)',
@@ -9223,7 +8868,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lodash',
     name: 'lodash (npm)',
@@ -9238,7 +8882,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ramda',
     name: 'ramda (npm)',
@@ -9253,7 +8896,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-rxjs',
     name: 'rxjs (npm)',
@@ -9268,7 +8910,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-xstate',
     name: 'xstate (npm)',
@@ -9283,7 +8924,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-mobx',
     name: 'mobx (npm)',
@@ -9298,7 +8938,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-valtio',
     name: 'valtio (npm)',
@@ -9313,7 +8952,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-jotai',
     name: 'jotai (npm)',
@@ -9328,7 +8966,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-recoil',
     name: 'recoil (npm)',
@@ -9343,7 +8980,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-babel-jest',
     name: 'babel-jest (npm)',
@@ -9358,7 +8994,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ts-jest',
     name: 'ts-jest (npm)',
@@ -9373,7 +9008,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-config-prettier',
     name: 'eslint-config-prettier (npm)',
@@ -9388,7 +9022,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-plugin-react',
     name: 'eslint-plugin-react (npm)',
@@ -9403,7 +9036,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-plugin-vue',
     name: 'eslint-plugin-vue (npm)',
@@ -9418,7 +9050,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-plugin-import',
     name: 'eslint-plugin-import (npm)',
@@ -9433,7 +9064,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-plugin-jsx-a11y',
     name: 'eslint-plugin-jsx-a11y (npm)',
@@ -9448,7 +9078,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-typescript-eslint-parser',
     name: '@typescript-eslint/parser (npm)',
@@ -9463,7 +9092,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-typescript-eslint-eslint-plugin',
     name: '@typescript-eslint/eslint-plugin (npm)',
@@ -9478,7 +9106,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-plugin-node',
     name: 'eslint-plugin-node (npm)',
@@ -9493,7 +9120,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vite-plugin-pwa',
     name: 'vite-plugin-pwa (npm)',
@@ -9508,7 +9134,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-workbox',
     name: 'workbox (npm)',
@@ -9523,7 +9148,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-next-auth',
     name: 'next-auth (npm)',
@@ -9538,7 +9162,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-authjs',
     name: 'authjs (npm)',
@@ -9553,7 +9176,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-iron-session',
     name: 'iron-session (npm)',
@@ -9568,7 +9190,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-supertest',
     name: 'supertest (npm)',
@@ -9583,7 +9204,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-msw',
     name: 'msw (npm)',
@@ -9598,7 +9218,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nock',
     name: 'nock (npm)',
@@ -9613,7 +9232,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-sinon',
     name: 'sinon (npm)',
@@ -9628,7 +9246,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-chai',
     name: 'chai (npm)',
@@ -9643,7 +9260,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-hardhat',
     name: 'hardhat (npm)',
@@ -9658,7 +9274,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-foundry',
     name: 'foundry (npm)',
@@ -9673,7 +9288,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-web3',
     name: 'web3 (npm)',
@@ -9688,7 +9302,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ethers',
     name: 'ethers (npm)',
@@ -9703,7 +9316,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-viem',
     name: 'viem (npm)',
@@ -9718,7 +9330,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-wagmi',
     name: 'wagmi (npm)',
@@ -9733,7 +9344,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-openzeppelin',
     name: 'openzeppelin (npm)',
@@ -9748,7 +9358,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-truffle',
     name: 'truffle (npm)',
@@ -9763,7 +9372,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ganache',
     name: 'ganache (npm)',
@@ -9778,7 +9386,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-solc',
     name: 'solc (npm)',
@@ -9793,7 +9400,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-addon-a11y',
     name: 'storybook-addon-a11y (npm)',
@@ -9808,7 +9414,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-addon-designs',
     name: 'storybook-addon-designs (npm)',
@@ -9823,7 +9428,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-react',
     name: '@storybook/react (npm)',
@@ -9838,7 +9442,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-vue3',
     name: '@storybook/vue3 (npm)',
@@ -9853,7 +9456,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-sveltekit',
     name: '@storybook/sveltekit (npm)',
@@ -9868,7 +9470,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-angular',
     name: '@storybook/angular (npm)',
@@ -9883,7 +9484,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-addon-essentials',
     name: '@storybook/addon-essentials (npm)',
@@ -9898,7 +9498,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-storybook-dark-mode',
     name: 'storybook-dark-mode (npm)',
@@ -9913,7 +9512,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-chromatic',
     name: 'chromatic (npm)',
@@ -9928,7 +9526,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-histoire',
     name: 'histoire (npm)',
@@ -9943,7 +9540,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-react-native',
     name: 'react-native (npm)',
@@ -9958,7 +9554,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-expo',
     name: 'expo (npm)',
@@ -9973,7 +9568,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ionic',
     name: 'ionic (npm)',
@@ -9988,7 +9582,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-capacitor',
     name: 'capacitor (npm)',
@@ -10003,7 +9596,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cordova',
     name: 'cordova (npm)',
@@ -10018,7 +9610,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-tauri-cli',
     name: 'tauri-cli (npm)',
@@ -10033,7 +9624,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-electron-forge',
     name: 'electron-forge (npm)',
@@ -10048,7 +9638,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nativewind',
     name: 'nativewind (npm)',
@@ -10063,7 +9652,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-reanimated',
     name: 'reanimated (npm)',
@@ -10078,7 +9666,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-metro',
     name: 'metro (npm)',
@@ -10093,7 +9680,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-playwright-core',
     name: 'playwright-core (npm)',
@@ -10108,7 +9694,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-playwright-test',
     name: '@playwright/test (npm)',
@@ -10123,7 +9708,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-puppeteer-core',
     name: 'puppeteer-core (npm)',
@@ -10138,7 +9722,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-webdriverio',
     name: 'webdriverio (npm)',
@@ -10153,7 +9736,9 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
+];
 
+const REGISTRY_PART3: ToolRegistryEntry[] = [
   {
     id: 'npm-selenium-webdriver',
     name: 'selenium-webdriver (npm)',
@@ -10168,7 +9753,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-appium',
     name: 'appium (npm)',
@@ -10183,7 +9767,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-detox',
     name: 'detox (npm)',
@@ -10198,7 +9781,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-testcafe',
     name: 'testcafe (npm)',
@@ -10213,7 +9795,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nightwatch',
     name: 'nightwatch (npm)',
@@ -10228,7 +9809,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-cucumber',
     name: 'cucumber (npm)',
@@ -10243,7 +9823,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-opencollective',
     name: 'opencollective (npm)',
@@ -10258,7 +9837,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-verdaccio',
     name: 'verdaccio (npm)',
@@ -10273,7 +9851,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-pnpm-workspace',
     name: 'pnpm-workspace (npm)',
@@ -10288,7 +9865,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-rush',
     name: 'rush (npm)',
@@ -10303,7 +9879,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-lage',
     name: 'lage (npm)',
@@ -10318,7 +9893,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-bazelisk',
     name: 'bazelisk (npm)',
@@ -10333,7 +9907,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-eslint-d',
     name: 'eslint_d (npm)',
@@ -10348,7 +9921,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-ts-prune',
     name: 'ts-prune (npm)',
@@ -10363,7 +9935,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-depcheck',
     name: 'depcheck (npm)',
@@ -10378,7 +9949,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-madge',
     name: 'madge (npm)',
@@ -10393,7 +9963,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vitest-ui',
     name: 'vitest-ui (npm)',
@@ -10408,7 +9977,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-vitest-coverage-c8',
     name: 'vitest-coverage-c8 (npm)',
@@ -10423,7 +9991,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-istanbul',
     name: 'istanbul (npm)',
@@ -10438,7 +10005,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-nyc',
     name: 'nyc (npm)',
@@ -10453,7 +10019,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-coveralls',
     name: 'coveralls (npm)',
@@ -10468,7 +10033,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-codecov',
     name: 'codecov (npm)',
@@ -10483,7 +10047,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-all-contributors-cli',
     name: 'all-contributors-cli (npm)',
@@ -10498,7 +10061,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-danger',
     name: 'danger (npm)',
@@ -10513,7 +10075,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-renovate',
     name: 'renovate (npm)',
@@ -10528,7 +10089,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'npm-dependabot',
     name: 'dependabot (npm)',
@@ -10543,7 +10103,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-django',
     name: 'django (PyPI)',
@@ -10558,7 +10117,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-flask',
     name: 'flask (PyPI)',
@@ -10573,7 +10131,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-fastapi',
     name: 'fastapi (PyPI)',
@@ -10588,7 +10145,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-starlette',
     name: 'starlette (PyPI)',
@@ -10603,7 +10159,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-uvicorn',
     name: 'uvicorn (PyPI)',
@@ -10618,7 +10173,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-gunicorn',
     name: 'gunicorn (PyPI)',
@@ -10633,7 +10187,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-requests',
     name: 'requests (PyPI)',
@@ -10648,7 +10201,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-httpx',
     name: 'httpx (PyPI)',
@@ -10663,7 +10215,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-aiohttp',
     name: 'aiohttp (PyPI)',
@@ -10678,7 +10229,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-urllib3',
     name: 'urllib3 (PyPI)',
@@ -10693,7 +10243,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pydantic',
     name: 'pydantic (PyPI)',
@@ -10708,7 +10257,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-sqlalchemy',
     name: 'sqlalchemy (PyPI)',
@@ -10723,7 +10271,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-alembic',
     name: 'alembic (PyPI)',
@@ -10738,7 +10285,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-celery',
     name: 'celery (PyPI)',
@@ -10753,7 +10299,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-redis',
     name: 'redis (PyPI)',
@@ -10768,7 +10313,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-rq',
     name: 'rq (PyPI)',
@@ -10783,7 +10327,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-dramatiq',
     name: 'dramatiq (PyPI)',
@@ -10798,7 +10341,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-apscheduler',
     name: 'apscheduler (PyPI)',
@@ -10813,7 +10355,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pytest',
     name: 'pytest (PyPI)',
@@ -10828,7 +10369,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-tox',
     name: 'tox (PyPI)',
@@ -10843,7 +10383,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-black',
     name: 'black (PyPI)',
@@ -10858,7 +10397,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ruff',
     name: 'ruff (PyPI)',
@@ -10873,7 +10411,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-mypy',
     name: 'mypy (PyPI)',
@@ -10888,7 +10425,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-isort',
     name: 'isort (PyPI)',
@@ -10903,7 +10439,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-flake8',
     name: 'flake8 (PyPI)',
@@ -10918,7 +10453,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pylint',
     name: 'pylint (PyPI)',
@@ -10933,7 +10467,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-bandit',
     name: 'bandit (PyPI)',
@@ -10948,7 +10481,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-safety',
     name: 'safety (PyPI)',
@@ -10963,7 +10495,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pip-audit',
     name: 'pip-audit (PyPI)',
@@ -10978,7 +10509,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-poetry',
     name: 'poetry (PyPI)',
@@ -10993,7 +10523,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-setuptools',
     name: 'setuptools (PyPI)',
@@ -11008,7 +10537,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-wheel',
     name: 'wheel (PyPI)',
@@ -11023,7 +10551,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-virtualenv',
     name: 'virtualenv (PyPI)',
@@ -11038,7 +10565,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pipenv',
     name: 'pipenv (PyPI)',
@@ -11053,7 +10579,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-hatch',
     name: 'hatch (PyPI)',
@@ -11068,7 +10593,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-build',
     name: 'build (PyPI)',
@@ -11083,7 +10607,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-twine',
     name: 'twine (PyPI)',
@@ -11098,7 +10621,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-sphinx',
     name: 'sphinx (PyPI)',
@@ -11113,7 +10635,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-mkdocs',
     name: 'mkdocs (PyPI)',
@@ -11128,7 +10649,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-mkdocs-material',
     name: 'mkdocs-material (PyPI)',
@@ -11143,7 +10663,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-numpy',
     name: 'numpy (PyPI)',
@@ -11158,7 +10677,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pandas',
     name: 'pandas (PyPI)',
@@ -11173,7 +10691,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-scipy',
     name: 'scipy (PyPI)',
@@ -11188,7 +10705,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-matplotlib',
     name: 'matplotlib (PyPI)',
@@ -11203,7 +10719,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-seaborn',
     name: 'seaborn (PyPI)',
@@ -11218,7 +10733,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-plotly',
     name: 'plotly (PyPI)',
@@ -11233,7 +10747,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-scikit-learn',
     name: 'scikit-learn (PyPI)',
@@ -11248,7 +10761,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-xgboost',
     name: 'xgboost (PyPI)',
@@ -11263,7 +10775,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-lightgbm',
     name: 'lightgbm (PyPI)',
@@ -11278,7 +10789,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-catboost',
     name: 'catboost (PyPI)',
@@ -11293,7 +10803,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-tensorflow',
     name: 'tensorflow (PyPI)',
@@ -11308,7 +10817,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-torch',
     name: 'torch (PyPI)',
@@ -11323,7 +10831,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-keras',
     name: 'keras (PyPI)',
@@ -11338,7 +10845,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-jax',
     name: 'jax (PyPI)',
@@ -11353,7 +10859,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-transformers',
     name: 'transformers (PyPI)',
@@ -11368,7 +10873,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-datasets',
     name: 'datasets (PyPI)',
@@ -11383,7 +10887,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-sentence-transformers',
     name: 'sentence-transformers (PyPI)',
@@ -11398,7 +10901,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-spacy',
     name: 'spacy (PyPI)',
@@ -11413,7 +10915,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-nltk',
     name: 'nltk (PyPI)',
@@ -11428,7 +10929,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-gensim',
     name: 'gensim (PyPI)',
@@ -11443,7 +10943,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-opencv-python',
     name: 'opencv-python (PyPI)',
@@ -11458,7 +10957,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pillow',
     name: 'pillow (PyPI)',
@@ -11473,7 +10971,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-moviepy',
     name: 'moviepy (PyPI)',
@@ -11488,7 +10985,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-librosa',
     name: 'librosa (PyPI)',
@@ -11503,7 +10999,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-soundfile',
     name: 'soundfile (PyPI)',
@@ -11518,7 +11013,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pydub',
     name: 'pydub (PyPI)',
@@ -11533,7 +11027,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pdfplumber',
     name: 'pdfplumber (PyPI)',
@@ -11548,7 +11041,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pypdf',
     name: 'pypdf (PyPI)',
@@ -11563,7 +11055,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-reportlab',
     name: 'reportlab (PyPI)',
@@ -11578,7 +11069,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-weasyprint',
     name: 'weasyprint (PyPI)',
@@ -11593,7 +11083,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-psycopg2-binary',
     name: 'psycopg2-binary (PyPI)',
@@ -11608,7 +11097,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-asyncpg',
     name: 'asyncpg (PyPI)',
@@ -11623,7 +11111,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pymysql',
     name: 'pymysql (PyPI)',
@@ -11638,7 +11125,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-mysqlclient',
     name: 'mysqlclient (PyPI)',
@@ -11653,7 +11139,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-motor',
     name: 'motor (PyPI)',
@@ -11668,7 +11153,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pymongo',
     name: 'pymongo (PyPI)',
@@ -11683,7 +11167,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-redis-py-cluster',
     name: 'redis-py-cluster (PyPI)',
@@ -11698,7 +11181,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-elasticsearch',
     name: 'elasticsearch (PyPI)',
@@ -11713,7 +11195,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-opensearch-py',
     name: 'opensearch-py (PyPI)',
@@ -11728,7 +11209,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-influxdb-client',
     name: 'influxdb-client (PyPI)',
@@ -11743,7 +11223,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-boto3',
     name: 'boto3 (PyPI)',
@@ -11758,7 +11237,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-botocore',
     name: 'botocore (PyPI)',
@@ -11773,7 +11251,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-google-cloud-storage',
     name: 'google-cloud-storage (PyPI)',
@@ -11788,7 +11265,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-google-cloud-bigquery',
     name: 'google-cloud-bigquery (PyPI)',
@@ -11803,7 +11279,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-azure-storage-blob',
     name: 'azure-storage-blob (PyPI)',
@@ -11818,7 +11293,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-azure-identity',
     name: 'azure-identity (PyPI)',
@@ -11833,7 +11307,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-kubernetes',
     name: 'kubernetes (PyPI)',
@@ -11848,7 +11321,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-docker',
     name: 'docker (PyPI)',
@@ -11863,7 +11335,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ansible',
     name: 'ansible (PyPI)',
@@ -11878,7 +11349,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-salt',
     name: 'salt (PyPI)',
@@ -11893,7 +11363,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-terraform-compliance',
     name: 'terraform-compliance (PyPI)',
@@ -11908,7 +11377,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-checkov',
     name: 'checkov (PyPI)',
@@ -11923,7 +11391,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-trivy',
     name: 'trivy (PyPI)',
@@ -11938,7 +11405,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-semgrep',
     name: 'semgrep (PyPI)',
@@ -11953,7 +11419,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-grype',
     name: 'grype (PyPI)',
@@ -11968,7 +11433,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-syft',
     name: 'syft (PyPI)',
@@ -11983,7 +11447,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pre-commit',
     name: 'pre-commit (PyPI)',
@@ -11998,7 +11461,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-invoke',
     name: 'invoke (PyPI)',
@@ -12013,7 +11475,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-fabric',
     name: 'fabric (PyPI)',
@@ -12028,7 +11489,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-click',
     name: 'click (PyPI)',
@@ -12043,7 +11503,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-typer',
     name: 'typer (PyPI)',
@@ -12058,7 +11517,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-rich',
     name: 'rich (PyPI)',
@@ -12073,7 +11531,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-loguru',
     name: 'loguru (PyPI)',
@@ -12088,7 +11545,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-structlog',
     name: 'structlog (PyPI)',
@@ -12103,7 +11559,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-prometheus-client',
     name: 'prometheus-client (PyPI)',
@@ -12118,7 +11573,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-opentelemetry-api',
     name: 'opentelemetry-api (PyPI)',
@@ -12133,7 +11587,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-opentelemetry-sdk',
     name: 'opentelemetry-sdk (PyPI)',
@@ -12148,7 +11601,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-sentry-sdk',
     name: 'sentry-sdk (PyPI)',
@@ -12163,7 +11615,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-newrelic',
     name: 'newrelic (PyPI)',
@@ -12178,7 +11629,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ddtrace',
     name: 'ddtrace (PyPI)',
@@ -12193,7 +11643,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-authlib',
     name: 'authlib (PyPI)',
@@ -12208,7 +11657,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-python-jose',
     name: 'python-jose (PyPI)',
@@ -12223,7 +11671,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pyjwt',
     name: 'pyjwt (PyPI)',
@@ -12238,7 +11685,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-cryptography',
     name: 'cryptography (PyPI)',
@@ -12253,7 +11699,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-passlib',
     name: 'passlib (PyPI)',
@@ -12268,7 +11713,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-argon2-cffi',
     name: 'argon2-cffi (PyPI)',
@@ -12283,7 +11727,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-bcrypt',
     name: 'bcrypt (PyPI)',
@@ -12298,7 +11741,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pyopenssl',
     name: 'pyopenssl (PyPI)',
@@ -12313,7 +11755,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-certifi',
     name: 'certifi (PyPI)',
@@ -12328,7 +11769,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-dnspython',
     name: 'dnspython (PyPI)',
@@ -12343,7 +11783,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-scrapy',
     name: 'scrapy (PyPI)',
@@ -12358,7 +11797,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-beautifulsoup4',
     name: 'beautifulsoup4 (PyPI)',
@@ -12373,7 +11811,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-lxml',
     name: 'lxml (PyPI)',
@@ -12388,7 +11825,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pyyaml',
     name: 'pyyaml (PyPI)',
@@ -12403,7 +11839,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-toml',
     name: 'toml (PyPI)',
@@ -12418,7 +11853,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-orjson',
     name: 'orjson (PyPI)',
@@ -12433,7 +11867,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ujson',
     name: 'ujson (PyPI)',
@@ -12448,7 +11881,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-msgpack',
     name: 'msgpack (PyPI)',
@@ -12463,7 +11895,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pyarrow',
     name: 'pyarrow (PyPI)',
@@ -12478,7 +11909,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-fastparquet',
     name: 'fastparquet (PyPI)',
@@ -12493,7 +11923,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-jupyter',
     name: 'jupyter (PyPI)',
@@ -12508,7 +11937,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-notebook',
     name: 'notebook (PyPI)',
@@ -12523,7 +11951,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-jupyterlab',
     name: 'jupyterlab (PyPI)',
@@ -12538,7 +11965,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-jupyterhub',
     name: 'jupyterhub (PyPI)',
@@ -12553,7 +11979,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ipython',
     name: 'ipython (PyPI)',
@@ -12568,7 +11993,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ipywidgets',
     name: 'ipywidgets (PyPI)',
@@ -12583,7 +12007,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-streamlit',
     name: 'streamlit (PyPI)',
@@ -12598,7 +12021,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-gradio',
     name: 'gradio (PyPI)',
@@ -12613,7 +12035,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-dash',
     name: 'dash (PyPI)',
@@ -12628,7 +12049,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-panel',
     name: 'panel (PyPI)',
@@ -12643,7 +12063,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-airflow',
     name: 'airflow (PyPI)',
@@ -12658,7 +12077,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-prefect',
     name: 'prefect (PyPI)',
@@ -12673,7 +12091,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-dagster',
     name: 'dagster (PyPI)',
@@ -12688,7 +12105,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-luigi',
     name: 'luigi (PyPI)',
@@ -12703,7 +12119,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-ray',
     name: 'ray (PyPI)',
@@ -12718,7 +12133,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-dask',
     name: 'dask (PyPI)',
@@ -12733,7 +12147,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-modin',
     name: 'modin (PyPI)',
@@ -12748,7 +12161,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-polars',
     name: 'polars (PyPI)',
@@ -12763,7 +12175,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-pyspark',
     name: 'pyspark (PyPI)',
@@ -12778,7 +12189,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pypi-petl',
     name: 'petl (PyPI)',
@@ -12793,7 +12203,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tokio',
     name: 'tokio (Cargo)',
@@ -12808,7 +12217,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-axum',
     name: 'axum (Cargo)',
@@ -12823,7 +12231,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-warp',
     name: 'warp (Cargo)',
@@ -12838,7 +12245,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-actix-web',
     name: 'actix-web (Cargo)',
@@ -12853,7 +12259,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rocket',
     name: 'rocket (Cargo)',
@@ -12868,7 +12273,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-hyper',
     name: 'hyper (Cargo)',
@@ -12883,7 +12287,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-reqwest',
     name: 'reqwest (Cargo)',
@@ -12898,7 +12301,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-serde',
     name: 'serde (Cargo)',
@@ -12913,7 +12315,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-serde-json',
     name: 'serde_json (Cargo)',
@@ -12928,7 +12329,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-toml',
     name: 'toml (Cargo)',
@@ -12943,7 +12343,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-clap',
     name: 'clap (Cargo)',
@@ -12958,7 +12357,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-anyhow',
     name: 'anyhow (Cargo)',
@@ -12973,7 +12371,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-thiserror',
     name: 'thiserror (Cargo)',
@@ -12988,7 +12385,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tracing',
     name: 'tracing (Cargo)',
@@ -13003,7 +12399,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tracing-subscriber',
     name: 'tracing-subscriber (Cargo)',
@@ -13018,7 +12413,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-log',
     name: 'log (Cargo)',
@@ -13033,7 +12427,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-env-logger',
     name: 'env_logger (Cargo)',
@@ -13048,7 +12441,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-chrono',
     name: 'chrono (Cargo)',
@@ -13063,7 +12455,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-uuid',
     name: 'uuid (Cargo)',
@@ -13078,7 +12469,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rand',
     name: 'rand (Cargo)',
@@ -13093,7 +12483,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-diesel',
     name: 'diesel (Cargo)',
@@ -13108,7 +12497,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-sqlx',
     name: 'sqlx (Cargo)',
@@ -13123,7 +12511,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-sea-orm',
     name: 'sea-orm (Cargo)',
@@ -13138,7 +12525,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-mongodb',
     name: 'mongodb (Cargo)',
@@ -13153,7 +12539,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-redis',
     name: 'redis (Cargo)',
@@ -13168,7 +12553,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-lapin',
     name: 'lapin (Cargo)',
@@ -13183,7 +12567,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rdkafka',
     name: 'rdkafka (Cargo)',
@@ -13198,7 +12581,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-nats',
     name: 'nats (Cargo)',
@@ -13213,7 +12595,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-surrealdb',
     name: 'surrealdb (Cargo)',
@@ -13228,7 +12609,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-clickhouse',
     name: 'clickhouse (Cargo)',
@@ -13243,7 +12623,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-bevy',
     name: 'bevy (Cargo)',
@@ -13258,7 +12637,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-wgpu',
     name: 'wgpu (Cargo)',
@@ -13273,7 +12651,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-winit',
     name: 'winit (Cargo)',
@@ -13288,7 +12665,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-glium',
     name: 'glium (Cargo)',
@@ -13303,7 +12679,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-egui',
     name: 'egui (Cargo)',
@@ -13318,7 +12693,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-iced',
     name: 'iced (Cargo)',
@@ -13333,7 +12707,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tauri',
     name: 'tauri (Cargo)',
@@ -13348,7 +12721,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-leptos',
     name: 'leptos (Cargo)',
@@ -13363,7 +12735,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-yew',
     name: 'yew (Cargo)',
@@ -13378,7 +12749,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-dioxus',
     name: 'dioxus (Cargo)',
@@ -13393,7 +12763,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-wasm-bindgen',
     name: 'wasm-bindgen (Cargo)',
@@ -13408,7 +12777,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-wasm-pack',
     name: 'wasm-pack (Cargo)',
@@ -13423,7 +12791,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-bindgen',
     name: 'bindgen (Cargo)',
@@ -13438,7 +12805,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cbindgen',
     name: 'cbindgen (Cargo)',
@@ -13453,7 +12819,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cc',
     name: 'cc (Cargo)',
@@ -13468,7 +12833,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cmake',
     name: 'cmake (Cargo)',
@@ -13483,7 +12847,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cargo-watch',
     name: 'cargo-watch (Cargo)',
@@ -13498,7 +12861,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cargo-edit',
     name: 'cargo-edit (Cargo)',
@@ -13513,7 +12875,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cargo-audit',
     name: 'cargo-audit (Cargo)',
@@ -13528,7 +12889,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-cargo-deny',
     name: 'cargo-deny (Cargo)',
@@ -13543,7 +12903,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-openssl',
     name: 'openssl (Cargo)',
@@ -13558,7 +12917,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rustls',
     name: 'rustls (Cargo)',
@@ -13573,7 +12931,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-ring',
     name: 'ring (Cargo)',
@@ -13588,7 +12945,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-jsonwebtoken',
     name: 'jsonwebtoken (Cargo)',
@@ -13603,7 +12959,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-argon2',
     name: 'argon2 (Cargo)',
@@ -13618,7 +12973,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-bcrypt',
     name: 'bcrypt (Cargo)',
@@ -13633,7 +12987,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-pbkdf2',
     name: 'pbkdf2 (Cargo)',
@@ -13648,7 +13001,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-sha2',
     name: 'sha2 (Cargo)',
@@ -13663,7 +13015,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-blake3',
     name: 'blake3 (Cargo)',
@@ -13678,7 +13029,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-ed25519-dalek',
     name: 'ed25519-dalek (Cargo)',
@@ -13693,7 +13043,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rayon',
     name: 'rayon (Cargo)',
@@ -13708,7 +13057,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-itertools',
     name: 'itertools (Cargo)',
@@ -13723,7 +13071,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-futures',
     name: 'futures (Cargo)',
@@ -13738,7 +13085,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-async-trait',
     name: 'async-trait (Cargo)',
@@ -13753,7 +13099,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-bytes',
     name: 'bytes (Cargo)',
@@ -13768,7 +13113,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-nom',
     name: 'nom (Cargo)',
@@ -13783,7 +13127,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-regex',
     name: 'regex (Cargo)',
@@ -13798,7 +13141,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-lazy-static',
     name: 'lazy_static (Cargo)',
@@ -13813,7 +13155,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-once-cell',
     name: 'once_cell (Cargo)',
@@ -13828,7 +13169,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-smallvec',
     name: 'smallvec (Cargo)',
@@ -13843,7 +13183,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-polars',
     name: 'polars (Cargo)',
@@ -13858,7 +13197,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-arrow2',
     name: 'arrow2 (Cargo)',
@@ -13873,7 +13211,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-datafusion',
     name: 'datafusion (Cargo)',
@@ -13888,7 +13225,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-parquet',
     name: 'parquet (Cargo)',
@@ -13903,7 +13239,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-csv',
     name: 'csv (Cargo)',
@@ -13918,7 +13253,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-ndarray',
     name: 'ndarray (Cargo)',
@@ -13933,7 +13267,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-linfa',
     name: 'linfa (Cargo)',
@@ -13948,7 +13281,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-smartcore',
     name: 'smartcore (Cargo)',
@@ -13963,7 +13295,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-plotters',
     name: 'plotters (Cargo)',
@@ -13978,7 +13309,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-image',
     name: 'image (Cargo)',
@@ -13993,7 +13323,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-prost',
     name: 'prost (Cargo)',
@@ -14008,7 +13337,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tonic',
     name: 'tonic (Cargo)',
@@ -14023,7 +13351,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tower',
     name: 'tower (Cargo)',
@@ -14038,7 +13365,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-tower-http',
     name: 'tower-http (Cargo)',
@@ -14053,7 +13379,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-kube',
     name: 'kube (Cargo)',
@@ -14068,7 +13393,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-kube-runtime',
     name: 'kube-runtime (Cargo)',
@@ -14083,7 +13407,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-opentelemetry',
     name: 'opentelemetry (Cargo)',
@@ -14098,7 +13421,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-opentelemetry-otlp',
     name: 'opentelemetry-otlp (Cargo)',
@@ -14113,7 +13435,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-prometheus',
     name: 'prometheus (Cargo)',
@@ -14128,7 +13449,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-metrics',
     name: 'metrics (Cargo)',
@@ -14143,7 +13463,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-napi',
     name: 'napi (Cargo)',
@@ -14158,7 +13477,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-napi-derive',
     name: 'napi-derive (Cargo)',
@@ -14173,7 +13491,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-pyo3',
     name: 'pyo3 (Cargo)',
@@ -14188,7 +13505,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-maturin',
     name: 'maturin (Cargo)',
@@ -14203,7 +13519,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-criterion',
     name: 'criterion (Cargo)',
@@ -14218,7 +13533,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-proptest',
     name: 'proptest (Cargo)',
@@ -14233,7 +13547,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-insta',
     name: 'insta (Cargo)',
@@ -14248,7 +13561,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-mockall',
     name: 'mockall (Cargo)',
@@ -14263,7 +13575,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-rstest',
     name: 'rstest (Cargo)',
@@ -14278,7 +13589,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cargo-trybuild',
     name: 'trybuild (Cargo)',
@@ -14293,7 +13603,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-springframework-spring-core',
     name: 'org.springframework:spring-core (Maven Central)',
@@ -14308,7 +13617,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-boot-spring-boot',
     name: 'org.springframework.boot:spring-boot (Maven Central)',
@@ -14323,7 +13631,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-springframework-spring-web',
     name: 'org.springframework:spring-web (Maven Central)',
@@ -14338,7 +13645,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-springframework-spring-context',
     name: 'org.springframework:spring-context (Maven Central)',
@@ -14353,7 +13659,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-security-spring-security-core',
     name: 'org.springframework.security:spring-security-core (Maven Central)',
@@ -14368,7 +13673,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-hibernate-hibernate-core',
     name: 'org.hibernate:hibernate-core (Maven Central)',
@@ -14383,7 +13687,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-maven-maven-core',
     name: 'org.apache.maven:maven-core (Maven Central)',
@@ -14398,7 +13701,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-log4j-log4j-core',
     name: 'org.apache.logging.log4j:log4j-core (Maven Central)',
@@ -14413,7 +13715,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-logback-logback-classic',
     name: 'ch.qos.logback:logback-classic (Maven Central)',
@@ -14428,7 +13729,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-slf4j-slf4j-api',
     name: 'org.slf4j:slf4j-api (Maven Central)',
@@ -14443,7 +13743,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-core-jackson-databind',
     name: 'com.fasterxml.jackson.core:jackson-databind (Maven Central)',
@@ -14458,7 +13757,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-guava-guava',
     name: 'com.google.guava:guava (Maven Central)',
@@ -14473,7 +13771,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-commons-io-commons-io',
     name: 'commons-io:commons-io (Maven Central)',
@@ -14488,7 +13785,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-commons-commons-lang3',
     name: 'org.apache.commons:commons-lang3 (Maven Central)',
@@ -14503,7 +13799,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-commons-commons-collections4',
     name: 'org.apache.commons:commons-collections4 (Maven Central)',
@@ -14518,7 +13813,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-jupiter-junit-jupiter',
     name: 'org.junit.jupiter:junit-jupiter (Maven Central)',
@@ -14533,7 +13827,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-mockito-mockito-core',
     name: 'org.mockito:mockito-core (Maven Central)',
@@ -14548,7 +13841,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-assertj-assertj-core',
     name: 'org.assertj:assertj-core (Maven Central)',
@@ -14563,7 +13855,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-testcontainers-testcontainers',
     name: 'org.testcontainers:testcontainers (Maven Central)',
@@ -14578,7 +13869,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-rest-assured-rest-assured',
     name: 'io.rest-assured:rest-assured (Maven Central)',
@@ -14593,7 +13883,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-netty-netty-all',
     name: 'io.netty:netty-all (Maven Central)',
@@ -14608,7 +13897,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-projectreactor-reactor-core',
     name: 'io.projectreactor:reactor-core (Maven Central)',
@@ -14623,7 +13911,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-kafka-kafka-clients',
     name: 'org.apache.kafka:kafka-clients (Maven Central)',
@@ -14638,7 +13925,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-httpcomponents-httpclient',
     name: 'org.apache.httpcomponents:httpclient (Maven Central)',
@@ -14653,7 +13939,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-client5-httpclient5',
     name: 'org.apache.httpcomponents.client5:httpclient5 (Maven Central)',
@@ -14668,7 +13953,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-postgresql-postgresql',
     name: 'org.postgresql:postgresql (Maven Central)',
@@ -14683,7 +13967,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-mysql-mysql-connector-java',
     name: 'mysql:mysql-connector-java (Maven Central)',
@@ -14698,7 +13981,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-jdbc-mariadb-java-client',
     name: 'org.mariadb.jdbc:mariadb-java-client (Maven Central)',
@@ -14713,7 +13995,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-mongodb-mongodb-driver-sync',
     name: 'org.mongodb:mongodb-driver-sync (Maven Central)',
@@ -14728,7 +14009,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-clients-jedis',
     name: 'redis.clients:jedis (Maven Central)',
@@ -14743,7 +14023,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-okhttp3-okhttp',
     name: 'com.squareup.okhttp3:okhttp (Maven Central)',
@@ -14758,7 +14037,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-retrofit2-retrofit',
     name: 'com.squareup.retrofit2:retrofit (Maven Central)',
@@ -14773,7 +14051,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-grpc-grpc-netty',
     name: 'io.grpc:grpc-netty (Maven Central)',
@@ -14788,7 +14065,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-grpc-grpc-protobuf',
     name: 'io.grpc:grpc-protobuf (Maven Central)',
@@ -14803,7 +14079,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-grpc-grpc-stub',
     name: 'io.grpc:grpc-stub (Maven Central)',
@@ -14818,7 +14093,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-kotlin-kotlin-stdlib',
     name: 'org.jetbrains.kotlin:kotlin-stdlib (Maven Central)',
@@ -14833,7 +14107,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-kotlinx-kotlinx-coroutines-core',
     name: 'org.jetbrains.kotlinx:kotlinx-coroutines-core (Maven Central)',
@@ -14848,7 +14121,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-exposed-exposed-core',
     name: 'org.jetbrains.exposed:exposed-core (Maven Central)',
@@ -14863,7 +14135,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-ktor-ktor-server-core',
     name: 'io.ktor:ktor-server-core (Maven Central)',
@@ -14878,7 +14149,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-ktor-ktor-client-core',
     name: 'io.ktor:ktor-client-core (Maven Central)',
@@ -14893,7 +14163,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-spark-spark-core-2-12',
     name: 'org.apache.spark:spark-core_2.12 (Maven Central)',
@@ -14908,7 +14177,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-flink-flink-core',
     name: 'org.apache.flink:flink-core (Maven Central)',
@@ -14923,7 +14191,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-elasticsearch-elasticsearch',
     name: 'org.elasticsearch:elasticsearch (Maven Central)',
@@ -14938,7 +14205,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-opensearch-opensearch',
     name: 'org.opensearch:opensearch (Maven Central)',
@@ -14953,7 +14219,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-lucene-lucene-core',
     name: 'org.apache.lucene:lucene-core (Maven Central)',
@@ -14968,7 +14233,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-flywaydb-flyway-core',
     name: 'org.flywaydb:flyway-core (Maven Central)',
@@ -14983,7 +14247,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-liquibase-liquibase-core',
     name: 'org.liquibase:liquibase-core (Maven Central)',
@@ -14998,7 +14261,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-zaxxer-hikaricp',
     name: 'com.zaxxer:HikariCP (Maven Central)',
@@ -15013,7 +14275,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-mapstruct-mapstruct',
     name: 'org.mapstruct:mapstruct (Maven Central)',
@@ -15028,7 +14289,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-projectlombok-lombok',
     name: 'org.projectlombok:lombok (Maven Central)',
@@ -15043,7 +14303,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-quarkus-quarkus-core',
     name: 'io.quarkus:quarkus-core (Maven Central)',
@@ -15058,7 +14317,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-micronaut-micronaut-runtime',
     name: 'io.micronaut:micronaut-runtime (Maven Central)',
@@ -15073,7 +14331,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-webserver-helidon-webserver',
     name: 'io.helidon.webserver:helidon-webserver (Maven Central)',
@@ -15088,7 +14345,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-camel-camel-core',
     name: 'org.apache.camel:camel-core (Maven Central)',
@@ -15103,7 +14359,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'maven-activemq-activemq-client',
     name: 'org.apache.activemq:activemq-client (Maven Central)',
@@ -15118,7 +14373,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-postgresql',
     name: 'bitnami/postgresql (Helm Chart)',
@@ -15133,7 +14387,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-redis',
     name: 'bitnami/redis (Helm Chart)',
@@ -15148,7 +14401,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-mysql',
     name: 'bitnami/mysql (Helm Chart)',
@@ -15163,7 +14415,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-mariadb',
     name: 'bitnami/mariadb (Helm Chart)',
@@ -15178,7 +14429,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-mongodb',
     name: 'bitnami/mongodb (Helm Chart)',
@@ -15193,7 +14443,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-nginx',
     name: 'bitnami/nginx (Helm Chart)',
@@ -15208,7 +14457,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-apache',
     name: 'bitnami/apache (Helm Chart)',
@@ -15223,7 +14471,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-rabbitmq',
     name: 'bitnami/rabbitmq (Helm Chart)',
@@ -15238,7 +14485,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-kafka',
     name: 'bitnami/kafka (Helm Chart)',
@@ -15253,7 +14499,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-elasticsearch',
     name: 'bitnami/elasticsearch (Helm Chart)',
@@ -15268,7 +14513,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-grafana',
     name: 'bitnami/grafana (Helm Chart)',
@@ -15283,7 +14527,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-prometheus',
     name: 'bitnami/prometheus (Helm Chart)',
@@ -15298,7 +14541,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-loki',
     name: 'bitnami/loki (Helm Chart)',
@@ -15313,7 +14555,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-harbor',
     name: 'bitnami/harbor (Helm Chart)',
@@ -15328,7 +14569,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-argo-cd',
     name: 'bitnami/argo-cd (Helm Chart)',
@@ -15343,7 +14583,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-keycloak',
     name: 'bitnami/keycloak (Helm Chart)',
@@ -15358,7 +14597,9 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
+];
 
+const REGISTRY_PART4: ToolRegistryEntry[] = [
   {
     id: 'helm-bitnami-vault',
     name: 'bitnami/vault (Helm Chart)',
@@ -15373,7 +14614,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-sonarqube',
     name: 'bitnami/sonarqube (Helm Chart)',
@@ -15388,7 +14628,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-jenkins',
     name: 'bitnami/jenkins (Helm Chart)',
@@ -15403,7 +14642,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-bitnami-gitlab',
     name: 'bitnami/gitlab (Helm Chart)',
@@ -15418,7 +14656,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-ingress-nginx-ingress-nginx',
     name: 'ingress-nginx/ingress-nginx (Helm Chart)',
@@ -15433,7 +14670,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-prometheus-community-kube-prometheus-stack',
     name: 'prometheus-community/kube-prometheus-stack (Helm Chart)',
@@ -15448,7 +14684,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-prometheus-community-prometheus',
     name: 'prometheus-community/prometheus (Helm Chart)',
@@ -15463,7 +14698,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-grafana-loki-stack',
     name: 'grafana/loki-stack (Helm Chart)',
@@ -15478,7 +14712,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-grafana-tempo',
     name: 'grafana/tempo (Helm Chart)',
@@ -15493,7 +14726,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-jetstack-cert-manager',
     name: 'jetstack/cert-manager (Helm Chart)',
@@ -15508,7 +14740,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-hashicorp-vault',
     name: 'hashicorp/vault (Helm Chart)',
@@ -15523,7 +14754,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-hashicorp-consul',
     name: 'hashicorp/consul (Helm Chart)',
@@ -15538,7 +14768,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-hashicorp-nomad',
     name: 'hashicorp/nomad (Helm Chart)',
@@ -15553,7 +14782,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-elastic-elasticsearch',
     name: 'elastic/elasticsearch (Helm Chart)',
@@ -15568,7 +14796,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-elastic-kibana',
     name: 'elastic/kibana (Helm Chart)',
@@ -15583,7 +14810,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-elastic-apm-server',
     name: 'elastic/apm-server (Helm Chart)',
@@ -15598,7 +14824,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-opensearch-opensearch',
     name: 'opensearch/opensearch (Helm Chart)',
@@ -15613,7 +14838,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-opensearch-opensearch-dashboards',
     name: 'opensearch/opensearch-dashboards (Helm Chart)',
@@ -15628,7 +14852,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-nvidia-gpu-operator',
     name: 'nvidia/gpu-operator (Helm Chart)',
@@ -15643,7 +14866,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-kyverno-kyverno',
     name: 'kyverno/kyverno (Helm Chart)',
@@ -15658,7 +14880,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-cilium-cilium',
     name: 'cilium/cilium (Helm Chart)',
@@ -15673,7 +14894,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-linkerd-linkerd2',
     name: 'linkerd/linkerd2 (Helm Chart)',
@@ -15688,7 +14908,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-istio-base',
     name: 'istio/base (Helm Chart)',
@@ -15703,7 +14922,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-istio-istiod',
     name: 'istio/istiod (Helm Chart)',
@@ -15718,7 +14936,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-argo-argo-workflows',
     name: 'argo/argo-workflows (Helm Chart)',
@@ -15733,7 +14950,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-argo-argo-events',
     name: 'argo/argo-events (Helm Chart)',
@@ -15748,7 +14964,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-argo-argo-rollouts',
     name: 'argo/argo-rollouts (Helm Chart)',
@@ -15763,7 +14978,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-kedacore-keda',
     name: 'kedacore/keda (Helm Chart)',
@@ -15778,7 +14992,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-crossplane-stable-crossplane',
     name: 'crossplane-stable/crossplane (Helm Chart)',
@@ -15793,7 +15006,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-rook-release-rook-ceph',
     name: 'rook-release/rook-ceph (Helm Chart)',
@@ -15808,7 +15020,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-longhorn-longhorn',
     name: 'longhorn/longhorn (Helm Chart)',
@@ -15823,7 +15034,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-openebs-openebs',
     name: 'openebs/openebs (Helm Chart)',
@@ -15838,7 +15048,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-minio-minio',
     name: 'minio/minio (Helm Chart)',
@@ -15853,7 +15062,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helm-superset-superset',
     name: 'superset/superset (Helm Chart)',
@@ -15868,7 +15076,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'aws-cli',
     name: 'AWS CLI',
@@ -15883,7 +15090,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'azure-cli',
     name: 'Azure CLI',
@@ -15898,7 +15104,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'gcloud-cli',
     name: 'Google Cloud CLI',
@@ -15913,7 +15118,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'doctl',
     name: 'DigitalOcean CLI',
@@ -15928,7 +15132,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'linode-cli',
     name: 'Linode CLI',
@@ -15943,7 +15146,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'oci-cli',
     name: 'Oracle OCI CLI',
@@ -15958,7 +15160,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'flyctl',
     name: 'Fly.io CLI',
@@ -15973,7 +15174,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'vercel-cli',
     name: 'Vercel CLI',
@@ -15988,7 +15188,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'netlify-cli',
     name: 'Netlify CLI',
@@ -16003,7 +15202,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cloudflared-cli',
     name: 'Cloudflared',
@@ -16018,7 +15216,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'helmfile',
     name: 'Helmfile',
@@ -16033,7 +15230,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'skaffold',
     name: 'Skaffold',
@@ -16048,7 +15244,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'tilt',
     name: 'Tilt',
@@ -16063,7 +15258,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'k3sup',
     name: 'k3sup',
@@ -16078,7 +15272,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kubeseal',
     name: 'kubeseal',
@@ -16093,7 +15286,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'stern',
     name: 'Stern',
@@ -16108,7 +15300,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kail',
     name: 'Kail',
@@ -16123,7 +15314,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kubespy',
     name: 'Kubespy',
@@ -16138,7 +15328,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kubecost',
     name: 'Kubecost',
@@ -16153,7 +15342,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'popeye',
     name: 'Popeye',
@@ -16168,7 +15356,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'trident',
     name: 'NetApp Trident',
@@ -16183,7 +15370,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'openstack',
     name: 'OpenStack',
@@ -16198,7 +15384,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'opennebula',
     name: 'OpenNebula',
@@ -16213,7 +15398,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cloudstack',
     name: 'Apache CloudStack',
@@ -16228,7 +15412,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kubesphere',
     name: 'KubeSphere',
@@ -16243,7 +15426,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'rke2',
     name: 'RKE2',
@@ -16258,7 +15440,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'talos-linux',
     name: 'Talos Linux',
@@ -16273,7 +15454,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'etcd',
     name: 'etcd',
@@ -16288,7 +15468,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'containerd-nerdctl',
     name: 'nerdctl',
@@ -16303,7 +15482,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'buildah',
     name: 'Buildah',
@@ -16318,7 +15496,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'skopeo',
     name: 'Skopeo',
@@ -16333,7 +15510,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kaniko',
     name: 'Kaniko',
@@ -16348,7 +15524,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'imgproxy',
     name: 'imgproxy',
@@ -16363,7 +15538,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kong-kic',
     name: 'Kong Ingress Controller',
@@ -16378,7 +15552,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'traefik-pilot',
     name: 'Traefik Hub',
@@ -16393,7 +15566,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'oauth2-proxy',
     name: 'OAuth2 Proxy',
@@ -16408,7 +15580,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'dex',
     name: 'Dex',
@@ -16423,7 +15594,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'zitadel-operator',
     name: 'ZITADEL Operator',
@@ -16438,7 +15608,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'authelia-operator',
     name: 'Authelia Operator',
@@ -16453,7 +15622,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'wazuh-manager',
     name: 'Wazuh Manager',
@@ -16468,7 +15636,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'crowdsec-bouncer',
     name: 'CrowdSec Bouncer',
@@ -16483,7 +15650,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'falcoctl',
     name: 'Falcoctl',
@@ -16498,7 +15664,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'chainguard-melange',
     name: 'Melange',
@@ -16513,7 +15678,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'chainguard-apko',
     name: 'Apko',
@@ -16528,7 +15692,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cosign-installer',
     name: 'Cosign Installer',
@@ -16543,7 +15706,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'age',
     name: 'age',
@@ -16558,7 +15720,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'step-ca',
     name: 'step-ca',
@@ -16573,7 +15734,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'vault-secrets-operator',
     name: 'Vault Secrets Operator',
@@ -16588,7 +15748,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'external-dns',
     name: 'ExternalDNS',
@@ -16603,7 +15762,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'metallb',
     name: 'MetalLB',
@@ -16618,7 +15776,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kube-vip',
     name: 'kube-vip',
@@ -16633,7 +15790,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'calico-enterprise-cli',
     name: 'calicoctl',
@@ -16648,7 +15804,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'flannel',
     name: 'Flannel',
@@ -16663,7 +15818,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kube-router',
     name: 'kube-router',
@@ -16678,7 +15832,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'netshoot',
     name: 'Netshoot',
@@ -16693,7 +15846,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'bird2',
     name: 'BIRD',
@@ -16708,7 +15860,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'openbgpd',
     name: 'OpenBGPD',
@@ -16723,7 +15874,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'bind-exporter',
     name: 'BIND Exporter',
@@ -16738,7 +15888,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'blackbox-exporter',
     name: 'Blackbox Exporter',
@@ -16753,7 +15902,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'node-exporter',
     name: 'Node Exporter',
@@ -16768,7 +15916,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cadvisor',
     name: 'cAdvisor',
@@ -16783,7 +15930,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'thanos',
     name: 'Thanos',
@@ -16798,7 +15944,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cortex',
     name: 'Cortex',
@@ -16813,7 +15958,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'mimir',
     name: 'Grafana Mimir',
@@ -16828,7 +15972,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'alloy',
     name: 'Grafana Alloy',
@@ -16843,7 +15986,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'vector',
     name: 'Vector',
@@ -16858,7 +16000,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'otelcol-contrib',
     name: 'OpenTelemetry Collector Contrib',
@@ -16873,7 +16014,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'clickhouse-operator',
     name: 'ClickHouse Operator',
@@ -16888,7 +16028,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'vitess',
     name: 'Vitess',
@@ -16903,7 +16042,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'tidb-operator',
     name: 'TiDB Operator',
@@ -16918,7 +16056,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'crunchy-postgres-operator',
     name: 'Crunchy Postgres Operator',
@@ -16933,7 +16070,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'zalando-postgres-operator',
     name: 'Zalando Postgres Operator',
@@ -16948,7 +16084,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'pgbouncer',
     name: 'PgBouncer',
@@ -16963,7 +16098,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'patroni',
     name: 'Patroni',
@@ -16978,7 +16112,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'orchestrator',
     name: 'Orchestrator',
@@ -16993,7 +16126,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'proxysql',
     name: 'ProxySQL',
@@ -17008,7 +16140,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'mongosh',
     name: 'mongosh',
@@ -17023,7 +16154,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'kafdrop',
     name: 'Kafdrop',
@@ -17038,7 +16168,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'akhq',
     name: 'AKHQ',
@@ -17053,7 +16182,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'cruise-control',
     name: 'Kafka Cruise Control',
@@ -17068,7 +16196,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'vectorized-console',
     name: 'Redpanda Console',
@@ -17083,7 +16210,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'tembo-cloudnative-pg',
     name: 'CloudNativePG',
@@ -17098,7 +16224,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'gotenberg',
     name: 'Gotenberg',
@@ -17113,7 +16238,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'posthog',
     name: 'PostHog',
@@ -17128,7 +16252,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'sentry-self-hosted',
     name: 'Sentry Self-Hosted',
@@ -17143,7 +16266,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'airbyte',
     name: 'Airbyte',
@@ -17158,7 +16280,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'meltano',
     name: 'Meltano',
@@ -17173,7 +16294,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'dbt-core',
     name: 'dbt Core',
@@ -17188,7 +16308,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'dagster',
     name: 'Dagster',
@@ -17203,7 +16322,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'metabase',
     name: 'Metabase',
@@ -17218,7 +16336,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'superset',
     name: 'Apache Superset',
@@ -17233,7 +16350,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'lightdash',
     name: 'Lightdash',
@@ -17248,7 +16364,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'redash',
     name: 'Redash',
@@ -17263,7 +16378,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'airflow-helm-chart',
     name: 'Airflow Helm Chart',
@@ -17278,7 +16392,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'openfaas',
     name: 'OpenFaaS',
@@ -17293,7 +16406,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'knative-serving',
     name: 'Knative Serving',
@@ -17308,7 +16420,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'knative-eventing',
     name: 'Knative Eventing',
@@ -17323,7 +16434,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'crossplane-provider-aws',
     name: 'Crossplane AWS Provider',
@@ -17338,7 +16448,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'crossplane-provider-azure',
     name: 'Crossplane Azure Provider',
@@ -17353,7 +16462,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'crossplane-provider-gcp',
     name: 'Crossplane GCP Provider',
@@ -17368,7 +16476,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'renovate',
     name: 'Renovate',
@@ -17383,7 +16490,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'dependabot-core',
     name: 'Dependabot Core',
@@ -17398,7 +16504,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'argus',
     name: 'Argus',
@@ -17413,7 +16518,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
   {
     id: 'zitadel-cli',
     name: 'ZITADEL CLI',
@@ -17428,9 +16532,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: false,
   },
-
-
-  // ── Infrastructure / Hypervisor ──────────────────────────────────────────
   {
     // Docs: https://pve.proxmox.com/wiki/Proxmox_VE_API
     id: 'proxmox-ve',
@@ -17538,8 +16639,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Git Platforms ────────────────────────────────────────────────────────
   {
     // Docs: https://gitea.io/api/swagger
     id: 'gitlab-ce',
@@ -17585,8 +16684,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── CI/CD ────────────────────────────────────────────────────────────────
   {
     // Docs: https://www.jenkins.io/doc/book/using/remote-access-api/
     id: 'jenkins',
@@ -17692,8 +16789,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Observability / Monitoring ───────────────────────────────────────────
   {
     // Docs: https://grafana.com/docs/grafana/latest/developers/http_api/
     id: 'grafana',
@@ -17875,8 +16970,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Security ─────────────────────────────────────────────────────────────
   {
     // Docs: https://developer.hashicorp.com/vault/api-docs/system/health
     id: 'vault',
@@ -18015,8 +17108,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Databases ────────────────────────────────────────────────────────────
   {
     // Docs: https://docs.couchdb.org/en/stable/api/server/common.html
     id: 'couchdb',
@@ -18152,8 +17243,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Networking ───────────────────────────────────────────────────────────
   {
     // Docs: https://nginxproxymanager.com/api/
     id: 'nginx-proxy-manager',
@@ -18274,8 +17363,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Storage & Backup ─────────────────────────────────────────────────────
   {
     // Docs: https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/occ_command.html#system
     id: 'nextcloud',
@@ -18352,8 +17439,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Communication ────────────────────────────────────────────────────────
   {
     // Docs: https://api.mattermost.com/#tag/system/operation/GetSystemPing
     id: 'mattermost',
@@ -18489,8 +17574,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Media ────────────────────────────────────────────────────────────────
   {
     // Docs: https://api.jellyfin.org/
     id: 'jellyfin',
@@ -18672,8 +17755,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Dev Tools ────────────────────────────────────────────────────────────
   {
     // Docs: https://coder.com/docs/v2/latest/api
     id: 'coder',
@@ -18824,8 +17905,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Messaging / Queue ────────────────────────────────────────────────────
   {
     // Docs: https://www.rabbitmq.com/docs/management#http-api
     id: 'rabbitmq',
@@ -18901,8 +17980,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── API Gateways ─────────────────────────────────────────────────────────
   {
     // Docs: https://docs.konghq.com/gateway/latest/admin-api/#retrieve-node-information
     id: 'kong',
@@ -18978,8 +18055,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: true,
     verified: true,
   },
-
-  // ── Infrastructure / IaC ─────────────────────────────────────────────────
   {
     id: 'terraform',
     name: 'Terraform',
@@ -19050,8 +18125,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Cloud / Kubernetes ───────────────────────────────────────────────────
   {
     id: 'helm',
     name: 'Helm',
@@ -19137,8 +18210,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Runtimes ─────────────────────────────────────────────────────────────
   {
     id: 'nodejs-runtime',
     name: 'Node.js',
@@ -19237,8 +18308,6 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
-  // ── Package Managers / Build Tools ───────────────────────────────────────
   {
     id: 'pnpm-pkg',
     name: 'pnpm',
@@ -19295,8 +18364,1175 @@ export const TOOL_REGISTRY: ToolRegistryEntry[] = [
     requiresInstanceUrl: false,
     verified: true,
   },
-
 ];
+
+const REGISTRY_PART5: ToolRegistryEntry[] = [
+  {
+    id: 'ollama',
+    name: 'Ollama',
+    category: 'AI/ML',
+    tags: ['llm', 'local-ai', 'inference'],
+    icon: `${SI}/ollama`,
+    description: 'Run large language models locally',
+    homepage: 'https://ollama.com/',
+    versionSource: { type: 'github-releases', target: 'ollama/ollama' },
+    latestSource: { type: 'github-releases', target: 'ollama/ollama' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'localai',
+    name: 'LocalAI',
+    category: 'AI/ML',
+    tags: ['llm', 'local-ai', 'openai-compatible'],
+    icon: `${SI}/linux`,
+    description: 'Free, open-source OpenAI-compatible API server for local AI models',
+    homepage: 'https://localai.io/',
+    versionSource: { type: 'github-releases', target: 'mudler/LocalAI' },
+    latestSource: { type: 'github-releases', target: 'mudler/LocalAI' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'open-webui',
+    name: 'Open WebUI',
+    category: 'AI/ML',
+    tags: ['llm', 'chat-ui', 'ollama'],
+    icon: `${SI}/openai`,
+    description: 'User-friendly WebUI for LLMs including Ollama and OpenAI-compatible APIs',
+    homepage: 'https://openwebui.com/',
+    versionSource: { type: 'github-releases', target: 'open-webui/open-webui' },
+    latestSource: { type: 'github-releases', target: 'open-webui/open-webui' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'comfyui',
+    name: 'ComfyUI',
+    category: 'AI/ML',
+    tags: ['stable-diffusion', 'image-generation', 'node-based'],
+    icon: `${SI}/python`,
+    description: 'Powerful node-based UI for Stable Diffusion image generation',
+    homepage: 'https://github.com/comfyanonymous/ComfyUI',
+    versionSource: { type: 'github-releases', target: 'comfyanonymous/ComfyUI' },
+    latestSource: { type: 'github-releases', target: 'comfyanonymous/ComfyUI' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'automatic1111',
+    name: 'Stable Diffusion WebUI',
+    category: 'AI/ML',
+    tags: ['stable-diffusion', 'image-generation', 'webui'],
+    icon: `${SI}/python`,
+    description: 'Stable Diffusion web UI by AUTOMATIC1111',
+    homepage: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui',
+    versionSource: { type: 'github-releases', target: 'AUTOMATIC1111/stable-diffusion-webui' },
+    latestSource: { type: 'github-releases', target: 'AUTOMATIC1111/stable-diffusion-webui' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'lmstudio',
+    name: 'LM Studio',
+    category: 'AI/ML',
+    tags: ['llm', 'local-ai', 'desktop'],
+    icon: `${SI}/python`,
+    description: 'Desktop application for running local LLMs',
+    homepage: 'https://lmstudio.ai/',
+    versionSource: { type: 'github-releases', target: 'lmstudio-ai/lmstudio' },
+    latestSource: { type: 'github-releases', target: 'lmstudio-ai/lmstudio' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'text-gen-webui',
+    name: 'Text Generation WebUI',
+    category: 'AI/ML',
+    tags: ['llm', 'text-generation', 'webui'],
+    icon: `${SI}/python`,
+    description: 'Gradio-based web UI for running large language models locally',
+    homepage: 'https://github.com/oobabooga/text-generation-webui',
+    versionSource: { type: 'github-releases', target: 'oobabooga/text-generation-webui' },
+    latestSource: { type: 'github-releases', target: 'oobabooga/text-generation-webui' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'koboldcpp',
+    name: 'KoboldCpp',
+    category: 'AI/ML',
+    tags: ['llm', 'local-ai', 'gguf'],
+    icon: `${SI}/python`,
+    description: 'Easy-to-use AI text generation software using GGUF models',
+    homepage: 'https://github.com/LostRuins/koboldcpp',
+    versionSource: { type: 'github-releases', target: 'LostRuins/koboldcpp' },
+    latestSource: { type: 'github-releases', target: 'LostRuins/koboldcpp' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'jan',
+    name: 'Jan',
+    category: 'AI/ML',
+    tags: ['llm', 'local-ai', 'desktop'],
+    icon: `${SI}/python`,
+    description: 'Open-source ChatGPT alternative that runs 100% offline',
+    homepage: 'https://jan.ai/',
+    versionSource: { type: 'github-releases', target: 'janhq/jan' },
+    latestSource: { type: 'github-releases', target: 'janhq/jan' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'lmeval',
+    name: 'LM Evaluation Harness',
+    category: 'AI/ML',
+    tags: ['llm', 'evaluation', 'benchmarking'],
+    icon: `${SI}/python`,
+    description: 'Framework for evaluating language models on NLP tasks',
+    homepage: 'https://github.com/EleutherAI/lm-evaluation-harness',
+    versionSource: { type: 'github-releases', target: 'EleutherAI/lm-evaluation-harness' },
+    latestSource: { type: 'github-releases', target: 'EleutherAI/lm-evaluation-harness' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'anythingllm',
+    name: 'AnythingLLM',
+    category: 'AI/ML',
+    tags: ['llm', 'rag', 'document-chat'],
+    icon: `${SI}/python`,
+    description: 'Full-stack application for chatting with documents using LLMs',
+    homepage: 'https://useanything.com/',
+    versionSource: { type: 'github-releases', target: 'Mintplex-Labs/anything-llm' },
+    latestSource: { type: 'github-releases', target: 'Mintplex-Labs/anything-llm' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'flowise',
+    name: 'Flowise',
+    category: 'AI/ML',
+    tags: ['llm', 'low-code', 'langchain'],
+    icon: `${SI}/nodedotjs`,
+    description: 'Low-code tool for building customized LLM orchestration flows',
+    homepage: 'https://flowiseai.com/',
+    versionSource: { type: 'npm-registry', target: 'flowise' },
+    latestSource: { type: 'npm-registry', target: 'flowise' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'langchain-server',
+    name: 'LangServe',
+    category: 'AI/ML',
+    tags: ['langchain', 'api', 'llm'],
+    icon: `${SI}/python`,
+    description: 'Deploy LangChain runnables and chains as REST APIs',
+    homepage: 'https://github.com/langchain-ai/langserve',
+    versionSource: { type: 'github-releases', target: 'langchain-ai/langserve' },
+    latestSource: { type: 'github-releases', target: 'langchain-ai/langserve' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'activepieces',
+    name: 'Activepieces',
+    category: 'AI/ML',
+    tags: ['automation', 'workflow', 'no-code'],
+    icon: `${SI}/typescript`,
+    description: 'Open-source business automation tool and Zapier alternative',
+    homepage: 'https://www.activepieces.com/',
+    versionSource: { type: 'github-releases', target: 'activepieces/activepieces' },
+    latestSource: { type: 'github-releases', target: 'activepieces/activepieces' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'dify',
+    name: 'Dify',
+    category: 'AI/ML',
+    tags: ['llm', 'rag', 'ai-platform'],
+    icon: `${SI}/python`,
+    description: 'Open-source LLM app development platform with RAG support',
+    homepage: 'https://dify.ai/',
+    versionSource: { type: 'github-releases', target: 'langgenius/dify' },
+    latestSource: { type: 'github-releases', target: 'langgenius/dify' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'litellm',
+    name: 'LiteLLM',
+    category: 'AI/ML',
+    tags: ['llm', 'proxy', 'openai-compatible'],
+    icon: `${SI}/python`,
+    description: 'Unified API for 100+ LLM providers with OpenAI-compatible format',
+    homepage: 'https://litellm.ai/',
+    versionSource: { type: 'pypi', target: 'litellm' },
+    latestSource: { type: 'pypi', target: 'litellm' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'vllm',
+    name: 'vLLM',
+    category: 'AI/ML',
+    tags: ['llm', 'inference', 'gpu'],
+    icon: `${SI}/python`,
+    description: 'High-throughput and memory-efficient inference engine for LLMs',
+    homepage: 'https://vllm.ai/',
+    versionSource: { type: 'pypi', target: 'vllm' },
+    latestSource: { type: 'pypi', target: 'vllm' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'triton-server',
+    name: 'Triton Inference Server',
+    category: 'AI/ML',
+    tags: ['inference', 'nvidia', 'model-serving'],
+    icon: `${SI}/nvidia`,
+    description: "NVIDIA's open-source inference serving platform",
+    homepage: 'https://developer.nvidia.com/triton-inference-server',
+    versionSource: { type: 'github-releases', target: 'triton-inference-server/server' },
+    latestSource: { type: 'github-releases', target: 'triton-inference-server/server' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'mlflow',
+    name: 'MLflow',
+    category: 'AI/ML',
+    tags: ['mlops', 'experiment-tracking', 'model-registry'],
+    icon: `${SI}/mlflow`,
+    description: 'Open source platform for the machine learning lifecycle',
+    homepage: 'https://mlflow.org/',
+    versionSource: { type: 'pypi', target: 'mlflow' },
+    latestSource: { type: 'pypi', target: 'mlflow' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'bentoml',
+    name: 'BentoML',
+    category: 'AI/ML',
+    tags: ['model-serving', 'mlops', 'deployment'],
+    icon: `${SI}/python`,
+    description: 'Framework for building reliable and scalable ML services',
+    homepage: 'https://bentoml.com/',
+    versionSource: { type: 'pypi', target: 'bentoml' },
+    latestSource: { type: 'pypi', target: 'bentoml' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'ray',
+    name: 'Ray',
+    category: 'AI/ML',
+    tags: ['distributed', 'ml', 'python'],
+    icon: `${SI}/python`,
+    description: 'Open-source unified compute framework for scaling AI workloads',
+    homepage: 'https://ray.io/',
+    versionSource: { type: 'pypi', target: 'ray' },
+    latestSource: { type: 'pypi', target: 'ray' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'kubeflow',
+    name: 'Kubeflow',
+    category: 'AI/ML',
+    tags: ['mlops', 'kubernetes', 'pipelines'],
+    icon: `${SI}/kubernetes`,
+    description: 'Machine learning toolkit for Kubernetes',
+    homepage: 'https://kubeflow.org/',
+    versionSource: { type: 'github-releases', target: 'kubeflow/kubeflow' },
+    latestSource: { type: 'github-releases', target: 'kubeflow/kubeflow' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'seldon',
+    name: 'Seldon Core',
+    category: 'AI/ML',
+    tags: ['model-serving', 'kubernetes', 'mlops'],
+    icon: `${SI}/kubernetes`,
+    description: 'Open-source platform for deploying ML models on Kubernetes',
+    homepage: 'https://www.seldon.io/',
+    versionSource: { type: 'github-releases', target: 'SeldonIO/seldon-core' },
+    latestSource: { type: 'github-releases', target: 'SeldonIO/seldon-core' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'torchserve',
+    name: 'TorchServe',
+    category: 'AI/ML',
+    tags: ['pytorch', 'model-serving', 'inference'],
+    icon: `${SI}/pytorch`,
+    description: 'Flexible and easy to use tool for serving PyTorch models',
+    homepage: 'https://pytorch.org/serve/',
+    versionSource: { type: 'github-releases', target: 'pytorch/serve' },
+    latestSource: { type: 'github-releases', target: 'pytorch/serve' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'fastapi',
+    name: 'FastAPI',
+    category: 'AI/ML',
+    tags: ['api', 'python', 'web-framework'],
+    icon: `${SI}/fastapi`,
+    description: 'Fast, modern web framework for building APIs with Python',
+    homepage: 'https://fastapi.tiangolo.com/',
+    versionSource: { type: 'pypi', target: 'fastapi' },
+    latestSource: { type: 'pypi', target: 'fastapi' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'gradio',
+    name: 'Gradio',
+    category: 'AI/ML',
+    tags: ['ml', 'demo', 'ui'],
+    icon: `${SI}/python`,
+    description: 'Build ML demos and web apps with Python',
+    homepage: 'https://gradio.app/',
+    versionSource: { type: 'pypi', target: 'gradio' },
+    latestSource: { type: 'pypi', target: 'gradio' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'streamlit',
+    name: 'Streamlit',
+    category: 'AI/ML',
+    tags: ['ml', 'dashboard', 'python'],
+    icon: `${SI}/streamlit`,
+    description: 'Turn data scripts into shareable web apps in minutes',
+    homepage: 'https://streamlit.io/',
+    versionSource: { type: 'pypi', target: 'streamlit' },
+    latestSource: { type: 'pypi', target: 'streamlit' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'panel',
+    name: 'Panel',
+    category: 'AI/ML',
+    tags: ['dashboard', 'python', 'visualization'],
+    icon: `${SI}/python`,
+    description: 'Powerful data exploration and web app framework for Python',
+    homepage: 'https://panel.holoviz.org/',
+    versionSource: { type: 'pypi', target: 'panel' },
+    latestSource: { type: 'pypi', target: 'panel' },
+    checkInterval: 86400,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'erpnext',
+    name: 'ERPNext',
+    category: 'ERP/Business',
+    tags: ['erp', 'business', 'open-source'],
+    icon: `${SI}/erpnext`,
+    description: 'Open-source enterprise resource planning platform',
+    homepage: 'https://erpnext.com/',
+    versionSource: { type: 'github-releases', target: 'frappe/erpnext' },
+    latestSource: { type: 'github-releases', target: 'frappe/erpnext' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'odoo',
+    name: 'Odoo',
+    category: 'ERP/Business',
+    tags: ['erp', 'crm', 'business'],
+    icon: `${SI}/odoo`,
+    description: 'Open-source suite of business applications',
+    homepage: 'https://www.odoo.com/',
+    versionSource: { type: 'github-releases', target: 'odoo/odoo' },
+    latestSource: { type: 'github-releases', target: 'odoo/odoo' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'dolibarr',
+    name: 'Dolibarr',
+    category: 'ERP/Business',
+    tags: ['erp', 'crm', 'invoicing'],
+    icon: `${SI}/dolibarr`,
+    description: 'Open-source ERP and CRM for small and medium businesses',
+    homepage: 'https://www.dolibarr.org/',
+    versionSource: { type: 'github-releases', target: 'Dolibarr/dolibarr' },
+    latestSource: { type: 'github-releases', target: 'Dolibarr/dolibarr' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'crater',
+    name: 'Crater',
+    category: 'ERP/Business',
+    tags: ['invoicing', 'billing', 'accounting'],
+    icon: `${SI}/php`,
+    description: 'Open-source invoice and expense tracking application',
+    homepage: 'https://craterapp.com/',
+    versionSource: { type: 'github-releases', target: 'crater-invoice/crater' },
+    latestSource: { type: 'github-releases', target: 'crater-invoice/crater' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'invoice-ninja',
+    name: 'Invoice Ninja',
+    category: 'ERP/Business',
+    tags: ['invoicing', 'billing', 'time-tracking'],
+    icon: `${SI}/invoiceninja`,
+    description: 'Open-source invoicing, billing, and payment platform',
+    homepage: 'https://invoiceninja.com/',
+    versionSource: { type: 'github-releases', target: 'invoiceninja/invoiceninja' },
+    latestSource: { type: 'github-releases', target: 'invoiceninja/invoiceninja' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'kimai',
+    name: 'Kimai',
+    category: 'ERP/Business',
+    tags: ['time-tracking', 'invoicing', 'project-management'],
+    icon: `${SI}/php`,
+    description: 'Open-source time-tracking application',
+    homepage: 'https://kimai.org/',
+    versionSource: { type: 'github-releases', target: 'kimai/kimai' },
+    latestSource: { type: 'github-releases', target: 'kimai/kimai' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'twenty',
+    name: 'Twenty',
+    category: 'ERP/Business',
+    tags: ['crm', 'sales', 'open-source'],
+    icon: `${SI}/twenty`,
+    description: 'Open-source CRM powered by a modern tech stack',
+    homepage: 'https://twenty.com/',
+    versionSource: { type: 'github-releases', target: 'twentyhq/twenty' },
+    latestSource: { type: 'github-releases', target: 'twentyhq/twenty' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'suitecrm',
+    name: 'SuiteCRM',
+    category: 'ERP/Business',
+    tags: ['crm', 'sales', 'enterprise'],
+    icon: `${SI}/php`,
+    description: 'Open-source CRM application and SugarCRM fork',
+    homepage: 'https://suitecrm.com/',
+    versionSource: { type: 'github-releases', target: 'salesagility/SuiteCRM' },
+    latestSource: { type: 'github-releases', target: 'salesagility/SuiteCRM' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'espocrm',
+    name: 'EspoCRM',
+    category: 'ERP/Business',
+    tags: ['crm', 'sales', 'business'],
+    icon: `${SI}/php`,
+    description: 'Open-source CRM application',
+    homepage: 'https://www.espocrm.com/',
+    versionSource: { type: 'github-releases', target: 'espocrm/espocrm' },
+    latestSource: { type: 'github-releases', target: 'espocrm/espocrm' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'monica',
+    name: 'Monica',
+    category: 'ERP/Business',
+    tags: ['crm', 'contacts', 'personal'],
+    icon: `${SI}/monica`,
+    description: 'Personal relationship manager and CRM',
+    homepage: 'https://monicahq.com/',
+    versionSource: { type: 'github-releases', target: 'monicahq/monica' },
+    latestSource: { type: 'github-releases', target: 'monicahq/monica' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'chatwoot',
+    name: 'Chatwoot',
+    category: 'ERP/Business',
+    tags: ['customer-support', 'chat', 'helpdesk'],
+    icon: `${SI}/chatwoot`,
+    description: 'Open-source customer engagement platform',
+    homepage: 'https://www.chatwoot.com/',
+    versionSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+    latestSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'wekan',
+    name: 'WeKan',
+    category: 'ERP/Business',
+    tags: ['kanban', 'project-management', 'boards'],
+    icon: `${SI}/javascript`,
+    description: 'Open-source kanban board',
+    homepage: 'https://wekan.github.io/',
+    versionSource: { type: 'github-releases', target: 'wekan/wekan' },
+    latestSource: { type: 'github-releases', target: 'wekan/wekan' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'taiga',
+    name: 'Taiga',
+    category: 'ERP/Business',
+    tags: ['project-management', 'agile', 'scrum'],
+    icon: `${SI}/python`,
+    description: 'Open-source project management tool for agile teams',
+    homepage: 'https://taiga.io/',
+    versionSource: { type: 'github-releases', target: 'taigaio/taiga' },
+    latestSource: { type: 'github-releases', target: 'taigaio/taiga' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'huly',
+    name: 'Huly',
+    category: 'ERP/Business',
+    tags: ['project-management', 'collaboration', 'all-in-one'],
+    icon: `${SI}/typescript`,
+    description: 'All-in-one project management platform',
+    homepage: 'https://huly.io/',
+    versionSource: { type: 'github-releases', target: 'hcengineering/huly-onprem' },
+    latestSource: { type: 'github-releases', target: 'hcengineering/huly-onprem' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'solidtime',
+    name: 'Solidtime',
+    category: 'ERP/Business',
+    tags: ['time-tracking', 'billing', 'projects'],
+    icon: `${SI}/php`,
+    description: 'Open-source time tracking application',
+    homepage: 'https://www.solidtime.io/',
+    versionSource: { type: 'github-releases', target: 'solidtime-io/solidtime' },
+    latestSource: { type: 'github-releases', target: 'solidtime-io/solidtime' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'qdrant',
+    name: 'Qdrant',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'search', 'ml'],
+    icon: `${SI}/qdrant`,
+    description: 'Vector similarity search engine and database',
+    homepage: 'https://qdrant.tech/',
+    versionSource: { type: 'github-releases', target: 'qdrant/qdrant' },
+    latestSource: { type: 'github-releases', target: 'qdrant/qdrant' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'weaviate',
+    name: 'Weaviate',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'search', 'ml'],
+    icon: `${SI}/weaviate`,
+    description: 'Open-source vector database with built-in ML models',
+    homepage: 'https://weaviate.io/',
+    versionSource: { type: 'github-releases', target: 'weaviate/weaviate' },
+    latestSource: { type: 'github-releases', target: 'weaviate/weaviate' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'chroma',
+    name: 'Chroma',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'embeddings', 'ai'],
+    icon: `${SI}/python`,
+    description: 'Open-source embedding database for AI-native apps',
+    homepage: 'https://www.trychroma.com/',
+    versionSource: { type: 'pypi', target: 'chromadb' },
+    latestSource: { type: 'pypi', target: 'chromadb' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'marqo',
+    name: 'Marqo',
+    category: 'Search/Vector',
+    tags: ['vector-search', 'ml', 'tensor-search'],
+    icon: `${SI}/python`,
+    description: 'End-to-end vector search engine with built-in ML inference',
+    homepage: 'https://www.marqo.ai/',
+    versionSource: { type: 'github-releases', target: 'marqo-ai/marqo' },
+    latestSource: { type: 'github-releases', target: 'marqo-ai/marqo' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'vespa',
+    name: 'Vespa',
+    category: 'Search/Vector',
+    tags: ['search', 'vector', 'recommendation'],
+    icon: `${SI}/vespa`,
+    description: 'Open-source big data serving engine for search and AI',
+    homepage: 'https://vespa.ai/',
+    versionSource: { type: 'github-releases', target: 'vespa-engine/vespa' },
+    latestSource: { type: 'github-releases', target: 'vespa-engine/vespa' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'manticore-search',
+    name: 'Manticore Search',
+    category: 'Search/Vector',
+    tags: ['search', 'full-text', 'sql'],
+    icon: `${SI}/elasticsearch`,
+    description: 'Fast open-source search engine with SQL-like query language',
+    homepage: 'https://manticoresearch.com/',
+    versionSource: { type: 'github-releases', target: 'manticoresoftware/manticoresearch' },
+    latestSource: { type: 'github-releases', target: 'manticoresoftware/manticoresearch' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'zinc',
+    name: 'ZincSearch',
+    category: 'Search/Vector',
+    tags: ['search', 'elasticsearch-alternative', 'lightweight'],
+    icon: `${SI}/go`,
+    description: 'Lightweight Elasticsearch alternative in Go',
+    homepage: 'https://zincsearch.com/',
+    versionSource: { type: 'github-releases', target: 'zincsearch/zincsearch' },
+    latestSource: { type: 'github-releases', target: 'zincsearch/zincsearch' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'sonic',
+    name: 'Sonic',
+    category: 'Search/Vector',
+    tags: ['search', 'fast', 'lightweight'],
+    icon: `${SI}/rust`,
+    description: 'Fast, lightweight and schema-less search backend',
+    homepage: 'https://github.com/valeriansaliou/sonic',
+    versionSource: { type: 'github-releases', target: 'valeriansaliou/sonic' },
+    latestSource: { type: 'github-releases', target: 'valeriansaliou/sonic' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'tantivy',
+    name: 'Tantivy',
+    category: 'Search/Vector',
+    tags: ['search', 'full-text', 'rust'],
+    icon: `${SI}/rust`,
+    description: 'Full-text search engine library in Rust',
+    homepage: 'https://github.com/quickwit-oss/tantivy',
+    versionSource: { type: 'github-releases', target: 'quickwit-oss/tantivy' },
+    latestSource: { type: 'github-releases', target: 'quickwit-oss/tantivy' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'milvus',
+    name: 'Milvus',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'similarity-search', 'ai'],
+    icon: `${SI}/milvus`,
+    description: 'Open-source vector database for scalable similarity search',
+    homepage: 'https://milvus.io/',
+    versionSource: { type: 'github-releases', target: 'milvus-io/milvus' },
+    latestSource: { type: 'github-releases', target: 'milvus-io/milvus' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'pinecone-local',
+    name: 'Pinecone Local',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'pinecone', 'local'],
+    icon: `${SI}/python`,
+    description: 'Local operator for Pinecone vector database',
+    homepage: 'https://github.com/pinecone-io/pinecone-local-operator',
+    versionSource: { type: 'github-releases', target: 'pinecone-io/pinecone-local-operator' },
+    latestSource: { type: 'github-releases', target: 'pinecone-io/pinecone-local-operator' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'lancedb',
+    name: 'LanceDB',
+    category: 'Search/Vector',
+    tags: ['vector-db', 'embedded', 'rust'],
+    icon: `${SI}/rust`,
+    description: 'Developer-friendly, serverless vector database for AI applications',
+    homepage: 'https://lancedb.com/',
+    versionSource: { type: 'github-releases', target: 'lancedb/lancedb' },
+    latestSource: { type: 'github-releases', target: 'lancedb/lancedb' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'pgvector',
+    name: 'pgvector',
+    category: 'Search/Vector',
+    tags: ['postgresql', 'vector', 'embeddings'],
+    icon: `${SI}/postgresql`,
+    description: 'Open-source vector similarity search for PostgreSQL',
+    homepage: 'https://github.com/pgvector/pgvector',
+    versionSource: { type: 'github-releases', target: 'pgvector/pgvector' },
+    latestSource: { type: 'github-releases', target: 'pgvector/pgvector' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'nmslib',
+    name: 'NMSLIB',
+    category: 'Search/Vector',
+    tags: ['similarity-search', 'approximate-nn', 'ml'],
+    icon: `${SI}/python`,
+    description: 'Efficient similarity search library and toolkit for ANN evaluation',
+    homepage: 'https://github.com/nmslib/nmslib',
+    versionSource: { type: 'github-releases', target: 'nmslib/nmslib' },
+    latestSource: { type: 'github-releases', target: 'nmslib/nmslib' },
+    checkInterval: 86400,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'faiss',
+    name: 'FAISS',
+    category: 'Search/Vector',
+    tags: ['similarity-search', 'approximate-nn', 'meta'],
+    icon: `${SI}/meta`,
+    description: 'Efficient similarity search library from Meta Research',
+    homepage: 'https://faiss.ai/',
+    versionSource: { type: 'github-releases', target: 'facebookresearch/faiss' },
+    latestSource: { type: 'github-releases', target: 'facebookresearch/faiss' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'annoy',
+    name: 'Annoy',
+    category: 'Search/Vector',
+    tags: ['approximate-nn', 'similarity-search', 'spotify'],
+    icon: `${SI}/python`,
+    description: 'Approximate nearest neighbor search library by Spotify',
+    homepage: 'https://github.com/spotify/annoy',
+    versionSource: { type: 'github-releases', target: 'spotify/annoy' },
+    latestSource: { type: 'github-releases', target: 'spotify/annoy' },
+    checkInterval: 86400,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'tasmota',
+    name: 'Tasmota',
+    category: 'IoT/Edge',
+    tags: ['iot', 'firmware', 'esp8266'],
+    icon: `${SI}/tasmota`,
+    description: 'Open-source firmware for ESP8266/ESP32 smart home devices',
+    homepage: 'https://tasmota.github.io/',
+    versionSource: { type: 'github-releases', target: 'arendst/Tasmota' },
+    latestSource: { type: 'github-releases', target: 'arendst/Tasmota' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'iobroker',
+    name: 'ioBroker',
+    category: 'IoT/Edge',
+    tags: ['iot', 'home-automation', 'integration'],
+    icon: `${SI}/iobroker`,
+    description: 'Open-source IoT platform and home automation hub',
+    homepage: 'https://www.iobroker.net/',
+    versionSource: { type: 'github-releases', target: 'ioBroker/ioBroker.js-controller' },
+    latestSource: { type: 'github-releases', target: 'ioBroker/ioBroker.js-controller' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'edgex-foundry',
+    name: 'EdgeX Foundry',
+    category: 'IoT/Edge',
+    tags: ['iot', 'edge', 'microservices'],
+    icon: `${SI}/linux`,
+    description: 'Open-source IoT edge computing framework',
+    homepage: 'https://www.edgexfoundry.org/',
+    versionSource: { type: 'github-releases', target: 'edgexfoundry/edgex-go' },
+    latestSource: { type: 'github-releases', target: 'edgexfoundry/edgex-go' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'kubeedge',
+    name: 'KubeEdge',
+    category: 'IoT/Edge',
+    tags: ['kubernetes', 'edge', 'iot'],
+    icon: `${SI}/kubernetes`,
+    description: 'Kubernetes-based edge computing framework',
+    homepage: 'https://kubeedge.io/',
+    versionSource: { type: 'github-releases', target: 'kubeedge/kubeedge' },
+    latestSource: { type: 'github-releases', target: 'kubeedge/kubeedge' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'shinobi',
+    name: 'Shinobi',
+    category: 'IoT/Edge',
+    tags: ['cctv', 'surveillance', 'nvr'],
+    icon: `${SI}/javascript`,
+    description: 'Open-source CCTV and NVR solution',
+    homepage: 'https://shinobi.video/',
+    versionSource: { type: 'github-releases', target: 'ShinobiCCTV/Shinobi' },
+    latestSource: { type: 'github-releases', target: 'ShinobiCCTV/Shinobi' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'zoneminder',
+    name: 'ZoneMinder',
+    category: 'IoT/Edge',
+    tags: ['surveillance', 'cctv', 'nvr'],
+    icon: `${SI}/linux`,
+    description: 'Open-source video surveillance software',
+    homepage: 'https://zoneminder.com/',
+    versionSource: { type: 'github-releases', target: 'ZoneMinder/zoneminder' },
+    latestSource: { type: 'github-releases', target: 'ZoneMinder/zoneminder' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'octoprint',
+    name: 'OctoPrint',
+    category: 'IoT/Edge',
+    tags: ['3d-printing', 'iot', 'remote'],
+    icon: `${SI}/octoprint`,
+    description: 'Web interface for 3D printers',
+    homepage: 'https://octoprint.org/',
+    versionSource: { type: 'github-releases', target: 'OctoPrint/OctoPrint' },
+    latestSource: { type: 'github-releases', target: 'OctoPrint/OctoPrint' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'moonraker',
+    name: 'Moonraker',
+    category: 'IoT/Edge',
+    tags: ['3d-printing', 'klipper', 'api'],
+    icon: `${SI}/python`,
+    description: 'API server for Klipper 3D printer firmware',
+    homepage: 'https://moonraker.readthedocs.io/',
+    versionSource: { type: 'github-releases', target: 'Arksine/moonraker' },
+    latestSource: { type: 'github-releases', target: 'Arksine/moonraker' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'balena',
+    name: 'Balena Engine',
+    category: 'IoT/Edge',
+    tags: ['iot', 'containers', 'edge'],
+    icon: `${SI}/balena`,
+    description: 'Container engine optimized for IoT and edge devices',
+    homepage: 'https://www.balena.io/',
+    versionSource: { type: 'github-releases', target: 'balena-io/balena-engine' },
+    latestSource: { type: 'github-releases', target: 'balena-io/balena-engine' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'mender',
+    name: 'Mender',
+    category: 'IoT/Edge',
+    tags: ['iot', 'ota-updates', 'edge'],
+    icon: `${SI}/linux`,
+    description: 'Open-source OTA software update manager for IoT devices',
+    homepage: 'https://mender.io/',
+    versionSource: { type: 'github-releases', target: 'mendersoftware/mender' },
+    latestSource: { type: 'github-releases', target: 'mendersoftware/mender' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'librephotos',
+    name: 'LibrePhotos',
+    category: 'Media',
+    tags: ['photos', 'gallery', 'self-hosted'],
+    icon: `${SI}/python`,
+    description: 'Self-hosted Google Photos alternative',
+    homepage: 'https://librephotos.docs.tortoiselabs.com/',
+    versionSource: { type: 'github-releases', target: 'LibrePhotos/librephotos' },
+    latestSource: { type: 'github-releases', target: 'LibrePhotos/librephotos' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'pigallery2',
+    name: 'PiGallery2',
+    category: 'Media',
+    tags: ['photos', 'gallery', 'self-hosted'],
+    icon: `${SI}/typescript`,
+    description: 'Fast, self-hosted photo gallery with full search support',
+    homepage: 'https://bpatrik.github.io/pigallery2/',
+    versionSource: { type: 'github-releases', target: 'bpatrik/pigallery2' },
+    latestSource: { type: 'github-releases', target: 'bpatrik/pigallery2' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'docspell',
+    name: 'Docspell',
+    category: 'Media',
+    tags: ['documents', 'dms', 'ocr'],
+    icon: `${SI}/scala`,
+    description: 'Open-source document management system with full-text search',
+    homepage: 'https://docspell.org/',
+    versionSource: { type: 'github-releases', target: 'eikek/docspell' },
+    latestSource: { type: 'github-releases', target: 'eikek/docspell' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'teedy',
+    name: 'Teedy',
+    category: 'Media',
+    tags: ['documents', 'dms', 'workflow'],
+    icon: `${SI}/java`,
+    description: 'Lightweight document management system',
+    homepage: 'https://teedy.io/',
+    versionSource: { type: 'github-releases', target: 'sismics/docs' },
+    latestSource: { type: 'github-releases', target: 'sismics/docs' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'stirling-pdf',
+    name: 'Stirling-PDF',
+    category: 'Media',
+    tags: ['pdf', 'documents', 'tools'],
+    icon: `${SI}/java`,
+    description: 'Locally hosted web application for PDF manipulation',
+    homepage: 'https://stirlingtools.com/',
+    versionSource: { type: 'github-releases', target: 'Stirling-Tools/Stirling-PDF' },
+    latestSource: { type: 'github-releases', target: 'Stirling-Tools/Stirling-PDF' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'libreoffice-online',
+    name: 'LibreOffice Online',
+    category: 'Media',
+    tags: ['office', 'documents', 'collaboration'],
+    icon: `${SI}/libreoffice`,
+    description: 'Online document editing via LibreOffice',
+    homepage: 'https://www.libreoffice.org/download/libreoffice-online/',
+    versionSource: { type: 'github-releases', target: 'LibreOffice/online' },
+    latestSource: { type: 'github-releases', target: 'LibreOffice/online' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'onlyoffice',
+    name: 'ONLYOFFICE',
+    category: 'Media',
+    tags: ['office', 'documents', 'collaboration'],
+    icon: `${SI}/onlyoffice`,
+    description: 'Open-source office suite for document editing and collaboration',
+    homepage: 'https://www.onlyoffice.com/',
+    versionSource: { type: 'github-releases', target: 'ONLYOFFICE/DocumentServer' },
+    latestSource: { type: 'github-releases', target: 'ONLYOFFICE/DocumentServer' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'collabora',
+    name: 'Collabora Online',
+    category: 'Media',
+    tags: ['office', 'documents', 'collaboration'],
+    icon: `${SI}/libreoffice`,
+    description: 'Powerful online office suite based on LibreOffice',
+    homepage: 'https://www.collaboraoffice.com/',
+    versionSource: { type: 'github-releases', target: 'CollaboraOnline/online' },
+    latestSource: { type: 'github-releases', target: 'CollaboraOnline/online' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'cryptpad',
+    name: 'CryptPad',
+    category: 'Media',
+    tags: ['documents', 'collaboration', 'encrypted'],
+    icon: `${SI}/cryptpad`,
+    description: 'Encrypted, zero-knowledge collaborative document platform',
+    homepage: 'https://cryptpad.org/',
+    versionSource: { type: 'github-releases', target: 'cryptpad/cryptpad' },
+    latestSource: { type: 'github-releases', target: 'cryptpad/cryptpad' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'etherpad',
+    name: 'Etherpad',
+    category: 'Media',
+    tags: ['documents', 'collaboration', 'real-time'],
+    icon: `${SI}/javascript`,
+    description: 'Open-source real-time collaborative text editor',
+    homepage: 'https://etherpad.org/',
+    versionSource: { type: 'github-releases', target: 'ether/etherpad-lite' },
+    latestSource: { type: 'github-releases', target: 'ether/etherpad-lite' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'hedgedoc',
+    name: 'HedgeDoc',
+    category: 'Media',
+    tags: ['markdown', 'collaboration', 'notes'],
+    icon: `${SI}/hedgedoc`,
+    description: 'Open-source collaborative markdown editor',
+    homepage: 'https://hedgedoc.org/',
+    versionSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' },
+    latestSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'codimd',
+    name: 'CodiMD',
+    category: 'Media',
+    tags: ['markdown', 'collaboration', 'notes'],
+    icon: `${SI}/markdown`,
+    description: 'Open-source collaborative markdown editing platform',
+    homepage: 'https://github.com/hackmdio/codimd',
+    versionSource: { type: 'github-releases', target: 'hackmdio/codimd' },
+    latestSource: { type: 'github-releases', target: 'hackmdio/codimd' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: false,
+  },
+  {
+    id: 'joplin',
+    name: 'Joplin',
+    category: 'Media',
+    tags: ['notes', 'markdown', 'sync'],
+    icon: `${SI}/joplin`,
+    description: 'Open-source note-taking and to-do application with sync',
+    homepage: 'https://joplinapp.org/',
+    versionSource: { type: 'github-releases', target: 'laurent22/joplin' },
+    latestSource: { type: 'github-releases', target: 'laurent22/joplin' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+  {
+    id: 'silverbullet',
+    name: 'SilverBullet',
+    category: 'Media',
+    tags: ['notes', 'markdown', 'personal-knowledge'],
+    icon: `${SI}/typescript`,
+    description: 'Open-source, extensible personal knowledge management system',
+    homepage: 'https://silverbullet.md/',
+    versionSource: { type: 'github-releases', target: 'silverbulletmd/silverbullet' },
+    latestSource: { type: 'github-releases', target: 'silverbulletmd/silverbullet' },
+    checkInterval: 3600,
+    requiresInstanceUrl: false,
+    verified: true,
+  },
+];
+
+export const TOOL_REGISTRY: ToolRegistryEntry[] = [...REGISTRY_PART1, ...REGISTRY_PART2, ...REGISTRY_PART3, ...REGISTRY_PART4, ...REGISTRY_PART5];
+
 
 export function getToolById(id: string): ToolRegistryEntry | undefined {
   return TOOL_REGISTRY.find((t) => t.id === id);

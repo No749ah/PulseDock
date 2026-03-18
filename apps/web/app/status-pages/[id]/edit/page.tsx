@@ -35,6 +35,14 @@ import {
   GripVertical,
   X,
   Settings,
+  CalendarDays,
+  FileText,
+  Image,
+  Table2,
+  Rss,
+  Copy,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -166,6 +174,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
+  { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
+  { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -281,10 +294,11 @@ interface CanvasWidgetProps {
   colWidth: number;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResize }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize }: CanvasWidgetProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
@@ -368,6 +382,13 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onResi
           </span>
         )}
         <button
+          onClick={(e) => { e.stopPropagation(); onDuplicate(widget.id); }}
+          className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-accent/10 hover:text-accent group-hover:opacity-100"
+          title="Duplicate widget"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onDelete(widget.id); }}
           className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
         >
@@ -406,10 +427,11 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onResize }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onDuplicate, onResize }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -478,6 +500,7 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
+            onDuplicate={onDuplicate}
             onResize={onResize}
           />
         );
@@ -495,9 +518,11 @@ interface ConfigPanelProps {
   folders: FolderOption[];
   onChange: (config: Widget["config"]) => void;
   onResize: (size: { w: number; h: number }) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -838,6 +863,23 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize }: Co
         </div>
         <p className="text-[10px] text-text-primary">Position: ({w.x}, {w.y})</p>
       </div>
+
+      <div className="space-y-1.5 pt-2">
+        <button
+          onClick={() => onDuplicate(w.id)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Duplicate Widget
+        </button>
+        <button
+          onClick={() => onDelete(w.id)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10"
+        >
+          <X className="h-3.5 w-3.5" />
+          Delete Widget
+        </button>
+      </div>
     </div>
   );
 }
@@ -855,14 +897,23 @@ export default function StatusPageEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+  const savedWidgetsRef = useRef<string>('[]'); // JSON snapshot of last saved state
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [paletteSearch, setPaletteSearch] = useState("");
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
+
+  // Undo/Redo history
+  const historyRef = useRef<Widget[][]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const isUndoRedoRef = useRef<boolean>(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -883,7 +934,9 @@ export default function StatusPageEditorPage() {
     try {
       const data = await api<StatusPage>(`/v1/status-pages/${id}`);
       setPage(data);
-      setWidgets(data.layout?.widgets ?? []);
+      const loadedWidgets = data.layout?.widgets ?? [];
+      setWidgets(loadedWidgets);
+      savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
@@ -927,7 +980,7 @@ export default function StatusPageEditorPage() {
     }
   }
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (opts?: { silent?: boolean }) => {
     if (!page) return;
     setSaving(true);
     try {
@@ -936,7 +989,11 @@ export default function StatusPageEditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ layout: { widgets } }),
       });
-      toastCtx.success("Saved");
+      // Mark as clean after successful save
+      savedWidgetsRef.current = JSON.stringify(widgets);
+      setIsDirty(false);
+      // Only show toast on manual save
+      if (!opts?.silent) toastCtx.success("Saved");
     } catch {
       toastCtx.error("Failed to save");
     } finally {
@@ -944,14 +1001,21 @@ export default function StatusPageEditorPage() {
     }
   }, [page, id, widgets, toastCtx]);
 
-  // Auto-save 2 seconds after widget changes (skip initial load)
+  // Track dirty state whenever widgets change
   const initialLoad = useRef(true);
   useEffect(() => {
     if (initialLoad.current) { initialLoad.current = false; return; }
-    if (!page || widgets.length === 0) return;
-    const timer = setTimeout(() => { handleSave(); }, 2000);
+    const current = JSON.stringify(widgets);
+    setIsDirty(current !== savedWidgetsRef.current);
+  }, [widgets]);
+
+  // Auto-save 2 seconds after widget changes (silent — no toast)
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    if (!isDirty || !page) return;
+    const timer = setTimeout(() => { handleSave({ silent: true }); }, 2000);
     return () => clearTimeout(timer);
-  }, [widgets, page, handleSave]);
+  }, [isDirty, widgets, page, handleSave, autoSaveEnabled]);
 
   async function handleTogglePublish() {
     if (!page) return;
@@ -995,6 +1059,70 @@ export default function StatusPageEditorPage() {
     setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
     if (selectedId === widgetId) setSelectedId(null);
   }
+
+  function duplicateWidget(widgetId: string) {
+    const src = widgets.find((w) => w.id === widgetId);
+    if (!src) return;
+    const { x, y } = autoPlace(src.w, src.h);
+    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y };
+    setWidgets((prev) => [...prev, copy]);
+    setSelectedId(copy.id);
+  }
+
+  function pushHistory(newWidgets: Widget[]) {
+    if (isUndoRedoRef.current) return;
+    const hist = historyRef.current;
+    const sliced = hist.slice(0, historyIndexRef.current + 1);
+    sliced.push(newWidgets);
+    if (sliced.length > 50) sliced.shift();
+    historyRef.current = sliced;
+    historyIndexRef.current = sliced.length - 1;
+  }
+
+  useEffect(() => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    if (widgets.length === 0 && historyIndexRef.current === -1) return;
+    pushHistory(widgets);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgets]);
+
+  function undo() {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    isUndoRedoRef.current = true;
+    setWidgets(historyRef.current[historyIndexRef.current]);
+  }
+
+  function redo() {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    isUndoRedoRef.current = true;
+    setWidgets(historyRef.current[historyIndexRef.current]);
+  }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      if (meta && e.key === "d") { e.preventDefault(); if (selectedId) duplicateWidget(selectedId); }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedId && tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          deleteWidget(selectedId);
+        }
+      }
+      if (e.key === "Escape") setSelectedId(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, widgets]);
 
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
@@ -1139,12 +1267,38 @@ export default function StatusPageEditorPage() {
               )}
             </button>
             <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
+              onClick={undo}
+              title="Undo (Ctrl+Z)"
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={redo}
+              title="Redo (Ctrl+Y)"
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </button>
+            {/* Auto-save toggle */}
+            <button
+              onClick={() => setAutoSaveEnabled(v => !v)}
+              title={autoSaveEnabled ? "Auto-save is ON — click to disable" : "Auto-save is OFF — click to enable"}
+              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${autoSaveEnabled ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border bg-bg text-text-secondary hover:text-text-primary'}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${autoSaveEnabled ? 'bg-accent animate-pulse' : 'bg-text-secondary/40'}`} />
+              Auto
+            </button>
+
+            {/* Manual save button — greyed when no changes */}
+            <button
+              onClick={() => handleSave()}
+              disabled={saving || !isDirty}
+              title={isDirty ? "Save changes" : "No unsaved changes"}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-40 disabled:cursor-default"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving…" : isDirty ? "Save*" : "Saved"}
             </button>
           </div>
         </header>
@@ -1156,27 +1310,56 @@ export default function StatusPageEditorPage() {
             <div className="border-b border-border px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Widgets</p>
             </div>
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-1 border-b border-border p-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                    activeCategory === cat
-                      ? "bg-accent text-white"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            {/* Search input */}
+            <div className="border-b border-border p-2">
+              <input
+                type="text"
+                placeholder="Search widgets..."
+                value={paletteSearch}
+                onChange={(e) => setPaletteSearch(e.target.value)}
+                className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
             </div>
+            {/* Category tabs — hidden when searching */}
+            {!paletteSearch && (
+              <div className="flex flex-wrap gap-1 border-b border-border p-2">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                      activeCategory === cat
+                        ? "bg-accent text-white"
+                        : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Widget list */}
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {WIDGET_PALETTE.filter((w) => w.category === activeCategory).map((widget) => (
-                <PaletteWidget key={widget.type} item={widget} />
-              ))}
+              {(() => {
+                const filtered = paletteSearch
+                  ? WIDGET_PALETTE.filter((w) => {
+                      const q = paletteSearch.toLowerCase();
+                      return (
+                        w.label.toLowerCase().includes(q) ||
+                        w.description.toLowerCase().includes(q) ||
+                        w.type.toLowerCase().includes(q)
+                      );
+                    })
+                  : WIDGET_PALETTE.filter((w) => w.category === activeCategory);
+                if (filtered.length === 0) {
+                  return (
+                    <p className="py-4 text-center text-xs text-text-secondary/60">No widgets found</p>
+                  );
+                }
+                return filtered.map((widget) => (
+                  <PaletteWidget key={widget.type} item={widget} />
+                ));
+              })()}
             </div>
           </aside>
 
@@ -1189,6 +1372,7 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               onSelect={setSelectedId}
               onDelete={deleteWidget}
+              onDuplicate={duplicateWidget}
               onResize={resizeWidgetById}
             />
           </main>
@@ -1206,6 +1390,8 @@ export default function StatusPageEditorPage() {
               folders={folders}
               onChange={updateWidgetConfig}
               onResize={updateWidgetSize}
+              onDelete={deleteWidget}
+              onDuplicate={duplicateWidget}
             />
           </aside>
         </div>

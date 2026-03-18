@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff } from "lucide-react";
+import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
@@ -12,7 +13,7 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { FadeIn } from "../../components/FadeIn";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../../components/Table";
-import { ResponseTimeChart } from "../../components/ResponseTimeChart";
+import { ResponseAreaChart, CheckBarChart } from "../../../components/charts";
 import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 
 interface MonitorItem {
@@ -243,15 +244,12 @@ export default function MonitorDetailPage() {
   return (
     <AppFrame title={monitor.name}>
       <div className="space-y-6">
-        {/* Back link */}
+        {/* Breadcrumb */}
         <FadeIn>
-          <Link
-            href="/monitors"
-            className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Monitors
-          </Link>
+          <Breadcrumb items={[
+            { label: "Monitors", href: "/monitors" },
+            { label: monitor.name },
+          ]} />
         </FadeIn>
 
         {/* Header */}
@@ -611,13 +609,55 @@ export default function MonitorDetailPage() {
           </FadeIn>
         )}
 
-        {/* Response time chart */}
+        {/* Response time area chart */}
         <FadeIn delay={0.16}>
           <Card className="p-4 space-y-3">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
               {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
             </h2>
-            <ResponseTimeChart runs={runs} height={80} />
+            {(() => {
+              const chartData = runs
+                .slice(0, 50)
+                .reverse()
+                .filter((r) => r.latencyMs !== null)
+                .map((r) => ({
+                  time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  value: r.latencyMs as number,
+                  ok: r.ok,
+                }));
+              const avg =
+                chartData.length > 0
+                  ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length)
+                  : undefined;
+              return (
+                <ResponseAreaChart
+                  data={chartData}
+                  height={160}
+                  avgLine={avg}
+                  color="#58a6ff"
+                />
+              );
+            })()}
+          </Card>
+        </FadeIn>
+
+        {/* Check history bar chart */}
+        <FadeIn delay={0.18}>
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+              Check History
+            </h2>
+            <CheckBarChart
+              data={runs
+                .slice(0, 50)
+                .reverse()
+                .map((r) => ({
+                  time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  value: r.latencyMs ?? 0,
+                  ok: r.ok,
+                }))}
+              height={80}
+            />
           </Card>
         </FadeIn>
 

@@ -3851,6 +3851,318 @@ export function Countdown({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── Maintenance Calendar ──────────────────────────────────────────────────
+
+export function MaintenanceCalendar({ widget, extra }: WidgetProps) {
+  const monthOffset = (widget.config.monthOffset as number | undefined) ?? 0;
+  const showPast = (widget.config.showPast as boolean | undefined) ?? true;
+
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const year = target.getFullYear();
+  const month = target.getMonth();
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
+
+  const monthName = target.toLocaleString("en-US", { month: "long" });
+
+  const maintenanceDays = new Set<number>();
+  const pastDays = new Set<number>();
+
+  for (const m of extra.maintenance) {
+    const start = new Date(m.startsAt);
+    const end = new Date(m.endsAt);
+    const isPast = end < now;
+    if (isPast && !showPast) continue;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = new Date(year, month, d);
+      if (day >= new Date(start.getFullYear(), start.getMonth(), start.getDate()) &&
+          day <= new Date(end.getFullYear(), end.getMonth(), end.getDate())) {
+        maintenanceDays.add(d);
+        if (isPast) pastDays.add(d);
+      }
+    }
+  }
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const today = now.getDate();
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
+
+  return (
+    <div className="bg-surface/50 border border-border rounded-xl p-4">
+      <div className="mb-3 text-center font-semibold text-text-primary">
+        {monthName} {year}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 mb-1">
+        {dayLabels.map((l) => (
+          <div key={l} className="text-center text-[10px] text-text-secondary font-medium py-1">{l}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`e-${i}`} />;
+          const hasMaint = maintenanceDays.has(d);
+          const isPast = pastDays.has(d);
+          const isToday = isCurrentMonth && d === today;
+          return (
+            <div
+              key={d}
+              className={[
+                "text-center text-xs py-1.5 rounded-md font-medium",
+                hasMaint && isPast ? "bg-purple-500/20 text-purple-300" :
+                hasMaint ? "bg-blue-500/20 text-blue-300" :
+                isToday ? "ring-1 ring-border text-text-primary" :
+                "text-text-secondary",
+              ].filter(Boolean).join(" ")}
+            >
+              {d}
+              {hasMaint && (
+                <div className={`mx-auto mt-0.5 w-1 h-1 rounded-full ${isPast ? "bg-purple-400" : "bg-blue-400"}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 flex gap-3 text-[10px] text-text-secondary">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />Upcoming</span>
+        {showPast && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />Past</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── Changelog Widget ──────────────────────────────────────────────────────
+
+export function ChangelogWidget({ widget, monitors }: WidgetProps) {
+  const monitorId = widget.config.monitorId as string | undefined;
+  const showLastChecked = (widget.config.showLastChecked as boolean | undefined) ?? true;
+
+  const monitor = monitorId
+    ? monitors.find((m) => m.id === monitorId) ?? monitors[0]
+    : monitors[0];
+
+  if (!monitor) {
+    return (
+      <div className="bg-surface/50 border border-border rounded-xl p-4 text-center text-sm text-text-secondary">
+        Connect a version monitor to track changelog updates
+      </div>
+    );
+  }
+
+  let currentVersion: string | null = null;
+  let latestVersion: string | null = null;
+
+  if (monitor.message) {
+    const currentMatch = monitor.message.match(/current[:\s]+([^\s/]+)/i);
+    const latestMatch = monitor.message.match(/latest[:\s]+([^\s/]+)/i);
+    if (currentMatch) currentVersion = currentMatch[1];
+    if (latestMatch) latestVersion = latestMatch[1];
+    if (!currentVersion) currentVersion = monitor.message.trim().split(/[\s/]/)[0] ?? null;
+  }
+
+  const isUpToDate = currentVersion && latestVersion && currentVersion === latestVersion;
+  const hasUpdate = currentVersion && latestVersion && currentVersion !== latestVersion;
+
+  return (
+    <div className="bg-surface/50 border border-border rounded-xl p-4 space-y-3">
+      <div className="font-semibold text-text-primary">{monitor.name}</div>
+      <div className="flex flex-wrap gap-2 items-center">
+        {currentVersion && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
+            Current: <span className="font-mono text-text-primary">{currentVersion}</span>
+          </span>
+        )}
+        {latestVersion && (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
+            hasUpdate ? "bg-yellow-500/10 border border-yellow-500/30 text-yellow-300" :
+            "bg-surface border border-border text-text-secondary"
+          }`}>
+            Latest: {latestVersion}
+          </span>
+        )}
+        {isUpToDate && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-300">
+            Up to date
+          </span>
+        )}
+        {hasUpdate && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300">
+            Update available
+          </span>
+        )}
+      </div>
+      {showLastChecked && monitor.lastChecked && (
+        <div className="text-[11px] text-text-secondary">Last checked {formatRelative(monitor.lastChecked)}</div>
+      )}
+    </div>
+  );
+}
+
+// ── Image / Banner ────────────────────────────────────────────────────────
+
+export function ImageBanner({ widget }: WidgetProps) {
+  const imageUrl = widget.config.imageUrl as string | undefined;
+  const altText = (widget.config.altText as string | undefined) ?? "";
+  const linkUrl = widget.config.linkUrl as string | undefined;
+  const maxHeight = (widget.config.maxHeight as number | undefined) ?? 200;
+  const caption = widget.config.caption as string | undefined;
+
+  if (!imageUrl) {
+    return (
+      <div className="bg-surface/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-text-secondary" style={{ minHeight: 80 }}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </svg>
+        <span className="text-sm">Add image URL in config</span>
+      </div>
+    );
+  }
+
+  const imgEl = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageUrl}
+      alt={altText}
+      style={{ maxHeight, objectFit: "cover", width: "100%", borderRadius: "0.75rem" }}
+    />
+  );
+
+  return (
+    <div className="bg-surface/50 border border-border rounded-xl overflow-hidden">
+      {linkUrl ? (
+        <a href={linkUrl} target="_blank" rel="noreferrer noopener">
+          {imgEl}
+        </a>
+      ) : imgEl}
+      {caption && (
+        <p className="px-4 py-2 text-sm text-text-secondary">{caption}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Data Table ────────────────────────────────────────────────────────────
+
+export function DataTable({ widget, monitors }: WidgetProps) {
+  const columns = (widget.config.columns as string[] | undefined) ?? ["name", "status", "latency", "lastChecked"];
+  const maxRows = (widget.config.maxRows as number | undefined) ?? 20;
+  const showHeader = (widget.config.showHeader as boolean | undefined) ?? true;
+
+  const rows = monitors.slice(0, maxRows);
+
+  const colLabel: Record<string, string> = {
+    name: "Name",
+    status: "Status",
+    latency: "Latency",
+    lastChecked: "Last Checked",
+    type: "Type",
+    message: "Message",
+  };
+
+  const levelDot: Record<string, string> = {
+    green: "bg-green-400",
+    yellow: "bg-yellow-400",
+    red: "bg-red-400",
+  };
+
+  return (
+    <div className="bg-surface/50 border border-border rounded-xl overflow-hidden">
+      <table className="w-full text-sm">
+        {showHeader && (
+          <thead>
+            <tr className="border-b border-border">
+              {columns.map((col) => (
+                <th key={col} className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wide">
+                  {colLabel[col] ?? col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="px-3 py-4 text-center text-text-secondary text-xs">
+                No monitors configured
+              </td>
+            </tr>
+          ) : rows.map((m) => (
+            <tr key={m.id} className="border-b border-border/50 last:border-0 hover:bg-surface/80">
+              {columns.map((col) => (
+                <td key={col} className="px-3 py-2 text-text-primary">
+                  {col === "status" ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${levelDot[m.level] ?? "bg-gray-400"}`} />
+                      <span className="text-xs">{levelLabel(m.level)}</span>
+                    </span>
+                  ) : col === "latency" ? (
+                    <span className="text-xs font-mono">{m.latencyMs != null ? `${m.latencyMs}ms` : "—"}</span>
+                  ) : col === "lastChecked" ? (
+                    <span className="text-xs text-text-secondary">{m.lastChecked ? formatRelative(m.lastChecked) : "—"}</span>
+                  ) : col === "name" ? (
+                    <span className="font-medium text-xs">{m.name}</span>
+                  ) : col === "type" ? (
+                    <span className="text-xs text-text-secondary">{m.type}</span>
+                  ) : col === "message" ? (
+                    <span className="text-xs text-text-secondary truncate max-w-xs block">{m.message ?? "—"}</span>
+                  ) : null}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── RSS Feed Widget ───────────────────────────────────────────────────────
+
+export function RssFeedWidget({ widget }: WidgetProps) {
+  const feedTitle = (widget.config.feedTitle as string | undefined) ?? "Status Updates";
+  const slugOverride = widget.config.slugOverride as string | undefined;
+
+  const feedUrl = slugOverride
+    ? `https://your-domain.com/status/${slugOverride}/feed.xml`
+    : "Configure slug in widget settings";
+  const isPlaceholder = !slugOverride;
+
+  function handleCopy() {
+    if (!isPlaceholder && typeof navigator !== "undefined") {
+      void navigator.clipboard.writeText(feedUrl);
+    }
+  }
+
+  return (
+    <div className="bg-surface/50 border border-border rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400">
+          <path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" />
+        </svg>
+        <span className="font-semibold text-text-primary">{feedTitle}</span>
+      </div>
+      <div className="rounded-lg bg-surface border border-border p-2 flex items-center justify-between gap-2">
+        <code className="text-xs font-mono text-text-secondary truncate">{feedUrl}</code>
+        {!isPlaceholder && (
+          <button
+            onClick={handleCopy}
+            className="shrink-0 text-xs px-2 py-0.5 rounded bg-surface/80 border border-border text-text-secondary hover:text-text-primary transition-colors"
+          >
+            Copy
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-text-secondary">Subscribe in your RSS reader to receive status updates.</p>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -4080,6 +4392,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "divider":
       content = <Divider />;
+      break;
+    case "maintenance-calendar":
+      content = <MaintenanceCalendar {...props} />;
+      break;
+    case "changelog-widget":
+      content = <ChangelogWidget {...{ ...props, monitors: scopedMonitors }} />;
+      break;
+    case "image-banner":
+      content = <ImageBanner {...props} />;
+      break;
+    case "data-table":
+      content = <DataTable {...{ ...props, monitors: scopedMonitors }} />;
+      break;
+    case "rss-feed-widget":
+      content = <RssFeedWidget {...props} />;
       break;
     default:
       content = (

@@ -31,7 +31,12 @@ export type ToolCategory =
   | 'API'
   | 'Cloud'
   | 'Maven Central'
-  | 'Helm';
+  | 'Helm'
+  | 'AI/ML'
+  | 'ERP/Business'
+  | 'Search/Vector'
+  | 'IoT/Edge'
+  | 'Photo/Docs';
 
 export interface VersionSource {
   type: VersionSourceType;

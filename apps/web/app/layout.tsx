@@ -11,6 +11,7 @@ import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
 import { PWAInstallBanner } from "../components/pwa-install-banner";
 import { I18nProvider } from "../components/i18n-provider";
+import { CommandPalette } from "../components/command-palette";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -51,6 +52,53 @@ export const metadata: Metadata = {
   robots: "index, follow",
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "PulseDock",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "description": "Open-source version intelligence and uptime monitoring tool. Track version updates, monitor uptime, manage incidents, and share public status pages.",
+      "url": "https://oc-dev-test.no749ah.com",
+      "author": {
+        "@type": "Person",
+        "name": "No749ah",
+        "url": "https://github.com/No749ah",
+      },
+      "license": "https://github.com/No749ah/PulseDock/blob/main/LICENSE",
+      "codeRepository": "https://github.com/No749ah/PulseDock",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+      },
+      "featureList": [
+        "Version Intelligence — track 1300+ tools",
+        "Uptime Monitoring — HTTP, TCP, SSL, Heartbeat",
+        "Public Status Pages with drag-and-drop editor",
+        "Incident Management with post-mortems",
+        "Alert Channels — Slack, Discord, Telegram, Webhook",
+        "SLA Tracking and compliance reporting",
+        "CLI tool and Docker support",
+        "Self-hosted and free forever",
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "name": "PulseDock",
+      "url": "https://oc-dev-test.no749ah.com",
+      "description": "Version intelligence & uptime monitoring for developers.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://oc-dev-test.no749ah.com/versions?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
@@ -72,6 +120,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+
+        {/* JSON-LD structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         
       </head>
       <body className="bg-bg text-text-primary antialiased">
@@ -83,6 +137,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ThemeProvider>
             <ToastProvider>
               {children}
+              <CommandPalette />
               <PWAInstallBanner />
               <SWRegister />
             </ToastProvider>

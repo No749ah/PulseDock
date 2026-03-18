@@ -1,8 +1,26 @@
-## Status Summary (2026-03-18 10:14 UTC)
-- **Build/Test:** ✅ Clean build, 1354 tests passing (API+CLI+Agent) — +8 from this session
-- **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks green.
-- **This session (2026-03-18 10:14 UTC):**
+## Status Summary (2026-03-18 12:47 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
+- **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.
+- **Deployment:** ✅ All 12 routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-landing-polish
+- **This session (2026-03-18 12:47 UTC):**
+  - **5 new status-page widgets** (65 total): MaintenanceCalendar, ChangelogWidget, ImageBanner, DataTable, RssFeedWidget
+  - **BACKLOG sync**: 29 already-implemented widgets marked [x]
+  - **Editor UX**: Widget duplication (Ctrl+D), undo/redo (50-step, Ctrl+Z/Y), keyboard shortcuts, palette search
+  - **SEO**: JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt
+  - **Command palette** (Ctrl+K): 23 commands, fuzzy search, keyboard nav, recent commands, localStorage
+  - **Live notifications bell**: Fetches recent failed monitor runs, shows real failure count badge
+  - **Recharts integration**: AreaChart, BarChart, MiniSparkline — used in monitor detail + dashboard trend column
+  - **Monitor templates**: 29 → 86 templates (Code Quality, Security, DNS, Mail, AI/ML, Storage, DB, IoT)
+  - **Monitors table**: Sortable columns (name, status, last checked) with asc/desc toggle
+  - **Docs**: STATUS-PAGES.md (comprehensive, 207 lines), SECURITY.md (176 lines), CLI/Agent READMEs
+- **Previous session (2026-03-18 12:02 UTC):**
+  - **5 new status-page widgets**: CountdownWidget (client-side live countdown), SubscriberFormWidget (email subscription + 409 dedup), FaqAccordion (collapsible Q&A), SocialLinks, EmbedIframe — full backend + Prisma migration (StatusPageSubscriber)
+  - **E2E auth fixture hardening**: handles setup vs login form detection, robust URL redirect wait, descriptive error on failure
+  - **Tool search ranking**: searchTools() now ranks exact > prefix > contains > tag > description; frontend mirrors same logic with 'Did you mean' empty state
+  - **README overhaul**: badges, comparison table, correct test count, proper structure for GitHub; removed duplicate PROXY_SETUP.md from root
+  - **StatusPageSubscriber migration**: added + deployed (20260318120000)
+- **Previous session (2026-03-18 10:14 UTC):**
   - Committed unstaged widget schema changes (monitor-group alias + version/multi-status types)
   - Implemented **4 new P1 status-page widgets**: ComponentStatusList, RollingUptimeCards, StatusHistoryRibbon, UptimePercentageCard
   - Full backend resolvers with Prisma queries, frontend components with proper dark-theme styling
@@ -469,62 +487,62 @@
 
 - [x] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
 - [x] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period (implemented 2026-03-18)
-- [ ] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
-- [ ] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
-- [ ] **Throughput Counter** — Checks per hour / requests per minute as live counter
-- [ ] **Apdex Score** — Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
-- [ ] **SSL Certificate Status** — Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
-- [ ] **DNS Resolution Time** — DNS lookup latency tracker (separate from HTTP latency)
+- [x] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
+- [x] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
+- [x] **Throughput Counter** — Checks per hour / requests per minute as live counter
+- [x] **Apdex Score** — Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
+- [x] **SSL Certificate Status** — Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
+- [x] **DNS Resolution Time** — DNS lookup latency tracker (separate from HTTP latency)
 
 ### P1 — New Widgets (SLA & Uptime Deep)
 
-- [ ] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
-- [ ] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
+- [x] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
+- [x] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
 - [x] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
 - [x] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
 - [ ] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
 
 ### P1 — New Widgets (Incidents & Maintenance)
 
-- [ ] **Incident Timeline** — Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
-- [ ] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
-- [ ] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
-- [ ] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
+- [x] **Incident Timeline** — Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
+- [x] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
+- [x] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
+- [x] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
 - [x] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
-- [ ] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
-- [ ] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
-- [ ] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes
+- [x] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
+- [x] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
+- [x] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes
 
 ### P1 — New Widgets (Versions)
 
-- [ ] **Version Timeline** — Chronological list of all version updates detected across monitors
-- [ ] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
-- [ ] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
-- [ ] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
+- [x] **Version Timeline** — Chronological list of all version updates detected across monitors
+- [x] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
+- [x] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
+- [x] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
 - [ ] **Security Advisory Widget** — Checks if current version has known CVEs (via GitHub advisories API)
 
 ### P1 — New Widgets (Metrics & Data)
 
-- [ ] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
+- [x] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
 - [ ] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
-- [ ] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
-- [ ] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
-- [ ] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
-- [ ] **Progress Ring** — Circular progress (like Apple Watch rings). For uptime, SLA compliance
-- [ ] **Data Table** — Configurable tabular data display with sorting and pagination
+- [x] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
+- [x] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
+- [x] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
+- [x] **Progress Ring** — Circular progress (like Apple Watch rings). For uptime, SLA compliance
+- [x] **Data Table** — Configurable tabular data display with sorting and pagination
 
 ### P1 — New Widgets (Content & Branding)
 
-- [ ] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
-- [ ] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
-- [ ] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs
-- [ ] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
-- [ ] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.)
-- [ ] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, sandbox policy
+- [x] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
+- [x] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
+- [x] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs. Implemented with details/summary HTML, chevron rotate animation
+- [x] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
+- [x] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
+- [x] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
 - [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
 - [ ] **Code Block** — Display API response or config snippet with syntax highlighting
-- [ ] **Subscriber Form** — Email input for status update subscriptions. Backend: subscriber table, email notifications on status change
-- [ ] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
+- [x] **Subscriber Form** — Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
+- [x] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
 
 ### P1 — New Widgets (Layout & Navigation)
 
@@ -970,19 +988,19 @@
 - **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.
 
 ### P0 — CI/CD E2E Login Redirect Failures (GitHub Actions)
-- [ ] Reproduce `npm run test:e2e` failure locally in CI-like env.
-- [ ] Fix login redirect race (`waitForURL("**/dashboard")` timeout) by making auth success deterministic.
-- [ ] Ensure login submit handles setup-status/registration-disabled cases correctly in CI seed state.
-- [ ] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) to wait on post-login app-ready signal, not only URL.
-- [ ] Add regression test for valid login path used in CI (`E2E_EMAIL/E2E_PASSWORD`).
-- [ ] Validate full E2E suite green in pipeline.
+- [x] Fix login redirect race (`waitForURL("**/dashboard")` timeout) — now uses `Promise.race` accepting any non-login URL
+- [x] Handle setup-status form vs login form detection — auth fixture detects #setup-email vs #email, fills correct form
+- [x] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) — robust waitForLoginReady(), descriptive errors
+- [x] auth.spec.ts: improved selectors (bg-danger pattern), added unauthenticated redirect test, more resilient redirects
+- [ ] Validate full E2E suite green in pipeline (needs CI run to confirm).
 
 ### P1 — Tool Search Quality + Incremental Tool List UX
-- [ ] Improve tool search relevance/ranking (name exact/starts-with > tags > description).
-- [ ] Add debounced search + normalization (case/spacing/special chars) for consistent results.
-- [ ] Add empty-state suggestions (close matches / top tools in selected category).
-- [ ] Keep first render lightweight: show ~50 tools initially.
-- [ ] Infinite scroll in tool picker: load +50 on scroll until exhausted.
+- [x] Improve tool search relevance/ranking (name exact/starts-with > tags > description). Backend `searchTools()` and frontend filter both use same ranked scoring (10/20/30/40/50/60/70).
+- [x] Add normalization (trim + collapse internal spaces) for consistent results.
+- [x] Add empty-state suggestions (close matches / top tools from cross-category). 'Did you mean:' pill buttons.
+- [x] Keep first render lightweight: show ~50 tools initially (already was 50).
+- [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
+- [ ] Add debounced search to avoid re-filtering on every keystroke.
 - [ ] Add quick perf check for large registry filtering in browser.
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)

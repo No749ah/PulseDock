@@ -40,7 +40,12 @@ export type WidgetType =
   | 'post-mortem-card'
   | 'performance-trend'
   | 'apdex-score'
-  | 'throughput-counter';
+  | 'throughput-counter'
+  | 'response-time-comparison'
+  | 'uptime-comparison-chart'
+  | 'next-maintenance-countdown'
+  | 'maintenance-impact-list'
+  | 'version-timeline';
 
 export interface Widget {
   id: string;

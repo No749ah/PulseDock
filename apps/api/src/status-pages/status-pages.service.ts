@@ -1451,6 +1451,232 @@ export class StatusPagesService {
         return { current, average, peak, dataPoints };
       }
 
+      case 'response-time-comparison': {
+        // Up to 8 monitors, last N data points of latencyMs
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const resolvedIds = monitorIds?.length
+          ? monitorIds.slice(0, 8)
+          : monitorId ? [monitorId] : [];
+        if (resolvedIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+
+        const points = Math.min(Math.max((widget.config.points as number) ?? 24, 5), 100);
+        const periodHours = (widget.config.periodHours as number) ?? 0;
+        const PALETTE = ['#60a5fa', '#34d399', '#f472b6', '#fb923c', '#a78bfa', '#facc15', '#38bdf8', '#f87171'];
+
+        const monitorsDb = await this.prisma.monitor.findMany({
+          where: { id: { in: resolvedIds }, userId },
+          select: { id: true, name: true },
+        });
+
+        const monitorDataList = await Promise.all(
+          monitorsDb.map(async (m, idx) => {
+            let where: Record<string, unknown> = { monitorId: m.id };
+            if (periodHours > 0) {
+              const since = new Date(Date.now() - periodHours * 3_600_000);
+              where = { monitorId: m.id, checkedAt: { gte: since } };
+            }
+            const runs = await this.prisma.monitorRun.findMany({
+              where,
+              select: { latencyMs: true, checkedAt: true },
+              orderBy: { checkedAt: 'desc' },
+              take: points,
+            });
+            runs.reverse();
+            return {
+              id: m.id,
+              name: m.name,
+              color: PALETTE[idx % PALETTE.length],
+              dataPoints: runs.map((r) => r.latencyMs ?? 0),
+              timestamps: runs.map((r) => (r.checkedAt as Date).toISOString()),
+            };
+          }),
+        );
+
+        // Build labels from the longest dataset
+        const longestData = monitorDataList.reduce((a, b) => (a.timestamps.length >= b.timestamps.length ? a : b), monitorDataList[0]);
+        const labels = longestData.timestamps.map((ts) => {
+          const d = new Date(ts);
+          return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+        });
+
+        return {
+          monitors: monitorDataList.map(({ timestamps: _, ...m }) => m),
+          labels,
+          periodHours: periodHours || Math.round(points / 2),
+        };
+      }
+
+      case 'uptime-comparison-chart': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const resolvedIds = monitorIds?.length
+          ? monitorIds
+          : monitorId ? [monitorId] : [];
+        if (resolvedIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        const monitorsDb = await this.prisma.monitor.findMany({
+          where: { id: { in: resolvedIds }, userId },
+          select: { id: true, name: true },
+        });
+
+        const monitorDataList = await Promise.all(
+          monitorsDb.map(async (m) => {
+            const runs = await this.prisma.monitorRun.findMany({
+              where: { monitorId: m.id, checkedAt: { gte: since } },
+              select: { level: true },
+            });
+            const total = runs.length;
+            const up = runs.filter((r) => r.level === 'green').length;
+            const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+            return { id: m.id, name: m.name, uptimePct };
+          }),
+        );
+
+        monitorDataList.sort((a, b) => b.uptimePct - a.uptimePct);
+        return { monitors: monitorDataList, periodDays };
+      }
+
+      case 'next-maintenance-countdown': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const now = new Date();
+
+        const whereClause = monitorIds?.length
+          ? {
+              userId,
+              startsAt: { gt: now },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, startsAt: { gt: now } };
+
+        const window = await this.prisma.maintenanceWindow.findFirst({
+          where: whereClause,
+          orderBy: { startsAt: 'asc' },
+          select: {
+            name: true,
+            description: true,
+            startsAt: true,
+            endsAt: true,
+            monitors: { include: { monitor: { select: { name: true } } } },
+          },
+        });
+
+        if (!window) return { none: true };
+
+        const secondsUntil = Math.max(0, Math.floor((window.startsAt.getTime() - now.getTime()) / 1000));
+        return {
+          name: window.name,
+          description: window.description,
+          startsAt: window.startsAt,
+          endsAt: window.endsAt,
+          affectedMonitors: window.monitors.map((m) => ({ name: m.monitor.name })),
+          secondsUntil,
+        };
+      }
+
+      case 'maintenance-impact-list': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const now = new Date();
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 86_400_000);
+
+        const whereClause = monitorIds?.length
+          ? {
+              userId,
+              startsAt: { gte: now, lte: sevenDaysFromNow },
+              monitors: { some: { monitorId: { in: monitorIds } } },
+            }
+          : { userId, startsAt: { gte: now, lte: sevenDaysFromNow } };
+
+        const windows = await this.prisma.maintenanceWindow.findMany({
+          where: whereClause,
+          orderBy: { startsAt: 'asc' },
+          take: 20,
+          select: {
+            name: true,
+            startsAt: true,
+            endsAt: true,
+            description: true,
+            monitors: { include: { monitor: { select: { id: true, name: true, runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true } } } } } },
+          },
+        });
+
+        const result = windows.map((w) => ({
+          name: w.name,
+          startsAt: w.startsAt,
+          endsAt: w.endsAt,
+          description: w.description,
+          affectedMonitors: w.monitors.map((mm) => ({
+            name: mm.monitor.name,
+            status: mm.monitor.runs[0]?.level ?? 'green',
+          })),
+        }));
+
+        return { windows: result };
+      }
+
+      case 'version-timeline': {
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const limit = Math.min(Math.max((widget.config.limit as number) ?? 20, 1), 100);
+
+        // Find VERSION monitors in scope
+        const versionMonitors = await this.prisma.monitor.findMany({
+          where: monitorIds?.length
+            ? { userId, id: { in: monitorIds }, type: MonitorType.GIT_RELEASE }
+            : { userId, type: MonitorType.GIT_RELEASE },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+          take: 50,
+        });
+
+        if (versionMonitors.length === 0) return { events: [], count: 0 };
+
+        type VersionEvent = {
+          monitorId: string;
+          name: string;
+          fromVersion: string;
+          toVersion: string;
+          detectedAt: Date;
+        };
+
+        const allEvents: VersionEvent[] = [];
+
+        for (const monitor of versionMonitors) {
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId: monitor.id, ok: true },
+            select: { message: true, checkedAt: true },
+            orderBy: { checkedAt: 'desc' },
+            take: 200,
+          });
+
+          // Detect version changes by comparing consecutive runs
+          // message field stores version info
+          for (let i = 0; i < runs.length - 1; i++) {
+            const current = runs[i];
+            const previous = runs[i + 1];
+            const currVersion = current.message?.trim() ?? '';
+            const prevVersion = previous.message?.trim() ?? '';
+            if (currVersion && prevVersion && currVersion !== prevVersion) {
+              allEvents.push({
+                monitorId: monitor.id,
+                name: monitor.name,
+                fromVersion: prevVersion,
+                toVersion: currVersion,
+                detectedAt: current.checkedAt as Date,
+              });
+            }
+          }
+        }
+
+        // Sort by detectedAt descending
+        allEvents.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime());
+
+        return {
+          events: allEvents.slice(0, limit),
+          count: allEvents.length,
+        };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

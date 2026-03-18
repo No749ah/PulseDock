@@ -1742,4 +1742,194 @@ describe('StatusPagesService', () => {
       expect(result.peak).toBe(5);
     });
   });
+
+  // ── response-time-comparison ─────────────────────────────────────────────
+
+  describe('getWidgetData — response-time-comparison', () => {
+    it('throws BadRequestException when no monitorIds configured', async () => {
+      const layout = {
+        widgets: [{ id: 'rtc1', type: 'response-time-comparison', config: {}, x: 0, y: 0, w: 12, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'rtc1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns monitors with dataPoints and labels', async () => {
+      const layout = {
+        widgets: [{
+          id: 'rtc2', type: 'response-time-comparison',
+          config: { monitorIds: ['mon-1', 'mon-2'] },
+          x: 0, y: 0, w: 12, h: 4,
+        }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API' },
+        { id: 'mon-2', name: 'Web' },
+      ]);
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { latencyMs: 100, checkedAt: new Date('2026-01-01T10:00:00Z') },
+        { latencyMs: 120, checkedAt: new Date('2026-01-01T11:00:00Z') },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'rtc2');
+      expect(result.monitors).toHaveLength(2);
+      expect((result.monitors as { id: string; name: string; color: string; dataPoints: number[] }[])[0].color).toBeDefined();
+      expect(result.labels).toBeDefined();
+    });
+  });
+
+  // ── uptime-comparison-chart ──────────────────────────────────────────────
+
+  describe('getWidgetData — uptime-comparison-chart', () => {
+    it('throws BadRequestException when no monitorIds configured', async () => {
+      const layout = {
+        widgets: [{ id: 'ucc1', type: 'uptime-comparison-chart', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'ucc1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns monitors sorted by uptimePct descending', async () => {
+      const layout = {
+        widgets: [{
+          id: 'ucc2', type: 'uptime-comparison-chart',
+          config: { monitorIds: ['mon-1', 'mon-2'] },
+          x: 0, y: 0, w: 8, h: 4,
+        }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'API' },
+        { id: 'mon-2', name: 'Web' },
+      ]);
+      // mon-1: 3/3 green = 100%, mon-2: 2/3 green = 66.67%
+      prisma.monitorRun.findMany = vi.fn()
+        .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }, { level: 'green' }])
+        .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }, { level: 'red' }]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'ucc2');
+      const mons = result.monitors as { id: string; uptimePct: number }[];
+      expect(mons[0].uptimePct).toBeGreaterThan(mons[1].uptimePct);
+      expect(result.periodDays).toBe(30);
+    });
+  });
+
+  // ── next-maintenance-countdown ───────────────────────────────────────────
+
+  describe('getWidgetData — next-maintenance-countdown', () => {
+    it('returns none: true when no upcoming maintenance', async () => {
+      const layout = {
+        widgets: [{ id: 'nmc1', type: 'next-maintenance-countdown', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.maintenanceWindow = { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) } as unknown as typeof prisma.maintenanceWindow;
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'nmc1');
+      expect(result.none).toBe(true);
+    });
+
+    it('returns countdown data when maintenance exists', async () => {
+      const layout = {
+        widgets: [{ id: 'nmc2', type: 'next-maintenance-countdown', config: {}, x: 0, y: 0, w: 6, h: 3 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      const futureStart = new Date(Date.now() + 3_600_000); // 1 hour from now
+      const futureEnd = new Date(Date.now() + 7_200_000);
+      prisma.maintenanceWindow = {
+        findFirst: vi.fn().mockResolvedValue({
+          name: 'DB Upgrade',
+          description: 'Upgrading database',
+          startsAt: futureStart,
+          endsAt: futureEnd,
+          monitors: [{ monitor: { name: 'DB Monitor' } }],
+        }),
+        findMany: vi.fn().mockResolvedValue([]),
+      } as unknown as typeof prisma.maintenanceWindow;
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'nmc2');
+      expect(result.name).toBe('DB Upgrade');
+      expect(result.secondsUntil).toBeGreaterThan(0);
+      expect((result.affectedMonitors as { name: string }[])).toHaveLength(1);
+    });
+  });
+
+  // ── maintenance-impact-list ──────────────────────────────────────────────
+
+  describe('getWidgetData — maintenance-impact-list', () => {
+    it('returns empty windows when none scheduled', async () => {
+      const layout = {
+        widgets: [{ id: 'mil1', type: 'maintenance-impact-list', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mil1');
+      expect(result.windows).toHaveLength(0);
+    });
+
+    it('returns windows with affected monitors and status', async () => {
+      const layout = {
+        widgets: [{ id: 'mil2', type: 'maintenance-impact-list', config: {}, x: 0, y: 0, w: 8, h: 4 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      const futureStart = new Date(Date.now() + 3_600_000);
+      const futureEnd = new Date(Date.now() + 7_200_000);
+      prisma.maintenanceWindow.findMany = vi.fn().mockResolvedValue([{
+        name: 'Planned Maintenance',
+        startsAt: futureStart,
+        endsAt: futureEnd,
+        description: 'Routine maintenance',
+        monitors: [
+          { monitor: { id: 'mon-1', name: 'API', runs: [{ level: 'green' }] } },
+          { monitor: { id: 'mon-2', name: 'DB', runs: [] } },
+        ],
+      }]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'mil2');
+      const windows = result.windows as { name: string; affectedMonitors: { name: string; status: string }[] }[];
+      expect(windows).toHaveLength(1);
+      expect(windows[0].name).toBe('Planned Maintenance');
+      expect(windows[0].affectedMonitors).toHaveLength(2);
+    });
+  });
+
+  // ── version-timeline ─────────────────────────────────────────────────────
+
+  describe('getWidgetData — version-timeline', () => {
+    it('returns empty events when no VERSION monitors', async () => {
+      const layout = {
+        widgets: [{ id: 'vt1', type: 'version-timeline', config: {}, x: 0, y: 0, w: 8, h: 5 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'vt1');
+      expect(result.events).toHaveLength(0);
+      expect(result.count).toBe(0);
+    });
+
+    it('detects version changes from consecutive monitor runs', async () => {
+      const layout = {
+        widgets: [{ id: 'vt2', type: 'version-timeline', config: {}, x: 0, y: 0, w: 8, h: 5 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'mon-1', name: 'MyApp' },
+      ]);
+      // Runs ordered desc: latest first (v2.0.0 → v1.9.0)
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { message: 'v2.0.0', checkedAt: new Date('2026-01-03T10:00:00Z') },
+        { message: 'v1.9.0', checkedAt: new Date('2026-01-02T10:00:00Z') },
+        { message: 'v1.9.0', checkedAt: new Date('2026-01-01T10:00:00Z') },
+      ]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'vt2');
+      const events = result.events as { fromVersion: string; toVersion: string; name: string }[];
+      expect(events.length).toBeGreaterThanOrEqual(1);
+      expect(events[0].fromVersion).toBe('v1.9.0');
+      expect(events[0].toVersion).toBe('v2.0.0');
+    });
+  });
 });

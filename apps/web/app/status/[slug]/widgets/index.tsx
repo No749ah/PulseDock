@@ -2615,6 +2615,318 @@ function UpdateSummary({ monitors }: WidgetProps) {
   );
 }
 
+// ── Response Time Comparison ─────────────────────────────────────────────
+
+export function ResponseTimeComparison({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    monitors: { id: string; name: string; color: string; dataPoints: number[] }[];
+    labels: string[];
+    periodHours: number;
+  } | undefined;
+
+  if (!raw || !raw.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const { monitors: monitorLines, labels } = raw;
+  const title = (widget.config.label as string) || "Response Time Comparison";
+  const svgW = 600;
+  const svgH = 160;
+  const padL = 48;
+  const padR = 12;
+  const padT = 8;
+  const padB = 28;
+  const chartW = svgW - padL - padR;
+  const chartH = svgH - padT - padB;
+
+  const allPoints = monitorLines.flatMap((m) => m.dataPoints);
+  const maxVal = allPoints.length > 0 ? Math.max(...allPoints) : 1;
+  const minVal = 0;
+  const range = maxVal - minVal || 1;
+
+  const toX = (i: number, total: number) => padL + (i / Math.max(total - 1, 1)) * chartW;
+  const toY = (v: number) => padT + chartH - ((v - minVal) / range) * chartH;
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(minVal + t * range));
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto" style={{ maxHeight: 180 }}>
+        {/* Y-axis ticks */}
+        {yTicks.map((tick) => (
+          <g key={tick}>
+            <line x1={padL} x2={svgW - padR} y1={toY(tick)} y2={toY(tick)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+            <text x={padL - 4} y={toY(tick) + 4} textAnchor="end" fontSize={9} fill="rgba(255,255,255,0.35)">{tick}</text>
+          </g>
+        ))}
+        {/* X-axis labels */}
+        {labels.map((lbl, i) => {
+          const total = labels.length;
+          if (i % 6 !== 0 && i !== total - 1) return null;
+          return (
+            <text key={i} x={toX(i, total)} y={svgH - 4} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.35)">{lbl}</text>
+          );
+        })}
+        {/* Lines */}
+        {monitorLines.map((m) => {
+          const pts = m.dataPoints;
+          if (pts.length < 2) return null;
+          const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i, pts.length)} ${toY(v)}`).join(' ');
+          return <path key={m.id} d={d} stroke={m.color} strokeWidth={1.5} fill="none" strokeLinejoin="round" />;
+        })}
+      </svg>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3">
+        {monitorLines.map((m) => (
+          <div key={m.id} className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
+            {m.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Uptime Comparison Chart ──────────────────────────────────────────────
+
+export function UptimeComparisonChart({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    monitors: { id: string; name: string; uptimePct: number }[];
+    periodDays: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Uptime Comparison";
+
+  if (!raw || !raw.monitors?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const { monitors: monitorBars, periodDays } = raw;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">{periodDays}d</div>
+      </div>
+      <div className="space-y-2">
+        {monitorBars.map((m) => {
+          const barColor =
+            m.uptimePct >= 99.9
+              ? "bg-green-500"
+              : m.uptimePct >= 99
+              ? "bg-yellow-400"
+              : "bg-red-500";
+          const pct = m.uptimePct.toFixed(2);
+          return (
+            <div key={m.id} className="flex items-center gap-2">
+              <div className="w-28 flex-shrink-0 text-xs text-text-secondary truncate text-right">{m.name}</div>
+              <div className="flex-1 h-4 rounded bg-white/5 relative overflow-hidden">
+                <div
+                  className={`h-full rounded ${barColor} transition-all`}
+                  style={{ width: `${m.uptimePct}%` }}
+                />
+              </div>
+              <div className="w-14 flex-shrink-0 text-xs font-mono text-text-primary text-right">{pct}%</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Next Maintenance Countdown ───────────────────────────────────────────
+
+export function NextMaintenanceCountdown({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    none?: boolean;
+    name?: string;
+    description?: string | null;
+    startsAt?: string;
+    endsAt?: string;
+    affectedMonitors?: { name: string }[];
+    secondsUntil?: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Next Maintenance";
+
+  if (!raw || raw.none) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="flex items-center justify-center gap-2 text-green-400">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">No upcoming maintenance</span>
+        </div>
+      </div>
+    );
+  }
+
+  const seconds = raw.secondsUntil ?? 0;
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  const dateStr = raw.startsAt ? new Date(raw.startsAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="text-base font-bold text-text-primary">{raw.name}</div>
+      <div className="flex gap-3 justify-center">
+        {[{ v: days, u: "d" }, { v: hours, u: "h" }, { v: minutes, u: "m" }].map(({ v, u }) => (
+          <div key={u} className="flex flex-col items-center bg-white/5 rounded-lg px-3 py-2 min-w-[3rem]">
+            <span className="text-xl font-bold tabular-nums text-accent">{v}</span>
+            <span className="text-[10px] text-text-secondary">{u}</span>
+          </div>
+        ))}
+      </div>
+      <div className="text-xs text-text-secondary text-center">{dateStr}</div>
+      {raw.affectedMonitors && raw.affectedMonitors.length > 0 && (
+        <div className="flex flex-wrap gap-1 justify-center">
+          {raw.affectedMonitors.map((m) => (
+            <span key={m.name} className="inline-flex items-center rounded-full bg-white/5 px-2 py-0.5 text-xs text-text-secondary ring-1 ring-white/10">
+              {m.name}
+            </span>
+          ))}
+        </div>
+      )}
+      {raw.description && <div className="text-xs text-text-secondary">{raw.description}</div>}
+    </div>
+  );
+}
+
+// ── Maintenance Impact List ──────────────────────────────────────────────
+
+export function MaintenanceImpactList({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    windows: Array<{
+      name: string;
+      startsAt: string;
+      endsAt: string;
+      description: string | null;
+      affectedMonitors: { name: string; status: string }[];
+    }>;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Maintenance Impact";
+
+  if (!raw || !raw.windows?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-sm text-text-secondary">No scheduled maintenance</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="space-y-3">
+        {raw.windows.map((w, i) => {
+          const start = new Date(w.startsAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+          const end = new Date(w.endsAt).toLocaleString(undefined, { timeStyle: "short" });
+          return (
+            <div key={i} className="rounded-lg border border-border bg-white/3 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-medium text-text-primary">{w.name}</div>
+                <div className="text-xs text-text-secondary flex-shrink-0">{start} – {end}</div>
+              </div>
+              {w.description && <div className="text-xs text-text-secondary">{w.description}</div>}
+              <div className="flex flex-wrap gap-1.5">
+                {w.affectedMonitors.map((m) => {
+                  const dot = m.status === "green" ? "bg-green-400" : m.status === "yellow" ? "bg-yellow-400" : "bg-red-400";
+                  return (
+                    <span key={m.name} className="flex items-center gap-1 text-xs text-text-secondary bg-white/5 rounded px-1.5 py-0.5">
+                      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                      {m.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Version Timeline ─────────────────────────────────────────────────────
+
+export function VersionTimeline({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    events: Array<{
+      monitorId: string;
+      name: string;
+      fromVersion: string;
+      toVersion: string;
+      detectedAt: string;
+    }>;
+    count: number;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Version Timeline";
+
+  if (!raw || !raw.events?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-sm text-text-secondary">No version changes recorded</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">{raw.count} changes</div>
+      </div>
+      <div className="relative">
+        <div className="absolute left-2 top-0 bottom-0 w-px bg-white/10" />
+        <div className="space-y-4 pl-7">
+          {raw.events.map((ev, i) => {
+            const when = formatRelative(ev.detectedAt);
+            return (
+              <div key={i} className="relative">
+                <div className="absolute -left-5 top-1.5 h-2 w-2 rounded-full bg-accent ring-2 ring-surface" />
+                <div className="text-xs font-medium text-text-primary mb-0.5">{ev.name}</div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-white/5 text-text-secondary ring-1 ring-white/10">
+                    {ev.fromVersion}
+                  </span>
+                  <svg className="h-3 w-3 text-text-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-accent/15 text-accent ring-1 ring-accent/30">
+                    {ev.toVersion}
+                  </span>
+                </div>
+                <div className="text-[10px] text-text-muted mt-0.5">{when}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -2781,6 +3093,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "throughput-counter":
       content = <ThroughputCounter {...props} />;
+      break;
+    case "response-time-comparison":
+      content = <ResponseTimeComparison {...props} />;
+      break;
+    case "uptime-comparison-chart":
+      content = <UptimeComparisonChart {...props} />;
+      break;
+    case "next-maintenance-countdown":
+      content = <NextMaintenanceCountdown {...props} />;
+      break;
+    case "maintenance-impact-list":
+      content = <MaintenanceImpactList {...props} />;
+      break;
+    case "version-timeline":
+      content = <VersionTimeline {...props} />;
       break;
     case "divider":
       content = <Divider />;

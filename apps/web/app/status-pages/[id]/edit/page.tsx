@@ -145,6 +145,11 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "performance-trend", label: "Performance Trend", description: "Week-over-week latency change with sparkline", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
   { type: "apdex-score", label: "Apdex Score", description: "Application Performance Index (0.0–1.0) with breakdown bar", icon: Activity, category: "Performance", defaultW: 6, defaultH: 4 },
   { type: "throughput-counter", label: "Throughput Counter", description: "Checks per hour live counter with 24-bar sparkline", icon: BarChart2, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "response-time-comparison", label: "Response Time Comparison", description: "Overlay line chart comparing latency across multiple services", icon: TrendingUp, category: "Performance", defaultW: 12, defaultH: 4 },
+  { type: "uptime-comparison-chart", label: "Uptime Comparison", description: "Horizontal bar chart comparing uptime % across monitors", icon: BarChart2, category: "Performance", defaultW: 8, defaultH: 4 },
+  { type: "next-maintenance-countdown", label: "Maintenance Countdown", description: "Countdown timer to the next scheduled maintenance window", icon: Clock, category: "Maintenance", defaultW: 6, defaultH: 3 },
+  { type: "maintenance-impact-list", label: "Maintenance Impact", description: "List of upcoming maintenance windows with affected services", icon: AlertTriangle, category: "Maintenance", defaultW: 8, defaultH: 4 },
+  { type: "version-timeline", label: "Version Timeline", description: "Chronological list of version updates detected across services", icon: TrendingUp, category: "Versions", defaultW: 8, defaultH: 5 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
 ];
 

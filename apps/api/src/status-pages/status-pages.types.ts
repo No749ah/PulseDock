@@ -67,7 +67,9 @@ export type WidgetType =
   | 'data-table'
   | 'rss-feed-widget'
   | 'code-block'
-  | 'video-embed';
+  | 'video-embed'
+  | 'dependency-map'
+  | 'multi-environment-status';
 
 export interface Widget {
   id: string;

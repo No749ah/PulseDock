@@ -63,6 +63,8 @@ import {
   AlignEndHorizontal,
   AlignCenterVertical,
   AlignCenterHorizontal,
+  GitFork,
+  Layers,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -218,6 +220,8 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
   { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
   { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "dependency-map", label: "Dependency Map", description: "Visual service dependency graph with live status on each node. Define edges between monitors in config.", icon: GitFork, category: "Status", defaultW: 12, defaultH: 5 },
+  { type: "multi-environment-status", label: "Multi-Environment Status", description: "Side-by-side status comparison across environments (prod/staging/dev). Configure envMonitors mapping.", icon: Layers, category: "Status", defaultW: 12, defaultH: 4 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -1047,6 +1051,47 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
               className={`relative h-5 w-9 rounded-full transition-colors ${(w.config.defaultOpen !== false) ? "bg-accent" : "bg-surface-elevated border border-border"}`}
             >
               <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(w.config.defaultOpen !== false) ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        </>
+      )}
+
+      {w.type === "dependency-map" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Edges (JSON)</label>
+          <textarea
+            value={JSON.stringify((w.config.edges as unknown[] | undefined) ?? [], null, 2)}
+            onChange={(e) => {
+              try { update("edges", JSON.parse(e.target.value)); } catch {}
+            }}
+            placeholder='[{"source":"id1","target":"id2","label":"calls"}]'
+            rows={4}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {`{source, target, label?}`} using monitor IDs</p>
+        </div>
+      )}
+
+      {w.type === "multi-environment-status" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Environment → Monitor IDs (JSON)</label>
+            <textarea
+              value={JSON.stringify((w.config.envMonitors as Record<string, string[]> | undefined) ?? { prod: [], staging: [], dev: [] }, null, 2)}
+              onChange={(e) => {
+                try { update("envMonitors", JSON.parse(e.target.value)); } catch {}
+              }}
+              rows={6}
+              className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-3 py-2">
+            <p className="text-xs font-medium text-text-primary">Show monitor list</p>
+            <button
+              onClick={() => update("showMonitors", !w.config.showMonitors)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${w.config.showMonitors ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${w.config.showMonitors ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
           </div>
         </>

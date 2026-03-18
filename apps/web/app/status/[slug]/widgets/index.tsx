@@ -4217,6 +4217,166 @@ export function CollapsibleSection({ widget }: WidgetProps) {
   );
 }
 
+// ── Dependency Map ───────────────────────────────────────────────────────
+
+export function DependencyMap({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    nodes: Array<{ id: string; name: string; type: string; level: string; latencyMs: number | null }>;
+    edges: Array<{ source: string; target: string; label?: string }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading dependency map…</p>
+      </div>
+    );
+  }
+
+  const nodeLevel = (id: string) => data.nodes.find((n) => n.id === id)?.level ?? "green";
+  const levelColor = (lvl: string) =>
+    lvl === "green" ? { ring: "#4ade80", bg: "#052e16", text: "#4ade80" }
+    : lvl === "yellow" ? { ring: "#facc15", bg: "#1c1a00", text: "#facc15" }
+    : { ring: "#f87171", bg: "#2d0a0a", text: "#f87171" };
+
+  // Simple grid layout: space nodes evenly
+  const cols = Math.ceil(Math.sqrt(data.nodes.length || 1));
+  const NODE_W = 120;
+  const NODE_H = 52;
+  const COL_GAP = 60;
+  const ROW_GAP = 50;
+  const positions = data.nodes.map((n, i) => ({
+    id: n.id,
+    x: (i % cols) * (NODE_W + COL_GAP) + 20,
+    y: Math.floor(i / cols) * (NODE_H + ROW_GAP) + 20,
+  }));
+  const totalW = cols * (NODE_W + COL_GAP) + 40;
+  const totalH = (Math.ceil(data.nodes.length / cols)) * (NODE_H + ROW_GAP) + 40;
+  const posMap = new Map(positions.map((p) => [p.id, p]));
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 overflow-auto">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      {data.nodes.length === 0 ? (
+        <p className="text-sm text-text-secondary text-center py-4">No monitors configured. Add monitors in the config panel.</p>
+      ) : (
+        <svg width={totalW} height={totalH} className="block mx-auto" style={{ minHeight: 80 }}>
+          {/* Edges */}
+          {data.edges.map((e, i) => {
+            const src = posMap.get(e.source);
+            const tgt = posMap.get(e.target);
+            if (!src || !tgt) return null;
+            const x1 = src.x + NODE_W / 2;
+            const y1 = src.y + NODE_H / 2;
+            const x2 = tgt.x + NODE_W / 2;
+            const y2 = tgt.y + NODE_H / 2;
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            const lvl = nodeLevel(e.source);
+            const c = lvl === "green" ? "#4ade80" : lvl === "yellow" ? "#facc15" : "#f87171";
+            return (
+              <g key={i}>
+                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={c} strokeWidth={1.5} strokeOpacity={0.5} strokeDasharray={lvl === "red" ? "4 3" : undefined} />
+                {e.label && (
+                  <text x={mx} y={my - 4} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.45)">{e.label}</text>
+                )}
+              </g>
+            );
+          })}
+          {/* Nodes */}
+          {data.nodes.map((n) => {
+            const pos = posMap.get(n.id);
+            if (!pos) return null;
+            const c = levelColor(n.level);
+            return (
+              <g key={n.id}>
+                <rect
+                  x={pos.x} y={pos.y} width={NODE_W} height={NODE_H} rx={8}
+                  fill={c.bg} stroke={c.ring} strokeWidth={1.5}
+                />
+                <circle cx={pos.x + 14} cy={pos.y + 14} r={4} fill={c.ring} className={n.level === "red" ? "animate-pulse" : ""} />
+                <text x={pos.x + 24} y={pos.y + 18} fontSize={10} fill={c.text} fontWeight={600}>{n.name.length > 14 ? n.name.slice(0, 14) + "…" : n.name}</text>
+                <text x={pos.x + 10} y={pos.y + 36} fontSize={9} fill="rgba(255,255,255,0.45)">{n.type}</text>
+                {n.latencyMs != null && (
+                  <text x={pos.x + NODE_W - 8} y={pos.y + 36} fontSize={9} fill="rgba(255,255,255,0.35)" textAnchor="end">{n.latencyMs}ms</text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// ── Multi-Environment Status ──────────────────────────────────────────────
+
+export function MultiEnvironmentStatus({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    environments: Array<{
+      env: string;
+      summary: "operational" | "degraded" | "outage";
+      total: number;
+      up: number;
+      monitors: Array<{ id: string; name: string; level: string }>;
+    }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+  const showMonitors = widget.config.showMonitors as boolean | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading…</p>
+      </div>
+    );
+  }
+
+  const summaryStyle = (s: string) =>
+    s === "operational" ? "bg-green-500/15 text-green-400 border-green-500/30"
+    : s === "degraded" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"
+    : "bg-red-500/15 text-red-400 border-red-500/30";
+
+  const dotColor = (lvl: string) =>
+    lvl === "green" ? "bg-green-400" : lvl === "yellow" ? "bg-yellow-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      {data.environments.length === 0 ? (
+        <p className="text-sm text-text-secondary text-center py-4">No environments configured. Set envMonitors in config.</p>
+      ) : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(200px, 1fr))` }}>
+          {data.environments.map((env) => (
+            <div key={env.env} className="rounded-lg border border-border bg-surface-elevated p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-text-primary capitalize">{env.env}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${summaryStyle(env.summary)}`}>
+                  {env.summary}
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mb-2">{env.up}/{env.total} services up</p>
+              {showMonitors && env.monitors.length > 0 && (
+                <div className="space-y-1 mt-2 pt-2 border-t border-border/50">
+                  {env.monitors.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotColor(m.level)}`} />
+                      <span className="text-xs text-text-secondary truncate">{m.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -4474,6 +4634,12 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "collapsible-section":
       content = <CollapsibleSection {...props} />;
+      break;
+    case "dependency-map":
+      content = <DependencyMap {...props} />;
+      break;
+    case "multi-environment-status":
+      content = <MultiEnvironmentStatus {...props} />;
       break;
     default:
       content = (

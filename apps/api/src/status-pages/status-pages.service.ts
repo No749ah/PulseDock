@@ -2375,6 +2375,69 @@ export class StatusPagesService {
         };
       }
 
+      case 'dependency-map': {
+        const depMonitorIds = widget.config.monitorIds as string[] | undefined;
+        const depWhere = depMonitorIds?.length
+          ? { userId, id: { in: depMonitorIds }, enabled: true }
+          : { userId, enabled: true };
+        const depMonitors = await this.prisma.monitor.findMany({
+          where: depWhere,
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' as const },
+              take: 1,
+              select: { level: true, checkedAt: true, latencyMs: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+        const nodes = depMonitors.map((m) => ({
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          level: m.runs[0]?.level ?? 'green',
+          lastChecked: m.runs[0]?.checkedAt?.toISOString() ?? null,
+          latencyMs: m.runs[0]?.latencyMs ?? null,
+        }));
+        const edges = (widget.config.edges as Array<{ source: string; target: string; label?: string }> | undefined) ?? [];
+        return { nodes, edges };
+      }
+
+      case 'multi-environment-status': {
+        const envMonitors = (widget.config.envMonitors as Record<string, string[]> | undefined) ?? {};
+        const allEnvIds = Object.values(envMonitors).flat();
+        const envMonitorsDb = allEnvIds.length > 0
+          ? await this.prisma.monitor.findMany({
+              where: { userId, id: { in: allEnvIds } },
+              select: {
+                id: true,
+                name: true,
+                runs: {
+                  orderBy: { checkedAt: 'desc' as const },
+                  take: 1,
+                  select: { level: true },
+                },
+              },
+            })
+          : [];
+        const statusMap = new Map(envMonitorsDb.map((m) => [m.id, m.runs[0]?.level ?? 'green']));
+        const nameMap = new Map(envMonitorsDb.map((m) => [m.id, m.name]));
+        const result = Object.entries(envMonitors).map(([env, ids]) => {
+          const rows = ids
+            .map((id) => ({ id, name: nameMap.get(id) ?? id, level: statusMap.get(id) ?? 'green' }));
+          const total = rows.length;
+          const down = rows.filter((r) => r.level === 'red').length;
+          const degraded = rows.filter((r) => r.level === 'yellow').length;
+          const summary: 'operational' | 'degraded' | 'outage' =
+            down > 0 ? (down === total ? 'outage' : 'degraded') : degraded > 0 ? 'degraded' : 'operational';
+          return { env, summary, total, up: total - down, monitors: rows };
+        });
+        return { environments: result };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

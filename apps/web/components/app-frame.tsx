@@ -48,7 +48,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'Management',
     items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },

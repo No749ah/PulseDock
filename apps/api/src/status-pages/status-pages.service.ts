@@ -2265,8 +2265,181 @@ export class StatusPagesService {
         return { label, targetAt, secondsRemaining, expired, hideAfterExpiry };
       }
 
+      case 'check-history-feed': {
+        // Return recent checks across all monitors for this user
+        const checks = await this.prisma.monitorRun.findMany({
+          where: { userId },
+          orderBy: { checkedAt: 'desc' },
+          take: 50,
+          include: { monitor: { select: { name: true } } },
+        });
+        return {
+          checks: checks.map((c) => ({
+            id: c.id,
+            monitorId: c.monitorId,
+            monitorName: c.monitor.name,
+            checkedAt: c.checkedAt.toISOString(),
+            ok: c.ok,
+            level: c.level,
+            latencyMs: c.latencyMs,
+            message: c.message,
+          })),
+        };
+      }
+
+      case 'incident-history': {
+        // Return recent incidents for this user
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+        const incidents = await this.prisma.incident.findMany({
+          where: { userId, createdAt: { gte: since } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            updates: { orderBy: { createdAt: 'desc' }, take: 5 },
+            monitors: { include: { monitor: { select: { id: true, name: true } } } },
+          },
+        });
+        return {
+          incidents: incidents.map((i) => ({
+            id: i.id,
+            title: i.title,
+            status: i.status,
+            severity: i.severity,
+            createdAt: i.createdAt.toISOString(),
+            resolvedAt: i.resolvedAt?.toISOString() ?? null,
+            updates: i.updates.map((u) => ({
+              id: u.id,
+              message: u.body,
+              status: u.status,
+              createdAt: u.createdAt.toISOString(),
+            })),
+            monitors: i.monitors.map((im) => ({ id: im.monitor.id, name: im.monitor.name })),
+          })),
+          total: incidents.length,
+          periodDays,
+        };
+      }
+
+      case 'scheduled-maintenance': {
+        // Return active/upcoming maintenance windows
+        const now = new Date();
+        const windows = await this.prisma.maintenanceWindow.findMany({
+          where: { userId, endsAt: { gte: now } },
+          orderBy: { startsAt: 'asc' },
+          include: {
+            monitors: { include: { monitor: { select: { id: true, name: true } } } },
+          },
+        });
+        return {
+          windows: windows.map((mw) => ({
+            id: mw.id,
+            name: mw.name,
+            description: mw.description,
+            startsAt: mw.startsAt.toISOString(),
+            endsAt: mw.endsAt.toISOString(),
+            monitors: mw.monitors.map((m) => ({ id: m.monitor.id, name: m.monitor.name })),
+          })),
+        };
+      }
+
+      case 'version-status-grid': {
+        // Return version info from GIT_RELEASE monitors
+        const monitors = await this.prisma.monitor.findMany({
+          where: { userId, enabled: true },
+          select: { id: true, name: true, type: true },
+        });
+        const latestRuns = await Promise.all(
+          monitors.map(async (m) => {
+            const run = await this.prisma.monitorRun.findFirst({
+              where: { monitorId: m.id },
+              orderBy: { checkedAt: 'desc' },
+              select: { level: true, message: true, checkedAt: true, latencyMs: true },
+            });
+            return { ...m, run };
+          }),
+        );
+        // Filter to monitors that have version info in their message
+        const versionMonitors = latestRuns.filter(
+          (m) => m.run?.message && /current/i.test(m.run.message),
+        );
+        return {
+          monitors: versionMonitors.map((m) => ({
+            id: m.id,
+            name: m.name,
+            type: m.type,
+            level: m.run?.level ?? 'green',
+            message: m.run?.message ?? null,
+            lastChecked: m.run?.checkedAt?.toISOString() ?? null,
+          })),
+        };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }
+  }
+
+  async getRssFeed(slug: string): Promise<string> {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    // Fetch recent incidents for this user
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId: page.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        updates: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    const pageTitle = this.escapeXml(page.title);
+    const pageUrl = `${process.env.APP_URL ?? 'https://localhost'}/status/${slug}`;
+    const feedUrl = `${process.env.APP_URL ?? 'https://localhost'}/v1/public/status/${slug}/feed.xml`;
+    const now = new Date().toUTCString();
+
+    const items = incidents.map((inc) => {
+      const title = this.escapeXml(inc.title);
+      const status = inc.resolvedAt ? 'Resolved' : 'Active';
+      const lastUpdate = inc.updates[0]?.body ?? '';
+      const description = this.escapeXml(
+        `Status: ${status}. Severity: ${inc.severity}. ${lastUpdate}`.trim()
+      );
+      const pubDate = new Date(inc.createdAt).toUTCString();
+      const link = `${pageUrl}#incident-${inc.id}`;
+      return `    <item>
+      <title>[${status}] ${title}</title>
+      <link>${link}</link>
+      <description>${description}</description>
+      <pubDate>${pubDate}</pubDate>
+      <guid isPermaLink="true">${link}</guid>
+    </item>`;
+    });
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${pageTitle} — Status Updates</title>
+    <link>${pageUrl}</link>
+    <description>Incident updates for ${pageTitle}</description>
+    <language>en</language>
+    <lastBuildDate>${now}</lastBuildDate>
+    <atom:link href="${feedUrl}" rel="self" type="application/rss+xml"/>
+${items.join('\n')}
+  </channel>
+</rss>`;
+  }
+
+  private escapeXml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 }

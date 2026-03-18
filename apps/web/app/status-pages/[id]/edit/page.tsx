@@ -43,6 +43,26 @@ import {
   Copy,
   Undo2,
   Redo2,
+  Lock,
+  Unlock,
+  Monitor,
+  Tablet,
+  Smartphone,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  LayoutTemplate,
+  Code2,
+  Play,
+  Settings2,
+  RefreshCw,
+  History,
+  AlignStartVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignEndHorizontal,
+  AlignCenterVertical,
+  AlignCenterHorizontal,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -58,6 +78,7 @@ interface Widget {
   y: number;
   w: number;
   h: number;
+  locked?: boolean;
   config: {
     monitorId?: string;
     monitorIds?: string[];
@@ -69,8 +90,23 @@ interface Widget {
   };
 }
 
+type ViewportMode = "desktop" | "tablet" | "mobile";
+
+interface PageSettings {
+  autoRefreshInterval?: number; // seconds, 0 = off
+  showBranding?: boolean;
+  logoUrl?: string;
+  faviconUrl?: string;
+  accentColor?: string;
+  theme?: "dark" | "light" | "system";
+  fontFamily?: "inter" | "roboto" | "system" | "mono";
+  backgroundStyle?: "solid" | "gradient" | "grid-dots";
+  backgroundColor?: string;
+}
+
 interface PageLayout {
   widgets: Widget[];
+  settings?: PageSettings;
 }
 
 interface StatusPage {
@@ -179,9 +215,119 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
   { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
   { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
+  { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
+  { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
+
+// ── Template Gallery ────────────────────────────────────────────────────────
+
+interface StatusTemplate {
+  id: string;
+  name: string;
+  description: string;
+  preview: string;
+  widgets: Omit<Widget, 'id'>[];
+}
+
+const STATUS_TEMPLATES: StatusTemplate[] = [
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Clean overall status + uptime bar. Perfect for simple status pages.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'uptime-bar', x: 0, y: 2, w: 12, h: 2, config: { periodDays: 30 } },
+    ],
+  },
+  {
+    id: 'full-dashboard',
+    name: 'Full Dashboard',
+    description: 'Comprehensive status page with uptime, performance, and incidents.',
+    preview: '📊',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-banner', x: 0, y: 2, w: 12, h: 2, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 4, w: 12, h: 2, config: {} },
+      { type: 'uptime-timeline', x: 0, y: 6, w: 8, h: 3, config: { periodDays: 90 } },
+      { type: 'response-time-chart', x: 8, y: 6, w: 4, h: 3, config: {} },
+      { type: 'component-status-list', x: 0, y: 9, w: 6, h: 4, config: {} },
+      { type: 'incident-history', x: 6, y: 9, w: 6, h: 4, config: {} },
+      { type: 'status-history-ribbon', x: 0, y: 13, w: 12, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'sla-report',
+    name: 'SLA Report',
+    description: 'SLA compliance, uptime percentages, and downtime statistics.',
+    preview: '📈',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'sla-compliance-table', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 6, w: 12, h: 2, config: {} },
+      { type: 'uptime-heatmap', x: 0, y: 8, w: 12, h: 3, config: {} },
+      { type: 'mttr-mttf-cards', x: 0, y: 11, w: 6, h: 3, config: {} },
+      { type: 'downtime-log', x: 6, y: 11, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'incident-page',
+    name: 'Incident Page',
+    description: 'Focus on active incidents, timeline, and post-mortems.',
+    preview: '🚨',
+    widgets: [
+      { type: 'active-incident-banner', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-count', x: 0, y: 2, w: 4, h: 3, config: {} },
+      { type: 'incident-timeline', x: 4, y: 2, w: 8, h: 5, config: {} },
+      { type: 'incident-history', x: 0, y: 7, w: 8, h: 4, config: {} },
+      { type: 'incident-severity-distribution', x: 8, y: 7, w: 4, h: 4, config: {} },
+      { type: 'post-mortem-card', x: 0, y: 11, w: 12, h: 5, config: {} },
+    ],
+  },
+  {
+    id: 'version-overview',
+    name: 'Version Overview',
+    description: 'Track versions of all your tools and services.',
+    preview: '🏷️',
+    widgets: [
+      { type: 'update-summary', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'version-status-grid', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'outdated-components-alert', x: 0, y: 6, w: 6, h: 4, config: {} },
+      { type: 'version-timeline', x: 6, y: 6, w: 6, h: 4, config: {} },
+    ],
+  },
+  {
+    id: 'performance',
+    name: 'Performance',
+    description: 'Response times, latency percentiles, and performance trends.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'latency-percentiles-card', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'apdex-score', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'response-time-chart', x: 0, y: 5, w: 12, h: 3, config: {} },
+      { type: 'response-time-heatmap', x: 0, y: 8, w: 12, h: 4, config: {} },
+      { type: 'performance-trend', x: 0, y: 12, w: 6, h: 3, config: {} },
+      { type: 'throughput-counter', x: 6, y: 12, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'maintenance',
+    name: 'Maintenance',
+    description: 'Scheduled maintenance windows and countdowns.',
+    preview: '🔧',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'scheduled-maintenance', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'maintenance-calendar', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'next-maintenance-countdown', x: 0, y: 5, w: 6, h: 3, config: {} },
+      { type: 'maintenance-impact-list', x: 6, y: 5, w: 6, h: 3, config: {} },
+    ],
+  },
+];
 
 const ROW_H = 80;
 const COL_COUNT = 12;
@@ -291,17 +437,21 @@ function WidgetPreview({ type, config, w }: { type: string; config: Record<strin
 interface CanvasWidgetProps {
   widget: Widget;
   isSelected: boolean;
+  isMultiSelected: boolean;
   colWidth: number;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, shiftKey: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDuplicate, onResize }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
+  const isLocked = Boolean(widget.locked);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
     data: { source: "canvas", widget },
+    disabled: isLocked,
   });
 
   // Mutable ref so the mousemove handler always reads the latest widget dimensions
@@ -357,22 +507,23 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
     <div
       ref={setNodeRef}
       style={style}
-      onClick={(e) => { e.stopPropagation(); onSelect(widget.id); }}
+      onClick={(e) => { e.stopPropagation(); onSelect(widget.id, e.shiftKey); }}
       className={`group relative flex flex-col rounded-xl border-2 bg-surface transition-colors ${
-        isSelected ? "border-accent shadow-lg shadow-accent/10" : "border-border hover:border-accent/40"
+        isSelected ? "border-accent shadow-lg shadow-accent/10" : isMultiSelected ? "border-accent/60 shadow shadow-accent/10 bg-accent/5" : "border-border hover:border-accent/40"
       }`}
     >
       {/* Header bar with drag handle + title */}
       <div className="flex items-center gap-1 border-b border-border/60 px-3 py-2">
         <div
-          {...listeners}
-          {...attributes}
-          className="cursor-grab p-0.5 text-text-secondary/40 hover:text-text-secondary active:cursor-grabbing"
+          {...(isLocked ? {} : { ...listeners, ...attributes })}
+          className={`p-0.5 text-text-secondary/40 ${isLocked ? "cursor-not-allowed opacity-30" : "cursor-grab hover:text-text-secondary active:cursor-grabbing"}`}
           onClick={(e) => e.stopPropagation()}
+          title={isLocked ? "Widget is locked — unlock to move" : "Drag to move"}
         >
           <GripVertical className="h-3.5 w-3.5" />
         </div>
         <Icon className="h-3 w-3 text-accent/70" />
+        {isLocked && <Lock className="h-2.5 w-2.5 text-amber-400/70 flex-shrink-0" aria-label="Locked" />}
         <span className="flex-1 text-xs font-medium text-text-secondary">
           {paletteItem?.label ?? widget.type}
         </span>
@@ -381,6 +532,17 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
             {widget.config.label as string}
           </span>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleLock(widget.id); }}
+          className={`ml-1 flex h-5 w-5 items-center justify-center rounded transition ${
+            isLocked
+              ? "text-amber-400 opacity-100"
+              : "text-text-secondary/40 opacity-0 hover:bg-amber-500/10 hover:text-amber-400 group-hover:opacity-100"
+          }`}
+          title={isLocked ? "Unlock widget" : "Lock widget (prevent accidental moves)"}
+        >
+          {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+        </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDuplicate(widget.id); }}
           className="ml-1 flex h-5 w-5 items-center justify-center rounded text-text-secondary/40 opacity-0 transition hover:bg-accent/10 hover:text-accent group-hover:opacity-100"
@@ -399,7 +561,8 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
       <div className="flex-1 overflow-hidden p-2">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
       </div>
-      {/* Resize handle — bottom-right corner */}
+      {/* Resize handle — bottom-right corner (hidden when locked) */}
+      {!isLocked && (
       <div
         onMouseDown={handleResizeMouseDown}
         onClick={(e) => e.stopPropagation()}
@@ -414,6 +577,7 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
           <circle cx="8" cy="4.5" r="1.1" fill="currentColor" />
         </svg>
       </div>
+      )}
     </div>
   );
 }
@@ -423,15 +587,19 @@ function CanvasWidget({ widget, isSelected, colWidth, onSelect, onDelete, onDupl
 interface CanvasProps {
   widgets: Widget[];
   selectedId: string | null;
+  selectedIds: Set<string>;
   isDraggingOverCanvas: boolean;
   canvasRef: React.RefObject<HTMLDivElement | null>;
-  onSelect: (id: string | null) => void;
+  zoom: number;
+  viewportMode: ViewportMode;
+  onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onResize: (id: string, size: { w: number; h: number }) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, onSelect, onDelete, onDuplicate, onResize }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -447,27 +615,37 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
     }
   }, [setNodeRef, canvasRef]);
 
+  const viewportWidth = viewportMode === "mobile" ? 375 : viewportMode === "tablet" ? 768 : undefined;
+
   return (
+    <div
+      style={{
+        transform: `scale(${zoom})`,
+        transformOrigin: "top center",
+        width: viewportWidth ? `${viewportWidth}px` : "100%",
+        margin: viewportWidth ? "0 auto" : undefined,
+        transition: "transform 0.15s ease, width 0.2s ease",
+      }}
+    >
     <div
       ref={combinedRef}
       className={`relative w-full transition-colors ${
         isOver ? "bg-accent/5" : ""
-      }`}
+      } ${viewportWidth ? "border-x border-border/40 shadow-xl shadow-black/20" : ""}`}
       style={{ minHeight }}
-      onClick={() => onSelect(null)}
+      onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-widget]')) onSelect(null); }}
     >
-      {/* Grid guide lines when dragging */}
-      {isDraggingOverCanvas && (
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: `
-              repeating-linear-gradient(to right, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
-              repeating-linear-gradient(to bottom, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 0px, rgba(var(--color-accent-rgb, 99 102 241) / 0.08) 1px, transparent 1px, transparent ${ROW_H}px)
-            `,
-          }}
-        />
-      )}
+      {/* Grid guide lines — always visible (subtle), brighter when dragging */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
+            repeating-linear-gradient(to bottom, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
+          `,
+          transition: "opacity 0.15s ease",
+        }}
+      />
 
       {widgets.length === 0 && !isOver && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -493,18 +671,22 @@ function CanvasDropZone({ widgets, selectedId, isDraggingOverCanvas, canvasRef, 
           ? canvasRef.current.getBoundingClientRect().width / COL_COUNT
           : 0;
         return (
+          <div key={widget.id} data-widget="true">
           <CanvasWidget
-            key={widget.id}
             widget={widget}
             isSelected={selectedId === widget.id}
+            isMultiSelected={selectedIds.has(widget.id)}
             colWidth={colWidth}
             onSelect={onSelect}
             onDelete={onDelete}
             onDuplicate={onDuplicate}
             onResize={onResize}
+            onToggleLock={onToggleLock}
           />
+          </div>
         );
       })}
+    </div>
     </div>
   );
 }
@@ -520,9 +702,10 @@ interface ConfigPanelProps {
   onResize: (size: { w: number; h: number }) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onToggleLock: (id: string) => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -540,8 +723,8 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
-  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed"].includes(w.type);
+  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
+  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
   const supportsVisibility = w.type !== "divider";
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
@@ -835,6 +1018,40 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         </div>
       )}
 
+      {w.type === "collapsible-section" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Section Title</label>
+            <input
+              type="text"
+              value={(w.config.title as string) ?? ""}
+              onChange={(e) => update("title", e.target.value || undefined)}
+              placeholder="Section title…"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Content</label>
+            <textarea
+              value={(w.config.description as string) ?? ""}
+              onChange={(e) => update("description", e.target.value || undefined)}
+              placeholder="Content text (supports newlines)…"
+              rows={4}
+              className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-3 py-2">
+            <p className="text-xs font-medium text-text-primary">Open by default</p>
+            <button
+              onClick={() => update("defaultOpen", !(w.config.defaultOpen !== false))}
+              className={`relative h-5 w-9 rounded-full transition-colors ${(w.config.defaultOpen !== false) ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(w.config.defaultOpen !== false) ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        </>
+      )}
+
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
         <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
         <div className="grid grid-cols-2 gap-2">
@@ -866,6 +1083,18 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
       <div className="space-y-1.5 pt-2">
         <button
+          onClick={() => onToggleLock(w.id)}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            w.locked
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+              : "border-border bg-bg text-text-secondary hover:text-text-primary"
+          }`}
+          title={w.locked ? "Unlock this widget to allow moving and resizing" : "Lock this widget to prevent accidental moves"}
+        >
+          {w.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+          {w.locked ? "Unlock Widget" : "Lock Widget"}
+        </button>
+        <button
           onClick={() => onDuplicate(w.id)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
         >
@@ -882,6 +1111,15 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
       </div>
     </div>
   );
+}
+
+// ── Version History ───────────────────────────────────────────────────────
+
+interface VersionEntry {
+  ts: number;
+  widgetCount: number;
+  widgets: Widget[];
+  settings: PageSettings;
 }
 
 // ── Main page ────────────────────────────────────────────────────────────
@@ -902,11 +1140,24 @@ export default function StatusPageEditorPage() {
   const savedWidgetsRef = useRef<string>('[]'); // JSON snapshot of last saved state
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [paletteSearch, setPaletteSearch] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+  const [showPageSettings, setShowPageSettings] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [pageSettings, setPageSettings] = useState<PageSettings>({});
+
+  const versionHistoryKey = `sp-vhist-${id}`;
+  const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(`sp-vhist-${id}`) || "[]") as VersionEntry[]; } catch { return []; }
+  });
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -936,6 +1187,7 @@ export default function StatusPageEditorPage() {
       setPage(data);
       const loadedWidgets = data.layout?.widgets ?? [];
       setWidgets(loadedWidgets);
+      setPageSettings(data.layout?.settings ?? {});
       savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -987,11 +1239,22 @@ export default function StatusPageEditorPage() {
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout: { widgets } }),
+        body: JSON.stringify({ layout: { widgets, settings: pageSettings } }),
       });
       // Mark as clean after successful save
       savedWidgetsRef.current = JSON.stringify(widgets);
       setIsDirty(false);
+
+      // Record version history (localStorage, keep last 10)
+      if (!opts?.silent) {
+        setVersionHistory((prev) => {
+          const entry: VersionEntry = { ts: Date.now(), widgetCount: widgets.length, widgets, settings: pageSettings };
+          const next = [entry, ...prev].slice(0, 10);
+          try { localStorage.setItem(`sp-vhist-${id}`, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      }
+
       // Only show toast on manual save
       if (!opts?.silent) toastCtx.success("Saved");
     } catch {
@@ -999,7 +1262,7 @@ export default function StatusPageEditorPage() {
     } finally {
       setSaving(false);
     }
-  }, [page, id, widgets, toastCtx]);
+  }, [page, id, widgets, pageSettings, toastCtx, versionHistoryKey]);
 
   // Track dirty state whenever widgets change
   const initialLoad = useRef(true);
@@ -1031,6 +1294,20 @@ export default function StatusPageEditorPage() {
     }
   }
 
+  function applyTemplate(tmpl: StatusTemplate) {
+    if (widgets.length > 0) {
+      if (!confirm(`Replace current ${widgets.length} widget(s) with the "${tmpl.name}" template?`)) return;
+    }
+    const newWidgets = tmpl.widgets.map((w) => ({
+      ...w,
+      id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }));
+    setWidgets(newWidgets);
+    setSelectedId(null);
+    setSelectedIds(new Set());
+    setShowTemplateGallery(false);
+  }
+
   function autoPlace(w: number, h: number): { x: number; y: number } {
     if (widgets.length === 0) return { x: 0, y: 0 };
     // Stack below all existing widgets
@@ -1055,19 +1332,69 @@ export default function StatusPageEditorPage() {
     setSelectedId(newWidget.id);
   }
 
+  function restoreVersion(entry: VersionEntry) {
+    if (!confirm(`Restore this version (${entry.widgetCount} widgets from ${new Date(entry.ts).toLocaleTimeString()})? Current unsaved changes will be lost.`)) return;
+    setWidgets(entry.widgets);
+    setPageSettings(entry.settings);
+    setSelectedId(null);
+    setSelectedIds(new Set());
+    setShowVersionHistory(false);
+    toastCtx.success("Version restored — save to apply");
+  }
+
+  function handleWidgetSelect(id: string | null, shiftKey?: boolean) {
+    if (id === null) {
+      setSelectedId(null);
+      setSelectedIds(new Set());
+      return;
+    }
+    if (shiftKey) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+          // If we removed the primary selected, pick a different one
+          if (selectedId === id) setSelectedId(next.size > 0 ? [...next][0] : null);
+        } else {
+          next.add(id);
+          // Also include primary selectedId if it exists
+          if (selectedId) next.add(selectedId);
+        }
+        return next;
+      });
+      // Don't change primary selectedId on shift-click unless it's empty
+      setSelectedId((prev) => prev ?? id);
+    } else {
+      setSelectedId(id);
+      setSelectedIds(new Set());
+    }
+  }
+
   function deleteWidget(widgetId: string) {
     setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
     if (selectedId === widgetId) setSelectedId(null);
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(widgetId); return next; });
   }
 
   function duplicateWidget(widgetId: string) {
     const src = widgets.find((w) => w.id === widgetId);
     if (!src) return;
     const { x, y } = autoPlace(src.w, src.h);
-    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y };
+    const copy: Widget = { ...src, id: `w-${Date.now()}`, x, y, locked: false };
     setWidgets((prev) => [...prev, copy]);
     setSelectedId(copy.id);
+    setSelectedIds(new Set());
   }
+
+  function toggleWidgetLock(widgetId: string) {
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === widgetId ? { ...w, locked: !w.locked } : w))
+    );
+  }
+
+  function zoomIn() { setZoom((z) => Math.min(2, parseFloat((z + 0.1).toFixed(1)))); }
+  function zoomOut() { setZoom((z) => Math.max(0.3, parseFloat((z - 0.1).toFixed(1)))); }
+  function zoomReset() { setZoom(1); }
 
   function pushHistory(newWidgets: Widget[]) {
     if (isUndoRedoRef.current) return;
@@ -1110,19 +1437,59 @@ export default function StatusPageEditorPage() {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
-      if (meta && e.key === "d") { e.preventDefault(); if (selectedId) duplicateWidget(selectedId); }
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedId && tag !== "INPUT" && tag !== "TEXTAREA") {
-          e.preventDefault();
-          deleteWidget(selectedId);
+      if (meta && e.key === "d") {
+        e.preventDefault();
+        // Group duplicate: duplicate all selected, or single if only one
+        const allSelected = new Set(selectedIds);
+        if (selectedId) allSelected.add(selectedId);
+        if (allSelected.size > 1) {
+          const maxY = Math.max(...widgets.map((w) => w.y + w.h), 0);
+          const copies: Widget[] = [];
+          allSelected.forEach((sid) => {
+            const src = widgets.find((w) => w.id === sid);
+            if (src) copies.push({ ...src, id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`, y: maxY + src.y, locked: false });
+          });
+          setWidgets((prev) => [...prev, ...copies]);
+          setSelectedIds(new Set(copies.map((c) => c.id)));
+          setSelectedId(copies[0]?.id ?? null);
+        } else if (selectedId) {
+          duplicateWidget(selectedId);
         }
       }
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          // Group delete: delete all selectedIds if multiple, else single selectedId
+          if (selectedIds.size > 0) {
+            const toDelete = new Set(selectedIds);
+            if (selectedId) toDelete.add(selectedId);
+            setWidgets((prev) => prev.filter((w) => !toDelete.has(w.id)));
+            setSelectedId(null);
+            setSelectedIds(new Set());
+          } else if (selectedId) {
+            deleteWidget(selectedId);
+          }
+        }
+      }
+      if (e.key === "Escape") { setSelectedId(null); setSelectedIds(new Set()); }
+    }
+    function handleWheel(e: WheelEvent) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom((z) => {
+          const delta = e.deltaY > 0 ? -0.1 : 0.1;
+          return Math.max(0.3, Math.min(2, parseFloat((z + delta).toFixed(1))));
+        });
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, widgets]);
+  }, [selectedId, selectedIds, widgets]);
 
   function updateWidgetConfig(config: Widget["config"]) {
     setWidgets((prev) =>
@@ -1138,6 +1505,32 @@ export default function StatusPageEditorPage() {
         if (w.id !== selectedId) return w;
         const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
         return { ...w, w: nextW, h: nextH, x: boundedX };
+      })
+    );
+  }
+
+  /** Align all multi-selected widgets (including primary selectedId) */
+  function alignSelected(dir: "left" | "right" | "top" | "bottom" | "center-h" | "center-v") {
+    const allSelected = new Set(selectedIds);
+    if (selectedId) allSelected.add(selectedId);
+    if (allSelected.size < 2) return;
+    const sel = widgets.filter((w) => allSelected.has(w.id));
+    const minX = Math.min(...sel.map((w) => w.x));
+    const maxX = Math.max(...sel.map((w) => w.x + w.w));
+    const minY = Math.min(...sel.map((w) => w.y));
+    const maxY = Math.max(...sel.map((w) => w.y + w.h));
+    setWidgets((prev) =>
+      prev.map((w) => {
+        if (!allSelected.has(w.id)) return w;
+        switch (dir) {
+          case "left": return { ...w, x: minX };
+          case "right": return { ...w, x: Math.max(0, maxX - w.w) };
+          case "top": return { ...w, y: minY };
+          case "bottom": return { ...w, y: Math.max(0, maxY - w.h) };
+          case "center-h": return { ...w, x: Math.round((minX + maxX) / 2 - w.w / 2) };
+          case "center-v": return { ...w, y: Math.round((minY + maxY) / 2 - w.h / 2) };
+          default: return w;
+        }
       })
     );
   }
@@ -1170,8 +1563,10 @@ export default function StatusPageEditorPage() {
         addWidget(type);
       }
     } else if (activeId.startsWith("canvas-")) {
-      // Move existing widget
+      // Move existing widget (skip if locked)
       const widgetId = activeId.replace("canvas-", "");
+      const movingWidget = widgets.find((w) => w.id === widgetId);
+      if (movingWidget?.locked) return;
       if (!canvasRef.current) return;
       const containerWidth = canvasRef.current.getBoundingClientRect().width;
       const colWidth = containerWidth / COL_COUNT;
@@ -1180,9 +1575,14 @@ export default function StatusPageEditorPage() {
 
       if (deltaCol === 0 && deltaRow === 0) return;
 
+      // Collect all widget IDs to move (multi-select group or single)
+      const allSelected = new Set(selectedIds);
+      if (selectedId) allSelected.add(selectedId);
+      const moveSet = allSelected.size > 1 ? allSelected : new Set([widgetId]);
+
       setWidgets((prev) =>
         prev.map((w) => {
-          if (w.id !== widgetId) return w;
+          if (!moveSet.has(w.id) || w.locked) return w;
           const newX = Math.max(0, Math.min(COL_COUNT - w.w, w.x + deltaCol));
           const newY = Math.max(0, w.y + deltaRow);
           return { ...w, x: newX, y: newY };
@@ -1240,6 +1640,46 @@ export default function StatusPageEditorPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-secondary/60">{widgets.length} widget{widgets.length !== 1 ? "s" : ""}</span>
+            {selectedIds.size > 0 && (() => {
+              const allSelected = new Set(selectedIds);
+              if (selectedId) allSelected.add(selectedId);
+              const count = allSelected.size;
+              return (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+                    {count} selected
+                    <button
+                      onClick={() => { setSelectedId(null); setSelectedIds(new Set()); }}
+                      className="ml-1 hover:text-accent/70 transition"
+                      title="Deselect all"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                  {count >= 2 && (
+                    <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden" title="Align selected widgets">
+                      {([
+                        { icon: AlignStartVertical, dir: "left" as const, title: "Align left edges" },
+                        { icon: AlignCenterVertical, dir: "center-h" as const, title: "Center horizontally" },
+                        { icon: AlignEndVertical, dir: "right" as const, title: "Align right edges" },
+                        { icon: AlignStartHorizontal, dir: "top" as const, title: "Align top edges" },
+                        { icon: AlignCenterHorizontal, dir: "center-v" as const, title: "Center vertically" },
+                        { icon: AlignEndHorizontal, dir: "bottom" as const, title: "Align bottom edges" },
+                      ] as const).map(({ icon: Icon, dir, title }) => (
+                        <button
+                          key={dir}
+                          onClick={() => alignSelected(dir)}
+                          title={title}
+                          className="flex items-center justify-center px-2 py-1.5 text-text-secondary/60 transition hover:bg-accent/10 hover:text-accent"
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {page.isPublished && (
               <a
                 href={`${publicBase}/status/${page.slug}`}
@@ -1280,6 +1720,75 @@ export default function StatusPageEditorPage() {
             >
               <Redo2 className="h-3.5 w-3.5" />
             </button>
+            {/* Viewport mode (responsive preview) */}
+            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
+              {([
+                { mode: "desktop" as ViewportMode, icon: Monitor, title: "Desktop view" },
+                { mode: "tablet" as ViewportMode, icon: Tablet, title: "Tablet view (768px)" },
+                { mode: "mobile" as ViewportMode, icon: Smartphone, title: "Mobile view (375px)" },
+              ] as const).map(({ mode, icon: Icon, title }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewportMode(mode)}
+                  title={title}
+                  className={`flex items-center justify-center px-2.5 py-1.5 text-xs transition ${
+                    viewportMode === mode
+                      ? "bg-accent/10 text-accent"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+            </div>
+
+            {/* Canvas zoom controls */}
+            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
+              <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={zoomReset} title="Reset zoom" className="px-2 py-1.5 text-xs font-mono text-text-secondary hover:text-text-primary transition min-w-[40px] text-center">
+                {Math.round(zoom * 100)}%
+              </button>
+              <button onClick={zoomIn} title="Zoom in (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => { zoomReset(); setViewportMode("desktop"); }} title="Fit to screen" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition border-l border-border">
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Version history button */}
+            <button
+              onClick={() => setShowVersionHistory(true)}
+              title={`Version history — ${versionHistory.length} save${versionHistory.length !== 1 ? "s" : ""} stored`}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <History className="h-3.5 w-3.5" />
+              History
+              {versionHistory.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">{versionHistory.length}</span>
+              )}
+            </button>
+
+            {/* Template gallery button */}
+            <button
+              onClick={() => setShowTemplateGallery(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              Templates
+            </button>
+
+            {/* Page settings button */}
+            <button
+              onClick={() => setShowPageSettings(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Settings
+            </button>
+
             {/* Auto-save toggle */}
             <button
               onClick={() => setAutoSaveEnabled(v => !v)}
@@ -1365,15 +1874,27 @@ export default function StatusPageEditorPage() {
 
           {/* Canvas */}
           <main className="flex-1 overflow-auto bg-bg/50 p-6">
+            {viewportMode !== "desktop" && (
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                  {viewportMode === "tablet" ? <Tablet className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
+                  {viewportMode === "tablet" ? "Tablet preview — 768px" : "Mobile preview — 375px"}
+                </span>
+              </div>
+            )}
             <CanvasDropZone
               widgets={widgets}
               selectedId={selectedId}
+              selectedIds={selectedIds}
               isDraggingOverCanvas={isDraggingOverCanvas}
               canvasRef={canvasRef}
-              onSelect={setSelectedId}
+              zoom={zoom}
+              viewportMode={viewportMode}
+              onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
               onResize={resizeWidgetById}
+              onToggleLock={toggleWidgetLock}
             />
           </main>
 
@@ -1392,6 +1913,7 @@ export default function StatusPageEditorPage() {
               onResize={updateWidgetSize}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
+              onToggleLock={toggleWidgetLock}
             />
           </aside>
         </div>
@@ -1415,6 +1937,255 @@ export default function StatusPageEditorPage() {
           </div>
         )}
       </DragOverlay>
+
+      {/* Page Settings Modal */}
+      {showPageSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Page Settings</h2>
+                <p className="text-xs text-text-muted mt-0.5">Configure theme, appearance, auto-refresh, and branding.</p>
+              </div>
+              <button onClick={() => setShowPageSettings(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Logo URL */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Logo URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/logo.png"
+                  value={pageSettings.logoUrl ?? ""}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, logoUrl: e.target.value || undefined }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">Displayed above the page title. Leave empty to hide.</p>
+              </div>
+
+              {/* Favicon URL */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Favicon URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/favicon.ico"
+                  value={pageSettings.faviconUrl ?? ""}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, faviconUrl: e.target.value || undefined }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">Custom favicon for the public status page. Leave empty to use default.</p>
+              </div>
+
+              {/* Accent color */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={pageSettings.accentColor ?? "#6366f1"}
+                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value }))}
+                    className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="#6366f1"
+                    value={pageSettings.accentColor ?? ""}
+                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value || undefined }))}
+                    className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-text-muted">Override the default accent color on the public page.</p>
+              </div>
+
+              {/* Auto-refresh interval */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  <RefreshCw className="inline h-3 w-3 mr-1" />
+                  Auto-Refresh Interval
+                </label>
+                <select
+                  value={pageSettings.autoRefreshInterval ?? 60}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, autoRefreshInterval: Number(e.target.value) }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value={0}>Off (manual only)</option>
+                  <option value={10}>Every 10 seconds</option>
+                  <option value={30}>Every 30 seconds</option>
+                  <option value={60}>Every 60 seconds (default)</option>
+                  <option value={300}>Every 5 minutes</option>
+                  <option value={600}>Every 10 minutes</option>
+                </select>
+              </div>
+
+              {/* Theme selector */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Theme</label>
+                <div className="flex rounded-lg border border-border bg-bg overflow-hidden">
+                  {(["dark", "light", "system"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setPageSettings((s) => ({ ...s, theme: t }))}
+                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.theme ?? "dark") === t ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                    >{t}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font selector */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Font</label>
+                <select
+                  value={pageSettings.fontFamily ?? "inter"}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, fontFamily: e.target.value as PageSettings["fontFamily"] }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value="inter">Inter (default)</option>
+                  <option value="roboto">Roboto</option>
+                  <option value="system">System UI</option>
+                  <option value="mono">Monospace</option>
+                </select>
+              </div>
+
+              {/* Background style */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Background</label>
+                <div className="flex rounded-lg border border-border bg-bg overflow-hidden mb-2">
+                  {(["solid", "gradient", "grid-dots"] as const).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setPageSettings((s) => ({ ...s, backgroundStyle: style }))}
+                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.backgroundStyle ?? "solid") === style ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                    >{style === "grid-dots" ? "Grid Dots" : style}</button>
+                  ))}
+                </div>
+                {(pageSettings.backgroundStyle ?? "solid") === "solid" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={pageSettings.backgroundColor ?? "#0f1117"}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value }))}
+                      className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#0f1117"
+                      value={pageSettings.backgroundColor ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value || undefined }))}
+                      className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Branding toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
+                <div>
+                  <p className="text-xs font-medium text-text-primary">Show "Powered by PulseDock"</p>
+                  <p className="text-xs text-text-muted mt-0.5">Displays the PulseDock branding in the page footer.</p>
+                </div>
+                <button
+                  onClick={() => setPageSettings((s) => ({ ...s, showBranding: !(s.showBranding !== false) }))}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.showBranding !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+              <button onClick={() => setShowPageSettings(false)} className="rounded-lg border border-border bg-bg px-4 py-2 text-xs font-medium text-text-secondary hover:text-text-primary transition">
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowPageSettings(false); handleSave(); }}
+                className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white transition hover:bg-accent/90"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Gallery Modal */}
+      {showTemplateGallery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Template Gallery</h2>
+                <p className="text-xs text-text-muted mt-0.5">Start from a preset layout. This will replace your current canvas.</p>
+              </div>
+              <button
+                onClick={() => setShowTemplateGallery(false)}
+                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6 grid grid-cols-2 gap-4">
+              {STATUS_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => applyTemplate(tmpl)}
+                  className="text-left rounded-xl border border-border bg-bg/60 p-4 hover:border-accent/50 hover:bg-accent/5 transition-all group"
+                >
+                  <div className="text-2xl mb-2">{tmpl.preview}</div>
+                  <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition">{tmpl.name}</p>
+                  <p className="text-xs text-text-muted mt-1">{tmpl.description}</p>
+                  <p className="text-xs text-text-secondary/60 mt-2">{tmpl.widgets.length} widgets</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Version History Modal */}
+      {showVersionHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Version History</h2>
+                <p className="text-xs text-text-muted mt-0.5">Last {versionHistory.length} manual saves. Click restore to roll back.</p>
+              </div>
+              <button onClick={() => setShowVersionHistory(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-2">
+              {versionHistory.length === 0 ? (
+                <div className="py-8 text-center text-sm text-text-secondary">
+                  <History className="h-8 w-8 mx-auto mb-2 text-text-muted/40" />
+                  <p>No saves recorded yet.</p>
+                  <p className="text-xs text-text-muted mt-1">Save your page to start tracking history.</p>
+                </div>
+              ) : versionHistory.map((entry, i) => {
+                const d = new Date(entry.ts);
+                const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={entry.ts} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
+                    <div>
+                      <p className="text-xs font-medium text-text-primary flex items-center gap-2">
+                        {i === 0 && <span className="text-[10px] rounded-full bg-accent/15 text-accent px-1.5 py-0.5 font-semibold">Latest</span>}
+                        {label}
+                      </p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{entry.widgetCount} widget{entry.widgetCount !== 1 ? "s" : ""}</p>
+                    </div>
+                    <button
+                      onClick={() => restoreVersion(entry)}
+                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 }

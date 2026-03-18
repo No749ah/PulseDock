@@ -3,6 +3,9 @@
 
 import { SubscriberFormWidget } from "./SubscriberFormWidget";
 import { CountdownWidget } from "./CountdownWidget";
+import { AnnouncementBarClient } from "./AnnouncementBarClient";
+import { RssFeedCopyButton } from "./RssFeedCopyButton";
+import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 
 export interface MonitorSummary {
   id: string;
@@ -3512,47 +3515,14 @@ export function AnnouncementBar({ widget, extra }: WidgetProps) {
     expired: boolean;
   } | undefined;
 
-  // Client-side dismiss state — uses a simple React state trick via key
-  // Since we can't import useState here without "use client" directive we
-  // use a data attribute approach: a hidden checkbox toggles visibility.
   if (!data || data.expired || !data.message) return null;
 
-  const { message, type, dismissable } = data;
-
-  const bgMap: Record<string, string> = {
-    info: "bg-blue-500/20 border-blue-500/40 text-blue-200",
-    warning: "bg-yellow-500/20 border-yellow-500/40 text-yellow-200",
-    danger: "bg-red-500/20 border-red-500/40 text-red-200",
-    success: "bg-green-500/20 border-green-500/40 text-green-200",
-  };
-
-  const iconMap: Record<string, string> = {
-    info: "ℹ️",
-    warning: "⚠️",
-    danger: "🚨",
-    success: "✅",
-  };
-
-  const cls = bgMap[type] ?? bgMap.info;
-  const icon = iconMap[type] ?? "ℹ️";
-
   return (
-    <div className={`rounded-xl border p-3 flex items-start gap-3 ${cls}`} data-announcement-bar>
-      <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
-      <span className="flex-1 text-sm font-medium leading-relaxed">{message}</span>
-      {dismissable && (
-        <button
-          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity ml-auto"
-          onClick={(e) => {
-            const bar = (e.target as HTMLElement).closest("[data-announcement-bar]") as HTMLElement | null;
-            if (bar) bar.style.display = "none";
-          }}
-          aria-label="Dismiss"
-        >
-          ✕
-        </button>
-      )}
-    </div>
+    <AnnouncementBarClient
+      message={data.message}
+      type={data.type}
+      dismissable={data.dismissable}
+    />
   );
 }
 
@@ -4133,12 +4103,6 @@ export function RssFeedWidget({ widget }: WidgetProps) {
     : "Configure slug in widget settings";
   const isPlaceholder = !slugOverride;
 
-  function handleCopy() {
-    if (!isPlaceholder && typeof navigator !== "undefined") {
-      void navigator.clipboard.writeText(feedUrl);
-    }
-  }
-
   return (
     <div className="bg-surface/50 border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -4149,17 +4113,107 @@ export function RssFeedWidget({ widget }: WidgetProps) {
       </div>
       <div className="rounded-lg bg-surface border border-border p-2 flex items-center justify-between gap-2">
         <code className="text-xs font-mono text-text-secondary truncate">{feedUrl}</code>
-        {!isPlaceholder && (
-          <button
-            onClick={handleCopy}
-            className="shrink-0 text-xs px-2 py-0.5 rounded bg-surface/80 border border-border text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Copy
-          </button>
-        )}
+        {!isPlaceholder && <RssFeedCopyButton feedUrl={feedUrl} />}
       </div>
       <p className="text-xs text-text-secondary">Subscribe in your RSS reader to receive status updates.</p>
     </div>
+  );
+}
+
+// ── Content widgets ──────────────────────────────────────────────────────
+
+export function CodeBlock({ widget }: WidgetProps) {
+  const code = (widget.config.code as string) ?? "";
+  const language = (widget.config.language as string) ?? "bash";
+  const label = (widget.config.label as string) ?? "Code";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-text-secondary">{label}</span>
+        <span className="text-xs bg-surface-elevated border border-border/60 px-2 py-0.5 rounded font-mono text-text-muted">{language}</span>
+      </div>
+      <pre className="bg-bg/80 rounded-lg p-4 overflow-x-auto">
+        <code className="text-xs font-mono text-text-primary whitespace-pre">{code || "# Add code in the config panel"}</code>
+      </pre>
+    </div>
+  );
+}
+
+export function VideoEmbed({ widget }: WidgetProps) {
+  const url = (widget.config.videoUrl as string) ?? "";
+  const label = (widget.config.label as string) ?? "";
+  const height = (widget.config.height as number) ?? 300;
+
+  function toEmbedUrl(rawUrl: string): string | null {
+    if (!rawUrl) return null;
+    try {
+      const u = new URL(rawUrl);
+      if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
+        return `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
+      }
+      if (u.hostname.includes('youtu.be')) {
+        return `https://www.youtube.com/embed${u.pathname}`;
+      }
+      if (u.hostname.includes('vimeo.com')) {
+        const id = u.pathname.split('/').filter(Boolean).pop();
+        return `https://player.vimeo.com/video/${id}`;
+      }
+      return rawUrl;
+    } catch {
+      return null;
+    }
+  }
+
+  const embedUrl = toEmbedUrl(url);
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 overflow-hidden">
+      {label && <div className="px-4 py-2 border-b border-border text-sm font-medium text-text-secondary">{label}</div>}
+      {embedUrl ? (
+        <iframe
+          src={embedUrl}
+          style={{ height: `${height}px`, width: '100%' }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="block"
+          title={label || "Video"}
+        />
+      ) : (
+        <div className="flex items-center justify-center text-text-muted text-sm" style={{ height: `${height}px` }}>
+          Add a YouTube or Vimeo URL in config
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CollapsibleSection({ widget }: WidgetProps) {
+  const title = (widget.config.title as string) ?? "Section";
+  const description = (widget.config.description as string) ?? "";
+  const defaultOpen = (widget.config.defaultOpen as boolean) ?? true;
+
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-xl border border-border bg-surface/50 overflow-hidden"
+    >
+      <summary className="flex cursor-pointer select-none items-center justify-between px-5 py-4 font-semibold text-text-primary hover:bg-surface-elevated/40 transition-colors list-none">
+        <span>{title}</span>
+        <svg
+          className="h-4 w-4 text-text-secondary transition-transform duration-200 group-open:rotate-180"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </summary>
+      <div className="border-t border-border px-5 py-4 text-sm text-text-secondary leading-relaxed">
+        {description.split("\n").map((line, i) => (
+          <span key={i}>{line}{i < description.split("\n").length - 1 && <br />}</span>
+        ))}
+        {!description && <span className="italic text-text-muted">No content configured.</span>}
+      </div>
+    </details>
   );
 }
 
@@ -4214,6 +4268,10 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
   }
 
   let content: React.ReactNode;
+  // Wrap in error boundary so one broken widget doesn't crash the page
+  const wrapError = (node: React.ReactNode) => (
+    <WidgetErrorBoundary widgetType={widget.type}>{node}</WidgetErrorBoundary>
+  );
   switch (widget.type) {
     case "overall-status":
     case "overall-system-status":
@@ -4408,6 +4466,15 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "rss-feed-widget":
       content = <RssFeedWidget {...props} />;
       break;
+    case "code-block":
+      content = <CodeBlock {...props} />;
+      break;
+    case "video-embed":
+      content = <VideoEmbed {...props} />;
+      break;
+    case "collapsible-section":
+      content = <CollapsibleSection {...props} />;
+      break;
     default:
       content = (
         <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">
@@ -4448,7 +4515,7 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     .filter(Boolean)
     .join(" ");
 
-  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{content}</div>;
+  const wrapped = <div className={wrapperClass} style={wrapperStyle}>{wrapError(content)}</div>;
 
   if (!href) return wrapped;
 

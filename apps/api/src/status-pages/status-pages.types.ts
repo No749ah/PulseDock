@@ -60,7 +60,14 @@ export type WidgetType =
   | 'social-links'
   | 'embed-iframe'
   | 'subscriber-form'
-  | 'countdown';
+  | 'countdown'
+  | 'maintenance-calendar'
+  | 'changelog-widget'
+  | 'image-banner'
+  | 'data-table'
+  | 'rss-feed-widget'
+  | 'code-block'
+  | 'video-embed';
 
 export interface Widget {
   id: string;

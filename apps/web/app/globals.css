@@ -218,3 +218,70 @@ html, body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ── Print styles (status pages) ─────────────────────────────────────── */
+/* ── Page Transition ──────────────────────────────────── */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition-root {
+  animation: page-fade-in 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-root {
+    animation: none;
+  }
+}
+
+@media print {
+  /* Hide interactive / nav chrome */
+  .print\:hidden { display: none !important; }
+  nav, header, aside, [aria-label="Navigation"], [role="navigation"] { display: none !important; }
+  footer { display: none !important; }
+
+  /* Page setup */
+  @page { margin: 1.5cm 1cm; size: A4; }
+
+  /* Force light background for legibility on paper */
+  body, main, [class*="bg-bg"], [class*="bg-surface"] {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  /* Ensure text is readable */
+  [class*="text-text-secondary"] { color: #6b7280 !important; }
+  [class*="text-text-primary"] { color: #111827 !important; }
+  [class*="text-text-muted"] { color: #9ca3af !important; }
+  [class*="text-accent"] { color: #6366f1 !important; }
+
+  /* Borders / dividers should print */
+  [class*="border-border"] { border-color: #e5e7eb !important; }
+
+  /* Status page specific: preserve grid layout */
+  .grid { break-inside: avoid-page; }
+  
+  /* Force card backgrounds to white */
+  [class*="rounded"], [class*="card"] {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+  }
+
+  /* Prevent orphaned headings */
+  h1, h2, h3, h4 { break-after: avoid; }
+
+  /* Suppress animations */
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}

@@ -1,14 +1,30 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
+import { PrintButton } from "./widgets/PrintButton";
+import { OfflineBanner } from "./widgets/OfflineBanner";
+import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.API_BASE_URL ||
   "http://localhost:4321";
 
+interface PageSettings {
+  autoRefreshInterval?: number; // seconds, 0 = off
+  showBranding?: boolean;
+  logoUrl?: string;
+  faviconUrl?: string;
+  accentColor?: string;
+  theme?: "dark" | "light" | "system";
+  fontFamily?: "inter" | "roboto" | "system" | "mono";
+  backgroundStyle?: "solid" | "gradient" | "grid-dots";
+  backgroundColor?: string;
+}
+
 interface PageLayout {
   widgets: Widget[];
+  settings?: PageSettings;
 }
 
 interface IncidentData {
@@ -166,6 +182,7 @@ export async function generateMetadata({
     });
     if (!res.ok) return {};
     const data: PublicPageData = await res.json() as PublicPageData;
+    const settings = (data.layout?.settings ?? {}) as PageSettings;
     return {
       title: `${data.title} — Status`,
       description: data.description ?? `Live service status for ${data.title}`,
@@ -173,6 +190,9 @@ export async function generateMetadata({
         title: `${data.title} — Status`,
         description: data.description ?? `Live service status for ${data.title}`,
       },
+      icons: settings.faviconUrl
+        ? { icon: settings.faviconUrl, shortcut: settings.faviconUrl }
+        : undefined,
     };
   } catch {
     return {};
@@ -198,6 +218,14 @@ export default async function PublicStatusSlugPage({
   const data: PublicPageData = await res.json() as PublicPageData;
 
   const widgets = data.layout?.widgets ?? [];
+  const settings = data.layout?.settings ?? {};
+  const autoRefreshSec = typeof settings.autoRefreshInterval === 'number' && settings.autoRefreshInterval > 0
+    ? settings.autoRefreshInterval
+    : 60;
+  const showBranding = settings.showBranding !== false; // default true
+  const logoUrl = settings.logoUrl ?? null;
+  const accentColor = settings.accentColor ?? null;
+
   const sorted = [...widgets].sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
   const visible = sorted.filter((w) => shouldRenderWidget(w, data.monitors));
 
@@ -225,17 +253,51 @@ export default async function PublicStatusSlugPage({
   const tablet = buildResponsivePlacement(visible, 6);
 
   const now = new Date();
+  const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
+
+  const theme = settings.theme ?? "dark";
+  const fontFamily = settings.fontFamily ?? "inter";
+  const backgroundStyle = settings.backgroundStyle ?? "solid";
+  const backgroundColor = settings.backgroundColor ?? null;
+
+  const fontFamilyMap: Record<string, string> = {
+    inter: "'Inter', 'system-ui', sans-serif",
+    roboto: "'Roboto', 'system-ui', sans-serif",
+    system: "system-ui, sans-serif",
+    mono: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+  };
+
+  const containerStyle: React.CSSProperties = {
+    ...(accentColor ? { '--color-accent': accentColor } as React.CSSProperties : {}),
+    fontFamily: fontFamilyMap[fontFamily] ?? fontFamilyMap.inter,
+    ...(backgroundColor && backgroundStyle === "solid" ? { backgroundColor } : {}),
+  };
+
+  const bgClass =
+    backgroundStyle === "gradient"
+      ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
+      : backgroundStyle === "grid-dots"
+      ? "bg-bg [background-image:radial-gradient(circle,_rgba(99,102,241,0.15)_1px,_transparent_1px)] [background-size:24px_24px]"
+      : theme === "light"
+      ? "bg-white text-gray-900"
+      : "bg-bg";
+
+  const themeClass = theme === "light" ? "text-gray-900" : "";
 
   return (
     <>
-      {/* Auto-refresh every 60 seconds */}
-      {/* eslint-disable-next-line @next/next/no-head-element */}
-      <meta httpEquiv="refresh" content="60" />
+      <OfflineBanner />
+      {/* Live refresh client component replaces meta http-equiv refresh */}
+      <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
-      <main className="min-h-screen bg-bg px-4 pb-16 pt-8">
+      <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
           <div className="mb-8 text-center">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={data.title} className="mx-auto mb-4 h-12 w-auto object-contain" />
+            )}
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
               Status Page
             </div>
@@ -320,16 +382,20 @@ export default async function PublicStatusSlugPage({
           )}
 
           {/* Footer */}
-          <div className="pt-8 text-center text-xs text-text-secondary">
-            <span>
-              Last updated: {now.toLocaleTimeString()} ·{" "}
-            </span>
-            <span>
-              Powered by <span className="font-semibold text-accent">PulseDock</span>
-            </span>
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
+            <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
+            {showBranding && (
+              <span>
+                {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>
+              </span>
+            )}
+            <span className="hidden sm:inline text-text-muted">·</span>
+            <PrintButton />
           </div>
         </div>
       </main>
+
+
     </>
   );
 }

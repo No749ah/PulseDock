@@ -10,6 +10,7 @@ import {
   IsArray,
   IsNumber,
   IsIn,
+  IsUrl,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -45,6 +46,50 @@ const VALID_WIDGET_TYPES: WidgetType[] = [
   'rolling-uptime-cards',
   'status-history-ribbon',
   'uptime-percentage-card',
+  // P1 extended — from palette expansion
+  'service-health-matrix',
+  'aggregate-health-score',
+  'latency-percentiles-card',
+  'downtime-log',
+  'active-incident-count',
+  'mttr-mttf-cards',
+  'sla-compliance-table',
+  'uptime-heatmap',
+  'incident-timeline',
+  'ssl-certificate-status',
+  'incident-severity-distribution',
+  'incident-duration-stats',
+  'post-mortem-card',
+  'performance-trend',
+  'apdex-score',
+  'throughput-counter',
+  'response-time-comparison',
+  'uptime-comparison-chart',
+  'next-maintenance-countdown',
+  'maintenance-impact-list',
+  'version-timeline',
+  'outdated-components-alert',
+  'version-comparison-table',
+  'dns-resolution-time',
+  'gauge',
+  'stats-grid',
+  'metric-comparison-row',
+  'sparkline-row',
+  'progress-ring',
+  'announcement-bar',
+  'link-list',
+  'faq-accordion',
+  'social-links',
+  'embed-iframe',
+  'subscriber-form',
+  'countdown',
+  'maintenance-calendar',
+  'changelog-widget',
+  'image-banner',
+  'data-table',
+  'rss-feed-widget',
+  'code-block',
+  'video-embed',
 ];
 
 export class WidgetDto {
@@ -74,8 +119,38 @@ export class WidgetDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
+  locked?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsObject()
   config?: Record<string, unknown>;
+}
+
+export class PageSettingsDto {
+  @ApiPropertyOptional({ description: 'Auto-refresh interval in seconds. 0 = disabled.' })
+  @IsOptional()
+  @IsNumber()
+  autoRefreshInterval?: number;
+
+  @ApiPropertyOptional({ description: 'Show "Powered by PulseDock" footer branding.' })
+  @IsOptional()
+  @IsBoolean()
+  showBranding?: boolean;
+
+  @ApiPropertyOptional({ description: 'Logo URL for the page header.' })
+  @IsOptional()
+  @IsString()
+  @IsUrl({}, { message: 'logoUrl must be a valid URL' })
+  @MaxLength(500)
+  logoUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Custom accent color hex (e.g. #6366f1).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  accentColor?: string;
 }
 
 export class PageLayoutDto {
@@ -84,6 +159,12 @@ export class PageLayoutDto {
   @ValidateNested({ each: true })
   @Type(() => WidgetDto)
   widgets!: WidgetDto[];
+
+  @ApiPropertyOptional({ type: PageSettingsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PageSettingsDto)
+  settings?: PageSettingsDto;
 }
 
 export class CreateStatusPageDto {

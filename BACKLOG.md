@@ -1,8 +1,29 @@
-## Status Summary (2026-03-18 12:47 UTC)
+## Status Summary (2026-03-18 13:20 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
+- **Security/Audit:** ⚠️ 10 moderate vulns (transitive); no high/critical.
+- **Deployment:** ✅ All routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-registry-and-docs (7 commits ahead of dev)
+- **This session (2026-03-18 13:20 UTC):**
+  - **Registry**: 1303 → 1385 tools (+82: AI/ML, ERP/Business, Search/Vector, IoT/Edge, Photo/Docs). Fixed 40+ broken Simple Icons slugs.
+  - **Editor UX P2**: Widget Lock, Responsive Preview toggle (Desktop/Tablet/Mobile), Canvas Zoom (30%-200%, Ctrl+scroll)
+  - **Template Gallery**: 7 preset status page layouts (Minimal, Full Dashboard, SLA Report, Incident, Version Overview, Performance, Maintenance)
+  - **New widgets**: code-block (monospace display), video-embed (YouTube/Vimeo)
+  - **RSS Feed**: `GET /v1/public/status/:slug/feed.xml` — RSS 2.0 incident feed
+  - **Landing page**: Updated stats (1400+ tools, 65+ widgets, 86+ templates)
+  - **Keyboard shortcuts**: `?` key opens global shortcuts help dialog
+  - **Breadcrumbs**: Navigation breadcrumb component wired into monitor detail page
+  - **Monitor card view**: Grid/table toggle for monitors page
+  - **Live notification bell**: Shows real recent failure count (not static)
+
+## Status Summary (2026-03-18 13:02 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** ✅ All 12 routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
-- **Branch:** heartbeat/2026-03-18-landing-polish
+- **Deployment:** ✅ All 11 routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-registry-and-docs
+- **This session (2026-03-18 13:02 UTC):**
+  - **Build fix**: Split tool-registry into 4 parts (1385 tools, was hitting TS2590 union type complexity limit). Fixed invalid category 'Photo/Docs' → 'Media', added missing `requiresInstanceUrl` (83 entries) and `verified` (17 entries) fields.
+  - **Branch rotation**: Merged heartbeat/2026-03-18-landing-polish → dev, created heartbeat/2026-03-18-registry-and-docs
+  - **P2 Editor UX**: Widget Lock (lock/unlock per widget, disables drag+resize), Responsive Preview (Desktop/Tablet/Mobile viewport toggle in toolbar), Canvas Zoom (Ctrl+scroll + toolbar buttons, 30%–200%)
 - **This session (2026-03-18 12:47 UTC):**
   - **5 new status-page widgets** (65 total): MaintenanceCalendar, ChangelogWidget, ImageBanner, DataTable, RssFeedWidget
   - **BACKLOG sync**: 29 already-implemented widgets marked [x]
@@ -539,8 +560,8 @@
 - [x] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
 - [x] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
 - [x] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
-- [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
-- [ ] **Code Block** — Display API response or config snippet with syntax highlighting
+- [x] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
+- [x] **Code Block** — Display API response or config snippet with syntax highlighting
 - [x] **Subscriber Form** — Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
 - [x] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
 
@@ -555,17 +576,17 @@
 
 ### P2 — Editor UX
 
-- [ ] **Widget Duplication** — Copy button per widget (same config, auto-placed)
-- [ ] **Widget Lock** — Lock toggle to prevent accidental drag/resize
+- [x] **Widget Duplication** — Copy button per widget (same config, auto-placed)
+- [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
 - [ ] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete/align
-- [ ] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
+- [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
 - [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
 - [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
-- [ ] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
-- [ ] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
-- [ ] **Template Gallery** — 10+ preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Service Status, Dev/Ops Dashboard, Customer-Facing, Internal Team, Executive Summary
-- [ ] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Arrow=Nudge 1px, Shift+Arrow=Nudge 10px, Ctrl+A=Select All, Ctrl+L=Lock
-- [ ] **Widget Search in Palette** — Filter palette by name/category
+- [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
+- [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
+- [x] **Template Gallery** — 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
+- [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
+- [x] **Widget Search in Palette** — Filter palette by name/category
 - [ ] **Layer Management** — Z-index ordering, bring to front/send to back
 - [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
 - [ ] **Version History** — Last 10 saves with preview + one-click restore

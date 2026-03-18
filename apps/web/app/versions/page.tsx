@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -139,6 +139,8 @@ export default function VersionsPage() {
   const [runsLoadingId, setRunsLoadingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningId, setRunningId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'lastChecked'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
   const [createOpen, setCreateOpen] = useState(false);
@@ -146,6 +148,8 @@ export default function VersionsPage() {
   // Tool registry
   const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
   const [toolSearch, setToolSearch] = useState('');
+  const [toolSearchDebounced, setToolSearchDebounced] = useState('');
+  const toolSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [toolCategory, setToolCategory] = useState('');
   const [toolVisibleCount, setToolVisibleCount] = useState(50);
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
@@ -305,7 +309,7 @@ export default function VersionsPage() {
   useEffect(() => {
     // Reset tool pagination when search/filter/modal state changes
     setToolVisibleCount(50);
-  }, [toolSearch, toolCategory, createOpen, createStep]);
+  }, [toolSearchDebounced, toolCategory, createOpen, createStep]);
 
   useEffect(() => {
     if (!target.trim()) {
@@ -580,6 +584,7 @@ export default function VersionsPage() {
   function resetCreateForm() {
     setCreateStep(-1);
     setToolSearch('');
+    setToolSearchDebounced('');
     setToolCategory('');
     setSelectedTool(null);
     setName('');
@@ -692,7 +697,32 @@ export default function VersionsPage() {
   }
   const pages = Math.max(1, Math.ceil(total / size));
   const safePage = Math.min(page, pages);
-  const visible = (summary?.items ?? []).slice((safePage - 1) * size, safePage * size);
+
+  function handleVersionSort(col: typeof sortBy) {
+    if (sortBy === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(col); setSortDir('asc'); }
+    setPage(1);
+  }
+
+  function statusSortKey(level: 'green' | 'yellow' | 'red') {
+    if (level === 'green') return 1;
+    if (level === 'yellow') return 2;
+    return 0; // red = worst first when asc
+  }
+
+  const sortedItems = [...(summary?.items ?? [])].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    if (sortBy === 'name') return dir * a.name.localeCompare(b.name);
+    if (sortBy === 'status') return dir * (statusSortKey(a.level) - statusSortKey(b.level));
+    if (sortBy === 'lastChecked') {
+      const ta = a.checkedAt ? new Date(a.checkedAt).getTime() : 0;
+      const tb = b.checkedAt ? new Date(b.checkedAt).getTime() : 0;
+      return dir * (ta - tb);
+    }
+    return 0;
+  });
+
+  const visible = sortedItems.slice((safePage - 1) * size, safePage * size);
 
   const providerOptions = [
     { value: 'github', label: 'GitHub releases' },
@@ -766,7 +796,14 @@ export default function VersionsPage() {
                       className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent"
                       placeholder="Search tools…"
                       value={toolSearch}
-                      onChange={(e) => setToolSearch(e.target.value)}
+                      onChange={(e) => {
+                        setToolSearch(e.target.value);
+                        if (toolSearchTimerRef.current) clearTimeout(toolSearchTimerRef.current);
+                        toolSearchTimerRef.current = setTimeout(() => {
+                          setToolSearchDebounced(e.target.value);
+                          setToolVisibleCount(50);
+                        }, 200);
+                      }}
                       autoFocus
                     />
                   </div>
@@ -793,7 +830,7 @@ export default function VersionsPage() {
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
                   ) : (() => {
-                    const q = toolSearch.toLowerCase().trim().replace(/\s+/g, ' ');
+                    const q = toolSearchDebounced.toLowerCase().trim().replace(/\s+/g, ' ');
                     // Ranked filter: exact name > name starts-with > name contains > tag exact > tag contains > description
                     const filtered = (() => {
                       const all = toolRegistry.tools.filter((t) => {
@@ -864,7 +901,7 @@ export default function VersionsPage() {
                           Not in the registry?{' '}
                           <button
                             className="text-accent hover:underline"
-                            onClick={() => { setToolSearch(''); setSelectedTool(null); }}
+                            onClick={() => { setToolSearch(''); setToolSearchDebounced(''); setSelectedTool(null); }}
                           >
                             Use manual config
                           </button>
@@ -1375,13 +1412,25 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
             <Table>
               <TableHead>
                 <TableRow hover={false}>
-                  <TableHeader>Name</TableHeader>
+                  <TableHeader>
+                    <button onClick={() => handleVersionSort('name')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Name {sortBy === 'name' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
                   <TableHeader className="hidden sm:table-cell">Type</TableHeader>
                   <TableHeader className="hidden md:table-cell">Target</TableHeader>
                   <TableHeader className="hidden sm:table-cell">Current</TableHeader>
                   <TableHeader>Latest</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader className="hidden lg:table-cell">Last check</TableHeader>
+                  <TableHeader>
+                    <button onClick={() => handleVersionSort('status')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Status {sortBy === 'status' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
+                  <TableHeader className="hidden lg:table-cell">
+                    <button onClick={() => handleVersionSort('lastChecked')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                      Last check {sortBy === 'lastChecked' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                    </button>
+                  </TableHeader>
                   <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
                   <TableHeader>Action</TableHeader>
                 </TableRow>

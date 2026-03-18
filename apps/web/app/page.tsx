@@ -24,6 +24,7 @@ import {
   Server,
   Shield,
   Terminal,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -40,9 +41,9 @@ const navLinks = [
 ];
 
 const stats = [
-  { value: "1300+", label: "Tools Tracked" },
-  { value: "20+", label: "Widget Types" },
-  { value: "6+", label: "Alert Channels" },
+  { value: "1400+", label: "Tools Tracked" },
+  { value: "65+", label: "Status Page Widgets" },
+  { value: "86+", label: "Monitor Templates" },
   { value: "100%", label: "Free & Open Source" },
 ];
 
@@ -155,7 +156,7 @@ const comparisonFeatures = [
   { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
-  { label: "Tool Registry (1300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (1400+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
@@ -275,12 +276,12 @@ export default function LandingPage() {
       </nav>
 
       {/* ─── Hero ─── */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32">
+      <section aria-label="Hero section" className="relative pt-32 pb-20 md:pt-48 md:pb-32">
         {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] animate-blob" />
-          <div className="absolute top-[5%] right-[10%] w-64 h-64 md:w-[450px] md:h-[450px] rounded-full bg-purple-500/8 blur-[100px] animate-blob animation-delay-2000" />
-          <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] animate-blob animation-delay-4000" />
+          <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] motion-safe:animate-blob" />
+          <div className="absolute top-[5%] right-[10%] w-64 h-64 md:w-[450px] md:h-[450px] rounded-full bg-purple-500/8 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
+          <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
         </div>
 
         <div className="relative mx-auto max-w-5xl px-6 text-center">
@@ -396,7 +397,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Stats Bar ─── */}
-      <section className="py-16 border-y border-border bg-surface/40">
+      <section aria-label="Stats" className="py-16 border-y border-border bg-surface/40">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {stats.map((stat, i) => (
@@ -416,7 +417,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Features Grid ─── */}
-      <section id="features" className="py-24 md:py-32">
+      <section id="features" aria-label="Features" className="py-24 md:py-32">
         <div className="mx-auto max-w-6xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -448,7 +449,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── How It Works (Enhanced) ─── */}
-      <section id="how" className="py-24 md:py-32 border-t border-border">
+      <section id="how" aria-label="How it works" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-5xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -553,7 +554,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Screenshot Gallery ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="Screenshots" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-6xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -699,7 +700,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Demo Preview ─── */}
-      <section id="demo" className="py-24 md:py-32 border-t border-border">
+      <section id="demo" aria-label="Demo" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="text-center mb-12">
@@ -779,7 +780,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Comparison ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="Comparison" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-5xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -850,7 +851,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Open Source Banner ─── */}
-      <section className="py-20 md:py-28 border-t border-border">
+      <section aria-label="Open source" className="py-20 md:py-28 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="relative rounded-3xl border border-border bg-surface/60 backdrop-blur-sm p-10 md:p-16 text-center overflow-hidden">
@@ -885,8 +886,67 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── Social Proof ─── */}
+      <section aria-label="Social proof" className="py-24 md:py-32 border-t border-border">
+        <div className="mx-auto max-w-5xl px-6">
+          <FadeIn>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                Why Developers Trust PulseDock
+              </h2>
+              <p className="text-text-secondary text-lg max-w-xl mx-auto">
+                Open, transparent, and built for the community — no surprises.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <FadeIn delay={0.1}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Shield className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Open Source &amp; Private</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  MIT licensed. No telemetry, no phone home, no vendor lock-in. Your data stays yours.
+                </p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Users className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Community-Driven</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  Backed by an active GitHub community. Open issues, discussions, and PRs welcome.
+                </p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.3}>
+              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-4">
+                <Server className="w-8 h-8 text-accent" />
+                <h3 className="font-semibold text-text-primary text-lg">Built for Self-Hosters</h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  Docker, Kubernetes, bare metal — runs anywhere. Documented and production-ready.
+                </p>
+              </div>
+            </FadeIn>
+          </div>
+          <FadeIn delay={0.4}>
+            <div className="text-center">
+              <a
+                href="https://github.com/No749ah/PulseDock"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-surface-elevated hover:bg-surface-hover border border-border hover:border-border-hover text-text-primary font-semibold px-6 py-3 rounded-xl transition-all text-base"
+              >
+                <Github className="w-5 h-5" />
+                Star us on GitHub
+                <ExternalLink className="w-4 h-4 text-text-muted" />
+              </a>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ─── Pricing ─── */}
-      <section id="pricing" className="py-24 md:py-32 border-t border-border">
+      <section id="pricing" aria-label="Pricing" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -978,7 +1038,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Final CTA ─── */}
-      <section className="py-24 md:py-32 border-t border-border">
+      <section aria-label="CTA" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">

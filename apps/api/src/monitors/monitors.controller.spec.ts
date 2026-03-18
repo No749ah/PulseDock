@@ -107,14 +107,14 @@ describe('MonitorsController', () => {
 
   it('getRecentRuns() parses limit and delegates', async () => {
     service.getRecentRuns.mockResolvedValue([]);
-    await controller.getRecentRuns(makeReq(), '25');
-    expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 25);
+    await controller.getRecentRuns(makeReq(), '25', undefined);
+    expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 25, undefined);
   });
 
   it('getRecentRuns() defaults to 10 when limit not provided', async () => {
     service.getRecentRuns.mockResolvedValue([]);
-    await controller.getRecentRuns(makeReq(), undefined);
-    expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 10);
+    await controller.getRecentRuns(makeReq(), undefined, undefined);
+    expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 10, undefined);
   });
 
   it('monitorRuns() delegates to service.monitorRuns', async () => {

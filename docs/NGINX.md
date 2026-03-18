@@ -170,10 +170,12 @@ server {
         proxy_set_header    X-Forwarded-Proto $scheme;
         proxy_read_timeout  60s;
 
-        # Static assets — do NOT add proxy_cache here.
-        # Next.js already sends correct Cache-Control headers (immutable with content hashes).
-        # Adding proxy_cache risks caching error responses (e.g. 500 during restarts)
-        # which are then served until the cache expires, even after the origin is fixed.
+        # CRITICAL: never cache any response in the proxy layer.
+        # Next.js sends correct Cache-Control headers — the browser handles caching.
+        # proxy_cache on the proxy will cache 404/500 error responses during restart
+        # windows and serve them to all users even after the origin recovers.
+        proxy_no_cache      1;
+        proxy_cache_bypass  1;
     }
 }
 ```

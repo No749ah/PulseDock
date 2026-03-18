@@ -92,6 +92,7 @@ function makePrisma(opts: {
     },
     incident: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     maintenanceWindow: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -1644,11 +1645,12 @@ describe('StatusPagesService', () => {
       });
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'pmc2');
-      expect(result.incident).not.toBeNull();
-      expect(result.incident.title).toBe('DB Outage');
-      expect(result.incident.durationMs).toBe(9_000_000);
-      expect(result.incident.affectedMonitors).toHaveLength(1);
-      expect(result.incident.updates).toHaveLength(2);
+      const incident = result.incident as { title: string; durationMs: number; affectedMonitors: unknown[]; updates: unknown[] };
+      expect(incident).not.toBeNull();
+      expect(incident.title).toBe('DB Outage');
+      expect(incident.durationMs).toBe(9_000_000);
+      expect(incident.affectedMonitors).toHaveLength(1);
+      expect(incident.updates).toHaveLength(2);
     });
   });
 

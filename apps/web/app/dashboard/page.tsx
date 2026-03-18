@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, Clock, Plus, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, Clock, Pause, Play, Plus, RefreshCw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -62,6 +62,41 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [hasAlertChannels, setHasAlertChannels] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30); // seconds: 10, 30, 60, 300
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [, setTick] = useState(0); // force re-render for "last updated" text
+
+  const loadDashboard = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      else setRefreshing(true);
+      setError("");
+
+      const monitorsData = await api<Monitor[]>("/v1/monitors");
+      const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=50");
+      if (!silent) {
+        try {
+          const channels = await api<{ id: string }[]>("/v1/alert-channels");
+          setHasAlertChannels(Array.isArray(channels) && channels.length > 0);
+        } catch {
+          // non-critical
+        }
+      }
+
+      setMonitors(monitorsData);
+      setRuns(runsData);
+      setStats(computeStats(monitorsData, runsData));
+      setLastRefreshed(new Date());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -69,30 +104,6 @@ export default function DashboardPage() {
     if (!currentUser) {
       router.push("/login");
       return;
-    }
-
-    async function loadDashboard() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const monitorsData = await api<Monitor[]>("/v1/monitors");
-        const runsData = await api<MonitorRun[]>("/v1/monitors/runs?limit=20");
-        try {
-          const channels = await api<{ id: string }[]>("/v1/alert-channels");
-          setHasAlertChannels(Array.isArray(channels) && channels.length > 0);
-        } catch {
-          // non-critical
-        }
-
-        setMonitors(monitorsData);
-        setRuns(runsData);
-        setStats(computeStats(monitorsData, runsData));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load dashboard");
-      } finally {
-        setLoading(false);
-      }
     }
 
     loadDashboard();
@@ -137,7 +148,24 @@ export default function DashboardPage() {
 
     return () => { socket.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [router, loadDashboard]);
+
+  // Tick every 5s to keep "last updated" text fresh
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Auto-refresh timer
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const tick = () => {
+      loadDashboard(true);
+      autoRefreshTimerRef.current = setTimeout(tick, refreshInterval * 1000);
+    };
+    autoRefreshTimerRef.current = setTimeout(tick, refreshInterval * 1000);
+    return () => { if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current); };
+  }, [autoRefresh, refreshInterval, loadDashboard]);
 
   if (!user) return null;
 
@@ -165,9 +193,47 @@ export default function DashboardPage() {
     return true;
   });
 
+  // Format last refreshed time
+  const lastRefreshedText = lastRefreshed
+    ? `Updated ${Math.floor((Date.now() - lastRefreshed.getTime()) / 1000)}s ago`
+    : null;
+
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
       <div className="space-y-8">
+        {/* Auto-refresh controls */}
+        <div className="flex items-center justify-end gap-2">
+          {lastRefreshedText && (
+            <span className="text-xs text-text-secondary opacity-60">{lastRefreshedText}</span>
+          )}
+          {refreshing && <RefreshCw className="w-3.5 h-3.5 text-text-secondary animate-spin" />}
+          <select
+            value={refreshInterval}
+            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            className="text-xs px-2 py-1 bg-surface border border-border rounded-md text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+          >
+            <option value={10}>10s</option>
+            <option value={30}>30s</option>
+            <option value={60}>1m</option>
+            <option value={300}>5m</option>
+          </select>
+          <button
+            onClick={() => setAutoRefresh((v) => !v)}
+            title={autoRefresh ? "Pause auto-refresh" : "Resume auto-refresh"}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+          >
+            {autoRefresh ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {autoRefresh ? "Live" : "Paused"}
+          </button>
+          <button
+            onClick={() => loadDashboard(true)}
+            title="Refresh now"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refresh
+          </button>
+        </div>
         {error && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
@@ -146,6 +146,8 @@ export default function VersionsPage() {
   // Tool registry
   const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
   const [toolSearch, setToolSearch] = useState('');
+  const [toolSearchDebounced, setToolSearchDebounced] = useState('');
+  const toolSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [toolCategory, setToolCategory] = useState('');
   const [toolVisibleCount, setToolVisibleCount] = useState(50);
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
@@ -305,7 +307,7 @@ export default function VersionsPage() {
   useEffect(() => {
     // Reset tool pagination when search/filter/modal state changes
     setToolVisibleCount(50);
-  }, [toolSearch, toolCategory, createOpen, createStep]);
+  }, [toolSearchDebounced, toolCategory, createOpen, createStep]);
 
   useEffect(() => {
     if (!target.trim()) {
@@ -580,6 +582,7 @@ export default function VersionsPage() {
   function resetCreateForm() {
     setCreateStep(-1);
     setToolSearch('');
+    setToolSearchDebounced('');
     setToolCategory('');
     setSelectedTool(null);
     setName('');
@@ -766,7 +769,14 @@ export default function VersionsPage() {
                       className="w-full pl-9 pr-4 py-2 text-sm bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent"
                       placeholder="Search tools…"
                       value={toolSearch}
-                      onChange={(e) => setToolSearch(e.target.value)}
+                      onChange={(e) => {
+                        setToolSearch(e.target.value);
+                        if (toolSearchTimerRef.current) clearTimeout(toolSearchTimerRef.current);
+                        toolSearchTimerRef.current = setTimeout(() => {
+                          setToolSearchDebounced(e.target.value);
+                          setToolVisibleCount(50);
+                        }, 200);
+                      }}
                       autoFocus
                     />
                   </div>
@@ -793,7 +803,7 @@ export default function VersionsPage() {
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
                   ) : (() => {
-                    const q = toolSearch.toLowerCase().trim().replace(/\s+/g, ' ');
+                    const q = toolSearchDebounced.toLowerCase().trim().replace(/\s+/g, ' ');
                     // Ranked filter: exact name > name starts-with > name contains > tag exact > tag contains > description
                     const filtered = (() => {
                       const all = toolRegistry.tools.filter((t) => {
@@ -864,7 +874,7 @@ export default function VersionsPage() {
                           Not in the registry?{' '}
                           <button
                             className="text-accent hover:underline"
-                            onClick={() => { setToolSearch(''); setSelectedTool(null); }}
+                            onClick={() => { setToolSearch(''); setToolSearchDebounced(''); setSelectedTool(null); }}
                           >
                             Use manual config
                           </button>

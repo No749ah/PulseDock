@@ -4,6 +4,11 @@ const nextConfig = {
   // and breaks when the reverse proxy caches error responses during restarts.
   // Regular `next start` serves static assets natively and works reliably.
 
+  // Prevent Next.js from 308-redirecting /api/socket.io/ → /api/socket.io before
+  // the rewrite rules fire. Without this, socket.io polling hits a 404 because the
+  // stripped path no longer matches the /api/:path* rewrite pattern.
+  skipTrailingSlashRedirect: true,
+
   devIndicators: false,
 
   // When dev is accessed via a public hostname/proxy, allow that origin to fetch /_next/*
@@ -44,9 +49,27 @@ const nextConfig = {
 
   // Proxy all /api requests to the API server.
   // In dev: localhost:4321. In production Docker: set INTERNAL_API_URL=http://api:4321
+  //
+  // IMPORTANT — Socket.io trailing-slash redirect trap:
+  // Next.js redirects /api/socket.io/ → /api/socket.io (308) before rewrite rules fire.
+  // The stripped /api/socket.io (no trailing slash, no sub-path) would then hit a 404
+  // because the generic /api/:path* rule requires at least one path segment.
+  // Fix: add an explicit rule for /api/socket.io (without trailing slash) first.
   async rewrites() {
     const apiUrl = process.env.INTERNAL_API_URL ?? 'http://localhost:4321';
     return [
+      // Socket.io — must come before the generic rule.
+      // Source uses no trailing slash (client path: '/api/socket.io').
+      // Destination must end with / so engine.io handshake path resolves correctly.
+      {
+        source: '/api/socket.io',
+        destination: `${apiUrl}/socket.io/`,
+      },
+      {
+        source: '/api/socket.io/:path*',
+        destination: `${apiUrl}/socket.io/:path*`,
+      },
+      // Everything else
       {
         source: '/api/:path*',
         destination: `${apiUrl}/:path*`,

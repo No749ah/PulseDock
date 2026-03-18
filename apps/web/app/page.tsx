@@ -24,6 +24,7 @@ import {
   Server,
   Shield,
   Terminal,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -275,12 +276,12 @@ export default function LandingPage() {
       </nav>
 
       {/* ─── Hero ─── */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32">
+      <section aria-label="Hero section" className="relative pt-32 pb-20 md:pt-48 md:pb-32">
         {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] animate-blob" />
-          <div className="absolute top-[5%] right-[10%] w-64 h-64 md:w-[450px] md:h-[450px] rounded-full bg-purple-500/8 blur-[100px] animate-blob animation-delay-2000" />
-          <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] animate-blob animation-delay-4000" />
+          <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] motion-safe:animate-blob" />
+          <div className="absolute top-[5%] right-[10%] w-64 h-64 md:w-[450px] md:h-[450px] rounded-full bg-purple-500/8 blur-[100px] motion-safe:animate-blob animation-delay-2000" />
+          <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
         </div>
 
         <div className="relative mx-auto max-w-5xl px-6 text-center">
@@ -396,7 +397,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Stats Bar ─── */}
-      <section className="py-16 border-y border-border bg-surface/40">
+      <section aria-label="Stats" className="py-16 border-y border-border bg-surface/40">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {stats.map((stat, i) => (
@@ -416,7 +417,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Features Grid ─── */}
-      <section id="features" className="py-24 md:py-32">
+      <section id="features" aria-label="Features" className="py-24 md:py-32">
         <div className="mx-auto max-w-6xl px-6">
           <FadeIn>
             <div className="text-center mb-16">
@@ -448,7 +449,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── How It Works (Enhanced) ─── */}
-      <section id="how" className="py-24 md:py-32 border-t border-border">
+      <section id="how" aria-label="How it works" className="py-24 md:py-32 border-t border-border">
         <div className="mx-auto max-w-5xl px-6">
           <FadeIn>
             <div className="text-center mb-16">

@@ -2,232 +2,189 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, AlertTriangle, CheckCircle, Database, RefreshCw, Server, Users, Monitor, BarChart2, XCircle, Zap } from 'lucide-react';
+import {
+  Activity, AlertTriangle, BarChart2, ChevronLeft, ChevronRight,
+  CheckCircle, ClipboardList, Copy, Database, KeyRound, Link2,
+  Mail, Monitor, RefreshCw, Server, Shield, Trash2, UserCog,
+  Users, XCircle, Zap,
+} from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal } from '../../components/ui/modal-framework';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
-import { Button } from '../../app/components/Button';
 import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
-import { CopyButton } from '../../app/components/CopyButton';
-import { Select } from '../../app/components/Select';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../app/components/Table';
-import { TextInput } from '../../app/components/TextInput';
+
+// ── types ─────────────────────────────────────────────────────────────────────
 
 type AdminUser = { id: string; email: string; role: 'admin' | 'user'; createdAt: string; isActive?: boolean };
-type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: string; expiresAt: string; acceptedAt?: string | null; createdAt?: string };
+type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: string; expiresAt: string; acceptedAt?: string | null };
 type AuditLog = { id: string; action: string; actorUserId: string | null; targetUserId: string | null; createdAt: string };
 type PasswordReset = { id: string; email: string; expiresAt: string; createdAt: string; resetUrl: string };
 
 type HealthData = {
-  ok: boolean;
-  service: string;
-  version: string;
-  runtime: string;
-  uptimeMs: number;
-  checks: {
-    database: { status: 'ok' | 'error'; latencyMs: number | null };
-  };
+  ok: boolean; service: string; version: string; runtime: string; uptimeMs: number;
+  checks: { database: { status: 'ok' | 'error'; latencyMs: number | null } };
+};
+type MetricsData = { requestsTotal: number; errorsTotal: number; authLoginFailed: number; alertsSent: number; alertsFailed: number };
+type SystemStatsData = {
+  users: { total: number; active: number }; monitors: { total: number; enabled: number };
+  checksToday: number; failedToday: number; errorRatePct: number;
 };
 
-type MetricsData = {
-  requestsTotal: number;
-  errorsTotal: number;
-  authLoginFailed: number;
-  alertsSent: number;
-  alertsFailed: number;
-  at: string;
-};
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-function formatUptime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
+function formatUptime(ms: number) {
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s % 60}s`;
 }
+
+function RelativeTime({ iso }: { iso: string }) {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const s = Math.floor(diff / 1000);
+  let label = s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : d.toLocaleDateString();
+  return <span title={d.toLocaleString()} className="text-text-secondary text-xs">{label}</span>;
+}
+
+function CopyBtn({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); };
+  return (
+    <button onClick={copy} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border text-text-secondary hover:text-accent hover:border-accent transition-colors">
+      <Copy className="w-3.5 h-3.5" />
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+}
+
+function Pagination({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border">
+      <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1} className="p-1.5 rounded-lg hover:bg-surface-elevated disabled:opacity-30 transition-colors">
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <span className="text-xs text-text-secondary tabular-nums">{page} / {pages}</span>
+      <button onClick={() => onPage(Math.min(pages, page + 1))} disabled={page === pages} className="p-1.5 rounded-lg hover:bg-surface-elevated disabled:opacity-30 transition-colors">
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, title, count }: { icon: React.ComponentType<{ className?: string }>; title: string; count?: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className="p-1.5 rounded-lg bg-accent/10"><Icon className="w-4 h-4 text-accent" /></div>
+      <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+      {count !== undefined && (
+        <span className="ml-auto text-xs text-text-secondary tabular-nums bg-surface-elevated px-2 py-0.5 rounded-full">{count}</span>
+      )}
+    </div>
+  );
+}
+
+// ── System Health ─────────────────────────────────────────────────────────────
 
 function SystemHealthWidget() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
-  const [healthError, setHealthError] = useState(false);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchHealth = useCallback(async () => {
+  const fetch_ = useCallback(async () => {
     setRefreshing(true);
     try {
       const [h, m] = await Promise.all([
         api<HealthData>('/health').catch(() => null),
         api<MetricsData>('/metrics').catch(() => null),
       ]);
-      setHealth(h);
-      setMetrics(m);
-      setHealthError(h === null || !h.ok);
+      setHealth(h); setMetrics(m);
+      setError(h === null || !h.ok);
       setLastUpdated(new Date());
-    } finally {
-      setRefreshing(false);
-    }
+    } finally { setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    void fetchHealth();
-    const interval = setInterval(() => void fetchHealth(), 30_000);
-    return () => clearInterval(interval);
-  }, [fetchHealth]);
+  useEffect(() => { void fetch_(); const t = setInterval(() => void fetch_(), 30_000); return () => clearInterval(t); }, [fetch_]);
 
-  const statusColor = healthError ? 'text-danger' : 'text-success';
-  const StatusIcon = healthError ? XCircle : CheckCircle;
   const dbStatus = health?.checks?.database?.status;
+  const ok = !error;
 
   return (
-    <Card className="mb-6">
-      <div className="flex items-center justify-between mb-5">
+    <Card className="mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-accent" />
-          <h3 className="text-lg font-bold text-text-primary">System Health</h3>
+          <div className="p-1.5 rounded-lg bg-accent/10"><Activity className="w-4 h-4 text-accent" /></div>
+          <h3 className="text-base font-semibold text-text-primary">System Health</h3>
         </div>
         <div className="flex items-center gap-3">
-          {lastUpdated && (
-            <span className="text-xs text-text-secondary">Updated {lastUpdated.toLocaleTimeString()}</span>
-          )}
-          <button
-            onClick={() => void fetchHealth()}
-            disabled={refreshing}
-            className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-50"
-            aria-label="Refresh health"
-          >
+          {lastUpdated && <span className="text-xs text-text-secondary">{lastUpdated.toLocaleTimeString()}</span>}
+          <button onClick={() => void fetch_()} disabled={refreshing} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Overall status banner */}
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-5 ${healthError ? 'bg-danger/10 border border-danger/20' : 'bg-success/10 border border-success/20'}`}>
-        <StatusIcon className={`w-5 h-5 ${statusColor}`} />
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-4 ${ok ? 'bg-success/10 border border-success/20' : 'bg-danger/10 border border-danger/20'}`}>
+        {ok ? <CheckCircle className="w-5 h-5 text-success shrink-0" /> : <XCircle className="w-5 h-5 text-danger shrink-0" />}
         <div>
-          <p className={`font-semibold text-sm ${statusColor}`}>
-            {healthError ? 'Service Degraded' : 'All Systems Operational'}
-          </p>
-          {health && (
-            <p className="text-xs text-text-secondary mt-0.5">
-              {health.service} v{health.version} · {health.runtime}
-            </p>
-          )}
+          <p className={`font-semibold text-sm ${ok ? 'text-success' : 'text-danger'}`}>{ok ? 'All Systems Operational' : 'Service Degraded'}</p>
+          {health && <p className="text-xs text-text-secondary mt-0.5">{health.service} v{health.version} · {health.runtime}</p>}
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {/* Uptime */}
-        <div className="bg-surface-elevated rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Server className="w-4 h-4 text-accent" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Uptime</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        {[
+          { icon: Server, label: 'Uptime', value: health ? formatUptime(health.uptimeMs) : '—', color: 'text-accent' },
+          { icon: Database, label: 'Database', value: dbStatus === 'ok' ? 'OK' : dbStatus === 'error' ? 'ERROR' : '—', color: dbStatus === 'ok' ? 'text-success' : 'text-danger', sub: health?.checks?.database?.latencyMs != null ? `${health.checks.database.latencyMs}ms` : undefined },
+          { icon: Zap, label: 'Requests', value: metrics?.requestsTotal?.toLocaleString() ?? '—', color: 'text-text-primary' },
+          { icon: AlertTriangle, label: 'Errors', value: metrics?.errorsTotal?.toLocaleString() ?? '—', color: (metrics?.errorsTotal ?? 0) > 0 ? 'text-warning' : 'text-text-primary' },
+        ].map(({ icon: Icon, label, value, color, sub }) => (
+          <div key={label} className="bg-surface-elevated rounded-xl p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Icon className="w-3.5 h-3.5 text-text-secondary" />
+              <span className="text-[11px] font-medium text-text-secondary uppercase tracking-wide">{label}</span>
+            </div>
+            <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+            {sub && <p className="text-xs text-text-secondary mt-0.5">{sub}</p>}
           </div>
-          <p className="text-xl font-bold text-text-primary tabular-nums">
-            {health ? formatUptime(health.uptimeMs) : '—'}
-          </p>
-        </div>
-
-        {/* DB */}
-        <div className="bg-surface-elevated rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Database className="w-4 h-4 text-accent" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Database</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={dbStatus === 'ok' ? 'success' : 'danger'}>
-              {dbStatus === 'ok' ? 'OK' : dbStatus === 'error' ? 'ERROR' : '—'}
-            </Badge>
-            {health?.checks?.database?.latencyMs != null && (
-              <span className="text-xs text-text-secondary">{health.checks.database.latencyMs}ms</span>
-            )}
-          </div>
-        </div>
-
-        {/* Requests */}
-        <div className="bg-surface-elevated rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-4 h-4 text-accent" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Requests</span>
-          </div>
-          <p className="text-xl font-bold text-text-primary tabular-nums">
-            {metrics?.requestsTotal?.toLocaleString() ?? '—'}
-          </p>
-        </div>
-
-        {/* Errors */}
-        <div className="bg-surface-elevated rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-warning" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">Errors</span>
-          </div>
-          <p className={`text-xl font-bold tabular-nums ${(metrics?.errorsTotal ?? 0) > 0 ? 'text-warning' : 'text-text-primary'}`}>
-            {metrics?.errorsTotal?.toLocaleString() ?? '—'}
-          </p>
-        </div>
+        ))}
       </div>
 
-      {/* Alerts metrics row */}
       {metrics && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-text-secondary">Login failures</span>
-            <span className="text-sm font-semibold text-text-primary tabular-nums">{metrics.authLoginFailed}</span>
-          </div>
-          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-text-secondary">Alerts sent</span>
-            <span className="text-sm font-semibold text-success tabular-nums">{metrics.alertsSent}</span>
-          </div>
-          <div className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-text-secondary">Alert failures</span>
-            <span className={`text-sm font-semibold tabular-nums ${metrics.alertsFailed > 0 ? 'text-danger' : 'text-text-primary'}`}>
-              {metrics.alertsFailed}
-            </span>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Login failures', value: metrics.authLoginFailed, danger: metrics.authLoginFailed > 10 },
+            { label: 'Alerts sent', value: metrics.alertsSent, success: true },
+            { label: 'Alert failures', value: metrics.alertsFailed, danger: metrics.alertsFailed > 0 },
+          ].map(({ label, value, danger, success }) => (
+            <div key={label} className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-text-secondary">{label}</span>
+              <span className={`text-sm font-semibold tabular-nums ${danger ? 'text-danger' : success ? 'text-success' : 'text-text-primary'}`}>{value}</span>
+            </div>
+          ))}
         </div>
       )}
     </Card>
   );
 }
 
-type SystemStatsData = {
-  users: { total: number; active: number };
-  monitors: { total: number; enabled: number };
-  checksToday: number;
-  failedToday: number;
-  errorRatePct: number;
-  generatedAt: string;
-};
+// ── System Stats ──────────────────────────────────────────────────────────────
 
 function SystemStatsWidget() {
   const [stats, setStats] = useState<SystemStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api<SystemStatsData>('/v1/admin/stats')
-      .then(setStats)
-      .catch(() => null)
-      .finally(() => setLoading(false));
+    api<SystemStatsData>('/v1/admin/stats').then(setStats).catch(() => null).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <Card className="mb-5">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-16 bg-surface-elevated rounded-xl animate-pulse" />
-        ))}
-      </div>
-    </Card>
-  );
-
+  if (loading) return <Card className="mb-5"><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-surface-elevated rounded-xl animate-pulse" />)}</div></Card>;
   if (!stats) return null;
 
   const tiles = [
@@ -239,16 +196,13 @@ function SystemStatsWidget() {
 
   return (
     <Card className="mb-5">
-      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">System statistics</h3>
+      <SectionHeader icon={BarChart2} title="System Statistics" />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="flex flex-col gap-1 rounded-xl bg-surface-elevated border border-border p-4">
-            <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 ${color}`} />
-              <span className="text-xs text-text-secondary">{label}</span>
-            </div>
+          <div key={label} className="rounded-xl bg-surface-elevated border border-border p-4">
+            <div className="flex items-center gap-1.5 mb-2"><Icon className={`w-3.5 h-3.5 ${color}`} /><span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span></div>
             <span className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</span>
-            <span className="text-xs text-text-secondary">{sub}</span>
+            <p className="text-xs text-text-secondary mt-0.5">{sub}</p>
           </div>
         ))}
       </div>
@@ -256,99 +210,182 @@ function SystemStatsWidget() {
   );
 }
 
+// ── Edit User Modal ───────────────────────────────────────────────────────────
+
+function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
+  user: AdminUser; currentUserId: string;
+  onClose: () => void; onSave: (patch: Partial<AdminUser>) => Promise<void>;
+}) {
+  const [email, setEmail] = useState(u.email);
+  const [role, setRole] = useState<'admin' | 'user'>(u.role);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const isSelf = u.id === currentUserId;
+
+  async function handleSave() {
+    setSaving(true); setError('');
+    try { await onSave({ email: email.trim(), role }); onClose(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Failed to save'); }
+    finally { setSaving(false); }
+  }
+
+  async function toggleActive() {
+    setSaving(true); setError('');
+    try { await onSave({ isActive: !u.isActive }); onClose(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Failed to update'); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-xl bg-accent/10"><UserCog className="w-5 h-5 text-accent" /></div>
+          <div>
+            <h2 className="text-base font-semibold text-text-primary">Edit User</h2>
+            <p className="text-xs text-text-secondary">{u.email}</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
+            <div className="flex gap-2">
+              {(['user', 'admin'] as const).map((r) => (
+                <button
+                  key={r}
+                  disabled={isSelf && r !== u.role}
+                  onClick={() => setRole(r)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${role === r ? 'bg-accent text-white border-accent' : 'bg-bg border-border text-text-secondary hover:text-text-primary hover:border-accent/50'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  {r === 'admin' ? '🛡 Admin' : '👤 User'}
+                </button>
+              ))}
+            </div>
+            {isSelf && <p className="text-xs text-text-secondary mt-1.5">You cannot change your own role.</p>}
+          </div>
+
+          {/* Account status */}
+          <div className="p-4 rounded-xl bg-surface-elevated border border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-text-primary">Account status</p>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {u.isActive !== false ? 'Active — user can sign in' : 'Disabled — all sessions revoked'}
+                </p>
+              </div>
+              <button
+                disabled={isSelf || saving}
+                onClick={toggleActive}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive !== false
+                  ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
+                  : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                }`}
+              >
+                {u.isActive !== false ? 'Disable account' : 'Enable account'}
+              </button>
+            </div>
+            {isSelf && <p className="text-xs text-danger mt-2">You cannot disable your own account.</p>}
+          </div>
+
+          {error && <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>}
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={saving || !email.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors">
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 10;
+
 export default function AdminPage() {
   const router = useRouter();
-  const user = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
+  const currentUser = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [resets, setResets] = useState<PasswordReset[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // invite form
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'user'>('user');
   const [latestInvite, setLatestInvite] = useState<Invite | null>(null);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [passwordResets, setPasswordResets] = useState<PasswordReset[]>([]);
-  const [editUserOpen, setEditUserOpen] = useState(false);
-  const [editUserId, setEditUserId] = useState('');
-  const [editUserEmail, setEditUserEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+
+  // edit modal
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+
+  // pagination
+  const [usersPage, setUsersPage] = useState(1);
   const [invitesPage, setInvitesPage] = useState(1);
   const [resetsPage, setResetsPage] = useState(1);
-  const [usersPage, setUsersPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
-  const [pageSize, setPageSize] = useState('10');
 
   useEffect(() => {
-    if (!user) router.push('/login');
-    else if (user.role !== 'admin') router.push('/unauthorized');
-  }, [router, user]);
+    if (!currentUser) router.push('/login');
+    else if (currentUser.role !== 'admin') router.push('/unauthorized');
+  }, [currentUser, router]);
 
   async function load() {
     setLoading(true);
     try {
-      const [list, inviteList, logs, resets] = await Promise.all([
+      const [u, inv, logs, rst] = await Promise.all([
         api<AdminUser[]>('/v1/admin/users'),
         api<Invite[]>('/v1/admin/invites'),
         api<AuditLog[]>('/v1/admin/audit-logs'),
         api<PasswordReset[]>('/v1/admin/password-resets'),
       ]);
-      setUsers(list);
-      setInvites(inviteList);
-      setAuditLogs(logs);
-      setPasswordResets(resets);
-    } finally {
-      setLoading(false);
-    }
+      setUsers(u); setInvites(inv); setAuditLogs(logs); setResets(rst);
+    } catch { router.push('/unauthorized'); }
+    finally { setLoading(false); }
   }
 
-  useEffect(() => {
-    if (user?.role !== 'admin') return;
-    load().catch(() => router.push('/unauthorized'));
-  }, [user]);
+  useEffect(() => { if (currentUser?.role === 'admin') void load(); }, [currentUser]);
 
-  async function updateRole(userId: string, role: 'admin' | 'user') {
-    await api('/v1/admin/users/role', undefined, {
-      method: 'PATCH',
-      body: JSON.stringify({ userId, role }),
-    });
-    await load();
-  }
-
-  function openEditUser(userId: string, currentEmail: string) {
-    setEditUserId(userId);
-    setEditUserEmail(currentEmail);
-    setEditUserOpen(true);
-  }
-
-  async function saveUserEmail() {
+  async function handleSaveUser(patch: Partial<AdminUser>) {
+    if (!editUser) return;
     await api('/v1/admin/users/update', undefined, {
       method: 'PATCH',
-      body: JSON.stringify({ userId: editUserId, email: editUserEmail }),
-    });
-    setEditUserOpen(false);
-    await load();
-  }
-
-  async function setStatus(userId: string, isActive: boolean) {
-    await api('/v1/admin/users/status', undefined, {
-      method: 'PATCH',
-      body: JSON.stringify({ userId, isActive }),
+      body: JSON.stringify({ userId: editUser.id, ...patch }),
     });
     await load();
-  }
-
-  function resetInviteForm() {
-    setInviteEmail('');
-    setInviteRole('user');
-    setLatestInvite(null);
   }
 
   async function createInvite() {
-    const invite = await api<Invite>('/v1/admin/invites', undefined, {
-      method: 'POST',
-      body: JSON.stringify({ email: inviteEmail, role: inviteRole, expiresInHours: 48 }),
-    });
-    setLatestInvite(invite);
-    setInviteEmail('');
-    await load();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      const inv = await api<Invite>('/v1/admin/invites', undefined, {
+        method: 'POST',
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, expiresInHours: 48 }),
+      });
+      setLatestInvite(inv);
+      setInviteEmail('');
+      await load();
+    } finally { setInviting(false); }
   }
 
   async function revokeInvite(id: string) {
@@ -356,252 +393,195 @@ export default function AdminPage() {
     await load();
   }
 
-  async function revokePasswordReset(id: string) {
+  async function revokeReset(id: string) {
     await api(`/v1/admin/password-resets/${id}`, undefined, { method: 'DELETE' });
     await load();
   }
 
-  const size = Number(pageSize);
-  const invitesPages = Math.max(1, Math.ceil(invites.length / size));
-  const resetsPages = Math.max(1, Math.ceil(passwordResets.length / size));
-  const usersPages = Math.max(1, Math.ceil(users.length / size));
-  const auditPages = Math.max(1, Math.ceil(auditLogs.length / size));
-  const invitesRows = invites.slice((Math.min(invitesPage, invitesPages) - 1) * size, Math.min(invitesPage, invitesPages) * size);
-  const resetRows = passwordResets.slice((Math.min(resetsPage, resetsPages) - 1) * size, Math.min(resetsPage, resetsPages) * size);
-  const userRows = users.slice((Math.min(usersPage, usersPages) - 1) * size, Math.min(usersPage, usersPages) * size);
-  const auditRows = auditLogs.slice((Math.min(auditPage, auditPages) - 1) * size, Math.min(auditPage, auditPages) * size);
+  const usersPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const invitesPages = Math.max(1, Math.ceil(invites.length / PAGE_SIZE));
+  const resetsPages = Math.max(1, Math.ceil(resets.length / PAGE_SIZE));
+  const auditPages = Math.max(1, Math.ceil(auditLogs.length / PAGE_SIZE));
+
+  const userRows = users.slice((usersPage - 1) * PAGE_SIZE, usersPage * PAGE_SIZE);
+  const inviteRows = invites.slice((invitesPage - 1) * PAGE_SIZE, invitesPage * PAGE_SIZE);
+  const resetRows = resets.slice((resetsPage - 1) * PAGE_SIZE, resetsPage * PAGE_SIZE);
+  const auditRows = auditLogs.slice((auditPage - 1) * PAGE_SIZE, auditPage * PAGE_SIZE);
 
   return (
-    <AppFrame title="Admin" subtitle="Role management, secure onboarding and invite links.">
-      {loading ? <LoadingState label="Loading admin data..." /> : <>
-      <SystemHealthWidget />
-      <SystemStatsWidget />
-      <AppModal opened={editUserOpen} onClose={() => setEditUserOpen(false)} title="Edit user email">
-        <div className="space-y-4">
-          <TextInput label="Email" value={editUserEmail} onChange={(e) => setEditUserEmail(e.currentTarget.value)} />
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setEditUserOpen(false)}>Cancel</Button>
-            <Button onClick={saveUserEmail}>Save</Button>
-          </div>
-        </div>
-      </AppModal>
+    <AppFrame title="Admin" subtitle="System management, user access, and audit logs.">
+      {loading ? <LoadingState label="Loading admin data…" /> : (
+        <div className="space-y-5">
+          <SystemHealthWidget />
+          <SystemStatsWidget />
 
-      <Card>
-        <h3 className="text-lg font-bold mb-4">Invite user</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <TextInput label="Email" placeholder="new.user@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.currentTarget.value)} />
-          <Select label="Role" value={inviteRole} onChange={(v) => setInviteRole((v as 'admin' | 'user') || 'user')} options={[{ value: 'user', label: 'user' }, { value: 'admin', label: 'admin' }]} />
-        </div>
-        <Button onClick={createInvite} disabled={!inviteEmail} className="mb-4">Create invite</Button>
-
-        {latestInvite ? (
-          <div className="bg-surface-elevated border border-border rounded-lg p-4 mt-4">
-            <p className="text-sm text-text-secondary mb-2">Invite link (share directly or send per email):</p>
-            <p className="text-sm break-all text-text-primary mb-3">{latestInvite.inviteUrl ?? '—'}</p>
-            <CopyButton value={latestInvite.inviteUrl ?? ''} />
-          </div>
-        ) : null}
-      </Card>
-
-      <Card className="mb-6">
-        <h3 className="text-lg font-bold mb-4">Active invites</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow hover={false}>
-                <TableHeader>Email</TableHeader>
-                <TableHeader>Role</TableHeader>
-                <TableHeader>Expires</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Action</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {invitesRows.map((i) => (
-                <TableRow key={i.id}>
-                  <TableCell>{i.email}</TableCell>
-                  <TableCell>{i.role}</TableCell>
-                  <TableCell>{new Date(i.expiresAt).toLocaleString()}</TableCell>
-                  <TableCell>{i.acceptedAt ? 'accepted' : 'pending'}</TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="secondary" disabled={Boolean(i.acceptedAt)} onClick={() => revokeInvite(i.id)}>Revoke</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setInvitesPage(Math.max(1, invitesPage - 1))}
-              disabled={invitesPage === 1}
-              className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Prev
-            </button>
-            <span className="px-2 py-1 text-sm">{invitesPage} / {invitesPages}</span>
-            <button
-              onClick={() => setInvitesPage(Math.min(invitesPages, invitesPage + 1))}
-              disabled={invitesPage === invitesPages}
-              className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-          <Select value={pageSize} onChange={setPageSize} options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]} className="w-20" />
-        </div>
-      </Card>
-
-      <Card className="mb-6">
-        <h3 className="text-lg font-bold mb-4">Password resets (fallback when email is not configured)</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow hover={false}>
-                <TableHeader>Email</TableHeader>
-                <TableHeader>Created</TableHeader>
-                <TableHeader>Expires</TableHeader>
-                <TableHeader>Link</TableHeader>
-                <TableHeader>Action</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {resetRows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.email}</TableCell>
-                  <TableCell>{new Date(r.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>{new Date(r.expiresAt).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <CopyButton value={r.resetUrl}>{({ copied, copy }) => <Button size="sm" variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy link'}</Button>}</CopyButton>
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="secondary" onClick={() => revokePasswordReset(r.id)}>Revoke</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => setResetsPage(Math.max(1, resetsPage - 1))}
-            disabled={resetsPage === 1}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Prev
-          </button>
-          <span className="px-2 py-1 text-sm">{resetsPage} / {resetsPages}</span>
-          <button
-            onClick={() => setResetsPage(Math.min(resetsPages, resetsPage + 1))}
-            disabled={resetsPage === resetsPages}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </Card>
-
-      <Card className="mb-6">
-        <h3 className="text-lg font-bold mb-4">Users</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow hover={false}>
-                <TableHeader>Email</TableHeader>
-                <TableHeader>Edit</TableHeader>
-                <TableHeader>Status</TableHeader>
-                <TableHeader>Role</TableHeader>
-                <TableHeader>Created</TableHeader>
-                <TableHeader>Change Role</TableHeader>
-                <TableHeader>Toggle Status</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+          {/* ── Users ─────────────────────────────────────────────────────── */}
+          <Card>
+            <SectionHeader icon={Users} title="Users" count={users.length} />
+            <div className="space-y-2">
+              {userRows.length === 0 && (
+                <p className="text-sm text-text-secondary text-center py-6">No users found.</p>
+              )}
               {userRows.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell><Button size="sm" variant="secondary" onClick={() => openEditUser(u.id, u.email)}>Edit</Button></TableCell>
-                  <TableCell>{u.isActive ? 'active' : 'disabled'}</TableCell>
-                  <TableCell><span className="font-semibold">{u.role}</span></TableCell>
-                  <TableCell>{new Date(u.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={u.role}
-                      onChange={(v) => v && updateRole(u.id, v as 'admin' | 'user')}
-                      options={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="secondary" onClick={() => setStatus(u.id, !u.isActive)}>{u.isActive ? 'Disable' : 'Enable'}</Button>
-                  </TableCell>
-                </TableRow>
+                <div key={u.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border hover:border-accent/30 transition-colors">
+                  {/* Avatar */}
+                  <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-xs font-semibold text-accent uppercase">
+                    {u.email[0]}
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{u.email}</p>
+                    <p className="text-xs text-text-secondary">Joined <RelativeTime iso={u.createdAt} /></p>
+                  </div>
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface border-border'}`}>
+                      {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.isActive !== false ? 'text-success bg-success/10 border-success/30' : 'text-danger bg-danger/10 border-danger/30'}`}>
+                      {u.isActive !== false ? 'Active' : 'Disabled'}
+                    </span>
+                    <button
+                      onClick={() => setEditUser(u)}
+                      className="p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors"
+                      title="Edit user"
+                    >
+                      <UserCog className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => setUsersPage(Math.max(1, usersPage - 1))}
-            disabled={usersPage === 1}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Prev
-          </button>
-          <span className="px-2 py-1 text-sm">{usersPage} / {usersPages}</span>
-          <button
-            onClick={() => setUsersPage(Math.min(usersPages, usersPage + 1))}
-            disabled={usersPage === usersPages}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </Card>
+            </div>
+            <Pagination page={usersPage} pages={usersPages} onPage={setUsersPage} />
+          </Card>
 
-      <Card className="mt-6">
-        <h3 className="text-lg font-bold mb-4">Audit logs</h3>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow hover={false}>
-                <TableHeader>Time</TableHeader>
-                <TableHeader>Action</TableHeader>
-                <TableHeader>Actor</TableHeader>
-                <TableHeader>Target</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+          {/* ── Invite user ───────────────────────────────────────────────── */}
+          <Card>
+            <SectionHeader icon={Mail} title="Invite User" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="new.user@company.com"
+                  className="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
+                <div className="flex gap-2">
+                  {(['user', 'admin'] as const).map((r) => (
+                    <button key={r} onClick={() => setInviteRole(r)} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${inviteRole === r ? 'bg-accent text-white border-accent' : 'bg-bg border-border text-text-secondary hover:border-accent/50'}`}>
+                      {r === 'admin' ? '🛡 Admin' : '👤 User'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={createInvite}
+              disabled={inviting || !inviteEmail.trim()}
+              className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors"
+            >
+              {inviting ? 'Creating…' : 'Create invite link'}
+            </button>
+
+            {latestInvite && (
+              <div className="mt-4 p-4 rounded-xl bg-success/5 border border-success/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Link2 className="w-4 h-4 text-success" />
+                  <p className="text-sm font-medium text-success">Invite link created</p>
+                </div>
+                <p className="text-xs text-text-secondary break-all mb-3">{latestInvite.inviteUrl ?? '—'}</p>
+                <div className="flex gap-2">
+                  <CopyBtn value={latestInvite.inviteUrl ?? ''} />
+                  <button onClick={() => setLatestInvite(null)} className="text-xs text-text-secondary hover:text-text-primary transition-colors">Dismiss</button>
+                </div>
+              </div>
+            )}
+
+            {inviteRows.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Active invites</p>
+                <div className="space-y-2">
+                  {inviteRows.map((inv) => (
+                    <div key={inv.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border">
+                      <Mail className="w-4 h-4 text-text-secondary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text-primary">{inv.email}</p>
+                        <p className="text-xs text-text-secondary">
+                          {inv.role} · expires {new Date(inv.expiresAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${inv.acceptedAt ? 'text-success bg-success/10 border-success/30' : 'text-warning bg-warning/10 border-warning/30'}`}>
+                        {inv.acceptedAt ? 'Accepted' : 'Pending'}
+                      </span>
+                      {!inv.acceptedAt && (
+                        <button onClick={() => revokeInvite(inv.id)} className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors" title="Revoke">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Pagination page={invitesPage} pages={invitesPages} onPage={setInvitesPage} />
+              </div>
+            )}
+          </Card>
+
+          {/* ── Password Resets ───────────────────────────────────────────── */}
+          {resets.length > 0 && (
+            <Card>
+              <SectionHeader icon={KeyRound} title="Pending Password Resets" count={resets.length} />
+              <p className="text-xs text-text-secondary mb-3">Fallback reset links when email delivery isn't configured.</p>
+              <div className="space-y-2">
+                {resetRows.map((r) => (
+                  <div key={r.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border">
+                    <KeyRound className="w-4 h-4 text-warning shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-text-primary">{r.email}</p>
+                      <p className="text-xs text-text-secondary">Expires {new Date(r.expiresAt).toLocaleDateString()}</p>
+                    </div>
+                    <CopyBtn value={r.resetUrl} />
+                    <button onClick={() => revokeReset(r.id)} className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors" title="Revoke">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Pagination page={resetsPage} pages={resetsPages} onPage={setResetsPage} />
+            </Card>
+          )}
+
+          {/* ── Audit Log ─────────────────────────────────────────────────── */}
+          <Card>
+            <SectionHeader icon={ClipboardList} title="Audit Log" count={auditLogs.length} />
+            <div className="space-y-1">
+              {auditRows.length === 0 && <p className="text-sm text-text-secondary text-center py-6">No audit events yet.</p>}
               {auditRows.map((l) => (
-                <TableRow key={l.id}>
-                  <TableCell>{new Date(l.createdAt).toLocaleString()}</TableCell>
-                  <TableCell>{l.action}</TableCell>
-                  <TableCell>{l.actorUserId ?? '—'}</TableCell>
-                  <TableCell>{l.targetUserId ?? '—'}</TableCell>
-                </TableRow>
+                <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-elevated/60 transition-colors border-b border-border/40 last:border-b-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent/60 shrink-0 mt-0.5" />
+                  <p className="flex-1 text-sm font-mono text-text-primary">{l.action}</p>
+                  <p className="text-xs text-text-secondary hidden sm:block truncate max-w-[100px]" title={l.actorUserId ?? ''}>{l.actorUserId?.slice(0, 8) ?? 'system'}</p>
+                  <RelativeTime iso={l.createdAt} />
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            <Pagination page={auditPage} pages={auditPages} onPage={setAuditPage} />
+          </Card>
         </div>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => setAuditPage(Math.max(1, auditPage - 1))}
-            disabled={auditPage === 1}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Prev
-          </button>
-          <span className="px-2 py-1 text-sm">{auditPage} / {auditPages}</span>
-          <button
-            onClick={() => setAuditPage(Math.min(auditPages, auditPage + 1))}
-            disabled={auditPage === auditPages}
-            className="px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </Card>
-      </>}
+      )}
+
+      {editUser && (
+        <EditUserModal
+          user={editUser}
+          currentUserId={currentUser?.id ?? ''}
+          onClose={() => setEditUser(null)}
+          onSave={handleSaveUser}
+        />
+      )}
     </AppFrame>
   );
 }

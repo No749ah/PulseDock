@@ -4476,6 +4476,12 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "rss-feed-widget":
       content = <RssFeedWidget {...props} />;
       break;
+    case "code-block":
+      content = <CodeBlock {...props} />;
+      break;
+    case "video-embed":
+      content = <VideoEmbed {...props} />;
+      break;
     default:
       content = (
         <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">

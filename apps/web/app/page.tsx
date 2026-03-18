@@ -40,9 +40,9 @@ const navLinks = [
 ];
 
 const stats = [
-  { value: "1300+", label: "Tools Tracked" },
-  { value: "20+", label: "Widget Types" },
-  { value: "6+", label: "Alert Channels" },
+  { value: "1400+", label: "Tools Tracked" },
+  { value: "65+", label: "Status Page Widgets" },
+  { value: "86+", label: "Monitor Templates" },
   { value: "100%", label: "Free & Open Source" },
 ];
 
@@ -155,7 +155,7 @@ const comparisonFeatures = [
   { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
-  { label: "Tool Registry (1300+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (1400+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },

@@ -543,8 +543,8 @@
 - [x] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
 - [x] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
 - [x] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
-- [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
-- [ ] **Code Block** — Display API response or config snippet with syntax highlighting
+- [x] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
+- [x] **Code Block** — Display API response or config snippet with syntax highlighting
 - [x] **Subscriber Form** — Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
 - [x] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
 
@@ -567,9 +567,9 @@
 - [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
 - [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
 - [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
-- [ ] **Template Gallery** — 10+ preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Service Status, Dev/Ops Dashboard, Customer-Facing, Internal Team, Executive Summary
-- [ ] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Arrow=Nudge 1px, Shift+Arrow=Nudge 10px, Ctrl+A=Select All, Ctrl+L=Lock
-- [ ] **Widget Search in Palette** — Filter palette by name/category
+- [x] **Template Gallery** — 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
+- [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
+- [x] **Widget Search in Palette** — Filter palette by name/category
 - [ ] **Layer Management** — Z-index ordering, bring to front/send to back
 - [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
 - [ ] **Version History** — Last 10 saves with preview + one-click restore

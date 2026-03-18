@@ -119,6 +119,11 @@ export class WidgetDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
+  locked?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsObject()
   config?: Record<string, unknown>;
 }

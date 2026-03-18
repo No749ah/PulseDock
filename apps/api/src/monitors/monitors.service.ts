@@ -411,7 +411,12 @@ export class MonitorsService {
 
   async getRecentRuns(userId: string, limit = 10) {
     const runs = await this.prisma.monitorRun.findMany({
-      where: { monitor: { userId } },
+      where: {
+        monitor: {
+          userId,
+          type: { notIn: ['GIT_RELEASE', 'DOCKER_IMAGE'] },
+        },
+      },
       orderBy: { checkedAt: 'desc' },
       take: limit,
       include: { monitor: { select: { type: true } } },

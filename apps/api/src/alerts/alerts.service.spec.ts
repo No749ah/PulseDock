@@ -131,8 +131,9 @@ describe('AlertsService', () => {
       expect(fetchMock).toHaveBeenCalledOnce();
       const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('https://discord.com/api/webhooks/abc/xyz');
-      const body = JSON.parse(opts.body as string) as { content: string };
-      expect(body.content).toContain('PulseDock test notification');
+      // Discord now sends embeds — verify the payload has the embed structure
+      const body = JSON.parse(opts.body as string) as { embeds?: Array<{ title?: string }> };
+      expect(Array.isArray(body.embeds)).toBe(true);
     });
 
     it('sends test message via slack webhook', async () => {

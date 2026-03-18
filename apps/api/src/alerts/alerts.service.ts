@@ -40,12 +40,68 @@ export class AlertsService {
     return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
   }
 
+  /** Build a Discord embed payload for a monitor alert. */
+  private buildDiscordEmbed(channel: AlertChannel, text: string, extra?: unknown): Record<string, unknown> {
+    const ctx = extra as { monitor?: { name?: string; type?: string; target?: string }; run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string }; test?: boolean } | undefined;
+    const run = ctx?.run;
+    const monitor = ctx?.monitor;
+    const isTest = ctx?.test === true;
+
+    const level = run?.level ?? (isTest ? 'green' : 'red');
+    const color = level === 'green' ? 0x3fb950 : level === 'yellow' ? 0xd29922 : 0xf85149;
+    const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+    const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+
+    const cfg = channel.config as Record<string, unknown>;
+    const username = typeof cfg.username === 'string' && cfg.username ? cfg.username : 'PulseDock';
+    const avatarUrl = typeof cfg.avatarUrl === 'string' && cfg.avatarUrl ? cfg.avatarUrl : undefined;
+
+    // Custom message template support: {monitor}, {status}, {message}, {latency}
+    let description = typeof cfg.messageTemplate === 'string' && cfg.messageTemplate
+      ? cfg.messageTemplate
+          .replace('{monitor}', monitor?.name ?? 'Unknown')
+          .replace('{status}', statusLabel)
+          .replace('{message}', run?.message ?? text)
+          .replace('{latency}', run?.latencyMs != null ? `${run.latencyMs}ms` : '—')
+      : run?.message ?? text;
+
+    const fields: Array<{ name: string; value: string; inline: boolean }> = [];
+
+    if (monitor?.name) fields.push({ name: 'Monitor', value: monitor.name, inline: true });
+    if (monitor?.type) fields.push({ name: 'Type', value: monitor.type.replace('_', ' '), inline: true });
+    if (run?.latencyMs != null) fields.push({ name: 'Latency', value: `${run.latencyMs}ms`, inline: true });
+    if (monitor?.target) fields.push({ name: 'Target', value: `\`${monitor.target}\``, inline: false });
+
+    const embed: Record<string, unknown> = {
+      title: `${emoji} ${monitor?.name ?? 'Monitor'} — ${statusLabel}`,
+      description,
+      color,
+      fields,
+      timestamp: run?.checkedAt ?? new Date().toISOString(),
+      footer: { text: 'PulseDock' },
+    };
+
+    // Build mention string (role or user ping)
+    const mentionParts: string[] = [];
+    if (typeof cfg.mentionRoleId === 'string' && cfg.mentionRoleId) mentionParts.push(`<@&${cfg.mentionRoleId}>`);
+    if (typeof cfg.mentionUserId === 'string' && cfg.mentionUserId) mentionParts.push(`<@${cfg.mentionUserId}>`);
+    const mention = mentionParts.length > 0 ? mentionParts.join(' ') : undefined;
+
+    const payload: Record<string, unknown> = {
+      username,
+      embeds: [embed],
+    };
+    if (avatarUrl) payload.avatar_url = avatarUrl;
+    if (mention) payload.content = mention;
+
+    return payload;
+  }
+
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
       const body = JSON.stringify({ text, extra });
       const headers: Record<string, string> = { 'content-type': 'application/json' };
 
-      // Add HMAC signature if a signing secret is configured
       if (typeof channel.config.secret === 'string' && channel.config.secret.length > 0) {
         headers['x-pulsedock-signature'] = this.webhookSignature(channel.config.secret, body);
       }
@@ -54,17 +110,64 @@ export class AlertsService {
       return;
     }
 
-    if ((channel.type === 'discord' || channel.type === 'slack') && typeof channel.config.webhookUrl === 'string') {
-      const payload = channel.type === 'discord' ? { content: text } : { text };
-      await fetch(channel.config.webhookUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    if (channel.type === 'discord' && typeof channel.config.webhookUrl === 'string') {
+      const payload = this.buildDiscordEmbed(channel, text, extra);
+      const resp = await fetch(channel.config.webhookUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        throw new Error(`Discord webhook returned ${resp.status}: ${body}`);
+      }
+      return;
+    }
+
+    if (channel.type === 'slack' && typeof channel.config.webhookUrl === 'string') {
+      // Slack Block Kit message
+      const ctx = extra as { monitor?: { name?: string; target?: string }; run?: { level?: string; message?: string; latencyMs?: number }; test?: boolean } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const emoji = level === 'green' ? ':white_check_mark:' : level === 'yellow' ? ':warning:' : ':rotating_light:';
+      const blocks = [
+        { type: 'header', text: { type: 'plain_text', text: `${emoji} ${monitor?.name ?? 'Monitor'} Alert`, emoji: true } },
+        { type: 'section', fields: [
+          { type: 'mrkdwn', text: `*Status:*\n${run?.level?.toUpperCase() ?? 'UNKNOWN'}` },
+          { type: 'mrkdwn', text: `*Message:*\n${run?.message ?? text}` },
+          ...(run?.latencyMs != null ? [{ type: 'mrkdwn', text: `*Latency:*\n${run.latencyMs}ms` }] : []),
+          ...(monitor?.target ? [{ type: 'mrkdwn', text: `*Target:*\n${monitor.target}` }] : []),
+        ]},
+        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Sent by PulseDock' }] },
+      ];
+      await fetch(channel.config.webhookUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text, blocks }),
+      });
       return;
     }
 
     if (channel.type === 'telegram' && typeof channel.config.botToken === 'string' && typeof channel.config.chatId === 'string') {
+      const parseMode = typeof channel.config.parseMode === 'string' ? channel.config.parseMode : 'HTML';
+      const ctx = extra as { monitor?: { name?: string; target?: string }; run?: { level?: string; message?: string; latencyMs?: number }; test?: boolean } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+
+      let msgText = text;
+      if (parseMode === 'HTML' && run && monitor) {
+        const emoji = run.level === 'green' ? '✅' : run.level === 'yellow' ? '⚠️' : '🚨';
+        const status = run.level === 'green' ? 'Recovered' : run.level === 'yellow' ? 'Degraded' : 'Down';
+        msgText = `${emoji} <b>${monitor.name}</b> — ${status}\n<code>${run.message}</code>`;
+        if (run.latencyMs != null) msgText += `\nLatency: <b>${run.latencyMs}ms</b>`;
+        if (monitor.target) msgText += `\nTarget: <code>${monitor.target}</code>`;
+      }
+
       await fetch(`https://api.telegram.org/bot${channel.config.botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id: channel.config.chatId, text }),
+        body: JSON.stringify({ chat_id: channel.config.chatId, text: msgText, parse_mode: parseMode }),
       });
       return;
     }

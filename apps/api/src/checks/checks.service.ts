@@ -1050,7 +1050,10 @@ export class ChecksService {
       failureStreak: consecutiveFailures,
     };
 
-    if (shouldAlertFailure) {
+    // Call notifyMonitorFailure for every unhealthy run (after confirmation threshold)
+    // AND for recoveries. The alerts service's notifyOn filter decides per-channel
+    // whether to actually dispatch (ON_CHANGE, ALWAYS, FIRST_ONLY, DAILY_DIGEST, etc.)
+    if (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations)) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     } else if (isRecovery) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);

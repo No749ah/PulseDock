@@ -38,13 +38,18 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: Gauge },
-      { href: '/versions', label: 'Versions', icon: GitBranch },
     ],
   },
   {
     label: 'Monitoring',
     items: [
-      { href: '/monitors', label: 'Monitors', icon: Activity },
+      { href: '/monitors', label: 'Uptime Checks', icon: Activity },
+      { href: '/versions', label: 'Version Tracking', icon: GitBranch },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },

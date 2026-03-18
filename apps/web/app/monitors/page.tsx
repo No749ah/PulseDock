@@ -38,7 +38,7 @@ interface TagItem {
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -122,7 +122,7 @@ function MonitorsPageInner() {
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
-    type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT";
     target: string;
     intervalSec: number;
     confirmations: number;
@@ -512,9 +512,13 @@ function MonitorsPageInner() {
   };
 
   const handleApplyTemplate = (t: MonitorTemplate) => {
+    // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
+    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"] as string[]).includes(t.type)
+      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT")
+      : "HTTP";
     setFormData({
       name: t.name,
-      type: t.type,
+      type: safeType,
       target: t.target,
       intervalSec: t.intervalSec,
       confirmations: 1,
@@ -623,7 +627,7 @@ function MonitorsPageInner() {
   if (!user) return null;
   if (loading)
     return (
-      <AppFrame title="Monitors">
+      <AppFrame title="Uptime Checks">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>
@@ -631,7 +635,7 @@ function MonitorsPageInner() {
     );
 
   return (
-    <AppFrame title="Monitors" subtitle="Manage your application monitors">
+    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors">
       <div className="space-y-6">
         {error && (
           <FadeIn>
@@ -1167,8 +1171,6 @@ function MonitorsPageInner() {
               className={inputClass}
             >
               <option value="HTTP">HTTP Check</option>
-              <option value="GIT_RELEASE">Git Release</option>
-              <option value="DOCKER_IMAGE">Docker Image</option>
               <option value="TCP">TCP Port</option>
               <option value="SSL_CERT">SSL Certificate</option>
               <option value="HEARTBEAT">Heartbeat</option>
@@ -1907,7 +1909,7 @@ function MonitorsPageInner() {
 export default function MonitorsPage() {
   return (
     <Suspense fallback={
-      <AppFrame title="Monitors">
+      <AppFrame title="Uptime Checks">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>

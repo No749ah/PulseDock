@@ -13,6 +13,7 @@ import { PWAInstallBanner } from "../components/pwa-install-banner";
 import { I18nProvider } from "../components/i18n-provider";
 import { KeyboardShortcuts } from "../components/keyboard-shortcuts";
 import { CommandPalette } from "../components/command-palette";
+import { PageTransition } from "../components/page-transition";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -137,7 +138,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <I18nProvider>
           <ThemeProvider>
             <ToastProvider>
+              <PageTransition>
               {children}
+              </PageTransition>
               <CommandPalette />
               <KeyboardShortcuts />
               <PWAInstallBanner />

@@ -220,6 +220,28 @@ html, body {
 }
 
 /* ── Print styles (status pages) ─────────────────────────────────────── */
+/* ── Page Transition ──────────────────────────────────── */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition-root {
+  animation: page-fade-in 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-root {
+    animation: none;
+  }
+}
+
 @media print {
   /* Hide interactive / nav chrome */
   .print\:hidden { display: none !important; }

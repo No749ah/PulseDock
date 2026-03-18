@@ -1015,6 +1015,7 @@ export class ChecksService {
       id: created.id,
       userId: created.userId,
       monitorId: created.monitorId,
+      monitorType: monitor.type,
       checkedAt: created.checkedAt.toISOString(),
       ok: created.ok,
       statusCode: created.status,

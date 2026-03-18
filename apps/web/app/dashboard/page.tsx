@@ -152,7 +152,17 @@ export default function DashboardPage() {
 
   const uptimeMonitors = monitors.filter((m) => UPTIME_TYPES.has(m.type));
   const versionMonitors = monitors.filter((m) => VERSION_TYPES.has(m.type));
-  const uptimeRuns = runs.filter((r) => !r.monitorType || UPTIME_TYPES.has(r.monitorType));
+  // Build a lookup: monitorId → monitorType from the monitors list (used when run.monitorType is absent)
+  const monitorTypeById = new Map(monitors.map((m) => [m.id, m.type]));
+  const uptimeRuns = runs.filter((r) => {
+    const type = r.monitorType ?? monitorTypeById.get(r.monitorId);
+    // If type is known and is a version type → exclude
+    if (type && VERSION_TYPES.has(type)) return false;
+    // If type is known and is an uptime type → include
+    if (type && UPTIME_TYPES.has(type)) return true;
+    // Unknown type (shouldn't happen after fix) → include as fallback
+    return true;
+  });
 
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>

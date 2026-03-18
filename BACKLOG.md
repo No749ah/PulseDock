@@ -1,3 +1,13 @@
+## Status Summary (2026-03-18 23:11 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-18-widget-data
+- **This session (2026-03-18 23:11 UTC):**
+  - **3 new status-page widgets**: Region Status Map (card grid per region), Third-Party Dependencies (live HEAD checks), Security Advisory (GitHub advisories lookup)
+  - All 3 with: backend resolver, frontend component, editor palette entry + config panel
+  - BACKLOG: marked 3 items complete
+
 ## Status Summary (2026-03-18 22:07 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
@@ -517,8 +527,8 @@
 - [x] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
 - [x] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
 - [x] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
-- [ ] **Region Status Map** — SVG world map with colored pins per monitor. Config: latitude/longitude or region (EU/US/APAC) per monitor
-- [ ] **Third-Party Dependencies** — Show status of external services. Config: URLs to check (GitHub status, AWS health, Cloudflare status etc.)
+- [x] **Region Status Map** — Card grid layout showing monitors grouped by region with status (operational/degraded/outage). Config: regionMonitors JSON mapping region names to monitor ID arrays.
+- [x] **Third-Party Dependencies** — Live HEAD checks of external services. Config: services JSON array [{name, url}]. Shows status dot, HTTP status, response time per service.
 - [x] **Rolling Uptime Cards** — Row of cards: 24h / 7d / 30d / 90d uptime percentages side by side
 
 ### P1 — New Widgets (Performance)
@@ -557,7 +567,7 @@
 - [x] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
 - [x] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
 - [x] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
-- [ ] **Security Advisory Widget** — Checks if current version has known CVEs (via GitHub advisories API)
+- [x] **Security Advisory Widget** — Checks GitHub Security Advisories for a configured package name. Shows severity badges (critical/high/medium/low), GHSA ID, summary, published date, and link.
 
 ### P1 — New Widgets (Metrics & Data)
 

@@ -20,6 +20,7 @@ import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } 
 import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
+import { MiniSparkline } from "../../components/charts";
 
 interface MonitorTag {
   id: string;
@@ -1208,6 +1209,7 @@ function MonitorsPageInner() {
                           {sortBy === "status" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
+                      <TableHeader className="hidden xl:table-cell">Trend</TableHeader>
                       <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
@@ -1272,6 +1274,25 @@ function MonitorsPageInner() {
                               enabled={monitor.enabled}
                               runs={runs}
                             />
+                          </TableCell>
+                          {/* Trend sparkline — last 20 runs for this monitor */}
+                          <TableCell className="hidden xl:table-cell">
+                            {(() => {
+                              const monRuns = runs
+                                .filter((r) => r.monitorId === monitor.id)
+                                .slice(0, 20)
+                                .reverse();
+                              const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                              if (monRuns.length === 0) return <span className="text-xs text-text-muted">—</span>;
+                              return (
+                                <MiniSparkline
+                                  data={monRuns.map((r) => ({ value: r.latencyMs ?? 0, ok: r.ok }))}
+                                  height={28}
+                                  color={lastRun?.ok !== false ? "#3fb950" : "#f85149"}
+                                  className="w-20"
+                                />
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <button

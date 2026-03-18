@@ -1,4 +1,4 @@
-## Status Summary (2026-03-17 23:08 UTC)
+## Status Summary (2026-03-18 08:11 UTC)
 - **Build/Test:** ✅ Clean build, full test suite passing (API+CLI+Agent)
 - **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks green.
@@ -29,7 +29,11 @@
 
 ## In Progress
 
-- [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown.
+- [ ] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Show last N checks or last N hours.
+
+## Recently Completed
+
+- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown per UTC date bucket. Legend shows Up/Degraded/Down/No-data. Widget shows overall uptime% computed from real check data.
 
 ## Recently Completed
 
@@ -946,6 +950,7 @@
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-18 08:11 UTC):** Implemented Uptime Timeline with real MonitorRun data. API resolves per-day UTC buckets (green/yellow/red/no-data) from MonitorRun records. Widget renders colored squares with tooltips, uptime% in header, legend row. 5 new tests. Total: 1358 passing. Services restarted, all routes 200, proxy healthy.
 - **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.
 - **This heartbeat (2026-03-17 13:02 UTC):** Fixed 4 failing tests (status-pages mock missing incident/maintenanceWindow/recentChecks). Added 5 new findPublic() coverage tests. Branch rotation — merged heartbeat/2026-03-17-maintenance → dev, created heartbeat/2026-03-17-coverage-cleanup. Bumped to v1.0.2 with CHANGELOG. All 1349 tests passing (98.73% stmt, 95.29% branch, 100% line).
 - **This heartbeat (2026-03-17 10:02 UTC):** Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to match Next.js 16 config schema. `npm run build` now runs without invalid-config warnings; restart + local/proxy route audits completed.

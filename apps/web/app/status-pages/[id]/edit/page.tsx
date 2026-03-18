@@ -54,6 +54,8 @@ import {
   LayoutTemplate,
   Code2,
   Play,
+  Settings2,
+  RefreshCw,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -83,8 +85,16 @@ interface Widget {
 
 type ViewportMode = "desktop" | "tablet" | "mobile";
 
+interface PageSettings {
+  autoRefreshInterval?: number; // seconds, 0 = off
+  showBranding?: boolean;
+  logoUrl?: string;
+  accentColor?: string;
+}
+
 interface PageLayout {
   widgets: Widget[];
+  settings?: PageSettings;
 }
 
 interface StatusPage {
@@ -1079,6 +1089,8 @@ export default function StatusPageEditorPage() {
   const [zoom, setZoom] = useState(1);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+  const [showPageSettings, setShowPageSettings] = useState(false);
+  const [pageSettings, setPageSettings] = useState<PageSettings>({});
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -1108,6 +1120,7 @@ export default function StatusPageEditorPage() {
       setPage(data);
       const loadedWidgets = data.layout?.widgets ?? [];
       setWidgets(loadedWidgets);
+      setPageSettings(data.layout?.settings ?? {});
       savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -1159,7 +1172,7 @@ export default function StatusPageEditorPage() {
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout: { widgets } }),
+        body: JSON.stringify({ layout: { widgets, settings: pageSettings } }),
       });
       // Mark as clean after successful save
       savedWidgetsRef.current = JSON.stringify(widgets);
@@ -1171,7 +1184,7 @@ export default function StatusPageEditorPage() {
     } finally {
       setSaving(false);
     }
-  }, [page, id, widgets, toastCtx]);
+  }, [page, id, widgets, pageSettings, toastCtx]);
 
   // Track dirty state whenever widgets change
   const initialLoad = useRef(true);
@@ -1537,6 +1550,15 @@ export default function StatusPageEditorPage() {
               Templates
             </button>
 
+            {/* Page settings button */}
+            <button
+              onClick={() => setShowPageSettings(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Settings
+            </button>
+
             {/* Auto-save toggle */}
             <button
               onClick={() => setAutoSaveEnabled(v => !v)}
@@ -1684,6 +1706,103 @@ export default function StatusPageEditorPage() {
           </div>
         )}
       </DragOverlay>
+
+      {/* Page Settings Modal */}
+      {showPageSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary">Page Settings</h2>
+                <p className="text-xs text-text-muted mt-0.5">Configure auto-refresh, branding, and appearance.</p>
+              </div>
+              <button onClick={() => setShowPageSettings(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Logo URL */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Logo URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/logo.png"
+                  value={pageSettings.logoUrl ?? ""}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, logoUrl: e.target.value || undefined }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-text-muted">Displayed above the page title. Leave empty to hide.</p>
+              </div>
+
+              {/* Accent color */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={pageSettings.accentColor ?? "#6366f1"}
+                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value }))}
+                    className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="#6366f1"
+                    value={pageSettings.accentColor ?? ""}
+                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value || undefined }))}
+                    className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-text-muted">Override the default accent color on the public page.</p>
+              </div>
+
+              {/* Auto-refresh interval */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  <RefreshCw className="inline h-3 w-3 mr-1" />
+                  Auto-Refresh Interval
+                </label>
+                <select
+                  value={pageSettings.autoRefreshInterval ?? 60}
+                  onChange={(e) => setPageSettings((s) => ({ ...s, autoRefreshInterval: Number(e.target.value) }))}
+                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
+                >
+                  <option value={0}>Off (manual only)</option>
+                  <option value={10}>Every 10 seconds</option>
+                  <option value={30}>Every 30 seconds</option>
+                  <option value={60}>Every 60 seconds (default)</option>
+                  <option value={300}>Every 5 minutes</option>
+                  <option value={600}>Every 10 minutes</option>
+                </select>
+              </div>
+
+              {/* Branding toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
+                <div>
+                  <p className="text-xs font-medium text-text-primary">Show "Powered by PulseDock"</p>
+                  <p className="text-xs text-text-muted mt-0.5">Displays the PulseDock branding in the page footer.</p>
+                </div>
+                <button
+                  onClick={() => setPageSettings((s) => ({ ...s, showBranding: !(s.showBranding !== false) }))}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.showBranding !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+              <button onClick={() => setShowPageSettings(false)} className="rounded-lg border border-border bg-bg px-4 py-2 text-xs font-medium text-text-secondary hover:text-text-primary transition">
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowPageSettings(false); handleSave(); }}
+                className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white transition hover:bg-accent/90"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Template Gallery Modal */}
       {showTemplateGallery && (

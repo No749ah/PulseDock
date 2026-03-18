@@ -344,12 +344,12 @@ export default async function PublicStatusSlugPage({
 
           {/* Footer */}
           <div className="pt-8 text-center text-xs text-text-secondary">
-            <span>
-              Last updated: {lastUpdated} ·{" "}
-            </span>
-            <span>
-              Powered by <span className="font-semibold text-accent">PulseDock</span>
-            </span>
+            <span>Last updated: {lastUpdated}</span>
+            {showBranding && (
+              <span>
+                {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>
+              </span>
+            )}
           </div>
         </div>
       </main>

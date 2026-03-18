@@ -83,6 +83,9 @@ export function AppFrame({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("notif-read-ids") || "[]")); } catch { return new Set(); }
+  });
   const [notifications, setNotifications] = useState<Array<{
     id: string; message: string; level: string; checkedAt: string; ok: boolean;
   }>>([]);
@@ -100,6 +103,15 @@ export function AppFrame({
       setNotifications(failed);
     }).catch(() => { /* non-critical */ });
   }, []);
+
+  function markAllRead() {
+    const ids = notifications.map((n) => n.id);
+    const next = new Set([...readIds, ...ids]);
+    setReadIds(next);
+    try { localStorage.setItem("notif-read-ids", JSON.stringify([...next])); } catch {}
+  }
+
+  const unreadNotifications = notifications.filter((n) => !readIds.has(n.id));
 
   // Close sidebar on route change
   useEffect(() => {
@@ -276,10 +288,10 @@ export function AppFrame({
                 aria-haspopup="true"
               >
                 <Bell className="w-4 h-4" />
-                {/* Badge — shows count of recent failures */}
-                {notifications.length > 0 && (
+                {/* Badge — shows unread failure count */}
+                {unreadNotifications.length > 0 && (
                   <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
-                    {notifications.length > 9 ? "9+" : notifications.length}
+                    {unreadNotifications.length > 9 ? "9+" : unreadNotifications.length}
                   </span>
                 )}
               </button>
@@ -288,9 +300,19 @@ export function AppFrame({
                 <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold text-text-primary">Recent Failures</p>
-                    {notifications.length > 0 && (
-                      <span className="text-xs bg-danger/15 text-danger px-2 py-0.5 rounded-full font-medium">{notifications.length} alert{notifications.length !== 1 ? "s" : ""}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {notifications.length > 0 && (
+                        <span className="text-xs bg-danger/15 text-danger px-2 py-0.5 rounded-full font-medium">{unreadNotifications.length} unread</span>
+                      )}
+                      {unreadNotifications.length > 0 && (
+                        <button
+                          onClick={markAllRead}
+                          className="text-xs text-text-muted hover:text-accent transition-colors"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {notifications.length === 0 ? (
                     <div className="py-6 flex flex-col items-center gap-2 text-center">
@@ -300,23 +322,29 @@ export function AppFrame({
                     </div>
                   ) : (
                     <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
-                      {notifications.map((n) => (
-                        <div key={n.id} className="px-4 py-3 flex items-start gap-3 hover:bg-surface-elevated/50 transition-colors">
-                          <span className="mt-0.5 flex h-2 w-2 shrink-0 rounded-full bg-danger" />
-                          <div className="min-w-0">
-                            <p className="text-xs text-text-primary truncate">{n.message || "Monitor check failed"}</p>
-                            <p className="text-[10px] text-text-muted mt-0.5">
-                              {(() => {
-                                const diff = Date.now() - new Date(n.checkedAt).getTime();
-                                const m = Math.floor(diff / 60000);
-                                if (m < 1) return "just now";
-                                if (m < 60) return `${m}m ago`;
-                                return `${Math.floor(m / 60)}h ago`;
-                              })()}
-                            </p>
+                      {notifications.map((n) => {
+                        const isRead = readIds.has(n.id);
+                        const diff = Date.now() - new Date(n.checkedAt).getTime();
+                        const mins = Math.floor(diff / 60000);
+                        const timeAgo = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+                        return (
+                          <div
+                            key={n.id}
+                            className={`px-4 py-3 flex items-start gap-3 hover:bg-surface-elevated/50 transition-colors cursor-pointer ${isRead ? "opacity-50" : ""}`}
+                            onClick={() => {
+                              const next = new Set([...readIds, n.id]);
+                              setReadIds(next);
+                              try { localStorage.setItem("notif-read-ids", JSON.stringify([...next])); } catch {}
+                            }}
+                          >
+                            <span className={`mt-0.5 flex h-2 w-2 shrink-0 rounded-full ${n.level === "red" ? "bg-danger" : n.level === "yellow" ? "bg-warning" : "bg-text-muted"}`} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-text-primary truncate">{n.message || "Monitor check failed"}</p>
+                              <p className="text-[10px] text-text-muted mt-0.5">{timeAgo}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   <div className="px-4 py-2 border-t border-border">

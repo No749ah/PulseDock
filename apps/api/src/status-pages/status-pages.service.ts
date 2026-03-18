@@ -2265,6 +2265,116 @@ export class StatusPagesService {
         return { label, targetAt, secondsRemaining, expired, hideAfterExpiry };
       }
 
+      case 'check-history-feed': {
+        // Return recent checks across all monitors for this user
+        const checks = await this.prisma.monitorRun.findMany({
+          where: { userId },
+          orderBy: { checkedAt: 'desc' },
+          take: 50,
+          include: { monitor: { select: { name: true } } },
+        });
+        return {
+          checks: checks.map((c) => ({
+            id: c.id,
+            monitorId: c.monitorId,
+            monitorName: c.monitor.name,
+            checkedAt: c.checkedAt.toISOString(),
+            ok: c.ok,
+            level: c.level,
+            latencyMs: c.latencyMs,
+            message: c.message,
+          })),
+        };
+      }
+
+      case 'incident-history': {
+        // Return recent incidents for this user
+        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+        const incidents = await this.prisma.incident.findMany({
+          where: { userId, createdAt: { gte: since } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            updates: { orderBy: { createdAt: 'desc' }, take: 5 },
+            monitors: { include: { monitor: { select: { id: true, name: true } } } },
+          },
+        });
+        return {
+          incidents: incidents.map((i) => ({
+            id: i.id,
+            title: i.title,
+            status: i.status,
+            severity: i.severity,
+            createdAt: i.createdAt.toISOString(),
+            resolvedAt: i.resolvedAt?.toISOString() ?? null,
+            updates: i.updates.map((u) => ({
+              id: u.id,
+              message: u.body,
+              status: u.status,
+              createdAt: u.createdAt.toISOString(),
+            })),
+            monitors: i.monitors.map((im) => ({ id: im.monitor.id, name: im.monitor.name })),
+          })),
+          total: incidents.length,
+          periodDays,
+        };
+      }
+
+      case 'scheduled-maintenance': {
+        // Return active/upcoming maintenance windows
+        const now = new Date();
+        const windows = await this.prisma.maintenanceWindow.findMany({
+          where: { userId, endsAt: { gte: now } },
+          orderBy: { startsAt: 'asc' },
+          include: {
+            monitors: { include: { monitor: { select: { id: true, name: true } } } },
+          },
+        });
+        return {
+          windows: windows.map((mw) => ({
+            id: mw.id,
+            name: mw.name,
+            description: mw.description,
+            startsAt: mw.startsAt.toISOString(),
+            endsAt: mw.endsAt.toISOString(),
+            monitors: mw.monitors.map((m) => ({ id: m.monitor.id, name: m.monitor.name })),
+          })),
+        };
+      }
+
+      case 'version-status-grid': {
+        // Return version info from GIT_RELEASE monitors
+        const monitors = await this.prisma.monitor.findMany({
+          where: { userId, enabled: true },
+          select: { id: true, name: true, type: true },
+        });
+        const latestRuns = await Promise.all(
+          monitors.map(async (m) => {
+            const run = await this.prisma.monitorRun.findFirst({
+              where: { monitorId: m.id },
+              orderBy: { checkedAt: 'desc' },
+              select: { level: true, message: true, checkedAt: true, latencyMs: true },
+            });
+            return { ...m, run };
+          }),
+        );
+        // Filter to monitors that have version info in their message
+        const versionMonitors = latestRuns.filter(
+          (m) => m.run?.message && /current/i.test(m.run.message),
+        );
+        return {
+          monitors: versionMonitors.map((m) => ({
+            id: m.id,
+            name: m.name,
+            type: m.type,
+            level: m.run?.level ?? 'green',
+            message: m.run?.message ?? null,
+            lastChecked: m.run?.checkedAt?.toISOString() ?? null,
+          })),
+        };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

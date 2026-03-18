@@ -368,6 +368,38 @@ export class StatusPagesService {
         return { status, monitorsDown: down, monitorsDegraded: degraded, total: monitors.length };
       }
 
+      case 'sla-summary': {
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const slaTgt = Math.min(Math.max((widget.config.slaTarget as number) ?? 99.9, 0), 100);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since } },
+          select: { level: true },
+        });
+        const total = runs.length;
+        const up = runs.filter((r: { level: string }) => r.level === 'green').length;
+        const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        const pass = uptimePct >= slaTgt;
+        // Compute allowable downtime minutes remaining in period
+        const totalMinutes = periodDays * 24 * 60;
+        const allowedDownMinutes = ((100 - slaTgt) / 100) * totalMinutes;
+        const actualDownMinutes = total > 0 ? ((total - up) / total) * totalMinutes : 0;
+        const remainingDownMinutes = Math.max(0, allowedDownMinutes - actualDownMinutes);
+        return {
+          monitorId,
+          periodDays,
+          slaTarget: slaTgt,
+          uptimePct,
+          total,
+          up,
+          down: total - up,
+          pass,
+          allowedDownMinutes: Math.round(allowedDownMinutes * 10) / 10,
+          remainingDownMinutes: Math.round(remainingDownMinutes * 10) / 10,
+        };
+      }
+
       case 'response-time-chart': {
         if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
         // Default: last 60 data points (configurable via periodHours or points)

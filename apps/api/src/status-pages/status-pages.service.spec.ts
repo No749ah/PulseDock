@@ -970,4 +970,76 @@ describe('StatusPagesService', () => {
       expect(result.avgMs).toBe(150);
     });
   });
+
+  describe('getWidgetData — sla-summary', () => {
+    it('returns pass=true with correct uptimePct when all checks green', async () => {
+      const runs = Array.from({ length: 100 }, () => ({ level: 'green' }));
+      const layout = {
+        widgets: [{ id: 'sla1', type: 'sla-summary', config: { monitorId: 'mon-1', periodDays: 30, slaTarget: 99.9 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sla1');
+      expect(result.uptimePct).toBe(100);
+      expect(result.pass).toBe(true);
+      expect(result.total).toBe(100);
+      expect(result.up).toBe(100);
+      expect(result.down).toBe(0);
+      expect(result.slaTarget).toBe(99.9);
+    });
+
+    it('returns pass=false when uptime is below SLA target', async () => {
+      // 95 green + 5 red = 95% uptime, target is 99.9%
+      const runs = [
+        ...Array.from({ length: 95 }, () => ({ level: 'green' })),
+        ...Array.from({ length: 5 }, () => ({ level: 'red' })),
+      ];
+      const layout = {
+        widgets: [{ id: 'sla2', type: 'sla-summary', config: { monitorId: 'mon-1', periodDays: 30, slaTarget: 99.9 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sla2');
+      expect(result.uptimePct).toBe(95);
+      expect(result.pass).toBe(false);
+      expect(result.down).toBe(5);
+    });
+
+    it('returns uptimePct=100 with no checks (empty dataset)', async () => {
+      const layout = {
+        widgets: [{ id: 'sla3', type: 'sla-summary', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sla3');
+      expect(result.uptimePct).toBe(100);
+      expect(result.total).toBe(0);
+      expect(result.pass).toBe(true); // 100 >= 99.9 default
+    });
+
+    it('computes allowedDownMinutes correctly for 30-day period at 99.9% SLA', async () => {
+      const layout = {
+        widgets: [{ id: 'sla4', type: 'sla-summary', config: { monitorId: 'mon-1', periodDays: 30, slaTarget: 99.9 }, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.getWidgetData('my-status-page', 'sla4');
+      // 30d × 24h × 60min × 0.001 = 43.2 minutes
+      expect(result.allowedDownMinutes).toBe(43.2);
+      expect(result.remainingDownMinutes).toBe(43.2); // no down time used
+    });
+
+    it('throws BadRequestException when monitorId is missing', async () => {
+      const layout = {
+        widgets: [{ id: 'sla5', type: 'sla-summary', config: {}, x: 0, y: 0, w: 12, h: 2 }],
+      };
+      prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
+      service = makeService(prisma);
+      await expect(service.getWidgetData('my-status-page', 'sla5')).rejects.toThrow(BadRequestException);
+    });
+  });
 });

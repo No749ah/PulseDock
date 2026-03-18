@@ -368,41 +368,91 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
 }
 
 // SLA Summary
-export function SLASummary({ widget, monitors }: WidgetProps) {
+export function SLASummary({ widget, monitors, extra }: WidgetProps) {
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
-  const periodDays = (widget.config.periodDays as number) ?? 30;
   const label = widget.config.label ?? monitor?.name ?? "SLA";
-  const target = 99.9;
-  const actual =
-    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0;
-  const pass = actual >= target;
+
+  const widgetData = extra.widgetDataById[widget.id] as {
+    uptimePct?: number;
+    periodDays?: number;
+    slaTarget?: number;
+    total?: number;
+    up?: number;
+    down?: number;
+    pass?: boolean;
+    allowedDownMinutes?: number;
+    remainingDownMinutes?: number;
+  } | undefined;
+
+  const periodDays = widgetData?.periodDays ?? (widget.config.periodDays as number) ?? 30;
+  const target = widgetData?.slaTarget ?? (widget.config.slaTarget as number) ?? 99.9;
+  const actual = widgetData?.uptimePct ?? (
+    !monitor ? 100 : monitor.level === "green" ? 100 : monitor.level === "yellow" ? 95.0 : 80.0
+  );
+  const pass = widgetData?.pass ?? (actual >= target);
+  const totalChecks = widgetData?.total ?? null;
+  const remainingDownMin = widgetData?.remainingDownMinutes ?? null;
+  const allowedDownMin = widgetData?.allowedDownMinutes ?? null;
+
+  function formatMinutes(min: number): string {
+    if (min < 1) return `${Math.round(min * 60)}s`;
+    if (min < 60) return `${Math.round(min)}m`;
+    const h = Math.floor(min / 60);
+    const m = Math.round(min % 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // Progress bar: how much of the allowed downtime budget is used
+  const budgetUsed = allowedDownMin !== null && remainingDownMin !== null && allowedDownMin > 0
+    ? Math.min(100, Math.round(((allowedDownMin - remainingDownMin) / allowedDownMin) * 100))
+    : null;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="mb-3 text-sm font-medium text-text-primary">{label}</p>
-      <div className="flex items-end gap-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium text-text-primary">{label}</p>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+            pass
+              ? "bg-green-500/15 text-green-400"
+              : "bg-red-500/15 text-red-400"
+          }`}
+        >
+          {pass ? "✓ Met" : "✗ Missed"}
+        </span>
+      </div>
+      <div className="flex items-end gap-4 mb-3">
         <div>
-          <p className={`text-3xl font-semibold ${pass ? "text-green-400" : "text-red-400"}`}>
-            {actual.toFixed(1)}%
+          <p className={`text-3xl font-semibold tabular-nums ${pass ? "text-green-400" : "text-red-400"}`}>
+            {actual.toFixed(2)}%
           </p>
-          <p className="text-xs text-text-secondary">Actual · {periodDays}d</p>
+          <p className="text-xs text-text-secondary">
+            Actual · {periodDays}d
+            {totalChecks !== null ? ` · ${totalChecks} checks` : ""}
+          </p>
         </div>
-        <div>
-          <p className="text-lg font-medium text-text-secondary">{target}%</p>
+        <div className="pb-0.5">
+          <p className="text-lg font-medium text-text-secondary tabular-nums">{target}%</p>
           <p className="text-xs text-text-secondary">Target</p>
         </div>
-        <div className="ml-auto">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-              pass
-                ? "bg-green-500/15 text-green-400"
-                : "bg-red-500/15 text-red-400"
-            }`}
-          >
-            {pass ? "✓ Met" : "✗ Missed"}
-          </span>
-        </div>
       </div>
+      {/* Downtime budget bar */}
+      {budgetUsed !== null && allowedDownMin !== null && (
+        <div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg mb-1">
+            <div
+              className={`h-full rounded-full transition-all ${budgetUsed >= 90 ? "bg-red-400" : budgetUsed >= 60 ? "bg-yellow-400" : "bg-green-400"}`}
+              style={{ width: `${budgetUsed}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-text-secondary">
+            <span>Budget used: {budgetUsed}%</span>
+            {remainingDownMin !== null && (
+              <span>{formatMinutes(remainingDownMin)} remaining of {formatMinutes(allowedDownMin)} allowed</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

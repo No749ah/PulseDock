@@ -277,6 +277,7 @@ export default function StatusPagesPage() {
                   ref={titleInputRef}
                   type="text"
                   name="title"
+                  autoComplete="off"
                   value={createTitle}
                   onChange={(e) => {
                     setCreateTitle(e.target.value);

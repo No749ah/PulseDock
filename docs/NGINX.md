@@ -158,6 +158,29 @@ server {
         proxy_buffering     off;
     }
 
+    # ── CRITICAL: Static assets — separate block with buffering ON ────────────
+    # proxy_buffering off (set for socket.io/main block) breaks static file delivery.
+    # Without this block, /_next/static/*.css|js return 404 through the proxy.
+    # This is the RECURRING root cause — always keep this block.
+    location ~* ^/_next/static/ {
+        proxy_pass          http://pulsedock_web;
+        proxy_http_version  1.1;
+        proxy_set_header    Host              $host;
+        proxy_set_header    X-Real-IP         $remote_addr;
+        proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto $scheme;
+
+        proxy_buffering         on;
+        proxy_buffer_size       128k;
+        proxy_buffers           256 16k;
+        proxy_max_temp_file_size 2048m;
+        proxy_temp_file_write_size 32k;
+
+        proxy_connect_timeout   60s;
+        proxy_send_timeout      300s;
+        proxy_read_timeout      300s;
+    }
+
     # Main web frontend
     location / {
         proxy_pass          http://pulsedock_web;
@@ -169,13 +192,7 @@ server {
         proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header    X-Forwarded-Proto $scheme;
         proxy_read_timeout  60s;
-
-        # CRITICAL: never cache any response in the proxy layer.
-        # Next.js sends correct Cache-Control headers — the browser handles caching.
-        # proxy_cache on the proxy will cache 404/500 error responses during restart
-        # windows and serve them to all users even after the origin recovers.
-        proxy_no_cache      1;
-        proxy_cache_bypass  1;
+        proxy_buffering     off;
     }
 }
 ```

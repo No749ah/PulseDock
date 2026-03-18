@@ -445,16 +445,16 @@
 ### P0 — Config Panel + Multi-Monitor + Grid Layout
 
 - [x] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
-- [ ] **Multi-Monitor Picker component** — Reusable picker with: checkboxes for multiple monitors, "Select All" button, filter by tag dropdown, filter by folder dropdown, filter by type (HTTP/TCP/SSL/Version/Heartbeat), search input, selected count badge. Used by: Multi-Status Badges, Monitor Group, Version Grid, Check History, Status Badge (multi mode), Response Time Comparison, Uptime Comparison
+- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
 - [x] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
-- [ ] **Resize Handles in editor** — Drag corners/edges to resize widgets on canvas. Visual resize handles on hover. Minimum size constraints per widget type
-- [ ] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing (fallback when drag-resize isn't precise enough)
+- [x] **Resize Handles in editor** — Bottom-right corner drag handle on every canvas widget. Appears on hover (always visible when selected). Snaps to grid (cols × ROW_H rows). Min 1 col/row, max 12 cols/10 rows.
+- [x] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing in Properties panel (w: 1-12, h: 1-10).
 
 ### P0 — Fix Existing Widget Data
 
 - [x] **Uptime Bar with real data** — Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
-- [ ] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
-- [ ] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
+- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
+- [x] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
 
 ### P1 — New Widgets (Status & Uptime)
 
@@ -952,11 +952,12 @@
 ---
 
 ## Status Summary
-- **Codebase:** 1349 tests passing (1327 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
+- **Codebase:** 1346 tests passing (1324 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
 - **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
 - **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
 - **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
 - **Version:** v1.0.1 🎉
+- **This heartbeat (2026-03-18 09:57 UTC):** Drag-to-resize handles on canvas widgets in status page editor. Bottom-right corner grip, snaps to grid, min/max constraints. Fixed notifications.controller.spec.ts (req.user.sub→id, 4 tests). 1346 tests passing, build clean, all routes 200.
 - **This heartbeat (2026-03-18 08:35 UTC):** Landing page P0 rework complete via sub-agent. Hero mockup dashboard, improved How-It-Works cards, 2×2 screenshot gallery, pricing section (free/cloud). Build clean, proxy 200.
 - **This heartbeat (2026-03-18 08:26 UTC):** Implemented SLA Summary with real MonitorRun data. API computes uptimePct, pass/fail, allowedDownMinutes, remainingDownMinutes budget. Widget renders actual vs target, downtime budget bar. 5 new tests. Total: 1346 passing. Services restarted, routes 200.
 - **This heartbeat (2026-03-18 08:20 UTC):** Implemented Response Time Chart with real MonitorRun data. API resolves last N latencyMs values from MonitorRun (configurable via points/periodHours), computes avg/p95/max. Widget renders SVG bar sparkline (green=ok, red=failed), dashed avg + dotted p95 overlay lines, header stats. 5 new tests. Total: 1341 passing. Services restarted, all routes 200, proxy healthy.

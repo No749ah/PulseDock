@@ -96,7 +96,7 @@ export class AlertsService {
     throw lastError;
   }
 
-  async notifyMonitorFailure(monitor: Monitor, run: MonitorRun) {
+  async notifyMonitorFailure(monitor: Monitor, run: MonitorRun, context?: { levelChanged?: boolean; previousLevel?: string | null; failureStreak?: number }) {
     // Suppress alerts during active maintenance windows
     const now = new Date();
     const activeMaintenance = await this.prisma.maintenanceWindow.findFirst({
@@ -130,16 +130,64 @@ export class AlertsService {
       include: { alertChannel: true },
     });
 
-    const channels: AlertChannel[] = links
-      .filter((l) => l.alertChannel.userId === monitor.userId)
-      .map((l) => ({
-        id: l.alertChannel.id,
-        userId: l.alertChannel.userId,
-        name: l.alertChannel.name,
-        type: l.alertChannel.type as AlertChannel['type'],
-        config: (l.alertChannel.configJson as Record<string, unknown>) ?? {},
-        createdAt: l.alertChannel.createdAt.toISOString(),
-      }));
+    const levelChanged = context?.levelChanged ?? true;
+    const previousLevel = context?.previousLevel ?? null;
+    const failureStreak = context?.failureStreak ?? 1;
+    const isVersionMonitor = monitor.type === 'GIT_RELEASE' || monitor.type === 'DOCKER_IMAGE';
+    const alertNow = new Date();
+
+    // Filter channels based on notifyOn setting
+    const eligibleLinks = links.filter((l) => {
+      if (l.alertChannel.userId !== monitor.userId) return false;
+      const notifyOn: string = (l.notifyOn as string) || 'ON_CHANGE';
+
+      switch (notifyOn) {
+        case 'ON_CHANGE':
+          // Only fire when status changed (new failure or recovery)
+          return levelChanged;
+        case 'ALWAYS':
+          // Every non-green run (or every check for version monitors)
+          return run.level !== 'green';
+        case 'FIRST_ONLY':
+          // Only first failure in a streak (streak === 1)
+          return failureStreak === 1;
+        case 'DAILY_DIGEST': {
+          // At most once per 24h per monitor+channel
+          const lastNotified = l.lastNotifiedAt;
+          if (!lastNotified) return true;
+          const hoursSince = (alertNow.getTime() - lastNotified.getTime()) / 3_600_000;
+          return hoursSince >= 24;
+        }
+        case 'VERSION_ANY':
+          // Version monitors: fire when not up-to-date (yellow or red)
+          return isVersionMonitor && run.level !== 'green';
+        case 'VERSION_MAJOR':
+          // Version monitors: fire only on major version behind (red)
+          return isVersionMonitor && run.level === 'red';
+        default:
+          return levelChanged;
+      }
+    });
+
+    // Update lastNotifiedAt for DAILY_DIGEST channels that are firing
+    const dailyDigestIds = eligibleLinks
+      .filter((l) => (l.notifyOn as string) === 'DAILY_DIGEST')
+      .map((l) => l.alertChannelId);
+    if (dailyDigestIds.length > 0) {
+      await this.prisma.monitorAlert.updateMany({
+        where: { monitorId: monitor.id, alertChannelId: { in: dailyDigestIds } },
+        data: { lastNotifiedAt: alertNow },
+      });
+    }
+
+    const channels: AlertChannel[] = eligibleLinks.map((l) => ({
+      id: l.alertChannel.id,
+      userId: l.alertChannel.userId,
+      name: l.alertChannel.name,
+      type: l.alertChannel.type as AlertChannel['type'],
+      config: (l.alertChannel.configJson as Record<string, unknown>) ?? {},
+      createdAt: l.alertChannel.createdAt.toISOString(),
+    }));
 
     const levelEmoji = run.level === 'red' ? '🚨' : run.level === 'yellow' ? '⚠️' : '✅';
     const text = `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;

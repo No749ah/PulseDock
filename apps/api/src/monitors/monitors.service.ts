@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
@@ -50,7 +50,7 @@ export class MonitorsService {
       },
       orderBy: { createdAt: 'desc' },
       include: {
-        monitorAlerts: true,
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
         monitorTags: { include: { tag: true } },
       },
     });
@@ -66,6 +66,7 @@ export class MonitorsService {
       confirmations: m.confirmations,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
+      alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
       folderId: m.folderId,
       tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
       enabled: m.enabled,
@@ -333,23 +334,45 @@ export class MonitorsService {
       type: a.alertChannel.type,
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
+      notifyOn: a.notifyOn,
     }));
   }
 
-  async addMonitorAlert(userId: string, monitorId: string, channelId: string) {
+  async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
     const channel = await this.prisma.alertChannel.findFirst({ where: { id: channelId, userId } });
     if (!channel) throw new NotFoundException('alert channel not found');
 
+    // Default notifyOn based on monitor type
+    const isVersion = monitor.type === 'GIT_RELEASE' || monitor.type === 'DOCKER_IMAGE';
+    const defaultNotifyOn = isVersion ? 'VERSION_ANY' : 'ON_CHANGE';
+    const resolvedNotifyOn = notifyOn ?? defaultNotifyOn;
+
     await this.prisma.monitorAlert.upsert({
       where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
-      create: { monitorId, alertChannelId: channelId },
+      create: { monitorId, alertChannelId: channelId, notifyOn: resolvedNotifyOn },
       update: {},
     });
 
-    await this.audit.log('monitor.alert.add', userId, userId, { monitorId, channelId });
+    await this.audit.log('monitor.alert.add', userId, userId, { monitorId, channelId, notifyOn: resolvedNotifyOn });
+    return { ok: true };
+  }
+
+  async updateMonitorAlertNotifyOn(userId: string, monitorId: string, channelId: string, notifyOn: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const validValues = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'VERSION_ANY', 'VERSION_MAJOR'];
+    if (!validValues.includes(notifyOn)) throw new BadRequestException(`Invalid notifyOn value: ${notifyOn}`);
+
+    await this.prisma.monitorAlert.update({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      data: { notifyOn },
+    });
+
+    await this.audit.log('monitor.alert.update', userId, userId, { monitorId, channelId, notifyOn });
     return { ok: true };
   }
 
@@ -937,6 +960,9 @@ export class MonitorsService {
     const monitors = await this.prisma.monitor.findMany({
       where: { userId, type: { in: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
       orderBy: { createdAt: 'desc' },
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+      },
     });
 
     const rows = await Promise.all(monitors.map(async (m) => {
@@ -952,6 +978,7 @@ export class MonitorsService {
         level: (latest?.level as 'green' | 'yellow' | 'red' | undefined) ?? 'yellow',
         checkedAt: latest?.checkedAt?.toISOString() ?? null,
         intervalSec: m.intervalSec,
+        alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
       };
     }));
 

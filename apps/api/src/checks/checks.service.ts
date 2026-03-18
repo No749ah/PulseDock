@@ -1044,10 +1044,16 @@ export class ChecksService {
     const crossedFailureThreshold = previousUnhealthyStreak < confirmations && consecutiveFailures >= confirmations;
     const shouldAlertFailure = isCurrentUnhealthy && crossedFailureThreshold;
 
+    const alertContext = {
+      levelChanged,
+      previousLevel: prev?.level ?? null,
+      failureStreak: consecutiveFailures,
+    };
+
     if (shouldAlertFailure) {
-      await this.alerts.notifyMonitorFailure(monitor, run);
+      await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     } else if (isRecovery) {
-      await this.alerts.notifyMonitorFailure(monitor, run);
+      await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     }
 
     this.realtime.monitorChecked(monitor.userId, {

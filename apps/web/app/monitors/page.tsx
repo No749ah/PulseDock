@@ -35,6 +35,13 @@ interface TagItem {
   createdAt: string;
 }
 
+interface AlertChannelSummary {
+  id: string;
+  name: string;
+  type: string;
+  notifyOn: string;
+}
+
 interface MonitorItem {
   id: string;
   name: string;
@@ -47,6 +54,7 @@ interface MonitorItem {
   folderId?: string | null;
   config?: Record<string, unknown>;
   tags?: MonitorTag[];
+  alertChannels?: AlertChannelSummary[];
 }
 
 interface MonitorRun {
@@ -66,6 +74,7 @@ interface AlertChannel {
   type: string;
   config: Record<string, unknown>;
   createdAt: string;
+  notifyOn?: string;
 }
 
 interface PluginField {
@@ -95,6 +104,27 @@ const CHANNEL_TYPE_COLORS: Record<string, string> = {
   telegram: "text-sky-400",
   email: "text-yellow-400",
 };
+
+const NOTIFY_ON_LABELS: Record<string, string> = {
+  ON_CHANGE:     "On status change",
+  ALWAYS:        "Every failed check",
+  FIRST_ONLY:    "First failure only",
+  DAILY_DIGEST:  "Daily digest",
+  VERSION_ANY:   "Any update",
+  VERSION_MAJOR: "Major updates only",
+};
+
+const UPTIME_NOTIFY_OPTIONS = [
+  { value: "ON_CHANGE",    label: "On status change" },
+  { value: "ALWAYS",       label: "Every failed check" },
+  { value: "FIRST_ONLY",   label: "First failure only" },
+  { value: "DAILY_DIGEST", label: "Daily digest (max 1/day)" },
+];
+
+const VERSION_NOTIFY_OPTIONS = [
+  { value: "VERSION_ANY",   label: "Any update (minor + major)" },
+  { value: "VERSION_MAJOR", label: "Major updates only" },
+];
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -279,6 +309,9 @@ function MonitorsPageInner() {
       await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, user?.id, { method: "POST" });
       const updated = await api<AlertChannel[]>(`/v1/monitors/${alertPanelMonitor.id}/alerts`, user?.id);
       setAssignedChannels(updated);
+      // Refresh monitor list so alert pills update
+      const updatedMonitors = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(updatedMonitors);
     } catch (e) {
       setAlertPanelError(e instanceof Error ? e.message : "Failed to assign channel");
     }
@@ -289,8 +322,25 @@ function MonitorsPageInner() {
     try {
       await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, user?.id, { method: "DELETE" });
       setAssignedChannels((prev) => prev.filter((c) => c.id !== channelId));
+      const updatedMonitors = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(updatedMonitors);
     } catch (e) {
       setAlertPanelError(e instanceof Error ? e.message : "Failed to unassign channel");
+    }
+  };
+
+  const updateNotifyOn = async (channelId: string, notifyOn: string) => {
+    if (!alertPanelMonitor) return;
+    try {
+      await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, user?.id, {
+        method: "PATCH",
+        body: JSON.stringify({ notifyOn }),
+      });
+      setAssignedChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, notifyOn } : c));
+      const updatedMonitors = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(updatedMonitors);
+    } catch (e) {
+      setAlertPanelError(e instanceof Error ? e.message : "Failed to update notification setting");
     }
   };
 
@@ -977,11 +1027,30 @@ function MonitorsPageInner() {
                           <TableCell className="hidden sm:table-cell">
                             <button
                               onClick={() => openAlertPanel(monitor)}
-                              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors"
+                              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors group"
                               title="Manage alert channels"
                             >
-                              <Bell className="w-3.5 h-3.5" />
-                              <span>Manage</span>
+                              <div className="flex items-center gap-1">
+                                {monitor.alertChannels && monitor.alertChannels.length > 0 ? (
+                                  <>
+                                    {monitor.alertChannels.slice(0, 3).map((ch) => (
+                                      <span
+                                        key={ch.id}
+                                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[ch.type] ?? "text-text-secondary"} bg-surface-elevated border border-border`}
+                                        title={`${ch.name} — ${NOTIFY_ON_LABELS[ch.notifyOn] ?? ch.notifyOn}`}
+                                      >
+                                        {ch.type}
+                                      </span>
+                                    ))}
+                                    {monitor.alertChannels.length > 3 && (
+                                      <span className="text-[10px] text-text-secondary">+{monitor.alertChannels.length - 3}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <Bell className="w-3.5 h-3.5 opacity-40" />
+                                )}
+                              </div>
+                              <span className="hidden group-hover:inline text-[10px] text-accent ml-0.5">Edit</span>
                             </button>
                           </TableCell>
                           <TableCell>
@@ -1611,27 +1680,42 @@ function MonitorsPageInner() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {assignedChannels.map((channel) => (
-                          <div
-                            key={channel.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated border border-border/50"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className={`text-xs font-semibold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? "text-text-secondary"}`}>
-                                {channel.type}
-                              </span>
-                              <span className="text-sm text-text-primary truncate">{channel.name}</span>
+                        {assignedChannels.map((channel) => {
+                          const isVersion = alertPanelMonitor?.type === "GIT_RELEASE" || alertPanelMonitor?.type === "DOCKER_IMAGE";
+                          const options = isVersion ? VERSION_NOTIFY_OPTIONS : UPTIME_NOTIFY_OPTIONS;
+                          return (
+                            <div key={channel.id} className="rounded-lg bg-surface-elevated border border-border/50 overflow-hidden">
+                              <div className="flex items-center justify-between px-3 pt-3 pb-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`text-[11px] font-bold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? "text-text-secondary"}`}>
+                                    {channel.type}
+                                  </span>
+                                  <span className="text-sm text-text-primary truncate">{channel.name}</span>
+                                </div>
+                                <button
+                                  onClick={() => unassignChannel(channel.id)}
+                                  className="ml-2 p-1 rounded hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors shrink-0"
+                                  title="Remove"
+                                  aria-label={`Remove ${channel.name}`}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="px-3 pb-3">
+                                <label className="block text-[10px] text-text-secondary uppercase tracking-wide mb-1">Notify when</label>
+                                <select
+                                  value={channel.notifyOn ?? (isVersion ? "VERSION_ANY" : "ON_CHANGE")}
+                                  onChange={(e) => updateNotifyOn(channel.id, e.target.value)}
+                                  className="w-full text-xs bg-bg border border-border rounded-lg px-2 py-1.5 text-text-primary focus:outline-none focus:border-accent"
+                                >
+                                  {options.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
-                            <button
-                              onClick={() => unassignChannel(channel.id)}
-                              className="ml-3 p-1.5 rounded-md hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors shrink-0"
-                              title="Remove"
-                              aria-label={`Remove ${channel.name} from this monitor`}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

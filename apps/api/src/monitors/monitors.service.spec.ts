@@ -2958,7 +2958,10 @@ describe('openvpn auth with non-empty credentials (lines 699-700 branch)', () =>
 describe('list() — non-empty monitorAlerts and monitorTags (lines 67-69)', () => {
   it('maps alertChannelIds from non-empty monitorAlerts array', async () => {
     const monitor = makeMonitor({
-      monitorAlerts: [{ alertChannelId: 'ch-1' }, { alertChannelId: 'ch-2' }],
+      monitorAlerts: [
+        { alertChannelId: 'ch-1', notifyOn: 'ON_CHANGE', alertChannel: { id: 'ch-1', name: 'Chan 1', type: 'discord' } },
+        { alertChannelId: 'ch-2', notifyOn: 'ON_CHANGE', alertChannel: { id: 'ch-2', name: 'Chan 2', type: 'slack' } },
+      ],
     });
     const p = makePrisma(monitor);
     const svc = makeService(p);

@@ -587,6 +587,106 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
   );
 }
 
+// Response Time Heatmap — hour-of-day × day-of-week latency grid
+export function ResponseTimeHeatmap({ widget, monitors, extra }: WidgetProps) {
+  const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
+  const label = (widget.config.label as string) ?? monitor?.name ?? "Response Time Heatmap";
+
+  const data = extra.widgetDataById[widget.id] as {
+    grid?: Array<Array<number | null>>; // [dow 0-6][hour 0-23]
+    minMs?: number;
+    maxMs?: number;
+    avgMs?: number;
+    periodDays?: number;
+  } | undefined;
+
+  const grid = data?.grid;
+  const minMs = data?.minMs ?? 0;
+  const maxMs = data?.maxMs ?? 0;
+  const avgMs = data?.avgMs ?? 0;
+
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+  function latencyColor(ms: number | null): string {
+    if (ms === null) return "#1f2937"; // empty cell
+    if (maxMs === minMs) return "#22c55e";
+    const t = Math.min(1, Math.max(0, (ms - minMs) / (maxMs - minMs)));
+    // green (fast) → yellow → red (slow)
+    if (t < 0.5) {
+      const r = Math.round(34 + (250 - 34) * (t * 2));
+      const g = Math.round(197 + (204 - 197) * (t * 2));
+      return `rgb(${r},${g},34)`;
+    } else {
+      const r = Math.round(250 + (239 - 250) * ((t - 0.5) * 2));
+      const g = Math.round(204 + (68 - 204) * ((t - 0.5) * 2));
+      return `rgb(${r},${g},34)`;
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+        <span className="text-sm font-semibold text-text-primary">{label}</span>
+        <div className="flex items-center gap-3">
+          {avgMs > 0 && <span className="text-xs text-text-secondary">avg <span className="font-semibold text-text-primary">{avgMs}ms</span></span>}
+          {maxMs > 0 && <span className="text-xs text-text-secondary">peak <span className="font-semibold text-warning">{maxMs}ms</span></span>}
+          {data?.periodDays && <span className="text-xs text-text-secondary">{data.periodDays}d</span>}
+        </div>
+      </div>
+
+      {!grid ? (
+        <div className="flex h-32 items-center justify-center rounded-lg bg-bg">
+          <span className="text-xs text-text-secondary">No latency data yet</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="inline-block min-w-full">
+            {/* Hour labels */}
+            <div className="flex pl-8 mb-0.5">
+              {HOURS.map((h) => (
+                <div key={h} className="flex-1 text-center text-[9px] text-text-secondary/60 leading-none">
+                  {h % 6 === 0 ? `${h}h` : ""}
+                </div>
+              ))}
+            </div>
+            {/* Grid rows */}
+            {DAYS.map((day, dow) => (
+              <div key={dow} className="flex items-center mb-0.5">
+                <div className="w-8 text-[10px] text-text-secondary shrink-0 text-right pr-1.5">{day}</div>
+                {HOURS.map((hour) => {
+                  const ms = grid[dow]?.[hour] ?? null;
+                  return (
+                    <div
+                      key={hour}
+                      className="flex-1 aspect-square rounded-[2px] mx-px"
+                      style={{ backgroundColor: latencyColor(ms) }}
+                      title={ms !== null ? `${day} ${hour}:00 UTC — ${ms}ms avg` : `${day} ${hour}:00 UTC — no data`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+            {/* Legend */}
+            <div className="flex items-center gap-1.5 mt-2 pl-8">
+              <span className="text-[9px] text-text-secondary">fast</span>
+              <div className="flex h-2 flex-1 max-w-[80px] rounded overflow-hidden">
+                {Array.from({ length: 20 }, (_, i) => {
+                  const t = i / 19;
+                  const r = t < 0.5 ? Math.round(34 + 216 * t * 2) : Math.round(250 - 11 * (t - 0.5) * 2);
+                  const g = t < 0.5 ? Math.round(197 + 7 * t * 2) : Math.round(204 - 136 * (t - 0.5) * 2);
+                  return <div key={i} className="flex-1" style={{ backgroundColor: `rgb(${r},${g},34)` }} />;
+                })}
+              </div>
+              <span className="text-[9px] text-text-secondary">slow</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Check History Feed
 export function CheckHistoryFeed({ extra }: WidgetProps) {
   const checks = extra.recentChecks;
@@ -1277,6 +1377,9 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "response-time-chart":
       content = <ResponseTimeChart {...props} />;
+      break;
+    case "response-time-heatmap":
+      content = <ResponseTimeHeatmap {...props} />;
       break;
     case "check-history-feed":
       content = <CheckHistoryFeed {...props} />;

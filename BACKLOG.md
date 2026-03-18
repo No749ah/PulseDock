@@ -23,6 +23,8 @@
 
 ## In Progress
 
+- [x] **Response Time Heatmap widget** — Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
+
 *(next: continue landing page polish — SEO, Lighthouse, mobile audit — or move to P1 status-page widgets)*
 
 ## Recently Completed

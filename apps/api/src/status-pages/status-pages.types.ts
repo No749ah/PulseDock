@@ -24,7 +24,9 @@ export type WidgetType =
   | 'component-status-list'
   | 'rolling-uptime-cards'
   | 'status-history-ribbon'
-  | 'uptime-percentage-card';
+  | 'uptime-percentage-card'
+  | 'service-health-matrix'
+  | 'aggregate-health-score';
 
 export interface Widget {
   id: string;

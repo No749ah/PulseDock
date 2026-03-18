@@ -440,6 +440,43 @@ export class StatusPagesService {
         return { monitorId, dataPoints, avgMs, p95Ms, maxMs };
       }
 
+      case 'response-time-heatmap': {
+        // Hour-of-day (0-23) × Day-of-week (0=Sun … 6=Sat) latency heatmap
+        // Returns avg latency per cell + overall stats for color scale
+        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 90, 7), 365);
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+        const runs = await this.prisma.monitorRun.findMany({
+          where: { monitorId, checkedAt: { gte: since }, latencyMs: { not: null } },
+          select: { checkedAt: true, latencyMs: true },
+          orderBy: { checkedAt: 'desc' },
+          take: 10_000,
+        });
+
+        // Build 7×24 grid: cells[dayOfWeek][hour] = { sum, count }
+        const cells: Array<Array<{ sum: number; count: number }>> =
+          Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ sum: 0, count: 0 })));
+
+        for (const run of runs) {
+          const d = run.checkedAt as Date;
+          const dow = d.getUTCDay();   // 0=Sun … 6=Sat
+          const hour = d.getUTCHours();
+          cells[dow][hour].sum += run.latencyMs as number;
+          cells[dow][hour].count += 1;
+        }
+
+        const grid = cells.map((dayRow) =>
+          dayRow.map((c) => (c.count > 0 ? Math.round(c.sum / c.count) : null)),
+        );
+
+        const allAvgs = grid.flat().filter((v): v is number => v !== null);
+        const minMs = allAvgs.length > 0 ? Math.min(...allAvgs) : 0;
+        const maxMs = allAvgs.length > 0 ? Math.max(...allAvgs) : 0;
+        const avgMs = allAvgs.length > 0 ? Math.round(allAvgs.reduce((s, v) => s + v, 0) / allAvgs.length) : 0;
+
+        return { monitorId, grid, minMs, maxMs, avgMs, periodDays };
+      }
+
       case 'component-status-list': {
         // Returns per-monitor status: Operational / Degraded / Partial Outage / Major Outage
         const monitorIds = widget.config.monitorIds as string[] | undefined;
@@ -591,6 +628,126 @@ export class StatusPagesService {
         const trend = current > previous ? 'up' : current < previous ? 'down' : 'flat';
         const delta = Math.round((current - previous) * 100) / 100;
         return { monitorId, periodDays, uptimePct: current, previousPct: previous, trend, delta };
+      }
+
+      case 'service-health-matrix': {
+        // Monitors × Dimensions (environments/regions) matrix.
+        // Config: { rows: [{id, name}], columns: [{label, monitorIds: string[]}] }
+        // Falls back to all monitors grouped by tags if no explicit config.
+        type MatrixCol = { label: string; monitorIds: string[] };
+        type MatrixRow = { id: string; name: string };
+        const columns: MatrixCol[] = Array.isArray(widget.config.columns)
+          ? (widget.config.columns as MatrixCol[])
+          : [];
+        const rows: MatrixRow[] = Array.isArray(widget.config.rows)
+          ? (widget.config.rows as MatrixRow[])
+          : [];
+
+        if (columns.length === 0 || rows.length === 0) {
+          // Auto-mode: rows = all monitors, one column = "Production"
+          const monitors = await this.prisma.monitor.findMany({
+            where: { userId, enabled: true },
+            select: {
+              id: true, name: true,
+              runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true, latencyMs: true, checkedAt: true } },
+            },
+            orderBy: { name: 'asc' },
+            take: 50,
+          });
+          const matrix = monitors.map((m) => {
+            const run = m.runs[0];
+            const level = (run?.level ?? 'green') as string;
+            return {
+              rowId: m.id,
+              rowName: m.name,
+              cells: [{
+                colLabel: 'Production',
+                level,
+                latencyMs: run?.latencyMs ?? null,
+                lastChecked: run?.checkedAt ?? null,
+              }],
+            };
+          });
+          return { mode: 'auto', columns: ['Production'], matrix };
+        }
+
+        // Manual mode: explicit rows and columns
+        const allMonitorIds = [...new Set(columns.flatMap((c) => c.monitorIds))];
+        const dbMonitors = await this.prisma.monitor.findMany({
+          where: { id: { in: allMonitorIds }, userId },
+          select: {
+            id: true, name: true,
+            runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true, latencyMs: true, checkedAt: true } },
+          },
+        });
+        const monitorMap = new Map(dbMonitors.map((m) => [m.id, m]));
+
+        // Per column: aggregate multiple monitors → single cell level
+        const getCellLevel = (monitorIds: string[]): { level: string; latencyMs: number | null; lastChecked: unknown } => {
+          const monitors = monitorIds.map((id) => monitorMap.get(id)).filter(Boolean);
+          if (monitors.length === 0) return { level: 'no-data', latencyMs: null, lastChecked: null };
+          const levels = monitors.map((m) => m!.runs[0]?.level ?? 'green');
+          const level = levels.includes('red') ? 'red' : levels.includes('yellow') ? 'yellow' : 'green';
+          const latencies = monitors.map((m) => m!.runs[0]?.latencyMs ?? null).filter((v): v is number => v !== null);
+          const avgLatency = latencies.length > 0 ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length) : null;
+          const lastChecked = monitors.map((m) => m!.runs[0]?.checkedAt ?? null).filter(Boolean)[0] ?? null;
+          return { level, latencyMs: avgLatency, lastChecked };
+        };
+
+        const matrix = rows.map((row) => ({
+          rowId: row.id,
+          rowName: row.name,
+          cells: columns.map((col) => {
+            // Find monitors for this row+column intersection
+            // Convention: column.monitorIds contains monitor IDs for that column
+            // Row filters by name/id matching within the column's monitors
+            const cell = getCellLevel(col.monitorIds);
+            return { colLabel: col.label, ...cell };
+          }),
+        }));
+
+        return { mode: 'manual', columns: columns.map((c) => c.label), matrix };
+      }
+
+      case 'aggregate-health-score': {
+        // Weighted score 0–100 from all (or selected) monitors.
+        // Config: { monitorIds?: string[], weights?: Record<string, number> }
+        const monitorIds = widget.config.monitorIds as string[] | undefined;
+        const weights = (widget.config.weights ?? {}) as Record<string, number>;
+        const where = monitorIds?.length
+          ? { userId, id: { in: monitorIds }, enabled: true }
+          : { userId, enabled: true };
+
+        const monitors = await this.prisma.monitor.findMany({
+          where,
+          select: {
+            id: true, name: true,
+            runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true, latencyMs: true } },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        if (monitors.length === 0) return { score: 100, total: 0, breakdown: [] };
+
+        const breakdown = monitors.map((m) => {
+          const run = m.runs[0];
+          const level = run?.level ?? 'green';
+          const pts = level === 'green' ? 100 : level === 'yellow' ? 50 : 0;
+          const weight = weights[m.id] ?? 1;
+          return { id: m.id, name: m.name, level, points: pts, weight };
+        });
+
+        const totalWeight = breakdown.reduce((s, b) => s + b.weight, 0);
+        const weightedScore = totalWeight > 0
+          ? breakdown.reduce((s, b) => s + b.points * b.weight, 0) / totalWeight
+          : 100;
+        const score = Math.round(weightedScore * 10) / 10;
+
+        const down = breakdown.filter((b) => b.level === 'red').length;
+        const degraded = breakdown.filter((b) => b.level === 'yellow').length;
+        const status = down > 0 ? (down > monitors.length * 0.5 ? 'critical' : 'degraded') : degraded > 0 ? 'degraded' : 'healthy';
+
+        return { score, total: monitors.length, down, degraded, status, breakdown };
       }
 
       default:

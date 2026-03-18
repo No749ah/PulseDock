@@ -1,12 +1,14 @@
-## Status Summary (2026-03-18 12:22 UTC)
-- **Build/Test:** ✅ Clean build, 1440 tests passing (1428 API + 12 agent)
+## Status Summary (2026-03-18 12:32 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** ✅ Services restarted; all 9 routes 200 local + reverse proxy.
+- **Deployment:** ✅ Services running; all routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
 - **Branch:** heartbeat/2026-03-18-landing-polish
-- **This session (2026-03-18 12:22 UTC):**
-  - **5 new status-page widgets**: MaintenanceCalendar, ChangelogWidget, ImageBanner, DataTable, RssFeedWidget — all implemented in widgets/index.tsx with dark-theme styling
-  - **Palette entries**: 5 new entries added to WIDGET_PALETTE in editor (Maintenance, Versions, Content, Status categories)
-  - **BACKLOG sync**: 29 already-implemented widgets marked [x] + 5 new widgets marked [x]
+- **This session (2026-03-18 12:32 UTC):**
+  - **5 new status-page widgets**: MaintenanceCalendar, ChangelogWidget, ImageBanner, DataTable, RssFeedWidget
+  - **BACKLOG sync**: 29 already-implemented widgets marked [x], 5 new widgets [x]
+  - **Editor UX**: Widget duplication (Ctrl+D), undo/redo (50-step, Ctrl+Z/Y), keyboard shortcuts (Del, Esc), palette search filter
+  - **SEO**: JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt
+  - **Status page widget count**: 65 widget types total
 - **Previous session (2026-03-18 12:02 UTC):**
   - **5 new status-page widgets**: CountdownWidget (client-side live countdown), SubscriberFormWidget (email subscription + 409 dedup), FaqAccordion (collapsible Q&A), SocialLinks, EmbedIframe — full backend + Prisma migration (StatusPageSubscriber)
   - **E2E auth fixture hardening**: handles setup vs login form detection, robust URL redirect wait, descriptive error on failure

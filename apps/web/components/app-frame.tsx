@@ -8,6 +8,7 @@ import {
   Activity,
   AlertOctagon,
   AlertTriangle,
+  Bell,
   CalendarClock,
   ChevronDown,
   Folder,
@@ -17,6 +18,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  Search,
   Settings,
   Shield,
   Sun,
@@ -79,7 +81,9 @@ export function AppFrame({
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUser(getCachedUser() ?? getUser());
@@ -101,6 +105,17 @@ export function AppFrame({
     if (userMenuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userMenuOpen]);
+
+  // Close notif dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [notifOpen]);
 
   const userInitial = mounted
     ? (user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()
@@ -222,8 +237,55 @@ export function AppFrame({
             </div>
           </div>
 
-          {/* Right: theme toggle + user menu */}
+          {/* Right: search hint + notifications + theme toggle + user menu */}
           <div className="flex items-center gap-2">
+            {/* Ctrl+K trigger (hidden on mobile) */}
+            <button
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-surface-elevated border border-border/60 transition-colors text-xs"
+              onClick={() => {
+                window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+              }}
+              aria-label="Open command palette"
+              title="Open command palette (Ctrl+K)"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search…</span>
+              <kbd className="flex items-center gap-0.5 text-[10px]">
+                <span>⌘K</span>
+              </kbd>
+            </button>
+
+            {/* Notifications bell */}
+            <div className="relative" ref={notifRef}>
+              <button
+                className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+                onClick={() => setNotifOpen((v) => !v)}
+                aria-label="Notifications"
+                aria-expanded={notifOpen}
+                aria-haspopup="true"
+              >
+                <Bell className="w-4 h-4" />
+                {/* Badge */}
+                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white leading-none">
+                  3
+                </span>
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                    <p className="text-sm font-semibold text-text-primary">Notifications</p>
+                    <span className="text-xs text-text-muted bg-accent/15 text-accent px-2 py-0.5 rounded-full font-medium">3 new</span>
+                  </div>
+                  <div className="py-6 flex flex-col items-center gap-2 text-center">
+                    <Bell className="w-8 h-8 text-text-muted/40" />
+                    <p className="text-sm text-text-secondary">Notifications coming soon</p>
+                    <p className="text-xs text-text-muted">Alert history and system events will appear here.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Theme toggle */}
             <button
               className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"

@@ -11,6 +11,7 @@ import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
 import { PWAInstallBanner } from "../components/pwa-install-banner";
 import { I18nProvider } from "../components/i18n-provider";
+import { CommandPalette } from "../components/command-palette";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -136,6 +137,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ThemeProvider>
             <ToastProvider>
               {children}
+              <CommandPalette />
               <PWAInstallBanner />
               <SWRegister />
             </ToastProvider>

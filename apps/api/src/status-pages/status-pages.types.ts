@@ -70,7 +70,10 @@ export type WidgetType =
   | 'video-embed'
   | 'dependency-map'
   | 'multi-environment-status'
-  | 'tab-container';
+  | 'tab-container'
+  | 'region-status-map'
+  | 'third-party-dependencies'
+  | 'security-advisory';
 
 export interface Widget {
   id: string;

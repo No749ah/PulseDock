@@ -4425,6 +4425,186 @@ export function MultiEnvironmentStatus({ widget, extra }: WidgetProps) {
   );
 }
 
+// ── Region Status Map ────────────────────────────────────────────────────
+
+export function RegionStatusMap({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    regions: { region: string; status: "operational" | "degraded" | "outage"; monitorCount: number; upCount: number }[];
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Region Status";
+
+  if (!raw || !raw.regions?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">No regions configured. Add regionMonitors in widget config.</div>
+      </div>
+    );
+  }
+
+  const statusConfig = {
+    operational: { color: "bg-green-500", textColor: "text-green-400", label: "Operational", dot: "●" },
+    degraded: { color: "bg-yellow-400", textColor: "text-yellow-400", label: "Degraded", dot: "●" },
+    outage: { color: "bg-red-500", textColor: "text-red-400", label: "Outage", dot: "●" },
+  } as const;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {raw.regions.map((r) => {
+          const cfg = statusConfig[r.status];
+          return (
+            <div key={r.region} className="rounded-lg border border-border/60 bg-surface-elevated/30 p-3 space-y-1">
+              <div className="text-xs font-medium text-text-primary truncate">{r.region}</div>
+              <div className={`text-xs font-semibold ${cfg.textColor} flex items-center gap-1`}>
+                <span className="text-[10px]">{cfg.dot}</span>
+                {cfg.label}
+              </div>
+              <div className="text-xs text-text-muted">{r.upCount}/{r.monitorCount} up</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Third-Party Dependencies ─────────────────────────────────────────────
+
+export function ThirdPartyDependencies({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    services: { name: string; url: string; status: "up" | "down" | "unknown"; httpStatus: number; responseMs: number }[];
+    checkedAt: string;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Third-Party Dependencies";
+
+  if (!raw || !raw.services?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">No services configured. Add services array in widget config.</div>
+      </div>
+    );
+  }
+
+  const getDomain = (url: string) => {
+    try { return new URL(url).hostname; } catch { return url; }
+  };
+
+  const statusDot = (s: "up" | "down" | "unknown") => {
+    if (s === "up") return <span className="text-green-400 text-sm">●</span>;
+    if (s === "down") return <span className="text-red-400 text-sm">●</span>;
+    return <span className="text-gray-400 text-sm">●</span>;
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        {raw.checkedAt && (
+          <div className="text-xs text-text-muted">
+            {new Date(raw.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        {raw.services.map((svc, i) => (
+          <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border/40 last:border-0">
+            <div className="flex-shrink-0">{statusDot(svc.status)}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-text-primary truncate">{svc.name}</div>
+              <div className="text-xs text-text-muted truncate">{getDomain(svc.url)}</div>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              {svc.httpStatus > 0 && (
+                <div className={`text-xs font-mono ${svc.httpStatus < 400 ? "text-green-400" : "text-red-400"}`}>
+                  {svc.httpStatus}
+                </div>
+              )}
+              {svc.responseMs > 0 && (
+                <div className="text-xs text-text-muted">{svc.responseMs}ms</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Security Advisory ────────────────────────────────────────────────────
+
+export function SecurityAdvisory({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    advisories: { ghsaId: string; summary: string; severity: "critical" | "high" | "medium" | "low"; publishedAt: string; link: string }[];
+    checkedAt: string;
+    packageName: string;
+    error?: string;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Security Advisories";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const severityConfig = {
+    critical: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", label: "Critical" },
+    high: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30", label: "High" },
+    medium: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30", label: "Medium" },
+    low: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30", label: "Low" },
+  } as const;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        {raw.packageName && <div className="text-xs text-text-muted font-mono">{raw.packageName}</div>}
+      </div>
+      {raw.error && (
+        <div className="text-xs text-yellow-400 bg-yellow-500/10 rounded-lg px-3 py-2">{raw.error}</div>
+      )}
+      {raw.advisories.length === 0 && !raw.error && (
+        <div className="flex items-center gap-2 text-green-400 py-2">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">No known vulnerabilities</span>
+        </div>
+      )}
+      {raw.advisories.length > 0 && (
+        <div className="space-y-2">
+          {raw.advisories.map((a) => {
+            const cfg = severityConfig[a.severity] ?? severityConfig.low;
+            return (
+              <div key={a.ghsaId} className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3 space-y-1`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`text-xs font-bold uppercase ${cfg.text}`}>{cfg.label}</span>
+                  <span className="text-xs font-mono text-text-muted">{a.ghsaId}</span>
+                </div>
+                <div className="text-xs text-text-primary leading-relaxed line-clamp-2">{a.summary}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">{new Date(a.publishedAt).toLocaleDateString()}</span>
+                  <a href={a.link} target="_blank" rel="noreferrer noopener" className="text-xs text-accent hover:underline">
+                    View →
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -4691,6 +4871,15 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "tab-container":
       content = <TabContainer {...props} />;
+      break;
+    case "region-status-map":
+      content = <RegionStatusMap {...props} />;
+      break;
+    case "third-party-dependencies":
+      content = <ThirdPartyDependencies {...props} />;
+      break;
+    case "security-advisory":
+      content = <SecurityAdvisory {...props} />;
       break;
     default:
       content = (

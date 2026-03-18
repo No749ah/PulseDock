@@ -2438,6 +2438,104 @@ export class StatusPagesService {
         return { environments: result };
       }
 
+      case 'region-status-map': {
+        const regionMonitors = (widget.config.regionMonitors as Record<string, string[]> | undefined) ?? {};
+        const allRegionIds = Object.values(regionMonitors).flat();
+        const regionMonitorsDb = allRegionIds.length > 0
+          ? await this.prisma.monitor.findMany({
+              where: { userId, id: { in: allRegionIds } },
+              select: {
+                id: true,
+                name: true,
+                runs: {
+                  orderBy: { checkedAt: 'desc' as const },
+                  take: 1,
+                  select: { level: true },
+                },
+              },
+            })
+          : [];
+        const statusMap = new Map(regionMonitorsDb.map((m) => [m.id, m.runs[0]?.level ?? 'green']));
+        const regions = Object.entries(regionMonitors).map(([region, ids]) => {
+          const monitors = ids.map((id) => ({ id, level: statusMap.get(id) ?? 'green' }));
+          const total = monitors.length;
+          const downCount = monitors.filter((m) => m.level === 'red').length;
+          const degradedCount = monitors.filter((m) => m.level === 'yellow').length;
+          const status: 'operational' | 'degraded' | 'outage' =
+            downCount > 0 ? (downCount === total ? 'outage' : 'degraded') : degradedCount > 0 ? 'degraded' : 'operational';
+          return { region, status, monitorCount: total, upCount: total - downCount };
+        });
+        return { regions };
+      }
+
+      case 'third-party-dependencies': {
+        const services = (widget.config.services as Array<{ name: string; url: string; expectedStatus?: number }> | undefined) ?? [];
+        if (services.length === 0) return { services: [], checkedAt: new Date().toISOString() };
+
+        const results = await Promise.allSettled(
+          services.map(async (svc) => {
+            const start = Date.now();
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const res = await fetch(svc.url, { method: 'HEAD', signal: controller.signal as AbortSignal });
+              clearTimeout(timeoutId);
+              const responseMs = Date.now() - start;
+              const svcStatus: 'up' | 'down' = res.status < 400 ? 'up' : 'down';
+              return { name: svc.name, url: svc.url, status: svcStatus, httpStatus: res.status, responseMs };
+            } catch {
+              return { name: svc.name, url: svc.url, status: 'down' as const, httpStatus: 0, responseMs: Date.now() - start };
+            }
+          }),
+        );
+
+        const serviceResults = results.map((r, i) =>
+          r.status === 'fulfilled'
+            ? r.value
+            : { name: services[i]?.name ?? '', url: services[i]?.url ?? '', status: 'unknown' as const, httpStatus: 0, responseMs: 0 },
+        );
+        return { services: serviceResults, checkedAt: new Date().toISOString() };
+      }
+
+      case 'security-advisory': {
+        const packageName = (widget.config.packageName as string | undefined) ?? '';
+        if (!packageName) return { advisories: [], checkedAt: new Date().toISOString(), packageName: '' };
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(
+            `https://api.github.com/advisories?affects=${encodeURIComponent(packageName)}&type=reviewed&per_page=5`,
+            {
+              signal: controller.signal as AbortSignal,
+              headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'PulseDock/1.0' },
+            },
+          );
+          clearTimeout(timeoutId);
+
+          if (!res.ok) return { advisories: [], checkedAt: new Date().toISOString(), packageName, error: `GitHub API returned ${res.status}` };
+
+          const data = await res.json() as Array<{
+            ghsa_id: string;
+            summary: string;
+            severity: string;
+            published_at: string;
+            html_url: string;
+          }>;
+
+          const advisories = (Array.isArray(data) ? data : []).map((a) => ({
+            ghsaId: a.ghsa_id,
+            summary: a.summary,
+            severity: a.severity as 'critical' | 'high' | 'medium' | 'low',
+            publishedAt: a.published_at,
+            link: a.html_url,
+          }));
+          return { advisories, checkedAt: new Date().toISOString(), packageName };
+        } catch {
+          return { advisories: [], checkedAt: new Date().toISOString(), packageName, error: 'Failed to fetch advisories' };
+        }
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

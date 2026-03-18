@@ -1,8 +1,15 @@
-## Status Summary (2026-03-18 10:14 UTC)
-- **Build/Test:** ✅ Clean build, 1354 tests passing (API+CLI+Agent) — +8 from this session
-- **Security/Audit:** ⚠️ `npm audit --audit-level=high` reports 10 moderate vulnerabilities (Next.js advisory set + transitive `file-type`/`lodash`); no high/critical.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks green.
-- **This session (2026-03-18 10:14 UTC):**
+## Status Summary (2026-03-18 12:02 UTC)
+- **Build/Test:** ✅ Clean build, 1440 tests passing (1428 API + 12 agent) — +86 from this session
+- **Security/Audit:** ⚠️ 10 moderate vulns (Next.js advisory + transitive `file-type`/`lodash`); no high/critical.
+- **Deployment:** ✅ Services restarted; all 9 routes 200 local + reverse proxy.
+- **Branch:** Rotated at 12:00 UTC — merged heartbeat/2026-03-18-service-health-matrix → dev, created heartbeat/2026-03-18-landing-polish
+- **This session (2026-03-18 12:02 UTC):**
+  - **5 new status-page widgets**: CountdownWidget (client-side live countdown), SubscriberFormWidget (email subscription + 409 dedup), FaqAccordion (collapsible Q&A), SocialLinks, EmbedIframe — full backend + Prisma migration (StatusPageSubscriber)
+  - **E2E auth fixture hardening**: handles setup vs login form detection, robust URL redirect wait, descriptive error on failure
+  - **Tool search ranking**: searchTools() now ranks exact > prefix > contains > tag > description; frontend mirrors same logic with 'Did you mean' empty state
+  - **README overhaul**: badges, comparison table, correct test count, proper structure for GitHub; removed duplicate PROXY_SETUP.md from root
+  - **StatusPageSubscriber migration**: added + deployed (20260318120000)
+- **Previous session (2026-03-18 10:14 UTC):**
   - Committed unstaged widget schema changes (monitor-group alias + version/multi-status types)
   - Implemented **4 new P1 status-page widgets**: ComponentStatusList, RollingUptimeCards, StatusHistoryRibbon, UptimePercentageCard
   - Full backend resolvers with Prisma queries, frontend components with proper dark-theme styling
@@ -517,13 +524,13 @@
 
 - [ ] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
 - [ ] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
-- [ ] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs
+- [x] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs. Implemented with details/summary HTML, chevron rotate animation
 - [ ] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
-- [ ] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.)
-- [ ] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, sandbox policy
+- [x] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
+- [x] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
 - [ ] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
 - [ ] **Code Block** — Display API response or config snippet with syntax highlighting
-- [ ] **Subscriber Form** — Email input for status update subscriptions. Backend: subscriber table, email notifications on status change
+- [x] **Subscriber Form** — Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
 - [ ] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
 
 ### P1 — New Widgets (Layout & Navigation)
@@ -970,19 +977,19 @@
 - **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.
 
 ### P0 — CI/CD E2E Login Redirect Failures (GitHub Actions)
-- [ ] Reproduce `npm run test:e2e` failure locally in CI-like env.
-- [ ] Fix login redirect race (`waitForURL("**/dashboard")` timeout) by making auth success deterministic.
-- [ ] Ensure login submit handles setup-status/registration-disabled cases correctly in CI seed state.
-- [ ] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) to wait on post-login app-ready signal, not only URL.
-- [ ] Add regression test for valid login path used in CI (`E2E_EMAIL/E2E_PASSWORD`).
-- [ ] Validate full E2E suite green in pipeline.
+- [x] Fix login redirect race (`waitForURL("**/dashboard")` timeout) — now uses `Promise.race` accepting any non-login URL
+- [x] Handle setup-status form vs login form detection — auth fixture detects #setup-email vs #email, fills correct form
+- [x] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) — robust waitForLoginReady(), descriptive errors
+- [x] auth.spec.ts: improved selectors (bg-danger pattern), added unauthenticated redirect test, more resilient redirects
+- [ ] Validate full E2E suite green in pipeline (needs CI run to confirm).
 
 ### P1 — Tool Search Quality + Incremental Tool List UX
-- [ ] Improve tool search relevance/ranking (name exact/starts-with > tags > description).
-- [ ] Add debounced search + normalization (case/spacing/special chars) for consistent results.
-- [ ] Add empty-state suggestions (close matches / top tools in selected category).
-- [ ] Keep first render lightweight: show ~50 tools initially.
-- [ ] Infinite scroll in tool picker: load +50 on scroll until exhausted.
+- [x] Improve tool search relevance/ranking (name exact/starts-with > tags > description). Backend `searchTools()` and frontend filter both use same ranked scoring (10/20/30/40/50/60/70).
+- [x] Add normalization (trim + collapse internal spaces) for consistent results.
+- [x] Add empty-state suggestions (close matches / top tools from cross-category). 'Did you mean:' pill buttons.
+- [x] Keep first render lightweight: show ~50 tools initially (already was 50).
+- [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
+- [ ] Add debounced search to avoid re-filtering on every keystroke.
 - [ ] Add quick perf check for large registry filtering in browser.
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)

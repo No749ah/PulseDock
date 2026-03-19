@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { ApiKeysService } from './apikeys.service';
@@ -26,6 +26,19 @@ export class ApiKeysController {
   @ApiResponse({ status: 201, description: 'API key created. Contains one-time plaintext key.' })
   create(@Req() req: { user: { id: string } }, @Body() body: CreateApiKeyDto) {
     return this.apiKeysService.create(req.user.id, body);
+  }
+
+  @Post(':id/rotate')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Rotate API key',
+    description: 'Generates a new secret for an existing key. The old key is immediately invalidated. The new plaintext key is returned **once** — store it immediately. Name, scope, and expiry are preserved.',
+  })
+  @ApiParam({ name: 'id', description: 'API key ID to rotate' })
+  @ApiResponse({ status: 200, description: 'New key generated. Contains one-time plaintext key.' })
+  @ApiResponse({ status: 404, description: 'Key not found.' })
+  rotate(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.apiKeysService.rotate(req.user.id, id);
   }
 
   @Delete(':id')

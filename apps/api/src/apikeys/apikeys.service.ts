@@ -70,6 +70,44 @@ export class ApiKeysService {
     return { ok: true };
   }
 
+  /**
+   * Rotate an API key — generates a new secret, resets usage counter.
+   * The new plaintext key is returned once; the old key is immediately invalidated.
+   * Name, scope, expiry, and ID are preserved.
+   *
+   * @param userId - Owner's user ID
+   * @param id     - API key ID to rotate
+   * @returns Updated key metadata including the new one-time plaintext key
+   */
+  async rotate(userId: string, id: string) {
+    const key = await this.prisma.apiKey.findFirst({ where: { id, userId } });
+    if (!key) throw new NotFoundException('API key not found');
+
+    const { plaintext, prefix, hash } = this.generateKey();
+
+    const updated = await this.prisma.apiKey.update({
+      where: { id },
+      data: {
+        keyHash: hash,
+        prefix,
+        usageCount: 0,
+        lastUsedAt: null,
+      },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      prefix: updated.prefix,
+      scope: updated.scope,
+      usageCount: 0,
+      createdAt: updated.createdAt,
+      expiresAt: updated.expiresAt,
+      // One-time plaintext key — store immediately
+      key: plaintext,
+    };
+  }
+
   /** Validate a raw API key string — returns the owning user with scope or null */
   async validateKey(plaintext: string): Promise<{ id: string; email: string; role: 'admin' | 'user'; apiKeyScope: ApiKeyScope } | null> {
     if (!plaintext.startsWith(KEY_PREFIX)) return null;

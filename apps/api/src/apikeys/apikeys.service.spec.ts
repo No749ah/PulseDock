@@ -158,6 +158,46 @@ describe('ApiKeysService', () => {
     });
   });
 
+  // ─── rotate() ──────────────────────────────────────────────────────────────
+
+  describe('rotate()', () => {
+    it('generates a new key and returns it with plaintext', async () => {
+      const result = await service.rotate('user-1', 'key-1');
+      expect(prisma.apiKey.findFirst).toHaveBeenCalledWith({ where: { id: 'key-1', userId: 'user-1' } });
+      expect(prisma.apiKey.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'key-1' },
+          data: expect.objectContaining({ usageCount: 0, lastUsedAt: null }),
+        }),
+      );
+      expect(result).toHaveProperty('key');
+      expect(result.key).toMatch(new RegExp(`^${KEY_PREFIX}`));
+    });
+
+    it('throws NotFoundException when key not found or wrong user', async () => {
+      const p = makePrisma(null);
+      const svc = makeService(p);
+      await expect(svc.rotate('user-1', 'non-existent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('updates keyHash and prefix in the database', async () => {
+      await service.rotate('user-1', 'key-1');
+      const updateCall = prisma.apiKey.update.mock.calls[0];
+      const data = (updateCall as [{ where: unknown; data: Record<string, unknown> }])[0].data;
+      expect(typeof data.keyHash).toBe('string');
+      expect(typeof data.prefix).toBe('string');
+      expect(String(data.prefix)).toMatch(new RegExp(`^${KEY_PREFIX}`));
+    });
+
+    it('resets usageCount to 0 and lastUsedAt to null', async () => {
+      await service.rotate('user-1', 'key-1');
+      const updateCall = prisma.apiKey.update.mock.calls[0];
+      const data = (updateCall as [{ where: unknown; data: Record<string, unknown> }])[0].data;
+      expect(data.usageCount).toBe(0);
+      expect(data.lastUsedAt).toBeNull();
+    });
+  });
+
   // ─── validateKey() ─────────────────────────────────────────────────────────
 
   describe('validateKey()', () => {

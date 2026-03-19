@@ -94,16 +94,22 @@ export function AppFrame({
   });
   const [notifications, setNotifications] = useState<Array<{
     id: string; message: string; level: string; checkedAt: string; ok: boolean;
+    monitorId?: string; monitorName?: string | null; monitorType?: string | null;
   }>>([]);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = () => {
-    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean }>>(
-      '/v1/monitors/runs?limit=10'
+    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean; monitorId?: string; monitorName?: string | null; monitorType?: string | null }>>(
+      '/v1/monitors/runs?limit=50'
     ).then((runs) => {
-      const failed = runs.filter((r) => !r.ok).slice(0, 10);
-      setNotifications(failed);
+      // Show: failed uptime checks + version updates (yellow/red on version monitors)
+      const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
+      const notifs = runs.filter((r) => {
+        if (VERSION_TYPES.has(r.monitorType ?? '')) return r.level === 'yellow' || r.level === 'red';
+        return !r.ok;
+      }).slice(0, 15);
+      setNotifications(notifs);
     }).catch(() => { /* non-critical */ });
   };
 
@@ -329,7 +335,7 @@ export function AppFrame({
               {notifOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                    <p className="text-sm font-semibold text-text-primary">Recent Failures</p>
+                    <p className="text-sm font-semibold text-text-primary">Alerts &amp; Updates</p>
                     <div className="flex items-center gap-2">
                       {notifications.length > 0 && (
                         <span className="text-xs bg-danger/15 text-danger px-2 py-0.5 rounded-full font-medium">{unreadNotifications.length} unread</span>
@@ -347,39 +353,57 @@ export function AppFrame({
                   {notifications.length === 0 ? (
                     <div className="py-6 flex flex-col items-center gap-2 text-center">
                       <Bell className="w-8 h-8 text-text-muted/40" />
-                      <p className="text-sm text-text-secondary">All monitors are healthy</p>
-                      <p className="text-xs text-text-muted">Recent failures will appear here.</p>
+                      <p className="text-sm text-text-secondary">All clear</p>
+                      <p className="text-xs text-text-muted">No failures or version updates.</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
+                    <div className="divide-y divide-border/50 max-h-72 overflow-y-auto">
                       {notifications.map((n) => {
                         const isRead = readIds.has(n.id);
                         const diff = Date.now() - new Date(n.checkedAt).getTime();
                         const mins = Math.floor(diff / 60000);
                         const timeAgo = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+                        const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
+                        const isVersion = VERSION_TYPES.has(n.monitorType ?? '');
+                        const href = isVersion ? `/versions` : n.monitorId ? `/monitors/${n.monitorId}` : `/monitors`;
+                        const title = n.monitorName ?? (isVersion ? "Version update" : "Monitor failure");
+                        const detail = isVersion
+                          ? (n.level === 'red' ? "Major update available" : "Update available")
+                          : (n.message || "Check failed");
                         return (
-                          <div
+                          <Link
                             key={n.id}
-                            className={`px-4 py-3 flex items-start gap-3 hover:bg-surface-elevated/50 transition-colors cursor-pointer ${isRead ? "opacity-50" : ""}`}
+                            href={href}
+                            className={`px-4 py-3 flex items-start gap-3 hover:bg-surface-elevated/50 transition-colors ${isRead ? "opacity-50" : ""}`}
                             onClick={() => {
                               const next = new Set([...readIds, n.id]);
                               setReadIds(next);
+                              setNotifOpen(false);
                               try { localStorage.setItem("notif-read-ids", JSON.stringify([...next])); } catch {}
                             }}
                           >
-                            <span className={`mt-0.5 flex h-2 w-2 shrink-0 rounded-full ${n.level === "red" ? "bg-danger" : n.level === "yellow" ? "bg-warning" : "bg-text-muted"}`} />
+                            <span className={`mt-1 flex h-2 w-2 shrink-0 rounded-full ${n.level === "red" ? "bg-danger" : n.level === "yellow" ? "bg-warning" : "bg-text-muted"}`} />
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs text-text-primary truncate">{n.message || "Monitor check failed"}</p>
+                              <p className="text-xs font-medium text-text-primary truncate">{title}</p>
+                              <p className="text-[10px] text-text-secondary truncate">{detail}</p>
                               <p className="text-[10px] text-text-muted mt-0.5">{timeAgo}</p>
                             </div>
-                          </div>
+                            {isVersion && (
+                              <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${n.level === 'red' ? 'bg-danger/15 text-danger' : 'bg-warning/15 text-warning'}`}>
+                                {n.level === 'red' ? 'MAJOR' : 'UPDATE'}
+                              </span>
+                            )}
+                          </Link>
                         );
                       })}
                     </div>
                   )}
-                  <div className="px-4 py-2 border-t border-border">
-                    <Link href="/alerts" className="text-xs text-accent hover:text-accent/80 transition-colors" onClick={() => setNotifOpen(false)}>
-                      View all alerts →
+                  <div className="px-4 py-2.5 border-t border-border flex items-center justify-between">
+                    <Link href="/monitors" className="text-xs text-accent hover:text-accent/80 transition-colors" onClick={() => setNotifOpen(false)}>
+                      View monitors →
+                    </Link>
+                    <Link href="/versions" className="text-xs text-text-secondary hover:text-text-primary transition-colors" onClick={() => setNotifOpen(false)}>
+                      Versions →
                     </Link>
                   </div>
                 </div>

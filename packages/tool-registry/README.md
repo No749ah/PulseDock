@@ -1,10 +1,10 @@
 # @pulsedock/tool-registry
 
-Pre-configured version check library for 1385+ self-hosted tools. Used by the PulseDock API to power the Tool Picker in the version monitor create flow.
+Pre-configured version check library for 1467+ self-hosted tools. Used by the PulseDock API to power the Tool Picker in the version monitor create flow.
 
 ## What's Included
 
-- **1385+ tools** across 20+ categories
+- **1467+ tools** across 20+ categories
 - Pre-configured version endpoints, JSON paths, and latest-version sources
 - Simple Icons CDN integration for tool logos
 - TypeScript types for the full registry schema

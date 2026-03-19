@@ -559,13 +559,14 @@ export class MonitorsService {
       where: { userId },
       orderBy: { checkedAt: 'desc' },
       take: 200,
-      include: { monitor: { select: { type: true } } },
+      include: { monitor: { select: { type: true, name: true } } },
     });
     return runs.map((r) => ({
       id: r.id,
       userId: r.userId,
       monitorId: r.monitorId,
       monitorType: r.monitor?.type ?? null,
+      monitorName: r.monitor?.name ?? null,
       checkedAt: r.checkedAt.toISOString(),
       ok: r.ok,
       statusCode: r.status,

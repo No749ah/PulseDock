@@ -439,6 +439,17 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Updates the notifyOn setting for an existing monitor-channel assignment.
+   * Valid values: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID
+   * @param notifyOn - The new notification trigger setting
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor not owned by user
+   * @throws BadRequestException if notifyOn value is invalid
+   */
   async updateMonitorAlertNotifyOn(userId: string, monitorId: string, channelId: string, notifyOn: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -455,6 +466,14 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Removes an alert channel assignment from a monitor.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID to unassign
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor not owned by user
+   */
   async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -467,6 +486,13 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Triggers an immediate on-demand check for a monitor, bypassing the scheduler.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to run immediately
+   * @returns The MonitorRun result from the check
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async runNow(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');

@@ -6,7 +6,7 @@
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/tests-1480%20passing-brightgreen" alt="Tests: 1480 passing" />
-    <img src="https://img.shields.io/badge/tools-1467%2B-orange" alt="1467+ tools" />
+    <img src="https://img.shields.io/badge/tools-2400%2B-orange" alt="2400+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
   </p>
@@ -36,7 +36,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 | Open Source | ✅ | ✅ | ❌ | ❌ |
 | Self-Hosted | ✅ | ✅ | ❌ | ❌ |
 | **Version Tracking** | ✅ | ❌ | ❌ | ❌ |
-| **Tool Registry (1467+)** | ✅ | ❌ | ❌ | ❌ |
+| **Tool Registry (2400+)** | ✅ | ❌ | ❌ | ❌ |
 | Status Pages | ✅ | ✅ | ✅ | ✅ |
 | Incident Management | ✅ | ✅ | ✅ | ✅ |
 | CLI Tool | ✅ | ❌ | ✅ | ❌ |
@@ -47,7 +47,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 ## Features
 
 ### 🔍 Version Intelligence
-- Track version updates for **1467+ self-hosted tools** — auto-configured, no manual setup
+- Track version updates for **2400+ self-hosted tools** — auto-configured, no manual setup
 - Providers: GitHub Releases, Docker Hub, npm, PyPI, Cargo, Maven, Helm
 - **PulseDock Agent** for tools without HTTP APIs (Proxmox, pfSense, OpenWRT, Unraid)
 - Semantic version comparison with prerelease awareness

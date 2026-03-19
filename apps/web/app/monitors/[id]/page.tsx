@@ -27,6 +27,16 @@ interface MonitorItem {
   config?: Record<string, unknown>;
 }
 
+interface AlertChannelInfo {
+  alertChannelId: string;
+  notifyOn: string;
+  alertChannel: {
+    id: string;
+    name: string;
+    type: string;
+  };
+}
+
 interface MonitorRun {
   id: string;
   monitorId: string;
@@ -88,6 +98,7 @@ export default function MonitorDetailPage() {
   const [running, setRunning] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [toast, setToast] = useState("");
+  const [alertChannels, setAlertChannels] = useState<AlertChannelInfo[]>([]);
 
   useEffect(() => {
     const user = getUser();
@@ -100,9 +111,10 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRuns] = await Promise.all([
+        const [monitors, monitorRuns, alertChs] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
           api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user!.id),
+          api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
         ]);
         const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
@@ -111,6 +123,7 @@ export default function MonitorDetailPage() {
         }
         setMonitor(found);
         setRuns(monitorRuns);
+        setAlertChannels(alertChs);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitor");
       } finally {

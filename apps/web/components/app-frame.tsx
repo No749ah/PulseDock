@@ -84,6 +84,11 @@ export function AppFrame({
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+
+  // Update browser tab title to reflect the current page
+  useEffect(() => {
+    document.title = title ? `${title} — PulseDock` : 'PulseDock';
+  }, [title]);
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);

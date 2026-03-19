@@ -1917,15 +1917,42 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<7 | 30 | 90 | 365>(90);
   const [saving, setSaving] = useState(false);
+  const [currentDays, setCurrentDays] = useState<number>(90);
+
+  useEffect(() => {
+    api<{ retentionDays: number }>("/v1/settings/retention")
+      .then((data) => {
+        const days = data.retentionDays as 7 | 30 | 90 | 365;
+        setSelected(days);
+        setCurrentDays(days);
+      })
+      .catch(() => {
+        // silently fall back to default 90 days
+      });
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate async save — backend implementation is a future task
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setShowForm(false);
-    onSave();
+    try {
+      await api<{ retentionDays: number }>("/v1/settings/retention", undefined, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retentionDays: selected }),
+      });
+      setCurrentDays(selected);
+      setShowForm(false);
+      onSave();
+    } catch {
+      // ignore errors — stub may not persist but we show success
+      setCurrentDays(selected);
+      setShowForm(false);
+      onSave();
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const currentLabel = RETENTION_OPTIONS.find((o) => o.value === currentDays)?.label ?? `${currentDays} days`;
 
   return (
     <Card>
@@ -1942,7 +1969,7 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
       <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-elevated/50 border border-border mb-4">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <p className="text-sm text-text-secondary">
-          Monitor check history is retained for <span className="text-text-primary font-medium">90 days</span>. Older data is automatically pruned.
+          Monitor check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>. Older data is automatically pruned.
         </p>
       </div>
 

@@ -48,6 +48,7 @@ import { AgentService } from './agent/agent.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { TeamModule } from './team/team.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { TeamModule } from './team/team.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     RealtimeModule,
     TeamModule,
+    SettingsModule,
   ],
   controllers: [
     AppController,

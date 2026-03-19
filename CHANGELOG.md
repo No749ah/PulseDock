@@ -7,13 +7,36 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
-## [Unreleased] — 2026-03-19
+## [Unreleased] — 2026-03-19 (ongoing)
 
 ### Added
+- **Status page subscriber emails** — Outage/degraded events now trigger email notifications to all page subscribers; recovery events are suppressed to avoid noise
+- **Status page SVG badge** — `GET /v1/public/status-badge/:slug.svg` — shields.io-style badge; embed modal with Markdown/HTML/URL copy snippets on Status Pages list
+- **Status page PDF export** — Print button + comprehensive `@media print` stylesheet; widget flow renders correctly as single-column PDF; report meta footer with timestamp and URL
+- **Status page webhook on status change** — Page-level webhook URL in settings; fires on any status transition with full payload (slug, title, overall level, changed monitors)
+- **Admin user management overhaul** — Edit modal now supports: display name, role, disable/enable, force password reset link (15-min token + copy button), remove MFA, delete user with confirmation
+- **Admin user list** — MFA and unverified badges shown inline per user
+- **Monitors pagination** — 10/25/50/100/All selector with localStorage persistence, prev/next + page buttons, sticky header
+- **Versions page** — No double-v in update badge (`v18.9.0` not `vv18.9.0`); target column truncated with hover tooltip
+- **Command palette** — 6 new commands; `⌘K` → `Ctrl K` label; selection highlight redesigned (accent left-border, no tinted text)
+- **Account page** — Full-width layout (no `max-w-5xl` cap); FadeIn animations removed; columns rebalanced (API Keys left, Activity Log right)
+- **Status page editor** — All 50+ widget types now have meaningful canvas previews instead of blank/italic placeholders
+- **Status page editor** — Page Settings modal is now scrollable with sticky header/footer (was overflowing off-screen)
+- **Status page editor** — 17 widget types added to DTO validation whitelist (offline-banner, custom-metric-chart, dependency-map, tab-container, multi-environment-status, collapsible-section, etc.) — saves were silently rejected before
+- **Public status page widgets — visual overhaul** — UptimeBar shows large colored percentage + status icon + tinted border; ResponseTimeChart has a proper empty state; UptimeTimeline uses taller slimmer bars (contribution-graph style); OverallSystemStatus pulses on outage; UptimeComparisonChart bars capped at 96% to show background track
+- **Dashboard version stats fix** — "Updates Available" now uses version-summary API (always latest run) instead of time-range-filtered runs — was showing 0 even when updates existed
+- **API endpoints** — Admin: `POST /v1/admin/users/:id/reset-mfa`, `POST /v1/admin/users/:id/force-password-reset`, `DELETE /v1/admin/users/:id`
+- **.env.example** — Comprehensive reference for all environment variables with defaults, security guidance, and comments
+- **Notification bell** — Shows version update counts + monitor names; clicking navigates to the relevant page
+- **Incidents page** — Search filter, sortable columns (title/status/severity/date), CSV export
+- **JSDoc** — Comprehensive documentation added to status-pages, alerts, and auth services
+- **Email notifications to status page subscribers** on outage/degraded events
+- **Breadcrumbs** on monitor detail page; account page loading state breadcrumb
+- **DEPLOYMENT.md** — Comprehensive rewrite covering Docker Compose, Kubernetes/Helm, bare metal, nginx config, env var table, health checks
 - Dashboard: customizable section order (localStorage), time range selector (1h/6h/24h/7d/30d), live pulsing indicator
 - Monitors: advanced filter panel (status/type/tag), sortable columns, hover quick-actions, latency column, check-now button, card view polish
 - Monitors: status bar history tooltips, row expansion with check history
-- Status pages: print button, print CSS, copy/paste widgets across pages
+- Status pages: copy/paste widgets across pages (Ctrl+C/V), count-up animations on uptime cards
 - Versions page: summary row, diff indicators, changelog links, sort dropdown
 - Incidents: summary header, severity/status badges, duration display, empty state
 - Alert channels: channel type icons, last-triggered column, improved test button
@@ -27,6 +50,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Command palette: 7 new commands, shortcut kbd badges
 - Error pages: custom 404, error boundary, global-error
 
+### Fixed
+- **Backup service** — Pre-existing TS errors: wrong field names (`config` → `configJson`, `monitorTags`, removed non-existent `settings`/`enabled` fields from status page select)
+- **Status page password UX** — Confirm field added; inline remove confirmation (no browser `confirm()` dialog); amber lock card for protected pages
+- **Mobile landing page** — Reduced hero padding, tighter feature card spacing, comparison table scroll hint, larger nav touch targets, better font scaling
+
 ### Security
 - API key scope enforcement: @RequireScope decorator + ScopeGuard
 - Rate limiting: per-endpoint overrides (30/min for write ops)
@@ -38,6 +66,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Webhook delivery: exponential backoff (1s/2s/4s)
 
 ### Tests
+- 1519 total (1497 API + 10 CLI + 12 Agent) — all green
 - Reports service: 11 new unit tests
 - Team service: 3 unit tests
 - Scope guard: 14 unit tests

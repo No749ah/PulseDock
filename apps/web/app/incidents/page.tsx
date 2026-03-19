@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus } from 'lucide-react';
+import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus, Search, Download, ChevronsUpDown } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -12,6 +12,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '.
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
+import { useTableSort, exportCSV } from '../../lib/useTableSort';
 
 // Types
 type IncidentStatus = 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
@@ -348,8 +349,29 @@ export default function IncidentsPage() {
     }
   }
 
-  const activeIncidents = incidents.filter((i) => i.status !== 'RESOLVED');
-  const resolvedIncidents = incidents.filter((i) => i.status === 'RESOLVED');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { sort: incidentSort, toggle: incidentToggle, sorted: incidentSorted } = useTableSort<'title' | 'status' | 'severity' | 'updatedAt'>('updatedAt', 'desc');
+
+  const filteredIncidents = incidents.filter((i) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return i.title.toLowerCase().includes(q) || i.status.toLowerCase().includes(q) || i.severity.toLowerCase().includes(q);
+  });
+
+  function SortIcon({ col }: { col: 'title' | 'status' | 'severity' | 'updatedAt' }) {
+    if (incidentSort.key !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
+    return incidentSort.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+  }
+
+  const sortedFiltered = incidentSorted(filteredIncidents, (i) => {
+    if (incidentSort.key === 'title') return i.title;
+    if (incidentSort.key === 'status') return i.status;
+    if (incidentSort.key === 'severity') return i.severity;
+    return i.updatedAt;
+  });
+
+  const activeIncidents = sortedFiltered.filter((i) => i.status !== 'RESOLVED');
+  const resolvedIncidents = sortedFiltered.filter((i) => i.status === 'RESOLVED');
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -558,7 +580,7 @@ export default function IncidentsPage() {
           </Modal>
 
           {/* Page header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Incidents</h2>
               <p className="text-text-secondary text-sm mt-1">
@@ -571,6 +593,47 @@ export default function IncidentsPage() {
               </span>
             </Button>
           </div>
+
+          {/* Toolbar: search + sort + export */}
+          {incidents.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search incidents…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-border text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {(['title', 'status', 'severity', 'updatedAt'] as const).map((col) => (
+                  <button
+                    key={col}
+                    onClick={() => incidentToggle(col)}
+                    className={`flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors ${incidentSort.key === col ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border text-text-secondary hover:text-text-primary hover:border-border-hover'}`}
+                  >
+                    {col === 'updatedAt' ? 'Date' : col.charAt(0).toUpperCase() + col.slice(1)}
+                    <SortIcon col={col} />
+                  </button>
+                ))}
+                <button
+                  onClick={() => exportCSV('incidents.csv', filteredIncidents.map((i) => ({
+                    title: i.title,
+                    status: i.status,
+                    severity: i.severity,
+                    updatedAt: i.updatedAt,
+                    monitors: i.monitors.map((m) => m.name).join('; '),
+                  })))}
+                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors"
+                  title="Export to CSV"
+                >
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </button>
+              </div>
+            </div>
+          )}
 
           {incidents.length === 0 ? (
             <Card className="text-center py-16">

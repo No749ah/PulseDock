@@ -349,6 +349,22 @@ export default function VersionsPage() {
     }
   }
 
+  const [runningAll, setRunningAll] = useState(false);
+
+  async function runAllNow() {
+    const ids = summary?.items?.map((i) => i.id) ?? [];
+    if (ids.length === 0) return;
+    setRunningAll(true);
+    try {
+      await api('/v1/monitors/bulk', undefined, { method: 'POST', body: JSON.stringify({ ids, action: 'run' }) });
+      // Wait a moment for checks to run, then reload
+      await new Promise((r) => setTimeout(r, 1500));
+      await load();
+    } finally {
+      setRunningAll(false);
+    }
+  }
+
   async function toggleDetails(monitorId: string) {
     if (expandedId === monitorId) {
       setExpandedId(null);
@@ -1382,6 +1398,14 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
               <h2 className="text-2xl font-bold text-text-primary">Version Checks</h2>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {(summary?.items?.length ?? 0) > 0 && (
+                <Button variant="secondary" size="sm" loading={runningAll} onClick={runAllNow} title="Run all version checks now">
+                  <span className="flex items-center gap-1.5">
+                    <Play className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Check All</span>
+                  </span>
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={() => load()} title="Refresh">
                 <span className="hidden sm:inline">Refresh</span>
                 <span className="sm:hidden">↺</span>

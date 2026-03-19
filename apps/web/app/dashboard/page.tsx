@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -129,6 +129,21 @@ export default function DashboardPage() {
     return [...DEFAULT_SECTION_ORDER];
   });
   const [showCustomize, setShowCustomize] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }
+
+  useEffect(() => {
+    function onFsChange() { setIsFullscreen(!!document.fullscreenElement); }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   const moveSectionUp = (idx: number) => {
     if (idx === 0) return;
@@ -384,6 +399,13 @@ export default function DashboardPage() {
           >
             <LayoutDashboard className="w-3 h-3" />
             Customize
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="p-1.5 rounded-md border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
           </div>
         </div>

@@ -580,7 +580,7 @@ export default function AccountPage() {
   if (!user) return null;
   if (loading)
     return (
-      <AppFrame title="Account">
+      <AppFrame title="Account" breadcrumbs={[{ label: "Account" }]}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
         </div>

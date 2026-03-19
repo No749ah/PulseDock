@@ -45,7 +45,7 @@ npm run test:watch -w @pulsedock/api
 npm run test:cov -w @pulsedock/api
 ```
 
-1428 tests, targeting >90% coverage.
+1519 tests (1497 API + 10 CLI + 12 Agent), targeting >90% coverage.
 
 ## Environment Variables
 

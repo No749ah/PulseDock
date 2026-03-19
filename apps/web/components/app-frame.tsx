@@ -9,7 +9,7 @@ import {
   AlertOctagon,
   AlertTriangle,
   Bell,
-  BookOpen,
+  ScrollText,
   CalendarClock,
   ChevronDown,
   Folder,
@@ -65,7 +65,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Administration',
     items: [
       { href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
-      { href: '/changelog', label: 'Changelog', icon: BookOpen },
+      { href: '/changelog', label: 'Changelog', icon: ScrollText },
     ],
   },
 ];

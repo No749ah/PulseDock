@@ -514,22 +514,22 @@ export default function AccountPage() {
 
   return (
     <AppFrame title="Account" subtitle="Manage your profile and security">
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6">
         {loadError && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{loadError}</span>
             </div>
-          </FadeIn>
+          
         )}
 
-        {/* Two-column layout: profile/security/activity left, keys/sessions/notif right */}
+        {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <div className="space-y-6">
 
         {/* Profile Section */}
-        <FadeIn>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -598,10 +598,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* Security Section */}
-        <FadeIn delay={0.1}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -666,10 +666,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* 2FA Section */}
-        <FadeIn delay={0.2}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -736,81 +736,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
-
-        {/* Activity Log Section — left column */}
-        <FadeIn delay={0.3}>
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-surface-elevated">
-                  <Activity className="w-5 h-5 text-text-secondary" />
-                </div>
-                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("csv")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  CSV
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("json")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  JSON
-                </Button>
-              </div>
-            </div>
-
-            {auditLog.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-text-secondary text-sm">No activity recorded yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {(auditExpanded ? auditLog : auditLog.slice(0, 8)).map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-text-primary font-mono">{entry.action}</p>
-                        <p className="text-[11px] text-text-secondary mt-0.5">
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {auditLog.length > 8 && (
-                  <button
-                    onClick={() => setAuditExpanded((v) => !v)}
-                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
-                  >
-                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
-                  </button>
-                )}
-              </>
-            )}
-          </Card>
-        </FadeIn>
-
-        </div>{/* end left column */}
-        <div className="space-y-6">
+        
 
         {/* API Keys Section */}
-        <FadeIn delay={0.3}>
+        
           <Card>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -912,10 +841,83 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
+        </div>{/* end left column */}
+        <div className="space-y-6">
+
+        {/* Activity Log */}
+        {/* Activity Log Section — left column */}
+        
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-surface-elevated">
+                  <Activity className="w-5 h-5 text-text-secondary" />
+                </div>
+                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("csv")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("json")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  JSON
+                </Button>
+              </div>
+            </div>
+
+            {auditLog.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">No activity recorded yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {(auditExpanded ? auditLog : auditLog.slice(0, 8)).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-text-primary font-mono">{entry.action}</p>
+                        <p className="text-[11px] text-text-secondary mt-0.5">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {auditLog.length > 8 && (
+                  <button
+                    onClick={() => setAuditExpanded((v) => !v)}
+                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
+                  </button>
+                )}
+              </>
+            )}
+          </Card>
+        
+
+        
         {/* Sessions Section */}
-        <FadeIn delay={0.4}>
+        
           <Card>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -990,10 +992,10 @@ export default function AccountPage() {
               </>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Notification Preferences Section */}
-        <FadeIn delay={0.5}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-surface-elevated">
@@ -1147,10 +1149,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Scheduled Reports Section */}
-        <FadeIn delay={0.55}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-surface-elevated">
@@ -1275,10 +1277,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Workspace Settings Section */}
-        <FadeIn delay={0.55}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -1334,10 +1336,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* Team Members Section */}
-        <FadeIn delay={0.58}>
+        
           <Card>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -1394,17 +1396,22 @@ export default function AccountPage() {
               Team collaboration features are in beta. Full role-based access coming soon.
             </p>
           </Card>
-        </FadeIn>
+        
 
         {/* System Info Card */}
-        <FadeIn delay={0.6}>
+        
           <SystemInfoCard userId={user?.id} />
-        </FadeIn>
+        
 
         {/* Data Retention Card */}
-        <FadeIn delay={0.65}>
+        
           <DataRetentionCard onSave={() => toastSuccess("Data retention settings saved")} />
-        </FadeIn>
+        
+
+        {/* Backup & Restore Card */}
+        
+          <BackupRestoreCard />
+        
 
         </div>{/* end right column */}
         </div>{/* end grid */}

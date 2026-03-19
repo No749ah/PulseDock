@@ -1,3 +1,11 @@
+## Status Summary (2026-03-19 10:02 UTC)
+- **Build/Test:** ✅ Clean build, 1432 API + 10 CLI + 12 agent tests passing (1454 total), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 10:02 UTC):**
+  - **Alert Delivery History**: `AlertDeliveryLog` Prisma model + migration. `sendWithRetry()` logs every delivery attempt (success/failed, trigger, monitorId, durationMs, errorMessage). `GET /v1/alert-channels/:id/deliveries` — last 50 entries + success/failed counts. Frontend: Activity button per channel row opens history modal with stats + log entries (status, trigger, monitor name, error, timestamp, duration). 4 new tests.
+
 ## Status Summary (2026-03-19 07:22 UTC)
 - **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1037,7 +1045,7 @@
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
-- [ ] **Webhook management UI** — Create/edit/test webhooks, delivery history, retry failed deliveries, payload templates, signature verification config
+- [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
 - [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms

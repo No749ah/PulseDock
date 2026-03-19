@@ -1,17 +1,21 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
+import { RequireScope } from '../common/require-scope.decorator';
+import { ScopeGuard } from '../common/scope.guard';
+import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, ScopeGuard)
 @Controller('v1/monitors')
 export class MonitorsController {
   constructor(private readonly monitorsService: MonitorsService) {}
 
   @Get()
+  @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'List monitors', description: 'Returns all monitors for the authenticated user.' })
   @ApiQuery({ name: 'tag', required: false, description: 'Filter monitors by tag name.' })
   @ApiResponse({ status: 200, description: 'Monitor list returned.' })
@@ -20,6 +24,7 @@ export class MonitorsController {
   }
 
   @Post()
+  @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Create monitor', description: 'Create a new uptime or version monitor.' })
   @ApiResponse({ status: 201, description: 'Monitor created.' })
   create(
@@ -39,6 +44,7 @@ export class MonitorsController {
   }
 
   @Delete(':id')
+  @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Delete monitor' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiResponse({ status: 200, description: 'Monitor deleted.' })

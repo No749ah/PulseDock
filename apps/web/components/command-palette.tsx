@@ -19,7 +19,10 @@ import {
   X,
   Plus,
   Activity,
+  Download,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "./theme-provider";
 
 interface CommandItem {
   id: string;
@@ -29,6 +32,7 @@ interface CommandItem {
   action: () => void;
   group: string;
   keywords?: string[];
+  shortcut?: string;
 }
 
 const RECENT_KEY = "pd:recent-commands";
@@ -63,6 +67,7 @@ function fuzzyMatch(text: string, query: string): boolean {
 
 export function CommandPalette() {
   const router = useRouter();
+  const { toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -73,26 +78,29 @@ export function CommandPalette() {
   // Build commands — needs router, so inside component
   const allCommands = useCallback((): CommandItem[] => [
     // Navigation
-    { id: "nav-dashboard", label: "Dashboard", description: "Go to dashboard", icon: LayoutDashboard, group: "Navigation", keywords: ["home", "overview"], action: () => router.push("/dashboard") },
-    { id: "nav-monitors", label: "Monitors", description: "Uptime checks", icon: Monitor, group: "Navigation", keywords: ["uptime", "http", "tcp"], action: () => router.push("/monitors") },
-    { id: "nav-alerts", label: "Alerts", description: "Alert channels & rules", icon: Bell, group: "Navigation", keywords: ["notifications", "pagerduty", "slack"], action: () => router.push("/alerts") },
-    { id: "nav-status-pages", label: "Status Pages", description: "Public status pages", icon: Globe, group: "Navigation", keywords: ["public", "status"], action: () => router.push("/status-pages") },
-    { id: "nav-incidents", label: "Incidents", description: "Incident management", icon: AlertTriangle, group: "Navigation", keywords: ["outage", "postmortem"], action: () => router.push("/incidents") },
-    { id: "nav-maintenance", label: "Maintenance", description: "Maintenance windows", icon: Calendar, group: "Navigation", keywords: ["schedule", "downtime"], action: () => router.push("/maintenance") },
-    { id: "nav-versions", label: "Versions", description: "Version tracking", icon: BarChart2, group: "Navigation", keywords: ["release", "semver", "git"], action: () => router.push("/versions") },
+    { id: "nav-dashboard", label: "Dashboard", description: "Go to dashboard", icon: LayoutDashboard, group: "Navigation", keywords: ["home", "overview"], shortcut: "G D", action: () => router.push("/dashboard") },
+    { id: "nav-monitors", label: "Monitors", description: "Uptime checks", icon: Monitor, group: "Navigation", keywords: ["uptime", "http", "tcp"], shortcut: "G M", action: () => router.push("/monitors") },
+    { id: "nav-alerts", label: "Alerts", description: "Alert channels & rules", icon: Bell, group: "Navigation", keywords: ["notifications", "pagerduty", "slack"], shortcut: "G A", action: () => router.push("/alerts") },
+    { id: "nav-status-pages", label: "Status Pages", description: "Public status pages", icon: Globe, group: "Navigation", keywords: ["public", "status"], shortcut: "G S", action: () => router.push("/status-pages") },
+    { id: "nav-incidents", label: "Go to Incidents", description: "Incident management", icon: AlertTriangle, group: "Navigation", keywords: ["outage", "postmortem", "incident"], shortcut: "G I", action: () => router.push("/incidents") },
+    { id: "nav-maintenance", label: "Go to Maintenance", description: "Maintenance windows", icon: Calendar, group: "Navigation", keywords: ["schedule", "downtime", "maintenance"], shortcut: "G W", action: () => router.push("/maintenance") },
+    { id: "nav-versions", label: "Versions", description: "Version tracking", icon: BarChart2, group: "Navigation", keywords: ["release", "semver", "git"], shortcut: "G V", action: () => router.push("/versions") },
     { id: "nav-projects", label: "Projects", description: "Project management", icon: Server, group: "Navigation", keywords: ["team", "group"], action: () => router.push("/projects") },
     { id: "nav-account", label: "Account Settings", description: "Manage your account", icon: Shield, group: "Navigation", keywords: ["profile", "password", "settings"], action: () => router.push("/account") },
     { id: "nav-admin", label: "Admin", description: "Administration panel", icon: Wrench, group: "Navigation", keywords: ["system", "users", "config"], action: () => router.push("/admin") },
     // Create
-    { id: "create-monitor", label: "New Monitor", description: "Create uptime check", icon: Plus, group: "Create", keywords: ["add", "new", "http", "tcp"], action: () => router.push("/monitors") },
-    { id: "create-alert", label: "New Alert Channel", description: "Add alert destination", icon: Plus, group: "Create", keywords: ["add", "slack", "discord", "webhook"], action: () => router.push("/alerts") },
-    { id: "create-status-page", label: "New Status Page", description: "Create public status page", icon: Plus, group: "Create", keywords: ["add", "public"], action: () => router.push("/status-pages") },
+    { id: "create-monitor", label: "New Monitor", description: "Create uptime check", icon: Plus, group: "Create", keywords: ["add", "new", "http", "tcp"], shortcut: "N M", action: () => router.push("/monitors?create=1") },
+    { id: "create-alert", label: "New Alert Channel", description: "Add alert destination", icon: Plus, group: "Create", keywords: ["add", "slack", "discord", "webhook"], shortcut: "N A", action: () => router.push("/alerts") },
+    { id: "create-status-page", label: "New Status Page", description: "Create public status page", icon: Plus, group: "Create", keywords: ["add", "public"], shortcut: "N S", action: () => router.push("/status-pages") },
     { id: "create-incident", label: "New Incident", description: "Report an incident", icon: Plus, group: "Create", keywords: ["add", "outage", "report"], action: () => router.push("/incidents") },
+    // Actions
+    { id: "action-export-monitors", label: "Export Monitors", description: "Download monitors as CSV", icon: Download, group: "Actions", keywords: ["download", "csv", "backup", "export"], action: () => router.push("/monitors?export=1") },
+    { id: "action-toggle-theme", label: "Toggle Theme", description: "Switch dark / light mode", icon: Sun, group: "Actions", keywords: ["dark", "light", "theme", "mode", "color"], shortcut: "T", action: () => { toggleTheme(); } },
     // External
     { id: "ext-github", label: "GitHub Repository", description: "View source code", icon: ExternalLink, group: "External", keywords: ["source", "code", "repo"], action: () => window.open("https://github.com/No749ah/PulseDock", "_blank") },
     { id: "ext-api-docs", label: "API Documentation", description: "Browse API reference", icon: ExternalLink, group: "External", keywords: ["api", "rest", "docs", "swagger"], action: () => router.push("/api/docs") },
     { id: "ext-changelog", label: "Changelog", description: "View release history", icon: ExternalLink, group: "External", keywords: ["releases", "updates", "version"], action: () => window.open("https://github.com/No749ah/PulseDock/releases", "_blank") },
-  ], [router]);
+  ], [router, toggleTheme]);
 
   // Filtered results grouped
   const grouped = useCallback(() => {
@@ -123,7 +131,7 @@ export function CommandPalette() {
     }
 
     // Regular groups in order
-    const groupOrder = ["Navigation", "Create", "External"];
+    const groupOrder = ["Navigation", "Create", "Actions", "External"];
     for (const groupName of groupOrder) {
       const items = filtered.filter((c) => c.group === groupName);
       if (items.length > 0) result.push({ group: groupName, items });
@@ -298,17 +306,26 @@ export function CommandPalette() {
                       />
                       <span
                         className={[
-                          "text-sm",
+                          "text-sm flex-1 min-w-0",
                           isActive ? "text-accent" : "text-text-primary",
                         ].join(" ")}
                       >
                         {item.label}
                       </span>
-                      {item.description && (
-                        <span className="text-xs text-text-muted ml-auto truncate">
+                      {item.shortcut ? (
+                        <kbd className={[
+                          "hidden sm:flex items-center gap-0.5 ml-auto shrink-0 text-[10px] font-medium border rounded px-1.5 py-0.5",
+                          isActive
+                            ? "text-accent border-accent/40 bg-accent/10"
+                            : "text-text-muted border-border bg-surface-elevated",
+                        ].join(" ")}>
+                          {item.shortcut}
+                        </kbd>
+                      ) : item.description ? (
+                        <span className="text-xs text-text-muted ml-auto truncate shrink-0 hidden sm:block">
                           {item.description}
                         </span>
-                      )}
+                      ) : null}
                     </button>
                   );
                 })}

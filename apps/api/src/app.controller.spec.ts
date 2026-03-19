@@ -8,6 +8,7 @@ const mockPrisma = {
 
 const mockScheduler = {
   getQueueDepth: vi.fn().mockReturnValue(0),
+  getLastCycleMs: vi.fn().mockReturnValue(0),
 };
 
 describe('AppController', () => {
@@ -22,7 +23,10 @@ describe('AppController', () => {
       expect(result.runtime).toBe('nestjs');
       expect(result.checks.database.status).toBe('ok');
       expect(typeof result.checks.scheduler.queueDepth).toBe('number');
+      expect(typeof result.checks.scheduler.lastCycleMs).toBe('number');
+      expect(typeof result.checks.redis.status).toBe('string');
       expect(typeof result.uptimeMs).toBe('number');
+      expect(typeof result.uptime).toBe('number');
     });
 
     it('throws 503 when DB is unreachable', async () => {

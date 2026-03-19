@@ -20,6 +20,9 @@ export class ChecksScheduler {
   /** Tracks how many monitors are currently being checked. */
   private queueDepth = 0;
 
+  /** Duration (ms) of the last completed check cycle. */
+  private lastCycleMs = 0;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly checksService: ChecksService,
@@ -28,6 +31,11 @@ export class ChecksScheduler {
   /** Returns the current check queue depth (number of monitors actively being checked). */
   getQueueDepth(): number {
     return this.queueDepth;
+  }
+
+  /** Returns the duration in ms of the last completed check cycle. */
+  getLastCycleMs(): number {
+    return this.lastCycleMs;
   }
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -54,12 +62,14 @@ export class ChecksScheduler {
     const skipped = total - due.length;
 
     if (due.length === 0) {
+      const earlyDuration = Date.now() - cycleStart;
+      this.lastCycleMs = earlyDuration;
       this.logger.log(JSON.stringify({
         event: 'check.cycle',
         total,
         due: 0,
         skipped,
-        durationMs: Date.now() - cycleStart,
+        durationMs: earlyDuration,
       }));
       return;
     }
@@ -75,6 +85,7 @@ export class ChecksScheduler {
     }
 
     const durationMs = Date.now() - cycleStart;
+    this.lastCycleMs = durationMs;
 
     this.logger.log(JSON.stringify({
       event: 'check.cycle',

@@ -1,3 +1,4 @@
+import * as net from 'node:net';
 import { Controller, Get, Header, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MetricsService } from './common/metrics.service';
@@ -16,10 +17,31 @@ export class AppController {
     private readonly checksScheduler: ChecksScheduler,
   ) {}
 
+  /** Probe Redis connectivity via a raw PING over TCP. */
+  private pingRedis(): Promise<'ok' | 'error'> {
+    return new Promise((resolve) => {
+      const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
+      const match = redisUrl.match(/redis:\/\/([^:]+):(\d+)/);
+      const host = match?.[1] ?? 'localhost';
+      const port = parseInt(match?.[2] ?? '6379', 10);
+
+      const socket = net.createConnection({ host, port }, () => {
+        socket.write('PING\r\n');
+      });
+      socket.setTimeout(2000);
+      socket.on('data', (data) => {
+        socket.destroy();
+        resolve(data.toString().includes('+PONG') ? 'ok' : 'error');
+      });
+      socket.on('error', () => { socket.destroy(); resolve('error'); });
+      socket.on('timeout', () => { socket.destroy(); resolve('error'); });
+    });
+  }
+
   @Get('health')
   @ApiOperation({
     summary: 'Health check',
-    description: 'Returns service health including DB connectivity and uptime.',
+    description: 'Returns service health including DB connectivity, Redis status, and uptime.',
   })
   @ApiResponse({ status: 200, description: 'Service is healthy.' })
   @ApiResponse({ status: 503, description: 'Service is unhealthy (DB unreachable).' })
@@ -38,6 +60,7 @@ export class AppController {
       // db stays 'error'
     }
 
+    const redisStatus = await this.pingRedis();
     const healthy = db === 'ok';
 
     const payload = {
@@ -46,9 +69,14 @@ export class AppController {
       version: pkg.version,
       runtime: 'nestjs',
       uptimeMs,
+      uptime: process.uptime(),
       checks: {
         database: { status: db, latencyMs: dbLatencyMs },
-        scheduler: { queueDepth: this.checksScheduler.getQueueDepth() },
+        redis: { status: redisStatus },
+        scheduler: {
+          queueDepth: this.checksScheduler.getQueueDepth(),
+          lastCycleMs: this.checksScheduler.getLastCycleMs(),
+        },
       },
     };
 

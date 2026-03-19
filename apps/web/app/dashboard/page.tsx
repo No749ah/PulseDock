@@ -278,7 +278,7 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
+    <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`} breadcrumbs={[{ label: "Dashboard" }]}>
       <div className="space-y-8">
         {/* Heading row with Live indicator and time range label */}
         <div className="flex items-center gap-3">

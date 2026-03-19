@@ -2778,6 +2778,100 @@ export class StatusPagesService {
     }
   }
 
+  async getPublicJson(slug: string, password?: string): Promise<Record<string, unknown>> {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    if (page.passwordHash) {
+      if (!password) throw new UnauthorizedException('This status page is password-protected');
+      const valid = await bcrypt.compare(password, page.passwordHash);
+      if (!valid) throw new UnauthorizedException('Incorrect password');
+    }
+
+    // Fetch monitors with latest run
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId: page.userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: { level: true, ok: true, latencyMs: true, checkedAt: true },
+        },
+      },
+    });
+
+    const monitorStatuses = monitors.map((m) => {
+      const latest = m.runs[0];
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        status: latest?.level ?? 'unknown',
+        ok: latest?.ok ?? null,
+        latencyMs: latest?.latencyMs ?? null,
+        lastChecked: latest?.checkedAt ?? null,
+      };
+    });
+
+    // Overall status: red if any down, yellow if any degraded, green otherwise
+    const hasDown = monitorStatuses.some(m => m.status === 'red');
+    const hasDegraded = monitorStatuses.some(m => m.status === 'yellow');
+    const overallStatus = hasDown ? 'down' : hasDegraded ? 'degraded' : 'operational';
+
+    // Active incidents
+    const activeIncidents = await this.prisma.incident.findMany({
+      where: { userId: page.userId, resolvedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        severity: true,
+        createdAt: true,
+        updates: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { body: true, status: true, createdAt: true },
+        },
+      },
+    });
+
+    // Upcoming maintenance
+    const now = new Date();
+    const upcomingMaintenance = await this.prisma.maintenanceWindow.findMany({
+      where: { userId: page.userId, endsAt: { gte: now } },
+      orderBy: { startsAt: 'asc' },
+      take: 5,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        startsAt: true,
+        endsAt: true,
+      },
+    });
+
+    return {
+      page: { slug: page.slug, title: page.title, description: page.description },
+      overallStatus,
+      monitors: monitorStatuses,
+      activeIncidents: activeIncidents.map(i => ({
+        id: i.id,
+        title: i.title,
+        status: i.status,
+        severity: i.severity,
+        createdAt: i.createdAt,
+        latestUpdate: i.updates[0] ?? null,
+      })),
+      upcomingMaintenance,
+      generatedAt: now.toISOString(),
+    };
+  }
+
   async getRssFeed(slug: string): Promise<string> {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');

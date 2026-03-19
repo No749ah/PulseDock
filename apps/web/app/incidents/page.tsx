@@ -358,7 +358,7 @@ export default function IncidentsPage() {
   );
 
   return (
-    <AppFrame title="Incidents" subtitle="Track and manage operational incidents">
+    <AppFrame title="Incidents" subtitle="Track and manage operational incidents" breadcrumbs={[{ label: "Incidents" }]}>
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (

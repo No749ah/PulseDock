@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -130,6 +130,9 @@ export default function DashboardPage() {
   });
   const [showCustomize, setShowCustomize] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [monitorView, setMonitorView] = useState<"table" | "grid">(() => {
+    try { return (localStorage.getItem("dashboard-monitor-view") as "table" | "grid") ?? "table"; } catch { return "table"; }
+  });
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -607,9 +610,29 @@ export default function DashboardPage() {
                         {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
                       </p>
                     </div>
-                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2" data-tour="add-monitor">
-                      <Plus className="w-4 h-4" /> Add Monitor
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {monitors.length > 0 && (
+                        <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
+                          <button
+                            onClick={() => { setMonitorView("table"); try { localStorage.setItem("dashboard-monitor-view","table"); } catch {} }}
+                            className={`p-1.5 transition-colors ${monitorView === "table" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                            title="Table view"
+                          >
+                            <List className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setMonitorView("grid"); try { localStorage.setItem("dashboard-monitor-view","grid"); } catch {} }}
+                            className={`p-1.5 transition-colors ${monitorView === "grid" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
+                            title="Grid view"
+                          >
+                            <LayoutGrid className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2" data-tour="add-monitor">
+                        <Plus className="w-4 h-4" /> Add Monitor
+                      </Button>
+                    </div>
                   </div>
                   {monitors.length === 0 ? (
                     <Card className="text-center py-16">
@@ -620,6 +643,47 @@ export default function DashboardPage() {
                       <p className="text-text-secondary text-sm mb-6">Start monitoring your services, APIs, and endpoints</p>
                       <Button onClick={() => router.push("/monitors")} size="lg">Create your first monitor</Button>
                     </Card>
+                  ) : monitorView === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                      {monitors.map((monitor) => {
+                        const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                        const isVersion = VERSION_TYPES.has(monitor.type);
+                        const statusColor = !monitor.enabled
+                          ? "border-border text-text-secondary"
+                          : !lastRun
+                          ? "border-border text-text-secondary"
+                          : isVersion
+                          ? lastRun.level === "red" ? "border-danger/40 text-danger" : lastRun.level === "yellow" ? "border-warning/40 text-warning" : "border-success/30 text-success"
+                          : lastRun.ok
+                          ? "border-success/30 text-success"
+                          : lastRun.level === "yellow"
+                          ? "border-warning/40 text-warning"
+                          : "border-danger/40 text-danger";
+                        const dot = !monitor.enabled
+                          ? "bg-text-muted/40"
+                          : !lastRun
+                          ? "bg-text-muted/40"
+                          : isVersion
+                          ? lastRun.level === "red" ? "bg-danger" : lastRun.level === "yellow" ? "bg-warning" : "bg-success"
+                          : lastRun.ok ? "bg-success" : lastRun.level === "yellow" ? "bg-warning" : "bg-danger";
+                        return (
+                          <button
+                            key={monitor.id}
+                            onClick={() => router.push(isVersion ? "/versions" : `/monitors/${monitor.id}`)}
+                            className={`flex flex-col gap-2 rounded-xl border bg-surface p-3 text-left hover:bg-surface-elevated transition-colors ${statusColor}`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
+                              {isVersion && <GitBranch className="w-3 h-3 text-text-muted/60 shrink-0" />}
+                            </div>
+                            <span className="text-xs font-medium text-text-primary truncate leading-tight">{monitor.name}</span>
+                            {lastRun?.latencyMs != null && !isVersion && (
+                              <span className="text-[10px] text-text-muted font-mono">{lastRun.latencyMs}ms</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <Card className="p-0">
                       <div className="overflow-x-auto">

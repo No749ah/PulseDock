@@ -74,7 +74,115 @@ Most common: missing type annotations or incompatible versions. Check CHANGELOG 
 
 ---
 
+---
+
+### Email / SMTP not sending
+
+**Cause:** SMTP credentials missing or wrong port.
+
+**Fix:**
+```bash
+# Verify env vars are set
+grep SMTP apps/api/.env
+
+# Test SMTP from the server (requires curl with SMTP support or swaks)
+swaks --auth --server smtp.gmail.com --port 587 --au your@gmail.com --ap apppassword -t recipient@example.com
+```
+
+If using Gmail: enable "App Passwords" (required when 2FA is on). Set `SMTP_PORT=587` and `SMTP_SECURE=false`.
+
+---
+
+### API returns 401 after password change
+
+**Cause:** Old access tokens are invalidated on password change.
+
+**Fix:** Log out completely (clear localStorage), then log back in. All existing refresh tokens are also revoked automatically.
+
+---
+
+### Redis connection errors
+
+**Cause:** Redis not running or wrong URL.
+
+**Fix:**
+```bash
+# Check Redis
+redis-cli -u redis://localhost:6379 ping
+# Should return: PONG
+
+# For Docker Compose, use the service name:
+REDIS_URL=redis://redis:6379
+```
+
+---
+
+### Agent not reporting / "Unauthorized"
+
+**Cause:** API key is expired, revoked, or has insufficient scope.
+
+**Fix:**
+1. Go to **Account → API Keys** and create a new key with `write` scope
+2. Update `PULSEDOCK_API_KEY` in the agent's environment
+3. Restart the agent container: `docker restart pulsedock-agent`
+
+---
+
+### Status page widgets show no data
+
+**Cause:** Widgets are not linked to a monitor, or the monitor has no runs yet.
+
+**Fix:**
+1. Click a widget in the editor → check **Monitor** selection in the config panel
+2. Ensure the linked monitor has run at least once (check Monitors page)
+3. For version widgets: the monitor must be a "Version Check" type
+
+---
+
+### Playwright E2E tests fail locally
+
+**Cause:** Services not running or wrong base URL.
+
+**Fix:**
+```bash
+# Start services first
+cd projects/PulseDock && npm run dev
+
+# Then in another terminal
+cd packages/e2e && PLAYWRIGHT_BASE_URL=http://localhost:1234 npx playwright test
+```
+
+---
+
+### `npm run build` OOM (out of memory)
+
+**Cause:** Next.js build requires ~2GB RAM. TypeScript registry parsing is memory-intensive.
+
+**Fix:**
+```bash
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
+```
+
+---
+
+### `prisma migrate dev` fails with "drift"
+
+**Cause:** Migration history is out of sync with the database state.
+
+**Fix:**
+```bash
+# Reset development DB (WARNING: destroys all data)
+npx prisma migrate reset
+
+# Or manually resolve drift:
+npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script
+```
+
+---
+
 ## Getting Help
 
 - GitHub Issues: https://github.com/No749ah/PulseDock/issues
-- Check the logs: `~/.openclaw/workspace/log/pulsedock_*.log`
+- API logs: `docker compose logs pulsedock-api -f`
+- Web logs: `docker compose logs pulsedock-web -f`
+- Check API health: `curl http://localhost:4321/health`

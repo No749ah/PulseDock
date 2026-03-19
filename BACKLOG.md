@@ -916,7 +916,7 @@
   **Container & Orchestration (more):**
   Yacht, Dockge, Lazydocker (API), Diun, Watchtower, Ouroboros, Podman (API), LXD/Incus, Proxmox VE (`/api2/json/version`), TrueNAS SCALE API
 
-- [ ] **Tool Registry expansion: 1302 → 2500+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+- [x] **Tool Registry expansion: 1467 → 2567 entries (2440 unique)** — Added REGISTRY_PART7/PART8/PART9 with 1100 new tools: Download/Torrent (qBittorrent, SABnzbd, NZBGet), AI/ML (Tabby, Langflow, ChromaDB, text-generation-webui, Stable Diffusion WebUI), Messaging (Apache NiFi, Debezium, ksqlDB), E-Commerce (Shopware, PrestaShop, Medusa, Saleor), ERP/Business (Crater, Kimai, Twenty CRM, EspoCRM), Security (DefectDojo, Dependency-Track, Prowler, Steampipe, Padloc), DevTools (Weblate, Tolgee, GrowthBook, Unleash, Flagsmith, Flipt, Huginn, Cronicle, Kestra, tldraw, OpnForm, HeyForm), Observability (Gatus, Healthchecks), Kubernetes (Headlamp, Skooner), and many more.
 
   **ERP & Business:**
   ERPNext, Odoo, Dolibarr, Tryton, Axelor, iDempiere, Metasfresh, Crater (invoicing), InvoiceNinja, Kimai (time tracking), Solidtime

@@ -572,7 +572,7 @@
 ### P1 — New Widgets (Metrics & Data)
 
 - [x] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
-- [ ] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
+- [x] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
 - [x] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
 - [x] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
 - [x] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
@@ -630,7 +630,7 @@
 - [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
 - [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
 - [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
-- [ ] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
+- [x] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
 
 ### P2 — Public Page Rendering
 

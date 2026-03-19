@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -144,6 +144,10 @@ function MonitorsPageInner() {
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Advanced filter panel state
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+  const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
   });
@@ -238,7 +242,7 @@ function MonitorsPageInner() {
   const [alertPanelError, setAlertPanelError] = useState("");
 
   // Reset to page 1 when filters/sort change
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir, filterStatuses, filterTypes, filterTags]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -716,14 +720,44 @@ function MonitorsPageInner() {
   const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
 
+  // Compute active filter count for badge
+  const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+  const activeFilterCount =
+    (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
+    (filterTypes.size < defaultTypes.size ? 1 : 0) +
+    (filterTags.size > 0 ? 1 : 0);
+
   const filteredMonitors = monitors.filter((m) => {
     // Version-type monitors belong on the Versions page — never show here
     if (m.type === "GIT_RELEASE" || m.type === "DOCKER_IMAGE") return false;
+    // Tag filter (from chips above table)
     if (activeTagFilter && !m.tags?.some((t) => t.name === activeTagFilter)) return false;
+    // Enabled/disabled filter (legacy top bar)
     if (statusFilter === "enabled" && !m.enabled) return false;
     if (statusFilter === "disabled" && m.enabled) return false;
     if (folderFilter && m.folderId !== folderFilter) return false;
+    // Advanced type filter
+    if (filterTypes.size < defaultTypes.size && !filterTypes.has(m.type)) return false;
+    // Legacy single type filter
     if (typeFilter !== "all" && m.type !== typeFilter) return false;
+    // Advanced tag filter (from panel)
+    if (filterTags.size > 0 && !m.tags?.some((t) => filterTags.has(t.name))) return false;
+    // Advanced status filter
+    if (filterStatuses.size < defaultStatuses.size) {
+      const lastRun = runs.find((r) => r.monitorId === m.id);
+      if (!m.enabled) {
+        if (!filterStatuses.has("paused")) return false;
+      } else if (!lastRun) {
+        // no data yet — treat as up
+        if (!filterStatuses.has("up")) return false;
+      } else {
+        const lvl = lastRun.level ?? "green";
+        if (lvl === "green" && !filterStatuses.has("up")) return false;
+        if (lvl === "yellow" && !filterStatuses.has("degraded")) return false;
+        if (lvl === "red" && !filterStatuses.has("down")) return false;
+      }
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
@@ -1008,12 +1042,16 @@ function MonitorsPageInner() {
             )}
             <button
               onClick={() => setShowAdvancedFilters((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${showAdvancedFilters || typeFilter !== "all" ? "bg-accent/10 border-accent/40 text-accent" : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${showAdvancedFilters || activeFilterCount > 0 ? "bg-accent/10 border-accent/40 text-accent" : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"}`}
               aria-label="Advanced filters"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <Filter className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
-              {typeFilter !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+              {activeFilterCount > 0 && (
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-accent text-white text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
         </FadeIn>
@@ -1023,7 +1061,7 @@ function MonitorsPageInner() {
           <FadeIn>
             <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-text-primary">Advanced Filters</span>
+                <span className="text-sm font-semibold text-text-primary">Filters</span>
                 <div className="flex items-center gap-2">
                   {savedPresets.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
@@ -1054,35 +1092,113 @@ function MonitorsPageInner() {
                     <BookmarkPlus className="w-3.5 h-3.5" />
                     Save
                   </button>
-                  <button
-                    onClick={() => { setTypeFilter("all"); setStatusFilter("all"); setActiveTagFilter(null); setFolderFilter(null); }}
-                    className="text-xs text-text-muted hover:text-danger transition-colors"
-                  >
-                    Clear all
-                  </button>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => {
+                        setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
+                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+                        setFilterTags(new Set());
+                        setTypeFilter("all");
+                        setStatusFilter("all");
+                        setActiveTagFilter(null);
+                        setFolderFilter(null);
+                      }}
+                      className="text-xs text-danger/70 hover:text-danger transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <button
-                      onClick={() => setTypeFilter("all")}
-                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
-                    >
-                      All
-                    </button>
-                    {MONITOR_TYPES.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setTypeFilter(typeFilter === t ? "all" : t)}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === t ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
-                      >
-                        {t === "SSL_CERT" ? "SSL" : t === "HEARTBEAT" ? "Heartbeat" : t}
-                      </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Status filter */}
+                <div className="space-y-2">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Status</span>
+                  <div className="space-y-1.5">
+                    {([
+                      { key: "up", label: "Up", color: "text-success" },
+                      { key: "down", label: "Down", color: "text-danger" },
+                      { key: "degraded", label: "Degraded", color: "text-warning" },
+                      { key: "paused", label: "Paused", color: "text-text-secondary" },
+                    ] as const).map(({ key, label, color }) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={filterStatuses.has(key)}
+                          onChange={() => {
+                            setFilterStatuses((prev) => {
+                              const next = new Set(prev);
+                              next.has(key) ? next.delete(key) : next.add(key);
+                              return next;
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
+                        />
+                        <span className={`text-xs font-medium ${color} group-hover:opacity-80`}>{label}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
+
+                {/* Type filter */}
+                <div className="space-y-2">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
+                  <div className="space-y-1.5">
+                    {([
+                      { key: "HTTP", label: "HTTP" },
+                      { key: "TCP", label: "TCP" },
+                      { key: "SSL_CERT", label: "SSL" },
+                      { key: "HEARTBEAT", label: "Heartbeat" },
+                    ] as const).map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={filterTypes.has(key)}
+                          onChange={() => {
+                            setFilterTypes((prev) => {
+                              const next = new Set(prev);
+                              next.has(key) ? next.delete(key) : next.add(key);
+                              return next;
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
+                        />
+                        <span className="text-xs text-text-primary group-hover:opacity-80">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tag filter */}
+                {allTags.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Tags</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allTags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            setFilterTags((prev) => {
+                              const next = new Set(prev);
+                              next.has(tag.name) ? next.delete(tag.name) : next.add(tag.name);
+                              return next;
+                            });
+                          }}
+                          className="px-2 py-1 rounded-full text-xs font-medium transition-all border"
+                          style={{
+                            backgroundColor: filterTags.has(tag.name) ? tag.color + "40" : "transparent",
+                            borderColor: tag.color + "80",
+                            color: filterTags.has(tag.name) ? tag.color : undefined,
+                            opacity: filterTags.has(tag.name) ? 1 : 0.6,
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </FadeIn>

@@ -96,7 +96,7 @@ function makeService(opts: {
   const prisma = opts.prisma ?? makePrisma();
   const alerts = opts.alerts ?? makeAlerts();
   const realtime = opts.realtime ?? makeRealtime();
-  return new ChecksService(prisma as never, alerts as never, realtime as never);
+  return new ChecksService(prisma as never, alerts as never, undefined, realtime as never);
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────

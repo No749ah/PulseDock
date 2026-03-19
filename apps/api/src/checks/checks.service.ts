@@ -1161,7 +1161,13 @@ export class ChecksService {
       // Only fire if status actually changed
       if (overallStatus === page.lastNotifiedStatus) return;
 
-      // Persist new status before firing webhook
+      // Skip persisting / notifying if there is nothing to notify
+      // (no webhook URL and no mailer — avoids spurious DB writes in tests/lite deployments)
+      const hasWebhook = Boolean(page.notifyWebhookUrl);
+      const hasMailer = Boolean(this.mailer);
+      if (!hasWebhook && !hasMailer) return;
+
+      // Persist new status so we don't re-fire on the next check
       await this.prisma.publicStatusPage.update({
         where: { id: page.id },
         data: { lastNotifiedStatus: overallStatus },

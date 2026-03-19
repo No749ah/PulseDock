@@ -49,7 +49,7 @@ npm run test:cov -w @pulsedock/api
 
 ## Environment Variables
 
-Copy `../../.env.example` to `.env` (or set via Docker). Key vars:
+Copy `.env.example` to `.env` (or set via Docker). Key vars:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -62,7 +62,7 @@ Copy `../../.env.example` to `.env` (or set via Docker). Key vars:
 | `CORS_ORIGINS` | — | Comma-separated allowed origins |
 | `SMTP_HOST` | — | For email alerts and verification |
 
-See `../../.env.example` for the full list.
+See `.env.example` in this directory for the full list.
 
 ## Key Modules
 

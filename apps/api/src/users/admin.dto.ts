@@ -25,10 +25,18 @@ export class UpdateUserDto {
   email?: string;
 
   @IsOptional()
+  @IsString()
+  displayName?: string;
+
+  @IsOptional()
   @IsIn(['admin', 'user'])
   role?: 'admin' | 'user';
 
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  mustChangePassword?: boolean;
 }

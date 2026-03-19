@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import {
   Activity, AlertTriangle, BarChart2, Check, ChevronLeft, ChevronRight,
   CheckCircle, ClipboardList, Copy, Database, KeyRound, Link2,
-  Mail, Monitor, RefreshCw, Server, Shield, Trash2, UserCog,
-  Users, X, XCircle, Zap,
+  Mail, Monitor, RefreshCw, Server, Shield, ShieldOff, Trash2, UserCog,
+  Users, X, XCircle, Zap, Lock, RotateCcw, AlertCircle,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
@@ -14,10 +14,21 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
+import { CountUp } from '../../app/components/CountUp';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
-type AdminUser = { id: string; email: string; role: 'admin' | 'user'; createdAt: string; isActive?: boolean };
+type AdminUser = {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  role: 'admin' | 'user';
+  isActive?: boolean;
+  totpEnabled?: boolean;
+  emailVerified?: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+};
 type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: string; expiresAt: string; acceptedAt?: string | null };
 type AuditLog = { id: string; action: string; actorUserId: string | null; targetUserId: string | null; createdAt: string };
 type PasswordReset = { id: string; email: string; expiresAt: string; createdAt: string; resetUrl: string };
@@ -201,7 +212,7 @@ function SystemStatsWidget() {
         {tiles.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="rounded-xl bg-surface-elevated border border-border p-4">
             <div className="flex items-center gap-1.5 mb-2"><Icon className={`w-3.5 h-3.5 ${color}`} /><span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span></div>
-            <span className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</span>
+            <span className={`text-2xl font-bold ${color}`}><CountUp value={`${value}`} duration={900} /></span>
             <p className="text-xs text-text-secondary mt-0.5">{sub}</p>
           </div>
         ))}
@@ -212,49 +223,100 @@ function SystemStatsWidget() {
 
 // ── Edit User Modal ───────────────────────────────────────────────────────────
 
-function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
+function EditUserModal({ user: u, currentUserId, onClose, onSave, onDelete }: {
   user: AdminUser; currentUserId: string;
-  onClose: () => void; onSave: (patch: Partial<AdminUser>) => Promise<void>;
+  onClose: () => void;
+  onSave: (patch: Partial<AdminUser>) => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [email, setEmail] = useState(u.email);
+  const [displayName, setDisplayName] = useState(u.displayName ?? '');
   const [role, setRole] = useState<'admin' | 'user'>(u.role);
   const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [resetUrl, setResetUrl] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isSelf = u.id === currentUserId;
 
   async function handleSave() {
-    setSaving(true); setError('');
-    try { await onSave({ email: email.trim(), role }); onClose(); }
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      await onSave({ email: email.trim(), displayName: displayName.trim() || undefined, role });
+      setSuccess('Changes saved.');
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to save'); }
     finally { setSaving(false); }
   }
 
   async function toggleActive() {
-    setSaving(true); setError('');
-    try { await onSave({ isActive: !u.isActive }); onClose(); }
+    setActionLoading('status'); setError(''); setSuccess('');
+    try { await onSave({ isActive: !(u.isActive !== false) }); setSuccess('Account status updated.'); }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to update'); }
-    finally { setSaving(false); }
+    finally { setActionLoading(null); }
   }
+
+  async function doResetMfa() {
+    setActionLoading('mfa'); setError(''); setSuccess('');
+    try {
+      await api(`/v1/admin/users/${u.id}/reset-mfa`, undefined, { method: 'POST' });
+      setSuccess('MFA disabled. User must re-authenticate.');
+    }
+    catch (e) { setError(e instanceof Error ? e.message : 'Failed to reset MFA'); }
+    finally { setActionLoading(null); }
+  }
+
+  async function doForcePasswordReset() {
+    setActionLoading('pwreset'); setError(''); setSuccess('');
+    try {
+      const res = await api<{ ok: boolean; resetUrl: string; expiresAt: string }>(`/v1/admin/users/${u.id}/force-password-reset`, undefined, { method: 'POST' });
+      setResetUrl(res.resetUrl);
+    }
+    catch (e) { setError(e instanceof Error ? e.message : 'Failed to create reset link'); }
+    finally { setActionLoading(null); }
+  }
+
+  async function doDelete() {
+    setActionLoading('delete'); setError('');
+    try { await onDelete(); onClose(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete user'); setConfirmDelete(false); }
+    finally { setActionLoading(null); }
+  }
+
+  const inputClass = 'w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent';
+  const actionRowClass = 'flex items-center justify-between gap-3 py-3 px-3.5 rounded-xl bg-surface-elevated border border-border';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
-        {/* Header — avatar + identity */}
+        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-          <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-sm font-bold text-accent uppercase">
+          <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-base font-bold text-accent uppercase">
             {u.email[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text-primary truncate">{u.email}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <p className="text-sm font-semibold text-text-primary truncate">{u.displayName || u.email}</p>
+            {u.displayName && <p className="text-xs text-text-secondary truncate">{u.email}</p>}
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface-elevated border-border'}`}>
                 {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
               </span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.isActive !== false ? 'text-success bg-success/10 border-success/30' : 'text-danger bg-danger/10 border-danger/30'}`}>
                 {u.isActive !== false ? 'Active' : 'Disabled'}
               </span>
+              {u.totpEnabled && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-amber-400 bg-amber-400/10 border-amber-400/30">
+                  🔐 MFA On
+                </span>
+              )}
+              {u.emailVerified && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-success bg-success/10 border-success/30">
+                  ✓ Verified
+                </span>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors">
@@ -262,21 +324,26 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-            />
-          </div>
+        <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
 
-          {/* Role — pill selector matching display style */}
-          <div>
-            <label className="block text-xs font-medium text-text-secondary mb-2">Role</label>
+          {/* ── Profile ─────────────────────────────────────────────────── */}
+          <section>
+            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Profile</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Display name</label>
+                <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Full name" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+              </div>
+            </div>
+          </section>
+
+          {/* ── Role ────────────────────────────────────────────────────── */}
+          <section>
+            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Role</p>
             <div className="flex gap-2">
               {(['user', 'admin'] as const).map((r) => {
                 const isSelected = role === r;
@@ -286,50 +353,147 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave }: {
                     key={r}
                     disabled={isSelf}
                     onClick={() => setRole(r)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
+                    className={`flex items-center gap-2 flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                       isSelected
                         ? isAdmin
-                          ? 'text-accent bg-accent/10 border-accent/40 ring-1 ring-accent/30'
-                          : 'text-text-primary bg-surface-elevated border-border ring-1 ring-border'
+                          ? 'text-accent bg-accent/10 border-accent/40'
+                          : 'text-text-primary bg-surface-elevated border-border'
                         : 'text-text-secondary bg-transparent border-border/50 hover:border-border hover:text-text-primary'
                     } disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
-                    {isAdmin ? '🛡' : '👤'} {isAdmin ? 'Admin' : 'User'}
-                    {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                    {isAdmin ? <Shield className="w-4 h-4 shrink-0" /> : <Users className="w-4 h-4 shrink-0" />}
+                    {isAdmin ? 'Admin' : 'User'}
+                    {isSelected && <Check className="w-3.5 h-3.5 ml-auto" />}
                   </button>
                 );
               })}
             </div>
-            {isSelf && <p className="text-xs text-text-secondary mt-1.5">You cannot change your own role.</p>}
-          </div>
+            {isSelf && <p className="text-xs text-text-secondary mt-2">You cannot change your own role.</p>}
+          </section>
 
-          {/* Account status */}
-          <div className="flex items-center justify-between py-3 px-3.5 rounded-xl bg-surface-elevated border border-border">
-            <div>
-              <p className="text-sm font-medium text-text-primary">Account status</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                {u.isActive !== false ? 'User can sign in' : 'All sessions revoked'}
-              </p>
+          {/* ── Account Actions ──────────────────────────────────────────── */}
+          <section>
+            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Account Actions</p>
+            <div className="space-y-2">
+
+              {/* Enable / Disable */}
+              <div className={actionRowClass}>
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{u.isActive !== false ? 'Disable account' : 'Enable account'}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{u.isActive !== false ? 'Revokes all sessions, blocks sign-in' : 'Restore sign-in access'}</p>
+                </div>
+                <button
+                  disabled={isSelf || actionLoading === 'status'}
+                  onClick={toggleActive}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                    u.isActive !== false
+                      ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
+                      : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
+                  }`}
+                >
+                  {actionLoading === 'status' ? '…' : u.isActive !== false ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+
+              {/* Force password reset */}
+              <div className={actionRowClass}>
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Force password reset</p>
+                  <p className="text-xs text-text-secondary mt-0.5">Revokes sessions + generates a 15-min reset link</p>
+                </div>
+                <button
+                  disabled={actionLoading === 'pwreset'}
+                  onClick={doForcePasswordReset}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {actionLoading === 'pwreset' ? '…' : 'Reset'}
+                </button>
+              </div>
+
+              {/* Reset MFA */}
+              {u.totpEnabled && (
+                <div className={actionRowClass}>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Remove MFA</p>
+                    <p className="text-xs text-text-secondary mt-0.5">Disables TOTP and clears recovery codes</p>
+                  </div>
+                  <button
+                    disabled={isSelf || actionLoading === 'mfa'}
+                    onClick={doResetMfa}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-400/30 bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ShieldOff className="w-3.5 h-3.5" />
+                    {actionLoading === 'mfa' ? '…' : 'Remove MFA'}
+                  </button>
+                </div>
+              )}
+
+              {/* Reset link output */}
+              {resetUrl && (
+                <div className="rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0" />
+                    <p className="text-xs font-medium text-warning">Share this link with the user — expires in 15 min</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-[11px] font-mono text-text-primary break-all bg-bg rounded-lg px-2.5 py-1.5 border border-border">
+                      {resetUrl}
+                    </code>
+                    <button
+                      onClick={() => { void navigator.clipboard.writeText(resetUrl); }}
+                      className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+                      title="Copy link"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <button
-              disabled={isSelf || saving}
-              onClick={toggleActive}
-              className={`ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive !== false
-                ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
-                : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-              }`}
-            >
-              {u.isActive !== false ? 'Disable' : 'Enable'}
-            </button>
-          </div>
+          </section>
+
+          {/* ── Danger Zone ─────────────────────────────────────────────── */}
+          {!isSelf && (
+            <section>
+              <p className="text-[11px] font-semibold text-danger/70 uppercase tracking-wider mb-3">Danger Zone</p>
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-full flex items-center gap-2 px-3.5 py-3 rounded-xl border border-danger/30 bg-danger/5 text-danger text-sm font-medium hover:bg-danger/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete user account
+                </button>
+              ) : (
+                <div className="rounded-xl border border-danger/40 bg-danger/5 px-3.5 py-3 space-y-3">
+                  <p className="text-sm font-semibold text-danger">Delete {u.email}?</p>
+                  <p className="text-xs text-text-secondary">This permanently deletes the account and all associated data. This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 rounded-lg border border-border text-xs text-text-secondary hover:text-text-primary transition-colors">
+                      Cancel
+                    </button>
+                    <button
+                      disabled={actionLoading === 'delete'}
+                      onClick={doDelete}
+                      className="flex-1 py-2 rounded-lg bg-danger text-white text-xs font-semibold hover:bg-danger/90 disabled:opacity-50 transition-colors"
+                    >
+                      {actionLoading === 'delete' ? 'Deleting…' : 'Yes, delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           {error && <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>}
+          {success && !error && <p className="text-xs text-success bg-success/10 border border-success/20 rounded-lg px-3 py-2">{success}</p>}
         </div>
 
-        <div className="flex gap-2 px-5 pb-5">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
+        <div className="flex gap-2 px-5 py-4 border-t border-border">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Close</button>
           <button onClick={handleSave} disabled={saving || !email.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors">
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -388,11 +552,20 @@ export default function AdminPage() {
 
   async function handleSaveUser(patch: Partial<AdminUser>) {
     if (!editUser) return;
-    await api('/v1/admin/users/update', undefined, {
+    const updated = await api<AdminUser>('/v1/admin/users/update', undefined, {
       method: 'PATCH',
       body: JSON.stringify({ userId: editUser.id, ...patch }),
     });
-    await load();
+    // Optimistically update local state
+    setUsers((prev) => prev.map((u) => u.id === editUser.id ? { ...u, ...updated } : u));
+    setEditUser((prev) => prev ? { ...prev, ...updated } : prev);
+  }
+
+  async function handleDeleteUser() {
+    if (!editUser) return;
+    await api(`/v1/admin/users/${editUser.id}`, undefined, { method: 'DELETE' });
+    setUsers((prev) => prev.filter((u) => u.id !== editUser.id));
+    setEditUser(null);
   }
 
   async function createInvite() {
@@ -430,7 +603,7 @@ export default function AdminPage() {
   const auditRows = auditLogs.slice((auditPage - 1) * PAGE_SIZE, auditPage * PAGE_SIZE);
 
   return (
-    <AppFrame title="Admin" subtitle="System management, user access, and audit logs.">
+    <AppFrame title="Admin" subtitle="System management, user access, and audit logs." breadcrumbs={[{ label: "Admin" }]}>
       {loading ? <LoadingState label="Loading admin data…" /> : (
         <div className="space-y-5">
           <SystemHealthWidget />
@@ -465,31 +638,39 @@ export default function AdminPage() {
                 <p className="text-sm text-text-secondary text-center py-6">No users found.</p>
               )}
               {userRows.map((u) => (
-                <div key={u.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border hover:border-accent/30 transition-colors">
+                <div
+                  key={u.id}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border hover:border-accent/30 transition-colors cursor-pointer group"
+                  onClick={() => setEditUser(u)}
+                >
                   {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-xs font-semibold text-accent uppercase">
+                  <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-sm font-bold text-accent uppercase">
                     {u.email[0]}
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{u.email}</p>
-                    <p className="text-xs text-text-secondary">Joined <RelativeTime iso={u.createdAt} /></p>
+                    <p className="text-sm font-medium text-text-primary truncate">
+                      {u.displayName ? (
+                        <><span>{u.displayName}</span><span className="text-text-secondary font-normal ml-1.5 hidden sm:inline">{u.email}</span></>
+                      ) : u.email}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <p className="text-xs text-text-secondary">Joined <RelativeTime iso={u.createdAt} /></p>
+                      {u.totpEnabled && <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">🔐 MFA</span>}
+                      {!u.emailVerified && <span className="text-[10px] font-semibold text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded-full">unverified</span>}
+                    </div>
                   </div>
                   {/* Badges */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface border-border'}`}>
+                    <span className={`hidden sm:inline px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface border-border'}`}>
                       {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.isActive !== false ? 'text-success bg-success/10 border-success/30' : 'text-danger bg-danger/10 border-danger/30'}`}>
                       {u.isActive !== false ? 'Active' : 'Disabled'}
                     </span>
-                    <button
-                      onClick={() => setEditUser(u)}
-                      className="p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors"
-                      title="Edit user"
-                    >
+                    <div className="p-1.5 rounded-lg text-text-secondary group-hover:text-accent transition-colors">
                       <UserCog className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -637,6 +818,7 @@ export default function AdminPage() {
           currentUserId={currentUser?.id ?? ''}
           onClose={() => setEditUser(null)}
           onSave={handleSaveUser}
+          onDelete={handleDeleteUser}
         />
       )}
     </AppFrame>

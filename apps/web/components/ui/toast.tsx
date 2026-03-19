@@ -7,6 +7,7 @@ import {
   useReducer,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
@@ -120,16 +121,23 @@ const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string; icon: s
 function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => void }) {
   const { bg, border, icon, Icon } = VARIANT_STYLES[toast.variant];
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [exiting, setExiting] = useState(false);
+
+  const handleDismiss = useCallback(() => {
+    setExiting(true);
+    // Wait for exit animation before removing
+    setTimeout(() => dismiss(toast.id), 200);
+  }, [toast.id, dismiss]);
 
   useEffect(() => {
     const ms = toast.durationMs ?? 4000;
     if (ms > 0) {
-      timerRef.current = setTimeout(() => dismiss(toast.id), ms);
+      timerRef.current = setTimeout(() => handleDismiss(), ms);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [toast.id, toast.durationMs, dismiss]);
+  }, [toast.id, toast.durationMs, handleDismiss]);
 
   return (
     <div
@@ -139,13 +147,13 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
         flex items-start gap-3 px-4 py-3 rounded-xl border shadow-lg
         backdrop-blur-sm min-w-[280px] max-w-sm
         ${bg} ${border}
-        animate-[toast-in_0.25s_ease-out]
+        ${exiting ? 'toast-exiting' : 'animate-[toast-in_0.25s_cubic-bezier(0.22,1,0.36,1)]'}
       `}
     >
       <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${icon}`} aria-hidden="true" />
       <p className="text-sm text-text-primary flex-1 leading-snug">{toast.message}</p>
       <button
-        onClick={() => dismiss(toast.id)}
+        onClick={handleDismiss}
         aria-label="Dismiss notification"
         className="shrink-0 p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
       >

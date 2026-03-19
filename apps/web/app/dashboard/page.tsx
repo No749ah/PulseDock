@@ -12,18 +12,57 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { FadeIn } from "../components/FadeIn";
+import { StaggerList } from "../components/StaggerList";
+import { CountUp } from "../components/CountUp";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 import { MiniSparkline } from "../../components/charts";
+import { ProductTour, type TourStep } from "../../components/product-tour";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
 const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+
+const DASHBOARD_TOUR_STEPS: TourStep[] = [
+  {
+    title: "Welcome to PulseDock! 👋",
+    content: "PulseDock monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.",
+  },
+  {
+    target: "nav[aria-label='Navigation']",
+    placement: "right",
+    title: "Navigation",
+    content: "Use the left sidebar to navigate between Monitors, Alerts, Versions, Status Pages, and more. Each section has its own tools and views.",
+  },
+  {
+    target: "[data-tour='stats-row']",
+    placement: "bottom",
+    title: "Live Stats",
+    content: "These cards show real-time counts of your monitors, uptime percentage, checks run today, and version tracking status. All update live via WebSocket.",
+  },
+  {
+    target: "[data-tour='add-monitor']",
+    placement: "bottom",
+    title: "Add Your First Monitor",
+    content: "Click here to add a monitor. Choose from HTTP uptime checks, SSL certificate monitoring, TCP port checks, Heartbeat monitors, or version tracking for 1400+ self-hosted tools.",
+  },
+  {
+    target: "[data-tour='time-range']",
+    placement: "bottom",
+    title: "Time Range Selector",
+    content: "Filter your dashboard view by time period — 1h, 6h, 24h, 7d, or 30d. The live indicator shows when auto-refresh is active.",
+  },
+];
 
 interface Monitor {
   id: string;
   name: string;
   type: string;
   enabled: boolean;
+}
+
+interface VersionSummaryItem {
+  id: string;
+  level: "green" | "yellow" | "red";
 }
 
 interface MonitorRun {
@@ -58,6 +97,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
+  const [versionItems, setVersionItems] = useState<VersionSummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
@@ -133,7 +173,10 @@ export default function DashboardPage() {
       const monitorsData = await api<Monitor[]>("/v1/monitors");
       const sinceMs = timeRangeToMs[timeRange] ?? 86400000;
       const since = new Date(Date.now() - sinceMs).toISOString();
-      const runsData = await api<MonitorRun[]>(`/v1/monitors/runs?limit=200&since=${encodeURIComponent(since)}`);
+      const [runsData, versionSummary] = await Promise.all([
+        api<MonitorRun[]>(`/v1/monitors/runs?limit=200&since=${encodeURIComponent(since)}`),
+        api<{ stats: unknown; items: VersionSummaryItem[] }>("/v1/monitors/version-summary").catch(() => ({ stats: {}, items: [] })),
+      ]);
       if (!silent) {
         try {
           const channels = await api<{ id: string }[]>("/v1/alert-channels");
@@ -145,7 +188,8 @@ export default function DashboardPage() {
 
       setMonitors(monitorsData);
       setRuns(runsData);
-      setStats(computeStats(monitorsData, runsData));
+      setVersionItems(versionSummary.items ?? []);
+      setStats(computeStats(monitorsData, runsData, versionSummary.items ?? []));
       setLastRefreshed(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
@@ -172,7 +216,7 @@ export default function DashboardPage() {
     socket.on("monitor.created", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev];
-        setStats(computeStats(next, runs));
+        setStats(computeStats(next, runs, versionItems));
         return next;
       });
     });
@@ -180,7 +224,7 @@ export default function DashboardPage() {
     socket.on("monitor.updated", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.map((m) => (m.id === payload.id ? payload : m));
-        setStats(computeStats(next, runs));
+        setStats(computeStats(next, runs, versionItems));
         return next;
       });
     });
@@ -190,16 +234,25 @@ export default function DashboardPage() {
         const next = prev.filter((m) => m.id !== payload.id);
         const nextRuns = runs.filter((r) => r.monitorId !== payload.id);
         setRuns(nextRuns);
-        setStats(computeStats(next, nextRuns));
+        setVersionItems((prev) => prev.filter((v) => v.id !== payload.id));
+        setStats(computeStats(next, nextRuns, versionItems.filter((v) => v.id !== payload.id)));
         return next;
       });
     });
 
     socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
       if (!payload?.run) return;
+      // Update versionItems if this is a version monitor check
+      if (payload.run.level) {
+        setVersionItems((prev) => {
+          const exists = prev.some((v) => v.id === payload.run.monitorId);
+          if (!exists) return prev;
+          return prev.map((v) => v.id === payload.run.monitorId ? { ...v, level: payload.run.level as "green" | "yellow" | "red" } : v);
+        });
+      }
       setRuns((prev) => {
         const nextRuns = [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 20);
-        setStats((existing) => existing ? computeStats(monitors, nextRuns) : existing);
+        setStats((existing) => existing ? computeStats(monitors, nextRuns, versionItems) : existing);
         return nextRuns;
       });
     });
@@ -257,7 +310,7 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
+    <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`} breadcrumbs={[{ label: "Dashboard" }]}>
       <div className="space-y-8">
         {/* Heading row with Live indicator and time range label */}
         <div className="flex items-center gap-3">
@@ -277,7 +330,7 @@ export default function DashboardPage() {
         {/* Controls row: time range + auto-refresh */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Time range selector */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface overflow-hidden">
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface overflow-hidden" data-tour="time-range">
             {(["1h", "6h", "24h", "7d", "30d"] as const).map((r) => (
               <button
                 key={r}
@@ -396,6 +449,11 @@ export default function DashboardPage() {
             hasMonitors={monitors.length > 0}
             hasAlertChannels={hasAlertChannels}
           />
+          <ProductTour
+            storageKey={`pulsedock_tour_dashboard_${user.id}`}
+            autoStart={monitors.length === 0}
+            steps={DASHBOARD_TOUR_STEPS}
+          />
         </FadeIn>
 
         {/* ── Ordered sections ─────────────────────────────────────── */}
@@ -410,12 +468,12 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
                     <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div data-tour="stats-row"><StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <Card>
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Monitors</p>
-                          <p className="text-3xl font-bold text-text-primary">{stats.uptimeMonitors}</p>
+                          <p className="text-3xl font-bold text-text-primary"><CountUp value={`${stats.uptimeMonitors}`} duration={800} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
                           <Activity className="w-6 h-6 text-accent" />
@@ -427,8 +485,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Uptime</p>
                           <p className="text-3xl font-bold text-text-primary">
-                            {stats.uptimePct}
-                            <span className="text-lg text-text-secondary">%</span>
+                            <CountUp value={`${stats.uptimePct}%`} duration={1200} />
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
@@ -440,7 +497,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Operational</p>
-                          <p className="text-3xl font-bold text-success">{stats.uptimeGreen}</p>
+                          <p className="text-3xl font-bold text-success"><CountUp value={`${stats.uptimeGreen}`} duration={900} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-success/10">
                           <CheckCircle2 className="w-6 h-6 text-success" />
@@ -451,14 +508,14 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Down / Degraded</p>
-                          <p className="text-3xl font-bold text-danger">{stats.uptimeRed + stats.uptimeYellow}</p>
+                          <p className="text-3xl font-bold text-danger"><CountUp value={`${stats.uptimeRed + stats.uptimeYellow}`} duration={800} /></p>
                         </div>
                         <div className={`p-3 rounded-xl ${stats.uptimeRed + stats.uptimeYellow > 0 ? "bg-danger/10" : "bg-surface-elevated"}`}>
                           <AlertCircle className={`w-6 h-6 ${stats.uptimeRed + stats.uptimeYellow > 0 ? "text-danger" : "text-text-secondary"}`} />
                         </div>
                       </div>
                     </Card>
-                  </div>
+                  </StaggerList></div>
                 </div>
               </FadeIn>
             );
@@ -474,12 +531,12 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Version Tracking</h2>
                     <span className="text-xs text-text-secondary opacity-60">Git releases · Docker images</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <StaggerList className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card>
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Tracked</p>
-                          <p className="text-3xl font-bold text-text-primary">{stats.versionMonitors}</p>
+                          <p className="text-3xl font-bold text-text-primary"><CountUp value={`${stats.versionMonitors}`} duration={800} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
                           <GitBranch className="w-6 h-6 text-accent" />
@@ -490,7 +547,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Up to Date</p>
-                          <p className="text-3xl font-bold text-success">{stats.versionUpToDate}</p>
+                          <p className="text-3xl font-bold text-success"><CountUp value={`${stats.versionUpToDate}`} duration={900} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-success/10">
                           <PackageCheck className="w-6 h-6 text-success" />
@@ -501,7 +558,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Updates Available</p>
-                          <p className="text-3xl font-bold text-warning">{stats.versionUpdateAvailable + stats.versionMajorBehind}</p>
+                          <p className="text-3xl font-bold text-warning"><CountUp value={`${stats.versionUpdateAvailable + stats.versionMajorBehind}`} duration={800} /></p>
                           {stats.versionMajorBehind > 0 && (
                             <p className="text-xs text-danger mt-1">{stats.versionMajorBehind} major version{stats.versionMajorBehind !== 1 ? "s" : ""} behind</p>
                           )}
@@ -511,7 +568,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </Card>
-                  </div>
+                  </StaggerList>
                 </div>
               </FadeIn>
             );
@@ -528,7 +585,7 @@ export default function DashboardPage() {
                         {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
                       </p>
                     </div>
-                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2">
+                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2" data-tour="add-monitor">
                       <Plus className="w-4 h-4" /> Add Monitor
                     </Button>
                   </div>
@@ -679,7 +736,7 @@ export default function DashboardPage() {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function computeStats(monitorsData: Monitor[], runsData: MonitorRun[]): DashboardStats {
+function computeStats(monitorsData: Monitor[], runsData: MonitorRun[], versionSummaryItems: VersionSummaryItem[] = []): DashboardStats {
   const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
   const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
 
@@ -698,14 +755,28 @@ function computeStats(monitorsData: Monitor[], runsData: MonitorRun[]): Dashboar
   const uptimeTotal = uptimeMonitors.length;
   const uptimePct = uptimeTotal === 0 ? 100 : Math.round((uptimeGreen / uptimeTotal) * 10000) / 100;
 
-  // Version: use latest run per monitor
+  // Version: use version-summary API data (always most recent run, not time-range limited)
+  // Fall back to runsData if summary not available
   let versionUpToDate = 0, versionUpdateAvailable = 0, versionMajorBehind = 0;
-  for (const m of versionMonitors) {
-    if (!m.enabled) continue;
-    const latest = runsData.find((r) => r.monitorId === m.id);
-    if (!latest || latest.level === "green") versionUpToDate++;
-    else if (latest.level === "yellow") versionUpdateAvailable++;
-    else versionMajorBehind++;
+  if (versionSummaryItems.length > 0) {
+    // Build a map for quick lookup
+    const summaryMap = new Map(versionSummaryItems.map((item) => [item.id, item.level]));
+    for (const m of versionMonitors) {
+      if (!m.enabled) continue;
+      const level = summaryMap.get(m.id);
+      if (!level || level === "green") versionUpToDate++;
+      else if (level === "yellow") versionUpdateAvailable++;
+      else versionMajorBehind++;
+    }
+  } else {
+    // Fallback: use time-range runs (may be inaccurate if monitor hasn't checked in range)
+    for (const m of versionMonitors) {
+      if (!m.enabled) continue;
+      const latest = runsData.find((r) => r.monitorId === m.id);
+      if (!latest || latest.level === "green") versionUpToDate++;
+      else if (latest.level === "yellow") versionUpdateAvailable++;
+      else versionMajorBehind++;
+    }
   }
 
   return {

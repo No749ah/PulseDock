@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, AlertCircle, Bell, Building2, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
@@ -146,12 +146,17 @@ export default function AccountPage() {
   });
 
   // Team members state
-  type TeamRole = "Admin" | "Editor" | "Viewer";
-  interface TeamMember { id: string; name: string; email: string; role: TeamRole; avatarInitials: string; }
-  const [teamMembers] = useState<TeamMember[]>([]);
+  type TeamRoleApi = "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
+  type TeamRoleDisplay = "Admin" | "Editor" | "Viewer";
+  interface TeamMemberUser { id: string; email: string; displayName: string | null; }
+  interface TeamMember { id: string; ownerId: string; userId: string; role: TeamRoleApi; createdAt: string; user: TeamMemberUser; }
+  interface PendingInvite { id: string; email: string; role: TeamRoleApi; expiresAt: string; createdAt: string; }
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
+  const [inviteRole, setInviteRole] = useState<TeamRoleDisplay>("Viewer");
   const [inviteSending, setInviteSending] = useState(false);
 
   // Workspace settings state
@@ -200,7 +205,7 @@ export default function AccountPage() {
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
         setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
         setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
-        // Load audit log + notification preferences lazily (don't block main load)
+        // Load audit log + notification preferences + team data lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
         api<ScheduledReport | null>("/v1/reports", userId).then((r) => {
@@ -208,6 +213,14 @@ export default function AccountPage() {
           if (r) setReportForm({ enabled: r.enabled, frequency: r.frequency, dayOfWeek: r.dayOfWeek, hourUtc: r.hourUtc });
           setReportLoaded(true);
         }).catch(() => { setReportLoaded(true); });
+        setTeamLoading(true);
+        Promise.all([
+          api<TeamMember[]>("/v1/team/members", userId),
+          api<PendingInvite[]>("/v1/team/invites", userId),
+        ]).then(([members, invites]) => {
+          setTeamMembers(members);
+          setPendingInvites(invites);
+        }).catch(() => {}).finally(() => setTeamLoading(false));
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Failed to load account");
         router.push("/login");
@@ -415,17 +428,49 @@ export default function AccountPage() {
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviteSending(true);
-    // UI stub — backend will be wired later
-    await new Promise((r) => setTimeout(r, 600));
-    toastSuccess(`Invitation sent to ${inviteEmail.trim()}`);
-    setInviteEmail("");
-    setInviteRole("Viewer");
-    setShowInviteModal(false);
-    setInviteSending(false);
+    try {
+      const roleMap: Record<TeamRoleDisplay, TeamRoleApi> = { Admin: "ADMIN", Editor: "EDITOR", Viewer: "VIEWER" };
+      const result = await api<{ type: "member" | "invite"; data: TeamMember | PendingInvite }>(
+        "/v1/team/invite",
+        user?.id,
+        { method: "POST", body: JSON.stringify({ email: inviteEmail.trim(), role: roleMap[inviteRole] }) },
+      );
+      if (result.type === "member") {
+        setTeamMembers((prev) => [...prev, result.data as TeamMember]);
+        toastSuccess(`${inviteEmail.trim()} added as team member`);
+      } else {
+        setPendingInvites((prev) => [...prev, result.data as PendingInvite]);
+        toastSuccess(`Invitation sent to ${inviteEmail.trim()}`);
+      }
+      setInviteEmail("");
+      setInviteRole("Viewer");
+      setShowInviteModal(false);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to send invite");
+    } finally {
+      setInviteSending(false);
+    }
   };
 
-  const handleRemoveMember = (_id: string) => {
-    toastInfo("Feature coming soon");
+  const handleRemoveMember = async (memberId: string) => {
+    if (!window.confirm("Remove this team member?")) return;
+    try {
+      await api("/v1/team/members/" + memberId, user?.id, { method: "DELETE" });
+      setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
+      toastSuccess("Team member removed");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to remove member");
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    try {
+      await api("/v1/team/invites/" + inviteId, user?.id, { method: "DELETE" });
+      setPendingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+      toastSuccess("Invite cancelled");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to cancel invite");
+    }
   };
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -513,23 +558,23 @@ export default function AccountPage() {
     );
 
   return (
-    <AppFrame title="Account" subtitle="Manage your profile and security">
-      <div className="space-y-6 max-w-5xl mx-auto">
+    <AppFrame title="Account" subtitle="Manage your profile and security" breadcrumbs={[{ label: "Account" }]}>
+      <div className="space-y-6">
         {loadError && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{loadError}</span>
             </div>
-          </FadeIn>
+          
         )}
 
-        {/* Two-column layout: profile/security/activity left, keys/sessions/notif right */}
+        {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <div className="space-y-6">
 
         {/* Profile Section */}
-        <FadeIn>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -598,10 +643,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* Security Section */}
-        <FadeIn delay={0.1}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -666,10 +711,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* 2FA Section */}
-        <FadeIn delay={0.2}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -736,81 +781,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
-
-        {/* Activity Log Section — left column */}
-        <FadeIn delay={0.3}>
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-surface-elevated">
-                  <Activity className="w-5 h-5 text-text-secondary" />
-                </div>
-                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("csv")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  CSV
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleExportAuditLog("json")}
-                  disabled={auditLoading}
-                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-                >
-                  <Download className="w-4 h-4" />
-                  JSON
-                </Button>
-              </div>
-            </div>
-
-            {auditLog.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-text-secondary text-sm">No activity recorded yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  {(auditExpanded ? auditLog : auditLog.slice(0, 8)).map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-text-primary font-mono">{entry.action}</p>
-                        <p className="text-[11px] text-text-secondary mt-0.5">
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {auditLog.length > 8 && (
-                  <button
-                    onClick={() => setAuditExpanded((v) => !v)}
-                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
-                  >
-                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
-                  </button>
-                )}
-              </>
-            )}
-          </Card>
-        </FadeIn>
-
-        </div>{/* end left column */}
-        <div className="space-y-6">
+        
 
         {/* API Keys Section */}
-        <FadeIn delay={0.3}>
+        
           <Card>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -912,10 +886,83 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
+        </div>{/* end left column */}
+        <div className="space-y-6">
+
+        {/* Activity Log */}
+        {/* Activity Log Section — left column */}
+        
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-surface-elevated">
+                  <Activity className="w-5 h-5 text-text-secondary" />
+                </div>
+                <h2 className="text-xl font-bold text-text-primary">Activity Log</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("csv")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExportAuditLog("json")}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+                >
+                  <Download className="w-4 h-4" />
+                  JSON
+                </Button>
+              </div>
+            </div>
+
+            {auditLog.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">No activity recorded yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {(auditExpanded ? auditLog : auditLog.slice(0, 8)).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-start justify-between px-3 py-2.5 rounded-lg bg-surface-elevated/50 border border-border"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-text-primary font-mono">{entry.action}</p>
+                        <p className="text-[11px] text-text-secondary mt-0.5">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {auditLog.length > 8 && (
+                  <button
+                    onClick={() => setAuditExpanded((v) => !v)}
+                    className="mt-3 text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    {auditExpanded ? "Show less" : `Show all ${auditLog.length} entries`}
+                  </button>
+                )}
+              </>
+            )}
+          </Card>
+        
+
+        
         {/* Sessions Section */}
-        <FadeIn delay={0.4}>
+        
           <Card>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -990,10 +1037,10 @@ export default function AccountPage() {
               </>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Notification Preferences Section */}
-        <FadeIn delay={0.5}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-surface-elevated">
@@ -1147,10 +1194,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Scheduled Reports Section */}
-        <FadeIn delay={0.55}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-surface-elevated">
@@ -1275,10 +1322,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Workspace Settings Section */}
-        <FadeIn delay={0.55}>
+        
           <Card>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-xl bg-accent/10">
@@ -1334,10 +1381,10 @@ export default function AccountPage() {
               </Button>
             </div>
           </Card>
-        </FadeIn>
+        
 
         {/* Team Members Section */}
-        <FadeIn delay={0.58}>
+        
           <Card>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -1355,7 +1402,11 @@ export default function AccountPage() {
               </Button>
             </div>
 
-            {teamMembers.length === 0 ? (
+            {teamLoading ? (
+              <div className="text-center py-8">
+                <span className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent inline-block" />
+              </div>
+            ) : teamMembers.length === 0 && pendingInvites.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="w-8 h-8 text-text-secondary/40 mx-auto mb-3" />
                 <p className="text-text-secondary text-sm">No team members yet</p>
@@ -1364,47 +1415,87 @@ export default function AccountPage() {
             ) : (
               <div className="space-y-2">
                 {teamMembers.map((member) => {
-                  const roleColors: Record<TeamRole, string> = {
-                    Admin: "bg-danger/15 text-danger border-danger/20",
-                    Editor: "bg-accent/15 text-accent border-accent/20",
-                    Viewer: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                  const roleColors: Record<TeamRoleApi, string> = {
+                    OWNER: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
+                    ADMIN: "bg-danger/15 text-danger border-danger/20",
+                    EDITOR: "bg-accent/15 text-accent border-accent/20",
+                    VIEWER: "bg-blue-500/15 text-blue-400 border-blue-500/20",
                   };
+                  const roleLabel: Record<TeamRoleApi, string> = { OWNER: "Owner", ADMIN: "Admin", EDITOR: "Editor", VIEWER: "Viewer" };
+                  const initials = (member.user.displayName ?? member.user.email).slice(0, 2).toUpperCase();
                   return (
                     <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated/50 border border-border">
                       <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-semibold text-accent">{member.avatarInitials}</span>
+                        <span className="text-sm font-semibold text-accent">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text-primary truncate">{member.name}</p>
-                        <p className="text-xs text-text-secondary truncate">{member.email}</p>
+                        <p className="text-sm font-medium text-text-primary truncate">{member.user.displayName ?? member.user.email}</p>
+                        <p className="text-xs text-text-secondary truncate">{member.user.email}</p>
                       </div>
                       <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${roleColors[member.role]}`}>
-                        {member.role}
+                        {roleLabel[member.role]}
                       </span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)} className="text-danger hover:text-danger shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {member.role !== "OWNER" && (
+                        <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)} className="text-danger hover:text-danger shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
 
-            <p className="mt-4 text-xs text-text-secondary/60 border-t border-border pt-4">
-              Team collaboration features are in beta. Full role-based access coming soon.
-            </p>
+            {pendingInvites.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Pending Invites</p>
+                <div className="space-y-2">
+                  {pendingInvites.map((invite) => {
+                    const roleColors: Record<TeamRoleApi, string> = {
+                      OWNER: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
+                      ADMIN: "bg-danger/15 text-danger border-danger/20",
+                      EDITOR: "bg-accent/15 text-accent border-accent/20",
+                      VIEWER: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                    };
+                    const roleLabel: Record<TeamRoleApi, string> = { OWNER: "Owner", ADMIN: "Admin", EDITOR: "Editor", VIEWER: "Viewer" };
+                    return (
+                      <div key={invite.id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated/30 border border-border border-dashed">
+                        <div className="w-9 h-9 rounded-full bg-text-secondary/10 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-semibold text-text-secondary">?</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{invite.email}</p>
+                          <p className="text-xs text-text-secondary/60 truncate">Expires {new Date(invite.expiresAt).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${roleColors[invite.role]}`}>
+                          {roleLabel[invite.role]}
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelInvite(invite.id)} className="text-text-secondary hover:text-danger shrink-0">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
-        </FadeIn>
+        
 
         {/* System Info Card */}
-        <FadeIn delay={0.6}>
+        
           <SystemInfoCard userId={user?.id} />
-        </FadeIn>
+        
 
         {/* Data Retention Card */}
-        <FadeIn delay={0.65}>
+        
           <DataRetentionCard onSave={() => toastSuccess("Data retention settings saved")} />
-        </FadeIn>
+        
+
+        {/* Backup & Restore Card */}
+        
+          <BackupRestoreCard />
+        
 
         </div>{/* end right column */}
         </div>{/* end grid */}
@@ -1687,7 +1778,7 @@ export default function AccountPage() {
       {/* Invite Team Member Modal */}
       <Modal
         isOpen={showInviteModal}
-        onClose={() => { setShowInviteModal(false); setInviteEmail(""); setInviteRole("Viewer"); }}
+        onClose={() => { setShowInviteModal(false); setInviteEmail(""); setInviteRole("Viewer" as TeamRoleDisplay); }}
         title="Invite Team Member"
       >
         <div className="space-y-4">
@@ -1705,7 +1796,7 @@ export default function AccountPage() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">Role</label>
             <div className="grid grid-cols-3 gap-2">
-              {(["Admin", "Editor", "Viewer"] as TeamRole[]).map((role) => {
+              {(["Admin", "Editor", "Viewer"] as TeamRoleDisplay[]).map((role) => {
                 const desc = role === "Admin" ? "Full access" : role === "Editor" ? "Create & edit" : "Read-only";
                 const active = inviteRole === role;
                 const colors = role === "Admin" ? "border-danger bg-danger/10 text-danger" : role === "Editor" ? "border-accent bg-accent/10 text-accent" : "border-blue-500 bg-blue-500/10 text-blue-400";
@@ -1913,22 +2004,34 @@ const RETENTION_OPTIONS = [
   { value: 365, label: "1 year" },
 ] as const;
 
+interface StorageStats {
+  rawRunsTotal: number;
+  rollupBucketsTotal: number;
+  oldestRawRunAt: string | null;
+  newestRawRunAt: string | null;
+}
+
 function DataRetentionCard({ onSave }: { onSave: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<7 | 30 | 90 | 365>(90);
+  const [rollupEnabled, setRollupEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentDays, setCurrentDays] = useState<number>(90);
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
 
   useEffect(() => {
-    api<{ retentionDays: number }>("/v1/settings/retention")
+    api<{ retentionDays: number; rollupEnabled: boolean }>("/v1/settings/retention")
       .then((data) => {
         const days = data.retentionDays as 7 | 30 | 90 | 365;
         setSelected(days);
         setCurrentDays(days);
+        setRollupEnabled(data.rollupEnabled ?? true);
       })
-      .catch(() => {
-        // silently fall back to default 90 days
-      });
+      .catch(() => {/* silently fall back to defaults */});
+
+    api<StorageStats>("/v1/settings/storage")
+      .then(setStorageStats)
+      .catch(() => {/* storage stats non-critical */});
   }, []);
 
   const handleSave = async () => {
@@ -1937,13 +2040,12 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
       await api<{ retentionDays: number }>("/v1/settings/retention", undefined, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retentionDays: selected }),
+        body: JSON.stringify({ retentionDays: selected, rollupEnabled }),
       });
       setCurrentDays(selected);
       setShowForm(false);
       onSave();
     } catch {
-      // ignore errors — stub may not persist but we show success
       setCurrentDays(selected);
       setShowForm(false);
       onSave();
@@ -1962,14 +2064,37 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
         </div>
         <div>
           <h2 className="text-xl font-bold text-text-primary">Data Retention</h2>
-          <p className="text-sm text-text-secondary mt-0.5">Control how long historical data is kept</p>
+          <p className="text-sm text-text-secondary mt-0.5">Control how long historical check data is stored</p>
         </div>
       </div>
+
+      {/* Storage stats */}
+      {storageStats && (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <p className="text-xs text-text-secondary mb-1">Raw Check Records</p>
+            <p className="text-lg font-bold text-text-primary">{storageStats.rawRunsTotal.toLocaleString()}</p>
+            {storageStats.oldestRawRunAt && (
+              <p className="text-[10px] text-text-muted mt-0.5">
+                Oldest: {new Date(storageStats.oldestRawRunAt).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          <div className="p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <p className="text-xs text-text-secondary mb-1">Daily Rollup Buckets</p>
+            <p className="text-lg font-bold text-text-primary">{storageStats.rollupBucketsTotal.toLocaleString()}</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Aggregated historical data</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-elevated/50 border border-border mb-4">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <p className="text-sm text-text-secondary">
-          Monitor check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>. Older data is automatically pruned.
+          Raw check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>.{" "}
+          {rollupEnabled
+            ? "Data older than 7 days is aggregated into daily summaries before deletion."
+            : "Older data is deleted without aggregation."}
         </p>
       </div>
 
@@ -1998,6 +2123,31 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
             </div>
           </div>
 
+          {/* Rollup toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Aggregate old data</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Roll up data older than 7 days into daily summaries. Reduces storage while preserving trends.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rollupEnabled}
+              onClick={() => setRollupEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                rollupEnabled ? "bg-accent" : "bg-surface-hover"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                  rollupEnabled ? "translate-x-[18px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
               {saving ? (
@@ -2014,6 +2164,211 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
             </Button>
             <Button variant="secondary" onClick={() => setShowForm(false)} disabled={saving}>
               Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Backup & Restore Card
+// ─────────────────────────────────────────────────────────────────────────────
+function BackupRestoreCard() {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [exporting, setExporting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<{
+    folders: { created: number; skipped: number };
+    tags: { created: number; skipped: number };
+    monitors: { created: number; skipped: number; errors: string[] };
+    alertChannels: { created: number; skipped: number };
+    statusPages: { created: number; skipped: number };
+    settings: { updated: boolean };
+  } | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/settings/backup", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pulsedock-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toastError("Export failed — try again");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRestoring(true);
+    setRestoreResult(null);
+    try {
+      const text = await file.text();
+      const doc = JSON.parse(text);
+      const result = await api<typeof restoreResult>("/v1/settings/backup/restore", undefined, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(doc),
+      });
+      setRestoreResult(result);
+      setShowResult(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Restore failed";
+      toastError(msg);
+    } finally {
+      setRestoring(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+          <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-text-primary">Backup &amp; Restore</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Export all your data or restore from a previous backup</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        {/* Export */}
+        <div className="rounded-xl border border-border bg-surface-secondary p-4">
+          <p className="text-sm font-semibold text-text-primary mb-1">Export Backup</p>
+          <p className="text-xs text-text-secondary mb-3">
+            Downloads all monitors, folders, tags, alert channels, and status pages as a portable JSON file.
+          </p>
+          <Button
+            variant="primary"
+            onClick={handleExport}
+            disabled={exporting}
+            className="w-full"
+          >
+            {exporting ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Exporting…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Backup
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Restore */}
+        <div className="rounded-xl border border-border bg-surface-secondary p-4">
+          <p className="text-sm font-semibold text-text-primary mb-1">Restore from Backup</p>
+          <p className="text-xs text-text-secondary mb-3">
+            Import from a previously exported JSON backup. Existing items are skipped — no duplicates created.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={restoring}
+            className="w-full"
+          >
+            {restoring ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Restoring…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                Select Backup File
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <p className="text-xs text-text-secondary/60">
+        ⚠️ Backup excludes raw check history and audit logs. Status pages are always restored as unpublished.
+      </p>
+
+      {/* Restore Result Modal */}
+      {showResult && restoreResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Restore Complete
+            </h3>
+            <div className="space-y-2 mb-4">
+              {([
+                ["Folders", restoreResult.folders],
+                ["Tags", restoreResult.tags],
+                ["Monitors", restoreResult.monitors],
+                ["Alert Channels", restoreResult.alertChannels],
+                ["Status Pages", restoreResult.statusPages],
+              ] as const).map(([label, stats]) => (
+                <div key={label} className="flex justify-between text-sm">
+                  <span className="text-text-secondary">{label}</span>
+                  <span className="text-text-primary font-medium">
+                    <span className="text-emerald-400">{(stats as { created: number }).created} created</span>
+                    {" · "}
+                    <span className="text-text-secondary/60">{(stats as { skipped: number }).skipped} skipped</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            {restoreResult.monitors.errors.length > 0 && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 mb-4">
+                <p className="text-xs font-semibold text-red-400 mb-1">Monitor errors ({restoreResult.monitors.errors.length})</p>
+                <ul className="text-xs text-red-300/80 space-y-0.5">
+                  {restoreResult.monitors.errors.slice(0, 5).map((e, i) => (
+                    <li key={i} className="truncate">{e}</li>
+                  ))}
+                  {restoreResult.monitors.errors.length > 5 && (
+                    <li className="text-red-400">…and {restoreResult.monitors.errors.length - 5} more</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            <Button variant="primary" onClick={() => setShowResult(false)} className="w-full">
+              Done
             </Button>
           </div>
         </div>

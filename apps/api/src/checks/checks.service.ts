@@ -27,6 +27,10 @@ export class ChecksService {
     this.pluginRegistry.register(httpResponseMatchPlugin);
   }
 
+  /**
+   * Returns all registered check plugins available for monitor configuration.
+   * @returns Array of plugin descriptors (id, name, supportedTypes, configSchema)
+   */
   listPlugins() {
     return this.pluginRegistry.list();
   }
@@ -911,6 +915,12 @@ export class ChecksService {
     }
   }
 
+  /**
+   * Handles an incoming heartbeat ping by updating the lastHeartbeatAt timestamp on the monitor.
+   * Called by the public heartbeat endpoint (no auth required — uses token for lookup).
+   * @param token - The unique heartbeat token from the monitor's config
+   * @throws NotFoundException if no HEARTBEAT monitor matches the token
+   */
   async handleHeartbeatPing(token: string): Promise<void> {
     const monitor = await this.prisma.monitor.findFirst({
       where: {
@@ -967,6 +977,16 @@ export class ChecksService {
     );
   }
 
+  /**
+   * Executes a monitor check and persists the result to the database.
+   * Dispatches to the appropriate check implementation based on monitor type
+   * (HTTP, GIT_RELEASE, DOCKER_IMAGE, TCP, SSL_CERT, HEARTBEAT).
+   * Handles the confirmation threshold: only triggers alerts after N consecutive failures.
+   * Emits real-time monitorChecked and statusPageUpdated events on level changes.
+   * Calls AlertsService.notifyMonitorFailure for failures and recoveries.
+   * @param monitor - The monitor to execute (includes type, target, config, confirmations)
+   * @returns The persisted MonitorRun record with level, latency, and message
+   */
   async runMonitor(monitor: Monitor): Promise<MonitorRun> {
     // Confirmations: fetch last N runs to check for consecutive failures.
     // Test mocks may only implement findFirst(), so gracefully fall back.

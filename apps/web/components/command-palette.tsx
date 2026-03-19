@@ -290,35 +290,20 @@ export function CommandPalette() {
                       key={item.id}
                       data-active={isActive}
                       className={[
-                        "w-full flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors text-left",
+                        "w-full flex items-center gap-3 py-2.5 cursor-pointer transition-colors text-left border-l-2",
                         isActive
-                          ? "bg-accent/15 text-accent"
-                          : "hover:bg-surface-elevated",
+                          ? "bg-surface-elevated border-accent pl-[14px] pr-4"
+                          : "border-transparent px-4 hover:bg-surface-elevated/60",
                       ].join(" ")}
                       onMouseEnter={() => setActiveIndex(currentIdx)}
                       onClick={() => selectItem(item)}
                     >
-                      <item.icon
-                        className={[
-                          "h-4 w-4 shrink-0",
-                          isActive ? "text-accent" : "text-text-secondary",
-                        ].join(" ")}
-                      />
-                      <span
-                        className={[
-                          "text-sm flex-1 min-w-0",
-                          isActive ? "text-accent" : "text-text-primary",
-                        ].join(" ")}
-                      >
+                      <item.icon className="h-4 w-4 shrink-0 text-text-secondary" />
+                      <span className="text-sm flex-1 min-w-0 text-text-primary">
                         {item.label}
                       </span>
                       {item.shortcut ? (
-                        <kbd className={[
-                          "hidden sm:flex items-center gap-0.5 ml-auto shrink-0 text-[10px] font-medium border rounded px-1.5 py-0.5",
-                          isActive
-                            ? "text-accent border-accent/40 bg-accent/10"
-                            : "text-text-muted border-border bg-surface-elevated",
-                        ].join(" ")}>
+                        <kbd className="hidden sm:flex items-center gap-0.5 ml-auto shrink-0 text-[10px] font-medium text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface-elevated">
                           {item.shortcut}
                         </kbd>
                       ) : item.description ? (

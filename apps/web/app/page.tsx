@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getUser } from "../components/auth";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import {
   Globe,
   Heart,
   LayoutDashboard,
+  Menu,
   Monitor,
   Search,
   Server,
@@ -402,11 +403,21 @@ function LiveDemo() {
 
 export default function LandingPage() {
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
 
   useEffect(() => {
     const user = getUser();
     if (user?.id) router.replace("/dashboard");
   }, [router]);
+
+  // Close mobile menu on escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") closeMobileMenu(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [closeMobileMenu]);
 
   return (
     <main className="min-h-screen overflow-hidden">
@@ -433,13 +444,43 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <Link
-            href="/login"
-            className="text-sm bg-accent hover:bg-accent-hover text-bg font-semibold px-5 py-2 rounded-lg transition-colors"
-          >
-            Sign In
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-sm bg-accent hover:bg-accent-hover active:scale-95 text-bg font-semibold px-5 py-2 rounded-lg transition-all"
+            >
+              Sign In
+            </Link>
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border bg-bg/95 backdrop-blur-xl px-6 py-4 space-y-1">
+            {navLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                onClick={closeMobileMenu}
+                className="block py-3 text-base text-text-secondary hover:text-text-primary transition-colors border-b border-border/40 last:border-0"
+                {...(link.href.startsWith("http")
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* ─── Hero ─── */}
@@ -477,13 +518,13 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
               <Link
                 href="/login"
-                className="bg-accent hover:bg-accent-hover text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-base flex items-center gap-2"
+                className="w-full sm:w-auto bg-accent hover:bg-accent-hover active:scale-95 text-bg font-semibold px-8 py-3.5 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-base flex items-center justify-center gap-2"
               >
                 Get Started Free <ArrowRight className="w-4 h-4" />
               </Link>
               <a
                 href="#how"
-                className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base"
+                className="w-full sm:w-auto text-center border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3.5 rounded-xl transition-all text-base"
               >
                 See How It Works
               </a>
@@ -604,7 +645,7 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature, i) => (
               <FadeIn key={feature.title} delay={i * 0.06}>
-                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 transition-all duration-300 h-full min-h-[120px]">
+                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 hover:-translate-y-1 transition-all duration-300 h-full min-h-[120px]">
                   <feature.icon className="w-9 h-9 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
                   <h3 className="text-base font-semibold mb-2">{feature.title}</h3>
                   <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
@@ -1086,7 +1127,7 @@ export default function LandingPage() {
                   href="https://github.com/No749ah/PulseDock"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full text-center bg-accent hover:bg-accent-hover text-bg font-semibold py-3 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.25)] text-sm"
+                  className="w-full text-center bg-accent hover:bg-accent-hover active:scale-95 text-bg font-semibold py-3 rounded-xl transition-all hover:shadow-[0_0_30px_rgba(88,166,255,0.25)] text-sm"
                 >
                   Deploy Now →
                 </a>
@@ -1142,7 +1183,7 @@ export default function LandingPage() {
             </p>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-bg font-semibold px-10 py-4 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-lg"
+              className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover active:scale-95 text-bg font-semibold px-10 py-4 rounded-xl transition-all hover:shadow-[0_0_40px_rgba(88,166,255,0.3)] text-lg"
             >
               Get Started Free <ArrowRight className="w-5 h-5" />
             </Link>

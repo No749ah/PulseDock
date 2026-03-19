@@ -283,7 +283,7 @@ export default function MaintenancePage() {
   }
 
   return (
-    <AppFrame title="Maintenance" subtitle="Schedule maintenance windows to suppress alerts during planned downtime.">
+    <AppFrame title="Maintenance" subtitle="Schedule maintenance windows to suppress alerts during planned downtime." breadcrumbs={[{ label: "Maintenance" }]}>
       {loading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />

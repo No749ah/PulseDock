@@ -31,6 +31,9 @@ function makePrisma(opts: {
       ),
       delete: vi.fn().mockResolvedValue(folder),
     },
+    monitor: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 }
 

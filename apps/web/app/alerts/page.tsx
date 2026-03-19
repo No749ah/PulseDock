@@ -270,7 +270,7 @@ export default function AlertsPage() {
   const pageRows = channels.slice((safePage - 1) * size, safePage * size);
 
   return (
-    <AppFrame title="Alerts" subtitle="Configure alert channels and verify delivery.">
+    <AppFrame title="Alerts" subtitle="Configure alert channels and verify delivery." breadcrumbs={[{ label: "Alerts" }]}>
       {loading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />

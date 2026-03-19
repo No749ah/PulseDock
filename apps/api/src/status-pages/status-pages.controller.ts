@@ -188,4 +188,20 @@ export class StatusPagesController {
     const xml = await this.statusPagesService.getRssFeed(slug);
     res.send(xml);
   }
+
+  @Get('public/status/:slug/json')
+  @Header('Cache-Control', 'public, max-age=30')
+  @ApiOperation({
+    summary: 'Get status page as structured JSON (public)',
+    description:
+      'Returns current overall status, individual monitor statuses, active incidents, and upcoming maintenance as machine-readable JSON. Suitable for third-party integrations, badge generators, and automation. No auth required for published pages.',
+  })
+  @ApiParam({ name: 'slug', description: 'Page slug' })
+  @ApiQuery({ name: 'password', required: false, description: 'Password if page is protected' })
+  @ApiResponse({ status: 200, description: 'Structured JSON status summary.' })
+  @ApiResponse({ status: 401, description: 'Incorrect password.' })
+  @ApiResponse({ status: 404, description: 'Page not found or not published.' })
+  getPublicJson(@Param('slug') slug: string, @Query('password') password?: string) {
+    return this.statusPagesService.getPublicJson(slug, password);
+  }
 }

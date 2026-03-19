@@ -2,6 +2,7 @@
 // All widgets receive widget config + live monitor data from the API.
 
 import React from "react";
+import { CheckCircle2, AlertCircle, XCircle, Activity } from "lucide-react";
 import { SubscriberFormWidget } from "./SubscriberFormWidget";
 import { CountdownWidget } from "./CountdownWidget";
 import { AnnouncementBarClient } from "./AnnouncementBarClient";
@@ -135,10 +136,10 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
     <div className={`flex items-center gap-4 rounded-2xl border p-6 ${config.bg}`}>
       <span className="relative flex h-4 w-4 shrink-0">
         <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${config.dot}`} />
-        <span className={`relative inline-flex h-4 w-4 rounded-full ${config.dot}`} />
+        <span className={`relative inline-flex h-4 w-4 rounded-full ${config.dot}${level !== "green" ? " animate-pulse" : ""}`} />
       </span>
       <span className={`text-xl font-semibold ${config.text}`}>{config.label}</span>
-      <span className="ml-auto text-sm text-text-secondary">
+      <span className="ml-auto text-sm font-semibold text-text-primary">
         {monitors.filter((m) => m.level === "green").length}/{monitors.length} operational
       </span>
     </div>
@@ -288,13 +289,44 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
       ? "bg-yellow-400"
       : "bg-red-400";
 
+  const borderColor =
+    uptimePct >= 99.5
+      ? "border-green-500/20"
+      : uptimePct >= 90
+      ? "border-yellow-500/20"
+      : "border-red-500/30";
+
+  const pctColor =
+    uptimePct >= 99.5
+      ? "text-green-400"
+      : uptimePct >= 90
+      ? "text-yellow-400"
+      : "text-red-400";
+
+  const StatusIcon =
+    uptimePct >= 99.5
+      ? CheckCircle2
+      : uptimePct >= 90
+      ? AlertCircle
+      : XCircle;
+
+  const iconColor =
+    uptimePct >= 99.5
+      ? "text-green-400"
+      : uptimePct >= 90
+      ? "text-yellow-400"
+      : "text-red-400";
+
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className={`rounded-xl border ${borderColor} bg-surface p-4`}>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-text-primary">{label}</span>
-        <span className="text-sm font-semibold text-text-primary">{uptimePct}%</span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+          <StatusIcon className={`h-4 w-4 ${iconColor}`} />
+          {label}
+        </span>
+        <span className={`text-2xl font-bold tabular-nums ${pctColor}`}>{uptimePct}%</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-bg">
+      <div className="h-3 w-full overflow-hidden rounded-full bg-bg">
         <div
           className={`h-full rounded-full ${barColor} transition-all`}
           style={{ width: `${uptimePct}%` }}
@@ -350,11 +382,11 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
           {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}
         </span>
       </div>
-      <div className="flex gap-[3px] flex-wrap">
+      <div className="flex gap-[2px] flex-wrap">
         {squares.map((s, i) => (
           <div
             key={i}
-            className={`h-3 w-3 rounded-sm transition-opacity hover:opacity-80 ${
+            className={`h-5 w-2 rounded-sm transition-opacity hover:opacity-80 ${
               s.level === "green"
                 ? "bg-green-500"
                 : s.level === "yellow"
@@ -514,8 +546,9 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
 
       {/* Chart */}
       {withLatency.length === 0 ? (
-        <div className="flex h-20 items-center justify-center rounded-lg bg-bg">
-          <span className="text-xs text-text-secondary">No latency data yet</span>
+        <div className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg bg-bg/50 border border-dashed border-border">
+          <Activity className="w-4 h-4 text-text-muted" />
+          <span className="text-xs text-text-secondary">Waiting for check data</span>
         </div>
       ) : (
         <svg
@@ -2731,17 +2764,18 @@ export function UptimeComparisonChart({ widget, extra }: WidgetProps) {
               : m.uptimePct >= 99
               ? "bg-yellow-400"
               : "bg-red-500";
-          const pct = m.uptimePct.toFixed(2);
+          const pctLabel = m.uptimePct.toFixed(2);
+          const cappedWidth = Math.min(m.uptimePct, 96);
           return (
             <div key={m.id} className="flex items-center gap-2">
               <div className="w-28 flex-shrink-0 text-xs text-text-secondary truncate text-right">{m.name}</div>
-              <div className="flex-1 h-4 rounded bg-white/5 relative overflow-hidden">
+              <div className="flex-1 h-4 rounded bg-white/5 relative">
                 <div
                   className={`h-full rounded ${barColor} transition-all`}
-                  style={{ width: `${m.uptimePct}%` }}
+                  style={{ width: `${cappedWidth}%` }}
                 />
               </div>
-              <div className="w-14 flex-shrink-0 text-xs font-mono text-text-primary text-right">{pct}%</div>
+              <div className="w-14 flex-shrink-0 text-xs font-mono text-text-primary text-right">{pctLabel}%</div>
             </div>
           );
         })}

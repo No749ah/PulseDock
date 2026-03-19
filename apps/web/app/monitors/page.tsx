@@ -21,6 +21,7 @@ import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
+import { HelpTooltip } from "../../components/help-tooltip";
 
 interface MonitorTag {
   id: string;
@@ -230,6 +231,7 @@ function MonitorsPageInner() {
 
   // bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastSelectedIndexRef = useRef<number>(-1);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
 
@@ -571,12 +573,27 @@ function MonitorsPageInner() {
     }
   };
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggleSelect = (id: string, event?: React.MouseEvent) => {
+    const currentIndex = monitors.findIndex((m) => m.id === id);
+    if (event?.shiftKey && lastSelectedIndexRef.current >= 0 && currentIndex >= 0) {
+      // Range selection: select all monitors between last clicked and current
+      const lo = Math.min(lastSelectedIndexRef.current, currentIndex);
+      const hi = Math.max(lastSelectedIndexRef.current, currentIndex);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (let i = lo; i <= hi; i++) {
+          next.add(monitors[i].id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    }
+    lastSelectedIndexRef.current = currentIndex;
   };
 
   const toggleSelectAll = () => {
@@ -876,7 +893,7 @@ function MonitorsPageInner() {
     );
 
   return (
-    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors">
+    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
       <div className="space-y-6">
         {error && (
           <FadeIn>
@@ -1538,9 +1555,9 @@ function MonitorsPageInner() {
                           </TableCell>
                           <TableCell className="w-10">
                             <button
-                              onClick={() => toggleSelect(monitor.id)}
+                              onClick={(e) => toggleSelect(monitor.id, e)}
                               className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
-                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name}`}
+                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name} (Shift+click to select range)`}
                             >
                               {selectedIds.has(monitor.id)
                                 ? <CheckSquare className="w-4 h-4 text-accent" />
@@ -2246,6 +2263,7 @@ function MonitorsPageInner() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
+              <HelpTooltip content="How often PulseDock checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources." className="ml-1 align-middle" />
             </label>
             <input
               type="number"
@@ -2271,6 +2289,7 @@ function MonitorsPageInner() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
+              <HelpTooltip content="Number of consecutive failures before triggering an alert. Set to 1 for immediate alerts, or higher to reduce false positives from transient errors. Range: 1–10." className="ml-1 align-middle" />
             </label>
             <input
               type="number"

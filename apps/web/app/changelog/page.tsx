@@ -81,7 +81,7 @@ const releases: ChangeEntry[] = [
 
 export default function ChangelogPage() {
   return (
-    <AppFrame title="Changelog" subtitle="Release notes and version history">
+    <AppFrame title="Changelog" subtitle="Release notes and version history" breadcrumbs={[{ label: "Changelog" }]}>
       <div className="max-w-3xl mx-auto space-y-2">
         {/* Header */}
         <FadeIn>

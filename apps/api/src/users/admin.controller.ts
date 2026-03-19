@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../common/prisma.service';
 import { AuthGuard } from '../common/auth.guard';
@@ -24,7 +24,74 @@ export class AdminController {
   @ApiResponse({ status: 403, description: 'Admin role required.' })
   async users() {
     const users = await this.prisma.user.findMany({ orderBy: { createdAt: 'asc' } });
-    return users.map((u) => ({ id: u.id, email: u.email, role: u.role, isActive: u.isActive, createdAt: u.createdAt.toISOString() }));
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName ?? null,
+      role: u.role,
+      isActive: u.isActive,
+      totpEnabled: u.totpEnabled ?? false,
+      emailVerified: u.emailVerified ?? false,
+      createdAt: u.createdAt.toISOString(),
+      updatedAt: u.updatedAt?.toISOString() ?? null,
+    }));
+  }
+
+  @Roles('admin')
+  @Post('users/:id/reset-mfa')
+  @ApiOperation({ summary: 'Reset user MFA', description: 'Admin only. Disables TOTP 2FA for a user and clears all recovery codes.' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'MFA reset.' })
+  async resetMfa(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    if (id === req.user.id) throw new ForbiddenException('Cannot reset your own MFA via admin panel — use Account Settings');
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('user not found');
+    if (!user.totpEnabled) throw new BadRequestException('MFA is not enabled for this user');
+    await this.prisma.user.update({
+      where: { id },
+      data: { totpEnabled: false, totpSecret: null, totpRecoveryCodes: null },
+    });
+    // Revoke all sessions so the user must re-authenticate
+    await this.prisma.session.deleteMany({ where: { userId: id } });
+    await this.audit.log('admin.user.reset_mfa', req.user.id, id, { email: user.email });
+    return { ok: true };
+  }
+
+  @Roles('admin')
+  @Post('users/:id/force-password-reset')
+  @ApiOperation({ summary: 'Force password reset', description: 'Admin only. Revokes all sessions and generates a password reset token for the user.' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Password reset token created and all sessions revoked.' })
+  async forcePasswordReset(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('user not found');
+    // Revoke all active sessions
+    await this.prisma.session.deleteMany({ where: { userId: id } });
+    // Generate reset token
+    const { randomBytes } = await import('crypto');
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    await this.prisma.passwordResetToken.create({
+      data: { email: user.email, token, expiresAt },
+    });
+    await this.audit.log('admin.user.force_password_reset', req.user.id, id, { email: user.email });
+    const appBase = process.env.APP_BASE_URL ?? 'http://localhost:3000';
+    return { ok: true, resetUrl: `${appBase}/login?reset=${token}`, expiresAt: expiresAt.toISOString() };
+  }
+
+  @Roles('admin')
+  @Delete('users/:id')
+  @ApiOperation({ summary: 'Delete user', description: 'Admin only. Permanently deletes a user account and all associated data.' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User deleted.' })
+  async deleteUser(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    if (id === req.user.id) throw new ForbiddenException('Cannot delete your own account via admin panel');
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('user not found');
+    // Cascade: sessions, monitors, alerts, invites etc. handled by Prisma relations
+    await this.prisma.user.delete({ where: { id } });
+    await this.audit.log('admin.user.delete', req.user.id, id, { email: user.email });
+    return { ok: true };
   }
 
   @Roles('admin')
@@ -51,15 +118,27 @@ export class AdminController {
       where: { id: body.userId },
       data: {
         email: body.email?.toLowerCase() ?? user.email,
+        displayName: body.displayName !== undefined ? (body.displayName.trim() || null) : user.displayName,
         role: body.role ?? user.role,
         isActive: body.isActive ?? user.isActive,
+        mustChangePassword: body.mustChangePassword ?? user.mustChangePassword,
       },
     });
 
     if (body.isActive === false) await this.prisma.session.deleteMany({ where: { userId: body.userId } });
-    await this.audit.log('admin.user.update', req.user.id, body.userId, { email: body.email, role: body.role, isActive: body.isActive });
+    await this.audit.log('admin.user.update', req.user.id, body.userId, { email: body.email, role: body.role, isActive: body.isActive, mustChangePassword: body.mustChangePassword });
 
-    return { id: updated.id, email: updated.email, role: updated.role, isActive: updated.isActive, createdAt: updated.createdAt.toISOString() };
+    return {
+      id: updated.id,
+      email: updated.email,
+      displayName: updated.displayName ?? null,
+      role: updated.role,
+      isActive: updated.isActive,
+      totpEnabled: updated.totpEnabled ?? false,
+      emailVerified: updated.emailVerified ?? false,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt?.toISOString() ?? null,
+    };
   }
 
   @Roles('admin')

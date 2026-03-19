@@ -173,7 +173,7 @@ export default function StatusPagesPage() {
   const publicBase = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <AppFrame title="Status Pages" subtitle="Build and share public status pages">
+    <AppFrame title="Status Pages" subtitle="Build and share public status pages" breadcrumbs={[{ label: "Status Pages" }]}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

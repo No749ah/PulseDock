@@ -51,6 +51,7 @@ import { TeamController } from './team/team.controller';
 import { TeamService } from './team/team.service';
 import { SettingsController } from './settings/settings.controller';
 import { SettingsService } from './settings/settings.service';
+import { BackupService } from './settings/backup.service';
 
 @Module({
   imports: [
@@ -109,6 +110,7 @@ import { SettingsService } from './settings/settings.service';
     ReportsService,
     TeamService,
     SettingsService,
+    BackupService,
   ],
 })
 export class AppModule implements NestModule {

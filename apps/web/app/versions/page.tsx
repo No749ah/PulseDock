@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell, CheckCircle2, ArrowUpCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell, CheckCircle2, ArrowUpCircle, Download } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -724,6 +724,29 @@ export default function VersionsPage() {
 
   const visible = sortedItems.slice((safePage - 1) * size, safePage * size);
 
+  function exportCSV() {
+    const cols = ['Name', 'Type', 'Target', 'Current Version', 'Latest Message', 'Status', 'Last Checked'];
+    const rows = sortedItems.map((item) => [
+      item.name,
+      item.type,
+      item.target,
+      item.currentVersion ?? '',
+      item.latestMessage ?? '',
+      item.level ?? '',
+      item.checkedAt ? new Date(item.checkedAt).toISOString() : '',
+    ]);
+    const csv = [cols, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `version-checks-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const providerOptions = [
     { value: 'github', label: 'GitHub releases' },
     { value: 'gitlab', label: 'GitLab releases' },
@@ -743,7 +766,7 @@ export default function VersionsPage() {
   ];
 
   return (
-    <AppFrame title="Version Center" subtitle="Track outdated releases/images and trigger checks on demand.">
+    <AppFrame title="Version Center" subtitle="Track outdated releases/images and trigger checks on demand." breadcrumbs={[{ label: "Version Center" }]}>
       {loading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
@@ -1363,6 +1386,14 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 <span className="hidden sm:inline">Refresh</span>
                 <span className="sm:hidden">↺</span>
               </Button>
+              {sortedItems.length > 0 && (
+                <Button variant="secondary" size="sm" onClick={exportCSV} title="Export to CSV">
+                  <span className="flex items-center gap-1.5">
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export CSV</span>
+                  </span>
+                </Button>
+              )}
               <Button size="sm" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
                 <span className="flex items-center gap-1.5">
                   <Plus className="w-4 h-4" />
@@ -1517,7 +1548,14 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             return <span className="text-xs text-text-secondary">{providerLabels[prov] ?? item.type}</span>;
                           })()}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[280px] break-all">{item.target}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <span
+                            className="block max-w-[160px] truncate text-xs font-mono text-text-secondary"
+                            title={item.target}
+                          >
+                            {item.target}
+                          </span>
+                        </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {item.currentVersion ? (
                             <span className="font-mono text-sm">{item.currentVersion}</span>
@@ -1557,7 +1595,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                                 <div className="flex items-center gap-1.5 text-warning">
                                   <ArrowUpCircle className="w-3.5 h-3.5 shrink-0" />
                                   <span className="text-xs font-medium">
-                                    {to ? `v${to} available` : item.level === 'red' ? 'Critical update' : 'Update available'}
+                                    {to ? `${/^v\d/i.test(to) ? to : `v${to}`} available` : item.level === 'red' ? 'Critical update' : 'Update available'}
                                   </span>
                                 </div>
                                 {changelogUrl && (

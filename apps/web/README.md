@@ -49,9 +49,12 @@ npm run restart:web
 
 ## Environment Variables
 
+Copy `.env.example` to `.env.local` and fill in your values.
+
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL — leave empty to use same-host `/api` proxy (recommended) |
+| `NEXT_PUBLIC_APP_VERSION` | App version shown in UI (set by CI/CD, optional) |
 | `WEB_PORT` | Port to listen on (default: `1234`) |
 
 ## Page Structure

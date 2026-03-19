@@ -1,3 +1,14 @@
+## Status Summary (2026-03-19 21:37 UTC)
+- **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-21-improvements (rotated from heartbeat/2026-03-20-polish at 21:42 UTC)
+- **This session (2026-03-19 21:37 UTC):**
+  - **Test fixes**: checks.service.spec.ts — 3 failures from wrong realtime arg position (mailer inserted before realtime in constructor); fixed makeService() to pass `undefined` for mailer slot. Status-page update now skipped when no webhook+mailer configured.
+  - **Breadcrumbs**: account page loading state now has breadcrumbs; all other pages already wired
+  - **Package READMEs**: updated test counts (1519); tool-registry count (1467+). All packages have complete READMEs.
+  - **Branch rotation**: merged heartbeat/2026-03-20-polish → dev, deleted old branch, created heartbeat/2026-03-21-improvements
+
 ## Status Summary (2026-03-19 20:58 UTC)
 - **Build/Test:** ✅ Clean build, 1515 tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical

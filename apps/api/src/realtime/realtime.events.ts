@@ -24,4 +24,8 @@ export class RealtimeEvents {
   alertTriggered(userId: string, payload: unknown) {
     this.gateway.emitToUser(userId, 'alert.triggered', payload);
   }
+
+  statusPageUpdated(slug: string, payload: unknown) {
+    this.gateway.emitToStatusPage(slug, 'status.updated', payload);
+  }
 }

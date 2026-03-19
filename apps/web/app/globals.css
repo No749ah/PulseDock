@@ -243,45 +243,144 @@ html, body {
 }
 
 @media print {
-  /* Hide interactive / nav chrome */
-  .print\:hidden { display: none !important; }
-  nav, header, aside, [aria-label="Navigation"], [role="navigation"] { display: none !important; }
-  footer { display: none !important; }
+  /* ── Page setup ────────────────────────────────────── */
+  @page {
+    margin: 1.5cm 1.2cm;
+    size: A4;
+  }
+  @page :first {
+    margin-top: 2cm;
+  }
 
-  /* Page setup */
-  @page { margin: 1.5cm 1cm; size: A4; }
+  /* ── Hide interactive chrome ───────────────────────── */
+  .print\:hidden,
+  .no-print,
+  nav,
+  header,
+  aside,
+  [aria-label="Navigation"],
+  [role="navigation"],
+  footer,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  [data-print-hide="true"] { display: none !important; }
 
-  /* Force light background for legibility on paper */
-  body, main, [class*="bg-bg"], [class*="bg-surface"] {
+  /* Keep print-only elements visible */
+  [data-print-show="true"] { display: block !important; }
+
+  /* ── Global typography ─────────────────────────────── */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html, body {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  body,
+  main,
+  [class*="bg-bg"],
+  [class*="bg-surface"],
+  [class*="bg-gradient"],
+  [class*="bg-grid"],
+  [style*="background"] {
     background: #ffffff !important;
+    background-image: none !important;
     color: #111827 !important;
   }
 
-  /* Ensure text is readable */
-  [class*="text-text-secondary"] { color: #6b7280 !important; }
-  [class*="text-text-primary"] { color: #111827 !important; }
-  [class*="text-text-muted"] { color: #9ca3af !important; }
-  [class*="text-accent"] { color: #6366f1 !important; }
+  [class*="text-text-secondary"] { color: #4b5563 !important; }
+  [class*="text-text-primary"]   { color: #111827 !important; }
+  [class*="text-text-muted"]     { color: #6b7280 !important; }
+  [class*="text-accent"]         { color: #4f46e5 !important; }
+  [class*="text-green"]          { color: #16a34a !important; }
+  [class*="text-red"]            { color: #dc2626 !important; }
+  [class*="text-yellow"]         { color: #d97706 !important; }
 
-  /* Borders / dividers should print */
-  [class*="border-border"] { border-color: #e5e7eb !important; }
+  [class*="border-border"],
+  [class*="border-white/"],
+  [class*="border-gray"] { border-color: #d1d5db !important; }
 
-  /* Status page specific: preserve grid layout */
-  .grid { break-inside: avoid-page; }
-  
-  /* Force card backgrounds to white */
-  [class*="rounded"], [class*="card"] {
+  /* ── Cards / surfaces ──────────────────────────────── */
+  [class*="rounded"],
+  [class*="card"],
+  [class*="bg-surface"],
+  [class*="bg-glass"],
+  [class*="backdrop-blur"] {
     background: #f9fafb !important;
+    backdrop-filter: none !important;
     border: 1px solid #e5e7eb !important;
     box-shadow: none !important;
   }
 
-  /* Prevent orphaned headings */
-  h1, h2, h3, h4 { break-after: avoid; }
+  /* Status colour pills — keep colour for readability */
+  .print-status-green  { background: #dcfce7 !important; color: #166534 !important; border-color: #bbf7d0 !important; }
+  .print-status-yellow { background: #fef9c3 !important; color: #854d0e !important; border-color: #fef08a !important; }
+  .print-status-red    { background: #fee2e2 !important; color: #991b1b !important; border-color: #fecaca !important; }
 
-  /* Suppress animations */
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    transition-duration: 0s !important;
+  /* ── Typography ────────────────────────────────────── */
+  h1, h2, h3, h4, h5, h6 { break-after: avoid; color: #111827 !important; }
+  p, li, td, th           { orphans: 3; widows: 3; }
+
+  /* ── Status page grid: flatten to flow on print ────── */
+  /* Mobile column always hidden on screen — show only for print */
+  .status-page-mobile-flow   { display: block !important; }
+  .status-page-tablet-grid,
+  .status-page-desktop-grid  { display: none !important; }
+
+  /* Each widget in the print flow */
+  .status-page-mobile-flow > div {
+    break-inside: avoid;
+    margin-bottom: 0.6cm;
+    page-break-inside: avoid;
+  }
+
+  /* ── Table layout ──────────────────────────────────── */
+  table { border-collapse: collapse; width: 100%; }
+  th, td {
+    border: 1px solid #e5e7eb;
+    padding: 4pt 6pt;
+    font-size: 9pt;
+    text-align: left;
+  }
+  thead { background: #f3f4f6 !important; }
+  tr { break-inside: avoid; }
+
+  /* ── SVG / charts: ensure visible ─────────────────── */
+  svg { overflow: visible; }
+  svg text { fill: #374151 !important; }
+  svg line, svg path:not([fill]):not([stroke]) { stroke: #9ca3af !important; }
+
+  /* ── Links ─────────────────────────────────────────── */
+  a[href]::after {
+    content: none; /* don't append URLs — clutters status reports */
+  }
+
+  /* ── Misc ──────────────────────────────────────────── */
+  img { max-width: 100% !important; page-break-inside: avoid; }
+  pre, code { font-size: 8pt; white-space: pre-wrap; word-break: break-all; }
+  hr { border-color: #e5e7eb !important; }
+  .grid { break-inside: avoid; }
+
+  /* ── Print-only meta footer ─────────────────────────── */
+  .status-print-meta {
+    display: block !important;
+    font-size: 8pt;
+    color: #6b7280;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 6pt;
+    margin-top: 12pt;
   }
 }
+
+/* Screen: hide print-only elements */
+.status-print-meta { display: none; }

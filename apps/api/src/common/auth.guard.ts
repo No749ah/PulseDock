@@ -28,7 +28,14 @@ export class AuthGuard implements CanActivate {
     if (token?.startsWith('pdck_')) {
       const apiKeyUser = await this.apiKeysService.validateKey(token);
       if (!apiKeyUser) throw new UnauthorizedException('Invalid or expired API key');
-      request.user = { id: apiKeyUser.id, email: apiKeyUser.email, role: apiKeyUser.role, mustChangePassword: false };
+      // Attach scope so downstream guards/decorators can check permissions
+      request.user = {
+        id: apiKeyUser.id,
+        email: apiKeyUser.email,
+        role: apiKeyUser.role,
+        mustChangePassword: false,
+        apiKeyScope: apiKeyUser.apiKeyScope,
+      };
       return true;
     }
 

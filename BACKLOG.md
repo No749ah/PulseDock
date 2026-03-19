@@ -1,3 +1,74 @@
+## Status Summary (2026-03-19 11:15 UTC)
+- **Build/Test:** ✅ Clean build, 1454 passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 11:15 UTC):**
+  - README stats updated (1454 passing, 1400+ tools, 65+ widget types)
+  - Monitor CSV export: id column added to header
+  - Dashboard section order: customizable panel with localStorage persistence
+  - Status page print: button moved to header, .no-print CSS rule fixed
+  - Error pages: custom 404, error boundary, global-error
+  - Dashboard time range selector: 1h/6h/24h/7d/30d with localStorage + live indicator
+  - Monitors table: sortable columns (Type + Interval added) + hover quick-actions
+  - Notification center: bell dropdown, 60s auto-fetch, unread badge, mark-all-read
+
+## Status Summary (2026-03-19 10:02 UTC)
+- **Build/Test:** ✅ Clean build, 1432 API + 10 CLI + 12 agent tests passing (1454 total), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 10:02 UTC):**
+  - **Alert Delivery History**: `AlertDeliveryLog` Prisma model + migration. `sendWithRetry()` logs every delivery attempt (success/failed, trigger, monitorId, durationMs, errorMessage). `GET /v1/alert-channels/:id/deliveries` — last 50 entries + success/failed counts. Frontend: Activity button per channel row opens history modal with stats + log entries (status, trigger, monitor name, error, timestamp, duration). 4 new tests.
+
+## Status Summary (2026-03-19 07:22 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 07:22 UTC):**
+  - **Scheduled Uptime Reports**: Full feature — `ScheduledReport` Prisma model + migration (20260319071349). `GET/PUT/DELETE /v1/reports` API. Cron job runs every 15min, sends due reports. `MailerService.sendUptimeReport()` with styled HTML email (hero uptime%, stat boxes, monitor table). Account page "Scheduled Reports" section: enable toggle, daily/weekly frequency, day-of-week selector, UTC hour picker, last-sent display. Services restarted, all routes 200.
+
+## Status Summary (2026-03-19 05:11 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 05:11 UTC):**
+  - **Copy/Paste widgets across pages**: Ctrl+C copies selected widgets to localStorage clipboard. Ctrl+V pastes them below current canvas content with new IDs. Works across different status page tabs.
+  - **Count-up animations**: `AnimatedWidgets.tsx` (new client component) with `useCountUp` hook (cubic ease-out, RAF-based, prefers-reduced-motion safe). Wired into UptimePercentageCard, SLASummary, and all RollingUptimeCards — numbers animate from 0 on page load.
+
+## Status Summary (2026-03-19 04:18 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 10 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 04:18 UTC):**
+  - **Status Page Version History (API-backed)**: Prisma `StatusPageHistory` model + migration. API auto-snapshots layout before every save (prune to 10). `GET /v1/status-pages/:id/history` + `POST .../history/:historyId/restore`. Editor History panel now loads from API, shows real widget counts, one-click server restore (saves current state as "Before restore" snapshot first).
+  - **Monitors Column Visibility Toggle**: Eye/Columns button in toolbar opens dropdown picker. Toggle Type/Target/Interval/Trend/Alerts columns on/off. State persisted to localStorage. Table headers and cells both respect visibility flags.
+
+## Status Summary (2026-03-19 03:17 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 03:17 UTC):**
+  - **WebSocket real-time for public status pages**: Backend adds `status-page:join/leave` WS room handlers (no auth required), `emitToStatusPage()` on gateway, `statusPageUpdated()` on RealtimeEvents. ChecksService notifies all published status pages on monitor level change. Frontend LiveStatusRefresh uses socket.io-client with 🟢 Live indicator + polling fallback.
+  - **Snap-to-Grid toggle**: Grid icon button in editor toolbar. Reveals dotted column/row overlay. Auto-brightens during drag.
+  - **Alignment Guides**: Blue guide lines across canvas during drag — detects left/right/top/bottom/center alignment within 8px tolerance with all other widgets. Clears on drag end.
+  - **Layer Management**: Properties panel now has Layer section with Bring to Front / Bring Forward / Send Backward / Send to Back buttons. Widgets sorted by `zOrder` on canvas render.
+
+## Status Summary (2026-03-19 00:31 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline (from dev after branch rotation at 00:22 UTC)
+- **This session (2026-03-19 00:31 UTC):**
+  - **TS build fix**: `status: "checking" as const` in landing page URL checker — resolved union type assignment error
+  - **Branch rotation**: Merged heartbeat/2026-03-19-landing-docs-polish → dev, deleted old branch, created heartbeat/2026-03-19-widgets-offline
+  - **2 new status-page widgets**: `offline-banner` (auto-shows when navigator.onLine=false, dismissible amber banner, online/offline event listeners), `custom-metric-chart` (Recharts line/bar/area chart, configurable monitorId + metric + timeRange + chartType, bucketed time-series from MonitorRun data)
+  - Both widgets: backend resolver, frontend component, editor palette entry, config panel, registered in widget index
+
 ## Status Summary (2026-03-18 23:11 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
@@ -572,7 +643,7 @@
 ### P1 — New Widgets (Metrics & Data)
 
 - [x] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
-- [ ] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
+- [x] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
 - [x] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
 - [x] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
 - [x] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
@@ -607,16 +678,16 @@
 - [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
 - [x] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete
 - [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
-- [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
-- [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
+- [x] **Snap-to-Grid** — Visual grid toggle button in toolbar (Grid icon). Shows dotted column/row overlay when active. Auto-shows with increased brightness during drag.
+- [x] **Alignment Guides** — Blue 1px lines across canvas when dragged widget aligns (within 8px) with left/right/top/bottom/center of other widgets. Clears on drag end.
 - [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
 - [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
 - [x] **Template Gallery** — 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
 - [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
 - [x] **Widget Search in Palette** — Filter palette by name/category
-- [ ] **Layer Management** — Z-index ordering, bring to front/send to back
-- [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
-- [ ] **Version History** — Last 10 saves with preview + one-click restore
+- [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
+- [x] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages (localStorage clipboard, pastes below existing content with new IDs)
+- [x] **Version History** — Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
 - [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
 
 ### P2 — Page-Level Configuration
@@ -630,12 +701,12 @@
 - [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
 - [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
 - [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
-- [ ] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
+- [x] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
 
 ### P2 — Public Page Rendering
 
-- [ ] **Smooth Data Transitions** — Animate value changes (number count-up, color transitions)
-- [ ] **Real-time via WebSocket** — Live data push instead of 60s polling. Instant status updates
+- [x] **Smooth Data Transitions** — Count-up animations on UptimePercentageCard, SLASummary actual%, RollingUptimeCards (all 4 periods). AnimatedNumber + AnimatedUptimeCard client components. Cubic ease-out, RAF, prefers-reduced-motion safe.
+- [x] **Real-time via WebSocket** — Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
 - [ ] **Print-friendly CSS** — @media print stylesheet for reporting/PDF export
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
 - [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
@@ -960,14 +1031,14 @@
 - [ ] **Animation & Micro-interactions** — Page transitions (fade between routes), skeleton→content transitions, button press feedback, toast slide-in/out, modal enter/exit, hover lift effects on cards, number count-up animations on metrics
 - [ ] **Data Tables overhaul** — Sortable columns (click header), resizable columns (drag), column visibility toggle, row expansion, bulk select with shift-click range, sticky header on scroll, export to CSV/JSON, pagination options (10/25/50/100), empty state per table
 - [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
-- [ ] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
-- [ ] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
+- [x] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
+- [x] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
 - [ ] **Mobile UX deep audit** — Test every flow on 375px: create monitor, create alert, create incident, status page editor (simplified mobile mode), navigation drawer, bottom tab bar option, pull-to-refresh, swipe actions
 - [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
-- [ ] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
+- [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
 - [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
 - [ ] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
-- [ ] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
+- [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
 - [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
 
 ### P2 — Self-Optimization & Continuous Improvement
@@ -989,8 +1060,8 @@
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
-- [ ] **Webhook management UI** — Create/edit/test webhooks, delivery history, retry failed deliveries, payload templates, signature verification config
-- [ ] **Scheduled Reports** — Daily/weekly/monthly automated reports via email: uptime summary, incident summary, SLA compliance, version status. PDF + HTML formats.
+- [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
+- [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
 - [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins

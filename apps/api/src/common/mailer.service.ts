@@ -285,6 +285,132 @@ export class MailerService {
     return this.deliver(to, subject, text, html);
   }
 
+  // ───────── Scheduled Uptime Report ─────────
+
+  async sendUptimeReport(to: string, data: {
+    frequency: string;
+    periodLabel: string;
+    overallUptimePct: number;
+    totalMonitors: number;
+    uptimeMonitors: number;
+    greenCount: number;
+    yellowCount: number;
+    redCount: number;
+    topMonitors: Array<{ name: string; uptimePct: number; status: string }>;
+    activeIncidents: number;
+    dashboardUrl: string;
+  }) {
+    const isWeekly = data.frequency === 'weekly';
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const subject = isWeekly
+      ? `PulseDock Weekly Report — Week of ${dateStr}`
+      : `PulseDock Daily Report — ${dateStr}`;
+
+    const uptimeColor =
+      data.overallUptimePct >= 99 ? '#22c55e'
+      : data.overallUptimePct >= 95 ? '#f59e0b'
+      : '#ef4444';
+
+    const statusRows = data.topMonitors
+      .slice(0, 10)
+      .map((m) => {
+        const color = m.status === 'green' || m.uptimePct >= 99 ? '#22c55e'
+          : m.status === 'yellow' || m.uptimePct >= 95 ? '#f59e0b'
+          : '#ef4444';
+        const label = m.status === 'green' ? 'UP' : m.status === 'yellow' ? 'DEGRADED' : 'DOWN';
+        return `<tr>
+          <td style="padding:6px 8px;font-size:13px;color:#e2e8f0;border-bottom:1px solid #1e293b;">${m.name}</td>
+          <td style="padding:6px 8px;font-size:12px;border-bottom:1px solid #1e293b;text-align:center;">
+            <span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:999px;padding:2px 8px;font-weight:700;font-size:11px;letter-spacing:0.4px;">${label}</span>
+          </td>
+          <td style="padding:6px 8px;font-size:13px;color:${color};font-weight:600;border-bottom:1px solid #1e293b;text-align:right;">${m.uptimePct.toFixed(1)}%</td>
+        </tr>`;
+      })
+      .join('');
+
+    const degradedAlert = (data.yellowCount + data.redCount) > 0
+      ? `<div style="background:#ef444422;border:1px solid #ef444444;border-radius:8px;padding:12px 16px;margin:16px 0;">
+          <p style="margin:0;font-size:13px;color:#fca5a5;font-weight:600;">⚠️ ${data.yellowCount + data.redCount} monitor${(data.yellowCount + data.redCount) > 1 ? 's are' : ' is'} degraded or down</p>
+        </div>`
+      : '';
+
+    const html = htmlLayout(subject, `
+      <h1 style="margin:0 0 4px;font-size:18px;font-weight:700;color:#94a3b8;">
+        ${isWeekly ? 'Weekly' : 'Daily'} Uptime Report
+      </h1>
+      <p style="margin:0 0 24px;font-size:13px;color:#475569;">${data.periodLabel}</p>
+
+      <!-- Big uptime number -->
+      <div style="text-align:center;padding:20px;background:#1e293b;border-radius:12px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;">Overall Uptime</p>
+        <p style="margin:0;font-size:48px;font-weight:800;color:${uptimeColor};line-height:1;">${data.overallUptimePct.toFixed(2)}%</p>
+      </div>
+
+      <!-- Stat row -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+        <tr>
+          <td style="padding:4px;">
+            <div style="background:#1e293b;border-radius:8px;padding:12px;text-align:center;">
+              <p style="margin:0;font-size:22px;font-weight:700;color:#f1f5f9;">${data.totalMonitors}</p>
+              <p style="margin:2px 0 0;font-size:11px;color:#64748b;">Total Monitors</p>
+            </div>
+          </td>
+          <td style="padding:4px;">
+            <div style="background:#1e293b;border-radius:8px;padding:12px;text-align:center;">
+              <p style="margin:0;font-size:22px;font-weight:700;color:#22c55e;">${data.greenCount}</p>
+              <p style="margin:2px 0 0;font-size:11px;color:#64748b;">Healthy</p>
+            </div>
+          </td>
+          <td style="padding:4px;">
+            <div style="background:#1e293b;border-radius:8px;padding:12px;text-align:center;">
+              <p style="margin:0;font-size:22px;font-weight:700;color:${data.activeIncidents > 0 ? '#ef4444' : '#f1f5f9'}">${data.activeIncidents}</p>
+              <p style="margin:2px 0 0;font-size:11px;color:#64748b;">Active Incidents</p>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      ${degradedAlert}
+
+      <!-- Monitor table -->
+      ${data.topMonitors.length > 0 ? `
+        ${divider()}
+        <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Monitor Status</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="padding:6px 8px;font-size:11px;color:#475569;text-align:left;border-bottom:1px solid #1e293b;">Monitor</th>
+              <th style="padding:6px 8px;font-size:11px;color:#475569;text-align:center;border-bottom:1px solid #1e293b;">Status</th>
+              <th style="padding:6px 8px;font-size:11px;color:#475569;text-align:right;border-bottom:1px solid #1e293b;">Uptime</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${statusRows}
+          </tbody>
+        </table>
+      ` : ''}
+
+      ${divider()}
+      ${btnPrimary(data.dashboardUrl, 'Open Dashboard')}
+      <p style="margin:12px 0 0;font-size:11px;color:#475569;">
+        To change frequency or disable reports, go to Account → Scheduled Reports.
+      </p>
+    `);
+
+    const text = [
+      subject,
+      '',
+      `Overall Uptime: ${data.overallUptimePct.toFixed(2)}%`,
+      `Total Monitors: ${data.totalMonitors} | Healthy: ${data.greenCount} | Active Incidents: ${data.activeIncidents}`,
+      '',
+      ...data.topMonitors.map((m) => `${m.name}: ${m.uptimePct.toFixed(1)}% (${m.status})`),
+      '',
+      `Dashboard: ${data.dashboardUrl}`,
+    ].join('\n');
+
+    return this.deliver(to, subject, text, html);
+  }
+
   // ───────── Account Lockout ─────────
   async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
     const subject = 'Your PulseDock account has been temporarily locked';

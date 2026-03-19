@@ -310,7 +310,11 @@ export default async function PublicStatusSlugPage({
       <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
-          <div className="mb-8 text-center">
+          <div className="mb-8 text-center relative">
+            {/* Print button — top-right of header, hidden when printing */}
+            <div className="absolute right-0 top-0 no-print">
+              <PrintButton />
+            </div>
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={data.title} className="mx-auto mb-4 h-12 w-auto object-contain" />
@@ -332,8 +336,9 @@ export default async function PublicStatusSlugPage({
             </div>
           ) : (
             <>
-              {/* Mobile: single-column flow */}
-              <div className="space-y-4 sm:hidden">
+              {/* Mobile + Print: single-column flow
+                  `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
+              <div className="status-page-mobile-flow space-y-4 sm:hidden">
                 {visible.map((widget) => (
                   <div key={`m-${widget.id}`}>
                     {renderWidget(widget, data.monitors, {
@@ -347,7 +352,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Tablet: 6-column responsive grid */}
-              <div className="hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden">
+              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden">
                 {visible.map((widget) => {
                   const t = tablet.get(widget.id);
                   if (!t) return null;
@@ -372,7 +377,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Desktop: 12-column editor-parity grid */}
-              <div className="hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid">
+              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid">
                 {visible.map((widget) => {
                   const d = desktop.get(widget.id);
                   if (!d) return null;

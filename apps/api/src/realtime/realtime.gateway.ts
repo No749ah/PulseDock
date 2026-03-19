@@ -64,6 +64,43 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   /**
+   * Allow any client (no auth required) to subscribe to live updates
+   * for a specific public status page.
+   */
+  @SubscribeMessage('status-page:join')
+  async joinStatusPage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { slug?: string } | undefined,
+  ) {
+    const slug = body?.slug;
+    if (!slug || typeof slug !== 'string') {
+      return { ok: false, error: 'slug required' };
+    }
+    await client.join(this.statusPageRoom(slug));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('status-page:leave')
+  async leaveStatusPage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { slug?: string } | undefined,
+  ) {
+    const slug = body?.slug;
+    if (slug && typeof slug === 'string') {
+      await client.leave(this.statusPageRoom(slug));
+    }
+    return { ok: true };
+  }
+
+  emitToStatusPage(slug: string, event: string, payload: unknown) {
+    this.server.to(this.statusPageRoom(slug)).emit(event, payload);
+  }
+
+  private statusPageRoom(slug: string) {
+    return `status-page:${slug}`;
+  }
+
+  /**
    * Resolve the authenticated userId from the socket handshake.
    *
    * Order of precedence:

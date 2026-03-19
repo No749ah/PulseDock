@@ -9,6 +9,7 @@ import {
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
+  type DragMoveEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -67,6 +68,9 @@ import {
   Layers,
   ShieldAlert,
   ChevronUp,
+  ChevronsUp,
+  ChevronsDown,
+  ChevronDown,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -83,6 +87,7 @@ interface Widget {
   w: number;
   h: number;
   locked?: boolean;
+  zOrder?: number;
   config: {
     monitorId?: string;
     monitorIds?: string[];
@@ -237,6 +242,8 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 { type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
 { type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
 { type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
+{ type: "offline-banner", label: "Offline Banner", description: "Dismissible banner that auto-shows when the visitor's connection is lost.", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 1 },
+{ type: "custom-metric-chart", label: "Custom Metric Chart", description: "Time-series chart for latency, uptime %, or check count. Choose line, bar, or area style.", icon: BarChart2, category: "Metrics", defaultW: 8, defaultH: 4 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -611,6 +618,8 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   zoom: number;
   viewportMode: ViewportMode;
+  showGrid: boolean;
+  alignGuides: { type: "h" | "v"; pos: number }[];
   onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -618,7 +627,7 @@ interface CanvasProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -654,17 +663,36 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
       style={{ minHeight }}
       onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-widget]')) onSelect(null); }}
     >
-      {/* Grid guide lines — always visible (subtle), brighter when dragging */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: `
-            repeating-linear-gradient(to right, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
-            repeating-linear-gradient(to bottom, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
-          `,
-          transition: "opacity 0.15s ease",
-        }}
-      />
+      {/* Grid guide lines — visible when showGrid is on or when dragging */}
+      {(showGrid || isDraggingOverCanvas) && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(to right, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
+              repeating-linear-gradient(to bottom, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
+            `,
+            transition: "opacity 0.15s ease",
+          }}
+        />
+      )}
+
+      {/* Alignment guide lines — shown during drag */}
+      {alignGuides.map((guide, i) =>
+        guide.type === "h" ? (
+          <div
+            key={`guide-h-${i}`}
+            className="pointer-events-none absolute left-0 right-0 z-50"
+            style={{ top: guide.pos, height: 1, background: "rgba(99,102,241,0.7)" }}
+          />
+        ) : (
+          <div
+            key={`guide-v-${i}`}
+            className="pointer-events-none absolute top-0 bottom-0 z-50"
+            style={{ left: guide.pos, width: 1, background: "rgba(99,102,241,0.7)" }}
+          />
+        )
+      )}
 
       {widgets.length === 0 && !isOver && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -684,8 +712,8 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
         </div>
       )}
 
-      {/* Render widgets */}
-      {widgets.map((widget) => {
+      {/* Render widgets (sorted by zOrder) */}
+      {[...widgets].sort((a, b) => (a.zOrder ?? 0) - (b.zOrder ?? 0)).map((widget) => {
         const colWidth = canvasRef.current
           ? canvasRef.current.getBoundingClientRect().width / COL_COUNT
           : 0;
@@ -722,9 +750,10 @@ interface ConfigPanelProps {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onToggleLock: (id: string) => void;
+  onZOrder: (id: string, action: "front" | "back" | "forward" | "backward") => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock, onZOrder }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -742,7 +771,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation"];
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation", "offline-banner"];
   const supportsMonitorScope = !noScopeWidgets.includes(w.type);
   const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
@@ -1241,6 +1270,109 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         </div>
       )}
 
+      {w.type === "offline-banner" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Message</label>
+            <input
+              type="text"
+              value={(w.config.message as string) ?? ""}
+              onChange={(e) => update("message", e.target.value || undefined)}
+              placeholder="Service monitoring is temporarily unavailable"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[10px] text-text-secondary">
+              Background color
+              <input
+                type="text"
+                value={(w.config.bgColor as string) ?? ""}
+                onChange={(e) => update("bgColor", e.target.value || undefined)}
+                placeholder="#fef08a or amber-500"
+                className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
+            </label>
+            <label className="text-[10px] text-text-secondary">
+              Text color
+              <input
+                type="text"
+                value={(w.config.textColor as string) ?? ""}
+                onChange={(e) => update("textColor", e.target.value || undefined)}
+                placeholder="#78350f"
+                className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
+            </label>
+          </div>
+          <p className="text-[10px] text-text-muted">This banner appears automatically when the visitor&apos;s browser goes offline. Leave colors empty to use the default amber/yellow style.</p>
+        </>
+      )}
+
+      {w.type === "custom-metric-chart" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Title</label>
+            <input
+              type="text"
+              value={(w.config.title as string) ?? ""}
+              onChange={(e) => update("title", e.target.value || undefined)}
+              placeholder="e.g. API Latency (24h)"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
+            <select
+              value={(w.config.monitorId as string) ?? ""}
+              onChange={(e) => update("monitorId", e.target.value || undefined)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="">— Select monitor —</option>
+              {monitors.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Metric</label>
+            <select
+              value={(w.config.metric as string) ?? "latency"}
+              onChange={(e) => update("metric", e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="latency">Latency (ms)</option>
+              <option value="uptime">Uptime (%)</option>
+              <option value="checks">Check count</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Chart type</label>
+            <select
+              value={(w.config.chartType as string) ?? "line"}
+              onChange={(e) => update("chartType", e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="line">Line</option>
+              <option value="bar">Bar</option>
+              <option value="area">Area</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>
+            <select
+              value={(w.config.timeRange as number) ?? 24}
+              onChange={(e) => update("timeRange", Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value={6}>Last 6 hours</option>
+              <option value={24}>Last 24 hours</option>
+              <option value={168}>Last 7 days</option>
+              <option value={720}>Last 30 days</option>
+            </select>
+          </div>
+        </>
+      )}
+
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
         <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
         <div className="grid grid-cols-2 gap-2">
@@ -1283,6 +1415,32 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
           {w.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
           {w.locked ? "Unlock Widget" : "Lock Widget"}
         </button>
+
+        {/* Layer order */}
+        <div className="rounded-lg border border-border bg-bg overflow-hidden">
+          <div className="flex items-center gap-1.5 border-b border-border px-2.5 py-1.5">
+            <Layers className="h-3 w-3 text-text-secondary/60" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/60">Layer</span>
+          </div>
+          <div className="grid grid-cols-4">
+            {([
+              { action: "front" as const, icon: ChevronsUp, title: "Bring to front" },
+              { action: "forward" as const, icon: ChevronUp, title: "Bring forward" },
+              { action: "backward" as const, icon: ChevronDown, title: "Send backward" },
+              { action: "back" as const, icon: ChevronsDown, title: "Send to back" },
+            ]).map(({ action, icon: Icon, title }) => (
+              <button
+                key={action}
+                onClick={() => onZOrder(w.id, action)}
+                title={title}
+                className="flex items-center justify-center py-1.5 text-text-secondary/60 transition hover:bg-accent/10 hover:text-accent"
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={() => onDuplicate(w.id)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
@@ -1336,6 +1494,8 @@ export default function StatusPageEditorPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [showGrid, setShowGrid] = useState(false);
+  const [alignGuides, setAlignGuides] = useState<{ type: "h" | "v"; pos: number }[]>([]);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -1349,6 +1509,12 @@ export default function StatusPageEditorPage() {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(localStorage.getItem(`sp-vhist-${id}`) || "[]") as VersionEntry[]; } catch { return []; }
   });
+
+  // Server-side version history
+  interface ApiHistoryEntry { id: string; savedAt: string; label: string | null; layout: { widgets?: unknown[]; settings?: unknown } }
+  const [apiHistory, setApiHistory] = useState<ApiHistoryEntry[]>([]);
+  const [apiHistoryLoading, setApiHistoryLoading] = useState(false);
+  const [restoringHistoryId, setRestoringHistoryId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -1533,6 +1699,43 @@ export default function StatusPageEditorPage() {
     toastCtx.success("Version restored — save to apply");
   }
 
+  async function loadApiHistory() {
+    setApiHistoryLoading(true);
+    try {
+      const data = await api<ApiHistoryEntry[]>(`/v1/status-pages/${id}/history`);
+      setApiHistory(data);
+    } catch {
+      // silently fail
+    } finally {
+      setApiHistoryLoading(false);
+    }
+  }
+
+  async function restoreApiVersion(historyId: string) {
+    if (!confirm("Restore this version from server? Your current unsaved changes will be lost.")) return;
+    setRestoringHistoryId(historyId);
+    try {
+      const result = await api<{ layout: { widgets?: Widget[]; settings?: PageSettings } }>(`/v1/status-pages/${id}/history/${historyId}/restore`, undefined, { method: "POST" });
+      const restoredLayout = result.layout as { widgets?: Widget[]; settings?: PageSettings };
+      const restoredWidgets = (restoredLayout?.widgets ?? []) as Widget[];
+      const restoredSettings = (restoredLayout?.settings ?? {}) as PageSettings;
+      setWidgets(restoredWidgets);
+      setPageSettings(restoredSettings);
+      savedWidgetsRef.current = JSON.stringify(restoredWidgets);
+      setIsDirty(false);
+      setSelectedId(null);
+      setSelectedIds(new Set());
+      setShowVersionHistory(false);
+      toastCtx.success("Version restored from server");
+      // Reload API history after restore
+      loadApiHistory();
+    } catch {
+      toastCtx.error("Failed to restore version");
+    } finally {
+      setRestoringHistoryId(null);
+    }
+  }
+
   function handleWidgetSelect(id: string | null, shiftKey?: boolean) {
     if (id === null) {
       setSelectedId(null);
@@ -1628,6 +1831,41 @@ export default function StatusPageEditorPage() {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      // Copy: Ctrl+C — copy selected widgets to clipboard (localStorage)
+      if (meta && e.key === "c") {
+        const allSelected = new Set(selectedIds);
+        if (selectedId) allSelected.add(selectedId);
+        if (allSelected.size > 0) {
+          e.preventDefault();
+          const copied = widgets.filter((w) => allSelected.has(w.id));
+          localStorage.setItem("pulsedock:widget-clipboard", JSON.stringify(copied));
+        }
+      }
+      // Paste: Ctrl+V — paste from clipboard with offset
+      if (meta && e.key === "v") {
+        e.preventDefault();
+        const raw = localStorage.getItem("pulsedock:widget-clipboard");
+        if (raw) {
+          try {
+            const copied: Widget[] = JSON.parse(raw);
+            if (Array.isArray(copied) && copied.length > 0) {
+              const maxY = Math.max(...widgets.map((w) => w.y + w.h), 0);
+              const minY = Math.min(...copied.map((w) => w.y), 0);
+              const pasted: Widget[] = copied.map((w) => ({
+                ...w,
+                id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                y: w.y - minY + maxY + 1,
+                locked: false,
+              }));
+              setWidgets((prev) => [...prev, ...pasted]);
+              setSelectedId(pasted[0]?.id ?? null);
+              setSelectedIds(new Set(pasted.map((p) => p.id)));
+            }
+          } catch {
+            // ignore malformed clipboard
+          }
+        }
+      }
       if (meta && e.key === "d") {
         e.preventDefault();
         // Group duplicate: duplicate all selected, or single if only one
@@ -1738,20 +1976,127 @@ export default function StatusPageEditorPage() {
     );
   }
 
+  function handleZOrder(widgetId: string, action: "front" | "back" | "forward" | "backward") {
+    setWidgets((prev) => {
+      const sorted = [...prev].sort((a, b) => (a.zOrder ?? 0) - (b.zOrder ?? 0));
+      const idx = sorted.findIndex((w) => w.id === widgetId);
+      if (idx === -1) return prev;
+      const newSorted = [...sorted];
+      if (action === "front") {
+        const [item] = newSorted.splice(idx, 1);
+        newSorted.push(item);
+      } else if (action === "back") {
+        const [item] = newSorted.splice(idx, 1);
+        newSorted.unshift(item);
+      } else if (action === "forward" && idx < newSorted.length - 1) {
+        const tmp = newSorted[idx + 1];
+        newSorted[idx + 1] = newSorted[idx];
+        newSorted[idx] = tmp;
+      } else if (action === "backward" && idx > 0) {
+        const tmp = newSorted[idx - 1];
+        newSorted[idx - 1] = newSorted[idx];
+        newSorted[idx] = tmp;
+      }
+      return newSorted.map((w, i) => ({ ...w, zOrder: i }));
+    });
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    const { active, delta } = event;
+    const activeId = active.id as string;
+    if (!activeId.startsWith("canvas-") || !canvasRef.current) {
+      setAlignGuides([]);
+      return;
+    }
+    const widgetId = activeId.replace("canvas-", "");
+    const movingWidget = widgets.find((w) => w.id === widgetId);
+    if (!movingWidget || !canvasRef.current) return;
+
+    const containerWidth = canvasRef.current.getBoundingClientRect().width;
+    const colWidth = containerWidth / COL_COUNT;
+    const movedX = Math.max(0, Math.min(COL_COUNT - movingWidget.w, movingWidget.x + Math.round(delta.x / colWidth))) * colWidth;
+    const movedY = Math.max(0, movingWidget.y + Math.round(delta.y / ROW_H)) * ROW_H;
+    const movedRight = movedX + movingWidget.w * colWidth;
+    const movedCenterH = movedX + (movingWidget.w * colWidth) / 2;
+    const movedBottom = movedY + movingWidget.h * ROW_H;
+    const movedCenterV = movedY + (movingWidget.h * ROW_H) / 2;
+
+    const guides: { type: "h" | "v"; pos: number }[] = [];
+    const SNAP_TOLERANCE = 8; // pixels
+
+    for (const w of widgets) {
+      if (w.id === widgetId) continue;
+      const wx = w.x * colWidth;
+      const wy = w.y * ROW_H;
+      const wr = (w.x + w.w) * colWidth;
+      const wb = (w.y + w.h) * ROW_H;
+      const wcv = wy + (w.h * ROW_H) / 2;
+      const wch = wx + (w.w * colWidth) / 2;
+
+      // Vertical guides (left/right/center alignment)
+      for (const [myEdge, theirEdge] of [[movedX, wx], [movedX, wr], [movedRight, wx], [movedRight, wr], [movedCenterH, wch]]) {
+        if (Math.abs(myEdge - theirEdge) <= SNAP_TOLERANCE) {
+          guides.push({ type: "v", pos: theirEdge });
+        }
+      }
+      // Horizontal guides (top/bottom/center alignment)
+      for (const [myEdge, theirEdge] of [[movedY, wy], [movedY, wb], [movedBottom, wy], [movedBottom, wb], [movedCenterV, wcv]]) {
+        if (Math.abs(myEdge - theirEdge) <= SNAP_TOLERANCE) {
+          guides.push({ type: "h", pos: theirEdge });
+        }
+      }
+    }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    const unique = guides.filter((g) => {
+      const key = `${g.type}:${g.pos}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    setAlignGuides(unique);
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(event.active.id as string);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null);
+    setAlignGuides([]);
     const { active, delta, over } = event;
     const activeId = active.id as string;
 
     if (activeId.startsWith("palette-")) {
-      // Drop from palette onto canvas
+      // Drop from palette onto canvas — place at cursor position
       if (over?.id === "canvas") {
         const type = activeId.replace("palette-", "");
-        addWidget(type);
+        const paletteItem = WIDGET_PALETTE.find((p) => p.type === type);
+        if (paletteItem && canvasRef.current && active.rect.current.translated) {
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          const droppedRect = active.rect.current.translated;
+          const colWidth = canvasRect.width / COL_COUNT;
+          // Compute grid position from drop center
+          const relX = droppedRect.left + droppedRect.width / 2 - canvasRect.left;
+          const relY = droppedRect.top - canvasRect.top;
+          const dropCol = Math.max(0, Math.min(COL_COUNT - paletteItem.defaultW, Math.floor(relX / colWidth)));
+          const dropRow = Math.max(0, Math.floor(relY / ROW_H));
+          const newWidget: Widget = {
+            id: `${type}-${Date.now()}`,
+            type,
+            x: dropCol,
+            y: dropRow,
+            w: paletteItem.defaultW,
+            h: paletteItem.defaultH,
+            config: {},
+          };
+          setWidgets((prev) => [...prev, newWidget]);
+          setSelectedId(newWidget.id);
+        } else {
+          addWidget(type);
+        }
       }
     } else if (activeId.startsWith("canvas-")) {
       // Move existing widget (skip if locked)
@@ -1804,7 +2149,7 @@ export default function StatusPageEditorPage() {
   const publicBase = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
       <div className="flex h-screen flex-col bg-bg text-text-primary">
         {/* Toolbar */}
         <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-sm">
@@ -1933,6 +2278,15 @@ export default function StatusPageEditorPage() {
               ))}
             </div>
 
+            {/* Show/hide grid toggle */}
+            <button
+              onClick={() => setShowGrid((v) => !v)}
+              title={showGrid ? "Hide grid" : "Show grid"}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition ${showGrid ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
+            >
+              <Grid className="h-3.5 w-3.5" />
+            </button>
+
             {/* Canvas zoom controls */}
             <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
               <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
@@ -1951,7 +2305,7 @@ export default function StatusPageEditorPage() {
 
             {/* Version history button */}
             <button
-              onClick={() => setShowVersionHistory(true)}
+              onClick={() => { setShowVersionHistory(true); loadApiHistory(); }}
               title={`Version history — ${versionHistory.length} save${versionHistory.length !== 1 ? "s" : ""} stored`}
               className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
             >
@@ -2081,6 +2435,8 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               zoom={zoom}
               viewportMode={viewportMode}
+              showGrid={showGrid}
+              alignGuides={alignGuides}
               onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
@@ -2105,6 +2461,7 @@ export default function StatusPageEditorPage() {
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
               onToggleLock={toggleWidgetLock}
+              onZOrder={handleZOrder}
             />
           </aside>
         </div>
@@ -2467,36 +2824,45 @@ export default function StatusPageEditorPage() {
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-text-primary">Version History</h2>
-                <p className="text-xs text-text-muted mt-0.5">Last {versionHistory.length} manual saves. Click restore to roll back.</p>
+                <p className="text-xs text-text-muted mt-0.5">Last 10 saves stored on server. One-click restore.</p>
               </div>
               <button onClick={() => setShowVersionHistory(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="overflow-y-auto p-4 space-y-2">
-              {versionHistory.length === 0 ? (
+              {apiHistoryLoading ? (
+                <div className="py-8 text-center text-sm text-text-secondary">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent mx-auto mb-2" />
+                  <p>Loading history…</p>
+                </div>
+              ) : apiHistory.length === 0 ? (
                 <div className="py-8 text-center text-sm text-text-secondary">
                   <History className="h-8 w-8 mx-auto mb-2 text-text-muted/40" />
-                  <p>No saves recorded yet.</p>
+                  <p>No server saves yet.</p>
                   <p className="text-xs text-text-muted mt-1">Save your page to start tracking history.</p>
                 </div>
-              ) : versionHistory.map((entry, i) => {
-                const d = new Date(entry.ts);
-                const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+              ) : apiHistory.map((entry, i) => {
+                const d = new Date(entry.savedAt);
+                const dateLabel = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                const widgetCount = Array.isArray(entry.layout?.widgets) ? entry.layout.widgets.length : 0;
+                const isRestoring = restoringHistoryId === entry.id;
                 return (
-                  <div key={entry.ts} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
+                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
                     <div>
                       <p className="text-xs font-medium text-text-primary flex items-center gap-2">
                         {i === 0 && <span className="text-[10px] rounded-full bg-accent/15 text-accent px-1.5 py-0.5 font-semibold">Latest</span>}
-                        {label}
+                        {entry.label ? <span className="text-[10px] text-text-muted italic">{entry.label}</span> : null}
+                        {dateLabel}
                       </p>
-                      <p className="text-[10px] text-text-muted mt-0.5">{entry.widgetCount} widget{entry.widgetCount !== 1 ? "s" : ""}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{widgetCount} widget{widgetCount !== 1 ? "s" : ""}</p>
                     </div>
                     <button
-                      onClick={() => restoreVersion(entry)}
-                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100"
+                      onClick={() => restoreApiVersion(entry.id)}
+                      disabled={isRestoring}
+                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100 disabled:opacity-50"
                     >
-                      Restore
+                      {isRestoring ? "Restoring…" : "Restore"}
                     </button>
                   </div>
                 );

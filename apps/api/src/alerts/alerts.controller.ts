@@ -106,6 +106,42 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get(':id/deliveries')
+  @ApiOperation({ summary: 'Get alert delivery history', description: 'Returns the last 50 delivery log entries for a specific alert channel.' })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Delivery logs returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async deliveries(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
+    if (!channel) throw new NotFoundException('channel not found');
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { alertChannelId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const successCount = await this.prisma.alertDeliveryLog.count({ where: { alertChannelId: id, status: 'success' } });
+    const failedCount = await this.prisma.alertDeliveryLog.count({ where: { alertChannelId: id, status: 'failed' } });
+
+    return {
+      channelId: id,
+      channelName: channel.name,
+      successCount,
+      failedCount,
+      deliveries: logs.map((l) => ({
+        id: l.id,
+        status: l.status,
+        trigger: l.trigger,
+        monitorId: l.monitorId,
+        monitorName: l.monitorName,
+        errorMessage: l.errorMessage,
+        durationMs: l.durationMs,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    };
+  }
+
   @Post('test')
   @ApiOperation({ summary: 'Send test notification', description: 'Send a test message through the specified alert channel to verify connectivity.' })
   @ApiResponse({ status: 200, description: 'Test notification dispatched.' })

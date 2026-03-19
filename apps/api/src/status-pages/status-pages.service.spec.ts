@@ -97,6 +97,12 @@ function makePrisma(opts: {
     maintenanceWindow: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    statusPageHistory: {
+      create: vi.fn().mockResolvedValue({ id: 'hist-1', statusPageId: 'page-1', savedAt: new Date(), label: null, layout: {} }),
+      findMany: vi.fn().mockResolvedValue([]),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
   };
 }
 

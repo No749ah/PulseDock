@@ -45,6 +45,8 @@ import { IncidentsController } from './incidents/incidents.controller';
 import { IncidentsService } from './incidents/incidents.service';
 import { AgentController } from './agent/agent.controller';
 import { AgentService } from './agent/agent.service';
+import { ReportsController } from './reports/reports.controller';
+import { ReportsService } from './reports/reports.service';
 
 @Module({
   imports: [
@@ -76,6 +78,7 @@ import { AgentService } from './agent/agent.service';
     MaintenanceController,
     IncidentsController,
     AgentController,
+    ReportsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -97,6 +100,7 @@ import { AgentService } from './agent/agent.service';
     MaintenanceService,
     IncidentsService,
     AgentService,
+    ReportsService,
   ],
 })
 export class AppModule implements NestModule {

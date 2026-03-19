@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -144,12 +144,39 @@ function MonitorsPageInner() {
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Advanced filter panel state
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+  const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
   });
-  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // Column visibility (persisted to localStorage)
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("monitor-col-visibility");
+      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true };
+    } catch {
+      return { type: true, target: true, interval: true, trend: true, alerts: true };
+    }
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const toggleCol = (col: string) => {
+    setVisibleCols((prev) => {
+      const next = { ...prev, [col]: !prev[col] };
+      try { localStorage.setItem("monitor-col-visibility", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(() => {
+    try { const s = localStorage.getItem("monitor-page-size"); return s ? (s === "all" ? "all" : Number(s)) : 25; } catch { return 25; }
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -213,6 +240,9 @@ function MonitorsPageInner() {
   const [assignedChannels, setAssignedChannels] = useState<AlertChannel[]>([]);
   const [alertPanelLoading, setAlertPanelLoading] = useState(false);
   const [alertPanelError, setAlertPanelError] = useState("");
+
+  // Reset to page 1 when filters/sort change
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir, filterStatuses, filterTypes, filterTags]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -597,8 +627,9 @@ function MonitorsPageInner() {
       let blob: Blob;
       let filename: string;
       if (format === "csv") {
-        const headers = ["name", "type", "target", "enabled", "interval", "tags"];
+        const headers = ["id", "name", "type", "target", "enabled", "interval", "tags"];
         const rows = data.monitors.map((m) => [
+          `"${(m.id ?? "").replace(/"/g, '""')}"`,
           `"${(m.name ?? "").replace(/"/g, '""')}"`,
           m.type ?? "",
           `"${(m.target ?? "").replace(/"/g, '""')}"`,
@@ -689,14 +720,44 @@ function MonitorsPageInner() {
   const availablePlugins = plugins.filter((p) => p.supportedMonitorTypes.includes(formData.type));
   const selectedPlugin = availablePlugins.find((p) => p.id === formData.pluginId) ?? null;
 
+  // Compute active filter count for badge
+  const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+  const activeFilterCount =
+    (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
+    (filterTypes.size < defaultTypes.size ? 1 : 0) +
+    (filterTags.size > 0 ? 1 : 0);
+
   const filteredMonitors = monitors.filter((m) => {
     // Version-type monitors belong on the Versions page — never show here
     if (m.type === "GIT_RELEASE" || m.type === "DOCKER_IMAGE") return false;
+    // Tag filter (from chips above table)
     if (activeTagFilter && !m.tags?.some((t) => t.name === activeTagFilter)) return false;
+    // Enabled/disabled filter (legacy top bar)
     if (statusFilter === "enabled" && !m.enabled) return false;
     if (statusFilter === "disabled" && m.enabled) return false;
     if (folderFilter && m.folderId !== folderFilter) return false;
+    // Advanced type filter
+    if (filterTypes.size < defaultTypes.size && !filterTypes.has(m.type)) return false;
+    // Legacy single type filter
     if (typeFilter !== "all" && m.type !== typeFilter) return false;
+    // Advanced tag filter (from panel)
+    if (filterTags.size > 0 && !m.tags?.some((t) => filterTags.has(t.name))) return false;
+    // Advanced status filter
+    if (filterStatuses.size < defaultStatuses.size) {
+      const lastRun = runs.find((r) => r.monitorId === m.id);
+      if (!m.enabled) {
+        if (!filterStatuses.has("paused")) return false;
+      } else if (!lastRun) {
+        // no data yet — treat as up
+        if (!filterStatuses.has("up")) return false;
+      } else {
+        const lvl = lastRun.level ?? "green";
+        if (lvl === "green" && !filterStatuses.has("up")) return false;
+        if (lvl === "yellow" && !filterStatuses.has("degraded")) return false;
+        if (lvl === "red" && !filterStatuses.has("down")) return false;
+      }
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
@@ -760,10 +821,22 @@ function MonitorsPageInner() {
         const tb = runB?.checkedAt ? new Date(runB.checkedAt).getTime() : 0;
         return dir * (ta - tb);
       }
+      case "type":
+        return dir * a.type.localeCompare(b.type);
+      case "interval":
+        return dir * (a.intervalSec - b.intervalSec);
       default:
         return 0;
     }
   });
+
+  // Paginated slice
+  const totalFiltered = sortedMonitors.length;
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(totalFiltered / (pageSize as number)));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedMonitors = pageSize === "all"
+    ? sortedMonitors
+    : sortedMonitors.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
 
   if (!user) return null;
   if (loading)
@@ -822,6 +895,36 @@ function MonitorsPageInner() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {/* Column visibility toggle (table view only) */}
+              {viewMode === "table" && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColPicker((v) => !v)}
+                    title="Toggle column visibility"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${showColPicker ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Columns</span>
+                  </button>
+                  {showColPicker && (
+                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
+                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
+                        <button
+                          key={col}
+                          onClick={() => toggleCol(col)}
+                          className="flex items-center justify-between w-full rounded-lg px-2 py-1.5 text-xs hover:bg-surface-elevated transition-colors"
+                        >
+                          <span className={visibleCols[col] ? "text-text-primary" : "text-text-muted"}>{label}</span>
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleCols[col] ? "bg-accent border-accent text-white" : "border-border"}`}>
+                            {visibleCols[col] ? "✓" : ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-0.5 bg-surface-elevated border border-border rounded-lg overflow-hidden">
                 <button
                   onClick={() => handleExport("json")}
@@ -939,12 +1042,16 @@ function MonitorsPageInner() {
             )}
             <button
               onClick={() => setShowAdvancedFilters((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${showAdvancedFilters || typeFilter !== "all" ? "bg-accent/10 border-accent/40 text-accent" : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${showAdvancedFilters || activeFilterCount > 0 ? "bg-accent/10 border-accent/40 text-accent" : "bg-surface-elevated border-border text-text-secondary hover:text-text-primary"}`}
               aria-label="Advanced filters"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <Filter className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
-              {typeFilter !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+              {activeFilterCount > 0 && (
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-accent text-white text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
         </FadeIn>
@@ -954,7 +1061,7 @@ function MonitorsPageInner() {
           <FadeIn>
             <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-text-primary">Advanced Filters</span>
+                <span className="text-sm font-semibold text-text-primary">Filters</span>
                 <div className="flex items-center gap-2">
                   {savedPresets.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
@@ -985,35 +1092,113 @@ function MonitorsPageInner() {
                     <BookmarkPlus className="w-3.5 h-3.5" />
                     Save
                   </button>
-                  <button
-                    onClick={() => { setTypeFilter("all"); setStatusFilter("all"); setActiveTagFilter(null); setFolderFilter(null); }}
-                    className="text-xs text-text-muted hover:text-danger transition-colors"
-                  >
-                    Clear all
-                  </button>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => {
+                        setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
+                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+                        setFilterTags(new Set());
+                        setTypeFilter("all");
+                        setStatusFilter("all");
+                        setActiveTagFilter(null);
+                        setFolderFilter(null);
+                      }}
+                      className="text-xs text-danger/70 hover:text-danger transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <button
-                      onClick={() => setTypeFilter("all")}
-                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === "all" ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
-                    >
-                      All
-                    </button>
-                    {MONITOR_TYPES.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setTypeFilter(typeFilter === t ? "all" : t)}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${typeFilter === t ? "bg-accent text-white" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
-                      >
-                        {t === "SSL_CERT" ? "SSL" : t === "HEARTBEAT" ? "Heartbeat" : t}
-                      </button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Status filter */}
+                <div className="space-y-2">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Status</span>
+                  <div className="space-y-1.5">
+                    {([
+                      { key: "up", label: "Up", color: "text-success" },
+                      { key: "down", label: "Down", color: "text-danger" },
+                      { key: "degraded", label: "Degraded", color: "text-warning" },
+                      { key: "paused", label: "Paused", color: "text-text-secondary" },
+                    ] as const).map(({ key, label, color }) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={filterStatuses.has(key)}
+                          onChange={() => {
+                            setFilterStatuses((prev) => {
+                              const next = new Set(prev);
+                              next.has(key) ? next.delete(key) : next.add(key);
+                              return next;
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
+                        />
+                        <span className={`text-xs font-medium ${color} group-hover:opacity-80`}>{label}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
+
+                {/* Type filter */}
+                <div className="space-y-2">
+                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
+                  <div className="space-y-1.5">
+                    {([
+                      { key: "HTTP", label: "HTTP" },
+                      { key: "TCP", label: "TCP" },
+                      { key: "SSL_CERT", label: "SSL" },
+                      { key: "HEARTBEAT", label: "Heartbeat" },
+                    ] as const).map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={filterTypes.has(key)}
+                          onChange={() => {
+                            setFilterTypes((prev) => {
+                              const next = new Set(prev);
+                              next.has(key) ? next.delete(key) : next.add(key);
+                              return next;
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
+                        />
+                        <span className="text-xs text-text-primary group-hover:opacity-80">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tag filter */}
+                {allTags.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Tags</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allTags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            setFilterTags((prev) => {
+                              const next = new Set(prev);
+                              next.has(tag.name) ? next.delete(tag.name) : next.add(tag.name);
+                              return next;
+                            });
+                          }}
+                          className="px-2 py-1 rounded-full text-xs font-medium transition-all border"
+                          style={{
+                            backgroundColor: filterTags.has(tag.name) ? tag.color + "40" : "transparent",
+                            borderColor: tag.color + "80",
+                            color: filterTags.has(tag.name) ? tag.color : undefined,
+                            opacity: filterTags.has(tag.name) ? 1 : 0.6,
+                          }}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </FadeIn>
@@ -1140,7 +1325,7 @@ function MonitorsPageInner() {
             )}
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedMonitors.map((monitor) => {
+                {paginatedMonitors.map((monitor) => {
                   const lastRun = runs.find((r) => r.monitorId === monitor.id);
                   const level = lastRun?.level ?? "green";
                   const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : "bg-danger";
@@ -1179,9 +1364,34 @@ function MonitorsPageInner() {
               </div>
             ) : (
             <Card className="p-0">
+              {/* Table top bar: row count + page size */}
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border/60 text-xs text-text-secondary">
+                <span>
+                  {totalFiltered === 0 ? "No monitors" : pageSize === "all"
+                    ? `${totalFiltered} monitor${totalFiltered !== 1 ? "s" : ""}`
+                    : `${Math.min((safePage - 1) * (pageSize as number) + 1, totalFiltered)}–${Math.min(safePage * (pageSize as number), totalFiltered)} of ${totalFiltered}`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="monitor-page-size" className="text-text-secondary">Per page:</label>
+                  <select
+                    id="monitor-page-size"
+                    value={pageSize}
+                    onChange={(e) => {
+                      const v = e.target.value === "all" ? "all" : Number(e.target.value);
+                      setPageSize(v);
+                      setCurrentPage(1);
+                      try { localStorage.setItem("monitor-page-size", String(v)); } catch {}
+                    }}
+                    className="bg-surface-elevated border border-border/60 rounded-md px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+                    <option value="all">All</option>
+                  </select>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-surface-elevated/95 backdrop-blur-sm">
                     <tr>
                       <TableHeader className="w-10">
                         <button
@@ -1200,17 +1410,31 @@ function MonitorsPageInner() {
                           {sortBy === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
-                      <TableHeader className="hidden sm:table-cell">Type</TableHeader>
-                      <TableHeader className="hidden md:table-cell">Target</TableHeader>
-                      <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
+                      {visibleCols.type && (
+                        <TableHeader className="hidden sm:table-cell">
+                          <button onClick={() => handleSort("type")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                            Type
+                            {sortBy === "type" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                          </button>
+                        </TableHeader>
+                      )}
+                      {visibleCols.target && <TableHeader className="hidden md:table-cell">Target</TableHeader>}
+                      {visibleCols.interval && (
+                        <TableHeader className="hidden lg:table-cell">
+                          <button onClick={() => handleSort("interval")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                            Interval
+                            {sortBy === "interval" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                          </button>
+                        </TableHeader>
+                      )}
                       <TableHeader>
                         <button onClick={() => handleSort("status")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Status
                           {sortBy === "status" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
-                      <TableHeader className="hidden xl:table-cell">Trend</TableHeader>
-                      <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>
+                      {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
+                      {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Last Check
@@ -1221,10 +1445,10 @@ function MonitorsPageInner() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {sortedMonitors.map((monitor) => {
+                    {paginatedMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
-                        <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
+                        <TableRow key={monitor.id} className={`group/row relative ${selectedIds.has(monitor.id) ? "bg-accent/5" : ""}`}>
                           <TableCell className="w-10">
                             <button
                               onClick={() => toggleSelect(monitor.id)}
@@ -1262,11 +1486,9 @@ function MonitorsPageInner() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
-                            {monitor.target}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
+                          {visibleCols.type && <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>}
+                          {visibleCols.target && <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>{monitor.target}</TableCell>}
+                          {visibleCols.interval && <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>}
                           <TableCell>
                             <MonitorStatusCell
                               monitorId={monitor.id}
@@ -1276,6 +1498,7 @@ function MonitorsPageInner() {
                             />
                           </TableCell>
                           {/* Trend sparkline — last 20 runs for this monitor */}
+                          {visibleCols.trend && (
                           <TableCell className="hidden xl:table-cell">
                             {(() => {
                               const monRuns = runs
@@ -1294,7 +1517,8 @@ function MonitorsPageInner() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">
+                          )}
+                          {visibleCols.alerts && <TableCell className="hidden sm:table-cell">
                             <button
                               onClick={() => openAlertPanel(monitor)}
                               className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors group"
@@ -1322,7 +1546,7 @@ function MonitorsPageInner() {
                               </div>
                               <span className="hidden group-hover:inline text-[10px] text-accent ml-0.5">Edit</span>
                             </button>
-                          </TableCell>
+                          </TableCell>}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
@@ -1372,12 +1596,107 @@ function MonitorsPageInner() {
                               </Button>
                             </div>
                           </TableCell>
+                          {/* Hover quick-action overlay */}
+                          <td className="absolute right-0 top-0 bottom-0 hidden group-hover/row:flex items-center gap-1 px-3 bg-gradient-to-l from-surface via-surface/95 to-transparent pointer-events-none">
+                            <div className="flex items-center gap-1 pointer-events-auto">
+                              <button
+                                onClick={() => {
+                                  setModalMode("edit");
+                                  setEditingMonitor(monitor);
+                                  setFormData({
+                                    name: monitor.name, type: monitor.type, target: monitor.target,
+                                    intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1,
+                                    enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""),
+                                    expectedText: String(monitor.config?.expectedText ?? ""),
+                                    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
+                                    heartbeatToken: String(monitor.config?.token ?? ""),
+                                    folderId: monitor.folderId ?? "",
+                                  } as typeof formData);
+                                  setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
+                                  setTagInput(""); setFormErrors({}); setFormTouched({});
+                                  setShowModal(true); setShowTemplates(true);
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border text-text-primary hover:text-accent hover:border-accent/50 transition-colors"
+                                title="Edit monitor"
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api(`/v1/monitors/${monitor.id}`, user?.id, { method: "PATCH", body: JSON.stringify({ enabled: !monitor.enabled }) });
+                                    setMonitors((prev) => prev.map((m) => m.id === monitor.id ? { ...m, enabled: !monitor.enabled } : m));
+                                    success(monitor.enabled ? "Monitor disabled" : "Monitor enabled");
+                                  } catch (e) { toastError(e instanceof Error ? e.message : "Failed to update monitor"); }
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border transition-colors ${monitor.enabled ? "text-warning hover:border-warning/50" : "text-green-400 hover:border-green-400/50"}`}
+                                title={monitor.enabled ? "Disable monitor" : "Enable monitor"}
+                              >
+                                {monitor.enabled ? <><PowerOff className="w-3 h-3" /> Disable</> : <><Power className="w-3 h-3" /> Enable</>}
+                              </button>
+                              <button
+                                onClick={() => handleDelete(monitor.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border text-danger hover:border-danger/50 transition-colors"
+                                title="Delete monitor"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
               </div>
+              {/* Pagination controls */}
+              {pageSize !== "all" && totalPages > 1 && (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border/60">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let page: number;
+                      if (totalPages <= 7) {
+                        page = i + 1;
+                      } else if (safePage <= 4) {
+                        page = i < 6 ? i + 1 : totalPages;
+                      } else if (safePage >= totalPages - 3) {
+                        page = i === 0 ? 1 : totalPages - 6 + i;
+                      } else {
+                        const pages = [1, safePage - 1, safePage, safePage + 1, totalPages];
+                        page = pages[Math.min(i, pages.length - 1)];
+                      }
+                      const isEllipsis = i > 0 && page - (totalPages <= 7 ? i : [1, safePage <= 4 ? i : safePage - 1, safePage, safePage + 1, totalPages][Math.min(i - 1, 4)]) > 1;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => !isEllipsis && setCurrentPage(page)}
+                          className={`min-w-[28px] h-7 rounded-md text-xs font-medium transition-colors ${
+                            page === safePage
+                              ? "bg-accent text-white"
+                              : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </Card>
             )}
           </FadeIn>

@@ -52,6 +52,7 @@ model User {
   notificationPreference  NotificationPreference?
   maintenanceWindows      MaintenanceWindow[]
   incidents               Incident[]
+  scheduledReport         ScheduledReport?
 }
 
 model Session {
@@ -156,8 +157,9 @@ model AlertChannel {
   configJson Json
   createdAt  DateTime @default(now())
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
+  deliveryLogs  AlertDeliveryLog[]
 }
 
 model MonitorAlert {
@@ -241,22 +243,44 @@ model PublicStatusPage {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history StatusPageHistory[]
 
   @@index([userId])
   @@index([slug])
   @@index([isPublished])
 }
 
+model StatusPageHistory {
+  id           String   @id @default(cuid())
+  statusPageId String
+  layout       Json
+  savedAt      DateTime @default(now())
+  label        String?
+
+  statusPage PublicStatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([statusPageId])
+  @@index([savedAt])
+}
+
+enum ApiKeyScope {
+  READ
+  WRITE
+  ADMIN
+}
+
 model ApiKey {
-  id         String    @id @default(cuid())
+  id         String       @id @default(cuid())
   userId     String
   name       String
-  keyHash    String    @unique
+  keyHash    String       @unique
   prefix     String
+  scope      ApiKeyScope  @default(WRITE)
+  usageCount Int          @default(0)
   lastUsedAt DateTime?
   expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -372,4 +396,37 @@ model StatusPageSubscriber {
 
   @@unique([statusPageId, email])
   @@index([statusPageId])
+}
+
+model ScheduledReport {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  enabled    Boolean   @default(true)
+  frequency  String    @default("weekly")
+  dayOfWeek  Int       @default(1)
+  hourUtc    Int       @default(8)
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AlertDeliveryLog {
+  id             String   @id @default(cuid())
+  alertChannelId String
+  monitorId      String?
+  monitorName    String?
+  status         String   // "success" | "failed"
+  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test"
+  errorMessage   String?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+
+  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+
+  @@index([alertChannelId])
+  @@index([alertChannelId, createdAt])
 }

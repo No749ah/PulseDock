@@ -98,12 +98,80 @@ export class StatusPagesService {
     if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
 
+    // Snapshot current layout before overwriting (version history)
+    if (dto.layout !== undefined) {
+      await this.prisma.statusPageHistory.create({
+        data: {
+          statusPageId: id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          layout: page.layout as any,
+          label: null,
+        },
+      });
+      // Prune to last 10 snapshots
+      const old = await this.prisma.statusPageHistory.findMany({
+        where: { statusPageId: id },
+        orderBy: { savedAt: 'desc' },
+        skip: 10,
+        select: { id: true },
+      });
+      if (old.length > 0) {
+        await this.prisma.statusPageHistory.deleteMany({
+          where: { id: { in: old.map((h) => h.id) } },
+        });
+      }
+    }
+
     const updated = await this.prisma.publicStatusPage.update({
       where: { id },
       data: updateData,
     });
 
     this.logger.log(`Status page updated: ${id} by user ${userId}`);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safe } = updated;
+    return { ...safe, hasPassword: !!updated.passwordHash };
+  }
+
+  async getHistory(userId: string, id: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+
+    const history = await this.prisma.statusPageHistory.findMany({
+      where: { statusPageId: id },
+      orderBy: { savedAt: 'desc' },
+      take: 10,
+      select: { id: true, savedAt: true, label: true, layout: true },
+    });
+    return history;
+  }
+
+  async restoreHistory(userId: string, pageId: string, historyId: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id: pageId } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+
+    const snapshot = await this.prisma.statusPageHistory.findUnique({ where: { id: historyId } });
+    if (!snapshot || snapshot.statusPageId !== pageId) throw new NotFoundException('History entry not found');
+
+    // Save current state as a snapshot before restoring
+    await this.prisma.statusPageHistory.create({
+      data: {
+        statusPageId: pageId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        layout: page.layout as any,
+        label: 'Before restore',
+      },
+    });
+
+    const updated = await this.prisma.publicStatusPage.update({
+      where: { id: pageId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { layout: snapshot.layout as any },
+    });
+
+    this.logger.log(`Status page ${pageId} restored to history ${historyId} by user ${userId}`);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safe } = updated;
     return { ...safe, hasPassword: !!updated.passwordHash };
@@ -2587,6 +2655,122 @@ export class StatusPagesService {
         const hasDegraded = latestRuns.some((r) => r.level === 'yellow');
         const status = hasDown ? 'outage' : hasDegraded ? 'degraded' : 'operational';
         return { status, monitorCount: monitorIds.length };
+      }
+
+      case 'offline-banner': {
+        // Purely client-side widget — no data fetch needed
+        return { type: 'offline-banner', config: widget.config };
+      }
+
+      case 'custom-metric-chart': {
+        const monitorId = widget.config.monitorId as string | undefined;
+        const chartType = (widget.config.chartType as string | undefined) ?? 'line';
+        const timeRangeHours = Math.min(Math.max((widget.config.timeRange as number) ?? 24, 1), 720);
+        const metric = (widget.config.metric as string | undefined) ?? 'latency';
+
+        if (!monitorId) {
+          return { labels: [], values: [], unit: '', chartType };
+        }
+
+        const since = new Date(Date.now() - timeRangeHours * 3_600_000);
+
+        if (metric === 'latency') {
+          // Bucket latency into hourly averages
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: since }, latencyMs: { not: null } },
+            select: { checkedAt: true, latencyMs: true },
+            orderBy: { checkedAt: 'asc' },
+          });
+
+          const bucketMs = timeRangeHours <= 24 ? 3_600_000 : timeRangeHours <= 168 ? 6 * 3_600_000 : 24 * 3_600_000;
+          const bucketCount = Math.ceil((timeRangeHours * 3_600_000) / bucketMs);
+          const buckets = new Array(bucketCount).fill(null).map((_, i) => {
+            const start = since.getTime() + i * bucketMs;
+            return { start, sum: 0, count: 0 };
+          });
+
+          for (const run of runs) {
+            const t = (run.checkedAt as Date).getTime();
+            const idx = Math.floor((t - since.getTime()) / bucketMs);
+            if (idx >= 0 && idx < buckets.length && run.latencyMs !== null) {
+              buckets[idx].sum += run.latencyMs as number;
+              buckets[idx].count++;
+            }
+          }
+
+          const labels = buckets.map((b) => {
+            const d = new Date(b.start);
+            if (bucketMs < 24 * 3_600_000) return `${d.getUTCHours().toString().padStart(2, '0')}:00`;
+            return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+          });
+          const values = buckets.map((b) => (b.count > 0 ? Math.round(b.sum / b.count) : 0));
+          return { labels, values, unit: 'ms', chartType };
+        }
+
+        if (metric === 'uptime') {
+          // Bucket uptime% per period
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: since } },
+            select: { checkedAt: true, level: true },
+            orderBy: { checkedAt: 'asc' },
+          });
+
+          const bucketMs = timeRangeHours <= 24 ? 3_600_000 : timeRangeHours <= 168 ? 6 * 3_600_000 : 24 * 3_600_000;
+          const bucketCount = Math.ceil((timeRangeHours * 3_600_000) / bucketMs);
+          const buckets = new Array(bucketCount).fill(null).map((_, i) => ({
+            start: since.getTime() + i * bucketMs, green: 0, total: 0,
+          }));
+
+          for (const run of runs) {
+            const t = (run.checkedAt as Date).getTime();
+            const idx = Math.floor((t - since.getTime()) / bucketMs);
+            if (idx >= 0 && idx < buckets.length) {
+              buckets[idx].total++;
+              if (run.level === 'green') buckets[idx].green++;
+            }
+          }
+
+          const labels = buckets.map((b) => {
+            const d = new Date(b.start);
+            if (bucketMs < 24 * 3_600_000) return `${d.getUTCHours().toString().padStart(2, '0')}:00`;
+            return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+          });
+          const values = buckets.map((b) => (b.total > 0 ? Math.round((b.green / b.total) * 10000) / 100 : 100));
+          return { labels, values, unit: '%', chartType };
+        }
+
+        if (metric === 'checks') {
+          // Count checks per period
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId, checkedAt: { gte: since } },
+            select: { checkedAt: true },
+            orderBy: { checkedAt: 'asc' },
+          });
+
+          const bucketMs = timeRangeHours <= 24 ? 3_600_000 : timeRangeHours <= 168 ? 6 * 3_600_000 : 24 * 3_600_000;
+          const bucketCount = Math.ceil((timeRangeHours * 3_600_000) / bucketMs);
+          const buckets = new Array(bucketCount).fill(null).map((_, i) => ({
+            start: since.getTime() + i * bucketMs, count: 0,
+          }));
+
+          for (const run of runs) {
+            const t = (run.checkedAt as Date).getTime();
+            const idx = Math.floor((t - since.getTime()) / bucketMs);
+            if (idx >= 0 && idx < buckets.length) {
+              buckets[idx].count++;
+            }
+          }
+
+          const labels = buckets.map((b) => {
+            const d = new Date(b.start);
+            if (bucketMs < 24 * 3_600_000) return `${d.getUTCHours().toString().padStart(2, '0')}:00`;
+            return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+          });
+          const values = buckets.map((b) => b.count);
+          return { labels, values, unit: 'checks', chartType };
+        }
+
+        return { labels: [], values: [], unit: '', chartType };
       }
 
       default:

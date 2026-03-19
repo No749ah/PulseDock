@@ -94,6 +94,29 @@ export class StatusPagesController {
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
+  @Get('status-pages/:id/history')
+  @ApiOperation({ summary: 'Get version history (last 10 saves) for a status page' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  getHistory(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.statusPagesService.getHistory(req.user.id, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Post('status-pages/:id/history/:historyId/restore')
+  @ApiOperation({ summary: 'Restore a status page to a previous saved version' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiParam({ name: 'historyId', description: 'History entry CUID' })
+  restoreHistory(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Param('historyId') historyId: string,
+  ) {
+    return this.statusPagesService.restoreHistory(req.user.id, id, historyId);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @Get('status-pages/slug-check')
   @ApiOperation({ summary: 'Check if a slug is available for the current user' })
   @ApiQuery({ name: 'slug', required: true })

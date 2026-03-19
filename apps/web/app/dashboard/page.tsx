@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, Clock, Pause, Play, Plus, RefreshCw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -64,11 +64,63 @@ export default function DashboardPage() {
   const [hasAlertChannels, setHasAlertChannels] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30); // seconds: 10, 30, 60, 300
-  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d" | "30d">("24h");
+  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d" | "30d">(() => {
+    try {
+      const stored = localStorage.getItem("dashboard-time-range");
+      if (stored && ["1h", "6h", "24h", "7d", "30d"].includes(stored)) return stored as "1h" | "6h" | "24h" | "7d" | "30d";
+    } catch { /* ignore */ }
+    return "24h";
+  });
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setTick] = useState(0); // force re-render for "last updated" text
+
+  const DEFAULT_SECTION_ORDER = ["uptime", "versions", "monitors"] as const;
+  type SectionKey = (typeof DEFAULT_SECTION_ORDER)[number];
+  const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(() => {
+    try {
+      const stored = localStorage.getItem("dashboard-section-order");
+      if (stored) {
+        const parsed = JSON.parse(stored) as string[];
+        if (Array.isArray(parsed) && parsed.length === 3) return parsed as SectionKey[];
+      }
+    } catch { /* ignore */ }
+    return [...DEFAULT_SECTION_ORDER];
+  });
+  const [showCustomize, setShowCustomize] = useState(false);
+
+  const moveSectionUp = (idx: number) => {
+    if (idx === 0) return;
+    setSectionOrder((prev) => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      try { localStorage.setItem("dashboard-section-order", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const moveSectionDown = (idx: number) => {
+    setSectionOrder((prev) => {
+      if (idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      try { localStorage.setItem("dashboard-section-order", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const resetSectionOrder = () => {
+    const defaults = [...DEFAULT_SECTION_ORDER];
+    setSectionOrder(defaults);
+    try { localStorage.setItem("dashboard-section-order", JSON.stringify(defaults)); } catch { /* ignore */ }
+  };
+
+  const SECTION_LABELS: Record<SectionKey, string> = {
+    uptime: "Uptime Monitoring",
+    versions: "Version Tracking",
+    monitors: "Monitors",
+  };
 
   const timeRangeToMs: Record<string, number> = { "1h": 3600000, "6h": 21600000, "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
 
@@ -207,6 +259,21 @@ export default function DashboardPage() {
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
       <div className="space-y-8">
+        {/* Heading row with Live indicator and time range label */}
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-text-primary">
+            Last {timeRange === "1h" ? "1 hour" : timeRange === "6h" ? "6 hours" : timeRange === "24h" ? "24 hours" : timeRange === "7d" ? "7 days" : "30 days"}
+          </h2>
+          {autoRefresh && (
+            <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Live
+            </span>
+          )}
+        </div>
         {/* Controls row: time range + auto-refresh */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Time range selector */}
@@ -214,7 +281,7 @@ export default function DashboardPage() {
             {(["1h", "6h", "24h", "7d", "30d"] as const).map((r) => (
               <button
                 key={r}
-                onClick={() => setTimeRange(r)}
+                onClick={() => { setTimeRange(r); try { localStorage.setItem("dashboard-time-range", r); } catch { /* ignore */ } }}
                 className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   timeRange === r
                     ? "bg-accent/10 text-accent"
@@ -257,8 +324,63 @@ export default function DashboardPage() {
             <RefreshCw className="w-3 h-3" />
             Refresh
           </button>
+          <button
+            onClick={() => setShowCustomize((v) => !v)}
+            title="Customize layout"
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-colors ${showCustomize ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50"}`}
+          >
+            <LayoutDashboard className="w-3 h-3" />
+            Customize
+          </button>
           </div>
         </div>
+
+        {/* Customize section order panel */}
+        {showCustomize && (
+          <FadeIn>
+            <div className="rounded-xl border border-border bg-surface/60 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                  <LayoutDashboard className="w-4 h-4 text-accent" />
+                  Customize Layout
+                </span>
+                <button
+                  onClick={resetSectionOrder}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border bg-surface text-text-secondary hover:text-danger hover:border-danger/50 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset Order
+                </button>
+              </div>
+              <div className="space-y-2">
+                {sectionOrder.map((key, idx) => (
+                  <div key={key} className="flex items-center gap-2 rounded-lg border border-border/60 bg-surface-elevated px-3 py-2">
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => moveSectionUp(idx)}
+                        disabled={idx === 0}
+                        className="p-0.5 rounded text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label={`Move ${SECTION_LABELS[key]} up`}
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => moveSectionDown(idx)}
+                        disabled={idx === sectionOrder.length - 1}
+                        className="p-0.5 rounded text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label={`Move ${SECTION_LABELS[key]} down`}
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className="text-sm text-text-primary">{SECTION_LABELS[key]}</span>
+                    <span className="ml-auto text-xs text-text-muted opacity-50">{idx + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </FadeIn>
+        )}
         {error && (
           <FadeIn>
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
@@ -276,233 +398,235 @@ export default function DashboardPage() {
           />
         </FadeIn>
 
-        {/* ── Uptime Monitors ─────────────────────────────────────── */}
-        {stats && (
-          <FadeIn>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-text-secondary" />
-                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
-                <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Monitors</p>
-                      <p className="text-3xl font-bold text-text-primary">{stats.uptimeMonitors}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-accent/10">
-                      <Activity className="w-6 h-6 text-accent" />
-                    </div>
+        {/* ── Ordered sections ─────────────────────────────────────── */}
+        {sectionOrder.map((sectionKey) => {
+          if (sectionKey === "uptime") {
+            if (!stats) return null;
+            return (
+              <FadeIn key="uptime">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-text-secondary" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
+                    <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
                   </div>
-                </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Monitors</p>
+                          <p className="text-3xl font-bold text-text-primary">{stats.uptimeMonitors}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-accent/10">
+                          <Activity className="w-6 h-6 text-accent" />
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Uptime</p>
+                          <p className="text-3xl font-bold text-text-primary">
+                            {stats.uptimePct}
+                            <span className="text-lg text-text-secondary">%</span>
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-accent/10">
+                          <TrendingUp className="w-6 h-6 text-accent" />
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Operational</p>
+                          <p className="text-3xl font-bold text-success">{stats.uptimeGreen}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-success/10">
+                          <CheckCircle2 className="w-6 h-6 text-success" />
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Down / Degraded</p>
+                          <p className="text-3xl font-bold text-danger">{stats.uptimeRed + stats.uptimeYellow}</p>
+                        </div>
+                        <div className={`p-3 rounded-xl ${stats.uptimeRed + stats.uptimeYellow > 0 ? "bg-danger/10" : "bg-surface-elevated"}`}>
+                          <AlertCircle className={`w-6 h-6 ${stats.uptimeRed + stats.uptimeYellow > 0 ? "text-danger" : "text-text-secondary"}`} />
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              </FadeIn>
+            );
+          }
 
-                <Card>
-                  <div className="flex items-start justify-between">
+          if (sectionKey === "versions") {
+            if (!stats || stats.versionMonitors === 0) return null;
+            return (
+              <FadeIn key="versions">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-text-secondary" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Version Tracking</h2>
+                    <span className="text-xs text-text-secondary opacity-60">Git releases · Docker images</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Tracked</p>
+                          <p className="text-3xl font-bold text-text-primary">{stats.versionMonitors}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-accent/10">
+                          <GitBranch className="w-6 h-6 text-accent" />
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Up to Date</p>
+                          <p className="text-3xl font-bold text-success">{stats.versionUpToDate}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-success/10">
+                          <PackageCheck className="w-6 h-6 text-success" />
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-text-secondary text-sm mb-1">Updates Available</p>
+                          <p className="text-3xl font-bold text-warning">{stats.versionUpdateAvailable + stats.versionMajorBehind}</p>
+                          {stats.versionMajorBehind > 0 && (
+                            <p className="text-xs text-danger mt-1">{stats.versionMajorBehind} major version{stats.versionMajorBehind !== 1 ? "s" : ""} behind</p>
+                          )}
+                        </div>
+                        <div className={`p-3 rounded-xl ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "bg-warning/10" : "bg-surface-elevated"}`}>
+                          <GitBranch className={`w-6 h-6 ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "text-warning" : "text-text-secondary"}`} />
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              </FadeIn>
+            );
+          }
+
+          if (sectionKey === "monitors") {
+            return (
+              <FadeIn key="monitors" delay={0.1}>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-text-secondary text-sm mb-1">Uptime</p>
-                      <p className="text-3xl font-bold text-text-primary">
-                        {stats.uptimePct}
-                        <span className="text-lg text-text-secondary">%</span>
+                      <h2 className="text-xl font-bold text-text-primary">Monitors</h2>
+                      <p className="text-text-secondary text-sm mt-1">
+                        {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
                       </p>
                     </div>
-                    <div className="p-3 rounded-xl bg-accent/10">
-                      <TrendingUp className="w-6 h-6 text-accent" />
-                    </div>
+                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" /> Add Monitor
+                    </Button>
                   </div>
-                </Card>
-
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Operational</p>
-                      <p className="text-3xl font-bold text-success">{stats.uptimeGreen}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-success/10">
-                      <CheckCircle2 className="w-6 h-6 text-success" />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Down / Degraded</p>
-                      <p className="text-3xl font-bold text-danger">{stats.uptimeRed + stats.uptimeYellow}</p>
-                    </div>
-                    <div className={`p-3 rounded-xl ${stats.uptimeRed + stats.uptimeYellow > 0 ? "bg-danger/10" : "bg-surface-elevated"}`}>
-                      <AlertCircle className={`w-6 h-6 ${stats.uptimeRed + stats.uptimeYellow > 0 ? "text-danger" : "text-text-secondary"}`} />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </div>
-          </FadeIn>
-        )}
-
-        {/* ── Version / Release Monitors ───────────────────────────── */}
-        {stats && stats.versionMonitors > 0 && (
-          <FadeIn>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-text-secondary" />
-                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Version Tracking</h2>
-                <span className="text-xs text-text-secondary opacity-60">Git releases · Docker images</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Tracked</p>
-                      <p className="text-3xl font-bold text-text-primary">{stats.versionMonitors}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-accent/10">
-                      <GitBranch className="w-6 h-6 text-accent" />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Up to Date</p>
-                      <p className="text-3xl font-bold text-success">{stats.versionUpToDate}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-success/10">
-                      <PackageCheck className="w-6 h-6 text-success" />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-text-secondary text-sm mb-1">Updates Available</p>
-                      <p className="text-3xl font-bold text-warning">{stats.versionUpdateAvailable + stats.versionMajorBehind}</p>
-                      {stats.versionMajorBehind > 0 && (
-                        <p className="text-xs text-danger mt-1">{stats.versionMajorBehind} major version{stats.versionMajorBehind !== 1 ? "s" : ""} behind</p>
-                      )}
-                    </div>
-                    <div className={`p-3 rounded-xl ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "bg-warning/10" : "bg-surface-elevated"}`}>
-                      <GitBranch className={`w-6 h-6 ${stats.versionUpdateAvailable + stats.versionMajorBehind > 0 ? "text-warning" : "text-text-secondary"}`} />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </div>
-          </FadeIn>
-        )}
-
-        {/* ── Monitors quick list ──────────────────────────────────── */}
-        <FadeIn delay={0.1}>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-text-primary">Monitors</h2>
-                <p className="text-text-secondary text-sm mt-1">
-                  {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
-                </p>
-              </div>
-              <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Add Monitor
-              </Button>
-            </div>
-
-            {monitors.length === 0 ? (
-              <Card className="text-center py-16">
-                <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
-                  <Activity className="w-12 h-12 text-text-secondary opacity-50" />
+                  {monitors.length === 0 ? (
+                    <Card className="text-center py-16">
+                      <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
+                        <Activity className="w-12 h-12 text-text-secondary opacity-50" />
+                      </div>
+                      <p className="text-text-primary text-lg font-medium mb-2">No monitors configured yet</p>
+                      <p className="text-text-secondary text-sm mb-6">Start monitoring your services, APIs, and endpoints</p>
+                      <Button onClick={() => router.push("/monitors")} size="lg">Create your first monitor</Button>
+                    </Card>
+                  ) : (
+                    <Card className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHead>
+                            <tr>
+                              <TableHeader>Name</TableHeader>
+                              <TableHeader>Type</TableHeader>
+                              <TableHeader>Status</TableHeader>
+                              <TableHeader>Trend</TableHeader>
+                              <TableHeader>Last Check</TableHeader>
+                              <TableHeader>Actions</TableHeader>
+                            </tr>
+                          </TableHead>
+                          <TableBody>
+                            {monitors.map((monitor) => {
+                              const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                              const isVersion = VERSION_TYPES.has(monitor.type);
+                              return (
+                                <TableRow key={monitor.id}>
+                                  <TableCell className="font-medium">{monitor.name}</TableCell>
+                                  <TableCell className="text-text-secondary">
+                                    <div className="flex items-center gap-1.5">
+                                      {isVersion && <GitBranch className="w-3.5 h-3.5 text-text-secondary opacity-60" />}
+                                      {formatMonitorType(monitor.type)}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {!monitor.enabled ? (
+                                      <Badge variant="warning">Disabled</Badge>
+                                    ) : lastRun ? (
+                                      isVersion ? (
+                                        versionStatusBadge(lastRun.level)
+                                      ) : (
+                                        lastRun.level === "yellow" ? (
+                                          <Badge variant="warning">Degraded</Badge>
+                                        ) : lastRun.ok ? (
+                                          <Badge variant="success">Operational</Badge>
+                                        ) : (
+                                          <Badge variant="danger">Down</Badge>
+                                        )
+                                      )
+                                    ) : (
+                                      <Badge variant="default">Pending</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <MiniSparkline
+                                      data={runs
+                                        .filter((r) => r.monitorId === monitor.id)
+                                        .slice(0, 20)
+                                        .reverse()
+                                        .map((r) => ({ value: r.latencyMs ?? 0, ok: r.ok }))}
+                                      height={28}
+                                      color={!lastRun || lastRun.ok ? "#3fb950" : "#f85149"}
+                                      className="w-20"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-text-secondary text-sm">
+                                    {lastRun ? relativeTime(lastRun.checkedAt) : "Never"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => router.push(isVersion ? `/versions` : `/monitors?id=${monitor.id}`)}
+                                      className="text-accent hover:text-accent-hover"
+                                    >
+                                      View →
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </Card>
+                  )}
                 </div>
-                <p className="text-text-primary text-lg font-medium mb-2">No monitors configured yet</p>
-                <p className="text-text-secondary text-sm mb-6">Start monitoring your services, APIs, and endpoints</p>
-                <Button onClick={() => router.push("/monitors")} size="lg">Create your first monitor</Button>
-              </Card>
-            ) : (
-              <Card className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Type</TableHeader>
-                        <TableHeader>Status</TableHeader>
-                        <TableHeader>Trend</TableHeader>
-                        <TableHeader>Last Check</TableHeader>
-                        <TableHeader>Actions</TableHeader>
-                      </tr>
-                    </TableHead>
-                    <TableBody>
-                      {monitors.map((monitor) => {
-                        const lastRun = runs.find((r) => r.monitorId === monitor.id);
-                        const isVersion = VERSION_TYPES.has(monitor.type);
-                        return (
-                          <TableRow key={monitor.id}>
-                            <TableCell className="font-medium">{monitor.name}</TableCell>
-                            <TableCell className="text-text-secondary">
-                              <div className="flex items-center gap-1.5">
-                                {isVersion && <GitBranch className="w-3.5 h-3.5 text-text-secondary opacity-60" />}
-                                {formatMonitorType(monitor.type)}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {!monitor.enabled ? (
-                                <Badge variant="warning">Disabled</Badge>
-                              ) : lastRun ? (
-                                isVersion ? (
-                                  versionStatusBadge(lastRun.level)
-                                ) : (
-                                  lastRun.level === "yellow" ? (
-                                    <Badge variant="warning">Degraded</Badge>
-                                  ) : lastRun.ok ? (
-                                    <Badge variant="success">Operational</Badge>
-                                  ) : (
-                                    <Badge variant="danger">Down</Badge>
-                                  )
-                                )
-                              ) : (
-                                <Badge variant="default">Pending</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <MiniSparkline
-                                data={runs
-                                  .filter((r) => r.monitorId === monitor.id)
-                                  .slice(0, 20)
-                                  .reverse()
-                                  .map((r) => ({ value: r.latencyMs ?? 0, ok: r.ok }))}
-                                height={28}
-                                color={
-                                  !lastRun || lastRun.ok
-                                    ? "#3fb950"
-                                    : "#f85149"
-                                }
-                                className="w-20"
-                              />
-                            </TableCell>
-                            <TableCell className="text-text-secondary text-sm">
-                              {lastRun ? relativeTime(lastRun.checkedAt) : "Never"}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => router.push(isVersion ? `/versions` : `/monitors?id=${monitor.id}`)}
-                                className="text-accent hover:text-accent-hover"
-                              >
-                                View →
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </Card>
-            )}
-          </div>
-        </FadeIn>
+              </FadeIn>
+            );
+          }
+
+          return null;
+        })}
 
         {/* ── Recent Activity ──────────────────────────────────────── */}
         <FadeIn delay={0.2}>

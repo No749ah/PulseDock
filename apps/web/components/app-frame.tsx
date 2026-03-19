@@ -96,16 +96,24 @@ export function AppFrame({
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  const fetchNotifications = () => {
+    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean }>>(
+      '/v1/monitors/runs?limit=10'
+    ).then((runs) => {
+      const failed = runs.filter((r) => !r.ok).slice(0, 10);
+      setNotifications(failed);
+    }).catch(() => { /* non-critical */ });
+  };
+
   useEffect(() => {
     setUser(getCachedUser() ?? getUser());
     setMounted(true);
     // Fetch recent failed monitor runs as notifications
-    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean }>>(
-      '/v1/monitors/runs?limit=10'
-    ).then((runs) => {
-      const failed = runs.filter((r) => !r.ok).slice(0, 5);
-      setNotifications(failed);
-    }).catch(() => { /* non-critical */ });
+    fetchNotifications();
+    // Auto-fetch every 60s to keep badge count fresh
+    const timer = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function markAllRead() {

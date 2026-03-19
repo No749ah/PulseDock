@@ -178,14 +178,31 @@ export class AlertsService {
     }
   }
 
-  private async sendWithRetry(channel: AlertChannel, text: string, extra?: unknown) {
+  private async sendWithRetry(
+    channel: AlertChannel,
+    text: string,
+    extra?: unknown,
+    deliveryMeta?: { monitorId?: string; monitorName?: string; trigger?: string },
+  ) {
     const delays = [200, 800, 2000];
     let lastError: unknown;
+    const startMs = Date.now();
 
     for (let attempt = 0; attempt <= delays.length; attempt += 1) {
       try {
         await this.send(channel, text, extra);
         this.metrics.inc('alertsSent');
+        // Log success
+        this.prisma.alertDeliveryLog.create({
+          data: {
+            alertChannelId: channel.id,
+            monitorId: deliveryMeta?.monitorId ?? null,
+            monitorName: deliveryMeta?.monitorName ?? null,
+            status: 'success',
+            trigger: deliveryMeta?.trigger ?? 'monitor_failure',
+            durationMs: Date.now() - startMs,
+          },
+        }).catch(() => { /* non-critical */ });
         return;
       } catch (error) {
         lastError = error;
@@ -196,6 +213,18 @@ export class AlertsService {
     }
 
     this.metrics.inc('alertsFailed');
+    // Log failure
+    this.prisma.alertDeliveryLog.create({
+      data: {
+        alertChannelId: channel.id,
+        monitorId: deliveryMeta?.monitorId ?? null,
+        monitorName: deliveryMeta?.monitorName ?? null,
+        status: 'failed',
+        trigger: deliveryMeta?.trigger ?? 'monitor_failure',
+        errorMessage: lastError instanceof Error ? lastError.message : String(lastError),
+        durationMs: Date.now() - startMs,
+      },
+    }).catch(() => { /* non-critical */ });
     throw lastError;
   }
 
@@ -307,7 +336,11 @@ export class AlertsService {
 
     for (const channel of channels) {
       try {
-        await this.sendWithRetry(channel, text, { monitor, run });
+        await this.sendWithRetry(channel, text, { monitor, run }, {
+          monitorId: monitor.id,
+          monitorName: monitor.name,
+          trigger: run.level === 'green' ? 'monitor_recovery' : 'monitor_failure',
+        });
       } catch (error) {
         this.logger.error(`Alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
       }
@@ -316,6 +349,6 @@ export class AlertsService {
 
   async notifyTest(channel: AlertChannel) {
     const text = '✅ PulseDock test notification: this channel is configured correctly.';
-    await this.sendWithRetry(channel, text, { test: true, at: new Date().toISOString() });
+    await this.sendWithRetry(channel, text, { test: true, at: new Date().toISOString() }, { trigger: 'test' });
   }
 }

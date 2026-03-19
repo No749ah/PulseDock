@@ -47,6 +47,7 @@ import { AgentController } from './agent/agent.controller';
 import { AgentService } from './agent/agent.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
+import { TeamModule } from './team/team.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ReportsService } from './reports/reports.service';
     JwtModule.register({}),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     RealtimeModule,
+    TeamModule,
   ],
   controllers: [
     AppController,

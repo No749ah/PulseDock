@@ -9,7 +9,7 @@ import {
   AlertOctagon,
   AlertTriangle,
   Bell,
-  BookOpen,
+  ScrollText,
   CalendarClock,
   ChevronDown,
   Folder,
@@ -65,7 +65,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Administration',
     items: [
       { href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
-      { href: '/changelog', label: 'Changelog', icon: BookOpen },
+      { href: '/changelog', label: 'Changelog', icon: ScrollText },
     ],
   },
 ];
@@ -74,10 +74,12 @@ export function AppFrame({
   title,
   subtitle,
   children,
+  breadcrumbs,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
+  breadcrumbs?: Array<{ label: string; href?: string }>;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -263,10 +265,26 @@ export function AppFrame({
               <Menu className="w-5 h-5" />
             </button>
             <div>
+              {breadcrumbs && breadcrumbs.length > 0 ? (
+                <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-text-muted mb-0.5">
+                  {breadcrumbs.map((crumb, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      {i > 0 && <ChevronDown className="w-3 h-3 rotate-[-90deg] opacity-40 shrink-0" />}
+                      {crumb.href && i < breadcrumbs.length - 1 ? (
+                        <Link href={crumb.href} className="hover:text-text-secondary transition-colors">
+                          {crumb.label}
+                        </Link>
+                      ) : (
+                        <span className="text-text-secondary font-medium" aria-current="page">{crumb.label}</span>
+                      )}
+                    </span>
+                  ))}
+                </nav>
+              ) : null}
               <h1 className="text-sm sm:text-base font-semibold text-text-primary leading-tight">
                 {title}
               </h1>
-              {subtitle && (
+              {subtitle && !breadcrumbs?.length && (
                 <p className="text-xs text-text-secondary hidden sm:block">{subtitle}</p>
               )}
             </div>

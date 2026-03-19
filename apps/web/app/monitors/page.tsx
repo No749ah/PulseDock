@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -235,6 +235,16 @@ function MonitorsPageInner() {
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
+
+  // row expansion
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRowExpand = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   // alert assignment panel
   const [alertPanelMonitor, setAlertPanelMonitor] = useState<MonitorItem | null>(null);
@@ -1444,6 +1454,7 @@ function MonitorsPageInner() {
                 <Table>
                   <TableHead className="sticky top-0 z-10 bg-surface-elevated/95 backdrop-blur-sm">
                     <tr>
+                      <TableHeader className="w-6 pr-0">{""}</TableHeader>
                       <TableHeader className="w-10">
                         <button
                           onClick={toggleSelectAll}
@@ -1504,8 +1515,27 @@ function MonitorsPageInner() {
                   <TableBody>
                     {paginatedMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                      const isExpanded = expandedRows.has(monitor.id);
+                      const monitorRuns = runs.filter((r) => r.monitorId === monitor.id);
+                      const recentRuns = [...monitorRuns].sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()).slice(0, 5);
+                      const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
+                      // count visible columns for colspan
+                      const visColCount = [visibleCols.type, visibleCols.target, visibleCols.interval, visibleCols.latency, visibleCols.trend, visibleCols.alerts].filter(Boolean).length;
+                      const totalCols = 1 + 1 + 1 + visColCount + 2; // expand + checkbox + name + vis + lastCheck + actions
                       return (
-                        <TableRow key={monitor.id} className={`group/row relative ${selectedIds.has(monitor.id) ? "bg-accent/5" : ""}`}>
+                        <React.Fragment key={monitor.id}>
+                        <TableRow className={`group/row relative ${selectedIds.has(monitor.id) ? "bg-accent/5" : ""}`}>
+                          <TableCell className="w-6 pr-0 pl-2">
+                            <button
+                              onClick={() => toggleRowExpand(monitor.id)}
+                              className="p-0.5 rounded text-text-secondary hover:text-accent transition-colors"
+                              aria-label={isExpanded ? `Collapse ${monitor.name}` : `Expand ${monitor.name}`}
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="w-3.5 h-3.5 text-accent" />
+                                : <ChevronRight className="w-3.5 h-3.5" />}
+                            </button>
+                          </TableCell>
                           <TableCell className="w-10">
                             <button
                               onClick={() => toggleSelect(monitor.id)}
@@ -1716,6 +1746,81 @@ function MonitorsPageInner() {
                             </div>
                           </td>
                         </TableRow>
+                        {/* Row expansion panel */}
+                        {isExpanded && (
+                          <tr className="bg-surface-elevated/40 border-b border-border/60">
+                            <td colSpan={totalCols} className="px-6 py-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                                {/* Recent check history */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks (last 5)</p>
+                                  {recentRuns.length === 0 ? (
+                                    <p className="text-xs text-text-secondary">No checks yet</p>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5">
+                                      {recentRuns.map((r) => {
+                                        const dot = r.ok ? "bg-success" : "bg-danger";
+                                        const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
+                                        return (
+                                          <div key={r.id} className="flex flex-col items-center gap-1 group/dot" title={title}>
+                                            <div className={`w-3 h-3 rounded-full ${dot}`} />
+                                            {r.latencyMs != null && (
+                                              <span className="text-[9px] text-text-muted font-mono hidden group-hover/dot:block absolute mt-4 bg-surface border border-border rounded px-1 z-10 whitespace-nowrap">
+                                                {r.latencyMs}ms
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                      <span className="text-xs text-text-secondary ml-2">
+                                        {recentRuns.filter((r) => r.ok).length}/{recentRuns.length} OK
+                                      </span>
+                                    </div>
+                                  )}
+                                  {lastRun && (
+                                    <p className="text-xs text-text-secondary">Last: {new Date(lastRun.checkedAt).toLocaleString()}</p>
+                                  )}
+                                </div>
+                                {/* Tags */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                                    <Tag className="w-3 h-3" /> Tags
+                                  </p>
+                                  {monitor.tags && monitor.tags.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {monitor.tags.map((tag) => (
+                                        <span
+                                          key={tag.id}
+                                          className="px-2 py-0.5 rounded-full text-xs font-medium border"
+                                          style={{ borderColor: tag.color + "80", color: tag.color, backgroundColor: tag.color + "22" }}
+                                        >
+                                          {tag.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-text-secondary">No tags</p>
+                                  )}
+                                </div>
+                                {/* Interval & config info */}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> Schedule
+                                  </p>
+                                  <div className="space-y-1 text-xs text-text-secondary">
+                                    <p>Every <span className="font-semibold text-text-primary">{intervalLabel}</span></p>
+                                    <p>Confirmations: <span className="font-semibold text-text-primary">{monitor.confirmations ?? 1}</span></p>
+                                    <p>Type: <span className="font-semibold text-text-primary">{monitor.type}</span></p>
+                                    {monitor.folderId && (
+                                      <p>Project: <span className="font-semibold text-text-primary">{folders.find((f) => f.id === monitor.folderId)?.name ?? "—"}</span></p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
                       );
                     })}
                   </TableBody>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -144,6 +144,15 @@ export default function AccountPage() {
   const [reportForm, setReportForm] = useState<{ enabled: boolean; frequency: string; dayOfWeek: number; hourUtc: number }>({
     enabled: true, frequency: "weekly", dayOfWeek: 1, hourUtc: 8,
   });
+
+  // Team members state
+  type TeamRole = "Admin" | "Editor" | "Viewer";
+  interface TeamMember { id: string; name: string; email: string; role: TeamRole; avatarInitials: string; }
+  const [teamMembers] = useState<TeamMember[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
+  const [inviteSending, setInviteSending] = useState(false);
 
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
@@ -394,6 +403,22 @@ export default function AccountPage() {
     } finally {
       setReportSaving(false);
     }
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviteSending(true);
+    // UI stub — backend will be wired later
+    await new Promise((r) => setTimeout(r, 600));
+    toastSuccess(`Invitation sent to ${inviteEmail.trim()}`);
+    setInviteEmail("");
+    setInviteRole("Viewer");
+    setShowInviteModal(false);
+    setInviteSending(false);
+  };
+
+  const handleRemoveMember = (_id: string) => {
+    toastInfo("Feature coming soon");
   };
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -1245,6 +1270,66 @@ export default function AccountPage() {
           </Card>
         </FadeIn>
 
+        {/* Team Members Section */}
+        <FadeIn delay={0.58}>
+          <Card>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-accent/10">
+                  <Users className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">Team Members</h2>
+                  <p className="text-xs text-text-secondary mt-0.5">Manage who has access to your workspace</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={() => setShowInviteModal(true)}>
+                <UserPlus className="w-4 h-4 mr-1.5" />
+                Invite Member
+              </Button>
+            </div>
+
+            {teamMembers.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="w-8 h-8 text-text-secondary/40 mx-auto mb-3" />
+                <p className="text-text-secondary text-sm">No team members yet</p>
+                <p className="text-text-secondary/60 text-xs mt-1">Invite colleagues to collaborate on your workspace</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {teamMembers.map((member) => {
+                  const roleColors: Record<TeamRole, string> = {
+                    Admin: "bg-danger/15 text-danger border-danger/20",
+                    Editor: "bg-accent/15 text-accent border-accent/20",
+                    Viewer: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                  };
+                  return (
+                    <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated/50 border border-border">
+                      <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-semibold text-accent">{member.avatarInitials}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">{member.name}</p>
+                        <p className="text-xs text-text-secondary truncate">{member.email}</p>
+                      </div>
+                      <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${roleColors[member.role]}`}>
+                        {member.role}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)} className="text-danger hover:text-danger shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-4 text-xs text-text-secondary/60 border-t border-border pt-4">
+              Team collaboration features are in beta. Full role-based access coming soon.
+            </p>
+          </Card>
+        </FadeIn>
+
         {/* System Info Card */}
         <FadeIn delay={0.6}>
           <SystemInfoCard userId={user?.id} />
@@ -1528,6 +1613,64 @@ export default function AccountPage() {
                   Disabling…
                 </span>
               ) : "Disable 2FA"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Invite Team Member Modal */}
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => { setShowInviteModal(false); setInviteEmail(""); setInviteRole("Viewer"); }}
+        title="Invite Team Member"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">Email Address</label>
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className={inputClass}
+              placeholder="colleague@company.com"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Role</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["Admin", "Editor", "Viewer"] as TeamRole[]).map((role) => {
+                const desc = role === "Admin" ? "Full access" : role === "Editor" ? "Create & edit" : "Read-only";
+                const active = inviteRole === role;
+                const colors = role === "Admin" ? "border-danger bg-danger/10 text-danger" : role === "Editor" ? "border-accent bg-accent/10 text-accent" : "border-blue-500 bg-blue-500/10 text-blue-400";
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setInviteRole(role)}
+                    className={`flex flex-col items-start gap-1 px-3 py-2.5 rounded-lg border text-left transition-colors ${active ? colors : "border-border bg-surface-elevated/30 text-text-secondary hover:border-accent/50"}`}
+                  >
+                    <span className="font-medium text-sm">{role}</span>
+                    <span className="text-[10px] opacity-70">{desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowInviteModal(false)} className="flex-1">Cancel</Button>
+            <Button onClick={handleSendInvite} disabled={!inviteEmail.trim() || inviteSending} className="flex-1">
+              {inviteSending ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Sending…
+                </span>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-1.5" />
+                  Send Invite
+                </>
+              )}
             </Button>
           </div>
         </div>

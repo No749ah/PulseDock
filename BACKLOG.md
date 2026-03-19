@@ -1,3 +1,14 @@
+## Status Summary (2026-03-19 03:17 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 03:17 UTC):**
+  - **WebSocket real-time for public status pages**: Backend adds `status-page:join/leave` WS room handlers (no auth required), `emitToStatusPage()` on gateway, `statusPageUpdated()` on RealtimeEvents. ChecksService notifies all published status pages on monitor level change. Frontend LiveStatusRefresh uses socket.io-client with 🟢 Live indicator + polling fallback.
+  - **Snap-to-Grid toggle**: Grid icon button in editor toolbar. Reveals dotted column/row overlay. Auto-brightens during drag.
+  - **Alignment Guides**: Blue guide lines across canvas during drag — detects left/right/top/bottom/center alignment within 8px tolerance with all other widgets. Clears on drag end.
+  - **Layer Management**: Properties panel now has Layer section with Bring to Front / Bring Forward / Send Backward / Send to Back buttons. Widgets sorted by `zOrder` on canvas render.
+
 ## Status Summary (2026-03-19 00:31 UTC)
 - **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
@@ -618,14 +629,14 @@
 - [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
 - [x] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete
 - [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
-- [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
-- [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
+- [x] **Snap-to-Grid** — Visual grid toggle button in toolbar (Grid icon). Shows dotted column/row overlay when active. Auto-shows with increased brightness during drag.
+- [x] **Alignment Guides** — Blue 1px lines across canvas when dragged widget aligns (within 8px) with left/right/top/bottom/center of other widgets. Clears on drag end.
 - [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
 - [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
 - [x] **Template Gallery** — 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
 - [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
 - [x] **Widget Search in Palette** — Filter palette by name/category
-- [ ] **Layer Management** — Z-index ordering, bring to front/send to back
+- [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
 - [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
 - [ ] **Version History** — Last 10 saves with preview + one-click restore
 - [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
@@ -646,7 +657,7 @@
 ### P2 — Public Page Rendering
 
 - [ ] **Smooth Data Transitions** — Animate value changes (number count-up, color transitions)
-- [ ] **Real-time via WebSocket** — Live data push instead of 60s polling. Instant status updates
+- [x] **Real-time via WebSocket** — Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
 - [ ] **Print-friendly CSS** — @media print stylesheet for reporting/PDF export
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
 - [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP

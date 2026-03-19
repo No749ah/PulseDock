@@ -614,20 +614,19 @@ describe('AlertsService', () => {
       );
     });
 
-    it('creates a failed delivery log entry when webhook exhausts retries', async () => {
+    it('creates a failed delivery log entry when email channel throws', async () => {
       vi.useFakeTimers();
-      // Always fail
-      fetchMock.mockResolvedValue({ ok: false, status: 500 });
       const prisma = makePrisma();
-      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
-      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
+      const mailer = { sendAlertEmail: vi.fn().mockRejectedValue(new Error('SMTP unavailable')) };
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'email', config: { to: 'ops@example.com' } });
 
       const promise = service.notifyTest(channel).catch(() => {});
       await vi.runAllTimersAsync();
       await promise;
       vi.useRealTimers();
 
-      // After all retries, a failed log entry should be created
+      // After all retries exhaust, a failed log entry should be created
       const createCalls = prisma.alertDeliveryLog.create.mock.calls;
       const failedCall = createCalls.find((c: [{ data: { status: string } }]) => c[0].data.status === 'failed');
       expect(failedCall).toBeDefined();

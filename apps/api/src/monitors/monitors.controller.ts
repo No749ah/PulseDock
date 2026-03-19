@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../common/auth.guard';
 import { RequireScope } from '../common/require-scope.decorator';
 import { ScopeGuard } from '../common/scope.guard';
@@ -24,6 +25,7 @@ export class MonitorsController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Create monitor', description: 'Create a new uptime or version monitor.' })
   @ApiResponse({ status: 201, description: 'Monitor created.' })
@@ -44,6 +46,7 @@ export class MonitorsController {
   }
 
   @Delete(':id')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Delete monitor' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
@@ -62,6 +65,7 @@ export class MonitorsController {
 
   @Post('bulk')
   @HttpCode(200)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Bulk action on monitors', description: 'Apply enable, disable, delete, or run-now to multiple monitors at once.' })
   @ApiResponse({ status: 200, description: 'Bulk action applied.' })
   bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {

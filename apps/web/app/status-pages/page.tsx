@@ -195,7 +195,7 @@ export default function StatusPagesPage() {
             ))}
           </div>
         ) : pages.length === 0 ? (
-          <FadeIn>
+          
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/50 px-8 py-20 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
                 <LayoutTemplate className="h-8 w-8 text-accent" />
@@ -212,9 +212,9 @@ export default function StatusPagesPage() {
                 Create your first page
               </button>
             </div>
-          </FadeIn>
+          
         ) : (
-          <FadeIn>
+          
             <div className="space-y-3">
               {pages.map((page) => (
                 <div
@@ -335,7 +335,7 @@ export default function StatusPagesPage() {
                 </div>
               ))}
             </div>
-          </FadeIn>
+          
         )}
       </div>
 

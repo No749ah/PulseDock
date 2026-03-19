@@ -245,15 +245,15 @@ export default function MonitorDetailPage() {
     <AppFrame title={monitor.name} breadcrumbs={[{ label: "Monitors", href: "/monitors" }, { label: monitor.name }]}>
       <div className="space-y-6">
         {/* Breadcrumb */}
-        <FadeIn>
+        
           <Breadcrumb items={[
             { label: "Monitors", href: "/monitors" },
             { label: monitor.name },
           ]} />
-        </FadeIn>
+        
 
         {/* Header */}
-        <FadeIn delay={0.05}>
+        
           <div className="space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3">
@@ -298,7 +298,7 @@ export default function MonitorDetailPage() {
               {monitor.target}
             </p>
           </div>
-        </FadeIn>
+        
 
         {/* Action feedback */}
         {actionError && (
@@ -314,7 +314,7 @@ export default function MonitorDetailPage() {
         )}
 
         {/* SLA Stats — with period selector */}
-        <FadeIn delay={0.1}>
+        
           <Card className="p-4 space-y-4">
             {/* Period selector */}
             <div className="flex items-center justify-between">
@@ -435,10 +435,10 @@ export default function MonitorDetailPage() {
               </details>
             )}
           </Card>
-        </FadeIn>
+        
 
         {/* Quick status row */}
-        <FadeIn delay={0.12}>
+        
           <div className="grid grid-cols-2 gap-4">
             <Card className="flex flex-col gap-1 p-4">
               <span className="text-xs text-text-secondary uppercase tracking-wider">Last Status</span>
@@ -465,11 +465,11 @@ export default function MonitorDetailPage() {
               <span className="text-xs text-text-secondary">consecutive {runs[0]?.ok ? "successes" : "failures"}</span>
             </Card>
           </div>
-        </FadeIn>
+        
 
         {/* HTTP Configuration card */}
         {monitor.type === "HTTP" && monitor.config && (
-          <FadeIn delay={0.14}>
+          
             <Card className="p-4 space-y-3">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -547,12 +547,12 @@ export default function MonitorDetailPage() {
                 );
               })()}
             </Card>
-          </FadeIn>
+          
         )}
 
         {/* SSL Certificate config */}
         {monitor.type === "SSL_CERT" && (
-          <FadeIn delay={0.14}>
+          
             <Card className="p-4 space-y-3">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -573,12 +573,12 @@ export default function MonitorDetailPage() {
                 </div>
               </div>
             </Card>
-          </FadeIn>
+          
         )}
 
         {/* TCP port config */}
         {monitor.type === "TCP" && (
-          <FadeIn delay={0.14}>
+          
             <Card className="p-4 space-y-3">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -599,12 +599,12 @@ export default function MonitorDetailPage() {
                 </div>
               </div>
             </Card>
-          </FadeIn>
+          
         )}
 
         {/* Heartbeat info card */}
         {monitor.type === "HEARTBEAT" && (
-          <FadeIn delay={0.14}>
+          
             <Card className="p-4 space-y-3">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Heartbeat Config</h2>
               <div className="space-y-2">
@@ -627,12 +627,12 @@ export default function MonitorDetailPage() {
                 </div>
               </div>
             </Card>
-          </FadeIn>
+          
         )}
 
         {/* Response time trend (LineSparkline) */}
         {monitor.type !== "HEARTBEAT" && (
-          <FadeIn delay={0.155}>
+          
             <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Response Trend</h2>
@@ -644,11 +644,11 @@ export default function MonitorDetailPage() {
                 height={56}
               />
             </Card>
-          </FadeIn>
+          
         )}
 
         {/* Response time area chart */}
-        <FadeIn delay={0.16}>
+        
           <Card className="p-4 space-y-3">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
               {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
@@ -677,10 +677,10 @@ export default function MonitorDetailPage() {
               );
             })()}
           </Card>
-        </FadeIn>
+        
 
         {/* Check history bar chart */}
-        <FadeIn delay={0.18}>
+        
           <Card className="p-4 space-y-3">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
               Check History
@@ -697,10 +697,10 @@ export default function MonitorDetailPage() {
               height={80}
             />
           </Card>
-        </FadeIn>
+        
 
         {/* Run history table */}
-        <FadeIn delay={0.2}>
+        
           <Card className="p-0">
             <div className="px-4 py-3 border-b border-border">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
@@ -757,7 +757,7 @@ export default function MonitorDetailPage() {
               )}
             </div>
           </Card>
-        </FadeIn>
+        
       </div>
     </AppFrame>
   );

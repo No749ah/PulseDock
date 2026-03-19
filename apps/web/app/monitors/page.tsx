@@ -896,24 +896,24 @@ function MonitorsPageInner() {
     <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
       <div className="space-y-6">
         {error && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
             </div>
-          </FadeIn>
+          
         )}
 
         {realtimeAlert && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
               <Bell className="w-5 h-5 text-warning mt-0.5 shrink-0" />
               <span className="text-warning text-sm">{realtimeAlert}</span>
             </div>
-          </FadeIn>
+          
         )}
 
-        <FadeIn>
+        
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
@@ -1037,10 +1037,10 @@ function MonitorsPageInner() {
               </Button>
             </div>
           </div>
-        </FadeIn>
+        
 
         {/* Search + Status filter bar */}
-        <FadeIn>
+        
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
@@ -1098,11 +1098,11 @@ function MonitorsPageInner() {
               )}
             </button>
           </div>
-        </FadeIn>
+        
 
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          <FadeIn>
+          
             <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-text-primary">Filters</span>
@@ -1245,11 +1245,11 @@ function MonitorsPageInner() {
                 )}
               </div>
             </div>
-          </FadeIn>
+          
         )}
 
         {allTags.length > 0 && (
-          <FadeIn>
+          
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setActiveTagFilter(null)}
@@ -1273,11 +1273,11 @@ function MonitorsPageInner() {
                 </button>
               ))}
             </div>
-          </FadeIn>
+          
         )}
 
         {importResult && (
-          <FadeIn>
+          
             <div className={`flex items-start gap-3 p-4 rounded-xl border ${importResult.errors.length === 0 ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
               <CheckCircle2 className={`w-5 h-5 mt-0.5 shrink-0 ${importResult.errors.length === 0 ? "text-success" : "text-warning"}`} />
               <div className="flex-1">
@@ -1299,11 +1299,11 @@ function MonitorsPageInner() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </FadeIn>
+          
         )}
 
         {filteredMonitors.length === 0 ? (
-          <FadeIn delay={0.1}>
+          
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
                 <Monitor className="w-12 h-12 text-text-secondary opacity-50" />
@@ -1343,9 +1343,9 @@ function MonitorsPageInner() {
                 </>
               )}
             </Card>
-          </FadeIn>
+          
         ) : (
-          <FadeIn delay={0.1}>
+          
             {/* Bulk action bar */}
             {selectedIds.size > 0 && (
               <div className="mb-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5">
@@ -1917,11 +1917,11 @@ function MonitorsPageInner() {
               )}
             </Card>
             )}
-          </FadeIn>
+          
         )}
 
         {/* Recent runs */}
-        <FadeIn delay={0.2}>
+        
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
@@ -1963,7 +1963,7 @@ function MonitorsPageInner() {
               </Card>
             )}
           </div>
-        </FadeIn>
+        
       </div>
 
       {/* Create/Edit Modal */}

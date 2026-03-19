@@ -12,6 +12,7 @@ import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { FadeIn } from "../components/FadeIn";
+import { StaggerList } from "../components/StaggerList";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 import { MiniSparkline } from "../../components/charts";
@@ -410,7 +411,7 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
                     <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <Card>
                       <div className="flex items-start justify-between">
                         <div>
@@ -458,7 +459,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </Card>
-                  </div>
+                  </StaggerList>
                 </div>
               </FadeIn>
             );
@@ -474,7 +475,7 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Version Tracking</h2>
                     <span className="text-xs text-text-secondary opacity-60">Git releases · Docker images</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <StaggerList className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card>
                       <div className="flex items-start justify-between">
                         <div>
@@ -511,7 +512,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </Card>
-                  </div>
+                  </StaggerList>
                 </div>
               </FadeIn>
             );

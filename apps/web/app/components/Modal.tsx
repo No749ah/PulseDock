@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -41,6 +41,23 @@ export function Modal({
   const titleId = useId();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+
+  // Animation state: visible = mounted, phase = 'enter' | 'exit'
+  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
+
+  useEffect(() => {
+    if (isOpen) {
+      setVisible(true);
+      setPhase('enter');
+    } else if (visible) {
+      setPhase('exit');
+      const t = setTimeout(() => setVisible(false), 200);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   const stableOnClose = useCallback(() => onCloseRef.current(), []);
 
   const justOpened = useRef(false);
@@ -110,13 +127,13 @@ export function Modal({
     };
   }, [isOpen, stableOnClose]);
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 modal-${phase}`}>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -127,7 +144,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative bg-surface border border-border rounded-2xl shadow-2xl ${sizes[size]} w-full`}
+        className={`modal-panel relative bg-surface border border-border rounded-2xl shadow-2xl ${sizes[size]} w-full`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">

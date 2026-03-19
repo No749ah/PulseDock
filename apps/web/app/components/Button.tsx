@@ -46,7 +46,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className={`font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`font-semibold rounded-lg transition-all active:scale-[0.97] active:brightness-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>

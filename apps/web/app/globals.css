@@ -174,6 +174,93 @@ html, body {
   }
 }
 
+/* Toast slide-out animation */
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    max-height: 80px;
+    margin-bottom: 0;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px) scale(0.95);
+    max-height: 0;
+    margin-bottom: -8px;
+  }
+}
+
+.toast-exiting {
+  animation: toast-out 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+/* Modal backdrop fade */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Modal panel enter/exit */
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes modal-panel-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+}
+
+.modal-enter .modal-backdrop { animation: modal-backdrop-in 0.18s ease-out both; }
+.modal-exit  .modal-backdrop { animation: modal-backdrop-out 0.18s ease-in both; }
+.modal-enter .modal-panel    { animation: modal-panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.modal-exit  .modal-panel    { animation: modal-panel-out 0.18s cubic-bezier(0.4, 0, 1, 1) both; }
+
+/* Stagger children fade-in — parent sets --stagger-delay */
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-children > * {
+  animation: stagger-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2)  { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3)  { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4)  { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5)  { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6)  { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7)  { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8)  { animation-delay: 280ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-exiting,
+  .modal-enter .modal-backdrop,
+  .modal-exit  .modal-backdrop,
+  .modal-enter .modal-panel,
+  .modal-exit  .modal-panel,
+  .stagger-children > * {
+    animation: none !important;
+  }
+}
+
 /* Blob animation for hero background */
 @keyframes blob {
   0%, 100% { transform: translate(0, 0) scale(1); }

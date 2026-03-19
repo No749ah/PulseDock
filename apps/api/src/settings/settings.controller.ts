@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { AuthGuard } from '../common/auth.guard'
 import { SettingsService } from './settings.service'
@@ -13,13 +13,13 @@ export class SettingsController {
 
   @Get('retention')
   @ApiOperation({ summary: 'Get data retention settings' })
-  getRetention() {
-    return this.settingsService.getRetention()
+  getRetention(@Req() req: { user: { id: string } }) {
+    return this.settingsService.getRetention(req.user.id)
   }
 
   @Put('retention')
   @ApiOperation({ summary: 'Update data retention settings' })
-  updateRetention(@Body() dto: UpdateRetentionDto) {
-    return this.settingsService.updateRetention(dto)
+  updateRetention(@Req() req: { user: { id: string } }, @Body() dto: UpdateRetentionDto) {
+    return this.settingsService.updateRetention(req.user.id, dto)
   }
 }

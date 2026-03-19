@@ -1,3 +1,18 @@
+## Status Summary (2026-03-19 11:15 UTC)
+- **Build/Test:** ✅ Clean build, 1454 passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 11:15 UTC):**
+  - README stats updated (1454 passing, 1400+ tools, 65+ widget types)
+  - Monitor CSV export: id column added to header
+  - Dashboard section order: customizable panel with localStorage persistence
+  - Status page print: button moved to header, .no-print CSS rule fixed
+  - Error pages: custom 404, error boundary, global-error
+  - Dashboard time range selector: 1h/6h/24h/7d/30d with localStorage + live indicator
+  - Monitors table: sortable columns (Type + Interval added) + hover quick-actions
+  - Notification center: bell dropdown, 60s auto-fetch, unread badge, mark-all-read
+
 ## Status Summary (2026-03-19 10:02 UTC)
 - **Build/Test:** ✅ Clean build, 1432 API + 10 CLI + 12 agent tests passing (1454 total), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1016,14 +1031,14 @@
 - [ ] **Animation & Micro-interactions** — Page transitions (fade between routes), skeleton→content transitions, button press feedback, toast slide-in/out, modal enter/exit, hover lift effects on cards, number count-up animations on metrics
 - [ ] **Data Tables overhaul** — Sortable columns (click header), resizable columns (drag), column visibility toggle, row expansion, bulk select with shift-click range, sticky header on scroll, export to CSV/JSON, pagination options (10/25/50/100), empty state per table
 - [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
-- [ ] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
-- [ ] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
+- [x] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
+- [x] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
 - [ ] **Mobile UX deep audit** — Test every flow on 375px: create monitor, create alert, create incident, status page editor (simplified mobile mode), navigation drawer, bottom tab bar option, pull-to-refresh, swipe actions
 - [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
-- [ ] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
+- [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
 - [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
 - [ ] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
-- [ ] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
+- [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
 - [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
 
 ### P2 — Self-Optimization & Continuous Improvement

@@ -237,6 +237,8 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 { type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
 { type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
 { type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
+{ type: "offline-banner", label: "Offline Banner", description: "Dismissible banner that auto-shows when the visitor's connection is lost.", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 1 },
+{ type: "custom-metric-chart", label: "Custom Metric Chart", description: "Time-series chart for latency, uptime %, or check count. Choose line, bar, or area style.", icon: BarChart2, category: "Metrics", defaultW: 8, defaultH: 4 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -742,7 +744,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation"];
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation", "offline-banner"];
   const supportsMonitorScope = !noScopeWidgets.includes(w.type);
   const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
@@ -1239,6 +1241,109 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         <div>
           <p className="text-[10px] text-text-muted">Automatically lists all other published status pages in your account. No configuration needed — links update in real-time as pages are published or unpublished.</p>
         </div>
+      )}
+
+      {w.type === "offline-banner" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Message</label>
+            <input
+              type="text"
+              value={(w.config.message as string) ?? ""}
+              onChange={(e) => update("message", e.target.value || undefined)}
+              placeholder="Service monitoring is temporarily unavailable"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[10px] text-text-secondary">
+              Background color
+              <input
+                type="text"
+                value={(w.config.bgColor as string) ?? ""}
+                onChange={(e) => update("bgColor", e.target.value || undefined)}
+                placeholder="#fef08a or amber-500"
+                className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
+            </label>
+            <label className="text-[10px] text-text-secondary">
+              Text color
+              <input
+                type="text"
+                value={(w.config.textColor as string) ?? ""}
+                onChange={(e) => update("textColor", e.target.value || undefined)}
+                placeholder="#78350f"
+                className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              />
+            </label>
+          </div>
+          <p className="text-[10px] text-text-muted">This banner appears automatically when the visitor&apos;s browser goes offline. Leave colors empty to use the default amber/yellow style.</p>
+        </>
+      )}
+
+      {w.type === "custom-metric-chart" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Title</label>
+            <input
+              type="text"
+              value={(w.config.title as string) ?? ""}
+              onChange={(e) => update("title", e.target.value || undefined)}
+              placeholder="e.g. API Latency (24h)"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
+            <select
+              value={(w.config.monitorId as string) ?? ""}
+              onChange={(e) => update("monitorId", e.target.value || undefined)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="">— Select monitor —</option>
+              {monitors.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Metric</label>
+            <select
+              value={(w.config.metric as string) ?? "latency"}
+              onChange={(e) => update("metric", e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="latency">Latency (ms)</option>
+              <option value="uptime">Uptime (%)</option>
+              <option value="checks">Check count</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Chart type</label>
+            <select
+              value={(w.config.chartType as string) ?? "line"}
+              onChange={(e) => update("chartType", e.target.value)}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value="line">Line</option>
+              <option value="bar">Bar</option>
+              <option value="area">Area</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Time range</label>
+            <select
+              value={(w.config.timeRange as number) ?? 24}
+              onChange={(e) => update("timeRange", Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value={6}>Last 6 hours</option>
+              <option value={24}>Last 24 hours</option>
+              <option value={168}>Last 7 days</option>
+              <option value={720}>Last 30 days</option>
+            </select>
+          </div>
+        </>
       )}
 
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">

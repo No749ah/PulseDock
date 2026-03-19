@@ -77,7 +77,9 @@ export type WidgetType =
   | 'column-layout'
   | 'sticky-header'
   | 'table-of-contents'
-  | 'page-navigation';
+  | 'page-navigation'
+  | 'offline-banner'
+  | 'custom-metric-chart';
 
 export interface Widget {
   id: string;

@@ -7,6 +7,8 @@ import { CountdownWidget } from "./CountdownWidget";
 import { AnnouncementBarClient } from "./AnnouncementBarClient";
 import { RssFeedCopyButton } from "./RssFeedCopyButton";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
+import { OfflineBannerWidget } from "./OfflineBannerWidget";
+import { CustomMetricChart } from "./CustomMetricChart";
 
 export interface MonitorSummary {
   id: string;
@@ -5041,6 +5043,35 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "page-navigation":
       content = <PageNavigation {...props} />;
       break;
+    case "offline-banner": {
+      const widgetData = fullExtra.widgetDataById[widget.id] as { config?: Record<string, unknown> } | undefined;
+      const cfg = widgetData?.config ?? widget.config;
+      content = (
+        <OfflineBannerWidget
+          message={(cfg.message as string | undefined)}
+          bgColor={(cfg.bgColor as string | undefined)}
+          textColor={(cfg.textColor as string | undefined)}
+        />
+      );
+      break;
+    }
+    case "custom-metric-chart": {
+      const widgetData = fullExtra.widgetDataById[widget.id] as {
+        labels: string[];
+        values: number[];
+        unit: string;
+        chartType: string;
+      } | undefined;
+      content = (
+        <CustomMetricChart
+          data={widgetData}
+          title={(widget.config.title as string | undefined)}
+          subtitle={(widget.config.subtitle as string | undefined)}
+          chartType={(widget.config.chartType as string | undefined)}
+        />
+      );
+      break;
+    }
     default:
       content = (
         <div className="rounded-xl border border-border bg-surface/50 p-4 text-center text-sm text-text-secondary">

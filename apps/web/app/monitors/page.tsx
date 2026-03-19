@@ -21,6 +21,7 @@ import { useToast } from "../../components/ui/toast";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
+import { HelpTooltip } from "../../components/help-tooltip";
 
 interface MonitorTag {
   id: string;
@@ -2262,6 +2263,7 @@ function MonitorsPageInner() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
+              <HelpTooltip content="How often PulseDock checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources." className="ml-1 align-middle" />
             </label>
             <input
               type="number"
@@ -2287,6 +2289,7 @@ function MonitorsPageInner() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
+              <HelpTooltip content="Number of consecutive failures before triggering an alert. Set to 1 for immediate alerts, or higher to reduce false positives from transient errors. Range: 1–10." className="ml-1 align-middle" />
             </label>
             <input
               type="number"

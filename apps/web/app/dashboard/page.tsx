@@ -330,7 +330,7 @@ export default function DashboardPage() {
         {/* Controls row: time range + auto-refresh */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Time range selector */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface overflow-hidden">
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface overflow-hidden" data-tour="time-range">
             {(["1h", "6h", "24h", "7d", "30d"] as const).map((r) => (
               <button
                 key={r}
@@ -468,7 +468,7 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Uptime Monitoring</h2>
                     <span className="text-xs text-text-secondary opacity-60">HTTP · TCP · SSL · Heartbeat</span>
                   </div>
-                  <StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div data-tour="stats-row"><StaggerList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <Card>
                       <div className="flex items-start justify-between">
                         <div>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </Card>
-                  </StaggerList>
+                  </StaggerList></div>
                 </div>
               </FadeIn>
             );
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                         {monitors.length} {monitors.length === 1 ? "monitor" : "monitors"} configured
                       </p>
                     </div>
-                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2">
+                    <Button onClick={() => router.push("/monitors")} size="lg" className="flex items-center gap-2" data-tour="add-monitor">
                       <Plus className="w-4 h-4" /> Add Monitor
                     </Button>
                   </div>

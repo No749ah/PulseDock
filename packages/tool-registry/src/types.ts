@@ -36,7 +36,23 @@ export type ToolCategory =
   | 'ERP/Business'
   | 'Search/Vector'
   | 'IoT/Edge'
-  | 'Photo/Docs';
+  | 'Photo/Docs'
+  | 'Photo & Documents'
+  | 'Project Management'
+  | 'Identity & SSO'
+  | 'Remote Access'
+  | 'Download & Torrent'
+  | 'Home Automation'
+  | 'Analytics & BI'
+  | 'Calendar & Scheduling'
+  | 'Password Management'
+  | 'URL Shortener'
+  | 'Form & Survey'
+  | 'Diagramming'
+  | 'Terminal & Web Shell'
+  | 'Print & 3D'
+  | 'Game Servers'
+  | 'Compliance & Audit';
 
 export interface VersionSource {
   type: VersionSourceType;

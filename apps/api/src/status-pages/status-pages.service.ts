@@ -97,6 +97,10 @@ export class StatusPagesService {
     if (dto.description !== undefined) updateData['description'] = dto.description.trim();
     if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
+    if (dto.notifyWebhookUrl !== undefined) {
+      // Empty string = clear the webhook
+      updateData['notifyWebhookUrl'] = dto.notifyWebhookUrl.trim() || null;
+    }
 
     // Snapshot current layout before overwriting (version history)
     if (dto.layout !== undefined) {

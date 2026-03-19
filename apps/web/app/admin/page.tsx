@@ -15,6 +15,7 @@ import { api } from '../../lib/api';
 import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
 import { CountUp } from '../../app/components/CountUp';
+import { exportCSV, exportJSON } from '../../lib/useTableSort';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -795,7 +796,27 @@ export default function AdminPage() {
 
           {/* ── Audit Log ─────────────────────────────────────────────────── */}
           <Card>
-            <SectionHeader icon={ClipboardList} title="Audit Log" count={auditLogs.length} />
+            <div className="flex items-center justify-between mb-1">
+              <SectionHeader icon={ClipboardList} title="Audit Log" count={auditLogs.length} />
+              {auditLogs.length > 0 && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => exportCSV('audit-log.csv', auditLogs.map((l) => ({ id: l.id, action: l.action, actorUserId: l.actorUserId ?? 'system', targetUserId: l.targetUserId ?? '', createdAt: l.createdAt })))}
+                    className="px-2.5 py-1.5 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border transition-colors"
+                    title="Export audit log as CSV"
+                  >
+                    CSV
+                  </button>
+                  <button
+                    onClick={() => exportJSON('audit-log.json', auditLogs)}
+                    className="px-2.5 py-1.5 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border transition-colors"
+                    title="Export audit log as JSON"
+                  >
+                    JSON
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="space-y-1">
               {auditRows.length === 0 && <p className="text-sm text-text-secondary text-center py-6">No audit events yet.</p>}
               {auditRows.map((l) => (

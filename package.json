@@ -25,7 +25,8 @@
     "restart": "npm run restart:api && sleep 2 && npm run restart:web",
     "test:e2e": "npm run test -w @pulsedock/e2e",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "registry:lint": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/lint-registry.ts"
   },
   "license": "Apache-2.0",
   "dependencies": {

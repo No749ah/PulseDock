@@ -70,7 +70,7 @@ function makeAlerts() {
 }
 
 function makeRealtime() {
-  return { monitorChecked: vi.fn() };
+  return { monitorChecked: vi.fn(), statusPageUpdated: vi.fn() };
 }
 
 function mockFetch(responses: Array<{ ok: boolean; status?: number; json?: () => unknown; text?: () => string }>) {
@@ -324,6 +324,88 @@ describe('ChecksService', () => {
       const call = realtime.monitorChecked.mock.calls[0][1] as { changed: { levelChanged: boolean; previousLevel: string } };
       expect(call.changed.levelChanged).toBe(false);
       expect(call.changed.previousLevel).toBe('green');
+    });
+  });
+
+  // ── runMonitor() — Status-page webhook notifications ─────────────────────
+
+  describe('runMonitor() — status-page webhook on status change', () => {
+    function makePrismaWithPage(opts: {
+      notifyWebhookUrl?: string | null;
+      lastNotifiedStatus?: string | null;
+      monitorLevel?: string;
+    } = {}) {
+      const notifyWebhookUrl = opts.notifyWebhookUrl ?? null;
+      const lastNotifiedStatus = opts.lastNotifiedStatus ?? null;
+      const monitorLevel = opts.monitorLevel ?? 'green';
+      return {
+        monitorRun: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findMany: vi.fn().mockResolvedValue([]),
+          create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+            Promise.resolve({ id: 'run-new', userId: data.userId, monitorId: data.monitorId, checkedAt: new Date(), ok: data.ok, status: data.status, latencyMs: data.latencyMs, message: data.message, level: data.level }),
+          ),
+        },
+        publicStatusPage: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'sp-1', slug: 'my-page', layout: { widgets: [{ config: { monitorId: 'mon-1' } }] }, notifyWebhookUrl, lastNotifiedStatus },
+          ]),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        monitor: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'mon-1', name: 'API Monitor', runs: [{ level: monitorLevel, ok: monitorLevel === 'green' }] },
+          ]),
+        },
+      };
+    }
+
+    it('fires webhook when status changes from null to operational', async () => {
+      const prisma = makePrismaWithPage({ notifyWebhookUrl: 'https://example.com/hook', lastNotifiedStatus: null, monitorLevel: 'green' });
+      const realtime = makeRealtime();
+      const service = makeService({ prisma: prisma as never, realtime });
+      const fetchCalls: RequestInfo[] = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: RequestInfo, init?: RequestInit) => {
+        fetchCalls.push(url);
+        // First call is the HTTP monitor check
+        if (fetchCalls.length === 1) {
+          return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+        }
+        // Second call is the webhook
+        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+      });
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      // Wait a tick for the async webhook
+      await new Promise(r => setTimeout(r, 10));
+      expect(prisma.publicStatusPage.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ lastNotifiedStatus: 'operational' }) }),
+      );
+    });
+
+    it('does NOT fire webhook when status is unchanged', async () => {
+      const prisma = makePrismaWithPage({ notifyWebhookUrl: 'https://example.com/hook', lastNotifiedStatus: 'operational', monitorLevel: 'green' });
+      const realtime = makeRealtime();
+      const service = makeService({ prisma: prisma as never, realtime });
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      await new Promise(r => setTimeout(r, 10));
+      expect(prisma.publicStatusPage.update).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire webhook when notifyWebhookUrl is null', async () => {
+      const prisma = makePrismaWithPage({ notifyWebhookUrl: null, lastNotifiedStatus: null, monitorLevel: 'green' });
+      const realtime = makeRealtime();
+      const service = makeService({ prisma: prisma as never, realtime });
+      const fetchCalls: string[] = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        fetchCalls.push(url);
+        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+      });
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      await new Promise(r => setTimeout(r, 10));
+      // Only the HTTP monitor fetch, no webhook
+      expect(fetchCalls.filter(u => u === 'https://example.com/hook').length).toBe(0);
+      expect(prisma.publicStatusPage.update).not.toHaveBeenCalled();
     });
   });
 

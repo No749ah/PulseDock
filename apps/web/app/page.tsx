@@ -42,7 +42,7 @@ const navLinks = [
 ];
 
 const stats = [
-  { value: "1400+", label: "Tools Tracked" },
+  { value: "2400+", label: "Tools Tracked" },
   { value: "65+", label: "Status Page Widgets" },
   { value: "86+", label: "Monitor Templates" },
   { value: "100%", label: "Free & Open Source" },
@@ -53,7 +53,7 @@ const features = [
     icon: Activity,
     title: "Version Intelligence",
     description:
-      "Automatic version tracking for 1300+ self-hosted tools. Know instantly when a new release drops.",
+      "Automatic version tracking for 2400+ self-hosted tools. Know instantly when a new release drops.",
   },
   {
     icon: Server,
@@ -83,7 +83,7 @@ const features = [
     icon: Search,
     title: "Tool Registry",
     description:
-      "Browse 1300+ self-hosted tools. Find alternatives, compare features, track new releases.",
+      "Browse 2400+ self-hosted tools. Find alternatives, compare features, track new releases.",
   },
   {
     icon: Globe,
@@ -153,11 +153,25 @@ const demoServices = [
   { name: "CDN / Assets", uptime: "100%" },
 ];
 
+const previewMonitors = [
+  { name: "api.prod", status: "up", latency: "34ms", trend: [80, 84, 88, 82, 90, 86, 92, 88] },
+  { name: "web.prod", status: "up", latency: "41ms", trend: [78, 86, 82, 90, 87, 92, 89, 94] },
+  { name: "db.cluster", status: "up", latency: "12ms", trend: [92, 90, 95, 93, 97, 96, 98, 97] },
+  { name: "cdn.edge", status: "warning", latency: "164ms", trend: [74, 72, 79, 69, 76, 81, 73, 78] },
+] as const;
+
+const previewVersions = [
+  { name: "Kubernetes", current: "v1.30.2", latest: "v1.30.3", state: "update" },
+  { name: "PostgreSQL", current: "16.3", latest: "16.3", state: "ok" },
+  { name: "Grafana", current: "11.1.0", latest: "11.1.1", state: "update" },
+  { name: "Redis", current: "7.2.5", latest: "7.2.5", state: "ok" },
+] as const;
+
 const comparisonFeatures = [
   { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
-  { label: "Tool Registry (1400+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (2400+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
@@ -248,6 +262,7 @@ function LiveDemo() {
   const [inputUrl, setInputUrl] = useState("");
   const [results, setResults] = useState<CheckResult[]>([]);
   const [checking, setChecking] = useState(false);
+  const [mode, setMode] = useState<"checker" | "preview">("preview");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const presetUrls = ["https://github.com", "https://cloudflare.com", "https://vercel.com"];
@@ -297,21 +312,19 @@ function LiveDemo() {
       <FadeIn>
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-            Try It{" "}
+            Interactive{" "}
             <GradientText from="#58a6ff" to="#3fb950">
-              Live
+              Live Demo
             </GradientText>
           </h2>
-          <p className="text-text-secondary text-lg max-w-xl mx-auto">
-            Enter any URL and check if it's up — right now, in your browser.
-            This is exactly what PulseDock does, 24/7, automatically.
+          <p className="text-text-secondary text-lg max-w-2xl mx-auto">
+            Explore a mini PulseDock dashboard preview, or run a real uptime check directly in your browser.
           </p>
         </div>
       </FadeIn>
 
       <FadeIn delay={0.15}>
         <div className="rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40 overflow-hidden">
-          {/* Browser chrome */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface-elevated">
             <div className="flex gap-1.5">
               <div className="w-3 h-3 rounded-full bg-danger/50" />
@@ -320,79 +333,151 @@ function LiveDemo() {
             </div>
             <div className="flex-1 mx-4">
               <div className="bg-bg/60 rounded-md px-3 py-1.5 text-xs text-text-muted text-center font-mono">
-                PulseDock — Live Check
+                PulseDock — {mode === "preview" ? "Dashboard Preview" : "Live URL Checker"}
               </div>
             </div>
           </div>
 
-          {/* Demo content */}
-          <div className="p-6 md:p-8 space-y-6">
-            {/* URL input */}
-            <form
-              onSubmit={(e) => { e.preventDefault(); checkUrl(inputUrl); }}
-              className="flex gap-2"
-            >
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-                placeholder="Enter any URL to check (e.g. https://github.com)"
-                className="flex-1 rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-accent focus:outline-none"
-              />
+          <div className="p-6 md:p-8 space-y-5">
+            <div className="inline-flex rounded-xl border border-border bg-bg/60 p-1">
               <button
-                type="submit"
-                disabled={checking || !inputUrl.trim()}
-                className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50 shrink-0"
+                onClick={() => setMode("preview")}
+                className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition ${mode === "preview" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"}`}
               >
-                Check
+                Dashboard Preview
               </button>
-            </form>
-
-            {/* Presets */}
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs text-text-secondary">Try:</span>
-              {presetUrls.map((url) => (
-                <button
-                  key={url}
-                  onClick={() => checkUrl(url)}
-                  disabled={checking}
-                  className="text-xs rounded-lg border border-border bg-bg/60 px-3 py-1 text-text-secondary hover:text-accent hover:border-accent/40 transition disabled:opacity-50"
-                >
-                  {url.replace("https://", "")}
-                </button>
-              ))}
+              <button
+                onClick={() => setMode("checker")}
+                className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition ${mode === "checker" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"}`}
+              >
+                Live URL Check
+              </button>
             </div>
 
-            {/* Results */}
-            {results.length > 0 && (
-              <div className="space-y-2">
-                {results.map((r) => (
-                  <div
-                    key={r.url}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-bg/40 px-4 py-3"
-                  >
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor(r.status).split(" ")[0]} ${r.status === "checking" ? "animate-pulse" : ""}`} />
-                    <span className="text-sm text-text-primary font-mono flex-1 truncate">{r.url.replace(/^https?:\/\//, "")}</span>
-                    <span className={`text-xs font-medium tabular-nums ${r.status === "up" ? "text-success" : r.status === "checking" ? "text-accent" : "text-danger"}`}>
-                      {statusLabel(r)}
-                    </span>
-                    {r.latencyMs !== undefined && (
-                      <span className="text-xs text-text-muted tabular-nums w-16 text-right">{r.latencyMs}ms</span>
-                    )}
+            {mode === "preview" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-bg/50 p-3">
+                    <p className="text-xs text-text-secondary mb-1">Overall Status</p>
+                    <p className="text-sm font-semibold text-success">Operational</p>
                   </div>
-                ))}
+                  <div className="rounded-xl border border-border bg-bg/50 p-3">
+                    <p className="text-xs text-text-secondary mb-1">30d Uptime</p>
+                    <p className="text-sm font-semibold text-text-primary">99.97%</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-bg/50 p-3">
+                    <p className="text-xs text-text-secondary mb-1">Updates Available</p>
+                    <p className="text-sm font-semibold text-warning">2 pending</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-bg/40 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-border/60 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Monitors</span>
+                    <span className="text-xs text-success">● Live</span>
+                  </div>
+                  <div className="divide-y divide-border/40">
+                    {previewMonitors.map((item) => (
+                      <div key={item.name} className="flex items-center gap-3 px-4 py-2.5">
+                        <StatusDot status={item.status === "warning" ? "warning" : "up"} />
+                        <span className="text-xs text-text-primary font-mono flex-1 truncate">{item.name}</span>
+                        <MiniSparkline bars={[...item.trend]} />
+                        <span className={`text-xs tabular-nums w-12 text-right ${item.status === "warning" ? "text-warning" : "text-text-muted"}`}>
+                          {item.latency}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-bg/40 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-border/60">
+                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Version Checks</span>
+                  </div>
+                  <div className="divide-y divide-border/40">
+                    {previewVersions.map((v) => (
+                      <div key={v.name} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="text-xs text-text-primary flex-1">{v.name}</span>
+                        <span className="text-xs text-text-muted font-mono">{v.current}</span>
+                        <ArrowRight className="w-3 h-3 text-text-muted" />
+                        <span className="text-xs text-text-primary font-mono">{v.latest}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${v.state === "ok" ? "text-success border-success/30 bg-success/10" : "text-warning border-warning/30 bg-warning/10"}`}>
+                          {v.state === "ok" ? "Up to date" : "Update available"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
-            {results.length === 0 && (
-              <div className="text-center py-8 text-sm text-text-secondary">
-                Enter a URL above and click Check — or try one of the presets.
-              </div>
+            {mode === "checker" && (
+              <>
+                <form
+                  onSubmit={(e) => { e.preventDefault(); checkUrl(inputUrl); }}
+                  className="flex gap-2"
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputUrl}
+                    onChange={(e) => setInputUrl(e.target.value)}
+                    placeholder="Enter any URL to check (e.g. https://github.com)"
+                    className="flex-1 rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-accent focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={checking || !inputUrl.trim()}
+                    className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50 shrink-0"
+                  >
+                    Check
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs text-text-secondary">Try:</span>
+                  {presetUrls.map((url) => (
+                    <button
+                      key={url}
+                      onClick={() => checkUrl(url)}
+                      disabled={checking}
+                      className="text-xs rounded-lg border border-border bg-bg/60 px-3 py-1 text-text-secondary hover:text-accent hover:border-accent/40 transition disabled:opacity-50"
+                    >
+                      {url.replace("https://", "")}
+                    </button>
+                  ))}
+                </div>
+
+                {results.length > 0 && (
+                  <div className="space-y-2">
+                    {results.map((r) => (
+                      <div
+                        key={r.url}
+                        className="flex items-center gap-3 rounded-xl border border-border bg-bg/40 px-4 py-3"
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor(r.status).split(" ")[0]} ${r.status === "checking" ? "animate-pulse" : ""}`} />
+                        <span className="text-sm text-text-primary font-mono flex-1 truncate">{r.url.replace(/^https?:\/\//, "")}</span>
+                        <span className={`text-xs font-medium tabular-nums ${r.status === "up" ? "text-success" : r.status === "checking" ? "text-accent" : "text-danger"}`}>
+                          {statusLabel(r)}
+                        </span>
+                        {r.latencyMs !== undefined && (
+                          <span className="text-xs text-text-muted tabular-nums w-16 text-right">{r.latencyMs}ms</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {results.length === 0 && (
+                  <div className="text-center py-8 text-sm text-text-secondary">
+                    Enter a URL above and click Check — or try one of the presets.
+                  </div>
+                )}
+              </>
             )}
 
             <p className="text-xs text-text-muted text-center">
-              PulseDock runs checks like this automatically, 24/7 — across all your services, with alerts and status pages.
+              PulseDock combines live uptime checks, version intelligence, and public status pages in one dashboard.
             </p>
           </div>
         </div>
@@ -509,7 +594,7 @@ export default function LandingPage() {
 
           <FadeIn delay={0.1}>
             <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              Monitor 1300+ self-hosted tools, track versions, build beautiful
+              Monitor 2400+ self-hosted tools, track versions, build beautiful
               status pages. Open source, self-hosted, free.
             </p>
           </FadeIn>
@@ -536,6 +621,31 @@ export default function LandingPage() {
               <Badge variant="success">✦ Open Source</Badge>
               <Badge variant="default">✦ Self-Hosted</Badge>
               <Badge variant="success">✦ Free Forever</Badge>
+            </div>
+          </FadeIn>
+
+          {/* ─── Mobile Hero: Quick Status Cards (sm and below only) ─── */}
+          <FadeIn delay={0.4}>
+            <div className="sm:hidden mt-10 grid grid-cols-2 gap-3 max-w-sm mx-auto">
+              <div className="rounded-xl border border-success/30 bg-success/5 p-4 text-center">
+                <div className="text-2xl font-bold text-success">99.9%</div>
+                <div className="text-xs text-text-secondary mt-1">Uptime SLA</div>
+              </div>
+              <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-center">
+                <div className="text-2xl font-bold text-accent">2400+</div>
+                <div className="text-xs text-text-secondary mt-1">Tools tracked</div>
+              </div>
+              <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 text-center">
+                <div className="text-2xl font-bold text-purple-400">70+</div>
+                <div className="text-xs text-text-secondary mt-1">Widget types</div>
+              </div>
+              <div className="rounded-xl border border-border bg-surface/60 p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                  <span className="text-sm font-semibold text-success">All Systems</span>
+                </div>
+                <div className="text-xs text-text-secondary mt-1">Operational</div>
+              </div>
             </div>
           </FadeIn>
 

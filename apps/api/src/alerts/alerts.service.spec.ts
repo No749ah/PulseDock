@@ -674,7 +674,7 @@ describe('AlertsService', () => {
 
       // After all retries exhaust, a failed log entry should be created
       const createCalls = prisma.alertDeliveryLog.create.mock.calls;
-      const failedCall = createCalls.find((c: [{ data: { status: string } }]) => c[0].data.status === 'failed');
+      const failedCall = createCalls.find((c: unknown[]) => (c[0] as { data: { status: string } }).data.status === 'failed');
       expect(failedCall).toBeDefined();
     });
 

@@ -8,7 +8,9 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Table, TableHead, TableBody, TableRow, TableCell } from '../components/Table';
+import { SortableHeader, TablePagination } from '../components/SortableTable';
+import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
@@ -172,6 +174,9 @@ export default function MaintenancePage() {
   const [windows, setWindows] = useState<MaintenanceWindow[]>([]);
   const [monitors, setMonitors] = useState<MonitorOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState('25');
+  const { sort, toggle, sorted } = useTableSort<'name' | 'startsAt' | 'endsAt' | 'monitorCount'>('startsAt');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', startsAt: '', endsAt: '' });
@@ -452,17 +457,23 @@ export default function MaintenancePage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHead>
-                      <TableRow hover={false}>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Status</TableHeader>
-                        <TableHeader>Start</TableHeader>
-                        <TableHeader>Duration</TableHeader>
-                        <TableHeader>Monitors</TableHeader>
-                        <TableHeader>Actions</TableHeader>
-                      </TableRow>
+                      <tr className="bg-surface-elevated border-b border-border">
+                        <SortableHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortableHeader>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                        <SortableHeader sortKey="startsAt" sort={sort} onSort={toggle}>Start</SortableHeader>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Duration</th>
+                        <SortableHeader sortKey="monitorCount" sort={sort} onSort={toggle}>Monitors</SortableHeader>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                      </tr>
                     </TableHead>
                     <TableBody>
-                      {windows.map((w) => (
+                      {sorted(windows, (w) => {
+                        if (sort.key === 'name') return w.name;
+                        if (sort.key === 'startsAt') return w.startsAt;
+                        if (sort.key === 'endsAt') return w.endsAt;
+                        if (sort.key === 'monitorCount') return w.monitorCount;
+                        return w.startsAt;
+                      }).slice((Math.min(page, Math.max(1, Math.ceil(windows.length / Number(pageSize)))) - 1) * Number(pageSize), Math.min(page, Math.max(1, Math.ceil(windows.length / Number(pageSize)))) * Number(pageSize)).map((w) => (
                         <TableRow key={w.id}>
                           <TableCell>
                             <div>
@@ -505,6 +516,20 @@ export default function MaintenancePage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <TablePagination
+                    page={Math.min(page, Math.max(1, Math.ceil(windows.length / Number(pageSize))))}
+                    pageCount={Math.max(1, Math.ceil(windows.length / Number(pageSize)))}
+                    pageSize={pageSize}
+                    totalItems={windows.length}
+                    onPage={setPage}
+                    onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                    pageSizeOptions={[10, 25, 50, 100]}
+                    onExportCSV={() => exportCSV('maintenance-windows.csv', windows.map((w) => ({
+                      id: w.id, name: w.name, description: w.description ?? '', startsAt: w.startsAt,
+                      endsAt: w.endsAt, monitorCount: w.monitorCount, isActive: w.isActive,
+                    })))}
+                    onExportJSON={() => exportJSON('maintenance-windows.json', windows)}
+                  />
                 </div>
               </Card>
             </>

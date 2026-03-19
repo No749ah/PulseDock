@@ -896,24 +896,24 @@ function MonitorsPageInner() {
     <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
       <div className="space-y-6">
         {error && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
             </div>
-          </FadeIn>
+          
         )}
 
         {realtimeAlert && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
               <Bell className="w-5 h-5 text-warning mt-0.5 shrink-0" />
               <span className="text-warning text-sm">{realtimeAlert}</span>
             </div>
-          </FadeIn>
+          
         )}
 
-        <FadeIn>
+        
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
@@ -1037,10 +1037,10 @@ function MonitorsPageInner() {
               </Button>
             </div>
           </div>
-        </FadeIn>
+        
 
         {/* Search + Status filter bar */}
-        <FadeIn>
+        
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
@@ -1098,11 +1098,11 @@ function MonitorsPageInner() {
               )}
             </button>
           </div>
-        </FadeIn>
+        
 
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          <FadeIn>
+          
             <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-text-primary">Filters</span>
@@ -1245,11 +1245,11 @@ function MonitorsPageInner() {
                 )}
               </div>
             </div>
-          </FadeIn>
+          
         )}
 
         {allTags.length > 0 && (
-          <FadeIn>
+          
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setActiveTagFilter(null)}
@@ -1273,11 +1273,11 @@ function MonitorsPageInner() {
                 </button>
               ))}
             </div>
-          </FadeIn>
+          
         )}
 
         {importResult && (
-          <FadeIn>
+          
             <div className={`flex items-start gap-3 p-4 rounded-xl border ${importResult.errors.length === 0 ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
               <CheckCircle2 className={`w-5 h-5 mt-0.5 shrink-0 ${importResult.errors.length === 0 ? "text-success" : "text-warning"}`} />
               <div className="flex-1">
@@ -1299,11 +1299,11 @@ function MonitorsPageInner() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </FadeIn>
+          
         )}
 
         {filteredMonitors.length === 0 ? (
-          <FadeIn delay={0.1}>
+          
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
                 <Monitor className="w-12 h-12 text-text-secondary opacity-50" />
@@ -1343,9 +1343,9 @@ function MonitorsPageInner() {
                 </>
               )}
             </Card>
-          </FadeIn>
+          
         ) : (
-          <FadeIn delay={0.1}>
+          <>
             {/* Bulk action bar */}
             {selectedIds.size > 0 && (
               <div className="mb-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5">
@@ -1768,34 +1768,58 @@ function MonitorsPageInner() {
                           <tr className="bg-surface-elevated/40 border-b border-border/60">
                             <td colSpan={totalCols} className="px-6 py-4">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                {/* Recent check history */}
+                                {/* Recent check history + sparkline */}
                                 <div className="space-y-2">
-                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks (last 5)</p>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks</p>
+                                    <Link href={`/monitors/${monitor.id}`} className="text-xs text-accent hover:underline">View detail →</Link>
+                                  </div>
                                   {recentRuns.length === 0 ? (
                                     <p className="text-xs text-text-secondary">No checks yet</p>
                                   ) : (
-                                    <div className="flex items-center gap-1.5">
-                                      {recentRuns.map((r) => {
-                                        const dot = r.ok ? "bg-success" : "bg-danger";
-                                        const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
-                                        return (
-                                          <div key={r.id} className="flex flex-col items-center gap-1 group/dot" title={title}>
-                                            <div className={`w-3 h-3 rounded-full ${dot}`} />
-                                            {r.latencyMs != null && (
-                                              <span className="text-[9px] text-text-muted font-mono hidden group-hover/dot:block absolute mt-4 bg-surface border border-border rounded px-1 z-10 whitespace-nowrap">
-                                                {r.latencyMs}ms
-                                              </span>
-                                            )}
+                                    <>
+                                      {/* Status dots row */}
+                                      <div className="flex items-center gap-1.5">
+                                        {recentRuns.map((r) => {
+                                          const dotColor = r.ok ? "bg-success" : "bg-danger";
+                                          const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
+                                          return (
+                                            <div key={r.id} title={title} className="flex flex-col items-center gap-0.5 relative group/dot">
+                                              <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                                              {r.latencyMs != null && (
+                                                <span className="hidden group-hover/dot:block absolute bottom-full mb-1 bg-surface border border-border rounded px-1 py-0.5 text-[9px] text-text-muted font-mono z-10 whitespace-nowrap pointer-events-none">
+                                                  {r.latencyMs}ms
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                        <span className="text-xs text-text-secondary ml-1.5 tabular-nums">
+                                          {recentRuns.filter((r) => r.ok).length}/{recentRuns.length} OK
+                                        </span>
+                                      </div>
+                                      {/* Latency sparkline */}
+                                      {recentRuns.some((r) => r.latencyMs != null) && (
+                                        <div>
+                                          <p className="text-[10px] text-text-muted mb-1">Response time trend</p>
+                                          <MiniSparkline
+                                            data={[...recentRuns].reverse().filter((r) => r.latencyMs != null).map((r) => ({
+                                              value: r.latencyMs as number,
+                                              ok: r.ok,
+                                            }))}
+                                            height={36}
+                                            color="#6366f1"
+                                            className="w-full"
+                                          />
+                                          <div className="flex justify-between text-[9px] text-text-muted font-mono mt-0.5">
+                                            <span>
+                                              avg {Math.round(recentRuns.filter((r) => r.latencyMs != null).reduce((s, r) => s + (r.latencyMs as number), 0) / recentRuns.filter((r) => r.latencyMs != null).length)}ms
+                                            </span>
+                                            {lastRun && <span>last {relativeTime(lastRun.checkedAt)}</span>}
                                           </div>
-                                        );
-                                      })}
-                                      <span className="text-xs text-text-secondary ml-2">
-                                        {recentRuns.filter((r) => r.ok).length}/{recentRuns.length} OK
-                                      </span>
-                                    </div>
-                                  )}
-                                  {lastRun && (
-                                    <p className="text-xs text-text-secondary">Last: {new Date(lastRun.checkedAt).toLocaleString()}</p>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                                 {/* Tags */}
@@ -1893,11 +1917,11 @@ function MonitorsPageInner() {
               )}
             </Card>
             )}
-          </FadeIn>
+          </>
         )}
 
         {/* Recent runs */}
-        <FadeIn delay={0.2}>
+        
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
@@ -1939,7 +1963,7 @@ function MonitorsPageInner() {
               </Card>
             )}
           </div>
-        </FadeIn>
+        
       </div>
 
       {/* Create/Edit Modal */}

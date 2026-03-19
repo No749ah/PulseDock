@@ -390,7 +390,7 @@ export default function DashboardPage() {
 
         {/* Customize section order panel */}
         {showCustomize && (
-          <FadeIn>
+          
             <div className="rounded-xl border border-border bg-surface/60 p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -432,18 +432,18 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-          </FadeIn>
+          
         )}
         {error && (
-          <FadeIn>
+          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
             </div>
-          </FadeIn>
+          
         )}
 
-        <FadeIn>
+        
           <OnboardingChecklist
             userId={user.id}
             hasMonitors={monitors.length > 0}
@@ -454,14 +454,14 @@ export default function DashboardPage() {
             autoStart={monitors.length === 0}
             steps={DASHBOARD_TOUR_STEPS}
           />
-        </FadeIn>
+        
 
         {/* ── Ordered sections ─────────────────────────────────────── */}
         {sectionOrder.map((sectionKey) => {
           if (sectionKey === "uptime") {
             if (!stats) return null;
             return (
-              <FadeIn key="uptime">
+              
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-text-secondary" />
@@ -517,14 +517,14 @@ export default function DashboardPage() {
                     </Card>
                   </StaggerList></div>
                 </div>
-              </FadeIn>
+              
             );
           }
 
           if (sectionKey === "versions") {
             if (!stats || stats.versionMonitors === 0) return null;
             return (
-              <FadeIn key="versions">
+              
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <GitBranch className="w-4 h-4 text-text-secondary" />
@@ -570,13 +570,13 @@ export default function DashboardPage() {
                     </Card>
                   </StaggerList>
                 </div>
-              </FadeIn>
+              
             );
           }
 
           if (sectionKey === "monitors") {
             return (
-              <FadeIn key="monitors" delay={0.1}>
+              
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -678,7 +678,7 @@ export default function DashboardPage() {
                     </Card>
                   )}
                 </div>
-              </FadeIn>
+              
             );
           }
 
@@ -686,7 +686,7 @@ export default function DashboardPage() {
         })}
 
         {/* ── Recent Activity ──────────────────────────────────────── */}
-        <FadeIn delay={0.2}>
+        
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
@@ -728,7 +728,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </FadeIn>
+        
       </div>
     </AppFrame>
   );

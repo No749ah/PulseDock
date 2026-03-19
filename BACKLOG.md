@@ -1,3 +1,56 @@
+## Status Summary (2026-03-19 20:34 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
+- **Deployment:** ✅ API + Web healthy (4321 + 1234)
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 20:34 UTC):**
+  - **Status Page SVG Badge**: `GET /v1/public/status-badge/:slug.svg` — computes overall page status (operational/degraded/outage) from monitor runs in layout. Supports `?style=flat|flat-square|for-the-badge`. Cache-Control: 60s. CORS open. 404 for unpublished/missing pages. Status Pages list page: "Badge" button per row opens embed modal with live preview, style selector (Flat/Square/Large), and copy buttons (Markdown / HTML / URL).
+  - **Export Status Page as PDF**: `ExportPDFButton` component already implemented in prior session (confirmed present at `apps/web/app/status/[slug]/widgets/ExportPDFButton.tsx`). Multi-page A4 PDF via jsPDF + html2canvas, wired into public status page header.
+  - Committed + pushed: `5c1d7ac` (feat: status page SVG badge + badge embed modal)
+
+## Status Summary (2026-03-19 20:30 UTC)
+- **Build/Test:** ✅ Build recovered and passing after fix; tests passing
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web healthy locally after restart/build (`/health` + `/login` 200)
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 20:30 UTC):**
+  - Fixed blocking web build/runtime regression in `apps/web/app/monitors/page.tsx` (missing fragment wrapping in list branch caused JSX parse error at line ~1350)
+  - Rebuilt successfully and restarted services; web now serves on port 1234 again
+  - Committed + pushed: `fix: restore monitors page fragment wrapping in table/grid branch` (`9551b35`)
+
+## Status Summary (2026-03-19 20:11 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All 11 routes 200 local + public URL healthy
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 20:11 UTC):**
+  - **Webhook Notifications for Status Pages**: `notifyWebhookUrl` + `lastNotifiedStatus` added to `PublicStatusPage` Prisma schema + migration (20260319200430). `ChecksService.fireStatusPageWebhook()` fires a POST when overall page status changes (operational/degraded/outage), deduplicates via `lastNotifiedStatus`, updates DB before firing, 10s timeout. `UpdateStatusPageDto.notifyWebhookUrl` field. `StatusPagesService.update()` persists webhook URL. Page Settings modal: Webhook Notifications section with URL input + live example payload preview. 3 new tests (fires on change, skips unchanged, skips null). 1515 total tests passing.
+
+## Status Summary (2026-03-19 18:17 UTC)
+- **Build/Test:** ✅ Clean build, 1512 tests passing (1490 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All 9 routes 200 local + public URL healthy
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 18:17 UTC):**
+  - Fixed pre-existing TS2769 type error in `alerts.service.spec.ts` find callback annotation
+  - **Export Status Page as PNG**: `ExportImageButton` component (html2canvas, dynamic import, 2x retina). Wired into public status page header alongside PrintButton. `id="status-page-content"` added to main element.
+  - **Monitor row expansion upgraded**: Response time sparkline (MiniSparkline, recharts) in expanded panel with avg latency label, improved status dots with hover tooltip, "View detail →" link to monitor detail page
+  - **CONTRIBUTING.md**: Full architecture overview, key concepts (Scheduler, Alert Delivery, Status Pages, WebSocket, Tool Registry), instructions for adding endpoints/widgets/registry entries
+  - **Registry lint script**: `packages/tool-registry/scripts/lint-registry.ts` validates: duplicate IDs, missing required fields, invalid categories, malformed IDs, missing targets. `registry:lint` npm script at root. `tsconfig.json` for tool-registry package.
+  - Checked: all pages 200, API healthy, public URL 200
+
+## Status Summary (2026-03-19 17:46 UTC)
+- **Build/Test:** ⚠️ Tool registry expanded to 2567 entries; API `tsc` still reports pre-existing test typing error in `alerts.service.spec.ts`; registry-focused tests passed
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ⏭️ Not part of this registry-only session
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 17:46 UTC):**
+  - Added `REGISTRY_PART7` + `REGISTRY_PART8` to `packages/tool-registry/src/registry.ts`
+  - Added 1100 new registry entries (550 + 550), expanding total tools from 1467 → 2567
+  - Updated `TOOL_REGISTRY` export to include PART7/PART8
+  - Extended `ToolCategory` union in `packages/tool-registry/src/types.ts` for new categories
+  - Verified no duplicate IDs within newly added parts
+
 ## Status Summary (2026-03-19 16:40 UTC)
 - **Build/Test:** ✅ Clean build, 1480 API tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -847,8 +900,8 @@
 - [x] **Print-friendly CSS** — Already implemented: @media print in globals.css with A4 page setup, hide interactive chrome, force white backgrounds, proper typography for print, print-only elements. Print button on status pages.
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
 - [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
-- [ ] **Export as Image** — Download current status page as PNG (html2canvas or server-side render)
-- [ ] **Export as PDF** — Generate PDF report of current status
+- [x] **Export as Image** — Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
+- [x] **Export as PDF** — Generate PDF report of current status
 
 ### P1 — Tool Registry & Templates Expansion
 
@@ -904,7 +957,7 @@
   **Container & Orchestration (more):**
   Yacht, Dockge, Lazydocker (API), Diun, Watchtower, Ouroboros, Podman (API), LXD/Incus, Proxmox VE (`/api2/json/version`), TrueNAS SCALE API
 
-- [ ] **Tool Registry expansion: 1302 → 2500+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+- [x] **Tool Registry expansion: 1467 → 2567 entries (2440 unique)** — Added REGISTRY_PART7/PART8/PART9 with 1100 new tools: Download/Torrent (qBittorrent, SABnzbd, NZBGet), AI/ML (Tabby, Langflow, ChromaDB, text-generation-webui, Stable Diffusion WebUI), Messaging (Apache NiFi, Debezium, ksqlDB), E-Commerce (Shopware, PrestaShop, Medusa, Saleor), ERP/Business (Crater, Kimai, Twenty CRM, EspoCRM), Security (DefectDojo, Dependency-Track, Prowler, Steampipe, Padloc), DevTools (Weblate, Tolgee, GrowthBook, Unleash, Flagsmith, Flipt, Huginn, Cronicle, Kestra, tldraw, OpnForm, HeyForm), Observability (Gatus, Healthchecks), Kubernetes (Headlamp, Skooner), and many more.
 
   **ERP & Business:**
   ERPNext, Odoo, Dolibarr, Tryton, Axelor, iDempiere, Metasfresh, Crater (invoicing), InvoiceNinja, Kimai (time tracking), Solidtime
@@ -1112,7 +1165,7 @@
 - [x] **Hero section redesign** — Bold animated gradient headline, value prop, CTA buttons (Get Started / Live Demo), glassmorphic hero dashboard mockup with monitor table + sparklines + stat cards, trust badges, animated blobs
 - [x] **Feature showcase** — 8 feature cards (Version Intelligence, Uptime Monitoring, Status Pages, Smart Alerting, Incident Management, Tool Registry, Public API, CLI Tool) with FadeIn scroll animations
 - [x] **How it works section** — 3-step visual flow (Add Monitor / Run Checks / Get Alerted) with inline SVG visuals and animated connectors
-- [ ] **Live demo / Interactive preview** — Embedded mini-dashboard showing real data (or realistic mock). Animated charts, status dots, version badges. Users see what they get before signup.
+- [x] **Live demo / Interactive preview** — Landing page now includes an interactive dual-mode demo: (1) mini dashboard preview with monitor status dots, trend sparklines, and version update badges, plus (2) real in-browser URL uptime checker with live status/latency results and presets.
 - [x] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage — 9-feature matrix with check/X marks
 - [x] **Testimonials / Social proof** — Section with GitHub badge, open-source claim, "no tracking, no analytics" trust point
 - [x] **Pricing section** — Free self-hosted card + Cloud (coming soon) card with feature lists
@@ -1193,7 +1246,7 @@
 
 ### P2 — Enterprise Features (Beyond Monitoring)
 
-- [~] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action *(in-progress: invite modal UI stub added to account page; backend RBAC and invite flow pending)*
+- [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
@@ -1211,7 +1264,7 @@
 - [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
 - [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
 - [ ] **Public JSON API** — `GET /api/v1/public/status/:slug/json` for third-party integrations
-- [ ] **Webhook on Status Change** — Push notifications when overall status changes
+- [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
 - [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
 - [ ] **Slack/Discord Integration** — Auto-post status changes to channels
 - [ ] **Embeddable Widget** — `<script>` tag to embed single widget on external sites

@@ -249,4 +249,13 @@ export class UpdateStatusPageDto {
   @IsOptional()
   @IsBoolean()
   removePassword?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Webhook URL to POST when the overall page status changes (operational/degraded/outage). Leave empty to disable.',
+    example: 'https://example.com/webhook/status',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notifyWebhookUrl?: string;
 }

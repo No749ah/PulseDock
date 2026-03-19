@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { TeamService } from './team.service'
 import { PrismaService } from '../common/prisma.service'
+import { MailerService } from '../common/mailer.service'
 import { TeamRole } from './team.dto'
 
 const mockPrisma = {
@@ -17,12 +18,19 @@ const mockPrisma = {
   teamInvite: {
     findMany: vi.fn(),
     findFirst: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     delete: vi.fn(),
   },
   user: {
     findUnique: vi.fn(),
   },
+  $transaction: vi.fn(),
+}
+
+const mockMailer = {
+  sendInviteEmail: vi.fn().mockResolvedValue({ sent: false }),
 }
 
 describe('TeamService', () => {
@@ -34,6 +42,7 @@ describe('TeamService', () => {
       providers: [
         TeamService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: MailerService, useValue: mockMailer },
       ],
     }).compile()
 
@@ -102,5 +111,46 @@ describe('TeamService', () => {
     const result = await service.cancelInvite('u1', 'i1')
     expect(result.message).toBe('Invite cancelled')
     expect(mockPrisma.teamInvite.delete).toHaveBeenCalledWith({ where: { id: 'i1' } })
+  })
+
+  it('getInviteByToken returns invite + owner for valid token', async () => {
+    const future = new Date(Date.now() + 86400000)
+    const invite = { id: 'i1', ownerId: 'u1', email: 'a@b.com', role: TeamRole.EDITOR, token: 'tok', expiresAt: future, acceptedAt: null, owner: { email: 'owner@b.com', displayName: 'Owner' } }
+    mockPrisma.teamInvite.findUnique.mockResolvedValue(invite)
+    const result = await service.getInviteByToken('tok')
+    expect(result.owner).toEqual({ email: 'owner@b.com', displayName: 'Owner' })
+    expect(result.invite.email).toBe('a@b.com')
+  })
+
+  it('getInviteByToken throws NotFoundException for unknown token', async () => {
+    mockPrisma.teamInvite.findUnique.mockResolvedValue(null)
+    await expect(service.getInviteByToken('bad-token')).rejects.toThrow(NotFoundException)
+  })
+
+  it('getInviteByToken throws BadRequest for expired invite', async () => {
+    const past = new Date(Date.now() - 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({ id: 'i1', token: 'tok', expiresAt: past, acceptedAt: null, email: 'a@b.com', owner: {} })
+    await expect(service.getInviteByToken('tok')).rejects.toThrow(BadRequestException)
+  })
+
+  it('acceptInvite creates TeamMember and marks invite accepted', async () => {
+    const future = new Date(Date.now() + 86400000)
+    const invite = { id: 'i1', ownerId: 'u1', email: 'b@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: null }
+    mockPrisma.teamInvite.findUnique.mockResolvedValue(invite)
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'b@b.com' })
+    mockPrisma.teamMember.findUnique.mockResolvedValue(null)
+    const newMember = { id: 'm1', ownerId: 'u1', userId: 'u2', role: TeamRole.VIEWER, user: { id: 'u2', email: 'b@b.com', displayName: null } }
+    mockPrisma.$transaction.mockResolvedValue([newMember, { id: 'i1', acceptedAt: new Date() }])
+    const result = await service.acceptInvite('tok', 'u2')
+    expect(result).toEqual(newMember)
+    expect(mockPrisma.$transaction).toHaveBeenCalled()
+  })
+
+  it('acceptInvite throws BadRequest if email mismatch', async () => {
+    const future = new Date(Date.now() + 86400000)
+    const invite = { id: 'i1', ownerId: 'u1', email: 'other@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: null }
+    mockPrisma.teamInvite.findUnique.mockResolvedValue(invite)
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'different@b.com' })
+    await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(BadRequestException)
   })
 })

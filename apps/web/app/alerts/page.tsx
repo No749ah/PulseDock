@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Table, TableHead, TableBody, TableRow, TableCell } from '../components/Table';
 import { Select } from '../components/Select';
+import { SortableHeader, TablePagination } from '../components/SortableTable';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
+import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 
 type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
 
@@ -82,6 +84,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
+  const { sort, toggle, sorted } = useTableSort<'name' | 'type' | 'lastTriggeredAt' | 'createdAt'>('name');
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -265,9 +268,36 @@ export default function AlertsPage() {
   }
 
   const size = Number(pageSize);
-  const pages = Math.max(1, Math.ceil(channels.length / size));
+  const sortedChannels = sorted(channels, (c) => {
+    if (sort.key === 'name') return c.name;
+    if (sort.key === 'type') return c.type;
+    if (sort.key === 'lastTriggeredAt') return c.lastTriggeredAt ?? '';
+    if (sort.key === 'createdAt') return c.createdAt;
+    return c.name;
+  });
+  const pages = Math.max(1, Math.ceil(sortedChannels.length / size));
   const safePage = Math.min(page, pages);
-  const pageRows = channels.slice((safePage - 1) * size, safePage * size);
+  const pageRows = sortedChannels.slice((safePage - 1) * size, safePage * size);
+
+  function handleExportCSV() {
+    exportCSV('alert-channels.csv', channels.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      lastTriggeredAt: c.lastTriggeredAt ?? '',
+      createdAt: c.createdAt,
+    })));
+  }
+
+  function handleExportJSON() {
+    exportJSON('alert-channels.json', channels.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      lastTriggeredAt: c.lastTriggeredAt,
+      createdAt: c.createdAt,
+    })));
+  }
 
   return (
     <AppFrame title="Alerts" subtitle="Configure alert channels and verify delivery." breadcrumbs={[{ label: "Alerts" }]}>
@@ -612,13 +642,13 @@ export default function AlertsPage() {
             <div className="overflow-x-auto">
             <Table>
               <TableHead>
-                <TableRow hover={false}>
-                  <TableHeader>Name</TableHeader>
-                  <TableHeader>Type</TableHeader>
-                  <TableHeader>Last Triggered</TableHeader>
-                  <TableHeader>Created</TableHeader>
-                  <TableHeader>Actions</TableHeader>
-                </TableRow>
+                <tr className="bg-surface-elevated border-b border-border">
+                  <SortableHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortableHeader>
+                  <SortableHeader sortKey="type" sort={sort} onSort={toggle}>Type</SortableHeader>
+                  <SortableHeader sortKey="lastTriggeredAt" sort={sort} onSort={toggle}>Last Triggered</SortableHeader>
+                  <SortableHeader sortKey="createdAt" sort={sort} onSort={toggle}>Created</SortableHeader>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                </tr>
               </TableHead>
               <TableBody>
                 {pageRows.map((c) => (
@@ -660,27 +690,17 @@ export default function AlertsPage() {
               </TableBody>
             </Table>
 
-            {/* Pagination */}
-            <div className="flex flex-col gap-3 p-4 border-t border-border sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} aria-label="Previous page">
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-text-secondary" aria-live="polite">Page {safePage} of {pages}</span>
-                <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages} aria-label="Next page">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 sm:justify-end">
-                <span className="text-sm text-text-secondary">Rows per page</span>
-                <Select
-                  value={pageSize}
-                  onChange={(v) => { setPageSize(v || '10'); setPage(1); }}
-                  options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]}
-                  className="w-20"
-                />
-              </div>
-            </div>
+            <TablePagination
+              page={safePage}
+              pageCount={pages}
+              pageSize={pageSize}
+              totalItems={sortedChannels.length}
+              onPage={setPage}
+              onPageSize={(s) => { setPageSize(s); setPage(1); }}
+              pageSizeOptions={[10, 25, 50, 100]}
+              onExportCSV={handleExportCSV}
+              onExportJSON={handleExportJSON}
+            />
             </div>
           </Card>
           </>

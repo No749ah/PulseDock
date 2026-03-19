@@ -1,3 +1,13 @@
+## Status Summary (2026-03-19 20:50 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 12 routes clean
+- **Branch:** heartbeat/2026-03-20-quality
+- **This session (2026-03-19 20:50 UTC):**
+  - **Changelog v1.0.3**: Updated with comprehensive release notes for this session's work, removed FadeIn, full-width layout
+  - **.env.example**: Added INTERNAL_API_URL, NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_APP_VERSION vars
+  - **Marked complete**: Password Protection UX (already implemented in prior session), CONTRIBUTING.md (architecture overview already added)
+
 ## Status Summary (2026-03-19 20:43 UTC)
 - **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -900,7 +910,7 @@
 - [x] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex) — all in Page Settings modal + wired into generateMetadata() with Twitter card support
 - [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
 - [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
-- [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
+- [x] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
 - [x] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
 
 ### P2 — Public Page Rendering
@@ -1218,7 +1228,7 @@
 - [ ] **Review and update ALL existing docs** — Go through every doc file: fix outdated info, add missing sections, verify all code samples work, update screenshots, ensure consistent formatting (headings, code blocks, tables).
 - [x] **Delete stale/unused files** — Removed 4 dead web components (Breadcrumbs, ConfirmModal, ResponseTimeChart, TextInput) — all superseded by newer implementations. No TODO/FIXME/console.log debris. Build verified clean after removal.
 - [x] **README.md overhaul** — Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
-- [ ] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
+- [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
 - [ ] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
 - [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
 - [ ] **API documentation audit** — Verify all 95 Swagger endpoints have accurate descriptions, correct request/response examples, proper error codes documented.

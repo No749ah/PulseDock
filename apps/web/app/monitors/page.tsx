@@ -158,9 +158,9 @@ function MonitorsPageInner() {
   const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem("monitor-col-visibility");
-      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true };
+      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
     } catch {
-      return { type: true, target: true, interval: true, trend: true, alerts: true };
+      return { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
     }
   });
   const [showColPicker, setShowColPicker] = useState(false);
@@ -231,6 +231,7 @@ function MonitorsPageInner() {
   // bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
@@ -600,6 +601,22 @@ function MonitorsPageInner() {
     }
   };
 
+  const handleCheckNow = async (monitorId: string) => {
+    if (checkingNowId) return;
+    setCheckingNowId(monitorId);
+    try {
+      await api("/v1/monitors/bulk", user?.id, {
+        method: "POST",
+        body: JSON.stringify({ ids: [monitorId], action: "run" }),
+      });
+      success("Check triggered");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to trigger check");
+    } finally {
+      setCheckingNowId(null);
+    }
+  };
+
   const handleApplyTemplate = (t: MonitorTemplate) => {
     // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
     const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"] as string[]).includes(t.type)
@@ -909,7 +926,7 @@ function MonitorsPageInner() {
                   {showColPicker && (
                     <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
                       <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
-                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
+                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["latency", "Latency"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
                         <button
                           key={col}
                           onClick={() => toggleCol(col)}
@@ -1467,6 +1484,12 @@ function MonitorsPageInner() {
                           {sortBy === "status" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
+                      {visibleCols.latency && <TableHeader className="hidden lg:table-cell">
+                        <button onClick={() => handleSort("latency" as never)} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Latency
+                          {sortBy === ("latency" as never) ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>}
                       {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
                       {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
                       <TableHeader>
@@ -1531,6 +1554,18 @@ function MonitorsPageInner() {
                               runs={runs}
                             />
                           </TableCell>
+                          {/* Latency column */}
+                          {visibleCols.latency && (
+                            <TableCell className="hidden lg:table-cell text-sm font-mono tabular-nums">
+                              {lastRun?.latencyMs != null ? (
+                                <span className={lastRun.latencyMs > 2000 ? "text-danger" : lastRun.latencyMs > 800 ? "text-warning" : "text-text-primary"}>
+                                  {lastRun.latencyMs}ms
+                                </span>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
+                            </TableCell>
+                          )}
                           {/* Trend sparkline — last 20 runs for this monitor */}
                           {visibleCols.trend && (
                           <TableCell className="hidden xl:table-cell">
@@ -1621,6 +1656,9 @@ function MonitorsPageInner() {
                                 title="Edit monitor"
                               >
                                 <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleCheckNow(monitor.id)} disabled={checkingNowId === monitor.id || !monitor.enabled} className="text-text-secondary hover:text-accent" aria-label={`Run check now for ${monitor.name}`} title="Run check now">
+                                <PlayCircle className={`w-4 h-4 ${checkingNowId === monitor.id ? "animate-pulse" : ""}`} />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => setBadgeMonitor(monitor)} className="text-text-secondary hover:text-text-primary" aria-label={`Get embed badge for ${monitor.name}`} title="Embed badge">
                                 <Shield className="w-4 h-4" />

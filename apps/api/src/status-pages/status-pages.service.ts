@@ -2547,6 +2547,21 @@ export class StatusPagesService {
         }
       }
 
+      case 'table-of-contents':
+        // Pure content widget — no server data needed
+        return { items: (widget.config.items as Array<{ label: string; anchor: string }>) ?? [] };
+
+      case 'page-navigation': {
+        // Return list of other published status pages for this user
+        const otherPages = await this.prisma.publicStatusPage.findMany({
+          where: { userId, isPublished: true },
+          select: { slug: true, title: true, description: true },
+          orderBy: { title: 'asc' },
+          take: 20,
+        });
+        return { pages: otherPages };
+      }
+
       case 'column-layout':
         // Pure layout widget — no server data needed
         return { columns: (widget.config.columns as number) ?? 2 };

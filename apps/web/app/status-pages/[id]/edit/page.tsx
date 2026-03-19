@@ -235,6 +235,8 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 { type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
 { type: "column-layout", label: "Column Layout", description: "2, 3, or 4 column text/content layout within a single row", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 3 },
 { type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
+{ type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
+{ type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -740,7 +742,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header"];
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation"];
   const supportsMonitorScope = !noScopeWidgets.includes(w.type);
   const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
@@ -1216,6 +1218,26 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
       {w.type === "sticky-header" && (
         <div>
           <p className="text-[10px] text-text-muted">Shows the overall system status as a fixed-position banner. Place it at the top of your page (y=0) for best effect. Status is computed from all monitors in real-time.</p>
+        </div>
+      )}
+
+      {w.type === "table-of-contents" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Items (JSON)</label>
+          <textarea
+            rows={5}
+            value={(w.config.items as string) ?? '[{"label":"System Status","anchor":"status"},{"label":"Incidents","anchor":"incidents"}]'}
+            onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+            placeholder='[{"label":"Section Title","anchor":"section-id"}]'
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {"{label, anchor}"} where anchor matches an id on the page element.</p>
+        </div>
+      )}
+
+      {w.type === "page-navigation" && (
+        <div>
+          <p className="text-[10px] text-text-muted">Automatically lists all other published status pages in your account. No configuration needed — links update in real-time as pages are published or unpublished.</p>
         </div>
       )}
 

@@ -75,7 +75,9 @@ export type WidgetType =
   | 'third-party-dependencies'
   | 'security-advisory'
   | 'column-layout'
-  | 'sticky-header';
+  | 'sticky-header'
+  | 'table-of-contents'
+  | 'page-navigation';
 
 export interface Widget {
   id: string;

@@ -1,3 +1,12 @@
+## Status Summary (2026-03-19 04:18 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 10 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 04:18 UTC):**
+  - **Status Page Version History (API-backed)**: Prisma `StatusPageHistory` model + migration. API auto-snapshots layout before every save (prune to 10). `GET /v1/status-pages/:id/history` + `POST .../history/:historyId/restore`. Editor History panel now loads from API, shows real widget counts, one-click server restore (saves current state as "Before restore" snapshot first).
+  - **Monitors Column Visibility Toggle**: Eye/Columns button in toolbar opens dropdown picker. Toggle Type/Target/Interval/Trend/Alerts columns on/off. State persisted to localStorage. Table headers and cells both respect visibility flags.
+
 ## Status Summary (2026-03-19 03:17 UTC)
 - **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -638,7 +647,7 @@
 - [x] **Widget Search in Palette** — Filter palette by name/category
 - [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
 - [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
-- [ ] **Version History** — Last 10 saves with preview + one-click restore
+- [x] **Version History** — Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
 - [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
 
 ### P2 — Page-Level Configuration

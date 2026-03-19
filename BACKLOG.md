@@ -10,6 +10,16 @@
   - **Notification bell enriched**: Active incidents shown as pulsing red banner at top of dropdown; badge count includes incident count; footer links to Incidents page; incidents fetched in parallel with monitor runs
   - **JSDoc**: Added @param/@returns/@throws to team/incidents/reports/maintenance/apikeys/settings services
 
+## Status Summary (2026-03-19 22:29 UTC)
+- **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-enterprise-features
+- **This session (2026-03-19 22:29 UTC):**
+  - **Dashboard fullscreen toggle**: Maximize2/Minimize2 button in controls row. Uses browser Fullscreen API, syncs state via fullscreenchange event.
+  - **Versions "Check All"**: Bulk run button triggers `/v1/monitors/bulk` for all version monitors simultaneously, waits 1.5s then reloads summary.
+  - **Branch rotation**: Merged heartbeat/2026-03-21-improvements → dev, created heartbeat/2026-03-19-enterprise-features
+
 ## Status Summary (2026-03-19 21:57 UTC)
 - **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); ⚠️ 2 moderate Next.js vulns (HTTP smuggling + image cache — mitigated by nginx; Next.js 16.2.0 rejected due to Turbopack/jsPDF incompatibility)

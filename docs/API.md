@@ -100,7 +100,14 @@ Authorization: Bearer <accessToken>
 {
   "ok": true,
   "service": "pulsedock-api",
-  "runtime": "nestjs"
+  "version": "1.0.2",
+  "runtime": "nestjs",
+  "uptimeMs": 123456,
+  "checks": {
+    "database": { "status": "ok", "latencyMs": 2 },
+    "redis": { "status": "ok" },
+    "scheduler": { "queueDepth": 0, "lastCycleMs": 12 }
+  }
 }
 ```
 

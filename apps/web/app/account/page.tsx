@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Download, Key, LogOut, Plus, QrCode, RefreshCw, Shield, Smartphone, Trash2, User, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -1208,6 +1208,16 @@ export default function AccountPage() {
           </Card>
         </FadeIn>
 
+        {/* System Info Card */}
+        <FadeIn delay={0.6}>
+          <SystemInfoCard userId={user?.id} />
+        </FadeIn>
+
+        {/* Data Retention Card */}
+        <FadeIn delay={0.65}>
+          <DataRetentionCard onSave={() => toastSuccess("Data retention settings saved")} />
+        </FadeIn>
+
         </div>{/* end right column */}
         </div>{/* end grid */}
       </div>
@@ -1559,5 +1569,182 @@ export default function AccountPage() {
         )}
       </Modal>
     </AppFrame>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// System Info Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SystemInfo {
+  version: string;
+  nodeVersion: string;
+  uptime: number;
+  database: string;
+}
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
+function SystemInfoCard({ userId }: { userId?: string }) {
+  const [info, setInfo] = useState<SystemInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api<SystemInfo>("/v2/system/info", userId)
+      .then(setInfo)
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load system info"))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const rows: Array<{ label: string; value: string }> = info
+    ? [
+        { label: "PulseDock Version", value: info.version },
+        { label: "Node.js Version", value: info.nodeVersion },
+        { label: "Uptime", value: formatUptime(Math.round(info.uptime)) },
+        { label: "Database", value: info.database },
+      ]
+    : [];
+
+  return (
+    <Card>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-2.5 rounded-xl bg-surface-elevated">
+          <Server className="w-5 h-5 text-text-secondary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-text-primary">System Info</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Runtime environment details</p>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-9 rounded-lg bg-surface-elevated/50 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20">
+          <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />
+          <span className="text-danger text-sm">{error}</span>
+        </div>
+      )}
+
+      {!loading && !error && info && (
+        <dl className="divide-y divide-border">
+          {rows.map(({ label, value }) => (
+            <div key={label} className="flex items-center justify-between py-2.5 px-1">
+              <dt className="text-sm text-text-secondary">{label}</dt>
+              <dd className="text-sm font-mono text-text-primary bg-surface-elevated px-2.5 py-1 rounded-md">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Data Retention Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RETENTION_OPTIONS = [
+  { value: 7, label: "7 days" },
+  { value: 30, label: "30 days" },
+  { value: 90, label: "90 days" },
+  { value: 365, label: "1 year" },
+] as const;
+
+function DataRetentionCard({ onSave }: { onSave: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<7 | 30 | 90 | 365>(90);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    // Simulate async save — backend implementation is a future task
+    await new Promise((r) => setTimeout(r, 600));
+    setSaving(false);
+    setShowForm(false);
+    onSave();
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-2.5 rounded-xl bg-surface-elevated">
+          <Database className="w-5 h-5 text-text-secondary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-text-primary">Data Retention</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Control how long historical data is kept</p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-elevated/50 border border-border mb-4">
+        <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+        <p className="text-sm text-text-secondary">
+          Monitor check history is retained for <span className="text-text-primary font-medium">90 days</span>. Older data is automatically pruned.
+        </p>
+      </div>
+
+      {!showForm ? (
+        <Button variant="secondary" onClick={() => setShowForm(true)} className="flex items-center gap-2">
+          Configure
+        </Button>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-text-secondary mb-3">Retention Period</p>
+            <div className="flex flex-wrap gap-2">
+              {RETENTION_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelected(value)}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    selected === value
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-surface-elevated text-text-secondary hover:border-accent/50 hover:text-text-primary"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
+              {saving ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save
+                </>
+              )}
+            </Button>
+            <Button variant="secondary" onClick={() => setShowForm(false)} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }

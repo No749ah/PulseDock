@@ -28,6 +28,11 @@ interface Monitor {
   enabled: boolean;
 }
 
+interface VersionSummaryItem {
+  id: string;
+  level: "green" | "yellow" | "red";
+}
+
 interface MonitorRun {
   id: string;
   monitorId: string;
@@ -60,6 +65,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
+  const [versionItems, setVersionItems] = useState<VersionSummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
@@ -135,7 +141,10 @@ export default function DashboardPage() {
       const monitorsData = await api<Monitor[]>("/v1/monitors");
       const sinceMs = timeRangeToMs[timeRange] ?? 86400000;
       const since = new Date(Date.now() - sinceMs).toISOString();
-      const runsData = await api<MonitorRun[]>(`/v1/monitors/runs?limit=200&since=${encodeURIComponent(since)}`);
+      const [runsData, versionSummary] = await Promise.all([
+        api<MonitorRun[]>(`/v1/monitors/runs?limit=200&since=${encodeURIComponent(since)}`),
+        api<{ stats: unknown; items: VersionSummaryItem[] }>("/v1/monitors/version-summary").catch(() => ({ stats: {}, items: [] })),
+      ]);
       if (!silent) {
         try {
           const channels = await api<{ id: string }[]>("/v1/alert-channels");
@@ -147,7 +156,8 @@ export default function DashboardPage() {
 
       setMonitors(monitorsData);
       setRuns(runsData);
-      setStats(computeStats(monitorsData, runsData));
+      setVersionItems(versionSummary.items ?? []);
+      setStats(computeStats(monitorsData, runsData, versionSummary.items ?? []));
       setLastRefreshed(new Date());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
@@ -174,7 +184,7 @@ export default function DashboardPage() {
     socket.on("monitor.created", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.some((m) => m.id === payload.id) ? prev : [payload, ...prev];
-        setStats(computeStats(next, runs));
+        setStats(computeStats(next, runs, versionItems));
         return next;
       });
     });
@@ -182,7 +192,7 @@ export default function DashboardPage() {
     socket.on("monitor.updated", (payload: Monitor) => {
       setMonitors((prev) => {
         const next = prev.map((m) => (m.id === payload.id ? payload : m));
-        setStats(computeStats(next, runs));
+        setStats(computeStats(next, runs, versionItems));
         return next;
       });
     });
@@ -192,16 +202,25 @@ export default function DashboardPage() {
         const next = prev.filter((m) => m.id !== payload.id);
         const nextRuns = runs.filter((r) => r.monitorId !== payload.id);
         setRuns(nextRuns);
-        setStats(computeStats(next, nextRuns));
+        setVersionItems((prev) => prev.filter((v) => v.id !== payload.id));
+        setStats(computeStats(next, nextRuns, versionItems.filter((v) => v.id !== payload.id)));
         return next;
       });
     });
 
     socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
       if (!payload?.run) return;
+      // Update versionItems if this is a version monitor check
+      if (payload.run.level) {
+        setVersionItems((prev) => {
+          const exists = prev.some((v) => v.id === payload.run.monitorId);
+          if (!exists) return prev;
+          return prev.map((v) => v.id === payload.run.monitorId ? { ...v, level: payload.run.level as "green" | "yellow" | "red" } : v);
+        });
+      }
       setRuns((prev) => {
         const nextRuns = [payload.run, ...prev.filter((r) => r.id !== payload.run.id)].slice(0, 20);
-        setStats((existing) => existing ? computeStats(monitors, nextRuns) : existing);
+        setStats((existing) => existing ? computeStats(monitors, nextRuns, versionItems) : existing);
         return nextRuns;
       });
     });
@@ -680,7 +699,7 @@ export default function DashboardPage() {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function computeStats(monitorsData: Monitor[], runsData: MonitorRun[]): DashboardStats {
+function computeStats(monitorsData: Monitor[], runsData: MonitorRun[], versionSummaryItems: VersionSummaryItem[] = []): DashboardStats {
   const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
   const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
 
@@ -699,14 +718,28 @@ function computeStats(monitorsData: Monitor[], runsData: MonitorRun[]): Dashboar
   const uptimeTotal = uptimeMonitors.length;
   const uptimePct = uptimeTotal === 0 ? 100 : Math.round((uptimeGreen / uptimeTotal) * 10000) / 100;
 
-  // Version: use latest run per monitor
+  // Version: use version-summary API data (always most recent run, not time-range limited)
+  // Fall back to runsData if summary not available
   let versionUpToDate = 0, versionUpdateAvailable = 0, versionMajorBehind = 0;
-  for (const m of versionMonitors) {
-    if (!m.enabled) continue;
-    const latest = runsData.find((r) => r.monitorId === m.id);
-    if (!latest || latest.level === "green") versionUpToDate++;
-    else if (latest.level === "yellow") versionUpdateAvailable++;
-    else versionMajorBehind++;
+  if (versionSummaryItems.length > 0) {
+    // Build a map for quick lookup
+    const summaryMap = new Map(versionSummaryItems.map((item) => [item.id, item.level]));
+    for (const m of versionMonitors) {
+      if (!m.enabled) continue;
+      const level = summaryMap.get(m.id);
+      if (!level || level === "green") versionUpToDate++;
+      else if (level === "yellow") versionUpdateAvailable++;
+      else versionMajorBehind++;
+    }
+  } else {
+    // Fallback: use time-range runs (may be inaccurate if monitor hasn't checked in range)
+    for (const m of versionMonitors) {
+      if (!m.enabled) continue;
+      const latest = runsData.find((r) => r.monitorId === m.id);
+      if (!latest || latest.level === "green") versionUpToDate++;
+      else if (latest.level === "yellow") versionUpdateAvailable++;
+      else versionMajorBehind++;
+    }
   }
 
   return {

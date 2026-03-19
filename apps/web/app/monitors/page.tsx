@@ -623,8 +623,9 @@ function MonitorsPageInner() {
       let blob: Blob;
       let filename: string;
       if (format === "csv") {
-        const headers = ["name", "type", "target", "enabled", "interval", "tags"];
+        const headers = ["id", "name", "type", "target", "enabled", "interval", "tags"];
         const rows = data.monitors.map((m) => [
+          `"${(m.id ?? "").replace(/"/g, '""')}"`,
           `"${(m.name ?? "").replace(/"/g, '""')}"`,
           m.type ?? "",
           `"${(m.target ?? "").replace(/"/g, '""')}"`,

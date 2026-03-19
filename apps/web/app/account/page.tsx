@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -144,6 +144,15 @@ export default function AccountPage() {
   const [reportForm, setReportForm] = useState<{ enabled: boolean; frequency: string; dayOfWeek: number; hourUtc: number }>({
     enabled: true, frequency: "weekly", dayOfWeek: 1, hourUtc: 8,
   });
+
+  // Team members state
+  type TeamRole = "Admin" | "Editor" | "Viewer";
+  interface TeamMember { id: string; name: string; email: string; role: TeamRole; avatarInitials: string; }
+  const [teamMembers] = useState<TeamMember[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
+  const [inviteSending, setInviteSending] = useState(false);
 
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);

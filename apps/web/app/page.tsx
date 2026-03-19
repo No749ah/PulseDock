@@ -453,7 +453,7 @@ export default function LandingPage() {
 
         <div className="relative mx-auto max-w-5xl px-6 text-center">
           <FadeIn>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] mb-6">
+            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6">
               <span className="animated-gradient-text">
                 Version Intelligence
               </span>
@@ -500,7 +500,7 @@ export default function LandingPage() {
 
           {/* ─── Hero Dashboard Mockup ─── */}
           <FadeIn delay={0.4}>
-            <div className="mt-16 mx-auto max-w-4xl">
+            <div className="hidden sm:block mt-16 mx-auto max-w-4xl">
               <div
                 className="rounded-2xl border border-border/60 bg-surface/80 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
                 style={{ boxShadow: "0 0 80px rgba(88,166,255,0.08), 0 32px 64px rgba(0,0,0,0.5)" }}
@@ -604,7 +604,7 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature, i) => (
               <FadeIn key={feature.title} delay={i * 0.06}>
-                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 transition-all duration-300 h-full">
+                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 transition-all duration-300 h-full min-h-[120px]">
                   <feature.icon className="w-9 h-9 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
                   <h3 className="text-base font-semibold mb-2">{feature.title}</h3>
                   <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
@@ -888,8 +888,8 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1}>
-            <div className="rounded-2xl border border-border bg-surface/60 backdrop-blur-sm overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="rounded-2xl border border-border bg-surface/60 backdrop-blur-sm overflow-hidden overflow-x-auto">
+              <div className="min-w-[600px]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
@@ -1153,7 +1153,7 @@ export default function LandingPage() {
       {/* ─── Footer ─── */}
       <footer className="border-t border-border py-16">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">

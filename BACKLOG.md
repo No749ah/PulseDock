@@ -1,3 +1,14 @@
+## Status Summary (2026-03-19 00:31 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline (from dev after branch rotation at 00:22 UTC)
+- **This session (2026-03-19 00:31 UTC):**
+  - **TS build fix**: `status: "checking" as const` in landing page URL checker — resolved union type assignment error
+  - **Branch rotation**: Merged heartbeat/2026-03-19-landing-docs-polish → dev, deleted old branch, created heartbeat/2026-03-19-widgets-offline
+  - **2 new status-page widgets**: `offline-banner` (auto-shows when navigator.onLine=false, dismissible amber banner, online/offline event listeners), `custom-metric-chart` (Recharts line/bar/area chart, configurable monitorId + metric + timeRange + chartType, bucketed time-series from MonitorRun data)
+  - Both widgets: backend resolver, frontend component, editor palette entry, config panel, registered in widget index
+
 ## Status Summary (2026-03-18 23:11 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical

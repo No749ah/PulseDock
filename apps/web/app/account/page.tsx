@@ -146,12 +146,17 @@ export default function AccountPage() {
   });
 
   // Team members state
-  type TeamRole = "Admin" | "Editor" | "Viewer";
-  interface TeamMember { id: string; name: string; email: string; role: TeamRole; avatarInitials: string; }
-  const [teamMembers] = useState<TeamMember[]>([]);
+  type TeamRoleApi = "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
+  type TeamRoleDisplay = "Admin" | "Editor" | "Viewer";
+  interface TeamMemberUser { id: string; email: string; displayName: string | null; }
+  interface TeamMember { id: string; ownerId: string; userId: string; role: TeamRoleApi; createdAt: string; user: TeamMemberUser; }
+  interface PendingInvite { id: string; email: string; role: TeamRoleApi; expiresAt: string; createdAt: string; }
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
+  const [inviteRole, setInviteRole] = useState<TeamRoleDisplay>("Viewer");
   const [inviteSending, setInviteSending] = useState(false);
 
   // Workspace settings state
@@ -200,7 +205,7 @@ export default function AccountPage() {
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
         setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
         setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
-        // Load audit log + notification preferences lazily (don't block main load)
+        // Load audit log + notification preferences + team data lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
         api<ScheduledReport | null>("/v1/reports", userId).then((r) => {
@@ -208,6 +213,14 @@ export default function AccountPage() {
           if (r) setReportForm({ enabled: r.enabled, frequency: r.frequency, dayOfWeek: r.dayOfWeek, hourUtc: r.hourUtc });
           setReportLoaded(true);
         }).catch(() => { setReportLoaded(true); });
+        setTeamLoading(true);
+        Promise.all([
+          api<TeamMember[]>("/v1/team/members", userId),
+          api<PendingInvite[]>("/v1/team/invites", userId),
+        ]).then(([members, invites]) => {
+          setTeamMembers(members);
+          setPendingInvites(invites);
+        }).catch(() => {}).finally(() => setTeamLoading(false));
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Failed to load account");
         router.push("/login");
@@ -415,17 +428,49 @@ export default function AccountPage() {
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviteSending(true);
-    // UI stub — backend will be wired later
-    await new Promise((r) => setTimeout(r, 600));
-    toastSuccess(`Invitation sent to ${inviteEmail.trim()}`);
-    setInviteEmail("");
-    setInviteRole("Viewer");
-    setShowInviteModal(false);
-    setInviteSending(false);
+    try {
+      const roleMap: Record<TeamRoleDisplay, TeamRoleApi> = { Admin: "ADMIN", Editor: "EDITOR", Viewer: "VIEWER" };
+      const result = await api<{ type: "member" | "invite"; data: TeamMember | PendingInvite }>(
+        "/v1/team/invite",
+        user?.id,
+        { method: "POST", body: JSON.stringify({ email: inviteEmail.trim(), role: roleMap[inviteRole] }) },
+      );
+      if (result.type === "member") {
+        setTeamMembers((prev) => [...prev, result.data as TeamMember]);
+        toastSuccess(`${inviteEmail.trim()} added as team member`);
+      } else {
+        setPendingInvites((prev) => [...prev, result.data as PendingInvite]);
+        toastSuccess(`Invitation sent to ${inviteEmail.trim()}`);
+      }
+      setInviteEmail("");
+      setInviteRole("Viewer");
+      setShowInviteModal(false);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to send invite");
+    } finally {
+      setInviteSending(false);
+    }
   };
 
-  const handleRemoveMember = (_id: string) => {
-    toastInfo("Feature coming soon");
+  const handleRemoveMember = async (memberId: string) => {
+    if (!window.confirm("Remove this team member?")) return;
+    try {
+      await api("/v1/team/members/" + memberId, user?.id, { method: "DELETE" });
+      setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
+      toastSuccess("Team member removed");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to remove member");
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    try {
+      await api("/v1/team/invites/" + inviteId, user?.id, { method: "DELETE" });
+      setPendingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+      toastSuccess("Invite cancelled");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to cancel invite");
+    }
   };
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -1357,7 +1402,11 @@ export default function AccountPage() {
               </Button>
             </div>
 
-            {teamMembers.length === 0 ? (
+            {teamLoading ? (
+              <div className="text-center py-8">
+                <span className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent inline-block" />
+              </div>
+            ) : teamMembers.length === 0 && pendingInvites.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="w-8 h-8 text-text-secondary/40 mx-auto mb-3" />
                 <p className="text-text-secondary text-sm">No team members yet</p>
@@ -1366,35 +1415,70 @@ export default function AccountPage() {
             ) : (
               <div className="space-y-2">
                 {teamMembers.map((member) => {
-                  const roleColors: Record<TeamRole, string> = {
-                    Admin: "bg-danger/15 text-danger border-danger/20",
-                    Editor: "bg-accent/15 text-accent border-accent/20",
-                    Viewer: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                  const roleColors: Record<TeamRoleApi, string> = {
+                    OWNER: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
+                    ADMIN: "bg-danger/15 text-danger border-danger/20",
+                    EDITOR: "bg-accent/15 text-accent border-accent/20",
+                    VIEWER: "bg-blue-500/15 text-blue-400 border-blue-500/20",
                   };
+                  const roleLabel: Record<TeamRoleApi, string> = { OWNER: "Owner", ADMIN: "Admin", EDITOR: "Editor", VIEWER: "Viewer" };
+                  const initials = (member.user.displayName ?? member.user.email).slice(0, 2).toUpperCase();
                   return (
                     <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated/50 border border-border">
                       <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-semibold text-accent">{member.avatarInitials}</span>
+                        <span className="text-sm font-semibold text-accent">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text-primary truncate">{member.name}</p>
-                        <p className="text-xs text-text-secondary truncate">{member.email}</p>
+                        <p className="text-sm font-medium text-text-primary truncate">{member.user.displayName ?? member.user.email}</p>
+                        <p className="text-xs text-text-secondary truncate">{member.user.email}</p>
                       </div>
                       <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${roleColors[member.role]}`}>
-                        {member.role}
+                        {roleLabel[member.role]}
                       </span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)} className="text-danger hover:text-danger shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {member.role !== "OWNER" && (
+                        <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id)} className="text-danger hover:text-danger shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
 
-            <p className="mt-4 text-xs text-text-secondary/60 border-t border-border pt-4">
-              Team collaboration features are in beta. Full role-based access coming soon.
-            </p>
+            {pendingInvites.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Pending Invites</p>
+                <div className="space-y-2">
+                  {pendingInvites.map((invite) => {
+                    const roleColors: Record<TeamRoleApi, string> = {
+                      OWNER: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
+                      ADMIN: "bg-danger/15 text-danger border-danger/20",
+                      EDITOR: "bg-accent/15 text-accent border-accent/20",
+                      VIEWER: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                    };
+                    const roleLabel: Record<TeamRoleApi, string> = { OWNER: "Owner", ADMIN: "Admin", EDITOR: "Editor", VIEWER: "Viewer" };
+                    return (
+                      <div key={invite.id} className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated/30 border border-border border-dashed">
+                        <div className="w-9 h-9 rounded-full bg-text-secondary/10 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-semibold text-text-secondary">?</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{invite.email}</p>
+                          <p className="text-xs text-text-secondary/60 truncate">Expires {new Date(invite.expiresAt).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${roleColors[invite.role]}`}>
+                          {roleLabel[invite.role]}
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={() => handleCancelInvite(invite.id)} className="text-text-secondary hover:text-danger shrink-0">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
         
 
@@ -1694,7 +1778,7 @@ export default function AccountPage() {
       {/* Invite Team Member Modal */}
       <Modal
         isOpen={showInviteModal}
-        onClose={() => { setShowInviteModal(false); setInviteEmail(""); setInviteRole("Viewer"); }}
+        onClose={() => { setShowInviteModal(false); setInviteEmail(""); setInviteRole("Viewer" as TeamRoleDisplay); }}
         title="Invite Team Member"
       >
         <div className="space-y-4">
@@ -1712,7 +1796,7 @@ export default function AccountPage() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">Role</label>
             <div className="grid grid-cols-3 gap-2">
-              {(["Admin", "Editor", "Viewer"] as TeamRole[]).map((role) => {
+              {(["Admin", "Editor", "Viewer"] as TeamRoleDisplay[]).map((role) => {
                 const desc = role === "Admin" ? "Full access" : role === "Editor" ? "Create & edit" : "Read-only";
                 const active = inviteRole === role;
                 const colors = role === "Admin" ? "border-danger bg-danger/10 text-danger" : role === "Editor" ? "border-accent bg-accent/10 text-accent" : "border-blue-500 bg-blue-500/10 text-blue-400";

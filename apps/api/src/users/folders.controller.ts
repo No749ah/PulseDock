@@ -16,16 +16,88 @@ export class FoldersController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List folders/projects', description: 'Returns all folders for the authenticated user.' })
-  @ApiResponse({ status: 200, description: 'Folder list returned.' })
+  @ApiOperation({
+    summary: 'List folders/projects',
+    description: 'Returns all folders for the authenticated user with per-folder monitor stats (count, health summary).',
+  })
+  @ApiResponse({ status: 200, description: 'Folder list returned with monitor stats.' })
   async list(@Req() req: { user: { id: string } }) {
-    const folders = await this.prisma.folder.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
-    return folders.map((f) => ({
-      id: f.id,
-      userId: f.userId,
-      name: f.name,
-      createdAt: f.createdAt.toISOString(),
-    }));
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [folders, monitors] = await Promise.all([
+      this.prisma.folder.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }),
+      this.prisma.monitor.findMany({
+        where: { userId: req.user.id, folderId: { not: null } },
+        include: {
+          runs: {
+            where: { checkedAt: { gte: cutoff } },
+            select: { ok: true },
+            orderBy: { checkedAt: 'desc' },
+            take: 100,
+          },
+        },
+      }),
+    ]);
+
+    return folders.map((f) => {
+      const folderMonitors = monitors.filter((m) => m.folderId === f.id);
+      const totalMonitors = folderMonitors.length;
+      const enabledMonitors = folderMonitors.filter((m) => m.enabled);
+
+      // Compute per-monitor last status and aggregate
+      let healthy = 0;
+      let degraded = 0;
+      let down = 0;
+
+      for (const m of enabledMonitors) {
+        if (m.runs.length === 0) {
+          degraded++;
+          continue;
+        }
+        const latestRun = m.runs[0];
+        const recentRuns = m.runs.slice(0, 5);
+        const failCount = recentRuns.filter((r: { ok: boolean }) => !r.ok).length;
+
+        if (!latestRun.ok) {
+          down++;
+        } else if (failCount >= 2) {
+          degraded++;
+        } else {
+          healthy++;
+        }
+      }
+
+      // 24h uptime% across all monitors in folder
+      const allRuns = folderMonitors.flatMap((m) => m.runs);
+      const uptimePct =
+        allRuns.length > 0
+          ? Math.round((allRuns.filter((r: { ok: boolean }) => r.ok).length / allRuns.length) * 1000) / 10
+          : null;
+
+      const overallStatus: 'operational' | 'degraded' | 'outage' | 'empty' =
+        totalMonitors === 0
+          ? 'empty'
+          : down > 0
+            ? 'outage'
+            : degraded > 0
+              ? 'degraded'
+              : 'operational';
+
+      return {
+        id: f.id,
+        userId: f.userId,
+        name: f.name,
+        createdAt: f.createdAt.toISOString(),
+        stats: {
+          totalMonitors,
+          enabledMonitors: enabledMonitors.length,
+          healthy,
+          degraded,
+          down,
+          uptimePct,
+          overallStatus,
+        },
+      };
+    });
   }
 
   @Post()
@@ -44,6 +116,15 @@ export class FoldersController {
       userId: folder.userId,
       name: folder.name,
       createdAt: folder.createdAt.toISOString(),
+      stats: {
+        totalMonitors: 0,
+        enabledMonitors: 0,
+        healthy: 0,
+        degraded: 0,
+        down: 0,
+        uptimePct: null,
+        overallStatus: 'empty' as const,
+      },
     };
   }
 

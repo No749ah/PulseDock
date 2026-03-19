@@ -55,6 +55,9 @@ model User {
   scheduledReport         ScheduledReport?
   settings                UserSettings?
   monitorRunRollups       MonitorRunRollup[]
+  ownedTeamMembers        TeamMember[]       @relation("workspace_owner")
+  teamMemberships         TeamMember[]       @relation("workspace_member")
+  sentTeamInvites         TeamInvite[]       @relation("sent_invites")
 }
 
 model Session {
@@ -444,6 +447,47 @@ model UserSettings {
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Team RBAC ─────────────────────────────────────────────────────────────────
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  ownerId   String
+  userId    String
+  role      TeamRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation("workspace_owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  user  User @relation("workspace_member", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, userId])
+  @@index([ownerId])
+  @@index([userId])
+}
+
+model TeamInvite {
+  id         String    @id @default(cuid())
+  ownerId    String
+  email      String
+  role       TeamRole  @default(VIEWER)
+  token      String    @unique @default(cuid())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  owner User @relation("sent_invites", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([email])
 }
 
 /// Aggregated monitor run data for long-term storage efficiency.

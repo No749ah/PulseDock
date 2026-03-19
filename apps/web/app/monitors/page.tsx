@@ -572,12 +572,27 @@ function MonitorsPageInner() {
     }
   };
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggleSelect = (id: string, event?: React.MouseEvent) => {
+    const currentIndex = monitors.findIndex((m) => m.id === id);
+    if (event?.shiftKey && lastSelectedIndexRef.current >= 0 && currentIndex >= 0) {
+      // Range selection: select all monitors between last clicked and current
+      const lo = Math.min(lastSelectedIndexRef.current, currentIndex);
+      const hi = Math.max(lastSelectedIndexRef.current, currentIndex);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (let i = lo; i <= hi; i++) {
+          next.add(monitors[i].id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    }
+    lastSelectedIndexRef.current = currentIndex;
   };
 
   const toggleSelectAll = () => {
@@ -1539,9 +1554,9 @@ function MonitorsPageInner() {
                           </TableCell>
                           <TableCell className="w-10">
                             <button
-                              onClick={() => toggleSelect(monitor.id)}
+                              onClick={(e) => toggleSelect(monitor.id, e)}
                               className="p-0.5 rounded text-text-secondary hover:text-text-primary transition-colors"
-                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name}`}
+                              aria-label={selectedIds.has(monitor.id) ? `Deselect ${monitor.name}` : `Select ${monitor.name} (Shift+click to select range)`}
                             >
                               {selectedIds.has(monitor.id)
                                 ? <CheckSquare className="w-4 h-4 text-accent" />

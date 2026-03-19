@@ -588,4 +588,65 @@ describe('AlertsService', () => {
       expect(metrics.snapshot().alertsFailed).toBe(1);
     });
   });
+
+  // ─── Delivery log ────────────────────────────────────────────────────────────
+
+  describe('alert delivery log', () => {
+    it('creates a delivery log entry on successful webhook send', async () => {
+      vi.useFakeTimers();
+      const prisma = makePrisma([makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } })].map((ch) => ({ alertChannel: ch })));
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
+
+      const promise = service.notifyTest(channel);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      expect(prisma.alertDeliveryLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            alertChannelId: channel.id,
+            status: 'success',
+            trigger: 'test',
+          }),
+        }),
+      );
+    });
+
+    it('creates a failed delivery log entry when webhook exhausts retries', async () => {
+      vi.useFakeTimers();
+      // Always fail
+      fetchMock.mockResolvedValue({ ok: false, status: 500 });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
+
+      const promise = service.notifyTest(channel).catch(() => {});
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      // After all retries, a failed log entry should be created
+      const createCalls = prisma.alertDeliveryLog.create.mock.calls;
+      const failedCall = createCalls.find((c: [{ data: { status: string } }]) => c[0].data.status === 'failed');
+      expect(failedCall).toBeDefined();
+    });
+
+    it('delivery log includes durationMs timing', async () => {
+      vi.useFakeTimers();
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test' } });
+
+      const promise = service.notifyTest(channel);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      const createCall = prisma.alertDeliveryLog.create.mock.calls[0];
+      expect(typeof createCall[0].data.durationMs).toBe('number');
+      expect(createCall[0].data.durationMs).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

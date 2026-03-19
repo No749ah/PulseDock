@@ -1341,6 +1341,8 @@ export default function StatusPageEditorPage() {
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
+  const [passwordInput, setPasswordInput] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const versionHistoryKey = `sp-vhist-${id}`;
   const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
@@ -2280,6 +2282,80 @@ export default function StatusPageEditorPage() {
                 >
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
+              </div>
+
+              {/* Password Protection */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-2">Password Protection</p>
+                {page?.hasPassword ? (
+                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text-primary">🔒 Password is set</span>
+                      <button
+                        disabled={changingPassword}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
+                            setPage((p) => p ? { ...p, hasPassword: false } : p);
+                            toastCtx.success("Password removed");
+                          } catch { toastCtx.error("Failed to remove password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="text-xs text-danger hover:underline disabled:opacity-50"
+                      >Remove password</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Set new password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        disabled={changingPassword || !passwordInput}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                            setPasswordInput("");
+                            toastCtx.success("Password updated");
+                          } catch { toastCtx.error("Failed to update password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      >Update</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
+                    <p className="text-xs text-text-secondary">No password set — page is publicly accessible.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Set a password to restrict access"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        disabled={changingPassword || !passwordInput}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                            setPasswordInput("");
+                            setPage((p) => p ? { ...p, hasPassword: true } : p);
+                            toastCtx.success("Password set");
+                          } catch { toastCtx.error("Failed to set password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      >Set</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* SEO Section */}

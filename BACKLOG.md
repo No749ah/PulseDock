@@ -598,8 +598,8 @@
 - [x] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
 - [x] **Column Layout** — 2/3/4 column container for sub-widget grouping within a single row. Config: columns (2/3/4), items JSON array [{heading, body}]
 - [x] **Sticky Header** — Overall system status bar. Shows operational/degraded/outage computed from all monitors. Config: label
-- [ ] **Table of Contents** — Auto-generated from section/header widgets with anchor links
-- [ ] **Page Navigation** — Links to other status pages in the account. For multi-page setups
+- [x] **Table of Contents** — Numbered jump-link list with configurable items [{label, anchor}] for navigating page sections
+- [x] **Page Navigation** — Grid of links to all other published status pages in the account (auto-fetched, real-time)
 
 ### P2 — Editor UX
 
@@ -626,7 +626,7 @@
 - [x] **Page Header Config** — Logo URL, favicon URL, accent color, background color in Page Settings modal
 - [x] **Custom Favicon** — faviconUrl in Page Settings, applied to public page
 - [x] **Custom Slug** — Slug set at creation; availability checker added (debounced real-time ✓ Available / ✗ Taken indicator via GET /v1/status-pages/slug-check)
-- [ ] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex)
+- [x] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex) — all in Page Settings modal + wired into generateMetadata() with Twitter card support
 - [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
 - [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
 - [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)

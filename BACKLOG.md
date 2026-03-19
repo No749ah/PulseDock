@@ -1112,7 +1112,7 @@
 - [x] **Hero section redesign** — Bold animated gradient headline, value prop, CTA buttons (Get Started / Live Demo), glassmorphic hero dashboard mockup with monitor table + sparklines + stat cards, trust badges, animated blobs
 - [x] **Feature showcase** — 8 feature cards (Version Intelligence, Uptime Monitoring, Status Pages, Smart Alerting, Incident Management, Tool Registry, Public API, CLI Tool) with FadeIn scroll animations
 - [x] **How it works section** — 3-step visual flow (Add Monitor / Run Checks / Get Alerted) with inline SVG visuals and animated connectors
-- [ ] **Live demo / Interactive preview** — Embedded mini-dashboard showing real data (or realistic mock). Animated charts, status dots, version badges. Users see what they get before signup.
+- [x] **Live demo / Interactive preview** — Landing page now includes an interactive dual-mode demo: (1) mini dashboard preview with monitor status dots, trend sparklines, and version update badges, plus (2) real in-browser URL uptime checker with live status/latency results and presets.
 - [x] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage — 9-feature matrix with check/X marks
 - [x] **Testimonials / Social proof** — Section with GitHub badge, open-source claim, "no tracking, no analytics" trust point
 - [x] **Pricing section** — Free self-hosted card + Cloud (coming soon) card with feature lists

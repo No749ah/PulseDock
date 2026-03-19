@@ -304,7 +304,7 @@ export function AppFrame({
               <Search className="w-3.5 h-3.5" />
               <span>Search…</span>
               <kbd className="flex items-center gap-0.5 text-[10px]">
-                <span>⌘K</span>
+                <span>Ctrl K</span>
               </kbd>
             </button>
 

@@ -9,6 +9,7 @@ import {
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
+  type DragMoveEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -67,6 +68,9 @@ import {
   Layers,
   ShieldAlert,
   ChevronUp,
+  ChevronsUp,
+  ChevronsDown,
+  ChevronDown,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -83,6 +87,7 @@ interface Widget {
   w: number;
   h: number;
   locked?: boolean;
+  zOrder?: number;
   config: {
     monitorId?: string;
     monitorIds?: string[];
@@ -613,6 +618,8 @@ interface CanvasProps {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   zoom: number;
   viewportMode: ViewportMode;
+  showGrid: boolean;
+  alignGuides: { type: "h" | "v"; pos: number }[];
   onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -620,7 +627,7 @@ interface CanvasProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -656,17 +663,36 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
       style={{ minHeight }}
       onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-widget]')) onSelect(null); }}
     >
-      {/* Grid guide lines — always visible (subtle), brighter when dragging */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: `
-            repeating-linear-gradient(to right, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
-            repeating-linear-gradient(to bottom, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
-          `,
-          transition: "opacity 0.15s ease",
-        }}
-      />
+      {/* Grid guide lines — visible when showGrid is on or when dragging */}
+      {(showGrid || isDraggingOverCanvas) && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(to right, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent calc(100% / ${COL_COUNT})),
+              repeating-linear-gradient(to bottom, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 0px, rgba(255 255 255 / ${showGrid ? "0.08" : isDraggingOverCanvas ? "0.06" : "0.025"}) 1px, transparent 1px, transparent ${ROW_H}px)
+            `,
+            transition: "opacity 0.15s ease",
+          }}
+        />
+      )}
+
+      {/* Alignment guide lines — shown during drag */}
+      {alignGuides.map((guide, i) =>
+        guide.type === "h" ? (
+          <div
+            key={`guide-h-${i}`}
+            className="pointer-events-none absolute left-0 right-0 z-50"
+            style={{ top: guide.pos, height: 1, background: "rgba(99,102,241,0.7)" }}
+          />
+        ) : (
+          <div
+            key={`guide-v-${i}`}
+            className="pointer-events-none absolute top-0 bottom-0 z-50"
+            style={{ left: guide.pos, width: 1, background: "rgba(99,102,241,0.7)" }}
+          />
+        )
+      )}
 
       {widgets.length === 0 && !isOver && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -686,8 +712,8 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
         </div>
       )}
 
-      {/* Render widgets */}
-      {widgets.map((widget) => {
+      {/* Render widgets (sorted by zOrder) */}
+      {[...widgets].sort((a, b) => (a.zOrder ?? 0) - (b.zOrder ?? 0)).map((widget) => {
         const colWidth = canvasRef.current
           ? canvasRef.current.getBoundingClientRect().width / COL_COUNT
           : 0;
@@ -724,9 +750,10 @@ interface ConfigPanelProps {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onToggleLock: (id: string) => void;
+  onZOrder: (id: string, action: "front" | "back" | "forward" | "backward") => void;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock, onZOrder }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -1388,6 +1415,32 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
           {w.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
           {w.locked ? "Unlock Widget" : "Lock Widget"}
         </button>
+
+        {/* Layer order */}
+        <div className="rounded-lg border border-border bg-bg overflow-hidden">
+          <div className="flex items-center gap-1.5 border-b border-border px-2.5 py-1.5">
+            <Layers className="h-3 w-3 text-text-secondary/60" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/60">Layer</span>
+          </div>
+          <div className="grid grid-cols-4">
+            {([
+              { action: "front" as const, icon: ChevronsUp, title: "Bring to front" },
+              { action: "forward" as const, icon: ChevronUp, title: "Bring forward" },
+              { action: "backward" as const, icon: ChevronDown, title: "Send backward" },
+              { action: "back" as const, icon: ChevronsDown, title: "Send to back" },
+            ]).map(({ action, icon: Icon, title }) => (
+              <button
+                key={action}
+                onClick={() => onZOrder(w.id, action)}
+                title={title}
+                className="flex items-center justify-center py-1.5 text-text-secondary/60 transition hover:bg-accent/10 hover:text-accent"
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           onClick={() => onDuplicate(w.id)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/10"
@@ -1441,6 +1494,8 @@ export default function StatusPageEditorPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [showGrid, setShowGrid] = useState(false);
+  const [alignGuides, setAlignGuides] = useState<{ type: "h" | "v"; pos: number }[]>([]);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -1843,12 +1898,96 @@ export default function StatusPageEditorPage() {
     );
   }
 
+  function handleZOrder(widgetId: string, action: "front" | "back" | "forward" | "backward") {
+    setWidgets((prev) => {
+      const sorted = [...prev].sort((a, b) => (a.zOrder ?? 0) - (b.zOrder ?? 0));
+      const idx = sorted.findIndex((w) => w.id === widgetId);
+      if (idx === -1) return prev;
+      const newSorted = [...sorted];
+      if (action === "front") {
+        const [item] = newSorted.splice(idx, 1);
+        newSorted.push(item);
+      } else if (action === "back") {
+        const [item] = newSorted.splice(idx, 1);
+        newSorted.unshift(item);
+      } else if (action === "forward" && idx < newSorted.length - 1) {
+        const tmp = newSorted[idx + 1];
+        newSorted[idx + 1] = newSorted[idx];
+        newSorted[idx] = tmp;
+      } else if (action === "backward" && idx > 0) {
+        const tmp = newSorted[idx - 1];
+        newSorted[idx - 1] = newSorted[idx];
+        newSorted[idx] = tmp;
+      }
+      return newSorted.map((w, i) => ({ ...w, zOrder: i }));
+    });
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    const { active, delta } = event;
+    const activeId = active.id as string;
+    if (!activeId.startsWith("canvas-") || !canvasRef.current) {
+      setAlignGuides([]);
+      return;
+    }
+    const widgetId = activeId.replace("canvas-", "");
+    const movingWidget = widgets.find((w) => w.id === widgetId);
+    if (!movingWidget || !canvasRef.current) return;
+
+    const containerWidth = canvasRef.current.getBoundingClientRect().width;
+    const colWidth = containerWidth / COL_COUNT;
+    const movedX = Math.max(0, Math.min(COL_COUNT - movingWidget.w, movingWidget.x + Math.round(delta.x / colWidth))) * colWidth;
+    const movedY = Math.max(0, movingWidget.y + Math.round(delta.y / ROW_H)) * ROW_H;
+    const movedRight = movedX + movingWidget.w * colWidth;
+    const movedCenterH = movedX + (movingWidget.w * colWidth) / 2;
+    const movedBottom = movedY + movingWidget.h * ROW_H;
+    const movedCenterV = movedY + (movingWidget.h * ROW_H) / 2;
+
+    const guides: { type: "h" | "v"; pos: number }[] = [];
+    const SNAP_TOLERANCE = 8; // pixels
+
+    for (const w of widgets) {
+      if (w.id === widgetId) continue;
+      const wx = w.x * colWidth;
+      const wy = w.y * ROW_H;
+      const wr = (w.x + w.w) * colWidth;
+      const wb = (w.y + w.h) * ROW_H;
+      const wcv = wy + (w.h * ROW_H) / 2;
+      const wch = wx + (w.w * colWidth) / 2;
+
+      // Vertical guides (left/right/center alignment)
+      for (const [myEdge, theirEdge] of [[movedX, wx], [movedX, wr], [movedRight, wx], [movedRight, wr], [movedCenterH, wch]]) {
+        if (Math.abs(myEdge - theirEdge) <= SNAP_TOLERANCE) {
+          guides.push({ type: "v", pos: theirEdge });
+        }
+      }
+      // Horizontal guides (top/bottom/center alignment)
+      for (const [myEdge, theirEdge] of [[movedY, wy], [movedY, wb], [movedBottom, wy], [movedBottom, wb], [movedCenterV, wcv]]) {
+        if (Math.abs(myEdge - theirEdge) <= SNAP_TOLERANCE) {
+          guides.push({ type: "h", pos: theirEdge });
+        }
+      }
+    }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    const unique = guides.filter((g) => {
+      const key = `${g.type}:${g.pos}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    setAlignGuides(unique);
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveDragId(event.active.id as string);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null);
+    setAlignGuides([]);
     const { active, delta, over } = event;
     const activeId = active.id as string;
 
@@ -1909,7 +2048,7 @@ export default function StatusPageEditorPage() {
   const publicBase = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
       <div className="flex h-screen flex-col bg-bg text-text-primary">
         {/* Toolbar */}
         <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-sm">
@@ -2037,6 +2176,15 @@ export default function StatusPageEditorPage() {
                 </button>
               ))}
             </div>
+
+            {/* Show/hide grid toggle */}
+            <button
+              onClick={() => setShowGrid((v) => !v)}
+              title={showGrid ? "Hide grid" : "Show grid"}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition ${showGrid ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
+            >
+              <Grid className="h-3.5 w-3.5" />
+            </button>
 
             {/* Canvas zoom controls */}
             <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
@@ -2186,6 +2334,8 @@ export default function StatusPageEditorPage() {
               canvasRef={canvasRef}
               zoom={zoom}
               viewportMode={viewportMode}
+              showGrid={showGrid}
+              alignGuides={alignGuides}
               onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
@@ -2210,6 +2360,7 @@ export default function StatusPageEditorPage() {
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}
               onToggleLock={toggleWidgetLock}
+              onZOrder={handleZOrder}
             />
           </aside>
         </div>

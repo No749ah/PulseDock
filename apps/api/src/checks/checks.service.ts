@@ -15,7 +15,7 @@ import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
 
 @Injectable()
 export class ChecksService {
-  private readonly realtime: Pick<RealtimeEvents, 'monitorChecked'>;
+  private readonly realtime: Pick<RealtimeEvents, 'monitorChecked' | 'statusPageUpdated'>;
   private readonly pluginRegistry = new PluginRegistry();
 
   constructor(
@@ -23,7 +23,7 @@ export class ChecksService {
     private readonly alerts: AlertsService,
     @Optional() realtime?: RealtimeEvents,
   ) {
-    this.realtime = realtime ?? { monitorChecked: () => undefined };
+    this.realtime = realtime ?? { monitorChecked: () => undefined, statusPageUpdated: () => undefined };
     this.pluginRegistry.register(httpResponseMatchPlugin);
   }
 
@@ -1073,6 +1073,30 @@ export class ChecksService {
         levelChanged,
       },
     });
+
+    // Notify public status pages that include this monitor
+    if (levelChanged) {
+      try {
+        const pages = await this.prisma.publicStatusPage.findMany({
+          where: { userId: monitor.userId, isPublished: true },
+          select: { slug: true, layout: true },
+        });
+        const monitorId = monitor.id;
+        for (const page of pages) {
+          const layoutStr = JSON.stringify(page.layout);
+          if (layoutStr.includes(monitorId)) {
+            this.realtime.statusPageUpdated(page.slug, {
+              monitorId,
+              level: result.level,
+              latencyMs: result.latencyMs,
+              checkedAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch {
+        // Non-critical — don't block the check result
+      }
+    }
 
     return run;
   }

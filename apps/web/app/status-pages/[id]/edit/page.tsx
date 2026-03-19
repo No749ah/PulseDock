@@ -1831,6 +1831,41 @@ export default function StatusPageEditorPage() {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (meta && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      // Copy: Ctrl+C — copy selected widgets to clipboard (localStorage)
+      if (meta && e.key === "c") {
+        const allSelected = new Set(selectedIds);
+        if (selectedId) allSelected.add(selectedId);
+        if (allSelected.size > 0) {
+          e.preventDefault();
+          const copied = widgets.filter((w) => allSelected.has(w.id));
+          localStorage.setItem("pulsedock:widget-clipboard", JSON.stringify(copied));
+        }
+      }
+      // Paste: Ctrl+V — paste from clipboard with offset
+      if (meta && e.key === "v") {
+        e.preventDefault();
+        const raw = localStorage.getItem("pulsedock:widget-clipboard");
+        if (raw) {
+          try {
+            const copied: Widget[] = JSON.parse(raw);
+            if (Array.isArray(copied) && copied.length > 0) {
+              const maxY = Math.max(...widgets.map((w) => w.y + w.h), 0);
+              const minY = Math.min(...copied.map((w) => w.y), 0);
+              const pasted: Widget[] = copied.map((w) => ({
+                ...w,
+                id: `w-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                y: w.y - minY + maxY + 1,
+                locked: false,
+              }));
+              setWidgets((prev) => [...prev, ...pasted]);
+              setSelectedId(pasted[0]?.id ?? null);
+              setSelectedIds(new Set(pasted.map((p) => p.id)));
+            }
+          } catch {
+            // ignore malformed clipboard
+          }
+        }
+      }
       if (meta && e.key === "d") {
         e.preventDefault();
         // Group duplicate: duplicate all selected, or single if only one

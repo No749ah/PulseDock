@@ -9,6 +9,7 @@ import { RssFeedCopyButton } from "./RssFeedCopyButton";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 import { OfflineBannerWidget } from "./OfflineBannerWidget";
 import { CustomMetricChart } from "./CustomMetricChart";
+import { AnimatedNumber, AnimatedUptimeCard } from "./AnimatedWidgets";
 
 export interface MonitorSummary {
   id: string;
@@ -403,6 +404,7 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
   const remainingDownMin = widgetData?.remainingDownMinutes ?? null;
   const allowedDownMin = widgetData?.allowedDownMinutes ?? null;
 
+
   function formatMinutes(min: number): string {
     if (min < 1) return `${Math.round(min * 60)}s`;
     if (min < 60) return `${Math.round(min)}m`;
@@ -433,7 +435,7 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
       <div className="flex items-end gap-4 mb-3">
         <div>
           <p className={`text-3xl font-semibold tabular-nums ${pass ? "text-green-400" : "text-red-400"}`}>
-            {actual.toFixed(2)}%
+            <AnimatedNumber value={actual} decimals={2} duration={1200} suffix="%" />
           </p>
           <p className="text-xs text-text-secondary">
             Actual · {periodDays}d
@@ -969,15 +971,8 @@ function RollingUptimeCards({ widget, extra }: WidgetProps) {
       {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {data.cards.map((c) => (
-          <div key={c.label} className={`rounded-lg border ${uptimeBorder(c.uptimePct)} ${uptimeBg(c.uptimePct)} p-3 text-center`}>
-            <div className={`text-xl font-bold tabular-nums ${uptimeColor(c.uptimePct)}`}>
-              {c.uptimePct.toFixed(c.uptimePct >= 99.9 ? 2 : 1)}%
-            </div>
-            <div className="text-xs text-text-secondary mt-0.5 font-medium">{c.label}</div>
-            {c.total > 0 && (
-              <div className="text-[10px] text-text-muted mt-0.5">{c.total} checks</div>
-            )}
-          </div>
+          <AnimatedUptimeCard key={c.label} card={c} uptimeColor={uptimeColor} uptimeBg={uptimeBg} uptimeBorder={uptimeBorder} />
+        
         ))}
       </div>
     </div>
@@ -1084,7 +1079,7 @@ function UptimePercentageCard({ widget, extra }: WidgetProps) {
     <div className="rounded-xl border border-border bg-surface p-6 text-center">
       {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
       <div className={`text-5xl font-bold tabular-nums ${uptimeColor}`}>
-        {data.uptimePct.toFixed(2)}%
+        <AnimatedNumber value={data.uptimePct} decimals={2} duration={1400} suffix="%" />
       </div>
       <div className="text-xs text-text-secondary mt-2">
         Uptime — last {data.periodDays}d

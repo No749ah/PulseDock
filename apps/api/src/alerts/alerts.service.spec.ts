@@ -339,9 +339,8 @@ describe('AlertsService', () => {
         makeChannel({ id: 'chan-2', userId: monitor.userId, type: 'webhook', config: { url: 'https://success.example.com' } }),
       ];
 
-      // First channel always fails (4 attempts = initial + 3 retries), second succeeds
+      // First channel always fails (3 attempts = maxRetries=3), second succeeds
       fetchMock
-        .mockRejectedValueOnce(new Error('fail'))
         .mockRejectedValueOnce(new Error('fail'))
         .mockRejectedValueOnce(new Error('fail'))
         .mockRejectedValueOnce(new Error('fail'))
@@ -376,8 +375,7 @@ describe('AlertsService', () => {
       fetchMock
         .mockRejectedValueOnce(new Error('fail 1'))
         .mockRejectedValueOnce(new Error('fail 2'))
-        .mockRejectedValueOnce(new Error('fail 3'))
-        .mockRejectedValueOnce(new Error('fail 4'));
+        .mockRejectedValueOnce(new Error('fail 3'));
 
       const prisma = makePrisma();
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
@@ -385,12 +383,12 @@ describe('AlertsService', () => {
 
       const promise = service.notifyTest(channel);
       // Attach the rejection handler before advancing timers to avoid unhandled rejection
-      const rejectCheck = expect(promise).rejects.toThrow('fail 4');
-      // Advance past all retry delays: 200 + 800 + 2000 = 3000ms
+      const rejectCheck = expect(promise).rejects.toThrow('fail 3');
+      // Advance past all retry delays: 1s + 2s = 3s (exponential backoff, 3 attempts total)
       await vi.runAllTimersAsync();
       await rejectCheck;
-      // 4 attempts total: 1 initial + 3 retries
-      expect(fetchMock).toHaveBeenCalledTimes(4);
+      // 3 attempts total with maxRetries=3
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
     it('succeeds on second attempt', async () => {
@@ -426,6 +424,53 @@ describe('AlertsService', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(3);
       expect(metrics.snapshot().alertsSent).toBe(1);
+    });
+  });
+
+  // ── sendWithRetryFn ──────────────────────────────────────────────────────────
+
+  describe('sendWithRetryFn()', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('succeeds on the 3rd attempt (exponential backoff: 1s → 2s)', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      let callCount = 0;
+      const fn = vi.fn(async () => {
+        callCount++;
+        if (callCount < 3) throw new Error(`attempt ${callCount} failed`);
+        // 3rd attempt succeeds
+      });
+
+      const promise = service.sendWithRetryFn(fn, 3);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(fn).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws the last error after max retries exhausted', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const fn = vi.fn(async () => {
+        throw new Error('persistent failure');
+      });
+
+      const promise = service.sendWithRetryFn(fn, 3);
+      const rejection = expect(promise).rejects.toThrow('persistent failure');
+      await vi.runAllTimersAsync();
+      await rejection;
+
+      // Called exactly maxRetries times
+      expect(fn).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -563,6 +608,7 @@ describe('AlertsService', () => {
           }]),
         },
         maintenanceWindow: { findFirst: vi.fn().mockResolvedValue(null) },
+        alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
       };
       const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);
 

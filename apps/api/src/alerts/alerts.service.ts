@@ -178,17 +178,38 @@ export class AlertsService {
     }
   }
 
+  /**
+   * Retry helper with exponential backoff.
+   * Delays: 1s → 2s → 4s (2^(attempt-1) seconds).
+   * Logs each failed attempt. Throws after maxRetries exhausted.
+   */
+  async sendWithRetryFn(fn: () => Promise<void>, maxRetries = 3): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await fn();
+        return;
+      } catch (err) {
+        const delayMs = Math.pow(2, attempt - 1) * 1000;
+        this.logger.warn(
+          `Webhook delivery attempt ${attempt}/${maxRetries} failed: ${err instanceof Error ? err.message : String(err)}${attempt < maxRetries ? ` — retrying in ${delayMs}ms` : ' — giving up'}`,
+        );
+        if (attempt === maxRetries) throw err;
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+
   private async sendWithRetry(
     channel: AlertChannel,
     text: string,
     extra?: unknown,
     deliveryMeta?: { monitorId?: string; monitorName?: string; trigger?: string },
+    maxRetries = 3,
   ) {
-    const delays = [200, 800, 2000];
     let lastError: unknown;
     const startMs = Date.now();
 
-    for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         await this.send(channel, text, extra);
         this.metrics.inc('alertsSent');
@@ -206,8 +227,12 @@ export class AlertsService {
         return;
       } catch (error) {
         lastError = error;
-        if (attempt < delays.length) {
-          await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+        const delayMs = Math.pow(2, attempt - 1) * 1000; // 1s → 2s → 4s
+        this.logger.warn(
+          `Alert delivery attempt ${attempt}/${maxRetries} failed for channel "${channel.id}" (type=${channel.type}): ${error instanceof Error ? error.message : String(error)}${attempt < maxRetries ? ` — retrying in ${delayMs}ms` : ' — giving up'}`,
+        );
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
       }
     }

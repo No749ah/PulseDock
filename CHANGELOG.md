@@ -7,7 +7,45 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
-## [Unreleased]
+## [Unreleased] — 2026-03-19
+
+### Added
+- Dashboard: customizable section order (localStorage), time range selector (1h/6h/24h/7d/30d), live pulsing indicator
+- Monitors: advanced filter panel (status/type/tag), sortable columns, hover quick-actions, latency column, check-now button, card view polish
+- Monitors: status bar history tooltips, row expansion with check history
+- Status pages: print button, print CSS, copy/paste widgets across pages
+- Versions page: summary row, diff indicators, changelog links, sort dropdown
+- Incidents: summary header, severity/status badges, duration display, empty state
+- Alert channels: channel type icons, last-triggered column, improved test button
+- Maintenance: upcoming calendar widget, status badges, duration display
+- Account: Team Members UI, Workspace Settings UI, Data Retention card
+- Team API: stub endpoints (GET/POST/DELETE /v1/team/*)
+- Settings API: data retention endpoint (GET/PUT /v1/settings/retention)
+- Changelog page with timeline layout and navigation entry
+- Chart.js components: LineSparkline, BarChartCJS
+- Loading skeletons: TableSkeleton, route loading.tsx files
+- Command palette: 7 new commands, shortcut kbd badges
+- Error pages: custom 404, error boundary, global-error
+
+### Security
+- API key scope enforcement: @RequireScope decorator + ScopeGuard
+- Rate limiting: per-endpoint overrides (30/min for write ops)
+
+### Performance
+- DB indexes: AuditLog compound indexes (userId+createdAt)
+- N+1 eliminated in version summary queries
+- Scheduler: jitter (0-5s per monitor), queue depth tracking
+- Webhook delivery: exponential backoff (1s/2s/4s)
+
+### Tests
+- Reports service: 11 new unit tests
+- Team service: 3 unit tests
+- Scope guard: 14 unit tests
+- Alert delivery: 3 new coverage tests
+
+---
+
+## [Unreleased] — Prior
 
 ### Added
 - **Tool registry expanded 1303 → 1385 tools (+82)** — New tool categories: AI/ML platforms, ERP/Business software, Search/Vector databases, IoT/Edge devices, Photo/Document services.

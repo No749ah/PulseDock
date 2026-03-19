@@ -1,3 +1,16 @@
+## Status Summary (2026-03-19 18:17 UTC)
+- **Build/Test:** ✅ Clean build, 1512 tests passing (1490 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All 9 routes 200 local + public URL healthy
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 18:17 UTC):**
+  - Fixed pre-existing TS2769 type error in `alerts.service.spec.ts` find callback annotation
+  - **Export Status Page as PNG**: `ExportImageButton` component (html2canvas, dynamic import, 2x retina). Wired into public status page header alongside PrintButton. `id="status-page-content"` added to main element.
+  - **Monitor row expansion upgraded**: Response time sparkline (MiniSparkline, recharts) in expanded panel with avg latency label, improved status dots with hover tooltip, "View detail →" link to monitor detail page
+  - **CONTRIBUTING.md**: Full architecture overview, key concepts (Scheduler, Alert Delivery, Status Pages, WebSocket, Tool Registry), instructions for adding endpoints/widgets/registry entries
+  - **Registry lint script**: `packages/tool-registry/scripts/lint-registry.ts` validates: duplicate IDs, missing required fields, invalid categories, malformed IDs, missing targets. `registry:lint` npm script at root. `tsconfig.json` for tool-registry package.
+  - Checked: all pages 200, API healthy, public URL 200
+
 ## Status Summary (2026-03-19 17:46 UTC)
 - **Build/Test:** ⚠️ Tool registry expanded to 2567 entries; API `tsc` still reports pre-existing test typing error in `alerts.service.spec.ts`; registry-focused tests passed
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -859,7 +872,7 @@
 - [x] **Print-friendly CSS** — Already implemented: @media print in globals.css with A4 page setup, hide interactive chrome, force white backgrounds, proper typography for print, print-only elements. Print button on status pages.
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
 - [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
-- [ ] **Export as Image** — Download current status page as PNG (html2canvas or server-side render)
+- [x] **Export as Image** — Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
 - [ ] **Export as PDF** — Generate PDF report of current status
 
 ### P1 — Tool Registry & Templates Expansion

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUser } from "../components/auth";
 import Link from "next/link";
@@ -232,6 +232,173 @@ function MiniSparkline({ bars }: { bars: number[] }) {
 /* ────────────────────────────────────────────────────────────
    Component
    ──────────────────────────────────────────────────────────── */
+
+// ── Live Demo Component ────────────────────────────────────────────────────
+
+interface CheckResult {
+  url: string;
+  status: "checking" | "up" | "down" | "error";
+  statusCode?: number;
+  latencyMs?: number;
+  error?: string;
+}
+
+function LiveDemo() {
+  const [inputUrl, setInputUrl] = useState("");
+  const [results, setResults] = useState<CheckResult[]>([]);
+  const [checking, setChecking] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const presetUrls = ["https://github.com", "https://cloudflare.com", "https://vercel.com"];
+
+  async function checkUrl(rawUrl: string) {
+    let url = rawUrl.trim();
+    if (!url) return;
+    if (!url.startsWith("http")) url = `https://${url}`;
+
+    const existing = results.find((r) => r.url === url);
+    if (existing && existing.status !== "error") return;
+
+    setChecking(true);
+    const start = Date.now();
+
+    setResults((prev) => {
+      const next = prev.filter((r) => r.url !== url);
+      return [{ url, status: "checking" as const }, ...next].slice(0, 6);
+    });
+
+    try {
+      const res = await fetch(`/api/check-url?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
+      const data = await res.json() as { ok: boolean; status?: number; latencyMs?: number; error?: string };
+      const latencyMs = data.latencyMs ?? (Date.now() - start);
+      setResults((prev) => prev.map((r) =>
+        r.url === url
+          ? { url, status: data.ok ? "up" : "down", statusCode: data.status, latencyMs }
+          : r
+      ));
+    } catch {
+      setResults((prev) => prev.map((r) =>
+        r.url === url ? { url, status: "error", error: "Request failed" } : r
+      ));
+    } finally {
+      setChecking(false);
+      setInputUrl("");
+    }
+  }
+
+  const statusColor = (s: CheckResult["status"]) =>
+    s === "up" ? "bg-success text-success" : s === "checking" ? "bg-accent text-accent" : "bg-danger text-danger";
+  const statusLabel = (r: CheckResult) =>
+    r.status === "checking" ? "Checking…" : r.status === "up" ? `${r.statusCode ?? 200} OK` : r.status === "down" ? `${r.statusCode ?? "Error"}` : "Failed";
+
+  return (
+    <div className="mx-auto max-w-5xl px-6">
+      <FadeIn>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+            Try It{" "}
+            <GradientText from="#58a6ff" to="#3fb950">
+              Live
+            </GradientText>
+          </h2>
+          <p className="text-text-secondary text-lg max-w-xl mx-auto">
+            Enter any URL and check if it's up — right now, in your browser.
+            This is exactly what PulseDock does, 24/7, automatically.
+          </p>
+        </div>
+      </FadeIn>
+
+      <FadeIn delay={0.15}>
+        <div className="rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40 overflow-hidden">
+          {/* Browser chrome */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface-elevated">
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-danger/50" />
+              <div className="w-3 h-3 rounded-full bg-warning/50" />
+              <div className="w-3 h-3 rounded-full bg-success/50" />
+            </div>
+            <div className="flex-1 mx-4">
+              <div className="bg-bg/60 rounded-md px-3 py-1.5 text-xs text-text-muted text-center font-mono">
+                PulseDock — Live Check
+              </div>
+            </div>
+          </div>
+
+          {/* Demo content */}
+          <div className="p-6 md:p-8 space-y-6">
+            {/* URL input */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); checkUrl(inputUrl); }}
+              className="flex gap-2"
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                placeholder="Enter any URL to check (e.g. https://github.com)"
+                className="flex-1 rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-accent focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={checking || !inputUrl.trim()}
+                className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50 shrink-0"
+              >
+                Check
+              </button>
+            </form>
+
+            {/* Presets */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-text-secondary">Try:</span>
+              {presetUrls.map((url) => (
+                <button
+                  key={url}
+                  onClick={() => checkUrl(url)}
+                  disabled={checking}
+                  className="text-xs rounded-lg border border-border bg-bg/60 px-3 py-1 text-text-secondary hover:text-accent hover:border-accent/40 transition disabled:opacity-50"
+                >
+                  {url.replace("https://", "")}
+                </button>
+              ))}
+            </div>
+
+            {/* Results */}
+            {results.length > 0 && (
+              <div className="space-y-2">
+                {results.map((r) => (
+                  <div
+                    key={r.url}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-bg/40 px-4 py-3"
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor(r.status).split(" ")[0]} ${r.status === "checking" ? "animate-pulse" : ""}`} />
+                    <span className="text-sm text-text-primary font-mono flex-1 truncate">{r.url.replace(/^https?:\/\//, "")}</span>
+                    <span className={`text-xs font-medium tabular-nums ${r.status === "up" ? "text-success" : r.status === "checking" ? "text-accent" : "text-danger"}`}>
+                      {statusLabel(r)}
+                    </span>
+                    {r.latencyMs !== undefined && (
+                      <span className="text-xs text-text-muted tabular-nums w-16 text-right">{r.latencyMs}ms</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {results.length === 0 && (
+              <div className="text-center py-8 text-sm text-text-secondary">
+                Enter a URL above and click Check — or try one of the presets.
+              </div>
+            )}
+
+            <p className="text-xs text-text-muted text-center">
+              PulseDock runs checks like this automatically, 24/7 — across all your services, with alerts and status pages.
+            </p>
+          </div>
+        </div>
+      </FadeIn>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const router = useRouter();
@@ -701,82 +868,7 @@ export default function LandingPage() {
 
       {/* ─── Demo Preview ─── */}
       <section id="demo" aria-label="Demo" className="py-24 md:py-32 border-t border-border">
-        <div className="mx-auto max-w-4xl px-6">
-          <FadeIn>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-                Beautiful{" "}
-                <GradientText from="#58a6ff" to="#3fb950">
-                  Status Pages
-                </GradientText>
-              </h2>
-              <p className="text-text-secondary text-lg max-w-xl mx-auto">
-                Share real-time system health with your team or the world.
-                Always on, always accurate.
-              </p>
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={0.15}>
-            <div className="rounded-2xl border border-border bg-surface shadow-2xl shadow-black/40 overflow-hidden">
-              {/* Browser chrome */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface-elevated">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-danger/50" />
-                  <div className="w-3 h-3 rounded-full bg-warning/50" />
-                  <div className="w-3 h-3 rounded-full bg-success/50" />
-                </div>
-                <div className="flex-1 mx-4">
-                  <div className="bg-bg/60 rounded-md px-3 py-1.5 text-xs text-text-muted text-center font-mono">
-                    status.yourcompany.com
-                  </div>
-                </div>
-              </div>
-
-              {/* Status page content */}
-              <div className="p-6 md:p-8 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold">System Status</h3>
-                    <p className="text-sm text-text-muted mt-0.5">Updated just now</p>
-                  </div>
-                  <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-full px-4 py-1.5">
-                    <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                    <span className="text-sm font-medium text-success">All Systems Operational</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {demoServices.map((service) => (
-                    <div
-                      key={service.name}
-                      className="flex items-center justify-between py-3 px-4 rounded-xl bg-bg/50 border border-border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-2.5 h-2.5 rounded-full bg-success" />
-                        <span className="text-sm font-medium">{service.name}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="hidden sm:flex items-end gap-[2px] h-4">
-                          {Array.from({ length: 30 }, (_, j) => (
-                            <div
-                              key={j}
-                              className="w-[3px] rounded-full bg-success/60"
-                              style={{ height: `${60 + ((j * 17 + 7) % 40)}%` }}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-text-muted tabular-nums w-14 text-right">
-                          {service.uptime}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
+        <LiveDemo />
       </section>
 
       {/* ─── Comparison ─── */}

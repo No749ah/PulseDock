@@ -20,6 +20,11 @@ interface PageSettings {
   fontFamily?: "inter" | "roboto" | "system" | "mono";
   backgroundStyle?: "solid" | "gradient" | "grid-dots";
   backgroundColor?: string;
+  // SEO
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageUrl?: string;
+  robotsIndex?: boolean;
 }
 
 interface PageLayout {
@@ -183,12 +188,24 @@ export async function generateMetadata({
     if (!res.ok) return {};
     const data: PublicPageData = await res.json() as PublicPageData;
     const settings = (data.layout?.settings ?? {}) as PageSettings;
+    const metaTitle = settings.metaTitle || `${data.title} — Status`;
+    const metaDesc = settings.metaDescription || data.description || `Live service status for ${data.title}`;
+    const ogImage = settings.ogImageUrl || undefined;
+    const allowIndex = settings.robotsIndex !== false;
     return {
-      title: `${data.title} — Status`,
-      description: data.description ?? `Live service status for ${data.title}`,
+      title: metaTitle,
+      description: metaDesc,
+      robots: allowIndex ? { index: true, follow: true } : { index: false, follow: false },
       openGraph: {
-        title: `${data.title} — Status`,
-        description: data.description ?? `Live service status for ${data.title}`,
+        title: metaTitle,
+        description: metaDesc,
+        ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
+      },
+      twitter: {
+        card: ogImage ? "summary_large_image" : "summary",
+        title: metaTitle,
+        description: metaDesc,
+        ...(ogImage ? { images: [ogImage] } : {}),
       },
       icons: settings.faviconUrl
         ? { icon: settings.faviconUrl, shortcut: settings.faviconUrl }

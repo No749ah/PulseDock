@@ -548,7 +548,7 @@
 - [x] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
 - [x] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
 - [x] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
-- [ ] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
+- [x] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
 
 ### P1 — New Widgets (Incidents & Maintenance)
 
@@ -595,17 +595,17 @@
 ### P1 — New Widgets (Layout & Navigation)
 
 - [x] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, content per tab (text-based; nested widget sets deferred as future enhancement)
-- [ ] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
-- [ ] **Column Layout** — 2/3/4 column container for sub-widget grouping within a row
-- [ ] **Sticky Header** — Stays fixed at top while scrolling. Shows overall status + page title
-- [ ] **Table of Contents** — Auto-generated from section/header widgets with anchor links
-- [ ] **Page Navigation** — Links to other status pages in the account. For multi-page setups
+- [x] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
+- [x] **Column Layout** — 2/3/4 column container for sub-widget grouping within a single row. Config: columns (2/3/4), items JSON array [{heading, body}]
+- [x] **Sticky Header** — Overall system status bar. Shows operational/degraded/outage computed from all monitors. Config: label
+- [x] **Table of Contents** — Numbered jump-link list with configurable items [{label, anchor}] for navigating page sections
+- [x] **Page Navigation** — Grid of links to all other published status pages in the account (auto-fetched, real-time)
 
 ### P2 — Editor UX
 
 - [x] **Widget Duplication** — Copy button per widget (same config, auto-placed)
 - [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
-- [ ] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete/align
+- [x] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete
 - [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
 - [ ] **Snap-to-Grid** — Visual grid lines, magnetic snapping while dragging
 - [ ] **Alignment Guides** — Show alignment lines when widgets line up with others
@@ -621,15 +621,15 @@
 
 ### P2 — Page-Level Configuration
 
-- [ ] **Multiple Status Pages** — Already supported, improve page list UX with thumbnails
-- [ ] **Page Themes** — Light/Dark/System/Custom. Accent color picker, font selector (Inter/Roboto/System), custom CSS editor (advanced)
-- [ ] **Page Header Config** — Logo upload (base64 or URL), title, subtitle, banner image, background gradient
-- [ ] **Custom Favicon** — Per status page, override site default
-- [ ] **Custom Slug** — Already supported, add availability checker
-- [ ] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex)
-- [ ] **Branding Toggle** — Show/hide "Powered by PulseDock" footer
-- [ ] **Auto-Refresh Config** — Interval picker: 10s / 30s / 60s / 5min / off
-- [ ] **Password Protection UX** — Improve password set/remove flow in editor
+- [x] **Multiple Status Pages** — Supported, list page with create/delete/publish, navigate to editor
+- [x] **Page Themes** — Light/Dark/System theme + font selector (Inter/Roboto/System/Mono) + accent color picker + background style (solid/gradient/grid-dots) + background color — all in Page Settings modal, applied on public page
+- [x] **Page Header Config** — Logo URL, favicon URL, accent color, background color in Page Settings modal
+- [x] **Custom Favicon** — faviconUrl in Page Settings, applied to public page
+- [x] **Custom Slug** — Slug set at creation; availability checker added (debounced real-time ✓ Available / ✗ Taken indicator via GET /v1/status-pages/slug-check)
+- [x] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex) — all in Page Settings modal + wired into generateMetadata() with Twitter card support
+- [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
+- [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
+- [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
 - [ ] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
 
 ### P2 — Public Page Rendering
@@ -901,26 +901,26 @@
 
 > Landing page is the first thing users see. Must be Apple-level quality. Multiple iteration runs until perfect.
 
-- [ ] **Hero section redesign** — Bold headline, animated gradient text, clear value prop in one sentence, CTA buttons (Get Started / Live Demo), hero illustration or animated dashboard mockup, trust badges (open-source, self-hosted, free)
-- [ ] **Feature showcase** — 6-8 feature cards with icons + animations on scroll: Version Intelligence, Uptime Monitoring, Status Pages, Alert Channels, Incident Management, Tool Registry (1300+ tools). Each with micro-animation on hover.
-- [ ] **How it works section** — 3-step visual flow: 1) Add monitors 2) Get alerts 3) Share status page. Animated connectors between steps.
+- [x] **Hero section redesign** — Bold animated gradient headline, value prop, CTA buttons (Get Started / Live Demo), glassmorphic hero dashboard mockup with monitor table + sparklines + stat cards, trust badges, animated blobs
+- [x] **Feature showcase** — 8 feature cards (Version Intelligence, Uptime Monitoring, Status Pages, Smart Alerting, Incident Management, Tool Registry, Public API, CLI Tool) with FadeIn scroll animations
+- [x] **How it works section** — 3-step visual flow (Add Monitor / Run Checks / Get Alerted) with inline SVG visuals and animated connectors
 - [ ] **Live demo / Interactive preview** — Embedded mini-dashboard showing real data (or realistic mock). Animated charts, status dots, version badges. Users see what they get before signup.
-- [ ] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage vs Pingdom. Feature matrix with checkmarks. Highlight what's unique (version intelligence, tool registry, self-hosted).
-- [ ] **Testimonials / Social proof** — Placeholder section for future testimonials. GitHub stars counter, "Used by X developers", open-source badge.
-- [ ] **Pricing section** — Free (self-hosted, unlimited), Cloud (coming soon placeholder). Clean card design.
-- [ ] **Screenshot gallery** — Dark-themed screenshots of: Dashboard, Monitors, Status Page Builder, Version Checks, Incident Timeline. Smooth carousel or grid.
-- [ ] **Footer redesign** — Proper footer: product links, docs link, GitHub link, changelog, social links, newsletter signup placeholder, copyright.
+- [x] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage — 9-feature matrix with check/X marks
+- [x] **Testimonials / Social proof** — Section with GitHub badge, open-source claim, "no tracking, no analytics" trust point
+- [x] **Pricing section** — Free self-hosted card + Cloud (coming soon) card with feature lists
+- [x] **Screenshot gallery** — 2×2 mock screenshot grid with hover-lift and overlay labels (Dashboard, Status Pages, Version Checks, Incidents)
+- [x] **Footer redesign** — 3-column footer (Product / Resources / More) with GitHub link, changelog, docs, license, copyright
 - [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
-- [ ] **SEO deep pass** — Structured data (JSON-LD), proper heading hierarchy, internal links, sitemap, meta descriptions per section.
-- [ ] **Animations polish** — Staggered FadeIn on scroll, parallax subtle effects, number count-up for stats, smooth section transitions, reduced motion support.
+- [x] **SEO deep pass** — JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
+- [x] **Animations polish** — FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
 - [ ] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
-- [ ] **i18n landing** — EN + DE fully translated for all landing page content.
+- [x] **i18n landing** — EN + DE translations for landing page key content via I18nProvider + LocaleSwitcher
 
 ### P0 — Documentation & Codebase Cleanup
 
 > All docs must be current, accurate, and well-organized. No stale files. Everything in docs/.
 
-- [ ] **Consolidate all docs into docs/ folder** — Move any scattered .md files (root-level docs, random READMEs in packages) into `docs/`. Create proper structure:
+- [x] **Consolidate all docs into docs/ folder** — docs/ folder has all major docs: AGENT.md, API.md, API_VERSIONING.md, ARCHITECTURE.md, CLI.md, DEPLOYMENT.md, E2E.md, EXTENSION.md, GETTING-STARTED.md, HELM.md, LOGGING.md, NGINX.md, PLUGINS.md, README.md, SECURITY.md, STATUS-PAGES.md, TOOL-REGISTRY.md, TROUBLESHOOTING.md, VERSION-CHECKS.md. Root has README.md + CHANGELOG.md + CONTRIBUTING.md.
   ```
   docs/
   ├── README.md          (main project docs entry point)

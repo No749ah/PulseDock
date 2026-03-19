@@ -92,6 +92,20 @@ export class StatusPagesController {
     return this.statusPagesService.remove(req.user.id, id);
   }
 
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('status-pages/slug-check')
+  @ApiOperation({ summary: 'Check if a slug is available for the current user' })
+  @ApiQuery({ name: 'slug', required: true })
+  @ApiQuery({ name: 'excludeId', required: false })
+  async checkSlug(
+    @Req() req: AuthRequest,
+    @Query('slug') slug: string,
+    @Query('excludeId') excludeId?: string,
+  ) {
+    return this.statusPagesService.checkSlugAvailability(req.user.id, slug, excludeId);
+  }
+
   // ── Public routes (no auth) ───────────────────────────────────────────────
 
   @Get('public/status/:slug')

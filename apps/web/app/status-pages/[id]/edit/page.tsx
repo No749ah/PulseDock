@@ -66,6 +66,7 @@ import {
   GitFork,
   Layers,
   ShieldAlert,
+  ChevronUp,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -105,6 +106,11 @@ interface PageSettings {
   fontFamily?: "inter" | "roboto" | "system" | "mono";
   backgroundStyle?: "solid" | "gradient" | "grid-dots";
   backgroundColor?: string;
+  // SEO
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageUrl?: string;
+  robotsIndex?: boolean;
 }
 
 interface PageLayout {
@@ -227,6 +233,10 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 { type: "region-status-map", label: "Region Status Map", description: "Status overview per geographic region. Configure regionMonitors mapping.", icon: Globe, category: "Status", defaultW: 12, defaultH: 4 },
 { type: "third-party-dependencies", label: "Third-Party Dependencies", description: "Live status check of external services. Configure services array.", icon: ExternalLink, category: "Status", defaultW: 8, defaultH: 5 },
 { type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
+{ type: "column-layout", label: "Column Layout", description: "2, 3, or 4 column text/content layout within a single row", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 3 },
+{ type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
+{ type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
+{ type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -732,7 +742,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory"];
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header", "table-of-contents", "page-navigation"];
   const supportsMonitorScope = !noScopeWidgets.includes(w.type);
   const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
@@ -1177,6 +1187,60 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         </>
       )}
 
+      {w.type === "column-layout" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Number of Columns</label>
+            <select
+              value={(w.config.columns as number) ?? 2}
+              onChange={(e) => update("columns", Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value={2}>2 columns</option>
+              <option value={3}>3 columns</option>
+              <option value={4}>4 columns</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Column Items (JSON)</label>
+            <textarea
+              rows={4}
+              value={(w.config.items as string) ?? '[{"heading":"Column 1","body":"Content here"},{"heading":"Column 2","body":"Content here"}]'}
+              onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+              placeholder='[{"heading":"Col 1","body":"..."},{"heading":"Col 2","body":"..."}]'
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+            <p className="mt-1 text-[10px] text-text-muted">Array of {`{heading?, body}`} objects, one per column</p>
+          </div>
+        </>
+      )}
+
+      {w.type === "sticky-header" && (
+        <div>
+          <p className="text-[10px] text-text-muted">Shows the overall system status as a fixed-position banner. Place it at the top of your page (y=0) for best effect. Status is computed from all monitors in real-time.</p>
+        </div>
+      )}
+
+      {w.type === "table-of-contents" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Items (JSON)</label>
+          <textarea
+            rows={5}
+            value={(w.config.items as string) ?? '[{"label":"System Status","anchor":"status"},{"label":"Incidents","anchor":"incidents"}]'}
+            onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+            placeholder='[{"label":"Section Title","anchor":"section-id"}]'
+            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {"{label, anchor}"} where anchor matches an id on the page element.</p>
+        </div>
+      )}
+
+      {w.type === "page-navigation" && (
+        <div>
+          <p className="text-[10px] text-text-muted">Automatically lists all other published status pages in your account. No configuration needed — links update in real-time as pages are published or unpublished.</p>
+        </div>
+      )}
+
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">
         <p className="text-[10px] font-medium text-text-secondary">Size & placement</p>
         <div className="grid grid-cols-2 gap-2">
@@ -1277,6 +1341,8 @@ export default function StatusPageEditorPage() {
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
+  const [passwordInput, setPasswordInput] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const versionHistoryKey = `sp-vhist-${id}`;
   const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
@@ -2216,6 +2282,134 @@ export default function StatusPageEditorPage() {
                 >
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
+              </div>
+
+              {/* Password Protection */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-2">Password Protection</p>
+                {page?.hasPassword ? (
+                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text-primary">🔒 Password is set</span>
+                      <button
+                        disabled={changingPassword}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
+                            setPage((p) => p ? { ...p, hasPassword: false } : p);
+                            toastCtx.success("Password removed");
+                          } catch { toastCtx.error("Failed to remove password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="text-xs text-danger hover:underline disabled:opacity-50"
+                      >Remove password</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Set new password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        disabled={changingPassword || !passwordInput}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                            setPasswordInput("");
+                            toastCtx.success("Password updated");
+                          } catch { toastCtx.error("Failed to update password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      >Update</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
+                    <p className="text-xs text-text-secondary">No password set — page is publicly accessible.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Set a password to restrict access"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        disabled={changingPassword || !passwordInput}
+                        onClick={async () => {
+                          setChangingPassword(true);
+                          try {
+                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                            setPasswordInput("");
+                            setPage((p) => p ? { ...p, hasPassword: true } : p);
+                            toastCtx.success("Password set");
+                          } catch { toastCtx.error("Failed to set password"); }
+                          finally { setChangingPassword(false); }
+                        }}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      >Set</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SEO Section */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-3">SEO &amp; Social Sharing</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Title</label>
+                    <input
+                      type="text"
+                      placeholder="My Company Status"
+                      maxLength={60}
+                      value={pageSettings.metaTitle ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, metaTitle: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Overrides the page title in search results and browser tab (max 60 chars).</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Description</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Live status and uptime for all our services."
+                      maxLength={160}
+                      value={pageSettings.metaDescription ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, metaDescription: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Shown in search engine snippets (max 160 chars).</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">OG Image URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/og-image.png"
+                      value={pageSettings.ogImageUrl ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, ogImageUrl: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Image shown when sharing on Twitter, Discord, Slack, etc. (1200×630px recommended).</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
+                    <div>
+                      <p className="text-xs font-medium text-text-primary">Allow search engines to index</p>
+                      <p className="text-xs text-text-muted mt-0.5">Adds robots meta tag (index, follow). Disable for private pages.</p>
+                    </div>
+                    <button
+                      onClick={() => setPageSettings((s) => ({ ...s, robotsIndex: !(s.robotsIndex !== false) }))}
+                      className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.robotsIndex !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
+                    >
+                      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.robotsIndex !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">

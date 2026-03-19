@@ -177,6 +177,12 @@ export default function AccountPage() {
   const [createdKey, setCreatedKey] = useState<NewApiKey | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
 
+  // API key rotation state
+  const [rotateConfirm, setRotateConfirm] = useState<string | null>(null);
+  const [rotatedKey, setRotatedKey] = useState<NewApiKey | null>(null);
+  const [rotatingKey, setRotatingKey] = useState(false);
+  const [rotatedKeyCopied, setRotatedKeyCopied] = useState(false);
+
   useEffect(() => {
     const currentUser = getUser();
     setUser(currentUser);
@@ -536,6 +542,30 @@ export default function AccountPage() {
     }
   };
 
+  const handleRotateKey = async (id: string) => {
+    try {
+      setRotatingKey(true);
+      const rotated = await api<NewApiKey>(`/v1/api-keys/${id}/rotate`, user?.id, { method: "POST" });
+      // Update prefix in list (other fields unchanged)
+      setApiKeys(apiKeys.map((k) => k.id === id ? { ...k, prefix: rotated.prefix, usageCount: 0, lastUsedAt: null } : k));
+      setRotateConfirm(null);
+      setRotatedKey(rotated);
+      setRotatedKeyCopied(false);
+      toastSuccess("API key rotated — save the new key immediately!");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to rotate API key");
+    } finally {
+      setRotatingKey(false);
+    }
+  };
+
+  const handleCopyRotatedKey = async () => {
+    if (!rotatedKey) return;
+    await navigator.clipboard.writeText(rotatedKey.key);
+    setRotatedKeyCopied(true);
+    setTimeout(() => setRotatedKeyCopied(false), 2000);
+  };
+
   const handleCopyPrefix = async (keyId: string, prefix: string) => {
     await navigator.clipboard.writeText(prefix);
     setCopiedKeyId(keyId);
@@ -854,7 +884,23 @@ export default function AccountPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-3 shrink-0">
-                      {revokeConfirm === key.id ? (
+                      {rotateConfirm === key.id ? (
+                        <>
+                          <button
+                            onClick={() => handleRotateKey(key.id)}
+                            disabled={rotatingKey}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                          >
+                            {rotatingKey ? "Rotating…" : "Confirm rotate"}
+                          </button>
+                          <button
+                            onClick={() => setRotateConfirm(null)}
+                            className="px-2.5 py-1 rounded-lg text-xs text-text-secondary border border-border hover:text-text-primary transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : revokeConfirm === key.id ? (
                         <>
                           <button
                             onClick={() => handleDeleteKey(key.id)}
@@ -870,15 +916,26 @@ export default function AccountPage() {
                           </button>
                         </>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setRevokeConfirm(key.id)}
-                          className="text-danger hover:text-danger"
-                          title="Revoke API key"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setRotateConfirm(key.id); setRevokeConfirm(null); }}
+                            className="text-amber-400 hover:text-amber-300"
+                            title="Rotate API key (generate new secret)"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setRevokeConfirm(key.id); setRotateConfirm(null); }}
+                            className="text-danger hover:text-danger"
+                            title="Revoke API key"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1627,6 +1684,56 @@ export default function AccountPage() {
           </div>
         )}
       </Modal>
+      {/* Rotated API Key Modal */}
+      <Modal
+        isOpen={!!rotatedKey}
+        onClose={() => setRotatedKey(null)}
+        title="API Key Rotated"
+      >
+        {rotatedKey && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
+              <AlertCircle className="w-5 h-5 text-warning mt-0.5 shrink-0" />
+              <p className="text-warning text-sm">
+                <strong>Save the new key now.</strong> The old key is already invalid. This key will not be shown again.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">New API Key — <span className="text-text-secondary/60">{rotatedKey.name}</span></label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-4 py-3 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary break-all">
+                  {rotatedKey.key}
+                </code>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCopyRotatedKey}
+                  className="shrink-0"
+                >
+                  {rotatedKeyCopied ? (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="text-sm text-text-secondary space-y-1">
+              <p>Use as a <code className="text-xs font-mono bg-surface-elevated px-1.5 py-0.5 rounded">Bearer</code> token:</p>
+              <code className="block text-xs font-mono bg-surface-elevated px-3 py-2 rounded-lg text-text-primary">
+                Authorization: Bearer {rotatedKey.key.slice(0, 20)}…
+              </code>
+            </div>
+
+            <Button onClick={() => setRotatedKey(null)} className="w-full">
+              Done
+            </Button>
+          </div>
+        )}
+      </Modal>
+
       {/* 2FA Setup Modal */}
       <Modal
         isOpen={show2FASetup}

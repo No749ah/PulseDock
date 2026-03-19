@@ -1,3 +1,17 @@
+## Status Summary (2026-03-19 12:00 UTC)
+- **Build/Test:** ✅ Clean build, 1454 passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-polish-perf (new branch after rotation)
+- **This session (2026-03-19 12:00 UTC):**
+  - Branch rotation: heartbeat/2026-03-19-widgets-offline merged to dev (58 files, 5316 insertions)
+  - Command palette: 7 new commands added, shortcut kbd badges
+  - Loading skeletons: TableSkeleton component, /monitors/loading.tsx and /dashboard/loading.tsx updated
+  - Account page: SystemInfoCard + DataRetentionCard added
+  - Design tokens: design-tokens.ts constants, typography/spacing consistency pass
+  - Monitors card view: polished with status dot, type badge, uptime%, quick actions
+  - Versions page: summary row, diff indicators, changelog links, sort dropdown
+
 ## Status Summary (2026-03-19 11:15 UTC)
 - **Build/Test:** ✅ Clean build, 1454 passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical

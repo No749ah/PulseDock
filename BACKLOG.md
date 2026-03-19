@@ -1,3 +1,13 @@
+## Status Summary (2026-03-19 20:58 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-20-quality
+- **This session (2026-03-19 20:58 UTC):**
+  - **Mobile landing audit**: reduced hero top padding (pt-32→pt-24), smaller px on xs screens (px-4 sm:px-6), tighter feature/pricing card padding on mobile, comparison table scroll hint for mobile, larger nav hamburger touch target (p-2.5), stat numbers scale down (text-3xl sm:text-4xl md:text-5xl)
+  - **Incidents page overhaul**: search filter, sortable columns (title/status/severity/date desc default), CSV export button — using existing useTableSort hook
+  - **BACKLOG**: marked Mobile landing and Data Tables (partial) complete
+
 ## Status Summary (2026-03-19 20:50 UTC)
 - **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1194,7 +1204,7 @@
 - [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
 - [x] **SEO deep pass** — JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
 - [x] **Animations polish** — FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
-- [ ] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
+- [x] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
 - [x] **i18n landing** — EN + DE translations for landing page key content via I18nProvider + LocaleSwitcher
 
 ### P0 — Documentation & Codebase Cleanup

@@ -1768,34 +1768,58 @@ function MonitorsPageInner() {
                           <tr className="bg-surface-elevated/40 border-b border-border/60">
                             <td colSpan={totalCols} className="px-6 py-4">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                {/* Recent check history */}
+                                {/* Recent check history + sparkline */}
                                 <div className="space-y-2">
-                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks (last 5)</p>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks</p>
+                                    <Link href={`/monitors/${monitor.id}`} className="text-xs text-accent hover:underline">View detail →</Link>
+                                  </div>
                                   {recentRuns.length === 0 ? (
                                     <p className="text-xs text-text-secondary">No checks yet</p>
                                   ) : (
-                                    <div className="flex items-center gap-1.5">
-                                      {recentRuns.map((r) => {
-                                        const dot = r.ok ? "bg-success" : "bg-danger";
-                                        const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
-                                        return (
-                                          <div key={r.id} className="flex flex-col items-center gap-1 group/dot" title={title}>
-                                            <div className={`w-3 h-3 rounded-full ${dot}`} />
-                                            {r.latencyMs != null && (
-                                              <span className="text-[9px] text-text-muted font-mono hidden group-hover/dot:block absolute mt-4 bg-surface border border-border rounded px-1 z-10 whitespace-nowrap">
-                                                {r.latencyMs}ms
-                                              </span>
-                                            )}
+                                    <>
+                                      {/* Status dots row */}
+                                      <div className="flex items-center gap-1.5">
+                                        {recentRuns.map((r) => {
+                                          const dotColor = r.ok ? "bg-success" : "bg-danger";
+                                          const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
+                                          return (
+                                            <div key={r.id} title={title} className="flex flex-col items-center gap-0.5 relative group/dot">
+                                              <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                                              {r.latencyMs != null && (
+                                                <span className="hidden group-hover/dot:block absolute bottom-full mb-1 bg-surface border border-border rounded px-1 py-0.5 text-[9px] text-text-muted font-mono z-10 whitespace-nowrap pointer-events-none">
+                                                  {r.latencyMs}ms
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                        <span className="text-xs text-text-secondary ml-1.5 tabular-nums">
+                                          {recentRuns.filter((r) => r.ok).length}/{recentRuns.length} OK
+                                        </span>
+                                      </div>
+                                      {/* Latency sparkline */}
+                                      {recentRuns.some((r) => r.latencyMs != null) && (
+                                        <div>
+                                          <p className="text-[10px] text-text-muted mb-1">Response time trend</p>
+                                          <MiniSparkline
+                                            data={[...recentRuns].reverse().filter((r) => r.latencyMs != null).map((r) => ({
+                                              value: r.latencyMs as number,
+                                              ok: r.ok,
+                                            }))}
+                                            height={36}
+                                            color="#6366f1"
+                                            className="w-full"
+                                          />
+                                          <div className="flex justify-between text-[9px] text-text-muted font-mono mt-0.5">
+                                            <span>
+                                              avg {Math.round(recentRuns.filter((r) => r.latencyMs != null).reduce((s, r) => s + (r.latencyMs as number), 0) / recentRuns.filter((r) => r.latencyMs != null).length)}ms
+                                            </span>
+                                            {lastRun && <span>last {relativeTime(lastRun.checkedAt)}</span>}
                                           </div>
-                                        );
-                                      })}
-                                      <span className="text-xs text-text-secondary ml-2">
-                                        {recentRuns.filter((r) => r.ok).length}/{recentRuns.length} OK
-                                      </span>
-                                    </div>
-                                  )}
-                                  {lastRun && (
-                                    <p className="text-xs text-text-secondary">Last: {new Date(lastRun.checkedAt).toLocaleString()}</p>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                                 {/* Tags */}

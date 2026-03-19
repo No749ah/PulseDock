@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
 import { PrintButton } from "./widgets/PrintButton";
+import { ExportImageButton } from "./widgets/ExportImageButton";
 import { OfflineBanner } from "./widgets/OfflineBanner";
 import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 
@@ -307,12 +308,13 @@ export default async function PublicStatusSlugPage({
       {/* Live refresh client component replaces meta http-equiv refresh */}
       <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
-      <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
+      <main id="status-page-content" className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
           <div className="mb-8 text-center relative">
-            {/* Print button — top-right of header, hidden when printing */}
-            <div className="absolute right-0 top-0 no-print">
+            {/* Action buttons — top-right of header, hidden when printing */}
+            <div className="absolute right-0 top-0 no-print flex items-center gap-2">
+              <ExportImageButton slug={slug} />
               <PrintButton />
             </div>
             {logoUrl && (

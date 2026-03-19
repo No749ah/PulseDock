@@ -1193,7 +1193,7 @@
 
 ### P2 — Enterprise Features (Beyond Monitoring)
 
-- [~] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action *(in-progress: invite modal UI stub added to account page; backend RBAC and invite flow pending)*
+- [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration

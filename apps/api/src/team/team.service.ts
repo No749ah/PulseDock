@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../common/prisma.service'
+import { MailerService } from '../common/mailer.service'
 import { InviteMemberDto, TeamRole, UpdateMemberRoleDto } from './team.dto'
 import { TeamMember, TeamInvite, User } from '@prisma/client'
 
@@ -9,7 +10,10 @@ type MemberWithUser = TeamMember & {
 
 @Injectable()
 export class TeamService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailer: MailerService,
+  ) {}
 
   async getMembers(userId: string): Promise<MemberWithUser[]> {
     return this.prisma.teamMember.findMany({
@@ -84,6 +88,11 @@ export class TeamService {
         expiresAt: sevenDaysFromNow,
       },
     })
+
+    // Fire-and-forget invite email
+    const appUrl = process.env.APP_URL ?? 'http://localhost:3001'
+    void this.mailer.sendInviteEmail(dto.email, `${appUrl}/invite/${invite.token}`)
+
     return { type: 'invite', data: invite }
   }
 
@@ -142,5 +151,89 @@ export class TeamService {
 
     await this.prisma.teamInvite.delete({ where: { id: inviteId } })
     return { message: 'Invite cancelled' }
+  }
+
+  async getInviteByToken(
+    token: string,
+  ): Promise<{
+    invite: TeamInvite
+    owner: Pick<User, 'email' | 'displayName'>
+  }> {
+    const invite = await this.prisma.teamInvite.findUnique({
+      where: { token },
+      include: {
+        owner: {
+          select: { email: true, displayName: true },
+        },
+      },
+    })
+    if (!invite) {
+      throw new NotFoundException('Invite not found or already used')
+    }
+    if (invite.expiresAt < new Date()) {
+      throw new BadRequestException('This invitation has expired')
+    }
+    if (invite.acceptedAt) {
+      throw new BadRequestException('This invitation has already been accepted')
+    }
+    const { owner, ...inviteData } = invite as TeamInvite & { owner: Pick<User, 'email' | 'displayName'> }
+    return { invite: inviteData, owner }
+  }
+
+  async acceptInvite(
+    token: string,
+    userId: string,
+  ): Promise<MemberWithUser> {
+    const invite = await this.prisma.teamInvite.findUnique({
+      where: { token },
+    })
+    if (!invite) {
+      throw new NotFoundException('Invite not found or already used')
+    }
+    if (invite.expiresAt < new Date()) {
+      throw new BadRequestException('This invitation has expired')
+    }
+    if (invite.acceptedAt) {
+      throw new BadRequestException('This invitation has already been accepted')
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+    // Check email matches (invite is for a specific email address)
+    if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
+      throw new BadRequestException('This invitation was sent to a different email address')
+    }
+    if (invite.ownerId === userId) {
+      throw new BadRequestException('Cannot accept your own invitation')
+    }
+
+    const alreadyMember = await this.prisma.teamMember.findUnique({
+      where: { ownerId_userId: { ownerId: invite.ownerId, userId } },
+    })
+    if (alreadyMember) {
+      throw new BadRequestException('You are already a member of this workspace')
+    }
+
+    // Create membership and mark invite accepted in a transaction
+    const [member] = await this.prisma.$transaction([
+      this.prisma.teamMember.create({
+        data: {
+          ownerId: invite.ownerId,
+          userId,
+          role: invite.role,
+        },
+        include: {
+          user: { select: { id: true, email: true, displayName: true } },
+        },
+      }),
+      this.prisma.teamInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      }),
+    ])
+
+    return member as MemberWithUser
   }
 }

@@ -30,7 +30,11 @@ const EXEMPT_PATHS = new Set([
 ]);
 
 /** URL prefixes that are exempt from CSRF (public push endpoints). */
-const EXEMPT_PREFIXES: string[] = ['/v1/heartbeat/'];
+const EXEMPT_PREFIXES: string[] = [
+  '/v1/heartbeat/',
+  '/v1/public/',
+  '/v1/team/invite/', // invite accept links come from email — no CSRF cookie yet
+];
 
 /**
  * Double-Submit Cookie CSRF Middleware

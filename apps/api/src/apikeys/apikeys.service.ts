@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../common/prisma.service';
-import { CreateApiKeyDto } from './apikeys.dto';
+import { ApiKeyScope, CreateApiKeyDto } from './apikeys.dto';
 
 const KEY_PREFIX_LENGTH = 8;
 const KEY_PREFIX = 'pdck_';
@@ -27,6 +27,7 @@ export class ApiKeysService {
         name: dto.name,
         keyHash: hash,
         prefix,
+        scope: dto.scope ?? ApiKeyScope.WRITE,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
       },
     });
@@ -35,6 +36,8 @@ export class ApiKeysService {
       id: apiKey.id,
       name: apiKey.name,
       prefix: apiKey.prefix,
+      scope: apiKey.scope,
+      usageCount: apiKey.usageCount,
       createdAt: apiKey.createdAt,
       expiresAt: apiKey.expiresAt,
       // Only returned on creation — never again
@@ -50,6 +53,8 @@ export class ApiKeysService {
         id: true,
         name: true,
         prefix: true,
+        scope: true,
+        usageCount: true,
         lastUsedAt: true,
         expiresAt: true,
         createdAt: true,
@@ -65,8 +70,8 @@ export class ApiKeysService {
     return { ok: true };
   }
 
-  /** Validate a raw API key string — returns the owning user or null */
-  async validateKey(plaintext: string): Promise<{ id: string; email: string; role: 'admin' | 'user' } | null> {
+  /** Validate a raw API key string — returns the owning user with scope or null */
+  async validateKey(plaintext: string): Promise<{ id: string; email: string; role: 'admin' | 'user'; apiKeyScope: ApiKeyScope } | null> {
     if (!plaintext.startsWith(KEY_PREFIX)) return null;
 
     const prefix = plaintext.slice(0, KEY_PREFIX.length + KEY_PREFIX_LENGTH);
@@ -88,12 +93,27 @@ export class ApiKeysService {
     const u = apiKey.user;
     if (!u.isActive || (u.lockedUntil && u.lockedUntil > new Date())) return null;
 
-    // Touch lastUsedAt (fire-and-forget — don't block the request)
+    // Update lastUsedAt and increment usageCount (fire-and-forget — don't block the request)
     void this.prisma.apiKey.update({
       where: { id: apiKey.id },
-      data: { lastUsedAt: new Date() },
+      data: { lastUsedAt: new Date(), usageCount: { increment: 1 } },
     });
 
-    return { id: u.id, email: u.email, role: u.role as 'admin' | 'user' };
+    return {
+      id: u.id,
+      email: u.email,
+      role: u.role as 'admin' | 'user',
+      apiKeyScope: apiKey.scope as ApiKeyScope,
+    };
+  }
+
+  /** Check if a scope grants at least the required level */
+  static scopeAllows(scope: ApiKeyScope, required: ApiKeyScope): boolean {
+    const levels: Record<ApiKeyScope, number> = {
+      [ApiKeyScope.READ]: 1,
+      [ApiKeyScope.WRITE]: 2,
+      [ApiKeyScope.ADMIN]: 3,
+    };
+    return levels[scope] >= levels[required];
   }
 }

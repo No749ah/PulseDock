@@ -263,15 +263,23 @@ model StatusPageHistory {
   @@index([savedAt])
 }
 
+enum ApiKeyScope {
+  READ
+  WRITE
+  ADMIN
+}
+
 model ApiKey {
-  id         String    @id @default(cuid())
+  id         String       @id @default(cuid())
   userId     String
   name       String
-  keyHash    String    @unique
+  keyHash    String       @unique
   prefix     String
+  scope      ApiKeyScope  @default(WRITE)
+  usageCount Int          @default(0)
   lastUsedAt DateTime?
   expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

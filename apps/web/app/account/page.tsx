@@ -43,10 +43,26 @@ interface AuditLogEntry {
   metaJson: unknown;
 }
 
+type ApiKeyScope = "READ" | "WRITE" | "ADMIN";
+
+const API_KEY_SCOPE_LABELS: Record<ApiKeyScope, string> = {
+  READ: "Read-only",
+  WRITE: "Read + Write",
+  ADMIN: "Full Access",
+};
+
+const API_KEY_SCOPE_COLORS: Record<ApiKeyScope, string> = {
+  READ: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  WRITE: "bg-accent/15 text-accent border-accent/20",
+  ADMIN: "bg-danger/15 text-danger border-danger/20",
+};
+
 interface ApiKey {
   id: string;
   name: string;
   prefix: string;
+  scope: ApiKeyScope;
+  usageCount: number;
   lastUsedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
@@ -133,6 +149,7 @@ export default function AccountPage() {
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyExpiry, setNewKeyExpiry] = useState("");
+  const [newKeyScope, setNewKeyScope] = useState<ApiKeyScope>("WRITE");
   const [creatingKey, setCreatingKey] = useState(false);
   const [createdKey, setCreatedKey] = useState<NewApiKey | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
@@ -396,11 +413,12 @@ export default function AccountPage() {
         method: "POST",
         body: JSON.stringify({
           name: newKeyName.trim(),
+          scope: newKeyScope,
           ...(newKeyExpiry ? { expiresAt: new Date(newKeyExpiry).toISOString() } : {}),
         }),
       });
       setCreatedKey(created);
-      setApiKeys([{ id: created.id, name: created.name, prefix: created.prefix, lastUsedAt: created.lastUsedAt, expiresAt: created.expiresAt, createdAt: created.createdAt }, ...apiKeys]);
+      setApiKeys([{ id: created.id, name: created.name, prefix: created.prefix, scope: created.scope, usageCount: 0, lastUsedAt: created.lastUsedAt, expiresAt: created.expiresAt, createdAt: created.createdAt }, ...apiKeys]);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to create API key");
     } finally {
@@ -420,6 +438,7 @@ export default function AccountPage() {
     setShowCreateKey(false);
     setNewKeyName("");
     setNewKeyExpiry("");
+    setNewKeyScope("WRITE");
     setCreatedKey(null);
     setKeyCopied(false);
   };
@@ -783,14 +802,20 @@ export default function AccountPage() {
                     className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated/50 border border-border"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-text-primary truncate">{key.name}</p>
+                        <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded border ${API_KEY_SCOPE_COLORS[key.scope ?? "WRITE"]}`}>
+                          {API_KEY_SCOPE_LABELS[key.scope ?? "WRITE"]}
+                        </span>
                         {isKeyExpired(key.expiresAt) && (
                           <Badge variant="danger">Expired</Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
                         <code className="text-xs text-text-secondary font-mono">{key.prefix}••••••••</code>
+                        {key.usageCount > 0 && (
+                          <span className="text-xs text-text-secondary">{key.usageCount.toLocaleString()} uses</span>
+                        )}
                         {key.lastUsedAt ? (
                           <span className="text-xs text-text-secondary">
                             Last used {new Date(key.lastUsedAt).toLocaleDateString()}
@@ -1247,6 +1272,34 @@ export default function AccountPage() {
                 maxLength={64}
                 autoFocus
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Permission Scope</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["READ", "WRITE", "ADMIN"] as ApiKeyScope[]).map((scope) => (
+                  <button
+                    key={scope}
+                    type="button"
+                    onClick={() => setNewKeyScope(scope)}
+                    className={`p-3 rounded-lg border text-left transition-colors ${
+                      newKeyScope === scope
+                        ? `${API_KEY_SCOPE_COLORS[scope]} border-current`
+                        : "border-border bg-surface-elevated/30 hover:bg-surface-elevated/60"
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{API_KEY_SCOPE_LABELS[scope]}</div>
+                    <div className="text-[10px] text-text-secondary mt-0.5 leading-tight">
+                      {scope === "READ" ? "List & read only" : scope === "WRITE" ? "Create & manage" : "Full admin access"}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-text-secondary/60 mt-1.5">
+                {newKeyScope === "READ" && "Can list monitors, runs, and status pages. Cannot create or modify."}
+                {newKeyScope === "WRITE" && "Can create, update, and delete monitors, alerts, and status pages."}
+                {newKeyScope === "ADMIN" && "Full access including user management and system settings. Use with caution."}
+              </p>
             </div>
 
             <div>

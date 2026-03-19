@@ -11,6 +11,8 @@ function makeApiKey(overrides: Record<string, unknown> = {}) {
     name: 'My Key',
     keyHash: 'hashed-value',
     prefix: 'pdck_abcd1234',
+    scope: 'WRITE',
+    usageCount: 0,
     lastUsedAt: null,
     expiresAt: null,
     createdAt: new Date('2026-01-01'),
@@ -35,6 +37,8 @@ function makeListKey(overrides: Record<string, unknown> = {}) {
     id: 'key-1',
     name: 'My Key',
     prefix: 'pdck_abcd1234',
+    scope: 'WRITE',
+    usageCount: 0,
     lastUsedAt: null,
     expiresAt: null,
     createdAt: new Date('2026-01-01'),
@@ -185,7 +189,7 @@ describe('ApiKeysService', () => {
 
       const result = await service.validateKey(plaintext);
       expect(result).not.toBeNull();
-      expect(result).toMatchObject({ id: 'user-1', email: 'test@example.com', role: 'user' });
+      expect(result).toMatchObject({ id: 'user-1', email: 'test@example.com', role: 'user', apiKeyScope: 'WRITE' });
     });
 
     it('returns null for an inactive user', async () => {

@@ -624,7 +624,7 @@ export default function IncidentsPage() {
                     status: i.status,
                     severity: i.severity,
                     updatedAt: i.updatedAt,
-                    monitors: i.monitors.map((m) => m.name).join('; '),
+                    monitors: i.monitors.map((m) => m.monitor.name).join('; '),
                   })))}
                   className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors"
                   title="Export to CSV"

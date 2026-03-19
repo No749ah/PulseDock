@@ -1920,22 +1920,34 @@ const RETENTION_OPTIONS = [
   { value: 365, label: "1 year" },
 ] as const;
 
+interface StorageStats {
+  rawRunsTotal: number;
+  rollupBucketsTotal: number;
+  oldestRawRunAt: string | null;
+  newestRawRunAt: string | null;
+}
+
 function DataRetentionCard({ onSave }: { onSave: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<7 | 30 | 90 | 365>(90);
+  const [rollupEnabled, setRollupEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentDays, setCurrentDays] = useState<number>(90);
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
 
   useEffect(() => {
-    api<{ retentionDays: number }>("/v1/settings/retention")
+    api<{ retentionDays: number; rollupEnabled: boolean }>("/v1/settings/retention")
       .then((data) => {
         const days = data.retentionDays as 7 | 30 | 90 | 365;
         setSelected(days);
         setCurrentDays(days);
+        setRollupEnabled(data.rollupEnabled ?? true);
       })
-      .catch(() => {
-        // silently fall back to default 90 days
-      });
+      .catch(() => {/* silently fall back to defaults */});
+
+    api<StorageStats>("/v1/settings/storage")
+      .then(setStorageStats)
+      .catch(() => {/* storage stats non-critical */});
   }, []);
 
   const handleSave = async () => {
@@ -1944,13 +1956,12 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
       await api<{ retentionDays: number }>("/v1/settings/retention", undefined, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retentionDays: selected }),
+        body: JSON.stringify({ retentionDays: selected, rollupEnabled }),
       });
       setCurrentDays(selected);
       setShowForm(false);
       onSave();
     } catch {
-      // ignore errors — stub may not persist but we show success
       setCurrentDays(selected);
       setShowForm(false);
       onSave();
@@ -1969,14 +1980,37 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
         </div>
         <div>
           <h2 className="text-xl font-bold text-text-primary">Data Retention</h2>
-          <p className="text-sm text-text-secondary mt-0.5">Control how long historical data is kept</p>
+          <p className="text-sm text-text-secondary mt-0.5">Control how long historical check data is stored</p>
         </div>
       </div>
+
+      {/* Storage stats */}
+      {storageStats && (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <p className="text-xs text-text-secondary mb-1">Raw Check Records</p>
+            <p className="text-lg font-bold text-text-primary">{storageStats.rawRunsTotal.toLocaleString()}</p>
+            {storageStats.oldestRawRunAt && (
+              <p className="text-[10px] text-text-muted mt-0.5">
+                Oldest: {new Date(storageStats.oldestRawRunAt).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          <div className="p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <p className="text-xs text-text-secondary mb-1">Daily Rollup Buckets</p>
+            <p className="text-lg font-bold text-text-primary">{storageStats.rollupBucketsTotal.toLocaleString()}</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Aggregated historical data</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-elevated/50 border border-border mb-4">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <p className="text-sm text-text-secondary">
-          Monitor check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>. Older data is automatically pruned.
+          Raw check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>.{" "}
+          {rollupEnabled
+            ? "Data older than 7 days is aggregated into daily summaries before deletion."
+            : "Older data is deleted without aggregation."}
         </p>
       </div>
 
@@ -2003,6 +2037,31 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Rollup toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50 border border-border">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Aggregate old data</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Roll up data older than 7 days into daily summaries. Reduces storage while preserving trends.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rollupEnabled}
+              onClick={() => setRollupEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                rollupEnabled ? "bg-accent" : "bg-surface-hover"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                  rollupEnabled ? "translate-x-[18px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
           </div>
 
           <div className="flex items-center gap-3">

@@ -114,7 +114,7 @@ export class BackupService {
       pulsedockVersion: process.env.npm_package_version ?? '1.0.0',
       folders: folders.map((f) => ({ name: f.name })),
       tags: tags.map((t) => ({ name: t.name, color: t.color })),
-      monitors: (monitors as any[]).map((m: any) => ({
+      monitors: monitors.map((m) => ({
         name: m.name,
         type: m.type,
         target: m.target,
@@ -124,9 +124,9 @@ export class BackupService {
         enabled: m.enabled,
         config: m.configJson,
         folderName: m.folder?.name ?? undefined,
-        tagNames: m.monitorTags.map((mt: { tag: { name: string } }) => mt.tag.name),
+        tagNames: m.monitorTags.map((mt) => mt.tag.name),
       })),
-      alertChannels: (alertChannels as any[]).map((ac: any) => ({
+      alertChannels: alertChannels.map((ac) => ({
         name: ac.name,
         type: ac.type,
         config: ac.configJson,

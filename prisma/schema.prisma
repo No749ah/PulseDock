@@ -54,6 +54,7 @@ model User {
   incidents               Incident[]
   scheduledReport         ScheduledReport?
   settings                UserSettings?
+  monitorRunRollups       MonitorRunRollup[]
 }
 
 model Session {
@@ -97,6 +98,7 @@ model Monitor {
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs          MonitorRun[]
+  rollups       MonitorRunRollup[]
   monitorAlerts MonitorAlert[]
   monitorTags   MonitorTag[]
   maintenanceWindows MaintenanceWindowMonitor[]
@@ -438,7 +440,41 @@ model UserSettings {
   id             String   @id @default(cuid())
   userId         String   @unique
   retentionDays  Int      @default(90)
+  rollupEnabled  Boolean  @default(true)
   updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Aggregated monitor run data for long-term storage efficiency.
+/// Raw runs older than retentionDays are rolled up into hourly or daily buckets
+/// before deletion, preserving trend data without the full per-check storage cost.
+model MonitorRunRollup {
+  id          String   @id @default(cuid())
+  monitorId   String
+  userId      String
+  /// Granularity of the rollup bucket: "hourly" or "daily"
+  granularity String
+  /// UTC bucket start time (truncated to hour or day)
+  bucketAt    DateTime
+  /// Total checks in this bucket
+  totalChecks Int
+  /// Number of passing checks
+  okChecks    Int
+  /// Average latency in ms across all checks with latency data
+  avgLatencyMs Int?
+  /// P95 latency estimate (95th percentile)
+  p95LatencyMs Int?
+  /// Max latency in the bucket
+  maxLatencyMs Int?
+  /// Min latency in the bucket
+  minLatencyMs Int?
+  createdAt   DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, granularity, bucketAt])
+  @@index([userId, granularity, bucketAt])
+  @@index([monitorId, granularity, bucketAt])
 }

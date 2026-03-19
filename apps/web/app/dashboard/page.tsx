@@ -17,9 +17,41 @@ import { CountUp } from "../components/CountUp";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 import { MiniSparkline } from "../../components/charts";
+import { ProductTour, type TourStep } from "../../components/product-tour";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
 const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+
+const DASHBOARD_TOUR_STEPS: TourStep[] = [
+  {
+    title: "Welcome to PulseDock! 👋",
+    content: "PulseDock monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.",
+  },
+  {
+    target: "nav[aria-label='Navigation']",
+    placement: "right",
+    title: "Navigation",
+    content: "Use the left sidebar to navigate between Monitors, Alerts, Versions, Status Pages, and more. Each section has its own tools and views.",
+  },
+  {
+    target: "[data-tour='stats-row']",
+    placement: "bottom",
+    title: "Live Stats",
+    content: "These cards show real-time counts of your monitors, uptime percentage, checks run today, and version tracking status. All update live via WebSocket.",
+  },
+  {
+    target: "[data-tour='add-monitor']",
+    placement: "bottom",
+    title: "Add Your First Monitor",
+    content: "Click here to add a monitor. Choose from HTTP uptime checks, SSL certificate monitoring, TCP port checks, Heartbeat monitors, or version tracking for 1400+ self-hosted tools.",
+  },
+  {
+    target: "[data-tour='time-range']",
+    placement: "bottom",
+    title: "Time Range Selector",
+    content: "Filter your dashboard view by time period — 1h, 6h, 24h, 7d, or 30d. The live indicator shows when auto-refresh is active.",
+  },
+];
 
 interface Monitor {
   id: string;
@@ -416,6 +448,11 @@ export default function DashboardPage() {
             userId={user.id}
             hasMonitors={monitors.length > 0}
             hasAlertChannels={hasAlertChannels}
+          />
+          <ProductTour
+            storageKey={`pulsedock_tour_dashboard_${user.id}`}
+            autoStart={monitors.length === 0}
+            steps={DASHBOARD_TOUR_STEPS}
           />
         </FadeIn>
 

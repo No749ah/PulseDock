@@ -28,6 +28,12 @@ export class SettingsController {
     return this.settingsService.updateRetention(req.user.id, dto)
   }
 
+  @Get('storage')
+  @ApiOperation({ summary: 'Get storage usage stats for the current user', description: 'Returns counts of raw MonitorRun records and aggregated daily rollup buckets.' })
+  getStorageStats(@Req() req: { user: { id: string } }) {
+    return this.settingsService.getStorageStats(req.user.id)
+  }
+
   @Get('backup')
   @ApiOperation({ summary: 'Export full account backup as JSON', description: 'Downloads all monitors, folders, tags, alert channels, status pages, and settings as a portable JSON document.' })
   @ApiResponse({ status: 200, description: 'Backup document returned as downloadable JSON file.' })

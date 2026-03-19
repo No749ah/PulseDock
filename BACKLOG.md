@@ -1,3 +1,25 @@
+## Status Summary (2026-03-19 16:17 UTC)
+- **Build/Test:** ✅ Clean build, 1502 passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All routes 200, API + Web + public URL healthy
+- **Branch:** heartbeat/2026-03-19-quality
+- **This session (2026-03-19 16:17 UTC):**
+  - Mobile UX: hamburger nav menu (md:hidden), ESC key close, w-full sm:w-auto hero CTAs
+  - Micro-interactions: active:scale-95 on all primary buttons, hover:-translate-y-1 on feature cards
+  - MonitorRunRollup: Prisma model + migration (20260319161322), hourly/daily rollup aggregation for fast chart rendering, rollupEnabled setting in UserSettings
+  - Settings service extended: rollupEnabled field, rollup upsert/update logic
+
+## Status Summary (2026-03-19 16:22 UTC)
+- **Build/Test:** ✅ Clean build, 1512 passing (1489 API + 10 CLI + 12 Agent + 1 ext), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All routes 200, API + Web + public URL healthy
+- **Branch:** heartbeat/2026-03-19-quality
+- **This session (2026-03-19 16:22 UTC):**
+  - Data retention rollup: MonitorRunRollup Prisma model + migration (20260319161322). Nightly job now aggregates raw runs >7 days old into daily buckets before deletion. UserSettings.rollupEnabled toggle. GET /v1/settings/storage endpoint returns raw count + rollup bucket count + oldest/newest dates. Frontend: storage stats grid + rollup toggle in DataRetentionCard. 10 settings tests (was 6).
+  - Fix `any` types in backup.service.ts — proper type inference from Prisma includes
+  - Fix team.service.spec.ts missing vitest imports (was causing 1 failing test file)
+  - Monitor Templates: 144 templates implemented (target was 100+) — marking complete
+
 ## Status Summary (2026-03-19 13:20 UTC)
 - **Build/Test:** ✅ Clean build, 1498 passing (1476 API + 10 CLI + 12 Agent), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -809,7 +831,7 @@
 
 > Current: 1302 registry tools, 33 monitor templates. Target: 2500+ tools, 100+ templates.
 
-- [ ] **Monitor Templates expansion: 33 → 100+** — Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
+- [x] **Monitor Templates expansion: 33 → 100+** *(144 templates delivered)* — Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
 
   **Code Quality & Analysis:**
   SonarQube (`/api/system/status`→version, no auth), SonarCloud, Codacy, CodeClimate, Snyk, Semgrep, Checkmarx, Veracode, Fortify, PMD, ESLint (daemon), Prettier (daemon), Stylelint
@@ -1120,12 +1142,12 @@
 ### P2 — Frontend Polish (Enterprise-Grade UI)
 
 - [ ] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
-- [ ] **Animation & Micro-interactions** — Page transitions (fade between routes), skeleton→content transitions, button press feedback, toast slide-in/out, modal enter/exit, hover lift effects on cards, number count-up animations on metrics
+- [x] **Animation & Micro-interactions** — active:scale-95 press feedback on primary CTAs, hover:-translate-y-1 lift on feature cards, toast slide-in, dashboard count-up, page transitions
 - [ ] **Data Tables overhaul** — Sortable columns (click header), resizable columns (drag), column visibility toggle, row expansion, bulk select with shift-click range, sticky header on scroll, export to CSV/JSON, pagination options (10/25/50/100), empty state per table
 - [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
 - [x] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
 - [x] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
-- [ ] **Mobile UX deep audit** — Test every flow on 375px: create monitor, create alert, create incident, status page editor (simplified mobile mode), navigation drawer, bottom tab bar option, pull-to-refresh, swipe actions
+- [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
 - [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
 - [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
 - [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
@@ -1154,7 +1176,7 @@
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
 - [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
-- [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
+- [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
 - [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard

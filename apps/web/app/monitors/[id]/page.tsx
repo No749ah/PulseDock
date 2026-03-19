@@ -13,7 +13,7 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { FadeIn } from "../../components/FadeIn";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../../components/Table";
-import { ResponseAreaChart, CheckBarChart } from "../../../components/charts";
+import { ResponseAreaChart, CheckBarChart, LineSparkline } from "../../../components/charts";
 import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 
 interface MonitorItem {
@@ -388,6 +388,27 @@ export default function MonitorDetailPage() {
               </div>
             </div>
 
+            {/* Checks today */}
+            {(() => {
+              const todayStart = new Date();
+              todayStart.setHours(0, 0, 0, 0);
+              const checksToday = runs.filter((r) => new Date(r.checkedAt) >= todayStart).length;
+              return (
+                <div className="flex items-center gap-6 pt-2 border-t border-border/60">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-text-secondary uppercase tracking-wider">Checks Today</span>
+                    <span className="text-lg font-bold text-text-primary tabular-nums">{checksToday}</span>
+                  </div>
+                  {uptime && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-text-secondary uppercase tracking-wider">Total Checks ({PERIOD_LABELS[uptimePeriod]})</span>
+                      <span className="text-lg font-bold text-text-primary tabular-nums">{uptime.totalChecks}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Incident list (collapsed by default, shows if any exist) */}
             {uptime && uptime.incidentList.length > 0 && (
               <details className="group">
@@ -609,6 +630,23 @@ export default function MonitorDetailPage() {
           </FadeIn>
         )}
 
+        {/* Response time trend (LineSparkline) */}
+        {monitor.type !== "HEARTBEAT" && (
+          <FadeIn delay={0.155}>
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Response Trend</h2>
+                <span className="text-xs text-text-muted">Last {Math.min(runs.filter((r) => r.latencyMs !== null).length, 50)} checks</span>
+              </div>
+              <LineSparkline
+                data={runs.slice(0, 50).reverse().filter((r) => r.latencyMs !== null).map((r) => r.latencyMs as number)}
+                color="#6366f1"
+                height={56}
+              />
+            </Card>
+          </FadeIn>
+        )}
+
         {/* Response time area chart */}
         <FadeIn delay={0.16}>
           <Card className="p-4 space-y-3">
@@ -666,7 +704,7 @@ export default function MonitorDetailPage() {
           <Card className="p-0">
             <div className="px-4 py-3 border-b border-border">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                Last 50 Runs
+                Last 20 Checks
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -686,7 +724,7 @@ export default function MonitorDetailPage() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {runs.slice(0, 50).map((run) => (
+                    {runs.slice(0, 20).map((run) => (
                       <TableRow key={run.id}>
                         <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                           {relativeTime(run.checkedAt)}

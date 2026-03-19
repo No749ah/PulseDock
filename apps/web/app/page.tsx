@@ -624,6 +624,31 @@ export default function LandingPage() {
             </div>
           </FadeIn>
 
+          {/* ─── Mobile Hero: Quick Status Cards (sm and below only) ─── */}
+          <FadeIn delay={0.4}>
+            <div className="sm:hidden mt-10 grid grid-cols-2 gap-3 max-w-sm mx-auto">
+              <div className="rounded-xl border border-success/30 bg-success/5 p-4 text-center">
+                <div className="text-2xl font-bold text-success">99.9%</div>
+                <div className="text-xs text-text-secondary mt-1">Uptime SLA</div>
+              </div>
+              <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-center">
+                <div className="text-2xl font-bold text-accent">2400+</div>
+                <div className="text-xs text-text-secondary mt-1">Tools tracked</div>
+              </div>
+              <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 text-center">
+                <div className="text-2xl font-bold text-purple-400">70+</div>
+                <div className="text-xs text-text-secondary mt-1">Widget types</div>
+              </div>
+              <div className="rounded-xl border border-border bg-surface/60 p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                  <span className="text-sm font-semibold text-success">All Systems</span>
+                </div>
+                <div className="text-xs text-text-secondary mt-1">Operational</div>
+              </div>
+            </div>
+          </FadeIn>
+
           {/* ─── Hero Dashboard Mockup ─── */}
           <FadeIn delay={0.4}>
             <div className="hidden sm:block mt-16 mx-auto max-w-4xl">

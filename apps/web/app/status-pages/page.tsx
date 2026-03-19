@@ -14,6 +14,9 @@ import {
   Copy,
   Clock,
   Layers,
+  Shield,
+  X,
+  Check,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import { getUser } from "../../components/auth";
@@ -46,6 +49,9 @@ export default function StatusPagesPage() {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [badgePage, setBadgePage] = useState<StatusPage | null>(null);
+  const [badgeStyle, setBadgeStyle] = useState<"flat" | "flat-square" | "for-the-badge">("flat");
+  const [badgeCopied, setBadgeCopied] = useState<string | null>(null);
   const [slugAvailability, setSlugAvailability] = useState<{ available: boolean; checking: boolean } | null>(null);
   const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -324,6 +330,13 @@ export default function StatusPagesPage() {
                       <Copy className="h-3.5 w-3.5" /> {duplicatingId === page.id ? "Duplicating…" : "Duplicate"}
                     </button>
                     <button
+                      onClick={() => { setBadgePage(page); setBadgeStyle("flat"); setBadgeCopied(null); }}
+                      title="Embed badge"
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:border-accent/50 hover:text-text-primary"
+                    >
+                      <Shield className="h-3.5 w-3.5" /> Badge
+                    </button>
+                    <button
                       onClick={() => handleDelete(page.id)}
                       disabled={deletingId === page.id}
                       title="Delete"
@@ -338,6 +351,72 @@ export default function StatusPagesPage() {
           
         )}
       </div>
+
+      {/* Badge Modal */}
+      {badgePage && (() => {
+        const publicBase = typeof window !== "undefined" ? window.location.origin : "";
+        const badgeUrl = `${publicBase}/api/v1/public/status-badge/${badgePage.slug}.svg?style=${badgeStyle}`;
+        const pageUrl = `${publicBase}/status/${badgePage.slug}`;
+        const snippets = {
+          markdown: `[![Status](${badgeUrl})](${pageUrl})`,
+          html: `<a href="${pageUrl}"><img src="${badgeUrl}" alt="Status" /></a>`,
+          url: badgeUrl,
+        };
+        function copySnippet(key: "markdown" | "html" | "url") {
+          navigator.clipboard.writeText(snippets[key]).then(() => {
+            setBadgeCopied(key);
+            setTimeout(() => setBadgeCopied(null), 2000);
+          });
+        }
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setBadgePage(null)}>
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-text-primary flex items-center gap-2"><Shield className="h-4 w-4 text-accent" /> Embed Badge</h2>
+                <button onClick={() => setBadgePage(null)} className="rounded-lg p-1 text-text-secondary hover:text-text-primary transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+              <p className="text-xs text-text-secondary mb-4">Embed a live status badge for <strong className="text-text-primary">{badgePage.title}</strong> anywhere — GitHub READMEs, wikis, dashboards.</p>
+
+              {/* Live preview */}
+              <div className="mb-4 flex items-center justify-center rounded-xl border border-border bg-bg/60 py-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/v1/public/status-badge/${badgePage.slug}.svg?style=${badgeStyle}&_t=${Date.now()}`} alt="Status badge preview" className="h-6" />
+              </div>
+
+              {/* Style selector */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-text-secondary mb-2">Style</p>
+                <div className="flex gap-2">
+                  {(["flat", "flat-square", "for-the-badge"] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setBadgeStyle(s)}
+                      className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-colors ${badgeStyle === s ? "border-accent bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-text-primary"}`}
+                    >
+                      {s === "flat" ? "Flat" : s === "flat-square" ? "Square" : "Large"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Copy snippets */}
+              <div className="space-y-2">
+                {(["markdown", "html", "url"] as const).map(key => (
+                  <div key={key} className="flex items-center gap-2 rounded-lg border border-border bg-bg/60 px-3 py-2">
+                    <code className="flex-1 truncate font-mono text-[10px] text-text-secondary">{snippets[key]}</code>
+                    <button
+                      onClick={() => copySnippet(key)}
+                      className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors ${badgeCopied === key ? "bg-success/15 text-success" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+                    >
+                      {badgeCopied === key ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : key.charAt(0).toUpperCase() + key.slice(1)}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Create Modal */}
       {showCreate && (

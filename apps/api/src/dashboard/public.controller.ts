@@ -329,4 +329,88 @@ export class PublicDashboardController {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.end(svg);
   }
+
+  // ---------------------------------------------------------------------------
+  // Status Page Overall SVG Badge
+  // ---------------------------------------------------------------------------
+
+  @Get('status-badge/:slug.svg')
+  @Header('Content-Type', 'image/svg+xml')
+  @ApiOperation({
+    summary: 'Status page overall status badge (SVG)',
+    description: 'Returns a shields.io-style SVG badge showing the overall status of a published status page. No authentication required.',
+  })
+  @ApiParam({ name: 'slug', description: 'Status page slug' })
+  @ApiQuery({ name: 'style', required: false, enum: ['flat', 'flat-square', 'for-the-badge'], description: 'Badge style (default: flat)' })
+  @ApiQuery({ name: 'label', required: false, description: 'Custom left-side label (default: page title)' })
+  @ApiResponse({ status: 200, description: 'SVG badge returned.' })
+  @ApiResponse({ status: 404, description: 'Status page not found or not published.' })
+  async statusPageBadge(
+    @Param('slug') slug: string,
+    @Query('style') style: string | undefined,
+    @Query('label') labelOverride: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const page = await this.prisma.publicStatusPage.findUnique({
+      where: { slug },
+      select: { id: true, title: true, isPublished: true, layout: true, userId: true },
+    });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    // Extract monitor IDs from layout
+    const layoutStr = JSON.stringify(page.layout);
+    const monitorIdRegex = /"monitorId"\s*:\s*"([^"]+)"/g;
+    const monitorIds = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = monitorIdRegex.exec(layoutStr)) !== null) monitorIds.add(m[1]);
+
+    let message: string;
+    let color: string;
+
+    if (monitorIds.size === 0) {
+      message = 'operational';
+      color = '#2da44e';
+    } else {
+      // Fetch latest run for each monitor
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId: { in: [...monitorIds] } },
+        orderBy: { checkedAt: 'desc' },
+        distinct: ['monitorId'],
+        select: { monitorId: true, level: true, ok: true },
+      });
+
+      const hasDown = runs.some(r => r.level === 'red');
+      const hasDegraded = runs.some(r => r.level === 'yellow');
+
+      if (hasDown) {
+        message = 'outage';
+        color = '#cf222e';
+      } else if (hasDegraded) {
+        message = 'degraded';
+        color = '#d1a317';
+      } else {
+        message = 'operational';
+        color = '#2da44e';
+      }
+    }
+
+    const badgeStyle: BadgeStyle =
+      style === 'flat-square' ? 'flat-square' :
+      style === 'for-the-badge' ? 'for-the-badge' :
+      'flat';
+
+    const label = labelOverride ?? page.title;
+    const svg = buildBadgeSvg({
+      label,
+      message,
+      color,
+      labelColor: '#555',
+      style: badgeStyle,
+    });
+
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.end(svg);
+  }
 }

@@ -230,6 +230,7 @@ function MonitorsPageInner() {
 
   // bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastSelectedIndexRef = useRef<number>(-1);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
 

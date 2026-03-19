@@ -13,6 +13,7 @@ import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
 import { FadeIn } from "../components/FadeIn";
 import { StaggerList } from "../components/StaggerList";
+import { CountUp } from "../components/CountUp";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 import { MiniSparkline } from "../../components/charts";
@@ -416,7 +417,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Monitors</p>
-                          <p className="text-3xl font-bold text-text-primary">{stats.uptimeMonitors}</p>
+                          <p className="text-3xl font-bold text-text-primary"><CountUp value={`${stats.uptimeMonitors}`} duration={800} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
                           <Activity className="w-6 h-6 text-accent" />
@@ -428,8 +429,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Uptime</p>
                           <p className="text-3xl font-bold text-text-primary">
-                            {stats.uptimePct}
-                            <span className="text-lg text-text-secondary">%</span>
+                            <CountUp value={`${stats.uptimePct}%`} duration={1200} />
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Operational</p>
-                          <p className="text-3xl font-bold text-success">{stats.uptimeGreen}</p>
+                          <p className="text-3xl font-bold text-success"><CountUp value={`${stats.uptimeGreen}`} duration={900} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-success/10">
                           <CheckCircle2 className="w-6 h-6 text-success" />
@@ -452,7 +452,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Down / Degraded</p>
-                          <p className="text-3xl font-bold text-danger">{stats.uptimeRed + stats.uptimeYellow}</p>
+                          <p className="text-3xl font-bold text-danger"><CountUp value={`${stats.uptimeRed + stats.uptimeYellow}`} duration={800} /></p>
                         </div>
                         <div className={`p-3 rounded-xl ${stats.uptimeRed + stats.uptimeYellow > 0 ? "bg-danger/10" : "bg-surface-elevated"}`}>
                           <AlertCircle className={`w-6 h-6 ${stats.uptimeRed + stats.uptimeYellow > 0 ? "text-danger" : "text-text-secondary"}`} />
@@ -480,7 +480,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Tracked</p>
-                          <p className="text-3xl font-bold text-text-primary">{stats.versionMonitors}</p>
+                          <p className="text-3xl font-bold text-text-primary"><CountUp value={`${stats.versionMonitors}`} duration={800} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-accent/10">
                           <GitBranch className="w-6 h-6 text-accent" />
@@ -491,7 +491,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Up to Date</p>
-                          <p className="text-3xl font-bold text-success">{stats.versionUpToDate}</p>
+                          <p className="text-3xl font-bold text-success"><CountUp value={`${stats.versionUpToDate}`} duration={900} /></p>
                         </div>
                         <div className="p-3 rounded-xl bg-success/10">
                           <PackageCheck className="w-6 h-6 text-success" />
@@ -502,7 +502,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-text-secondary text-sm mb-1">Updates Available</p>
-                          <p className="text-3xl font-bold text-warning">{stats.versionUpdateAvailable + stats.versionMajorBehind}</p>
+                          <p className="text-3xl font-bold text-warning"><CountUp value={`${stats.versionUpdateAvailable + stats.versionMajorBehind}`} duration={800} /></p>
                           {stats.versionMajorBehind > 0 && (
                             <p className="text-xs text-danger mt-1">{stats.versionMajorBehind} major version{stats.versionMajorBehind !== 1 ? "s" : ""} behind</p>
                           )}

@@ -21,8 +21,10 @@ import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Modal } from '../components/Modal';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
+import { Table, TableHead, TableBody, TableRow, TableCell } from '../components/Table';
+import { SortableHeader, TablePagination } from '../components/SortableTable';
 import { Select } from '../components/Select';
+import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import Link from 'next/link';
@@ -82,6 +84,7 @@ export default function FoldersPage() {
   const [createStep, setCreateStep] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('12');
+  const { sort: projSort, toggle: projToggle, sorted: projSorted } = useTableSort<'name' | 'monitorCount' | 'uptimePct' | 'createdAt'>('name');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
     typeof window !== 'undefined' ? (localStorage.getItem('projects-view') as 'grid' | 'table') || 'grid' : 'grid'
   );
@@ -178,11 +181,19 @@ export default function FoldersPage() {
   }
 
   const size = Number(pageSize);
-  const pages = Math.max(1, Math.ceil(folders.length / size));
+  const sortedFolders = projSorted(folders, (f) => {
+    if (projSort.key === 'name') return f.name;
+    if (projSort.key === 'monitorCount') return f.stats?.totalMonitors ?? 0;
+    if (projSort.key === 'uptimePct') return f.stats?.uptimePct ?? 0;
+    if (projSort.key === 'createdAt') return f.createdAt;
+    return f.name;
+  });
+  const pages = Math.max(1, Math.ceil(sortedFolders.length / size));
   const safePage = Math.min(page, pages);
   const pageRows = useMemo(
-    () => folders.slice((safePage - 1) * size, safePage * size),
-    [folders, safePage, size]
+    () => sortedFolders.slice((safePage - 1) * size, safePage * size),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sortedFolders.length, safePage, size, projSort.key, projSort.dir]
   );
 
   const totalMonitors = folders.reduce((sum, f) => sum + (f.stats?.totalMonitors ?? 0), 0);
@@ -469,14 +480,14 @@ export default function FoldersPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHead>
-                    <TableRow hover={false}>
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Monitors</TableHeader>
-                      <TableHeader>24h Uptime</TableHeader>
-                      <TableHeader>Created</TableHeader>
-                      <TableHeader>Actions</TableHeader>
-                    </TableRow>
+                    <tr className="bg-surface-elevated border-b border-border">
+                      <SortableHeader sortKey="name" sort={projSort} onSort={projToggle}>Name</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                      <SortableHeader sortKey="monitorCount" sort={projSort} onSort={projToggle}>Monitors</SortableHeader>
+                      <SortableHeader sortKey="uptimePct" sort={projSort} onSort={projToggle}>24h Uptime</SortableHeader>
+                      <SortableHeader sortKey="createdAt" sort={projSort} onSort={projToggle}>Created</SortableHeader>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                    </tr>
                   </TableHead>
                   <TableBody>
                     {pageRows.map((f) => {
@@ -527,28 +538,21 @@ export default function FoldersPage() {
                   </TableBody>
                 </Table>
 
-                {/* Table pagination */}
-                <div className="flex flex-col gap-3 p-4 border-t border-border sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} aria-label="Previous page">
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm text-text-secondary" aria-live="polite">Page {safePage} of {pages}</span>
-                    <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={safePage >= pages} aria-label="Next page">
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <Select
-                    value={pageSize}
-                    onChange={(v) => { setPageSize(v || '10'); setPage(1); }}
-                    options={[
-                      { value: '10', label: '10' },
-                      { value: '25', label: '25' },
-                      { value: '50', label: '50' },
-                    ]}
-                    className="w-20"
-                  />
-                </div>
+                <TablePagination
+                  page={safePage}
+                  pageCount={pages}
+                  pageSize={pageSize}
+                  totalItems={sortedFolders.length}
+                  onPage={setPage}
+                  onPageSize={(s) => { setPageSize(s); setPage(1); }}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  onExportCSV={() => exportCSV('projects.csv', folders.map((f) => ({
+                    id: f.id, name: f.name, monitorCount: f.stats?.totalMonitors ?? 0,
+                    uptimePct: f.stats?.uptimePct ?? '', overallStatus: f.stats?.overallStatus ?? '',
+                    createdAt: f.createdAt,
+                  })))}
+                  onExportJSON={() => exportJSON('projects.json', folders)}
+                />
               </div>
             </Card>
           )}

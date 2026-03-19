@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -167,6 +167,12 @@ function MonitorsPageInner() {
       return next;
     });
   };
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | "all">(() => {
+    try { const s = localStorage.getItem("monitor-page-size"); return s ? (s === "all" ? "all" : Number(s)) : 25; } catch { return 25; }
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -230,6 +236,9 @@ function MonitorsPageInner() {
   const [assignedChannels, setAssignedChannels] = useState<AlertChannel[]>([]);
   const [alertPanelLoading, setAlertPanelLoading] = useState(false);
   const [alertPanelError, setAlertPanelError] = useState("");
+
+  // Reset to page 1 when filters/sort change
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -782,6 +791,14 @@ function MonitorsPageInner() {
     }
   });
 
+  // Paginated slice
+  const totalFiltered = sortedMonitors.length;
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(totalFiltered / (pageSize as number)));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedMonitors = pageSize === "all"
+    ? sortedMonitors
+    : sortedMonitors.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
+
   if (!user) return null;
   if (loading)
     return (
@@ -1187,7 +1204,7 @@ function MonitorsPageInner() {
             )}
             {viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedMonitors.map((monitor) => {
+                {paginatedMonitors.map((monitor) => {
                   const lastRun = runs.find((r) => r.monitorId === monitor.id);
                   const level = lastRun?.level ?? "green";
                   const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : "bg-danger";
@@ -1226,9 +1243,34 @@ function MonitorsPageInner() {
               </div>
             ) : (
             <Card className="p-0">
+              {/* Table top bar: row count + page size */}
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border/60 text-xs text-text-secondary">
+                <span>
+                  {totalFiltered === 0 ? "No monitors" : pageSize === "all"
+                    ? `${totalFiltered} monitor${totalFiltered !== 1 ? "s" : ""}`
+                    : `${Math.min((safePage - 1) * (pageSize as number) + 1, totalFiltered)}–${Math.min(safePage * (pageSize as number), totalFiltered)} of ${totalFiltered}`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="monitor-page-size" className="text-text-secondary">Per page:</label>
+                  <select
+                    id="monitor-page-size"
+                    value={pageSize}
+                    onChange={(e) => {
+                      const v = e.target.value === "all" ? "all" : Number(e.target.value);
+                      setPageSize(v);
+                      setCurrentPage(1);
+                      try { localStorage.setItem("monitor-page-size", String(v)); } catch {}
+                    }}
+                    className="bg-surface-elevated border border-border/60 rounded-md px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+                    <option value="all">All</option>
+                  </select>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHead>
+                  <TableHead className="sticky top-0 z-10 bg-surface-elevated/95 backdrop-blur-sm">
                     <tr>
                       <TableHeader className="w-10">
                         <button
@@ -1268,7 +1310,7 @@ function MonitorsPageInner() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {sortedMonitors.map((monitor) => {
+                    {paginatedMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
                         <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
@@ -1425,6 +1467,54 @@ function MonitorsPageInner() {
                   </TableBody>
                 </Table>
               </div>
+              {/* Pagination controls */}
+              {pageSize !== "all" && totalPages > 1 && (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border/60">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let page: number;
+                      if (totalPages <= 7) {
+                        page = i + 1;
+                      } else if (safePage <= 4) {
+                        page = i < 6 ? i + 1 : totalPages;
+                      } else if (safePage >= totalPages - 3) {
+                        page = i === 0 ? 1 : totalPages - 6 + i;
+                      } else {
+                        const pages = [1, safePage - 1, safePage, safePage + 1, totalPages];
+                        page = pages[Math.min(i, pages.length - 1)];
+                      }
+                      const isEllipsis = i > 0 && page - (totalPages <= 7 ? i : [1, safePage <= 4 ? i : safePage - 1, safePage, safePage + 1, totalPages][Math.min(i - 1, 4)]) > 1;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => !isEllipsis && setCurrentPage(page)}
+                          className={`min-w-[28px] h-7 rounded-md text-xs font-medium transition-colors ${
+                            page === safePage
+                              ? "bg-accent text-white"
+                              : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </Card>
             )}
           </FadeIn>

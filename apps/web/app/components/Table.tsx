@@ -17,9 +17,9 @@ export function Table({ children, className = "" }: TableProps) {
   );
 }
 
-export function TableHead({ children }: { children: ReactNode }) {
+export function TableHead({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <thead className="bg-surface-elevated border-b border-border">
+    <thead className={`bg-surface-elevated border-b border-border ${className}`}>
       {children}
     </thead>
   );

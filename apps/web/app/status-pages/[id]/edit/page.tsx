@@ -2070,10 +2070,33 @@ export default function StatusPageEditorPage() {
     const activeId = active.id as string;
 
     if (activeId.startsWith("palette-")) {
-      // Drop from palette onto canvas
+      // Drop from palette onto canvas — place at cursor position
       if (over?.id === "canvas") {
         const type = activeId.replace("palette-", "");
-        addWidget(type);
+        const paletteItem = WIDGET_PALETTE.find((p) => p.type === type);
+        if (paletteItem && canvasRef.current && active.rect.current.translated) {
+          const canvasRect = canvasRef.current.getBoundingClientRect();
+          const droppedRect = active.rect.current.translated;
+          const colWidth = canvasRect.width / COL_COUNT;
+          // Compute grid position from drop center
+          const relX = droppedRect.left + droppedRect.width / 2 - canvasRect.left;
+          const relY = droppedRect.top - canvasRect.top;
+          const dropCol = Math.max(0, Math.min(COL_COUNT - paletteItem.defaultW, Math.floor(relX / colWidth)));
+          const dropRow = Math.max(0, Math.floor(relY / ROW_H));
+          const newWidget: Widget = {
+            id: `${type}-${Date.now()}`,
+            type,
+            x: dropCol,
+            y: dropRow,
+            w: paletteItem.defaultW,
+            h: paletteItem.defaultH,
+            config: {},
+          };
+          setWidgets((prev) => [...prev, newWidget]);
+          setSelectedId(newWidget.id);
+        } else {
+          addWidget(type);
+        }
       }
     } else if (activeId.startsWith("canvas-")) {
       // Move existing widget (skip if locked)

@@ -32,6 +32,13 @@ export class StatusPagesService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Returns all status pages owned by the authenticated user.
+   * Strips the passwordHash field and replaces it with a boolean `hasPassword` flag.
+   *
+   * @param userId - The authenticated user's ID (cuid string)
+   * @returns Array of status page summaries ordered by createdAt descending
+   */
   async findAll(userId: string) {
     const pages = await this.prisma.publicStatusPage.findMany({
       where: { userId },
@@ -43,6 +50,15 @@ export class StatusPagesService {
     }));
   }
 
+  /**
+   * Returns a single status page by ID, enforcing ownership.
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID
+   * @returns The status page with `hasPassword` flag (passwordHash is stripped)
+   * @throws NotFoundException if the status page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async findOne(userId: string, id: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -52,6 +68,14 @@ export class StatusPagesService {
     return { ...safe, hasPassword: !!page.passwordHash };
   }
 
+  /**
+   * Creates a new status page for the authenticated user.
+   * Auto-generates a slug from the title if not provided; appends a timestamp suffix if slug is already taken.
+   *
+   * @param userId - The authenticated user's ID
+   * @param dto - DTO containing title, optional slug, description, and layout
+   * @returns The created status page (without passwordHash)
+   */
   async create(userId: string, dto: CreateStatusPageDto) {
     let slug = dto.slug?.trim() || slugify(dto.title);
     if (!slug) slug = `page-${Date.now()}`;
@@ -80,6 +104,18 @@ export class StatusPagesService {
     return safe;
   }
 
+  /**
+   * Updates an existing status page. Supports updating title, description, layout, password, and webhook URL.
+   * When layout changes, the current layout is snapshotted to version history (capped at 10 snapshots).
+   * If `dto.removePassword` is set the password is cleared; if `dto.password` is set it is hashed with bcrypt.
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID to update
+   * @param dto - Partial update payload
+   * @returns Updated status page with `hasPassword` flag (passwordHash is stripped)
+   * @throws NotFoundException if the status page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async update(userId: string, id: string, dto: UpdateStatusPageDto) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -137,6 +173,15 @@ export class StatusPagesService {
     return { ...safe, hasPassword: !!updated.passwordHash };
   }
 
+  /**
+   * Returns the last 10 layout history snapshots for a status page, ordered newest first.
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID
+   * @returns Array of history entries (id, savedAt, label, layout)
+   * @throws NotFoundException if the status page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async getHistory(userId: string, id: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -151,6 +196,17 @@ export class StatusPagesService {
     return history;
   }
 
+  /**
+   * Restores a status page layout to a specific history snapshot.
+   * Before restoring, the current layout is saved as a new history entry labelled "Before restore".
+   *
+   * @param userId - The authenticated user's ID
+   * @param pageId - The status page ID
+   * @param historyId - The history snapshot ID to restore from
+   * @returns Updated status page with restored layout and `hasPassword` flag
+   * @throws NotFoundException if the status page or history entry does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async restoreHistory(userId: string, pageId: string, historyId: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id: pageId } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -181,6 +237,15 @@ export class StatusPagesService {
     return { ...safe, hasPassword: !!updated.passwordHash };
   }
 
+  /**
+   * Toggles the published state of a status page (published ↔ unpublished).
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID
+   * @returns Updated status page (without passwordHash)
+   * @throws NotFoundException if the status page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async publish(userId: string, id: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -199,6 +264,15 @@ export class StatusPagesService {
     return safe;
   }
 
+  /**
+   * Permanently deletes a status page and all associated data.
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID to delete
+   * @returns `{ deleted: true }` on success
+   * @throws NotFoundException if the status page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
   async remove(userId: string, id: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
@@ -209,6 +283,15 @@ export class StatusPagesService {
     return { deleted: true };
   }
 
+  /**
+   * Validates a slug and checks whether it is available for use.
+   * Slug must be 3–50 lowercase alphanumeric characters or hyphens, with no leading/trailing hyphens.
+   *
+   * @param userId - The authenticated user's ID (not currently used for filtering but reserved)
+   * @param slug - The candidate slug to validate and check
+   * @param excludeId - Optional status page ID to exclude from uniqueness check (for edits)
+   * @returns `{ available, valid, slug?, reason? }` — valid=false when format check fails
+   */
   async checkSlugAvailability(userId: string, slug: string, excludeId?: string) {
     const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;
     if (!slug || !SLUG_RE.test(slug)) {
@@ -220,6 +303,17 @@ export class StatusPagesService {
     return { available: !taken, valid: true, slug };
   }
 
+  /**
+   * Fetches the full public view of a published status page.
+   * Validates the optional password if the page is password-protected.
+   * Returns monitor summaries, recent incidents, active maintenance windows, and recent check history.
+   *
+   * @param slug - The unique public slug of the status page
+   * @param password - Optional plain-text password for password-protected pages
+   * @returns Public page data including monitors, incidents, maintenance windows, and recent checks
+   * @throws NotFoundException if the page does not exist or is not published
+   * @throws UnauthorizedException if the page is password-protected and no/incorrect password is supplied
+   */
   async findPublic(slug: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -343,6 +437,15 @@ export class StatusPagesService {
     };
   }
 
+  /**
+   * Subscribes an email address to incident update notifications for a published status page.
+   * Returns `alreadySubscribed: true` (without error) if the email is already subscribed.
+   *
+   * @param slug - The unique public slug of the status page
+   * @param email - The subscriber's email address
+   * @returns `{ subscribed, alreadySubscribed }` indicating the result
+   * @throws NotFoundException if the page does not exist or is not published
+   */
   async subscribeToStatusPage(slug: string, email: string): Promise<{ subscribed: boolean; alreadySubscribed: boolean }> {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -363,6 +466,17 @@ export class StatusPagesService {
     return { subscribed: true, alreadySubscribed: false };
   }
 
+  /**
+   * Resolves and returns the data payload for a single widget on a published status page.
+   * Verifies the page password if the page is password-protected, then delegates to `resolveWidgetData`.
+   *
+   * @param slug - The unique public slug of the status page
+   * @param widgetId - The widget ID within the page layout
+   * @param password - Optional plain-text password for password-protected pages
+   * @returns Widget-specific data object (structure depends on `widget.type`)
+   * @throws NotFoundException if the page, its publication status, or the widget is not found
+   * @throws UnauthorizedException if the page is password-protected and the supplied password is wrong/missing
+   */
   async getWidgetData(slug: string, widgetId: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -380,6 +494,16 @@ export class StatusPagesService {
     return this.resolveWidgetData(page.userId, widget);
   }
 
+  /**
+   * Resolves server-side data for a single widget configuration.
+   * Supports all implemented widget types and returns a widget-specific payload for rendering.
+   *
+   * @param userId - The owner user ID of the status page
+   * @param widget - The widget configuration object from the page layout
+   * @returns A widget-specific data object
+   * @throws BadRequestException if required widget configuration is missing or invalid
+   * @throws NotFoundException if a referenced resource (e.g. monitor) does not exist
+   */
   private async resolveWidgetData(userId: string, widget: Widget): Promise<Record<string, unknown>> {
     const monitorId = widget.config.monitorId as string | undefined;
 
@@ -2782,6 +2906,16 @@ export class StatusPagesService {
     }
   }
 
+  /**
+   * Returns a structured JSON summary of a published status page suitable for machine consumption (API / badges).
+   * Includes overall status, per-monitor statuses, active incidents, and upcoming maintenance windows.
+   *
+   * @param slug - The unique public slug of the status page
+   * @param password - Optional plain-text password for password-protected pages
+   * @returns Structured JSON with page metadata, overall status, monitors, incidents, and maintenance
+   * @throws NotFoundException if the page does not exist or is not published
+   * @throws UnauthorizedException if the page is password-protected and the supplied password is wrong/missing
+   */
   async getPublicJson(slug: string, password?: string): Promise<Record<string, unknown>> {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -2876,6 +3010,14 @@ export class StatusPagesService {
     };
   }
 
+  /**
+   * Generates an RSS 2.0 XML feed of recent incidents for a published status page.
+   * Returns the last 20 incidents as RSS items, including their status, severity, and latest update.
+   *
+   * @param slug - The unique public slug of the status page
+   * @returns A valid RSS 2.0 XML string
+   * @throws NotFoundException if the page does not exist or is not published
+   */
   async getRssFeed(slug: string): Promise<string> {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');

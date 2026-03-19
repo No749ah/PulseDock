@@ -68,6 +68,13 @@ export class AuthService {
     return value * 24 * 60 * 60 * 1000;
   }
 
+  /**
+   * Deletes revoked and expired sessions for a user.
+   * Session expiry is derived from the configured refresh token TTL.
+   *
+   * @param userId - The user ID whose stale sessions should be removed
+   * @returns Resolves when cleanup is complete
+   */
   private async purgeUserSessions(userId: string) {
     const cutoff = new Date(Date.now() - this.getRefreshTtlMs());
     await this.prisma.session.deleteMany({
@@ -78,6 +85,19 @@ export class AuthService {
     });
   }
 
+  /**
+   * Registers a new user account.
+   * Enforces the password policy and checks that public registration is enabled via `ALLOW_PUBLIC_REGISTRATION`.
+   * The first registered user is granted the `admin` role and has email verification skipped.
+   * Subsequent users receive a verification email when `REQUIRE_EMAIL_VERIFICATION=true`.
+   *
+   * @param email - The user's email address (will be lowercased)
+   * @param password - Plain-text password (must satisfy the password policy)
+   * @returns Basic user info; includes `emailVerificationSent: true` when verification email was sent
+   * @throws BadRequestException if the password does not meet the policy requirements
+   * @throws UnauthorizedException if public registration is disabled
+   * @throws ConflictException if the email address is already registered
+   */
   async register(email: string, password: string) {
     this.assertPasswordPolicy(password);
     const allowPublicRegistration = (process.env.ALLOW_PUBLIC_REGISTRATION ?? 'false') === 'true';
@@ -116,6 +136,18 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role };
   }
 
+  /**
+   * Authenticates a user with email and password.
+   * Enforces account lockout (5 failed attempts → 15-minute lock) and notifies the user when locked.
+   * When 2FA is enabled, returns a short-lived `tempToken` instead of a full session.
+   * After a successful login, fires an asynchronous new-IP detection check.
+   *
+   * @param email - The user's email address
+   * @param password - The plain-text password to verify
+   * @param context - Optional request context (userAgent, ipAddress) for session creation and anomaly detection
+   * @returns `{ accessToken, refreshToken, user }` on success, or `{ requires2fa: true, tempToken }` when 2FA is pending
+   * @throws UnauthorizedException if credentials are invalid, the account is locked, or email is not verified
+   */
   async login(email: string, password: string, context?: { userAgent?: string | null; ipAddress?: string | null }) {
     const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (!user) throw new UnauthorizedException('invalid credentials');
@@ -227,6 +259,15 @@ export class AuthService {
     }
   }
 
+  /**
+   * Rotates a refresh token, invalidating the old one and issuing a fresh pair of tokens.
+   * Validates the token's signature, type (`refresh`), and session revocation status.
+   *
+   * @param refreshToken - The current refresh token from the HTTP-only cookie or request body
+   * @param context - Optional request context used to update session metadata (userAgent, ipAddress)
+   * @returns `{ accessToken, refreshToken, user }` with rotated tokens
+   * @throws UnauthorizedException if the token is missing, invalid, expired, or the session was revoked
+   */
   async refresh(refreshToken: string | undefined, context?: { userAgent?: string | null; ipAddress?: string | null }) {
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
     try {
@@ -268,6 +309,14 @@ export class AuthService {
     }
   }
 
+  /**
+   * Returns metadata for an invite token (email, role, expiry) without consuming it.
+   * Used by the invite acceptance page to pre-fill the email field.
+   *
+   * @param token - The invite token from the invite email URL
+   * @returns `{ email, role, expiresAt }` of the invite
+   * @throws UnauthorizedException if the token is invalid, already accepted, or expired
+   */
   async getInviteInfo(token: string) {
     const invite = await this.prisma.inviteToken.findUnique({ where: { token } });
     if (!invite) throw new UnauthorizedException('invalid invite token');
@@ -281,6 +330,17 @@ export class AuthService {
     };
   }
 
+  /**
+   * Creates a new user account by consuming a valid invite token.
+   * The new account's email is automatically marked as verified.
+   *
+   * @param token - The invite token from the invite email URL
+   * @param password - Plain-text password chosen by the new user (must satisfy the password policy)
+   * @returns Basic user info `{ id, email, role }`
+   * @throws BadRequestException if the password does not meet the policy requirements
+   * @throws UnauthorizedException if the token is invalid, already accepted, or expired
+   * @throws ConflictException if a user with that email already exists
+   */
   async acceptInvite(token: string, password: string) {
     this.assertPasswordPolicy(password);
     const invite = await this.prisma.inviteToken.findUnique({ where: { token } });
@@ -308,6 +368,18 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
   }
 
+  /**
+   * Updates the authenticated user's profile fields (email, displayName, timezone).
+   * Only the fields explicitly passed (non-undefined) are updated.
+   * Email uniqueness is enforced — cannot reuse another account's email.
+   *
+   * @param userId - The authenticated user's ID
+   * @param email - New email address (optional, will be lowercased)
+   * @param displayName - Display name to show in the UI (optional, empty string clears it)
+   * @param timezone - IANA timezone string (optional, defaults to 'UTC' when empty)
+   * @returns Updated user profile `{ id, email, role, displayName, timezone }`
+   * @throws ConflictException if the new email is already used by another account
+   */
   async updateProfile(userId: string, email?: string, displayName?: string, timezone?: string) {
     const data: Record<string, unknown> = {};
 
@@ -326,6 +398,18 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', displayName: user.displayName ?? null, timezone: user.timezone ?? 'UTC' };
   }
 
+  /**
+   * Changes the authenticated user's password.
+   * Current password verification is required unless the account has `mustChangePassword=true`.
+   * All existing sessions are invalidated after a successful password change.
+   *
+   * @param userId - The authenticated user's ID
+   * @param currentPassword - The current password (required unless `mustChangePassword` is true)
+   * @param newPassword - The new password (must satisfy the password policy)
+   * @returns `{ ok: true }` on success
+   * @throws BadRequestException if the new password does not meet the policy requirements
+   * @throws UnauthorizedException if the current password is wrong or the user is not found
+   */
   async changePassword(userId: string, currentPassword: string | undefined, newPassword: string) {
     this.assertPasswordPolicy(newPassword);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -351,6 +435,16 @@ export class AuthService {
     return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
   }
 
+  /**
+   * Issues a password reset token and sends a reset email to the given address.
+   * Any existing unused reset tokens for the email are invalidated before issuing a new one.
+   * Does not reveal whether the email is registered (always returns `{ ok: true }`).
+   * Tokens are short-lived (15 minutes).
+   *
+   * @param email - The account's email address
+   * @returns `{ ok: true }` regardless of whether the email is registered
+   * @throws ServiceUnavailableException if SMTP is not configured on this instance
+   */
   async requestPasswordReset(email: string) {
     if (!this.isMailConfigured()) {
       throw new ServiceUnavailableException('Password reset is not available: mail is not configured on this instance.');
@@ -388,6 +482,16 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Resets a user's password using a valid single-use reset token.
+   * All active sessions are revoked after the password is successfully changed.
+   *
+   * @param token - The password reset token from the reset email URL
+   * @param newPassword - The new password (must satisfy the password policy)
+   * @returns `{ ok: true }` on success
+   * @throws BadRequestException if the new password does not meet the policy requirements
+   * @throws UnauthorizedException if the token is invalid, already consumed, or expired
+   */
   async resetPassword(token: string, newPassword: string) {
     this.assertPasswordPolicy(newPassword);
     const reset = await this.prisma.passwordResetToken.findUnique({ where: { token } });
@@ -413,6 +517,13 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Returns all active (non-revoked) sessions for the authenticated user.
+   * Purges expired and revoked sessions before listing.
+   *
+   * @param userId - The authenticated user's ID
+   * @returns Array of active session objects (id, userAgent, ipAddress, revokedAt, createdAt)
+   */
   async listSessions(userId: string) {
     await this.purgeUserSessions(userId);
     const sessions = await this.prisma.session.findMany({
@@ -430,6 +541,15 @@ export class AuthService {
     }));
   }
 
+  /**
+   * Revokes a specific session by ID, invalidating its refresh token.
+   * Purges expired/revoked sessions for the user after revocation.
+   *
+   * @param userId - The authenticated user's ID
+   * @param sessionId - The session ID to revoke
+   * @returns `{ ok: true }` on success
+   * @throws UnauthorizedException if the session is not found or does not belong to the user
+   */
   async revokeSession(userId: string, sessionId: string) {
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId } });
     if (!session) throw new UnauthorizedException('session not found');
@@ -440,6 +560,12 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Revokes all active sessions for the authenticated user (global sign-out).
+   *
+   * @param userId - The authenticated user's ID
+   * @returns `{ ok: true }` on success
+   */
   async revokeAllSessions(userId: string) {
     await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     await this.purgeUserSessions(userId);
@@ -467,6 +593,13 @@ export class AuthService {
     }
   }
 
+  /**
+   * Consumes an email verification token and marks the associated account's email as verified.
+   *
+   * @param token - The verification token from the email link
+   * @returns `{ ok: true }` on success
+   * @throws UnauthorizedException if the token is invalid, already consumed, or expired
+   */
   async verifyEmail(token: string) {
     const record = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
     if (!record) throw new UnauthorizedException('invalid verification token');
@@ -484,6 +617,14 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Resends an email verification link for an unverified account.
+   * Rate-limited: does not send if a token was issued within the last 2 minutes.
+   * Does not reveal whether the email is registered (always returns `{ ok: true }`).
+   *
+   * @param email - The unverified account's email address
+   * @returns `{ ok: true }` always
+   */
   async resendVerification(email: string) {
     const normalized = email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email: normalized } });
@@ -523,6 +664,14 @@ export class AuthService {
     return { plaintext: codes, hashes };
   }
 
+  /**
+   * Initiates the TOTP 2FA setup flow by generating a new TOTP secret for the user.
+   * The secret is stored but 2FA is NOT yet enabled — the user must call `verifyAndEnable2FA` with a valid code.
+   *
+   * @param userId - The authenticated user's ID
+   * @returns `{ secret, qrCodeUrl, otpAuthUrl }` — the QR code data URL for authenticator app scanning
+   * @throws UnauthorizedException if the user is not found
+   */
   async setup2FA(userId: string): Promise<{ secret: string; qrCodeUrl: string; otpAuthUrl: string }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('user not found');
@@ -538,6 +687,16 @@ export class AuthService {
     return { secret, qrCodeUrl, otpAuthUrl };
   }
 
+  /**
+   * Verifies a TOTP code and enables 2FA on the account if valid.
+   * Generates 10 single-use recovery codes; their bcrypt hashes are stored in the database.
+   *
+   * @param userId - The authenticated user's ID
+   * @param code - The 6-digit TOTP code from the authenticator app
+   * @returns `{ recoveryCodes }` — the plaintext recovery codes (shown once; user should store them)
+   * @throws BadRequestException if 2FA setup has not been started or is already enabled
+   * @throws UnauthorizedException if the TOTP code is invalid
+   */
   async verifyAndEnable2FA(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.totpSecret) throw new BadRequestException('2FA setup not started');
@@ -557,6 +716,17 @@ export class AuthService {
     return { recoveryCodes: plaintext };
   }
 
+  /**
+   * Disables TOTP 2FA on the account after verifying the current password and a valid TOTP/recovery code.
+   * Clears the stored secret and all recovery codes.
+   *
+   * @param userId - The authenticated user's ID
+   * @param password - The account's current password
+   * @param code - A valid TOTP code or recovery code
+   * @returns `{ ok: true }` on success
+   * @throws UnauthorizedException if the user is not found or the password/code is invalid
+   * @throws BadRequestException if 2FA is not currently enabled
+   */
   async disable2FA(userId: string, password: string, code: string): Promise<{ ok: boolean }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('user not found');
@@ -580,6 +750,16 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Regenerates the set of 2FA recovery codes after verifying a valid TOTP code.
+   * Old recovery codes are invalidated immediately upon regeneration.
+   *
+   * @param userId - The authenticated user's ID
+   * @param code - A valid TOTP code from the authenticator app
+   * @returns `{ recoveryCodes }` — 10 new plaintext recovery codes (shown once)
+   * @throws BadRequestException if 2FA is not enabled
+   * @throws UnauthorizedException if the TOTP code is invalid
+   */
   async regenerateRecoveryCodes(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA is not enabled');
@@ -624,6 +804,18 @@ export class AuthService {
     return { matched: true, remainingHashes: remaining };
   }
 
+  /**
+   * Completes the 2FA login flow by verifying a TOTP code (or single-use recovery code) against a temp token.
+   * Creates a full authenticated session and returns access/refresh tokens upon success.
+   * Recovery codes are consumed (removed from the stored list) when used.
+   *
+   * @param tempToken - The short-lived `totp-pending` JWT issued during the first login step
+   * @param code - A 6-digit TOTP code or a recovery code
+   * @param context - Optional request context (userAgent, ipAddress) for session creation
+   * @returns `{ accessToken, refreshToken, user }` on successful 2FA verification
+   * @throws UnauthorizedException if the temp token is invalid/expired, user is disabled, or the code is wrong
+   * @throws BadRequestException if 2FA is not enabled on the account
+   */
   async verifyTotpLogin(
     tempToken: string,
     code: string,
@@ -684,12 +876,25 @@ export class AuthService {
     return { accessToken, refreshToken, user: { ...payloadUser, mustChangePassword: user.mustChangePassword } };
   }
 
+  /**
+   * Looks up an active user by ID. Used internally by JWT guards to hydrate the request user.
+   *
+   * @param id - The user's ID
+   * @returns Full user profile or `null` if not found / account is inactive
+   */
   async getActiveUserById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user || !user.isActive) return null;
     return { id: user.id, email: user.email, role: user.role as 'admin' | 'user', mustChangePassword: user.mustChangePassword, totpEnabled: user.totpEnabled, displayName: user.displayName ?? null, timezone: user.timezone ?? 'UTC' };
   }
 
+  /**
+   * Resolves an access token to a user, validating the JWT, session existence, and session expiry.
+   * Used by cookie-based auth flows where the access token is read from a cookie.
+   *
+   * @param token - The access JWT string, or undefined
+   * @returns `{ id, email, role, sessionId }` on success, or `null` if the token is invalid/expired/revoked
+   */
   async getUserByAccessToken(token: string | undefined) {
     if (!token) return null;
     try {
@@ -714,6 +919,13 @@ export class AuthService {
 
   // ─── Audit Log ──────────────────────────────────────────────────────────────
 
+  /**
+   * Returns the authenticated user's audit log entries (their own actions only).
+   *
+   * @param userId - The authenticated user's ID
+   * @param limit - Maximum number of entries to return (capped at 500, default 100)
+   * @returns Array of audit log entries ordered by createdAt descending
+   */
   async getUserAuditLog(userId: string, limit = 100): Promise<Array<{
     id: string;
     action: string;
@@ -728,6 +940,13 @@ export class AuthService {
     });
   }
 
+  /**
+   * Exports up to 500 audit log entries for the authenticated user in CSV or JSON format.
+   *
+   * @param userId - The authenticated user's ID
+   * @param format - Output format: `'csv'` or `'json'`
+   * @returns `{ data, contentType, filename }` — the serialized log data with appropriate content type and filename
+   */
   async exportUserAuditLog(userId: string, format: 'csv' | 'json'): Promise<{ data: string; contentType: string; filename: string }> {
     const entries = await this.getUserAuditLog(userId, 500);
 

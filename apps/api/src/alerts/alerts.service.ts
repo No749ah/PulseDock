@@ -97,6 +97,16 @@ export class AlertsService {
     return payload;
   }
 
+  /**
+   * Sends an alert through a concrete channel transport.
+   * Supports webhook, Discord, Slack, Telegram, and email channel types.
+   *
+   * @param channel - The configured alert channel
+   * @param text - Plain-text fallback message
+   * @param extra - Optional structured payload used by rich channel formatters
+   * @returns Resolves when the outbound request has been dispatched
+   * @throws Error when the underlying channel request fails (e.g., non-2xx Discord response)
+   */
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
       const body = JSON.stringify({ text, extra });
@@ -199,6 +209,18 @@ export class AlertsService {
     }
   }
 
+  /**
+   * Sends an alert via the given channel with exponential backoff retries.
+   * Records the delivery outcome (success/failure) to the AlertDeliveryLog table.
+   * Increments the `alertsSent` or `alertsFailed` metric counter accordingly.
+   *
+   * @param channel - The alert channel configuration (webhook, discord, slack, telegram, email)
+   * @param text - The plain-text notification body
+   * @param extra - Optional structured context (monitor, run, test flag) passed to the sender
+   * @param deliveryMeta - Optional metadata for audit logging (monitorId, monitorName, trigger)
+   * @param maxRetries - Maximum delivery attempts before giving up (default: 3)
+   * @throws The last encountered error after all retry attempts are exhausted
+   */
   private async sendWithRetry(
     channel: AlertChannel,
     text: string,

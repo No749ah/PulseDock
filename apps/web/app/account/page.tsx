@@ -145,6 +145,11 @@ export default function AccountPage() {
     enabled: true, frequency: "weekly", dayOfWeek: 1, hourUtc: 8,
   });
 
+  // API key revoke confirm state (key id → "confirm" or undefined)
+  const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
+  // Per-key prefix copy state
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+
   // API key creation state
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -443,15 +448,21 @@ export default function AccountPage() {
     setKeyCopied(false);
   };
 
-  const handleDeleteKey = async (id: string, name: string) => {
-    if (!window.confirm(`Revoke API key "${name}"? This cannot be undone.`)) return;
+  const handleDeleteKey = async (id: string) => {
     try {
       await api(`/v1/api-keys/${id}`, user?.id, { method: "DELETE" });
       setApiKeys(apiKeys.filter((k) => k.id !== id));
+      setRevokeConfirm(null);
       toastSuccess("API key revoked");
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to revoke API key");
     }
+  };
+
+  const handleCopyPrefix = async (keyId: string, prefix: string) => {
+    await navigator.clipboard.writeText(prefix);
+    setCopiedKeyId(keyId);
+    setTimeout(() => setCopiedKeyId(null), 2000);
   };
 
   const isKeyExpired = (expiresAt: string | null) => {
@@ -812,16 +823,22 @@ export default function AccountPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <code className="text-xs text-text-secondary font-mono">{key.prefix}••••••••</code>
-                        {key.usageCount > 0 && (
-                          <span className="text-xs text-text-secondary">{key.usageCount.toLocaleString()} uses</span>
-                        )}
-                        {key.lastUsedAt ? (
+                        <button
+                          onClick={() => handleCopyPrefix(key.id, key.prefix)}
+                          className="flex items-center gap-1 text-xs text-text-secondary font-mono hover:text-accent transition-colors group"
+                          title="Copy key prefix"
+                        >
+                          <code>{key.prefix}••••••••</code>
+                          <Copy className={`w-3 h-3 ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${copiedKeyId === key.id ? "text-success opacity-100" : ""}`} />
+                          {copiedKeyId === key.id && <span className="text-success text-[10px] ml-0.5">Copied!</span>}
+                        </button>
+                        <span className="text-xs text-text-secondary">
+                          {key.usageCount > 0 ? `${key.usageCount.toLocaleString()} uses` : "Never used"}
+                        </span>
+                        {key.lastUsedAt && (
                           <span className="text-xs text-text-secondary">
                             Last used {new Date(key.lastUsedAt).toLocaleDateString()}
                           </span>
-                        ) : (
-                          <span className="text-xs text-text-secondary/60">Never used</span>
                         )}
                         {key.expiresAt && !isKeyExpired(key.expiresAt) && (
                           <span className="text-xs text-text-secondary">
@@ -830,14 +847,34 @@ export default function AccountPage() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteKey(key.id, key.name)}
-                      className="text-danger hover:text-danger ml-3 shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
+                      {revokeConfirm === key.id ? (
+                        <>
+                          <button
+                            onClick={() => handleDeleteKey(key.id)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-danger text-white hover:bg-danger/90 transition-colors"
+                          >
+                            Confirm revoke
+                          </button>
+                          <button
+                            onClick={() => setRevokeConfirm(null)}
+                            className="px-2.5 py-1 rounded-lg text-xs text-text-secondary border border-border hover:text-text-primary transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRevokeConfirm(key.id)}
+                          className="text-danger hover:text-danger"
+                          title="Revoke API key"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

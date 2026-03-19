@@ -1345,7 +1345,7 @@ function MonitorsPageInner() {
             </Card>
           
         ) : (
-          
+          <>
             {/* Bulk action bar */}
             {selectedIds.size > 0 && (
               <div className="mb-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-2.5">
@@ -1917,7 +1917,7 @@ function MonitorsPageInner() {
               )}
             </Card>
             )}
-          
+          </>
         )}
 
         {/* Recent runs */}

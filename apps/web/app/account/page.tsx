@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Building2, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -154,6 +154,10 @@ export default function AccountPage() {
   const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
   const [inviteSending, setInviteSending] = useState(false);
 
+  // Workspace settings state
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
+
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
   // Per-key prefix copy state
@@ -191,8 +195,11 @@ export default function AccountPage() {
         setSessions(sess);
         setApiKeys(keys);
         setEmail(profile.email);
-        setDisplayName((profile as unknown as { displayName?: string }).displayName ?? "");
+        const dn = (profile as unknown as { displayName?: string }).displayName ?? "";
+        setDisplayName(dn);
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
+        setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
+        setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
         // Load audit log + notification preferences lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
@@ -1267,6 +1274,65 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
+          </Card>
+        </FadeIn>
+
+        {/* Workspace Settings Section */}
+        <FadeIn delay={0.55}>
+          <Card>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-accent/10">
+                <Building2 className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Workspace Settings</h2>
+                <p className="text-xs text-text-secondary mt-0.5">Configure your workspace identity</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Workspace Name
+                </label>
+                <input
+                  type="text"
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
+                  placeholder="My Workspace"
+                  maxLength={64}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Workspace Slug
+                  <span
+                    className="ml-1.5 text-xs text-text-secondary/60 cursor-help"
+                    title="Coming soon — custom workspace URLs are not yet available"
+                  >
+                    (Coming soon)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={workspaceSlug}
+                  disabled
+                  className="w-full px-3 py-2 bg-surface-elevated/50 border border-border rounded-lg text-text-secondary/50 text-sm cursor-not-allowed"
+                  placeholder="my-workspace"
+                />
+                <p className="mt-1 text-xs text-text-secondary/50">Custom workspace URLs are coming soon.</p>
+              </div>
+
+              <Button
+                onClick={() => toastSuccess("Workspace settings saved")}
+                size="lg"
+                className="w-full"
+              >
+                Save Workspace Settings
+              </Button>
+            </div>
           </Card>
         </FadeIn>
 

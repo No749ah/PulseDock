@@ -1,3 +1,13 @@
+## Status Summary (2026-03-19 20:34 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
+- **Deployment:** ✅ API + Web healthy (4321 + 1234)
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 20:34 UTC):**
+  - **Status Page SVG Badge**: `GET /v1/public/status-badge/:slug.svg` — computes overall page status (operational/degraded/outage) from monitor runs in layout. Supports `?style=flat|flat-square|for-the-badge`. Cache-Control: 60s. CORS open. 404 for unpublished/missing pages. Status Pages list page: "Badge" button per row opens embed modal with live preview, style selector (Flat/Square/Large), and copy buttons (Markdown / HTML / URL).
+  - **Export Status Page as PDF**: `ExportPDFButton` component already implemented in prior session (confirmed present at `apps/web/app/status/[slug]/widgets/ExportPDFButton.tsx`). Multi-page A4 PDF via jsPDF + html2canvas, wired into public status page header.
+  - Committed + pushed: `5c1d7ac` (feat: status page SVG badge + badge embed modal)
+
 ## Status Summary (2026-03-19 20:30 UTC)
 - **Build/Test:** ✅ Build recovered and passing after fix; tests passing
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -891,7 +901,7 @@
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes
 - [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
 - [x] **Export as Image** — Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
-- [ ] **Export as PDF** — Generate PDF report of current status
+- [x] **Export as PDF** — Generate PDF report of current status
 
 ### P1 — Tool Registry & Templates Expansion
 

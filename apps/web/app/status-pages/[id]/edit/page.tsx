@@ -63,6 +63,9 @@ import {
   AlignEndHorizontal,
   AlignCenterVertical,
   AlignCenterHorizontal,
+  GitFork,
+  Layers,
+  ShieldAlert,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -218,6 +221,12 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
   { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
   { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "dependency-map", label: "Dependency Map", description: "Visual service dependency graph with live status on each node. Define edges between monitors in config.", icon: GitFork, category: "Status", defaultW: 12, defaultH: 5 },
+  { type: "multi-environment-status", label: "Multi-Environment Status", description: "Side-by-side status comparison across environments (prod/staging/dev). Configure envMonitors mapping.", icon: Layers, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "tab-container", label: "Tab Container", description: "Multiple tabs each showing configurable text/content sections.", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 4 },
+{ type: "region-status-map", label: "Region Status Map", description: "Status overview per geographic region. Configure regionMonitors mapping.", icon: Globe, category: "Status", defaultW: 12, defaultH: 4 },
+{ type: "third-party-dependencies", label: "Third-Party Dependencies", description: "Live status check of external services. Configure services array.", icon: ExternalLink, category: "Status", defaultW: 8, defaultH: 5 },
+{ type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -723,8 +732,9 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const supportsMonitorScope = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
-  const supportsFilters = !["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section"].includes(w.type);
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory"];
+  const supportsMonitorScope = !noScopeWidgets.includes(w.type);
+  const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
@@ -1048,6 +1058,121 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             >
               <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(w.config.defaultOpen !== false) ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
+          </div>
+        </>
+      )}
+
+      {w.type === "tab-container" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Tabs (JSON)</label>
+          <textarea
+            value={JSON.stringify(
+              (w.config.tabs as unknown[] | undefined) ?? [{ title: "Tab 1", content: "" }, { title: "Tab 2", content: "" }],
+              null, 2
+            )}
+            onChange={(e) => {
+              try { update("tabs", JSON.parse(e.target.value)); } catch {}
+            }}
+            rows={6}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {`{title, content}`} — content supports newlines</p>
+        </div>
+      )}
+
+      {w.type === "dependency-map" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Edges (JSON)</label>
+          <textarea
+            value={JSON.stringify((w.config.edges as unknown[] | undefined) ?? [], null, 2)}
+            onChange={(e) => {
+              try { update("edges", JSON.parse(e.target.value)); } catch {}
+            }}
+            placeholder='[{"source":"id1","target":"id2","label":"calls"}]'
+            rows={4}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {`{source, target, label?}`} using monitor IDs</p>
+        </div>
+      )}
+
+      {w.type === "multi-environment-status" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Environment → Monitor IDs (JSON)</label>
+            <textarea
+              value={JSON.stringify((w.config.envMonitors as Record<string, string[]> | undefined) ?? { prod: [], staging: [], dev: [] }, null, 2)}
+              onChange={(e) => {
+                try { update("envMonitors", JSON.parse(e.target.value)); } catch {}
+              }}
+              rows={6}
+              className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-3 py-2">
+            <p className="text-xs font-medium text-text-primary">Show monitor list</p>
+            <button
+              onClick={() => update("showMonitors", !w.config.showMonitors)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${w.config.showMonitors ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${w.config.showMonitors ? "translate-x-4" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        </>
+      )}
+
+      {w.type === "region-status-map" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Region → Monitor IDs (JSON)</label>
+          <textarea
+            value={JSON.stringify((w.config.regionMonitors as Record<string, string[]> | undefined) ?? { "EU-West": [], "US-East": [], "APAC": [] }, null, 2)}
+            onChange={(e) => {
+              try { update("regionMonitors", JSON.parse(e.target.value)); } catch {}
+            }}
+            rows={6}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Map region names to arrays of monitor IDs</p>
+        </div>
+      )}
+
+      {w.type === "third-party-dependencies" && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-secondary">Services (JSON)</label>
+          <textarea
+            value={JSON.stringify((w.config.services as unknown[] | undefined) ?? [{ name: "GitHub", url: "https://api.github.com" }, { name: "Cloudflare", url: "https://cloudflare.com" }], null, 2)}
+            onChange={(e) => {
+              try { update("services", JSON.parse(e.target.value)); } catch {}
+            }}
+            rows={6}
+            className="w-full resize-none rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary focus:border-accent focus:outline-none"
+          />
+          <p className="mt-1 text-[10px] text-text-muted">Array of {`{name, url}`} — each is HEAD-checked</p>
+        </div>
+      )}
+
+      {w.type === "security-advisory" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Package Name</label>
+            <input
+              type="text"
+              value={(w.config.packageName as string) ?? ""}
+              onChange={(e) => update("packageName", e.target.value)}
+              placeholder="e.g. express"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+            <p className="mt-1 text-[10px] text-text-muted">Package name to look up in GitHub Security Advisories</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Ecosystem (optional)</label>
+            <input
+              type="text"
+              value={(w.config.ecosystem as string) ?? ""}
+              onChange={(e) => update("ecosystem", e.target.value)}
+              placeholder="e.g. npm, pip, cargo, go"
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
           </div>
         </>
       )}

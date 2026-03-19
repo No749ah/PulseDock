@@ -2375,6 +2375,167 @@ export class StatusPagesService {
         };
       }
 
+      case 'dependency-map': {
+        const depMonitorIds = widget.config.monitorIds as string[] | undefined;
+        const depWhere = depMonitorIds?.length
+          ? { userId, id: { in: depMonitorIds }, enabled: true }
+          : { userId, enabled: true };
+        const depMonitors = await this.prisma.monitor.findMany({
+          where: depWhere,
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            runs: {
+              orderBy: { checkedAt: 'desc' as const },
+              take: 1,
+              select: { level: true, checkedAt: true, latencyMs: true },
+            },
+          },
+          orderBy: { name: 'asc' },
+        });
+        const nodes = depMonitors.map((m) => ({
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          level: m.runs[0]?.level ?? 'green',
+          lastChecked: m.runs[0]?.checkedAt?.toISOString() ?? null,
+          latencyMs: m.runs[0]?.latencyMs ?? null,
+        }));
+        const edges = (widget.config.edges as Array<{ source: string; target: string; label?: string }> | undefined) ?? [];
+        return { nodes, edges };
+      }
+
+      case 'multi-environment-status': {
+        const envMonitors = (widget.config.envMonitors as Record<string, string[]> | undefined) ?? {};
+        const allEnvIds = Object.values(envMonitors).flat();
+        const envMonitorsDb = allEnvIds.length > 0
+          ? await this.prisma.monitor.findMany({
+              where: { userId, id: { in: allEnvIds } },
+              select: {
+                id: true,
+                name: true,
+                runs: {
+                  orderBy: { checkedAt: 'desc' as const },
+                  take: 1,
+                  select: { level: true },
+                },
+              },
+            })
+          : [];
+        const statusMap = new Map(envMonitorsDb.map((m) => [m.id, m.runs[0]?.level ?? 'green']));
+        const nameMap = new Map(envMonitorsDb.map((m) => [m.id, m.name]));
+        const result = Object.entries(envMonitors).map(([env, ids]) => {
+          const rows = ids
+            .map((id) => ({ id, name: nameMap.get(id) ?? id, level: statusMap.get(id) ?? 'green' }));
+          const total = rows.length;
+          const down = rows.filter((r) => r.level === 'red').length;
+          const degraded = rows.filter((r) => r.level === 'yellow').length;
+          const summary: 'operational' | 'degraded' | 'outage' =
+            down > 0 ? (down === total ? 'outage' : 'degraded') : degraded > 0 ? 'degraded' : 'operational';
+          return { env, summary, total, up: total - down, monitors: rows };
+        });
+        return { environments: result };
+      }
+
+      case 'region-status-map': {
+        const regionMonitors = (widget.config.regionMonitors as Record<string, string[]> | undefined) ?? {};
+        const allRegionIds = Object.values(regionMonitors).flat();
+        const regionMonitorsDb = allRegionIds.length > 0
+          ? await this.prisma.monitor.findMany({
+              where: { userId, id: { in: allRegionIds } },
+              select: {
+                id: true,
+                name: true,
+                runs: {
+                  orderBy: { checkedAt: 'desc' as const },
+                  take: 1,
+                  select: { level: true },
+                },
+              },
+            })
+          : [];
+        const statusMap = new Map(regionMonitorsDb.map((m) => [m.id, m.runs[0]?.level ?? 'green']));
+        const regions = Object.entries(regionMonitors).map(([region, ids]) => {
+          const monitors = ids.map((id) => ({ id, level: statusMap.get(id) ?? 'green' }));
+          const total = monitors.length;
+          const downCount = monitors.filter((m) => m.level === 'red').length;
+          const degradedCount = monitors.filter((m) => m.level === 'yellow').length;
+          const status: 'operational' | 'degraded' | 'outage' =
+            downCount > 0 ? (downCount === total ? 'outage' : 'degraded') : degradedCount > 0 ? 'degraded' : 'operational';
+          return { region, status, monitorCount: total, upCount: total - downCount };
+        });
+        return { regions };
+      }
+
+      case 'third-party-dependencies': {
+        const services = (widget.config.services as Array<{ name: string; url: string; expectedStatus?: number }> | undefined) ?? [];
+        if (services.length === 0) return { services: [], checkedAt: new Date().toISOString() };
+
+        const results = await Promise.allSettled(
+          services.map(async (svc) => {
+            const start = Date.now();
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const res = await fetch(svc.url, { method: 'HEAD', signal: controller.signal as AbortSignal });
+              clearTimeout(timeoutId);
+              const responseMs = Date.now() - start;
+              const svcStatus: 'up' | 'down' = res.status < 400 ? 'up' : 'down';
+              return { name: svc.name, url: svc.url, status: svcStatus, httpStatus: res.status, responseMs };
+            } catch {
+              return { name: svc.name, url: svc.url, status: 'down' as const, httpStatus: 0, responseMs: Date.now() - start };
+            }
+          }),
+        );
+
+        const serviceResults = results.map((r, i) =>
+          r.status === 'fulfilled'
+            ? r.value
+            : { name: services[i]?.name ?? '', url: services[i]?.url ?? '', status: 'unknown' as const, httpStatus: 0, responseMs: 0 },
+        );
+        return { services: serviceResults, checkedAt: new Date().toISOString() };
+      }
+
+      case 'security-advisory': {
+        const packageName = (widget.config.packageName as string | undefined) ?? '';
+        if (!packageName) return { advisories: [], checkedAt: new Date().toISOString(), packageName: '' };
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(
+            `https://api.github.com/advisories?affects=${encodeURIComponent(packageName)}&type=reviewed&per_page=5`,
+            {
+              signal: controller.signal as AbortSignal,
+              headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'PulseDock/1.0' },
+            },
+          );
+          clearTimeout(timeoutId);
+
+          if (!res.ok) return { advisories: [], checkedAt: new Date().toISOString(), packageName, error: `GitHub API returned ${res.status}` };
+
+          const data = await res.json() as Array<{
+            ghsa_id: string;
+            summary: string;
+            severity: string;
+            published_at: string;
+            html_url: string;
+          }>;
+
+          const advisories = (Array.isArray(data) ? data : []).map((a) => ({
+            ghsaId: a.ghsa_id,
+            summary: a.summary,
+            severity: a.severity as 'critical' | 'high' | 'medium' | 'low',
+            publishedAt: a.published_at,
+            link: a.html_url,
+          }));
+          return { advisories, checkedAt: new Date().toISOString(), packageName };
+        } catch {
+          return { advisories: [], checkedAt: new Date().toISOString(), packageName, error: 'Failed to fetch advisories' };
+        }
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

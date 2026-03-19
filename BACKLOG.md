@@ -1,3 +1,24 @@
+## Status Summary (2026-03-18 23:11 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-18-widget-data
+- **This session (2026-03-18 23:11 UTC):**
+  - **3 new status-page widgets**: Region Status Map (card grid per region), Third-Party Dependencies (live HEAD checks), Security Advisory (GitHub advisories lookup)
+  - All 3 with: backend resolver, frontend component, editor palette entry + config panel
+  - BACKLOG: marked 3 items complete
+
+## Status Summary (2026-03-18 22:07 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — not used directly, transitive only); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-18-widget-data (from dev after branch rotation at 22:06 UTC)
+- **This session (2026-03-18 22:07 UTC):**
+  - **Branch rotation**: Merged 27 commits from heartbeat/2026-03-18-landing-polish → dev, deleted old branch, created heartbeat/2026-03-18-widget-data
+  - **Widget save bug fixed**: `locked` field missing from WidgetDto caused `forbidNonWhitelisted` to reject saves silently
+  - **Widget data verified**: All 5 core widget API endpoints return real DB data (uptime%, latency, timeline, overall-status, comparison-chart)
+  - **Public status page**: Confirmed working end-to-end — real monitor data, all widget types render, error boundaries in place
+
 ## Status Summary (2026-03-18 13:20 UTC)
 - **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 agent), zero TS errors
 - **Security/Audit:** ⚠️ 10 moderate vulns (transitive); no high/critical.
@@ -64,7 +85,13 @@
 
 - [x] **Response Time Heatmap widget** — Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
 
-*(next: continue landing page polish — SEO, Lighthouse, mobile audit — or move to P1 status-page widgets)*
+- [x] **Dependency Map widget** — SVG graph showing monitors as nodes with colored edges based on live status. Green=ok, yellow=degraded, red=outage (pulsing). Edges defined via JSON config `{source, target, label?}`. Simple auto-layout grid, shows latency in node. API resolver loads monitor statuses. Editor palette under Status category.
+
+- [x] **Multi-Environment Status widget** — Side-by-side status cards for prod/staging/dev environments. `envMonitors` JSON config maps env names to monitor ID arrays. Shows operational/degraded/outage summary per env, up/total count, optional per-monitor breakdown list. API resolver computes status from MonitorRun data.
+
+- [x] **Tab Container widget** — Multiple tabs with configurable title/content pairs. Client-side tab switching with animated underline indicator. JSON config `[{title, content}]`. Clean tab bar with active accent indicator.
+
+*(next: continue status-page widgets — Region Status Map, Third-Party Dependencies, Security Advisory, Page-Level config items)*
 
 ## Recently Completed
 
@@ -495,13 +522,13 @@
 
 - [x] **Component Status List** — Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
 - [x] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
-- [ ] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
+- [x] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
 - [x] **Status History Ribbon** — Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
 - [x] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
 - [x] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
-- [ ] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
-- [ ] **Region Status Map** — SVG world map with colored pins per monitor. Config: latitude/longitude or region (EU/US/APAC) per monitor
-- [ ] **Third-Party Dependencies** — Show status of external services. Config: URLs to check (GitHub status, AWS health, Cloudflare status etc.)
+- [x] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
+- [x] **Region Status Map** — Card grid layout showing monitors grouped by region with status (operational/degraded/outage). Config: regionMonitors JSON mapping region names to monitor ID arrays.
+- [x] **Third-Party Dependencies** — Live HEAD checks of external services. Config: services JSON array [{name, url}]. Shows status dot, HTTP status, response time per service.
 - [x] **Rolling Uptime Cards** — Row of cards: 24h / 7d / 30d / 90d uptime percentages side by side
 
 ### P1 — New Widgets (Performance)
@@ -540,7 +567,7 @@
 - [x] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
 - [x] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
 - [x] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
-- [ ] **Security Advisory Widget** — Checks if current version has known CVEs (via GitHub advisories API)
+- [x] **Security Advisory Widget** — Checks GitHub Security Advisories for a configured package name. Shows severity badges (critical/high/medium/low), GHSA ID, summary, published date, and link.
 
 ### P1 — New Widgets (Metrics & Data)
 
@@ -567,7 +594,7 @@
 
 ### P1 — New Widgets (Layout & Navigation)
 
-- [ ] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, which widgets per tab
+- [x] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, content per tab (text-based; nested widget sets deferred as future enhancement)
 - [ ] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
 - [ ] **Column Layout** — 2/3/4 column container for sub-widget grouping within a row
 - [ ] **Sticky Header** — Stays fixed at top while scrolling. Shows overall status + page title
@@ -985,6 +1012,16 @@
 - [ ] **Aggregation Pipelines** — Pre-compute hourly/daily rollups for fast chart rendering
 
 ---
+
+## Status Summary (2026-03-18 22:17 UTC)
+- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 10 vulns (6 moderate + 4 high — all via @prisma/dev transitive dep, not runtime); override in package.json, awaiting Prisma upstream fix.
+- **Deployment:** ✅ All routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-18-widget-data
+- **This heartbeat (2026-03-18 22:17 UTC):**
+  - **3 new status-page widgets**: Dependency Map (SVG graph with live node status + configurable edges), Multi-Environment Status (prod/staging/dev side-by-side cards), Tab Container (client-side tabbed content)
+  - **Page Transition**: fade+slide animation on every route change via CSS keyframes + Intersection Observer
+  - **noScopeWidgets list**: content-only widgets now hidden from monitor scope/filter controls for cleaner editor UX
 
 ## Status Summary
 - **Codebase:** 1346 tests passing (1324 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX

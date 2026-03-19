@@ -1,6 +1,7 @@
 // Widget renderer components for public status pages.
 // All widgets receive widget config + live monitor data from the API.
 
+import React from "react";
 import { SubscriberFormWidget } from "./SubscriberFormWidget";
 import { CountdownWidget } from "./CountdownWidget";
 import { AnnouncementBarClient } from "./AnnouncementBarClient";
@@ -4217,6 +4218,393 @@ export function CollapsibleSection({ widget }: WidgetProps) {
   );
 }
 
+// ── Tab Container ────────────────────────────────────────────────────────
+
+export function TabContainer({ widget }: WidgetProps) {
+  const tabs = (widget.config.tabs as Array<{ title: string; content: string }> | undefined) ?? [
+    { title: "Tab 1", content: "" },
+    { title: "Tab 2", content: "" },
+  ];
+  const label = widget.config.label as string | undefined;
+  const [active, setActive] = React.useState(0);
+  const activeIndex = Math.min(active, tabs.length - 1);
+  const tab = tabs[activeIndex];
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      {label && <p className="text-sm font-semibold text-text-primary px-4 pt-4">{label}</p>}
+      {/* Tab bar */}
+      <div className="flex border-b border-border bg-surface-elevated/40 overflow-x-auto">
+        {tabs.map((t, i) => (
+          <button
+            key={i}
+            onClick={() => setActive(i)}
+            className={[
+              "relative shrink-0 px-4 py-2.5 text-sm font-medium transition-colors select-none",
+              i === activeIndex
+                ? "text-text-primary"
+                : "text-text-muted hover:text-text-secondary",
+            ].join(" ")}
+          >
+            {t.title || `Tab ${i + 1}`}
+            {i === activeIndex && (
+              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+      {/* Tab content */}
+      <div className="px-5 py-4 min-h-[60px]">
+        {tab?.content ? (
+          <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">{tab.content}</div>
+        ) : (
+          <p className="text-sm text-text-muted italic">No content configured for this tab.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Dependency Map ───────────────────────────────────────────────────────
+
+export function DependencyMap({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    nodes: Array<{ id: string; name: string; type: string; level: string; latencyMs: number | null }>;
+    edges: Array<{ source: string; target: string; label?: string }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading dependency map…</p>
+      </div>
+    );
+  }
+
+  const nodeLevel = (id: string) => data.nodes.find((n) => n.id === id)?.level ?? "green";
+  const levelColor = (lvl: string) =>
+    lvl === "green" ? { ring: "#4ade80", bg: "#052e16", text: "#4ade80" }
+    : lvl === "yellow" ? { ring: "#facc15", bg: "#1c1a00", text: "#facc15" }
+    : { ring: "#f87171", bg: "#2d0a0a", text: "#f87171" };
+
+  // Simple grid layout: space nodes evenly
+  const cols = Math.ceil(Math.sqrt(data.nodes.length || 1));
+  const NODE_W = 120;
+  const NODE_H = 52;
+  const COL_GAP = 60;
+  const ROW_GAP = 50;
+  const positions = data.nodes.map((n, i) => ({
+    id: n.id,
+    x: (i % cols) * (NODE_W + COL_GAP) + 20,
+    y: Math.floor(i / cols) * (NODE_H + ROW_GAP) + 20,
+  }));
+  const totalW = cols * (NODE_W + COL_GAP) + 40;
+  const totalH = (Math.ceil(data.nodes.length / cols)) * (NODE_H + ROW_GAP) + 40;
+  const posMap = new Map(positions.map((p) => [p.id, p]));
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4 overflow-auto">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      {data.nodes.length === 0 ? (
+        <p className="text-sm text-text-secondary text-center py-4">No monitors configured. Add monitors in the config panel.</p>
+      ) : (
+        <svg width={totalW} height={totalH} className="block mx-auto" style={{ minHeight: 80 }}>
+          {/* Edges */}
+          {data.edges.map((e, i) => {
+            const src = posMap.get(e.source);
+            const tgt = posMap.get(e.target);
+            if (!src || !tgt) return null;
+            const x1 = src.x + NODE_W / 2;
+            const y1 = src.y + NODE_H / 2;
+            const x2 = tgt.x + NODE_W / 2;
+            const y2 = tgt.y + NODE_H / 2;
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            const lvl = nodeLevel(e.source);
+            const c = lvl === "green" ? "#4ade80" : lvl === "yellow" ? "#facc15" : "#f87171";
+            return (
+              <g key={i}>
+                <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={c} strokeWidth={1.5} strokeOpacity={0.5} strokeDasharray={lvl === "red" ? "4 3" : undefined} />
+                {e.label && (
+                  <text x={mx} y={my - 4} textAnchor="middle" fontSize={9} fill="rgba(255,255,255,0.45)">{e.label}</text>
+                )}
+              </g>
+            );
+          })}
+          {/* Nodes */}
+          {data.nodes.map((n) => {
+            const pos = posMap.get(n.id);
+            if (!pos) return null;
+            const c = levelColor(n.level);
+            return (
+              <g key={n.id}>
+                <rect
+                  x={pos.x} y={pos.y} width={NODE_W} height={NODE_H} rx={8}
+                  fill={c.bg} stroke={c.ring} strokeWidth={1.5}
+                />
+                <circle cx={pos.x + 14} cy={pos.y + 14} r={4} fill={c.ring} className={n.level === "red" ? "animate-pulse" : ""} />
+                <text x={pos.x + 24} y={pos.y + 18} fontSize={10} fill={c.text} fontWeight={600}>{n.name.length > 14 ? n.name.slice(0, 14) + "…" : n.name}</text>
+                <text x={pos.x + 10} y={pos.y + 36} fontSize={9} fill="rgba(255,255,255,0.45)">{n.type}</text>
+                {n.latencyMs != null && (
+                  <text x={pos.x + NODE_W - 8} y={pos.y + 36} fontSize={9} fill="rgba(255,255,255,0.35)" textAnchor="end">{n.latencyMs}ms</text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// ── Multi-Environment Status ──────────────────────────────────────────────
+
+export function MultiEnvironmentStatus({ widget, extra }: WidgetProps) {
+  const data = extra.widgetDataById[widget.id] as {
+    environments: Array<{
+      env: string;
+      summary: "operational" | "degraded" | "outage";
+      total: number;
+      up: number;
+      monitors: Array<{ id: string; name: string; level: string }>;
+    }>;
+  } | undefined;
+
+  const label = widget.config.label as string | undefined;
+  const showMonitors = widget.config.showMonitors as boolean | undefined;
+
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-4 text-center">
+        <p className="text-sm text-text-secondary">Loading…</p>
+      </div>
+    );
+  }
+
+  const summaryStyle = (s: string) =>
+    s === "operational" ? "bg-green-500/15 text-green-400 border-green-500/30"
+    : s === "degraded" ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"
+    : "bg-red-500/15 text-red-400 border-red-500/30";
+
+  const dotColor = (lvl: string) =>
+    lvl === "green" ? "bg-green-400" : lvl === "yellow" ? "bg-yellow-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-4">
+      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      {data.environments.length === 0 ? (
+        <p className="text-sm text-text-secondary text-center py-4">No environments configured. Set envMonitors in config.</p>
+      ) : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(200px, 1fr))` }}>
+          {data.environments.map((env) => (
+            <div key={env.env} className="rounded-lg border border-border bg-surface-elevated p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-text-primary capitalize">{env.env}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${summaryStyle(env.summary)}`}>
+                  {env.summary}
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mb-2">{env.up}/{env.total} services up</p>
+              {showMonitors && env.monitors.length > 0 && (
+                <div className="space-y-1 mt-2 pt-2 border-t border-border/50">
+                  {env.monitors.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotColor(m.level)}`} />
+                      <span className="text-xs text-text-secondary truncate">{m.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Region Status Map ────────────────────────────────────────────────────
+
+export function RegionStatusMap({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    regions: { region: string; status: "operational" | "degraded" | "outage"; monitorCount: number; upCount: number }[];
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Region Status";
+
+  if (!raw || !raw.regions?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">No regions configured. Add regionMonitors in widget config.</div>
+      </div>
+    );
+  }
+
+  const statusConfig = {
+    operational: { color: "bg-green-500", textColor: "text-green-400", label: "Operational", dot: "●" },
+    degraded: { color: "bg-yellow-400", textColor: "text-yellow-400", label: "Degraded", dot: "●" },
+    outage: { color: "bg-red-500", textColor: "text-red-400", label: "Outage", dot: "●" },
+  } as const;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="text-sm font-semibold text-text-primary">{title}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {raw.regions.map((r) => {
+          const cfg = statusConfig[r.status];
+          return (
+            <div key={r.region} className="rounded-lg border border-border/60 bg-surface-elevated/30 p-3 space-y-1">
+              <div className="text-xs font-medium text-text-primary truncate">{r.region}</div>
+              <div className={`text-xs font-semibold ${cfg.textColor} flex items-center gap-1`}>
+                <span className="text-[10px]">{cfg.dot}</span>
+                {cfg.label}
+              </div>
+              <div className="text-xs text-text-muted">{r.upCount}/{r.monitorCount} up</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Third-Party Dependencies ─────────────────────────────────────────────
+
+export function ThirdPartyDependencies({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    services: { name: string; url: string; status: "up" | "down" | "unknown"; httpStatus: number; responseMs: number }[];
+    checkedAt: string;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Third-Party Dependencies";
+
+  if (!raw || !raw.services?.length) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-6 text-center space-y-2">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-xs text-text-secondary">No services configured. Add services array in widget config.</div>
+      </div>
+    );
+  }
+
+  const getDomain = (url: string) => {
+    try { return new URL(url).hostname; } catch { return url; }
+  };
+
+  const statusDot = (s: "up" | "down" | "unknown") => {
+    if (s === "up") return <span className="text-green-400 text-sm">●</span>;
+    if (s === "down") return <span className="text-red-400 text-sm">●</span>;
+    return <span className="text-gray-400 text-sm">●</span>;
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        {raw.checkedAt && (
+          <div className="text-xs text-text-muted">
+            {new Date(raw.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        {raw.services.map((svc, i) => (
+          <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border/40 last:border-0">
+            <div className="flex-shrink-0">{statusDot(svc.status)}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-text-primary truncate">{svc.name}</div>
+              <div className="text-xs text-text-muted truncate">{getDomain(svc.url)}</div>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              {svc.httpStatus > 0 && (
+                <div className={`text-xs font-mono ${svc.httpStatus < 400 ? "text-green-400" : "text-red-400"}`}>
+                  {svc.httpStatus}
+                </div>
+              )}
+              {svc.responseMs > 0 && (
+                <div className="text-xs text-text-muted">{svc.responseMs}ms</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Security Advisory ────────────────────────────────────────────────────
+
+export function SecurityAdvisory({ widget, extra }: WidgetProps) {
+  const raw = extra.widgetDataById?.[widget.id] as {
+    advisories: { ghsaId: string; summary: string; severity: "critical" | "high" | "medium" | "low"; publishedAt: string; link: string }[];
+    checkedAt: string;
+    packageName: string;
+    error?: string;
+  } | undefined;
+
+  const title = (widget.config.label as string) || "Security Advisories";
+
+  if (!raw) {
+    return (
+      <div className="rounded-xl border border-border bg-surface/50 p-4 text-sm text-text-secondary text-center">
+        No data available
+      </div>
+    );
+  }
+
+  const severityConfig = {
+    critical: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", label: "Critical" },
+    high: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30", label: "High" },
+    medium: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30", label: "Medium" },
+    low: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30", label: "Low" },
+  } as const;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        {raw.packageName && <div className="text-xs text-text-muted font-mono">{raw.packageName}</div>}
+      </div>
+      {raw.error && (
+        <div className="text-xs text-yellow-400 bg-yellow-500/10 rounded-lg px-3 py-2">{raw.error}</div>
+      )}
+      {raw.advisories.length === 0 && !raw.error && (
+        <div className="flex items-center gap-2 text-green-400 py-2">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">No known vulnerabilities</span>
+        </div>
+      )}
+      {raw.advisories.length > 0 && (
+        <div className="space-y-2">
+          {raw.advisories.map((a) => {
+            const cfg = severityConfig[a.severity] ?? severityConfig.low;
+            return (
+              <div key={a.ghsaId} className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3 space-y-1`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`text-xs font-bold uppercase ${cfg.text}`}>{cfg.label}</span>
+                  <span className="text-xs font-mono text-text-muted">{a.ghsaId}</span>
+                </div>
+                <div className="text-xs text-text-primary leading-relaxed line-clamp-2">{a.summary}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">{new Date(a.publishedAt).toLocaleDateString()}</span>
+                  <a href={a.link} target="_blank" rel="noreferrer noopener" className="text-xs text-accent hover:underline">
+                    View →
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main renderer ────────────────────────────────────────────────────────
 
 function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorSummary[] {
@@ -4474,6 +4862,24 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       break;
     case "collapsible-section":
       content = <CollapsibleSection {...props} />;
+      break;
+    case "dependency-map":
+      content = <DependencyMap {...props} />;
+      break;
+    case "multi-environment-status":
+      content = <MultiEnvironmentStatus {...props} />;
+      break;
+    case "tab-container":
+      content = <TabContainer {...props} />;
+      break;
+    case "region-status-map":
+      content = <RegionStatusMap {...props} />;
+      break;
+    case "third-party-dependencies":
+      content = <ThirdPartyDependencies {...props} />;
+      break;
+    case "security-advisory":
+      content = <SecurityAdvisory {...props} />;
       break;
     default:
       content = (

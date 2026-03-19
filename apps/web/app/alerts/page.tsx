@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -22,7 +22,37 @@ type AlertChannel = {
   type: AlertType;
   config: Record<string, unknown>;
   createdAt: string;
+  lastTriggeredAt?: string | null;
 };
+
+function ChannelTypeIcon({ type }: { type: AlertType }) {
+  const iconClass = 'w-4 h-4 shrink-0';
+  switch (type) {
+    case 'email':
+      return <Mail className={`${iconClass} text-blue-400`} />;
+    case 'slack':
+      return <MessageSquare className={`${iconClass} text-green-400`} />;
+    case 'discord':
+      return <Hash className={`${iconClass} text-indigo-400`} />;
+    case 'webhook':
+      return <Globe className={`${iconClass} text-orange-400`} />;
+    case 'telegram':
+      return <Send className={`${iconClass} text-sky-400`} />;
+    default:
+      return <Bell className={`${iconClass} text-text-secondary`} />;
+  }
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 type DeliveryLog = {
   id: string;
@@ -150,10 +180,10 @@ export default function AlertsPage() {
     }
   }
 
-  async function testChannel(channelId: string) {
+  async function testChannel(channel: AlertChannel) {
     try {
-      await api('/v1/alert-channels/test', undefined, { method: 'POST', body: JSON.stringify({ channelId }) });
-      success('Test message sent');
+      await api('/v1/alert-channels/test', undefined, { method: 'POST', body: JSON.stringify({ channelId: channel.id }) });
+      success(`Test notification sent to ${channel.name}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Test failed');
     }
@@ -565,13 +595,15 @@ export default function AlertsPage() {
           {channels.length === 0 ? (
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
-                <Plus className="w-12 h-12 text-text-secondary opacity-50" />
+                <Bell className="w-12 h-12 text-text-secondary opacity-50" />
               </div>
-              <p className="text-text-primary text-lg font-medium mb-2">No alert channels yet</p>
+              <p className="text-text-primary text-lg font-medium mb-2">No alert channels configured</p>
               <p className="text-text-secondary text-sm mb-6">
-                Set up Discord, Slack, Telegram, or webhook alerts to get notified when monitors fail
+                Set up Discord, Slack, Telegram, Email, or webhook alerts to get notified when monitors fail
               </p>
-              <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>Create your first channel</Button>
+              <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Add Alert Channel</span>
+              </Button>
             </Card>
           ) : (
           <>
@@ -583,25 +615,37 @@ export default function AlertsPage() {
                 <TableRow hover={false}>
                   <TableHeader>Name</TableHeader>
                   <TableHeader>Type</TableHeader>
+                  <TableHeader>Last Triggered</TableHeader>
                   <TableHeader>Created</TableHeader>
-                  <TableHeader>Config</TableHeader>
                   <TableHeader>Actions</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {pageRows.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>{c.name}</TableCell>
-                    <TableCell>{c.type}</TableCell>
-                    <TableCell>{new Date(c.createdAt).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge>{Object.keys(c.config ?? {}).join(', ') || '—'}</Badge>
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => testChannel(c.id)}>Test</Button>
-                        <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="Delivery history">
-                          <Activity className="w-4 h-4" />
+                        <ChannelTypeIcon type={c.type} />
+                        <span className="font-medium text-text-primary">{c.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="capitalize">{c.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-text-secondary">
+                        {c.lastTriggeredAt ? relativeTime(c.lastTriggeredAt) : 'Never'}
+                      </span>
+                    </TableCell>
+                    <TableCell>{new Date(c.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => testChannel(c)}>Test</Button>
+                        <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="History">
+                          <span className="flex items-center gap-1.5">
+                            <Activity className="w-4 h-4" />
+                            <span className="hidden sm:inline text-xs">History</span>
+                          </span>
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`} title="Edit channel">
                           <Edit className="w-4 h-4" />

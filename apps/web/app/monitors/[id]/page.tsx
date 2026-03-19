@@ -242,7 +242,7 @@ export default function MonitorDetailPage() {
           : "text-danger";
 
   return (
-    <AppFrame title={monitor.name}>
+    <AppFrame title={monitor.name} breadcrumbs={[{ label: "Monitors", href: "/monitors" }, { label: monitor.name }]}>
       <div className="space-y-6">
         {/* Breadcrumb */}
         <FadeIn>

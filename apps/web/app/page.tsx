@@ -42,7 +42,7 @@ const navLinks = [
 ];
 
 const stats = [
-  { value: "2400+", label: "Tools Tracked" },
+  { value: "2600+", label: "Tools Tracked" },
   { value: "65+", label: "Status Page Widgets" },
   { value: "86+", label: "Monitor Templates" },
   { value: "100%", label: "Free & Open Source" },
@@ -53,7 +53,7 @@ const features = [
     icon: Activity,
     title: "Version Intelligence",
     description:
-      "Automatic version tracking for 2400+ self-hosted tools. Know instantly when a new release drops.",
+      "Automatic version tracking for 2600+ self-hosted tools. Know instantly when a new release drops.",
   },
   {
     icon: Server,
@@ -83,7 +83,7 @@ const features = [
     icon: Search,
     title: "Tool Registry",
     description:
-      "Browse 2400+ self-hosted tools. Find alternatives, compare features, track new releases.",
+      "Browse 2600+ self-hosted tools. Find alternatives, compare features, track new releases.",
   },
   {
     icon: Globe,
@@ -171,7 +171,7 @@ const comparisonFeatures = [
   { label: "Open Source", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Self-Hosted", pulsedock: true, uptimeKuma: true, betterStack: false, statuspage: false },
   { label: "Version Tracking", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
-  { label: "Tool Registry (2400+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
+  { label: "Tool Registry (2600+)", pulsedock: true, uptimeKuma: false, betterStack: false, statuspage: false },
   { label: "Status Pages", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Incident Management", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
   { label: "Public API", pulsedock: true, uptimeKuma: true, betterStack: true, statuspage: true },
@@ -594,7 +594,7 @@ export default function LandingPage() {
 
           <FadeIn delay={0.1}>
             <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              Monitor 2400+ self-hosted tools, track versions, build beautiful
+              Monitor 2600+ self-hosted tools, track versions, build beautiful
               status pages. Open source, self-hosted, free.
             </p>
           </FadeIn>
@@ -632,7 +632,7 @@ export default function LandingPage() {
                 <div className="text-xs text-text-secondary mt-1">Uptime SLA</div>
               </div>
               <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-center">
-                <div className="text-2xl font-bold text-accent">2400+</div>
+                <div className="text-2xl font-bold text-accent">2600+</div>
                 <div className="text-xs text-text-secondary mt-1">Tools tracked</div>
               </div>
               <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 text-center">

@@ -6,9 +6,9 @@ export type TeamRole = 'Admin' | 'Editor' | 'Viewer'
 export class InviteMemberDto {
   @ApiProperty({ example: 'member@example.com' })
   @IsEmail()
-  email: string
+  email!: string
 
   @ApiProperty({ enum: ['Admin', 'Editor', 'Viewer'] })
   @IsEnum(['Admin', 'Editor', 'Viewer'])
-  role: TeamRole
+  role!: TeamRole
 }

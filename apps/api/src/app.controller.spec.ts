@@ -6,9 +6,13 @@ const mockPrisma = {
   $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
 };
 
+const mockScheduler = {
+  getQueueDepth: vi.fn().mockReturnValue(0),
+};
+
 describe('AppController', () => {
   const metrics = new MetricsService();
-  const controller = new AppController(metrics, mockPrisma as never);
+  const controller = new AppController(metrics, mockPrisma as never, mockScheduler as never);
 
   describe('health()', () => {
     it('returns ok=true with DB status when DB is up', async () => {
@@ -17,6 +21,7 @@ describe('AppController', () => {
       expect(result.service).toBe('pulsedock-api');
       expect(result.runtime).toBe('nestjs');
       expect(result.checks.database.status).toBe('ok');
+      expect(typeof result.checks.scheduler.queueDepth).toBe('number');
       expect(typeof result.uptimeMs).toBe('number');
     });
 

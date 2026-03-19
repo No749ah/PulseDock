@@ -47,8 +47,10 @@ import { AgentController } from './agent/agent.controller';
 import { AgentService } from './agent/agent.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
-import { TeamModule } from './team/team.module';
-import { SettingsModule } from './settings/settings.module';
+import { TeamController } from './team/team.controller';
+import { TeamService } from './team/team.service';
+import { SettingsController } from './settings/settings.controller';
+import { SettingsService } from './settings/settings.service';
 
 @Module({
   imports: [
@@ -56,8 +58,6 @@ import { SettingsModule } from './settings/settings.module';
     JwtModule.register({}),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     RealtimeModule,
-    TeamModule,
-    SettingsModule,
   ],
   controllers: [
     AppController,
@@ -83,6 +83,8 @@ import { SettingsModule } from './settings/settings.module';
     IncidentsController,
     AgentController,
     ReportsController,
+    TeamController,
+    SettingsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -105,6 +107,8 @@ import { SettingsModule } from './settings/settings.module';
     IncidentsService,
     AgentService,
     ReportsService,
+    TeamService,
+    SettingsService,
   ],
 })
 export class AppModule implements NestModule {

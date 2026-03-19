@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
 import { PrintButton } from "./widgets/PrintButton";
 import { ExportImageButton } from "./widgets/ExportImageButton";
+import { ExportPDFButton } from "./widgets/ExportPDFButton";
 import { OfflineBanner } from "./widgets/OfflineBanner";
 import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 
@@ -315,6 +316,7 @@ export default async function PublicStatusSlugPage({
             {/* Action buttons — top-right of header, hidden when printing */}
             <div className="absolute right-0 top-0 no-print flex items-center gap-2">
               <ExportImageButton slug={slug} />
+              <ExportPDFButton slug={slug} />
               <PrintButton />
             </div>
             {logoUrl && (

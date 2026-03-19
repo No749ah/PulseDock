@@ -253,6 +253,17 @@ export class AlertsService {
     throw lastError;
   }
 
+  /**
+   * Dispatches alert notifications for a monitor check result.
+   * Respects active maintenance windows (suppresses alerts during maintenance).
+   * Respects user notification preferences (shouldNotify check).
+   * Filters eligible alert channels based on their notifyOn setting
+   * (ON_CHANGE, ALWAYS, FIRST_ONLY, DAILY_DIGEST, VERSION_ANY, VERSION_MAJOR).
+   * Emits a real-time alertTriggered event via Socket.IO.
+   * @param monitor - The monitor that was checked
+   * @param run - The resulting check run (contains level, message, latencyMs)
+   * @param context - Optional context: levelChanged, previousLevel, failureStreak
+   */
   async notifyMonitorFailure(monitor: Monitor, run: MonitorRun, context?: { levelChanged?: boolean; previousLevel?: string | null; failureStreak?: number }) {
     // Suppress alerts during active maintenance windows
     const now = new Date();
@@ -372,6 +383,12 @@ export class AlertsService {
     }
   }
 
+  /**
+   * Sends a test notification through a given alert channel to verify configuration.
+   * Uses the same retry logic as production alerts (3 attempts with exponential backoff).
+   * @param channel - The alert channel to test (webhook, discord, slack, telegram, email)
+   * @throws Error if all delivery attempts fail
+   */
   async notifyTest(channel: AlertChannel) {
     const text = '✅ PulseDock test notification: this channel is configured correctly.';
     await this.sendWithRetry(channel, text, { test: true, at: new Date().toISOString() }, { trigger: 'test' });

@@ -514,6 +514,14 @@ export class MonitorsService {
     });
   }
 
+  /**
+   * Returns recent monitor check runs across all uptime monitors for the user.
+   * Excludes version monitors (GIT_RELEASE, DOCKER_IMAGE) — use versionSummary for those.
+   * @param userId - The authenticated user's ID
+   * @param limit - Max number of runs to return (default: 10)
+   * @param since - Optional lower bound for checkedAt timestamp
+   * @returns Array of run result objects ordered by checkedAt desc
+   */
   async getRecentRuns(userId: string, limit = 10, since?: Date) {
     const runs = await this.prisma.monitorRun.findMany({
       where: {
@@ -541,6 +549,11 @@ export class MonitorsService {
     }));
   }
 
+  /**
+   * Returns up to 200 most recent check runs across all monitors for the user.
+   * @param userId - The authenticated user's ID
+   * @returns Array of run result objects ordered by checkedAt desc
+   */
   async runs(userId: string) {
     const runs = await this.prisma.monitorRun.findMany({
       where: { userId },
@@ -562,6 +575,13 @@ export class MonitorsService {
     }));
   }
 
+  /**
+   * Returns up to 200 most recent runs for a specific monitor.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to fetch runs for
+   * @returns Array of run result objects for that monitor, ordered by checkedAt desc
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async monitorRuns(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -584,6 +604,15 @@ export class MonitorsService {
     }));
   }
 
+  /**
+   * Calculates uptime statistics for a monitor over a given time period.
+   * Computes uptimePct, incident list, MTTR, MTBF, and average latency.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to calculate uptime for
+   * @param period - Time window: '1d' | '7d' | '30d' | '90d' (default: '30d')
+   * @returns Uptime stats object with incident list and SLA metrics
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async monitorUptime(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '30d') {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -902,6 +931,15 @@ export class MonitorsService {
     return { currentVersion: null as string | null, tried, detectedFrom: null as string | null, authFailed, authMode: null as string | null };
   }
 
+  /**
+   * Tests connectivity and version retrieval for a version-monitored source (GitHub, GitLab, Docker Hub, npm, etc.).
+   * Used by the UI's "Test Connection" button before saving a version monitor.
+   * @param input.provider - The version source provider
+   * @param input.target - The target identifier (repo path, package name, image name, etc.)
+   * @param input.token - Optional API token for authenticated requests
+   * @param input.host - Optional custom GitLab host
+   * @returns { ok, message, latestVersion } — ok=false if the connection failed
+   */
   async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
     if (input.provider === 'github') {
       const repo = this.parseGithubRepo(input.target);
@@ -1023,6 +1061,13 @@ export class MonitorsService {
     return { ok: true, message: 'Docker Hub connection successful', latestVersion: data.results?.[0]?.name ?? null };
   }
 
+  /**
+   * Attempts to auto-discover the currently deployed version of an application.
+   * Strategy: (1) probe the app's version endpoint, (2) fall back to latest release from provider,
+   * (3) return strategy='manual' if neither succeeds.
+   * @param input - Connection details including provider, target, appUrl, auth config, etc.
+   * @returns { currentVersion, strategy, tried, detectedFrom } — strategy indicates how version was found
+   */
   async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
     const deployed = await this.detectDeployedVersion({
@@ -1067,6 +1112,13 @@ export class MonitorsService {
     };
   }
 
+  /**
+   * Returns a summary of all version monitors (GIT_RELEASE, DOCKER_IMAGE) for the user.
+   * Includes aggregate stats (total, green, yellow, red) and per-monitor current/latest status.
+   * Used by the dashboard's version overview widget.
+   * @param userId - The authenticated user's ID
+   * @returns { stats, items } — stats is a count breakdown; items is the per-monitor detail list
+   */
   async versionSummary(userId: string) {
     // Performance: single query with nested include avoids N+1
     const monitors = await this.prisma.monitor.findMany({
@@ -1242,6 +1294,14 @@ export class MonitorsService {
     return results;
   }
 
+  /**
+   * Imports monitors from an external monitoring tool export (Uptime Robot, Better Uptime, or CSV).
+   * Skips duplicates based on target URL. Collects per-item errors without failing the whole batch.
+   * @param userId - The authenticated user's ID
+   * @param source - Import source format: 'uptime-robot' | 'better-uptime' | 'csv'
+   * @param payload - The raw export data (JSON object or CSV string)
+   * @returns { imported, skipped, errors, message } with import summary
+   */
   async importExternal(
     userId: string,
     source: 'uptime-robot' | 'better-uptime' | 'csv',

@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell, CheckCircle2, ArrowUpCircle } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -1349,12 +1349,14 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
           </Modal>
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 gap-3">
+          <div className="flex items-center justify-between mb-4 gap-3">
             <div className="min-w-0">
+              <div className="flex items-center gap-2 text-xs text-text-secondary mb-1">
+                <span>Dashboard</span>
+                <span>/</span>
+                <span className="text-text-primary font-medium">Versions</span>
+              </div>
               <h2 className="text-2xl font-bold text-text-primary">Version Checks</h2>
-              <p className="text-text-secondary text-sm mt-1">
-                {summary?.stats.total ?? 0} tracked {(summary?.stats.total ?? 0) === 1 ? 'item' : 'items'}
-              </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="secondary" size="sm" onClick={() => load()} title="Refresh">
@@ -1370,6 +1372,54 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
               </Button>
             </div>
           </div>
+
+          {/* Summary row */}
+          {(summary?.stats.total ?? 0) > 0 && (
+            <div className="flex items-center gap-4 mb-6 text-sm flex-wrap">
+              <span className="text-text-secondary">
+                <span className="font-semibold text-text-primary">{summary?.stats.total ?? 0}</span> monitored
+              </span>
+              <span className="text-text-secondary opacity-40">·</span>
+              <span className="text-text-secondary">
+                <span className="font-semibold text-success">{summary?.stats.green ?? 0}</span> up to date
+              </span>
+              <span className="text-text-secondary opacity-40">·</span>
+              <span className="text-text-secondary">
+                <span className={`font-semibold ${((summary?.stats.yellow ?? 0) + (summary?.stats.red ?? 0)) > 0 ? 'text-warning' : 'text-text-primary'}`}>
+                  {(summary?.stats.yellow ?? 0) + (summary?.stats.red ?? 0)}
+                </span> updates available
+              </span>
+              {(summary?.stats.red ?? 0) > 0 && (
+                <>
+                  <span className="text-text-secondary opacity-40">·</span>
+                  <span className="text-text-secondary">
+                    <span className="font-semibold text-danger">{summary?.stats.red ?? 0}</span> critical
+                  </span>
+                </>
+              )}
+              {/* Sort by dropdown */}
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-text-secondary">Sort by</span>
+                <select
+                  value={`${sortBy}-${sortDir}`}
+                  onChange={(e) => {
+                    const [col, dir] = e.target.value.split('-') as [typeof sortBy, typeof sortDir];
+                    setSortBy(col);
+                    setSortDir(dir);
+                    setPage(1);
+                  }}
+                  className="text-xs px-2 py-1 bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="name-asc">Name A→Z</option>
+                  <option value="name-desc">Name Z→A</option>
+                  <option value="status-asc">Status (updates first)</option>
+                  <option value="status-desc">Status (ok first)</option>
+                  <option value="lastChecked-desc">Last checked (newest)</option>
+                  <option value="lastChecked-asc">Last checked (oldest)</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Stats */}
           {(summary?.stats.total ?? 0) > 0 && (
@@ -1483,14 +1533,47 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                           })()}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <Badge variant={levelBadgeVariant(item.level)}>
-                              {item.level === 'green' ? 'GREEN' : item.level === 'yellow' ? 'YELLOW' : 'RED'}
-                            </Badge>
-                            <p className="text-xs text-text-secondary mt-1">
-                              {item.level === 'green' ? 'Okay' : item.level === 'yellow' ? 'Update' : 'Critical'}
-                            </p>
-                          </div>
+                          {(() => {
+                            const { from, to } = extractVersionsFromMessage(item.latestMessage);
+                            const hasUpdate = item.level !== 'green';
+                            // Build changelog link for GitHub targets
+                            let changelogUrl: string | null = null;
+                            if (hasUpdate && to && item.target) {
+                              const ghMatch = item.target.match(/^([^/]+\/[^/]+)$/);
+                              if (ghMatch) {
+                                changelogUrl = `https://github.com/${ghMatch[1]}/releases`;
+                              }
+                            }
+                            if (item.level === 'green') {
+                              return (
+                                <div className="flex items-center gap-1.5 text-success">
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="text-xs font-medium">Up to date</span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-warning">
+                                  <ArrowUpCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="text-xs font-medium">
+                                    {to ? `v${to} available` : item.level === 'red' ? 'Critical update' : 'Update available'}
+                                  </span>
+                                </div>
+                                {changelogUrl && (
+                                  <a
+                                    href={changelogUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-[10px] text-accent hover:underline"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    View changelog
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
                         <TableCell className="hidden lg:table-cell">{secondsToHuman(item.intervalSec)}</TableCell>

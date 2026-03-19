@@ -184,7 +184,7 @@ function SystemStatsWidget() {
     api<SystemStatsData>('/v1/admin/stats').then(setStats).catch(() => null).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Card className="mb-5"><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-surface-elevated rounded-xl animate-pulse" />)}</div></Card>;
+  if (loading) return <Card className="mb-5"><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-surface-elevated rounded-xl animate-pulse" />)}</div></Card>;
   if (!stats) return null;
 
   const tiles = [
@@ -197,7 +197,7 @@ function SystemStatsWidget() {
   return (
     <Card className="mb-5">
       <SectionHeader icon={BarChart2} title="System Statistics" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {tiles.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="rounded-xl bg-surface-elevated border border-border p-4">
             <div className="flex items-center gap-1.5 mb-2"><Icon className={`w-3.5 h-3.5 ${color}`} /><span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span></div>
@@ -435,6 +435,27 @@ export default function AdminPage() {
         <div className="space-y-5">
           <SystemHealthWidget />
           <SystemStatsWidget />
+
+          {/* ── Recent Activity Feed ──────────────────────────────────────── */}
+          {auditLogs.length > 0 && (
+            <Card>
+              <SectionHeader icon={ClipboardList} title="Recent Activity" count={Math.min(10, auditLogs.length)} />
+              <div className="space-y-1">
+                {auditLogs.slice(0, 10).map((l) => (
+                  <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-elevated/60 transition-colors border-b border-border/40 last:border-b-0">
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-0.5 ${
+                      l.action.toLowerCase().includes('delete') || l.action.toLowerCase().includes('fail') ? 'bg-danger/60' :
+                      l.action.toLowerCase().includes('create') || l.action.toLowerCase().includes('invite') ? 'bg-success/60' :
+                      'bg-accent/60'
+                    }`} />
+                    <p className="flex-1 text-sm font-mono text-text-primary">{l.action}</p>
+                    <p className="text-xs text-text-secondary hidden sm:block truncate max-w-[100px]" title={l.actorUserId ?? ''}>{l.actorUserId?.slice(0, 8) ?? 'system'}</p>
+                    <RelativeTime iso={l.createdAt} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* ── Users ─────────────────────────────────────────────────────── */}
           <Card>

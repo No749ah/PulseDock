@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarClock, Edit, Trash2 } from 'lucide-react';
+import { CalendarClock, Edit, Trash2, Plus, Calendar } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -45,12 +45,74 @@ function getStatus(w: MaintenanceWindow): 'active' | 'upcoming' | 'past' {
 function StatusBadge({ window: w }: { window: MaintenanceWindow }) {
   const status = getStatus(w);
   if (status === 'active') {
-    return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>;
+    return (
+      <span className="flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+        </span>
+        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+      </span>
+    );
   }
   if (status === 'upcoming') {
     return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Upcoming</Badge>;
   }
   return <Badge className="bg-text-secondary/20 text-text-secondary border-text-secondary/30">Past</Badge>;
+}
+
+function formatWindowDuration(w: MaintenanceWindow): string {
+  const durationMs = new Date(w.endsAt).getTime() - new Date(w.startsAt).getTime();
+  const totalMins = Math.floor(durationMs / 60000);
+  if (totalMins < 60) return `${totalMins}m window`;
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return mins > 0 ? `${hrs}h ${mins}m window` : `${hrs}h window`;
+}
+
+function formatEndsIn(w: MaintenanceWindow): string {
+  const remaining = new Date(w.endsAt).getTime() - Date.now();
+  if (remaining <= 0) return 'ending now';
+  const totalMins = Math.floor(remaining / 60000);
+  if (totalMins < 60) return `Ends in ${totalMins}m`;
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return mins > 0 ? `Ends in ${hrs}h ${mins}m` : `Ends in ${hrs}h`;
+}
+
+function UpcomingWidget({ windows }: { windows: MaintenanceWindow[] }) {
+  const upcoming = windows
+    .filter((w) => getStatus(w) === 'upcoming')
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    .slice(0, 3);
+
+  if (upcoming.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Calendar className="w-4 h-4 text-blue-400" />
+        <h3 className="text-sm font-semibold text-blue-400">Upcoming Maintenance</h3>
+      </div>
+      <div className="space-y-2">
+        {upcoming.map((w) => (
+          <div key={w.id} className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-text-primary truncate block">{w.name}</span>
+              <span className="text-xs text-text-secondary">
+                {new Date(w.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{' '}
+                at {new Date(w.startsAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                {' · '}{formatWindowDuration(w)}
+              </span>
+            </div>
+            <span className="text-xs text-text-secondary flex-shrink-0">
+              {w.monitorCount > 0 ? `${w.monitorCount} monitor${w.monitorCount !== 1 ? 's' : ''}` : 'All monitors'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function toDatetimeLocal(iso: string): string {
@@ -373,67 +435,79 @@ export default function MaintenancePage() {
           {windows.length === 0 ? (
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
-                <CalendarClock className="w-12 h-12 text-text-secondary opacity-50" />
+                <Calendar className="w-12 h-12 text-text-secondary opacity-50" />
               </div>
-              <p className="text-text-primary text-lg font-medium mb-2">No maintenance windows yet</p>
+              <p className="text-text-primary text-lg font-medium mb-2">No maintenance windows scheduled</p>
               <p className="text-text-secondary text-sm mb-6">
                 Schedule maintenance windows to suppress alerts during planned downtime
               </p>
-              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Schedule your first window</Button>
+              <Button size="lg" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Schedule Window</span>
+              </Button>
             </Card>
           ) : (
-            <Card className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHead>
-                    <TableRow hover={false}>
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Start</TableHeader>
-                      <TableHeader>End</TableHeader>
-                      <TableHeader>Monitors</TableHeader>
-                      <TableHeader>Actions</TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {windows.map((w) => (
-                      <TableRow key={w.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-text-primary">{w.name}</p>
-                            {w.description && (
-                              <p className="text-xs text-text-secondary mt-0.5 max-w-xs truncate">{w.description}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge window={w} />
-                        </TableCell>
-                        <TableCell>{new Date(w.startsAt).toLocaleString()}</TableCell>
-                        <TableCell>{new Date(w.endsAt).toLocaleString()}</TableCell>
-                        <TableCell>
-                          {w.monitorCount > 0 ? (
-                            <Badge>{String(w.monitorCount)}</Badge>
-                          ) : (
-                            <span className="text-text-secondary text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(w)} aria-label={`Edit ${w.name}`} title="Edit window">
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => openDelete(w)} className="text-danger hover:text-danger" aria-label={`Delete ${w.name}`} title="Delete window">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+            <>
+              <UpcomingWidget windows={windows} />
+              <Card className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHead>
+                      <TableRow hover={false}>
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Status</TableHeader>
+                        <TableHeader>Start</TableHeader>
+                        <TableHeader>Duration</TableHeader>
+                        <TableHeader>Monitors</TableHeader>
+                        <TableHeader>Actions</TableHeader>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
+                    </TableHead>
+                    <TableBody>
+                      {windows.map((w) => (
+                        <TableRow key={w.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-text-primary">{w.name}</p>
+                              {w.description && (
+                                <p className="text-xs text-text-secondary mt-0.5 max-w-xs truncate">{w.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge window={w} />
+                          </TableCell>
+                          <TableCell>{new Date(w.startsAt).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <span className="text-text-secondary">{formatWindowDuration(w)}</span>
+                              {w.isActive && (
+                                <p className="text-xs text-green-400 mt-0.5">{formatEndsIn(w)}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {w.monitorCount > 0 ? (
+                              <Badge>{`${w.monitorCount} affected`}</Badge>
+                            ) : (
+                              <span className="text-text-secondary text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => openEdit(w)} aria-label={`Edit ${w.name}`} title="Edit window">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => openDelete(w)} className="text-danger hover:text-danger" aria-label={`Delete ${w.name}`} title="Delete window">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            </>
           )}
         </>
       )}

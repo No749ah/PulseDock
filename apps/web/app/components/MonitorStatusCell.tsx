@@ -12,6 +12,7 @@ interface Run {
   ok: boolean;
   level?: Level | null;
   checkedAt: string;
+  latencyMs?: number;
 }
 
 interface MonitorStatusCellProps {
@@ -89,7 +90,9 @@ export function MonitorStatusCell({ monitorId, monitorType, enabled, runs }: Mon
       : run.ok ? "#22c55e" : "#ef4444";
     const d = new Date(run.checkedAt);
     const ts = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    strip.push({ color, opacity: 0.85, title: ts });
+    const statusLabel = !run.ok ? "Down" : run.level === "yellow" ? "Degraded" : "Up";
+    const latencyPart = run.latencyMs != null ? ` · ${run.latencyMs}ms` : "";
+    strip.push({ color, opacity: 0.85, title: `${ts} · ${statusLabel}${latencyPart}` });
   }
 
   const barW = 4;

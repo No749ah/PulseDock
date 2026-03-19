@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertOctagon, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus } from 'lucide-react';
+import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -73,6 +73,30 @@ const severityColors: Record<IncidentSeverity, string> = {
   HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   CRITICAL: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
+
+const severityLabels: Record<IncidentSeverity, string> = {
+  LOW: 'Minor',
+  MEDIUM: 'Major',
+  HIGH: 'Major',
+  CRITICAL: 'Critical',
+};
+
+function formatDuration(ms: number): string {
+  const totalMins = Math.floor(ms / 60000);
+  if (totalMins < 60) return `${totalMins}m`;
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+}
+
+function incidentDuration(incident: Incident): string {
+  const start = new Date(incident.createdAt).getTime();
+  if (incident.status === 'RESOLVED') {
+    const end = new Date(incident.updatedAt).getTime();
+    return `lasted ${formatDuration(end - start)}`;
+  }
+  return `ongoing for ${formatDuration(Date.now() - start)}`;
+}
 
 const inputClass =
   'w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent';
@@ -327,6 +351,12 @@ export default function IncidentsPage() {
   const activeIncidents = incidents.filter((i) => i.status !== 'RESOLVED');
   const resolvedIncidents = incidents.filter((i) => i.status === 'RESOLVED');
 
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const resolvedThisMonth = resolvedIncidents.filter(
+    (i) => new Date(i.updatedAt).getTime() >= startOfMonth.getTime(),
+  );
+
   return (
     <AppFrame title="Incidents" subtitle="Track and manage operational incidents">
       {loading ? (
@@ -532,27 +562,28 @@ export default function IncidentsPage() {
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Incidents</h2>
               <p className="text-text-secondary text-sm mt-1">
-                {activeIncidents.length} active · {resolvedIncidents.length} resolved
+                {incidents.length} total · {activeIncidents.length} active · {resolvedThisMonth.length} resolved this month
               </p>
             </div>
             <Button size="lg" onClick={() => setCreateOpen(true)}>
               <span className="flex items-center gap-2">
-                <Plus className="w-4 h-4" /> New incident
+                <Plus className="w-4 h-4" /> Create Incident
               </span>
             </Button>
           </div>
 
           {incidents.length === 0 ? (
             <Card className="text-center py-16">
-              <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
-                <AlertOctagon className="w-12 h-12 text-text-secondary opacity-50" />
+              <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 inline-block mb-4">
+                <Shield className="w-12 h-12 text-green-400" />
               </div>
-              <p className="text-text-primary text-lg font-medium mb-2">No incidents</p>
+              <p className="text-text-primary text-lg font-medium mb-2">No incidents yet</p>
+              <p className="text-green-400 text-sm font-medium mb-1">All systems operational</p>
               <p className="text-text-secondary text-sm mb-6">
                 Create an incident to track and communicate operational issues to your team
               </p>
               <Button size="lg" onClick={() => setCreateOpen(true)}>
-                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create incident</span>
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create Incident</span>
               </Button>
             </Card>
           ) : (
@@ -651,16 +682,23 @@ function IncidentRow({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-text-primary truncate">{incident.title}</span>
             <Badge className={statusColors[incident.status]}>{statusLabels[incident.status]}</Badge>
-            <Badge className={severityColors[incident.severity]}>{incident.severity}</Badge>
+            <Badge className={severityColors[incident.severity]}>{severityLabels[incident.severity]}</Badge>
           </div>
-          {incident.description && (
-            <p className="text-sm text-text-secondary truncate mt-0.5">{incident.description}</p>
-          )}
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {incident.description && (
+              <p className="text-sm text-text-secondary truncate">{incident.description}</p>
+            )}
+            <span className="text-xs text-text-secondary flex-shrink-0">
+              {incident.monitors.length} monitor{incident.monitors.length !== 1 ? 's' : ''} affected
+            </span>
+            <span className="text-xs text-text-secondary flex-shrink-0">
+              {incidentDuration(incident)}
+            </span>
+          </div>
         </div>
 
         {/* Meta */}
         <div className="hidden sm:flex items-center gap-3 text-xs text-text-secondary flex-shrink-0">
-          <span>{incident.monitors.length} monitor{incident.monitors.length !== 1 ? 's' : ''}</span>
           <span>{incident.updates.length} update{incident.updates.length !== 1 ? 's' : ''}</span>
           <span>{relativeTime(incident.createdAt)}</span>
         </div>
@@ -668,13 +706,16 @@ function IncidentRow({
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={onUpdate}
             aria-label="Post update"
             title="Post update"
           >
-            <MessageSquarePlus className="w-4 h-4" />
+            <span className="flex items-center gap-1.5">
+              <MessageSquarePlus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-xs">Post Update</span>
+            </span>
           </Button>
           <Button
             variant="ghost"

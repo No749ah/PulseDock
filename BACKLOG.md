@@ -1,3 +1,12 @@
+## Status Summary (2026-03-19 05:11 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 05:11 UTC):**
+  - **Copy/Paste widgets across pages**: Ctrl+C copies selected widgets to localStorage clipboard. Ctrl+V pastes them below current canvas content with new IDs. Works across different status page tabs.
+  - **Count-up animations**: `AnimatedWidgets.tsx` (new client component) with `useCountUp` hook (cubic ease-out, RAF-based, prefers-reduced-motion safe). Wired into UptimePercentageCard, SLASummary, and all RollingUptimeCards — numbers animate from 0 on page load.
+
 ## Status Summary (2026-03-19 04:18 UTC)
 - **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -646,7 +655,7 @@
 - [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
 - [x] **Widget Search in Palette** — Filter palette by name/category
 - [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
-- [ ] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages
+- [x] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages (localStorage clipboard, pastes below existing content with new IDs)
 - [x] **Version History** — Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
 - [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
 
@@ -665,7 +674,7 @@
 
 ### P2 — Public Page Rendering
 
-- [ ] **Smooth Data Transitions** — Animate value changes (number count-up, color transitions)
+- [x] **Smooth Data Transitions** — Count-up animations on UptimePercentageCard, SLASummary actual%, RollingUptimeCards (all 4 periods). AnimatedNumber + AnimatedUptimeCard client components. Cubic ease-out, RAF, prefers-reduced-motion safe.
 - [x] **Real-time via WebSocket** — Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
 - [ ] **Print-friendly CSS** — @media print stylesheet for reporting/PDF export
 - [ ] **Full Accessibility** — ARIA labels on all widgets, keyboard navigation, screen reader announcements for status changes

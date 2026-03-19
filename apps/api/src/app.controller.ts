@@ -2,6 +2,7 @@ import { Controller, Get, Header, HttpCode, HttpStatus, ServiceUnavailableExcept
 import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MetricsService } from './common/metrics.service';
 import { PrismaService } from './common/prisma.service';
+import { ChecksScheduler } from './checks/checks.scheduler';
 
 const pkg = require('../package.json') as { version: string; name: string };
 const startedAt = Date.now();
@@ -12,6 +13,7 @@ export class AppController {
   constructor(
     private readonly metrics: MetricsService,
     private readonly prisma: PrismaService,
+    private readonly checksScheduler: ChecksScheduler,
   ) {}
 
   @Get('health')
@@ -46,6 +48,7 @@ export class AppController {
       uptimeMs,
       checks: {
         database: { status: db, latencyMs: dbLatencyMs },
+        scheduler: { queueDepth: this.checksScheduler.getQueueDepth() },
       },
     };
 

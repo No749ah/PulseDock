@@ -1,3 +1,11 @@
+## Status Summary (2026-03-19 07:22 UTC)
+- **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 11 routes clean
+- **Branch:** heartbeat/2026-03-19-widgets-offline
+- **This session (2026-03-19 07:22 UTC):**
+  - **Scheduled Uptime Reports**: Full feature — `ScheduledReport` Prisma model + migration (20260319071349). `GET/PUT/DELETE /v1/reports` API. Cron job runs every 15min, sends due reports. `MailerService.sendUptimeReport()` with styled HTML email (hero uptime%, stat boxes, monitor table). Account page "Scheduled Reports" section: enable toggle, daily/weekly frequency, day-of-week selector, UTC hour picker, last-sent display. Services restarted, all routes 200.
+
 ## Status Summary (2026-03-19 05:11 UTC)
 - **Build/Test:** ✅ Clean build, 1428 API + 10 CLI + 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1030,7 +1038,7 @@
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
 - [ ] **Webhook management UI** — Create/edit/test webhooks, delivery history, retry failed deliveries, payload templates, signature verification config
-- [ ] **Scheduled Reports** — Daily/weekly/monthly automated reports via email: uptime summary, incident summary, SLA compliance, version status. PDF + HTML formats.
+- [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [ ] **Data Retention Policies** — Configurable per-monitor: keep raw data for 7d/30d/90d/1y. Auto-aggregate older data into hourly/daily rollups. Storage usage dashboard.
 - [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins

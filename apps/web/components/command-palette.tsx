@@ -93,13 +93,21 @@ export function CommandPalette() {
     { id: "create-alert", label: "New Alert Channel", description: "Add alert destination", icon: Plus, group: "Create", keywords: ["add", "slack", "discord", "webhook"], shortcut: "N A", action: () => router.push("/alerts") },
     { id: "create-status-page", label: "New Status Page", description: "Create public status page", icon: Plus, group: "Create", keywords: ["add", "public"], shortcut: "N S", action: () => router.push("/status-pages") },
     { id: "create-incident", label: "New Incident", description: "Report an incident", icon: Plus, group: "Create", keywords: ["add", "outage", "report"], action: () => router.push("/incidents") },
+    // Create (more)
+    { id: "create-version-check", label: "New Version Check", description: "Track a tool or package version", icon: Plus, group: "Create", keywords: ["add", "semver", "docker", "npm", "github"], action: () => router.push("/versions") },
+    { id: "create-project", label: "New Project", description: "Group monitors into a project", icon: Plus, group: "Create", keywords: ["add", "folder", "group", "team"], action: () => router.push("/projects") },
+    { id: "create-maintenance", label: "Schedule Maintenance", description: "Plan a maintenance window", icon: Plus, group: "Create", keywords: ["add", "downtime", "schedule"], action: () => router.push("/maintenance") },
     // Actions
     { id: "action-export-monitors", label: "Export Monitors", description: "Download monitors as CSV", icon: Download, group: "Actions", keywords: ["download", "csv", "backup", "export"], action: () => router.push("/monitors?export=1") },
     { id: "action-toggle-theme", label: "Toggle Theme", description: "Switch dark / light mode", icon: Sun, group: "Actions", keywords: ["dark", "light", "theme", "mode", "color"], shortcut: "T", action: () => { toggleTheme(); } },
+    { id: "action-account-keys", label: "Manage API Keys", description: "View and create API keys", icon: Shield, group: "Actions", keywords: ["api", "key", "token", "auth"], action: () => router.push("/account#api-keys") },
+    { id: "action-data-retention", label: "Data Retention Settings", description: "Configure data retention policies", icon: Clock, group: "Actions", keywords: ["storage", "retention", "prune", "cleanup"], action: () => router.push("/account#data-retention") },
+    { id: "action-view-health", label: "API Health Check", description: "View API health status", icon: Activity, group: "Actions", keywords: ["health", "status", "api", "uptime"], action: () => window.open("/api/v1/health", "_blank") },
     // External
     { id: "ext-github", label: "GitHub Repository", description: "View source code", icon: ExternalLink, group: "External", keywords: ["source", "code", "repo"], action: () => window.open("https://github.com/No749ah/PulseDock", "_blank") },
-    { id: "ext-api-docs", label: "API Documentation", description: "Browse API reference", icon: ExternalLink, group: "External", keywords: ["api", "rest", "docs", "swagger"], action: () => router.push("/api/docs") },
-    { id: "ext-changelog", label: "Changelog", description: "View release history", icon: ExternalLink, group: "External", keywords: ["releases", "updates", "version"], action: () => window.open("https://github.com/No749ah/PulseDock/releases", "_blank") },
+    { id: "ext-api-docs", label: "API Documentation", description: "Browse API reference (Swagger)", icon: ExternalLink, group: "External", keywords: ["api", "rest", "docs", "swagger", "openapi"], action: () => router.push("/api/docs") },
+    { id: "ext-changelog", label: "Changelog", description: "View release history on GitHub", icon: ExternalLink, group: "External", keywords: ["releases", "updates", "version", "history"], action: () => window.open("https://github.com/No749ah/PulseDock/releases", "_blank") },
+    { id: "nav-changelog", label: "Changelog Page", description: "View built-in changelog", icon: BarChart2, group: "Navigation", keywords: ["changelog", "releases", "versions", "history"], action: () => router.push("/changelog") },
   ], [router, toggleTheme]);
 
   // Filtered results grouped

@@ -41,6 +41,8 @@ export default function StatusPagesPage() {
   const [createSlug, setCreateSlug] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [slugAvailability, setSlugAvailability] = useState<{ available: boolean; checking: boolean } | null>(null);
+  const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -58,6 +60,20 @@ export default function StatusPagesPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function checkSlugAvailability(slug: string) {
+    if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+    if (!slug || slug.length < 3) { setSlugAvailability(null); return; }
+    setSlugAvailability({ available: false, checking: true });
+    slugCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await api<{ available: boolean; valid: boolean }>(`/v1/status-pages/slug-check?slug=${encodeURIComponent(slug)}`);
+        setSlugAvailability({ available: res.available && res.valid, checking: false });
+      } catch {
+        setSlugAvailability(null);
+      }
+    }, 400);
   }
 
   function autoSlug(title: string) {
@@ -93,6 +109,7 @@ export default function StatusPagesPage() {
       setShowCreate(false);
       setCreateTitle("");
       setCreateSlug("");
+      setSlugAvailability(null);
       toastCtx.success("Status page created");
       router.push(`/status-pages/${page.id}/edit`);
     } catch (err: unknown) {
@@ -299,13 +316,24 @@ export default function StatusPagesPage() {
                     type="text"
                     name="slug"
                     value={createSlug}
-                    onChange={(e) => setCreateSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                    onChange={(e) => { const s = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""); setCreateSlug(s); checkSlugAvailability(s); }}
                     placeholder="my-service-status"
                     className="flex-1 bg-transparent px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none"
                   />
+                  {slugAvailability && !slugAvailability.checking && (
+                    <span className={`mr-2 text-xs font-medium ${slugAvailability.available ? 'text-green-400' : 'text-danger'}`}>
+                      {slugAvailability.available ? '✓ Available' : '✗ Taken'}
+                    </span>
+                  )}
+                  {slugAvailability?.checking && (
+                    <span className="mr-2 text-xs text-text-secondary">checking…</span>
+                  )}
                 </div>
                 {createSlug && createSlug.length < 3 && (
                   <p className="mt-1 text-xs text-danger">Slug must be at least 3 characters.</p>
+                )}
+                {createSlug && createSlug.length >= 3 && slugAvailability && !slugAvailability.available && !slugAvailability.checking && (
+                  <p className="mt-1 text-xs text-danger">This slug is already taken. Choose a different one.</p>
                 )}
               </div>
               <div className="flex gap-3 pt-2">
@@ -318,7 +346,7 @@ export default function StatusPagesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || !createTitle.trim() || (createSlug.length > 0 && createSlug.length < 3)}
+                  disabled={creating || !createTitle.trim() || (createSlug.length > 0 && createSlug.length < 3) || (slugAvailability !== null && !slugAvailability.available && !slugAvailability.checking)}
                   className="flex-1 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:opacity-50"
                 >
                   {creating ? "Creating…" : "Create & Edit"}

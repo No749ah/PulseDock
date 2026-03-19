@@ -137,6 +137,17 @@ export class StatusPagesService {
     return { deleted: true };
   }
 
+  async checkSlugAvailability(userId: string, slug: string, excludeId?: string) {
+    const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;
+    if (!slug || !SLUG_RE.test(slug)) {
+      return { available: false, valid: false, reason: 'Slug must be 3-50 chars, lowercase letters/numbers/hyphens, no leading/trailing hyphens' };
+    }
+
+    const existing = await this.prisma.publicStatusPage.findUnique({ where: { slug }, select: { id: true } });
+    const taken = existing !== null && existing.id !== (excludeId ?? '');
+    return { available: !taken, valid: true, slug };
+  }
+
   async findPublic(slug: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
@@ -2534,6 +2545,33 @@ export class StatusPagesService {
         } catch {
           return { advisories: [], checkedAt: new Date().toISOString(), packageName, error: 'Failed to fetch advisories' };
         }
+      }
+
+      case 'column-layout':
+        // Pure layout widget — no server data needed
+        return { columns: (widget.config.columns as number) ?? 2 };
+
+      case 'sticky-header': {
+        // Show overall system status for the page
+        const allMonitors = await this.prisma.monitor.findMany({
+          where: { userId },
+          select: { id: true },
+        });
+        const monitorIds = allMonitors.map((m) => m.id);
+        if (monitorIds.length === 0) return { status: 'operational', monitorCount: 0 };
+
+        const since = new Date(Date.now() - 5 * 60 * 1000); // last 5 min
+        const latestRuns = await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: monitorIds }, checkedAt: { gte: since } },
+          orderBy: { checkedAt: 'desc' },
+          distinct: ['monitorId'],
+          select: { monitorId: true, level: true },
+        });
+
+        const hasDown = latestRuns.some((r) => r.level === 'red');
+        const hasDegraded = latestRuns.some((r) => r.level === 'yellow');
+        const status = hasDown ? 'outage' : hasDegraded ? 'degraded' : 'operational';
+        return { status, monitorCount: monitorIds.length };
       }
 
       default:

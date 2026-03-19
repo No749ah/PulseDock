@@ -73,7 +73,9 @@ export type WidgetType =
   | 'tab-container'
   | 'region-status-map'
   | 'third-party-dependencies'
-  | 'security-advisory';
+  | 'security-advisory'
+  | 'column-layout'
+  | 'sticky-header';
 
 export interface Widget {
   id: string;

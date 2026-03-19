@@ -66,6 +66,7 @@ import {
   GitFork,
   Layers,
   ShieldAlert,
+  ChevronUp,
 } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
@@ -227,6 +228,8 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 { type: "region-status-map", label: "Region Status Map", description: "Status overview per geographic region. Configure regionMonitors mapping.", icon: Globe, category: "Status", defaultW: 12, defaultH: 4 },
 { type: "third-party-dependencies", label: "Third-Party Dependencies", description: "Live status check of external services. Configure services array.", icon: ExternalLink, category: "Status", defaultW: 8, defaultH: 5 },
 { type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
+{ type: "column-layout", label: "Column Layout", description: "2, 3, or 4 column text/content layout within a single row", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 3 },
+{ type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
 ];
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
@@ -732,7 +735,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
   const monitorMode = (w.config.monitorMode as string) ?? "single";
   const supportsLabel = w.type !== "divider";
-  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory"];
+  const noScopeWidgets = ["divider", "text-block", "scheduled-maintenance", "incident-history", "check-history-feed", "collapsible-section", "tab-container", "code-block", "video-embed", "image-banner", "faq-accordion", "social-links", "link-list", "subscriber-form", "rss-feed-widget", "announcement-bar", "third-party-dependencies", "security-advisory", "column-layout", "sticky-header"];
   const supportsMonitorScope = !noScopeWidgets.includes(w.type);
   const supportsFilters = !noScopeWidgets.includes(w.type);
   const supportsVisibility = w.type !== "divider";
@@ -1175,6 +1178,40 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             />
           </div>
         </>
+      )}
+
+      {w.type === "column-layout" && (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Number of Columns</label>
+            <select
+              value={(w.config.columns as number) ?? 2}
+              onChange={(e) => update("columns", Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <option value={2}>2 columns</option>
+              <option value={3}>3 columns</option>
+              <option value={4}>4 columns</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-secondary">Column Items (JSON)</label>
+            <textarea
+              rows={4}
+              value={(w.config.items as string) ?? '[{"heading":"Column 1","body":"Content here"},{"heading":"Column 2","body":"Content here"}]'}
+              onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+              placeholder='[{"heading":"Col 1","body":"..."},{"heading":"Col 2","body":"..."}]'
+              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+            />
+            <p className="mt-1 text-[10px] text-text-muted">Array of {`{heading?, body}`} objects, one per column</p>
+          </div>
+        </>
+      )}
+
+      {w.type === "sticky-header" && (
+        <div>
+          <p className="text-[10px] text-text-muted">Shows the overall system status as a fixed-position banner. Place it at the top of your page (y=0) for best effect. Status is computed from all monitors in real-time.</p>
+        </div>
       )}
 
       <div className="rounded-lg border border-border/50 bg-bg/50 p-2.5 space-y-2">

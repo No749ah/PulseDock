@@ -79,9 +79,26 @@ function metaRow(label: string, value: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
+/**
+ * Service for sending transactional emails via SMTP.
+ *
+ * All email is sent through a nodemailer transporter configured via environment
+ * variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM). When SMTP
+ * is not configured, delivery is silently skipped and logged as `[mail-disabled]`.
+ *
+ * Every public method returns `{ sent: boolean }` so callers can log whether the
+ * email was actually dispatched without throwing on missing SMTP config.
+ *
+ * HTML emails use a shared branded layout (`htmlLayout`) with the PulseDock logo
+ * and dark theme styling tested against major email clients.
+ */
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
 
+  /**
+   * Creates a nodemailer transporter from environment variables.
+   * Returns null when SMTP is not configured, causing all sends to be no-ops.
+   */
   private transporter() {
     const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT ?? 587);
@@ -98,6 +115,15 @@ export class MailerService {
     });
   }
 
+  /**
+   * Core delivery method: sends a plain-text + HTML email.
+   * Falls back silently (returns `{ sent: false }`) when SMTP is not configured.
+   *
+   * @param to      - Recipient email address
+   * @param subject - Email subject line
+   * @param text    - Plain-text fallback body
+   * @param html    - HTML body (uses branded htmlLayout wrapper)
+   */
   private async deliver(to: string, subject: string, text: string, html: string): Promise<{ sent: boolean }> {
     const from = process.env.MAIL_FROM ?? 'noreply@pulsedock.local';
     const transporter = this.transporter();
@@ -113,6 +139,12 @@ export class MailerService {
 
   // ───────── Invite ─────────
 
+  /**
+   * Sends a team invitation email with a 7-day accept link.
+   *
+   * @param to        - Invitee's email address
+   * @param inviteUrl - One-time accept URL (includes signed token)
+   */
   async sendInviteEmail(to: string, inviteUrl: string) {
     const subject = "You've been invited to PulseDock";
 
@@ -143,6 +175,12 @@ export class MailerService {
 
   // ───────── Password Reset ─────────
 
+  /**
+   * Sends a password reset email with a 15-minute single-use reset link.
+   *
+   * @param to       - Account holder's email address
+   * @param resetUrl - Signed reset URL (token valid for 15 minutes, invalidated on use)
+   */
   async sendPasswordResetEmail(to: string, resetUrl: string) {
     const subject = 'Reset your PulseDock password';
 
@@ -173,6 +211,13 @@ export class MailerService {
 
   // ───────── Email Verification ─────────
 
+  /**
+   * Sends an email verification message for new account registrations.
+   * Users must click the link before accessing the dashboard.
+   *
+   * @param to        - New user's email address
+   * @param verifyUrl - Single-use email verification URL
+   */
   async sendEmailVerificationEmail(to: string, verifyUrl: string) {
     const subject = 'Verify your PulseDock email address';
 
@@ -202,6 +247,13 @@ export class MailerService {
 
   // ───────── New Login Alert ─────────
 
+  /**
+   * Notifies the account holder when a new login is detected from an unfamiliar IP/device.
+   * Triggered by AuthService after session creation when anomaly detection fires.
+   *
+   * @param to      - Account holder's email address
+   * @param context - Login metadata: IP address, user agent string, and ISO timestamp
+   */
   async sendNewLoginEmail(
     to: string,
     context: { ipAddress: string | null; userAgent: string | null; timestamp: string },
@@ -245,6 +297,14 @@ export class MailerService {
 
   // ───────── Alert Notification ─────────
 
+  /**
+   * Sends a monitor alert notification email when a check fails or recovers.
+   * Called by AlertsService when the email alert channel fires.
+   *
+   * @param to        - Recipient email address (from alert channel config)
+   * @param alertText - Human-readable alert message (e.g. "🚨 monitor 'API' is DOWN")
+   * @param extra     - Optional additional metadata to include in the email (JSON-serializable)
+   */
   async sendAlertEmail(to: string, alertText: string, extra?: unknown) {
     const subject = 'PulseDock Alert';
 
@@ -287,6 +347,13 @@ export class MailerService {
 
   // ───────── Scheduled Uptime Report ─────────
 
+  /**
+   * Sends a scheduled uptime summary report email.
+   * Called by the ReportsService cron job (runs every 15 minutes, dispatches due reports).
+   *
+   * @param to   - Report recipient email address
+   * @param data - Aggregated uptime metrics for the report period
+   */
   async sendUptimeReport(to: string, data: {
     frequency: string;
     periodLabel: string;
@@ -411,10 +478,14 @@ export class MailerService {
     return this.deliver(to, subject, text, html);
   }
 
-  // ───────── Account Lockout ─────────
+  // ───────── Status Page Subscriber Update ─────────
+
   /**
-   * Send a status update email to a status page subscriber.
-   * Used when an incident is created or the page status changes to outage/degraded.
+   * Sends a status update notification to a status page subscriber.
+   * Triggered when an incident is created or the page transitions to outage/degraded.
+   *
+   * @param to   - Subscriber's email address
+   * @param opts - Update content: page details, headline, body text, optional unsubscribe URL
    */
   async sendStatusPageUpdateEmail(to: string, opts: {
     pageTitle: string;
@@ -456,6 +527,16 @@ export class MailerService {
     return this.deliver(to, subject, text, html);
   }
 
+  // ───────── Account Lockout ─────────
+
+  /**
+   * Notifies a user that their account has been locked due to excessive failed login attempts.
+   * The lock expires automatically at `lockedUntil`.
+   *
+   * @param to          - Account holder's email address
+   * @param lockedUntil - Timestamp when the lock automatically expires (15 minutes from lockout)
+   * @param ipAddress   - Optional IP address that triggered the lockout (for user awareness)
+   */
   async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
     const subject = 'Your PulseDock account has been temporarily locked';
     const text = `Your PulseDock account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;

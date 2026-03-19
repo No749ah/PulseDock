@@ -62,6 +62,20 @@ export interface RestoreResult {
   settings: { updated: boolean }
 }
 
+/**
+ * Service for exporting and restoring full user data backups.
+ *
+ * Backups are expressed as a single self-contained JSON document (BackupDocument v2)
+ * that includes all configuration but deliberately excludes ephemeral data:
+ * - Raw MonitorRun check history (can be very large)
+ * - Audit log entries
+ * - Session tokens and TOTP secrets
+ *
+ * Restores are idempotent: existing entities matched by name/slug are skipped
+ * rather than overwritten to prevent data loss on repeat imports.
+ *
+ * Endpoints: POST /v1/settings/backup/export, POST /v1/settings/backup/restore
+ */
 @Injectable()
 export class BackupService {
   private readonly logger = new Logger(BackupService.name)
@@ -69,8 +83,14 @@ export class BackupService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Export all user data as a portable backup document.
-   * Excludes: raw check history (MonitorRun), audit logs, session tokens.
+   * Exports all user configuration as a portable BackupDocument v2.
+   *
+   * Includes: monitors (with folder/tag associations), folders, tags,
+   * alert channels (configs included), status pages (layout JSON), and settings.
+   * Excludes: MonitorRun history, audit logs, sessions, credentials.
+   *
+   * @param userId - Authenticated user whose data to export
+   * @returns Complete backup document ready for download/storage
    */
   async exportBackup(userId: string): Promise<BackupDocument> {
     const [monitors, folders, tags, alertChannels, statusPages, settings] = await Promise.all([
@@ -145,12 +165,19 @@ export class BackupService {
   }
 
   /**
-   * Restore data from a backup document.
-   * - Folders/Tags: skipped if same name already exists
-   * - Monitors: skipped if same target+type already exists
-   * - Alert channels: skipped if same name+type already exists
-   * - Status pages: slug is suffixed with "-restored" if already taken
-   * - Settings: always overwritten
+   * Restores user configuration from a backup document (idempotent import).
+   *
+   * Deduplication rules (to prevent accidental overwrites on repeat imports):
+   * - Folders / Tags: skipped if same name already exists for this user
+   * - Monitors: skipped if same target + type combination already exists
+   * - Alert channels: skipped if same name + type combination already exists
+   * - Status pages: slug is suffixed with "-restored" if the slug is already taken
+   * - Settings (retention days): always overwritten with the backup value
+   *
+   * @param userId - Authenticated user to restore data into
+   * @param doc    - Backup document (must be version "2" format)
+   * @returns Per-entity counts of created vs skipped rows, plus any monitor import errors
+   * @throws BadRequestException if the document is missing required fields
    */
   async restoreBackup(userId: string, doc: BackupDocument): Promise<RestoreResult> {
     if (!doc.version || !doc.exportedAt || !Array.isArray(doc.monitors)) {

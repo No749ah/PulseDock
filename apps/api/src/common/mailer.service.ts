@@ -412,6 +412,50 @@ export class MailerService {
   }
 
   // ───────── Account Lockout ─────────
+  /**
+   * Send a status update email to a status page subscriber.
+   * Used when an incident is created or the page status changes to outage/degraded.
+   */
+  async sendStatusPageUpdateEmail(to: string, opts: {
+    pageTitle: string;
+    pageSlug: string;
+    pageUrl: string;
+    subject: string;
+    headline: string;
+    body: string;
+    statusColor?: string;
+    unsubscribeUrl?: string;
+  }): Promise<{ sent: boolean }> {
+    const { pageTitle, pageUrl, subject, headline, body, statusColor = '#f59e0b', unsubscribeUrl } = opts;
+    const text = [
+      `${headline}`,
+      ``,
+      `${body}`,
+      ``,
+      `View the status page: ${pageUrl}`,
+      unsubscribeUrl ? `\nYou are receiving this because you subscribed to updates for "${pageTitle}". Unsubscribe: ${unsubscribeUrl}` : '',
+    ].join('\n');
+
+    const html = htmlLayout(subject, `
+      <div style="display:inline-block;background:${statusColor}22;border:1px solid ${statusColor}44;border-radius:6px;padding:4px 12px;margin-bottom:20px;">
+        <span style="font-size:12px;font-weight:700;color:${statusColor};text-transform:uppercase;letter-spacing:0.08em;">Status Update</span>
+      </div>
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">${headline}</h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">${body.replace(/\n/g, '<br>')}</p>
+      ${btnPrimary(pageUrl, `View ${pageTitle} Status`)}
+      ${divider()}
+      ${unsubscribeUrl
+        ? `<p style="margin:0;font-size:11px;color:#475569;">
+            You received this because you subscribed to status updates for <strong style="color:#94a3b8;">${pageTitle}</strong>.
+            <a href="${unsubscribeUrl}" style="color:#3b82f6;">Unsubscribe</a>
+           </p>`
+        : `<p style="margin:0;font-size:11px;color:#475569;">Status update for <strong style="color:#94a3b8;">${pageTitle}</strong></p>`
+      }
+    `);
+
+    return this.deliver(to, subject, text, html);
+  }
+
   async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
     const subject = 'Your PulseDock account has been temporarily locked';
     const text = `Your PulseDock account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;

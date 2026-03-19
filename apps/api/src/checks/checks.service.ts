@@ -7,6 +7,7 @@ const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/i;
 import type { Monitor, MonitorRun } from '../types';
 import { PrismaService } from '../common/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { MailerService } from '../common/mailer.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
@@ -21,6 +22,7 @@ export class ChecksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
+    @Optional() private readonly mailer?: MailerService,
     @Optional() realtime?: RealtimeEvents,
   ) {
     this.realtime = realtime ?? { monitorChecked: () => undefined, statusPageUpdated: () => undefined };
@@ -1099,7 +1101,7 @@ export class ChecksService {
       try {
         const pages = await this.prisma.publicStatusPage.findMany({
           where: { userId: monitor.userId, isPublished: true },
-          select: { slug: true, layout: true, notifyWebhookUrl: true, lastNotifiedStatus: true, id: true },
+          select: { slug: true, layout: true, notifyWebhookUrl: true, lastNotifiedStatus: true, id: true, title: true },
         });
         const monitorId = monitor.id;
         for (const page of pages) {
@@ -1112,10 +1114,8 @@ export class ChecksService {
               checkedAt: new Date().toISOString(),
             });
 
-            // Fire webhook if configured and overall status changed
-            if (page.notifyWebhookUrl) {
-              void this.fireStatusPageWebhook(page, monitor.userId);
-            }
+            // Fire webhook + subscriber emails when status may have changed
+            void this.fireStatusPageWebhook(page, monitor.userId);
           }
         }
       } catch {
@@ -1133,7 +1133,7 @@ export class ChecksService {
    * @param userId - Owner user ID for querying monitors
    */
   private async fireStatusPageWebhook(
-    page: { id: string; slug: string; notifyWebhookUrl: string | null; lastNotifiedStatus: string | null; layout: unknown },
+    page: { id: string; slug: string; title: string; notifyWebhookUrl: string | null; lastNotifiedStatus: string | null; layout: unknown },
     userId: string,
   ): Promise<void> {
     try {
@@ -1178,20 +1178,62 @@ export class ChecksService {
           .map(mon => ({ id: mon.id, name: mon.name })),
       };
 
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 10_000);
-      try {
-        await fetch(page.notifyWebhookUrl!, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock-StatusPage/1.0' },
-          body: JSON.stringify(payload),
-          signal: ctrl.signal,
-        });
-      } finally {
-        clearTimeout(timer);
+      // Fire webhook if configured
+      if (page.notifyWebhookUrl) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10_000);
+        try {
+          await fetch(page.notifyWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock-StatusPage/1.0' },
+            body: JSON.stringify(payload),
+            signal: ctrl.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      // Email subscribers when status degrades (not on recovery — avoid spam)
+      if (overallStatus !== 'operational' && this.mailer) {
+        try {
+          const subscribers = await this.prisma.statusPageSubscriber.findMany({
+            where: { statusPageId: page.id },
+            select: { email: true },
+          });
+
+          if (subscribers.length > 0) {
+            const appBase = process.env.APP_BASE_URL ?? process.env.APP_URL ?? 'http://localhost:1234';
+            const pageUrl = `${appBase}/status/${page.slug}`;
+            const statusLabel = overallStatus === 'outage' ? 'Outage Detected' : 'Performance Degradation';
+            const statusColor = overallStatus === 'outage' ? '#ef4444' : '#f59e0b';
+            const headline = `${statusLabel} — ${page.title ?? page.slug}`;
+            const affectedNames = payload.affectedMonitors.map(m => m.name).join(', ');
+            const body = affectedNames
+              ? `The following services are currently affected: ${affectedNames}.\n\nWe are investigating and will provide updates as soon as possible.`
+              : `We are investigating the issue and will provide updates shortly.`;
+
+            // Fire-and-forget: send all subscriber emails concurrently
+            await Promise.allSettled(
+              subscribers.map((sub) =>
+                this.mailer!.sendStatusPageUpdateEmail(sub.email, {
+                  pageTitle: page.title ?? page.slug,
+                  pageSlug: page.slug,
+                  pageUrl,
+                  subject: `[${page.title ?? page.slug}] ${statusLabel}`,
+                  headline,
+                  body,
+                  statusColor,
+                })
+              )
+            );
+          }
+        } catch {
+          // Subscriber email failure is non-critical
+        }
       }
     } catch {
-      // Webhook delivery failure is non-critical
+      // Webhook/notification delivery failure is non-critical
     }
   }
 }

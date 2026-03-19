@@ -9,6 +9,7 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { IncidentStatus, IncidentSeverity, MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { MailerService } from '../common/mailer.service';
 import { CreateStatusPageDto, UpdateStatusPageDto } from './status-pages.dto';
 import { PageLayout, Widget } from './status-pages.types';
 
@@ -30,7 +31,10 @@ function emptyLayout(): PageLayout {
 export class StatusPagesService {
   private readonly logger = new Logger(StatusPagesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailer: MailerService,
+  ) {}
 
   /**
    * Returns all status pages owned by the authenticated user.

@@ -1370,3 +1370,14 @@
 - [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
 - [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
 - [ ] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
+
+## Status Summary (2026-03-19 21:26 UTC)
+- **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 12 routes clean
+- **Branch:** heartbeat/2026-03-20-polish
+- **This session (2026-03-19 21:26 UTC):**
+  - **Branch rotation**: Merged heartbeat/2026-03-20-quality → dev, deleted old branch, created heartbeat/2026-03-20-polish
+  - **Notification bell**: Shows version updates + monitor names, clicking navigates to correct page; API runs endpoint returns monitorName
+  - **DEPLOYMENT.md**: Comprehensive rewrite — Docker Compose, Kubernetes, Helm, bare metal, nginx config, env var table, health checks, troubleshooting
+  - **Heartbeat: BACKLOG sync + status check** — all routes 200, 1519 tests passing

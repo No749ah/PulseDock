@@ -513,7 +513,7 @@ export default function AccountPage() {
     );
 
   return (
-    <AppFrame title="Account" subtitle="Manage your profile and security">
+    <AppFrame title="Account" subtitle="Manage your profile and security" breadcrumbs={[{ label: "Account" }]}>
       <div className="space-y-6">
         {loadError && (
           

@@ -14,6 +14,7 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
+import { CountUp } from '../../app/components/CountUp';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -211,7 +212,7 @@ function SystemStatsWidget() {
         {tiles.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="rounded-xl bg-surface-elevated border border-border p-4">
             <div className="flex items-center gap-1.5 mb-2"><Icon className={`w-3.5 h-3.5 ${color}`} /><span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span></div>
-            <span className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</span>
+            <span className={`text-2xl font-bold ${color}`}><CountUp value={`${value}`} duration={900} /></span>
             <p className="text-xs text-text-secondary mt-0.5">{sub}</p>
           </div>
         ))}
@@ -602,7 +603,7 @@ export default function AdminPage() {
   const auditRows = auditLogs.slice((auditPage - 1) * PAGE_SIZE, auditPage * PAGE_SIZE);
 
   return (
-    <AppFrame title="Admin" subtitle="System management, user access, and audit logs.">
+    <AppFrame title="Admin" subtitle="System management, user access, and audit logs." breadcrumbs={[{ label: "Admin" }]}>
       {loading ? <LoadingState label="Loading admin data…" /> : (
         <div className="space-y-5">
           <SystemHealthWidget />

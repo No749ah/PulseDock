@@ -5,8 +5,8 @@
   <p>
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <img src="https://img.shields.io/badge/tests-1454%20passing-brightgreen" alt="Tests: 1454 passing" />
-    <img src="https://img.shields.io/badge/tools-1400%2B-orange" alt="1400+ tools" />
+    <img src="https://img.shields.io/badge/tests-1498%20passing-brightgreen" alt="Tests: 1498 passing" />
+    <img src="https://img.shields.io/badge/tools-1468%2B-orange" alt="1468+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
   </p>
@@ -36,7 +36,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 | Open Source | ✅ | ✅ | ❌ | ❌ |
 | Self-Hosted | ✅ | ✅ | ❌ | ❌ |
 | **Version Tracking** | ✅ | ❌ | ❌ | ❌ |
-| **Tool Registry (1400+)** | ✅ | ❌ | ❌ | ❌ |
+| **Tool Registry (1468+)** | ✅ | ❌ | ❌ | ❌ |
 | Status Pages | ✅ | ✅ | ✅ | ✅ |
 | Incident Management | ✅ | ✅ | ✅ | ✅ |
 | CLI Tool | ✅ | ❌ | ✅ | ❌ |
@@ -47,7 +47,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 ## Features
 
 ### 🔍 Version Intelligence
-- Track version updates for **1400+ self-hosted tools** — auto-configured, no manual setup
+- Track version updates for **1468+ self-hosted tools** — auto-configured, no manual setup
 - Providers: GitHub Releases, Docker Hub, npm, PyPI, Cargo, Maven, Helm
 - **PulseDock Agent** for tools without HTTP APIs (Proxmox, pfSense, OpenWRT, Unraid)
 - Semantic version comparison with prerelease awareness
@@ -138,7 +138,7 @@ PulseDock/
 │   ├── api/          # NestJS + TypeScript (port 4321)
 │   └── web/          # Next.js 16 + React 19 + Tailwind (port 1234)
 ├── packages/
-│   ├── tool-registry/ # 1400+ pre-configured tool definitions
+│   ├── tool-registry/ # 1468+ pre-configured tool definitions
 │   ├── agent/         # Local version reporter daemon
 │   ├── cli/           # @pulsedock/cli terminal tool
 │   ├── extension/     # Chrome MV3 browser extension
@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (1454 tests)
+npm run test              # Run all tests (1498 tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,11 +223,11 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **1454 tests** across the full stack:
+PulseDock has **1498 tests** across the full stack:
 
 ```bash
 npm run test                        # All tests
-npm run test -w @pulsedock/api      # API tests only (1428 tests)
+npm run test -w @pulsedock/api      # API tests only (1476 tests)
 npm run test -w @pulsedock/agent    # Agent tests only
 npm run test -w @pulsedock/cli      # CLI tests only
 ```

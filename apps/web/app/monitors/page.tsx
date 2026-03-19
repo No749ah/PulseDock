@@ -892,7 +892,7 @@ function MonitorsPageInner() {
     );
 
   return (
-    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors">
+    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
       <div className="space-y-6">
         {error && (
           <FadeIn>

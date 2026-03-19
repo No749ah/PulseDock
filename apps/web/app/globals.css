@@ -254,6 +254,7 @@ html, body {
 
   /* ── Hide interactive chrome ───────────────────────── */
   .print\:hidden,
+  .no-print,
   nav,
   header,
   aside,

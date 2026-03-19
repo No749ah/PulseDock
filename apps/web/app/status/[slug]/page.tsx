@@ -310,7 +310,11 @@ export default async function PublicStatusSlugPage({
       <main className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
-          <div className="mb-8 text-center">
+          <div className="mb-8 text-center relative">
+            {/* Print button — top-right of header, hidden when printing */}
+            <div className="absolute right-0 top-0 no-print">
+              <PrintButton />
+            </div>
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={data.title} className="mx-auto mb-4 h-12 w-auto object-contain" />

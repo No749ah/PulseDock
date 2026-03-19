@@ -1,3 +1,11 @@
+## Status Summary (2026-03-19 20:11 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ All 11 routes 200 local + public URL healthy
+- **Branch:** heartbeat/2026-03-19-evening
+- **This session (2026-03-19 20:11 UTC):**
+  - **Webhook Notifications for Status Pages**: `notifyWebhookUrl` + `lastNotifiedStatus` added to `PublicStatusPage` Prisma schema + migration (20260319200430). `ChecksService.fireStatusPageWebhook()` fires a POST when overall page status changes (operational/degraded/outage), deduplicates via `lastNotifiedStatus`, updates DB before firing, 10s timeout. `UpdateStatusPageDto.notifyWebhookUrl` field. `StatusPagesService.update()` persists webhook URL. Page Settings modal: Webhook Notifications section with URL input + live example payload preview. 3 new tests (fires on change, skips unchanged, skips null). 1515 total tests passing.
+
 ## Status Summary (2026-03-19 18:17 UTC)
 - **Build/Test:** ✅ Clean build, 1512 tests passing (1490 API + 10 CLI + 12 Agent), zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1236,7 +1244,7 @@
 - [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
 - [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
 - [ ] **Public JSON API** — `GET /api/v1/public/status/:slug/json` for third-party integrations
-- [ ] **Webhook on Status Change** — Push notifications when overall status changes
+- [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
 - [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
 - [ ] **Slack/Discord Integration** — Auto-post status changes to channels
 - [ ] **Embeddable Widget** — `<script>` tag to embed single widget on external sites

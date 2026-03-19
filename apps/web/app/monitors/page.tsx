@@ -150,6 +150,23 @@ function MonitorsPageInner() {
   const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // Column visibility (persisted to localStorage)
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("monitor-col-visibility");
+      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true };
+    } catch {
+      return { type: true, target: true, interval: true, trend: true, alerts: true };
+    }
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const toggleCol = (col: string) => {
+    setVisibleCols((prev) => {
+      const next = { ...prev, [col]: !prev[col] };
+      try { localStorage.setItem("monitor-col-visibility", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [realtimeAlert, setRealtimeAlert] = useState("");
@@ -822,6 +839,36 @@ function MonitorsPageInner() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {/* Column visibility toggle (table view only) */}
+              {viewMode === "table" && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColPicker((v) => !v)}
+                    title="Toggle column visibility"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${showColPicker ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Columns</span>
+                  </button>
+                  {showColPicker && (
+                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
+                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
+                        <button
+                          key={col}
+                          onClick={() => toggleCol(col)}
+                          className="flex items-center justify-between w-full rounded-lg px-2 py-1.5 text-xs hover:bg-surface-elevated transition-colors"
+                        >
+                          <span className={visibleCols[col] ? "text-text-primary" : "text-text-muted"}>{label}</span>
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleCols[col] ? "bg-accent border-accent text-white" : "border-border"}`}>
+                            {visibleCols[col] ? "✓" : ""}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-0.5 bg-surface-elevated border border-border rounded-lg overflow-hidden">
                 <button
                   onClick={() => handleExport("json")}
@@ -1200,17 +1247,17 @@ function MonitorsPageInner() {
                           {sortBy === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
-                      <TableHeader className="hidden sm:table-cell">Type</TableHeader>
-                      <TableHeader className="hidden md:table-cell">Target</TableHeader>
-                      <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
+                      {visibleCols.type && <TableHeader className="hidden sm:table-cell">Type</TableHeader>}
+                      {visibleCols.target && <TableHeader className="hidden md:table-cell">Target</TableHeader>}
+                      {visibleCols.interval && <TableHeader className="hidden lg:table-cell">Interval</TableHeader>}
                       <TableHeader>
                         <button onClick={() => handleSort("status")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Status
                           {sortBy === "status" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
-                      <TableHeader className="hidden xl:table-cell">Trend</TableHeader>
-                      <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>
+                      {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
+                      {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Last Check
@@ -1262,11 +1309,9 @@ function MonitorsPageInner() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>
-                            {monitor.target}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>
+                          {visibleCols.type && <TableCell className="hidden sm:table-cell text-sm text-text-secondary">{formatMonitorType(monitor.type)}</TableCell>}
+                          {visibleCols.target && <TableCell className="hidden md:table-cell text-sm text-text-secondary truncate max-w-[200px]" title={monitor.target}>{monitor.target}</TableCell>}
+                          {visibleCols.interval && <TableCell className="hidden lg:table-cell text-sm text-text-secondary">{monitor.intervalSec}s</TableCell>}
                           <TableCell>
                             <MonitorStatusCell
                               monitorId={monitor.id}
@@ -1276,6 +1321,7 @@ function MonitorsPageInner() {
                             />
                           </TableCell>
                           {/* Trend sparkline — last 20 runs for this monitor */}
+                          {visibleCols.trend && (
                           <TableCell className="hidden xl:table-cell">
                             {(() => {
                               const monRuns = runs
@@ -1294,7 +1340,8 @@ function MonitorsPageInner() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">
+                          )}
+                          {visibleCols.alerts && <TableCell className="hidden sm:table-cell">
                             <button
                               onClick={() => openAlertPanel(monitor)}
                               className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-accent transition-colors group"
@@ -1322,7 +1369,7 @@ function MonitorsPageInner() {
                               </div>
                               <span className="hidden group-hover:inline text-[10px] text-accent ml-0.5">Edit</span>
                             </button>
-                          </TableCell>
+                          </TableCell>}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button

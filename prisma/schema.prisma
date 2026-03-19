@@ -241,11 +241,25 @@ model PublicStatusPage {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history StatusPageHistory[]
 
   @@index([userId])
   @@index([slug])
   @@index([isPublished])
+}
+
+model StatusPageHistory {
+  id           String   @id @default(cuid())
+  statusPageId String
+  layout       Json
+  savedAt      DateTime @default(now())
+  label        String?
+
+  statusPage PublicStatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([statusPageId])
+  @@index([savedAt])
 }
 
 model ApiKey {

@@ -1510,6 +1510,12 @@ export default function StatusPageEditorPage() {
     try { return JSON.parse(localStorage.getItem(`sp-vhist-${id}`) || "[]") as VersionEntry[]; } catch { return []; }
   });
 
+  // Server-side version history
+  interface ApiHistoryEntry { id: string; savedAt: string; label: string | null; layout: { widgets?: unknown[]; settings?: unknown } }
+  const [apiHistory, setApiHistory] = useState<ApiHistoryEntry[]>([]);
+  const [apiHistoryLoading, setApiHistoryLoading] = useState(false);
+  const [restoringHistoryId, setRestoringHistoryId] = useState<string | null>(null);
+
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   // Undo/Redo history
@@ -1691,6 +1697,43 @@ export default function StatusPageEditorPage() {
     setSelectedIds(new Set());
     setShowVersionHistory(false);
     toastCtx.success("Version restored — save to apply");
+  }
+
+  async function loadApiHistory() {
+    setApiHistoryLoading(true);
+    try {
+      const data = await api<ApiHistoryEntry[]>(`/v1/status-pages/${id}/history`);
+      setApiHistory(data);
+    } catch {
+      // silently fail
+    } finally {
+      setApiHistoryLoading(false);
+    }
+  }
+
+  async function restoreApiVersion(historyId: string) {
+    if (!confirm("Restore this version from server? Your current unsaved changes will be lost.")) return;
+    setRestoringHistoryId(historyId);
+    try {
+      const result = await api<{ layout: { widgets?: Widget[]; settings?: PageSettings } }>(`/v1/status-pages/${id}/history/${historyId}/restore`, undefined, { method: "POST" });
+      const restoredLayout = result.layout as { widgets?: Widget[]; settings?: PageSettings };
+      const restoredWidgets = (restoredLayout?.widgets ?? []) as Widget[];
+      const restoredSettings = (restoredLayout?.settings ?? {}) as PageSettings;
+      setWidgets(restoredWidgets);
+      setPageSettings(restoredSettings);
+      savedWidgetsRef.current = JSON.stringify(restoredWidgets);
+      setIsDirty(false);
+      setSelectedId(null);
+      setSelectedIds(new Set());
+      setShowVersionHistory(false);
+      toastCtx.success("Version restored from server");
+      // Reload API history after restore
+      loadApiHistory();
+    } catch {
+      toastCtx.error("Failed to restore version");
+    } finally {
+      setRestoringHistoryId(null);
+    }
   }
 
   function handleWidgetSelect(id: string | null, shiftKey?: boolean) {
@@ -2204,7 +2247,7 @@ export default function StatusPageEditorPage() {
 
             {/* Version history button */}
             <button
-              onClick={() => setShowVersionHistory(true)}
+              onClick={() => { setShowVersionHistory(true); loadApiHistory(); }}
               title={`Version history — ${versionHistory.length} save${versionHistory.length !== 1 ? "s" : ""} stored`}
               className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
             >
@@ -2723,36 +2766,45 @@ export default function StatusPageEditorPage() {
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-text-primary">Version History</h2>
-                <p className="text-xs text-text-muted mt-0.5">Last {versionHistory.length} manual saves. Click restore to roll back.</p>
+                <p className="text-xs text-text-muted mt-0.5">Last 10 saves stored on server. One-click restore.</p>
               </div>
               <button onClick={() => setShowVersionHistory(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="overflow-y-auto p-4 space-y-2">
-              {versionHistory.length === 0 ? (
+              {apiHistoryLoading ? (
+                <div className="py-8 text-center text-sm text-text-secondary">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent mx-auto mb-2" />
+                  <p>Loading history…</p>
+                </div>
+              ) : apiHistory.length === 0 ? (
                 <div className="py-8 text-center text-sm text-text-secondary">
                   <History className="h-8 w-8 mx-auto mb-2 text-text-muted/40" />
-                  <p>No saves recorded yet.</p>
+                  <p>No server saves yet.</p>
                   <p className="text-xs text-text-muted mt-1">Save your page to start tracking history.</p>
                 </div>
-              ) : versionHistory.map((entry, i) => {
-                const d = new Date(entry.ts);
-                const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+              ) : apiHistory.map((entry, i) => {
+                const d = new Date(entry.savedAt);
+                const dateLabel = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+                const widgetCount = Array.isArray(entry.layout?.widgets) ? entry.layout.widgets.length : 0;
+                const isRestoring = restoringHistoryId === entry.id;
                 return (
-                  <div key={entry.ts} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
+                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
                     <div>
                       <p className="text-xs font-medium text-text-primary flex items-center gap-2">
                         {i === 0 && <span className="text-[10px] rounded-full bg-accent/15 text-accent px-1.5 py-0.5 font-semibold">Latest</span>}
-                        {label}
+                        {entry.label ? <span className="text-[10px] text-text-muted italic">{entry.label}</span> : null}
+                        {dateLabel}
                       </p>
-                      <p className="text-[10px] text-text-muted mt-0.5">{entry.widgetCount} widget{entry.widgetCount !== 1 ? "s" : ""}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">{widgetCount} widget{widgetCount !== 1 ? "s" : ""}</p>
                     </div>
                     <button
-                      onClick={() => restoreVersion(entry)}
-                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100"
+                      onClick={() => restoreApiVersion(entry.id)}
+                      disabled={isRestoring}
+                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100 disabled:opacity-50"
                     >
-                      Restore
+                      {isRestoring ? "Restoring…" : "Restore"}
                     </button>
                   </div>
                 );

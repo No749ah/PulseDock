@@ -98,12 +98,80 @@ export class StatusPagesService {
     if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
 
+    // Snapshot current layout before overwriting (version history)
+    if (dto.layout !== undefined) {
+      await this.prisma.statusPageHistory.create({
+        data: {
+          statusPageId: id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          layout: page.layout as any,
+          label: null,
+        },
+      });
+      // Prune to last 10 snapshots
+      const old = await this.prisma.statusPageHistory.findMany({
+        where: { statusPageId: id },
+        orderBy: { savedAt: 'desc' },
+        skip: 10,
+        select: { id: true },
+      });
+      if (old.length > 0) {
+        await this.prisma.statusPageHistory.deleteMany({
+          where: { id: { in: old.map((h) => h.id) } },
+        });
+      }
+    }
+
     const updated = await this.prisma.publicStatusPage.update({
       where: { id },
       data: updateData,
     });
 
     this.logger.log(`Status page updated: ${id} by user ${userId}`);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safe } = updated;
+    return { ...safe, hasPassword: !!updated.passwordHash };
+  }
+
+  async getHistory(userId: string, id: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+
+    const history = await this.prisma.statusPageHistory.findMany({
+      where: { statusPageId: id },
+      orderBy: { savedAt: 'desc' },
+      take: 10,
+      select: { id: true, savedAt: true, label: true, layout: true },
+    });
+    return history;
+  }
+
+  async restoreHistory(userId: string, pageId: string, historyId: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id: pageId } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+
+    const snapshot = await this.prisma.statusPageHistory.findUnique({ where: { id: historyId } });
+    if (!snapshot || snapshot.statusPageId !== pageId) throw new NotFoundException('History entry not found');
+
+    // Save current state as a snapshot before restoring
+    await this.prisma.statusPageHistory.create({
+      data: {
+        statusPageId: pageId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        layout: page.layout as any,
+        label: 'Before restore',
+      },
+    });
+
+    const updated = await this.prisma.publicStatusPage.update({
+      where: { id: pageId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { layout: snapshot.layout as any },
+    });
+
+    this.logger.log(`Status page ${pageId} restored to history ${historyId} by user ${userId}`);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safe } = updated;
     return { ...safe, hasPassword: !!updated.passwordHash };

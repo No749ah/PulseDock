@@ -1236,14 +1236,10 @@ describe('update() — with tags', () => {
 
 describe('versionSummary()', () => {
   it('returns correct stats for monitors with runs', async () => {
-    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: { currentVersion: '1.0.0' } };
+    const run = makeRun({ level: 'green', message: 'up to date' });
+    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: { currentVersion: '1.0.0' }, runs: [run] };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([gitMonitor]);
-    const monitorRunFindFirst = vi.fn().mockResolvedValue(makeRun({ level: 'green', message: 'up to date' }));
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: monitorRunFindFirst,
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1254,13 +1250,9 @@ describe('versionSummary()', () => {
   });
 
   it('returns "No run yet" and yellow level when monitor has no runs', async () => {
-    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {} };
+    const gitMonitor = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {}, runs: [] };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([gitMonitor]);
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: vi.fn().mockResolvedValue(null),
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1281,20 +1273,12 @@ describe('versionSummary()', () => {
   });
 
   it('counts red/yellow monitors in stats correctly', async () => {
-    const mon1 = { ...makeMonitor({ id: 'm1' }), type: 'GIT_RELEASE', configJson: {} };
-    const mon2 = { ...makeMonitor({ id: 'm2' }), type: 'DOCKER_IMAGE', configJson: {} };
-    const mon3 = { ...makeMonitor({ id: 'm3' }), type: 'GIT_RELEASE', configJson: {} };
+    const mon1 = { ...makeMonitor({ id: 'm1' }), type: 'GIT_RELEASE', configJson: {}, runs: [makeRun({ level: 'green', monitorId: 'm1' })] };
+    const mon2 = { ...makeMonitor({ id: 'm2' }), type: 'DOCKER_IMAGE', configJson: {}, runs: [makeRun({ level: 'yellow', monitorId: 'm2' })] };
+    const mon3 = { ...makeMonitor({ id: 'm3' }), type: 'GIT_RELEASE', configJson: {}, runs: [makeRun({ level: 'red', monitorId: 'm3' })] };
 
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([mon1, mon2, mon3]);
-    const findFirst = vi.fn()
-      .mockResolvedValueOnce(makeRun({ level: 'green', monitorId: 'm1' }))
-      .mockResolvedValueOnce(makeRun({ level: 'yellow', monitorId: 'm2' }))
-      .mockResolvedValueOnce(makeRun({ level: 'red', monitorId: 'm3' }));
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst,
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1658,13 +1642,10 @@ describe('versionSummary() — additional branch coverage', () => {
       ...makeMonitor(),
       type: 'GIT_RELEASE',
       configJson: { currentVersion: 'v2.0.0' }, // has leading v
+      runs: [makeRun({ level: 'green', message: 'up to date' })],
     };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([gitMonitor]);
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: vi.fn().mockResolvedValue(makeRun({ level: 'green', message: 'up to date' })),
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1677,13 +1658,10 @@ describe('versionSummary() — additional branch coverage', () => {
       ...makeMonitor({ id: 'docker-1' }),
       type: 'DOCKER_IMAGE',
       configJson: { currentTag: 'v1.5.0' }, // currentTag, not currentVersion
+      runs: [makeRun({ level: 'yellow', message: 'update available' })],
     };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([dockerMonitor]);
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: vi.fn().mockResolvedValue(makeRun({ level: 'yellow', message: 'update available' })),
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1696,13 +1674,10 @@ describe('versionSummary() — additional branch coverage', () => {
       ...makeMonitor({ id: 'bare-1' }),
       type: 'GIT_RELEASE',
       configJson: {}, // no version info
+      runs: [],
     };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([mon]);
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: vi.fn().mockResolvedValue(null),
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');
@@ -1710,13 +1685,9 @@ describe('versionSummary() — additional branch coverage', () => {
   });
 
   it('returns null checkedAt when no run exists', async () => {
-    const mon = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {} };
+    const mon = { ...makeMonitor(), type: 'GIT_RELEASE', configJson: {}, runs: [] };
     const p = makePrisma();
     p.monitor.findMany.mockResolvedValue([mon]);
-    (p as unknown as Record<string, unknown>).monitorRun = {
-      ...(p.monitorRun as object),
-      findFirst: vi.fn().mockResolvedValue(null),
-    };
 
     const svc = makeService(p);
     const result = await svc.versionSummary('user-1');

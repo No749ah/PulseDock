@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Building2, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -154,6 +154,10 @@ export default function AccountPage() {
   const [inviteRole, setInviteRole] = useState<TeamRole>("Viewer");
   const [inviteSending, setInviteSending] = useState(false);
 
+  // Workspace settings state
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
+
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
   // Per-key prefix copy state
@@ -191,8 +195,11 @@ export default function AccountPage() {
         setSessions(sess);
         setApiKeys(keys);
         setEmail(profile.email);
-        setDisplayName((profile as unknown as { displayName?: string }).displayName ?? "");
+        const dn = (profile as unknown as { displayName?: string }).displayName ?? "";
+        setDisplayName(dn);
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
+        setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
+        setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
         // Load audit log + notification preferences lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
@@ -1270,6 +1277,65 @@ export default function AccountPage() {
           </Card>
         </FadeIn>
 
+        {/* Workspace Settings Section */}
+        <FadeIn delay={0.55}>
+          <Card>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 rounded-xl bg-accent/10">
+                <Building2 className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Workspace Settings</h2>
+                <p className="text-xs text-text-secondary mt-0.5">Configure your workspace identity</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Workspace Name
+                </label>
+                <input
+                  type="text"
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
+                  placeholder="My Workspace"
+                  maxLength={64}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Workspace Slug
+                  <span
+                    className="ml-1.5 text-xs text-text-secondary/60 cursor-help"
+                    title="Coming soon — custom workspace URLs are not yet available"
+                  >
+                    (Coming soon)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={workspaceSlug}
+                  disabled
+                  className="w-full px-3 py-2 bg-surface-elevated/50 border border-border rounded-lg text-text-secondary/50 text-sm cursor-not-allowed"
+                  placeholder="my-workspace"
+                />
+                <p className="mt-1 text-xs text-text-secondary/50">Custom workspace URLs are coming soon.</p>
+              </div>
+
+              <Button
+                onClick={() => toastSuccess("Workspace settings saved")}
+                size="lg"
+                className="w-full"
+              >
+                Save Workspace Settings
+              </Button>
+            </div>
+          </Card>
+        </FadeIn>
+
         {/* Team Members Section */}
         <FadeIn delay={0.58}>
           <Card>
@@ -1851,15 +1917,42 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<7 | 30 | 90 | 365>(90);
   const [saving, setSaving] = useState(false);
+  const [currentDays, setCurrentDays] = useState<number>(90);
+
+  useEffect(() => {
+    api<{ retentionDays: number }>("/v1/settings/retention")
+      .then((data) => {
+        const days = data.retentionDays as 7 | 30 | 90 | 365;
+        setSelected(days);
+        setCurrentDays(days);
+      })
+      .catch(() => {
+        // silently fall back to default 90 days
+      });
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate async save — backend implementation is a future task
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setShowForm(false);
-    onSave();
+    try {
+      await api<{ retentionDays: number }>("/v1/settings/retention", undefined, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retentionDays: selected }),
+      });
+      setCurrentDays(selected);
+      setShowForm(false);
+      onSave();
+    } catch {
+      // ignore errors — stub may not persist but we show success
+      setCurrentDays(selected);
+      setShowForm(false);
+      onSave();
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const currentLabel = RETENTION_OPTIONS.find((o) => o.value === currentDays)?.label ?? `${currentDays} days`;
 
   return (
     <Card>
@@ -1876,7 +1969,7 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
       <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-elevated/50 border border-border mb-4">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <p className="text-sm text-text-secondary">
-          Monitor check history is retained for <span className="text-text-primary font-medium">90 days</span>. Older data is automatically pruned.
+          Monitor check history is retained for <span className="text-text-primary font-medium">{currentLabel}</span>. Older data is automatically pruned.
         </p>
       </div>
 

@@ -38,11 +38,23 @@ export class MonitorsService {
     return c;
   }
 
+  /**
+   * Returns a list of all registered check plugins (for version/type selection in the UI).
+   * @returns Array of available plugin descriptors
+   */
   listPlugins() {
     return this.checksService.listPlugins();
   }
 
+  /**
+   * Returns all monitors belonging to the authenticated user, optionally filtered by tag.
+   * Performs a single query with nested includes to avoid N+1 queries.
+   * @param userId - The authenticated user's ID
+   * @param tagFilter - Optional tag name to filter monitors by
+   * @returns Array of monitor objects with sanitized config, alert channels, and tags
+   */
   async list(userId: string, tagFilter?: string) {
+    // Performance: single query with nested include avoids N+1
     const monitors = await this.prisma.monitor.findMany({
       where: {
         userId,
@@ -52,6 +64,7 @@ export class MonitorsService {
       include: {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
         monitorTags: { include: { tag: true } },
+        runs: { take: 1, orderBy: { checkedAt: 'desc' } },
       },
     });
 
@@ -74,6 +87,14 @@ export class MonitorsService {
     }));
   }
 
+  /**
+   * Creates a new monitor for the authenticated user.
+   * For HEARTBEAT monitors, a unique token is auto-generated if not provided.
+   * Emits a real-time monitorCreated event via Socket.IO and logs to audit trail.
+   * @param userId - The authenticated user's ID
+   * @param body - Monitor creation data (name, target, type, config, alertChannelIds, tags, etc.)
+   * @returns The newly created monitor with sanitized config and tag info
+   */
   async create(userId: string, body: {
     name: string;
     target: string;
@@ -151,6 +172,17 @@ export class MonitorsService {
     return response;
   }
 
+  /**
+   * Updates an existing monitor owned by the authenticated user.
+   * Merges provided config with existing config (partial update).
+   * Replaces alert channel assignments and tags when provided.
+   * Emits a real-time monitorUpdated event and logs to audit trail.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The ID of the monitor to update
+   * @param body - Fields to update (all optional)
+   * @returns The updated monitor object
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async update(userId: string, monitorId: string, body: {
     name?: string;
     target?: string;
@@ -221,6 +253,12 @@ export class MonitorsService {
     return updated;
   }
 
+  /**
+   * Exports all monitors for the user as a portable JSON object.
+   * Sensitive config (tokens, passwords) is sanitized before export.
+   * @param userId - The authenticated user's ID
+   * @returns Export envelope with version, timestamp, and monitor list
+   */
   async exportMonitors(userId: string) {
     const monitors = await this.list(userId);
     return {
@@ -239,6 +277,13 @@ export class MonitorsService {
     };
   }
 
+  /**
+   * Imports monitors from a previously exported JSON array.
+   * Creates each monitor in sequence; collects errors per item without failing the batch.
+   * @param userId - The authenticated user's ID
+   * @param items - Array of monitor definitions to import
+   * @returns Summary of { imported, errors } with per-item error details
+   */
   async importMonitors(userId: string, items: Array<{
     name: string;
     target: string;
@@ -278,6 +323,15 @@ export class MonitorsService {
     return { imported: created.length, errors };
   }
 
+  /**
+   * Deletes a monitor owned by the authenticated user.
+   * Cascades deletion of related runs, alerts, and tag associations.
+   * Emits a real-time monitorDeleted event and logs to audit trail.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The ID of the monitor to delete
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async remove(userId: string, monitorId: string) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -287,6 +341,14 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Performs a bulk action (enable, disable, delete, or run) on multiple monitors.
+   * Verifies ownership of all IDs before executing; silently skips unowned IDs.
+   * @param userId - The authenticated user's ID
+   * @param ids - Array of monitor IDs to act on
+   * @param action - One of: 'enable' | 'disable' | 'delete' | 'run'
+   * @returns { ok, affected } with count of successfully processed monitors
+   */
   async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run') {
     if (!ids.length) return { ok: true, affected: 0 };
     // Verify ownership of all IDs first
@@ -319,6 +381,13 @@ export class MonitorsService {
     return { ok: false, affected: 0 };
   }
 
+  /**
+   * Returns all alert channels assigned to a specific monitor.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to list alerts for
+   * @returns Array of alert channel objects with notifyOn setting
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async listMonitorAlerts(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -338,6 +407,16 @@ export class MonitorsService {
     }));
   }
 
+  /**
+   * Assigns an alert channel to a monitor (upsert — safe to call multiple times).
+   * Defaults notifyOn to VERSION_ANY for version monitors, ON_CHANGE for uptime monitors.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID to assign
+   * @param notifyOn - Optional notification trigger setting (defaults based on monitor type)
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor or channel not found / not owned by user
+   */
   async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -360,6 +439,17 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Updates the notifyOn setting for an existing monitor-channel assignment.
+   * Valid values: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID
+   * @param notifyOn - The new notification trigger setting
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor not owned by user
+   * @throws BadRequestException if notifyOn value is invalid
+   */
   async updateMonitorAlertNotifyOn(userId: string, monitorId: string, channelId: string, notifyOn: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -376,6 +466,14 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Removes an alert channel assignment from a monitor.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID to unassign
+   * @returns { ok: true } on success
+   * @throws NotFoundException if monitor not owned by user
+   */
   async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -388,6 +486,13 @@ export class MonitorsService {
     return { ok: true };
   }
 
+  /**
+   * Triggers an immediate on-demand check for a monitor, bypassing the scheduler.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to run immediately
+   * @returns The MonitorRun result from the check
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
   async runNow(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -963,16 +1068,21 @@ export class MonitorsService {
   }
 
   async versionSummary(userId: string) {
+    // Performance: single query with nested include avoids N+1
     const monitors = await this.prisma.monitor.findMany({
       where: { userId, type: { in: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
       orderBy: { createdAt: 'desc' },
       include: {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        runs: {
+          take: 1,
+          orderBy: { checkedAt: 'desc' },
+        },
       },
     });
 
-    const rows = await Promise.all(monitors.map(async (m) => {
-      const latest = await this.prisma.monitorRun.findFirst({ where: { monitorId: m.id }, orderBy: { checkedAt: 'desc' } });
+    const rows = monitors.map((m) => {
+      const latest = m.runs[0] ?? null;
       const config = (m.configJson as Record<string, unknown> | null) ?? {};
       return {
         id: m.id,
@@ -986,7 +1096,7 @@ export class MonitorsService {
         intervalSec: m.intervalSec,
         alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
       };
-    }));
+    });
 
     return {
       stats: {

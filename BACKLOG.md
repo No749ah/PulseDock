@@ -1,3 +1,55 @@
+## Status Summary (2026-03-19 13:00 UTC)
+- **Build/Test:** ✅ Clean build, 1480+ passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-enterprise
+- **This session (2026-03-19 13:00 UTC):**
+  - API key scope: RequireScope decorator + ScopeGuard (14 tests)
+  - Webhook retry: exponential backoff 1s/2s/4s
+  - Scheduler: jitter, queue depth, structured cycle logging
+  - DB optimization: indexes + N+1 elimination
+  - Health endpoint: DB latency, Redis status, scheduler metrics
+  - Rate limiting: per-endpoint overrides, headers
+  - Route audit: all 11 routes verified 200
+
+## Status Summary (2026-03-19 12:45 UTC)
+- **Build/Test:** ✅ Clean build, 1465+ passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-enterprise
+- **This session (2026-03-19 12:45 UTC):**
+  - Team API: GET/POST/DELETE /v1/team endpoints (stub), 3 unit tests
+  - Workspace Settings UI: name + slug card in account page
+  - Data Retention: GET/PUT /v1/settings/retention, frontend DataRetentionCard wired
+  - API key scope enforcement: RequireScope decorator + scope guard
+  - Webhook retry: exponential backoff (1s/2s/4s), 2 tests
+  - Scheduler: jitter, queue depth metric, structured cycle logging
+
+## Status Summary (2026-03-19 12:30 UTC)
+- **Build/Test:** ✅ Clean build, 1454+ passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-19-polish-perf
+- **This session (2026-03-19 12:30 UTC):**
+  - Design tokens file created (design-tokens.ts)
+  - Monitors card view polished (status dot, type badge, uptime%, actions)
+  - Versions page: summary row, diff indicators, changelog links, sort
+  - Incidents page: summary header, severity/status badges, duration, empty state
+  - Alerts page: channel type icons, last-triggered, test button, history button
+  - Maintenance page: upcoming widget, status badges, duration display
+  - Landing mobile: responsive hero, overflow table
+  - Admin: responsive stats grid, recent activity feed
+  - API keys: confirm-revoke flow, copy button
+  - Status pages list: thumbnail, widget count, duplicate button
+  - Monitors UX: latency column, check-now button, status bar tooltips
+  - AppFrame: breadcrumbs prop added
+  - Registry: 3 broken Simple Icons slugs fixed
+  - Table improvements: row expansion with check history, tags
+  - Monitor templates: 39 new templates added
+  - Team section: invite modal UI stub in account page
+  - Changelog page: nav entry with ScrollText icon
+  - Tests: reports service coverage added
+
 ## Status Summary (2026-03-19 12:00 UTC)
 - **Build/Test:** ✅ Clean build, 1454 passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -1070,7 +1122,7 @@
 
 ### P2 — Enterprise Features (Beyond Monitoring)
 
-- [ ] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action
+- [~] **Multi-user / Team support** — Invite team members, role-based access (admin/editor/viewer), per-monitor permissions, audit log per user action *(in-progress: invite modal UI stub added to account page; backend RBAC and invite flow pending)*
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
@@ -1081,7 +1133,7 @@
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
 - [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
-- [ ] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
+- [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 
 ### P3 — Advanced Data & API
 

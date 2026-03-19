@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChecksScheduler } from './checks.scheduler';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
@@ -52,9 +52,18 @@ describe('ChecksScheduler', () => {
   let scheduler: ChecksScheduler;
 
   beforeEach(() => {
+    // Use fake timers to avoid real delays from jitter
+    vi.useFakeTimers();
+    // Stub Math.random to return 0 so jitter is 0ms (no delay) by default
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     prisma = makePrisma([]);
     checks = makeChecksService();
     scheduler = makeScheduler(prisma, checks);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   // ─── tick() ─────────────────────────────────────────────────────────────────
@@ -62,7 +71,9 @@ describe('ChecksScheduler', () => {
   describe('tick()', () => {
     it('does nothing when there are no enabled monitors', async () => {
       prisma.monitor.findMany.mockResolvedValue([]);
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).not.toHaveBeenCalled();
     });
 
@@ -71,7 +82,9 @@ describe('ChecksScheduler', () => {
       const monitor = makeMonitor({ intervalSec: 60, runs: [recentRun] });
       prisma.monitor.findMany.mockResolvedValue([monitor]);
 
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).not.toHaveBeenCalled();
     });
 
@@ -79,7 +92,9 @@ describe('ChecksScheduler', () => {
       const monitor = makeMonitor({ runs: [] }); // never ran → always due
       prisma.monitor.findMany.mockResolvedValue([monitor]);
 
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).toHaveBeenCalledOnce();
       expect(checks.runMonitor).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'monitor-1', userId: 'user-1' }),
@@ -91,7 +106,9 @@ describe('ChecksScheduler', () => {
       const monitor = makeMonitor({ intervalSec: 60, runs: [oldRun] });
       prisma.monitor.findMany.mockResolvedValue([monitor]);
 
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).toHaveBeenCalledOnce();
     });
 
@@ -103,7 +120,9 @@ describe('ChecksScheduler', () => {
       ];
       prisma.monitor.findMany.mockResolvedValue(due);
 
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).toHaveBeenCalledTimes(3);
     });
 
@@ -113,7 +132,9 @@ describe('ChecksScheduler', () => {
       checks.runMonitor.mockRejectedValue(new Error('check failed'));
 
       // Should not throw — just log warning
-      await expect(scheduler.tick()).resolves.not.toThrow();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.not.toThrow();
     });
 
     it('continues running other monitors when one fails', async () => {
@@ -131,13 +152,17 @@ describe('ChecksScheduler', () => {
         return Promise.resolve({ ok: true });
       });
 
-      await expect(scheduler.tick()).resolves.not.toThrow();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.not.toThrow();
       // All 3 were attempted even though one failed
       expect(checks.runMonitor).toHaveBeenCalledTimes(3);
     });
 
     it('queries only enabled monitors', async () => {
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(prisma.monitor.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { enabled: true } }),
       );
@@ -153,7 +178,9 @@ describe('ChecksScheduler', () => {
       });
       prisma.monitor.findMany.mockResolvedValue([monitor]);
 
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
 
       expect(checks.runMonitor).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -169,16 +196,43 @@ describe('ChecksScheduler', () => {
     it('defaults config to {} when monitor configJson is null', async () => {
       const monitor = makeMonitor({ configJson: null, runs: [] });
       prisma.monitor.findMany.mockResolvedValue([monitor]);
-      await scheduler.tick();
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
       expect(checks.runMonitor).toHaveBeenCalledWith(
         expect.objectContaining({ config: {} }),
       );
+    });
+
+    it('exposes queueDepth via getQueueDepth()', () => {
+      expect(scheduler.getQueueDepth()).toBe(0);
+    });
+
+    it('logs structured check.cycle event', async () => {
+      const logSpy = vi.spyOn(scheduler['logger'], 'log');
+      const monitor = makeMonitor({ runs: [] });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const cycleLogs = logSpy.mock.calls
+        .map((c) => { try { return JSON.parse(c[0] as string) as { event?: string }; } catch { return null; } })
+        .filter((obj) => obj?.event === 'check.cycle');
+      expect(cycleLogs.length).toBeGreaterThanOrEqual(1);
+      const log = cycleLogs[0] as { event: string; total: number; due: number; skipped: number; durationMs: number };
+      expect(log.total).toBe(1);
+      expect(log.due).toBe(1);
+      expect(log.skipped).toBe(0);
+      expect(typeof log.durationMs).toBe('number');
     });
   });
 
   describe('pruneOldRuns()', () => {
     it('deletes MonitorRun records older than retention cutoff', async () => {
       prisma.monitorRun.deleteMany.mockResolvedValue({ count: 42 });
+      vi.useRealTimers(); // real timers for date-based checks
       await scheduler.pruneOldRuns();
       expect(prisma.monitorRun.deleteMany).toHaveBeenCalledWith(
         expect.objectContaining({

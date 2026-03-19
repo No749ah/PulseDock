@@ -106,6 +106,11 @@ interface PageSettings {
   fontFamily?: "inter" | "roboto" | "system" | "mono";
   backgroundStyle?: "solid" | "gradient" | "grid-dots";
   backgroundColor?: string;
+  // SEO
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageUrl?: string;
+  robotsIndex?: boolean;
 }
 
 interface PageLayout {
@@ -2253,6 +2258,60 @@ export default function StatusPageEditorPage() {
                 >
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </button>
+              </div>
+
+              {/* SEO Section */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-3">SEO &amp; Social Sharing</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Title</label>
+                    <input
+                      type="text"
+                      placeholder="My Company Status"
+                      maxLength={60}
+                      value={pageSettings.metaTitle ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, metaTitle: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Overrides the page title in search results and browser tab (max 60 chars).</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Description</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Live status and uptime for all our services."
+                      maxLength={160}
+                      value={pageSettings.metaDescription ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, metaDescription: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Shown in search engine snippets (max 160 chars).</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">OG Image URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/og-image.png"
+                      value={pageSettings.ogImageUrl ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, ogImageUrl: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-text-muted">Image shown when sharing on Twitter, Discord, Slack, etc. (1200×630px recommended).</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
+                    <div>
+                      <p className="text-xs font-medium text-text-primary">Allow search engines to index</p>
+                      <p className="text-xs text-text-muted mt-0.5">Adds robots meta tag (index, follow). Disable for private pages.</p>
+                    </div>
+                    <button
+                      onClick={() => setPageSettings((s) => ({ ...s, robotsIndex: !(s.robotsIndex !== false) }))}
+                      className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.robotsIndex !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
+                    >
+                      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.robotsIndex !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">

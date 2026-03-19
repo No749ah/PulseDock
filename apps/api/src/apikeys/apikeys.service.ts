@@ -10,6 +10,11 @@ const KEY_PREFIX = 'pdck_';
 export class ApiKeysService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Generates a secure random API key.
+   * Format: `pdck_` + 64 hex chars.
+   * Returns the plaintext (shown once), the prefix (stored for lookup), and the SHA-256 hash (stored for validation).
+   */
   private generateKey(): { plaintext: string; prefix: string; hash: string } {
     const raw = randomBytes(32).toString('hex'); // 64 hex chars
     const plaintext = `${KEY_PREFIX}${raw}`;
@@ -18,6 +23,15 @@ export class ApiKeysService {
     return { plaintext, prefix, hash };
   }
 
+  /**
+   * Creates a new API key for a user.
+   * The plaintext key is returned **only once** in the response.
+   * Subsequent requests will never reveal the key again — only the prefix and metadata.
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Key creation payload (name, scope, optional expiresAt)
+   * @returns Key metadata including the one-time plaintext secret
+   */
   async create(userId: string, dto: CreateApiKeyDto) {
     const { plaintext, prefix, hash } = this.generateKey();
 
@@ -45,6 +59,12 @@ export class ApiKeysService {
     };
   }
 
+  /**
+   * Returns all API keys for a user — without the plaintext or hash, only metadata.
+   * Ordered by creation date descending.
+   *
+   * @param userId - Owner's user ID
+   */
   async list(userId: string) {
     const keys = await this.prisma.apiKey.findMany({
       where: { userId },
@@ -63,6 +83,13 @@ export class ApiKeysService {
     return keys;
   }
 
+  /**
+   * Permanently deletes an API key, immediately invalidating it.
+   *
+   * @param userId - Owner's user ID
+   * @param id     - API key record ID
+   * @throws NotFoundException if the key does not exist or belongs to another user
+   */
   async delete(userId: string, id: string) {
     const key = await this.prisma.apiKey.findFirst({ where: { id, userId } });
     if (!key) throw new NotFoundException('API key not found');

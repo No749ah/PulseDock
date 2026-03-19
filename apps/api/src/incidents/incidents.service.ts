@@ -35,6 +35,12 @@ export class IncidentsService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * Returns all incidents for the given user, with the latest update and linked monitors.
+   * Active incidents are ordered first (status ASC), then by creation date DESC.
+   *
+   * @param userId - Owner's user ID
+   */
   async findAll(userId: string) {
     return this.prisma.incident.findMany({
       where: { userId },
@@ -51,6 +57,13 @@ export class IncidentsService {
     });
   }
 
+  /**
+   * Returns a single incident with all timeline updates and linked monitors.
+   *
+   * @param userId - Owner's user ID
+   * @param id     - Incident ID
+   * @throws NotFoundException if the incident does not exist or does not belong to `userId`
+   */
   async findOne(userId: string, id: string) {
     const incident = await this.prisma.incident.findFirst({
       where: { id, userId },
@@ -63,6 +76,15 @@ export class IncidentsService {
     return incident;
   }
 
+  /**
+   * Creates a new incident with an initial "Incident created" timeline update.
+   * Optionally links the incident to one or more monitors.
+   * Fires an audit log entry on success.
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Create payload (title, description, severity, monitorIds)
+   * @throws BadRequestException if title is empty
+   */
   async create(userId: string, dto: CreateIncidentDto) {
     if (!dto.title?.trim()) throw new BadRequestException('title is required');
 
@@ -103,6 +125,18 @@ export class IncidentsService {
     return incident;
   }
 
+  /**
+   * Updates an incident's fields (title, description, status, severity, linked monitors).
+   * Automatically sets `resolvedAt` when status transitions to RESOLVED,
+   * and clears it when re-opened from a resolved state.
+   * Monitor linkage is replaced atomically when `monitorIds` is provided.
+   * Fires an audit log entry on success.
+   *
+   * @param userId - Owner's user ID
+   * @param id     - Incident ID
+   * @param dto    - Partial update payload
+   * @throws NotFoundException if the incident does not belong to `userId`
+   */
   async update(userId: string, id: string, dto: UpdateIncidentDto) {
     const existing = await this.prisma.incident.findFirst({ where: { id, userId } });
     if (!existing) throw new NotFoundException('Incident not found');
@@ -151,6 +185,17 @@ export class IncidentsService {
     return updated;
   }
 
+  /**
+   * Appends a timeline update to an incident and syncs the incident's status to match.
+   * If the new status is RESOLVED and the incident was not previously resolved,
+   * `resolvedAt` is set to now. If re-opened, `resolvedAt` is cleared.
+   *
+   * @param userId      - Owner's user ID
+   * @param incidentId  - Target incident ID
+   * @param dto         - Update payload (body text + new status)
+   * @throws NotFoundException if the incident does not belong to `userId`
+   * @throws BadRequestException if body is empty
+   */
   async addUpdate(userId: string, incidentId: string, dto: AddUpdateDto) {
     const incident = await this.prisma.incident.findFirst({ where: { id: incidentId, userId } });
     if (!incident) throw new NotFoundException('Incident not found');
@@ -181,6 +226,14 @@ export class IncidentsService {
     return update;
   }
 
+  /**
+   * Permanently deletes an incident and all its associated data (cascade).
+   * Fires an audit log entry on success.
+   *
+   * @param userId - Owner's user ID
+   * @param id     - Incident ID
+   * @throws NotFoundException if the incident does not belong to `userId`
+   */
   async delete(userId: string, id: string) {
     const incident = await this.prisma.incident.findFirst({ where: { id, userId } });
     if (!incident) throw new NotFoundException('Incident not found');
@@ -189,6 +242,13 @@ export class IncidentsService {
     await this.audit.log('incident.deleted', userId, userId, { incidentId: id, title: incident.title });
   }
 
+  /**
+   * Returns the last 50 incidents (with updates + monitor names) for a public status page.
+   * No authentication required — exposes only non-sensitive fields.
+   * Used by the public status-page API and incident-history widgets.
+   *
+   * @param targetUserId - The workspace owner whose incidents are displayed
+   */
   async getPublicIncidents(targetUserId: string) {
     return this.prisma.incident.findMany({
       where: { userId: targetUserId },

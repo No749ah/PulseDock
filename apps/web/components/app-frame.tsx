@@ -95,21 +95,50 @@ export function AppFrame({
   const [notifications, setNotifications] = useState<Array<{
     id: string; message: string; level: string; checkedAt: string; ok: boolean;
     monitorId?: string; monitorName?: string | null; monitorType?: string | null;
+    notifKind?: 'failure' | 'version' | 'incident' | 'maintenance';
+    incidentTitle?: string; maintenanceName?: string;
   }>>([]);
+  const [activeIncidentCount, setActiveIncidentCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = () => {
-    api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean; monitorId?: string; monitorName?: string | null; monitorType?: string | null }>>(
-      '/v1/monitors/runs?limit=50'
-    ).then((runs) => {
-      // Show: failed uptime checks + version updates (yellow/red on version monitors)
-      const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
-      const notifs = runs.filter((r) => {
-        if (VERSION_TYPES.has(r.monitorType ?? '')) return r.level === 'yellow' || r.level === 'red';
-        return !r.ok;
-      }).slice(0, 15);
-      setNotifications(notifs);
+    const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
+
+    Promise.all([
+      api<Array<{ id: string; message: string; level: string; checkedAt: string; ok: boolean; monitorId?: string; monitorName?: string | null; monitorType?: string | null }>>(
+        '/v1/monitors/runs?limit=50'
+      ).catch(() => [] as never[]),
+      api<Array<{ id: string; title: string; status: string; severity: string; createdAt: string }>>(
+        '/v1/incidents?limit=10'
+      ).catch(() => [] as never[]),
+    ]).then(([runs, incidents]) => {
+      const monitorNotifs = runs
+        .filter((r) => {
+          if (VERSION_TYPES.has(r.monitorType ?? '')) return r.level === 'yellow' || r.level === 'red';
+          return !r.ok;
+        })
+        .slice(0, 12)
+        .map((r) => ({
+          ...r,
+          notifKind: (VERSION_TYPES.has(r.monitorType ?? '') ? 'version' : 'failure') as 'version' | 'failure',
+        }));
+
+      const activeIncidents = (incidents as Array<{ id: string; title: string; status: string; severity: string; createdAt: string }>)
+        .filter((i) => i.status !== 'resolved');
+      setActiveIncidentCount(activeIncidents.length);
+
+      const incidentNotifs = activeIncidents.slice(0, 3).map((i) => ({
+        id: `incident-${i.id}`,
+        message: i.title,
+        level: i.severity === 'critical' ? 'red' : 'yellow',
+        checkedAt: i.createdAt,
+        ok: false,
+        notifKind: 'incident' as const,
+        incidentTitle: i.title,
+      }));
+
+      setNotifications([...incidentNotifs, ...monitorNotifs].slice(0, 15));
     }).catch(() => { /* non-critical */ });
   };
 
@@ -325,9 +354,9 @@ export function AppFrame({
               >
                 <Bell className="w-4 h-4" />
                 {/* Badge — shows unread failure count */}
-                {unreadNotifications.length > 0 && (
+                {(unreadNotifications.length > 0 || activeIncidentCount > 0) && (
                   <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
-                    {unreadNotifications.length > 9 ? "9+" : unreadNotifications.length}
+                    {(unreadNotifications.length + activeIncidentCount) > 9 ? "9+" : (unreadNotifications.length + activeIncidentCount)}
                   </span>
                 )}
               </button>
@@ -350,6 +379,20 @@ export function AppFrame({
                       )}
                     </div>
                   </div>
+                  {/* Active incident banner */}
+                  {activeIncidentCount > 0 && (
+                    <Link
+                      href="/incidents"
+                      onClick={() => setNotifOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-danger/10 border-b border-danger/20 hover:bg-danger/15 transition-colors"
+                    >
+                      <AlertOctagon className="w-3.5 h-3.5 text-danger shrink-0 animate-pulse" />
+                      <span className="text-xs font-semibold text-danger">
+                        {activeIncidentCount} active incident{activeIncidentCount !== 1 ? "s" : ""} — View →
+                      </span>
+                    </Link>
+                  )}
+
                   {notifications.length === 0 ? (
                     <div className="py-6 flex flex-col items-center gap-2 text-center">
                       <Bell className="w-8 h-8 text-text-muted/40" />
@@ -364,12 +407,20 @@ export function AppFrame({
                         const mins = Math.floor(diff / 60000);
                         const timeAgo = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
                         const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
-                        const isVersion = VERSION_TYPES.has(n.monitorType ?? '');
-                        const href = isVersion ? `/versions` : n.monitorId ? `/monitors/${n.monitorId}` : `/monitors`;
-                        const title = n.monitorName ?? (isVersion ? "Version update" : "Monitor failure");
-                        const detail = isVersion
-                          ? (n.level === 'red' ? "Major update available" : "Update available")
-                          : (n.message || "Check failed");
+                        const isVersion = n.notifKind === 'version' || VERSION_TYPES.has(n.monitorType ?? '');
+                        const isIncident = n.notifKind === 'incident';
+                        const href = isIncident ? `/incidents` : isVersion ? `/versions` : n.monitorId ? `/monitors/${n.monitorId}` : `/monitors`;
+                        const title = isIncident
+                          ? (n.incidentTitle ?? "Active Incident")
+                          : (n.monitorName ?? (isVersion ? "Version update" : "Monitor failure"));
+                        const detail = isIncident
+                          ? "Ongoing incident — click to view"
+                          : isVersion
+                            ? (n.level === 'red' ? "Major update available" : "Update available")
+                            : (n.message || "Check failed");
+                        const dotColor = n.level === "red"
+                          ? (isIncident ? "bg-danger animate-pulse" : "bg-danger")
+                          : n.level === "yellow" ? "bg-warning" : "bg-text-muted";
                         return (
                           <Link
                             key={n.id}
@@ -382,13 +433,16 @@ export function AppFrame({
                               try { localStorage.setItem("notif-read-ids", JSON.stringify([...next])); } catch {}
                             }}
                           >
-                            <span className={`mt-1 flex h-2 w-2 shrink-0 rounded-full ${n.level === "red" ? "bg-danger" : n.level === "yellow" ? "bg-warning" : "bg-text-muted"}`} />
+                            <span className={`mt-1 flex h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-medium text-text-primary truncate">{title}</p>
                               <p className="text-[10px] text-text-secondary truncate">{detail}</p>
                               <p className="text-[10px] text-text-muted mt-0.5">{timeAgo}</p>
                             </div>
-                            {isVersion && (
+                            {isIncident && (
+                              <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-danger/15 text-danger">INCIDENT</span>
+                            )}
+                            {isVersion && !isIncident && (
                               <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${n.level === 'red' ? 'bg-danger/15 text-danger' : 'bg-warning/15 text-warning'}`}>
                                 {n.level === 'red' ? 'MAJOR' : 'UPDATE'}
                               </span>
@@ -402,9 +456,14 @@ export function AppFrame({
                     <Link href="/monitors" className="text-xs text-accent hover:text-accent/80 transition-colors" onClick={() => setNotifOpen(false)}>
                       View monitors →
                     </Link>
-                    <Link href="/versions" className="text-xs text-text-secondary hover:text-text-primary transition-colors" onClick={() => setNotifOpen(false)}>
-                      Versions →
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href="/incidents" className="text-xs text-text-secondary hover:text-text-primary transition-colors" onClick={() => setNotifOpen(false)}>
+                        Incidents →
+                      </Link>
+                      <Link href="/versions" className="text-xs text-text-secondary hover:text-text-primary transition-colors" onClick={() => setNotifOpen(false)}>
+                        Versions →
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )}

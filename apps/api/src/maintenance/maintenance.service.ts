@@ -6,6 +6,13 @@ import { CreateMaintenanceWindowDto, UpdateMaintenanceWindowDto } from './mainte
 export class MaintenanceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Internal helper — fetches a MaintenanceWindow with linked monitor IDs and
+   * verifies ownership.
+   *
+   * @throws NotFoundException if the window does not exist
+   * @throws ForbiddenException if the window belongs to another user
+   */
   private async findOwned(id: string, userId: string) {
     const window = await this.prisma.maintenanceWindow.findUnique({
       where: { id },
@@ -16,6 +23,13 @@ export class MaintenanceService {
     return window;
   }
 
+  /**
+   * Returns all maintenance windows for a user, enriched with `monitorIds`,
+   * `monitorCount`, and the computed `isActive` flag.
+   * Ordered by `startsAt` ascending.
+   *
+   * @param userId - Owner's user ID
+   */
   async list(userId: string) {
     const now = new Date();
     const windows = await this.prisma.maintenanceWindow.findMany({
@@ -32,6 +46,12 @@ export class MaintenanceService {
     }));
   }
 
+  /**
+   * Returns only the currently active maintenance windows (started in the past, ends in the future).
+   * Used by the alert suppression logic in `ChecksService`.
+   *
+   * @param userId - Owner's user ID
+   */
   async listActive(userId: string) {
     const now = new Date();
     const windows = await this.prisma.maintenanceWindow.findMany({
@@ -52,6 +72,13 @@ export class MaintenanceService {
     }));
   }
 
+  /**
+   * Returns a single maintenance window by ID.
+   *
+   * @param id     - MaintenanceWindow ID
+   * @param userId - Owner's user ID
+   * @throws NotFoundException / ForbiddenException via `findOwned`
+   */
   async getOne(id: string, userId: string) {
     const w = await this.findOwned(id, userId);
     const now = new Date();
@@ -64,6 +91,12 @@ export class MaintenanceService {
     };
   }
 
+  /**
+   * Creates a new maintenance window, optionally linking it to one or more monitors.
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Window payload (name, description, startsAt, endsAt, monitorIds)
+   */
   async create(userId: string, dto: CreateMaintenanceWindowDto) {
     const { monitorIds = [], ...rest } = dto;
     const window = await this.prisma.maintenanceWindow.create({
@@ -88,6 +121,16 @@ export class MaintenanceService {
     };
   }
 
+  /**
+   * Updates an existing maintenance window.
+   * When `monitorIds` is provided the linked monitors are fully replaced (delete-all then re-insert)
+   * inside a single DB transaction.
+   *
+   * @param id     - MaintenanceWindow ID
+   * @param userId - Owner's user ID
+   * @param dto    - Partial update payload
+   * @throws NotFoundException / ForbiddenException via `findOwned`
+   */
   async update(id: string, userId: string, dto: UpdateMaintenanceWindowDto) {
     await this.findOwned(id, userId);
     const { monitorIds, ...rest } = dto;
@@ -114,6 +157,13 @@ export class MaintenanceService {
     return this.getOne(id, userId);
   }
 
+  /**
+   * Deletes a maintenance window (cascades to linked monitors).
+   *
+   * @param id     - MaintenanceWindow ID
+   * @param userId - Owner's user ID
+   * @throws NotFoundException / ForbiddenException via `findOwned`
+   */
   async remove(id: string, userId: string) {
     await this.findOwned(id, userId);
     await this.prisma.maintenanceWindow.delete({ where: { id } });

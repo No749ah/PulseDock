@@ -79,7 +79,8 @@ export type WidgetType =
   | 'table-of-contents'
   | 'page-navigation'
   | 'offline-banner'
-  | 'custom-metric-chart';
+  | 'custom-metric-chart'
+  | 'collapsible-section';
 
 export interface Widget {
   id: string;

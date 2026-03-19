@@ -486,7 +486,7 @@ export default function MaintenancePage() {
                           </TableCell>
                           <TableCell>
                             {w.monitorCount > 0 ? (
-                              <Badge>{String(w.monitorCount)} affected</Badge>
+                              <Badge>{`${w.monitorCount} affected`}</Badge>
                             ) : (
                               <span className="text-text-secondary text-sm">—</span>
                             )}

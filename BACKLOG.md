@@ -1,3 +1,15 @@
+## Status Summary (2026-03-19 16:33 UTC)
+- **Build/Test:** ✅ Clean build, tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ Local + public routes 200, API health 200, web /api proxy verified (401 expected without auth)
+- **Branch:** heartbeat/2026-03-19-quality
+- **This session (2026-03-19 16:33 UTC):**
+  - Status page editor: drag-from-palette UX pass (live dashed drop preview + release hint)
+  - Palette accessibility/UX: double-click + keyboard quick-add (Enter/Space), focus ring, drag/add helper copy
+  - Dashboard onboarding: interactive first-run product tour (5-step spotlight flow)
+  - Monitors form: contextual help tooltips added for check interval + failure confirmations
+  - Full restart + route audit completed (local + reverse proxy all key routes 200)
+
 ## Status Summary (2026-03-19 16:17 UTC)
 - **Build/Test:** ✅ Clean build, 1502 passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
@@ -802,7 +814,7 @@
 - [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
 - [x] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages (localStorage clipboard, pastes below existing content with new IDs)
 - [x] **Version History** — Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
-- [ ] **Drag from Palette** — Drag widget from sidebar directly onto canvas (already works, improve UX)
+- [x] **Drag from Palette** — UX improved: live drop ghost preview on canvas (dashed placement box + “Release to place”), drag-only grid highlighting, and quick-add via double-click/Enter/Space on palette items.
 
 ### P2 — Page-Level Configuration
 

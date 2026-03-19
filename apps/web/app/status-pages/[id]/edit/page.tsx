@@ -391,7 +391,7 @@ function getDefaultMultiMonitorIds(widget: Widget, monitors: Monitor[]): string[
 
 // ── Palette widget (draggable from sidebar) ──────────────────────────────
 
-function PaletteWidget({ item }: { item: WidgetPaletteItem }) {
+function PaletteWidget({ item, onQuickAdd }: { item: WidgetPaletteItem; onQuickAdd: (type: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${item.type}`,
     data: { source: "palette", widgetType: item.type, paletteItem: item },
@@ -402,13 +402,25 @@ function PaletteWidget({ item }: { item: WidgetPaletteItem }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`w-full cursor-grab rounded-xl border border-border bg-bg p-3 text-left transition hover:border-accent/50 hover:bg-accent/5 active:cursor-grabbing ${isDragging ? "opacity-40" : ""}`}
+      role="button"
+      tabIndex={0}
+      onDoubleClick={() => onQuickAdd(item.type)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onQuickAdd(item.type);
+        }
+      }}
+      className={`w-full cursor-grab rounded-xl border border-border bg-bg p-3 text-left transition hover:border-accent/50 hover:bg-accent/5 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${isDragging ? "opacity-40" : ""}`}
+      title="Drag to canvas or double-click to add"
+      aria-label={`Widget ${item.label}. Drag to canvas or double-click to add.`}
     >
-      <div className="flex items-center gap-2 mb-1">
+      <div className="mb-1 flex items-center gap-2">
         <Icon className="h-3.5 w-3.5 shrink-0 text-accent" />
         <span className="text-xs font-semibold text-text-primary">{item.label}</span>
       </div>
       <p className="text-[10px] leading-tight text-text-secondary">{item.description}</p>
+      <p className="mt-1.5 text-[10px] text-text-secondary/60">Drag or double-click to add</p>
     </div>
   );
 }
@@ -755,6 +767,7 @@ interface CanvasProps {
   viewportMode: ViewportMode;
   showGrid: boolean;
   alignGuides: { type: "h" | "v"; pos: number }[];
+  paletteDropPreview: { x: number; y: number; w: number; h: number } | null;
   onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -762,7 +775,7 @@ interface CanvasProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, paletteDropPreview, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -844,6 +857,22 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
       {isOver && widgets.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl border-2 border-dashed border-accent/40">
           <p className="text-sm font-medium text-accent/70">Drop to add widget</p>
+        </div>
+      )}
+
+      {paletteDropPreview && (
+        <div
+          className="pointer-events-none absolute z-40 rounded-xl border-2 border-dashed border-accent/70 bg-accent/10"
+          style={{
+            left: `${(paletteDropPreview.x / COL_COUNT) * 100}%`,
+            top: `${paletteDropPreview.y * ROW_H}px`,
+            width: `${(paletteDropPreview.w / COL_COUNT) * 100}%`,
+            height: `${paletteDropPreview.h * ROW_H}px`,
+          }}
+        >
+          <div className="absolute -top-6 left-0 rounded-md bg-accent/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
+            Release to place
+          </div>
         </div>
       )}
 
@@ -1627,6 +1656,7 @@ export default function StatusPageEditorPage() {
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [paletteDropPreview, setPaletteDropPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
@@ -2140,8 +2170,38 @@ export default function StatusPageEditorPage() {
   function handleDragMove(event: DragMoveEvent) {
     const { active, delta } = event;
     const activeId = active.id as string;
+
+    if (activeId.startsWith("palette-")) {
+      if (!canvasRef.current || !active.rect.current.translated) {
+        setPaletteDropPreview(null);
+        return;
+      }
+      const type = activeId.replace("palette-", "");
+      const paletteItem = WIDGET_PALETTE.find((p) => p.type === type);
+      if (!paletteItem) {
+        setPaletteDropPreview(null);
+        return;
+      }
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const moved = active.rect.current.translated;
+      const colWidth = canvasRect.width / COL_COUNT;
+      const relX = moved.left + moved.width / 2 - canvasRect.left;
+      const relY = moved.top - canvasRect.top;
+      const inCanvas = relX >= 0 && relX <= canvasRect.width && relY >= 0;
+      if (!inCanvas) {
+        setPaletteDropPreview(null);
+        return;
+      }
+      const x = Math.max(0, Math.min(COL_COUNT - paletteItem.defaultW, Math.floor(relX / colWidth)));
+      const y = Math.max(0, Math.floor(relY / ROW_H));
+      setPaletteDropPreview({ x, y, w: paletteItem.defaultW, h: paletteItem.defaultH });
+      setAlignGuides([]);
+      return;
+    }
+
     if (!activeId.startsWith("canvas-") || !canvasRef.current) {
       setAlignGuides([]);
+      setPaletteDropPreview(null);
       return;
     }
     const widgetId = activeId.replace("canvas-", "");
@@ -2196,12 +2256,17 @@ export default function StatusPageEditorPage() {
   }
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveDragId(event.active.id as string);
+    const activeId = event.active.id as string;
+    setActiveDragId(activeId);
+    if (!activeId.startsWith("palette-")) {
+      setPaletteDropPreview(null);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null);
     setAlignGuides([]);
+    setPaletteDropPreview(null);
     const { active, delta, over } = event;
     const activeId = active.id as string;
 
@@ -2270,7 +2335,7 @@ export default function StatusPageEditorPage() {
   const activeDragCanvasWidget = activeDragId?.startsWith("canvas-")
     ? widgets.find((w) => w.id === activeDragId.replace("canvas-", ""))
     : null;
-  const isDraggingOverCanvas = !!activeDragId;
+  const isDraggingOverCanvas = !!activeDragId && activeDragId.startsWith("palette-");
 
   if (loading) {
     return (
@@ -2547,7 +2612,7 @@ export default function StatusPageEditorPage() {
                   );
                 }
                 return filtered.map((widget) => (
-                  <PaletteWidget key={widget.type} item={widget} />
+                  <PaletteWidget key={widget.type} item={widget} onQuickAdd={addWidget} />
                 ));
               })()}
             </div>
@@ -2573,6 +2638,7 @@ export default function StatusPageEditorPage() {
               viewportMode={viewportMode}
               showGrid={showGrid}
               alignGuides={alignGuides}
+              paletteDropPreview={paletteDropPreview}
               onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}

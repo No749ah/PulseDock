@@ -147,7 +147,7 @@ function MonitorsPageInner() {
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
   });
-  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked">("name");
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   // Column visibility (persisted to localStorage)
@@ -787,6 +787,10 @@ function MonitorsPageInner() {
         const tb = runB?.checkedAt ? new Date(runB.checkedAt).getTime() : 0;
         return dir * (ta - tb);
       }
+      case "type":
+        return dir * a.type.localeCompare(b.type);
+      case "interval":
+        return dir * (a.intervalSec - b.intervalSec);
       default:
         return 0;
     }
@@ -1290,9 +1294,23 @@ function MonitorsPageInner() {
                           {sortBy === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                         </button>
                       </TableHeader>
-                      {visibleCols.type && <TableHeader className="hidden sm:table-cell">Type</TableHeader>}
+                      {visibleCols.type && (
+                        <TableHeader className="hidden sm:table-cell">
+                          <button onClick={() => handleSort("type")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                            Type
+                            {sortBy === "type" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                          </button>
+                        </TableHeader>
+                      )}
                       {visibleCols.target && <TableHeader className="hidden md:table-cell">Target</TableHeader>}
-                      {visibleCols.interval && <TableHeader className="hidden lg:table-cell">Interval</TableHeader>}
+                      {visibleCols.interval && (
+                        <TableHeader className="hidden lg:table-cell">
+                          <button onClick={() => handleSort("interval")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                            Interval
+                            {sortBy === "interval" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                          </button>
+                        </TableHeader>
+                      )}
                       <TableHeader>
                         <button onClick={() => handleSort("status")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Status
@@ -1314,7 +1332,7 @@ function MonitorsPageInner() {
                     {paginatedMonitors.map((monitor) => {
                       const lastRun = runs.find((r) => r.monitorId === monitor.id);
                       return (
-                        <TableRow key={monitor.id} className={selectedIds.has(monitor.id) ? "bg-accent/5" : ""}>
+                        <TableRow key={monitor.id} className={`group/row relative ${selectedIds.has(monitor.id) ? "bg-accent/5" : ""}`}>
                           <TableCell className="w-10">
                             <button
                               onClick={() => toggleSelect(monitor.id)}
@@ -1462,6 +1480,53 @@ function MonitorsPageInner() {
                               </Button>
                             </div>
                           </TableCell>
+                          {/* Hover quick-action overlay */}
+                          <td className="absolute right-0 top-0 bottom-0 hidden group-hover/row:flex items-center gap-1 px-3 bg-gradient-to-l from-surface via-surface/95 to-transparent pointer-events-none">
+                            <div className="flex items-center gap-1 pointer-events-auto">
+                              <button
+                                onClick={() => {
+                                  setModalMode("edit");
+                                  setEditingMonitor(monitor);
+                                  setFormData({
+                                    name: monitor.name, type: monitor.type, target: monitor.target,
+                                    intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1,
+                                    enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""),
+                                    expectedText: String(monitor.config?.expectedText ?? ""),
+                                    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
+                                    heartbeatToken: String(monitor.config?.token ?? ""),
+                                    folderId: monitor.folderId ?? "",
+                                  } as typeof formData);
+                                  setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
+                                  setTagInput(""); setFormErrors({}); setFormTouched({});
+                                  setShowModal(true); setShowTemplates(true);
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border text-text-primary hover:text-accent hover:border-accent/50 transition-colors"
+                                title="Edit monitor"
+                              >
+                                <Pencil className="w-3 h-3" /> Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api(`/v1/monitors/${monitor.id}`, user?.id, { method: "PATCH", body: JSON.stringify({ enabled: !monitor.enabled }) });
+                                    setMonitors((prev) => prev.map((m) => m.id === monitor.id ? { ...m, enabled: !monitor.enabled } : m));
+                                    success(monitor.enabled ? "Monitor disabled" : "Monitor enabled");
+                                  } catch (e) { toastError(e instanceof Error ? e.message : "Failed to update monitor"); }
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border transition-colors ${monitor.enabled ? "text-warning hover:border-warning/50" : "text-green-400 hover:border-green-400/50"}`}
+                                title={monitor.enabled ? "Disable monitor" : "Enable monitor"}
+                              >
+                                {monitor.enabled ? <><PowerOff className="w-3 h-3" /> Disable</> : <><Power className="w-3 h-3" /> Enable</>}
+                              </button>
+                              <button
+                                onClick={() => handleDelete(monitor.id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border text-danger hover:border-danger/50 transition-colors"
+                                title="Delete monitor"
+                              >
+                                <Trash2 className="w-3 h-3" /> Delete
+                              </button>
+                            </div>
+                          </td>
                         </TableRow>
                       );
                     })}

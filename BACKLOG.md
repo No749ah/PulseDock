@@ -1162,7 +1162,7 @@
 - [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
 - [ ] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes. Focus indicators everywhere. Tab order audit.
 - [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
-- [ ] **Onboarding improvements** — Interactive walkthrough (highlight elements, step-by-step), contextual help tooltips (?), empty state CTAs on every page, sample data option for demo
+- [~] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). Remaining: sample data demo option + final empty-state CTA sweep across all pages.
 - [ ] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
 - [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
 - [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)

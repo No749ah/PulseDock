@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Activity, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -22,6 +22,25 @@ type AlertChannel = {
   type: AlertType;
   config: Record<string, unknown>;
   createdAt: string;
+};
+
+type DeliveryLog = {
+  id: string;
+  status: 'success' | 'failed';
+  trigger: string | null;
+  monitorId: string | null;
+  monitorName: string | null;
+  errorMessage: string | null;
+  durationMs: number | null;
+  createdAt: string;
+};
+
+type DeliveryHistory = {
+  channelId: string;
+  channelName: string;
+  successCount: number;
+  failedCount: number;
+  deliveries: DeliveryLog[];
 };
 
 const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
@@ -59,6 +78,9 @@ export default function AlertsPage() {
   const [editMentionUserId, setEditMentionUserId] = useState('');
   const [editMessageTemplate, setEditMessageTemplate] = useState('');
   const [editParseMode, setEditParseMode] = useState('HTML');
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
 
   useEffect(() => {
     const user = getUser();
@@ -134,6 +156,21 @@ export default function AlertsPage() {
       success('Test message sent');
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Test failed');
+    }
+  }
+
+  async function openDeliveries(channel: AlertChannel) {
+    setSelected(channel);
+    setDeliveryOpen(true);
+    setDeliveryLoading(true);
+    setDeliveryHistory(null);
+    try {
+      const data = await api<DeliveryHistory>(`/v1/alert-channels/${channel.id}/deliveries`);
+      setDeliveryHistory(data);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to load delivery history');
+    } finally {
+      setDeliveryLoading(false);
     }
   }
 
@@ -418,6 +455,85 @@ export default function AlertsPage() {
             </div>
           </Modal>
 
+          {/* Delivery History Modal */}
+          <Modal
+            isOpen={deliveryOpen}
+            onClose={() => setDeliveryOpen(false)}
+            title={`Delivery History — ${selected?.name ?? ''}`}
+            actions={<Button variant="secondary" onClick={() => setDeliveryOpen(false)}>Close</Button>}
+          >
+            {deliveryLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full" />
+              </div>
+            ) : deliveryHistory ? (
+              <div className="space-y-4">
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-surface-elevated rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-text-primary">{deliveryHistory.successCount + deliveryHistory.failedCount}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">Total</p>
+                  </div>
+                  <div className="bg-success/10 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-success">{deliveryHistory.successCount}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">Delivered</p>
+                  </div>
+                  <div className="bg-danger/10 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-danger">{deliveryHistory.failedCount}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">Failed</p>
+                  </div>
+                </div>
+                {/* Log entries */}
+                {deliveryHistory.deliveries.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="w-10 h-10 text-text-secondary opacity-40 mx-auto mb-3" />
+                    <p className="text-text-secondary">No deliveries yet</p>
+                    <p className="text-xs text-text-secondary mt-1">Delivery logs appear here once alerts are sent</p>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
+                    {deliveryHistory.deliveries.map((d) => (
+                      <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
+                        <div className="mt-0.5 shrink-0">
+                          {d.status === 'success'
+                            ? <CheckCircle2 className="w-4 h-4 text-success" />
+                            : <XCircle className="w-4 h-4 text-danger" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
+                              {d.status}
+                            </span>
+                            {d.trigger && (
+                              <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
+                                {d.trigger.replace('_', ' ')}
+                              </span>
+                            )}
+                            {d.monitorName && (
+                              <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
+                            )}
+                          </div>
+                          {d.errorMessage && (
+                            <p className="text-xs text-danger mt-1 font-mono break-all">{d.errorMessage}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-text-secondary">{new Date(d.createdAt).toLocaleString()}</span>
+                            {d.durationMs != null && (
+                              <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                <Clock className="w-3 h-3" />{d.durationMs}ms
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </Modal>
+
           {/* Delete Confirm Modal */}
           <Modal
             isOpen={deleteOpen}
@@ -484,6 +600,9 @@ export default function AlertsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={() => testChannel(c.id)}>Test</Button>
+                        <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="Delivery history">
+                          <Activity className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`} title="Edit channel">
                           <Edit className="w-4 h-4" />
                         </Button>

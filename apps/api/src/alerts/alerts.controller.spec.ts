@@ -255,4 +255,110 @@ describe('AlertsController', () => {
       expect(result).toEqual({ ok: true });
     });
   });
+
+  // ─── deliveries() ──────────────────────────────────────────────────────────
+
+  describe('deliveries()', () => {
+    const makeLog = (overrides: Record<string, unknown> = {}) => ({
+      id: 'log-1',
+      alertChannelId: 'ch-1',
+      monitorId: 'mon-1',
+      monitorName: 'My Monitor',
+      status: 'success',
+      trigger: 'monitor_failure',
+      errorMessage: null,
+      durationMs: 120,
+      createdAt: new Date('2026-03-19T10:00:00Z'),
+      ...overrides,
+    });
+
+    it('returns delivery history with stats and log entries', async () => {
+      const customPrisma = {
+        ...makePrisma(),
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([makeLog()]),
+          count: vi.fn()
+            .mockResolvedValueOnce(5)  // successCount
+            .mockResolvedValueOnce(2), // failedCount
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.deliveries(req as never, 'ch-1');
+      expect(result.successCount).toBe(5);
+      expect(result.failedCount).toBe(2);
+      expect(result.deliveries).toHaveLength(1);
+      expect(result.deliveries[0].status).toBe('success');
+      expect(result.deliveries[0].durationMs).toBe(120);
+    });
+
+    it('throws NotFoundException when channel not found', async () => {
+      await buildModule(null);
+      await expect(controller.deliveries(req as never, 'no-ch')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns empty deliveries array when no logs exist', async () => {
+      const customPrisma = {
+        ...makePrisma(),
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([]),
+          count: vi.fn().mockResolvedValue(0),
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.deliveries(req as never, 'ch-1');
+      expect(result.deliveries).toHaveLength(0);
+      expect(result.successCount).toBe(0);
+      expect(result.failedCount).toBe(0);
+    });
+
+    it('maps createdAt to ISO string in delivery entries', async () => {
+      const logDate = new Date('2026-03-19T10:00:00Z');
+      const customPrisma = {
+        ...makePrisma(),
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([makeLog({ createdAt: logDate })]),
+          count: vi.fn().mockResolvedValue(0),
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.deliveries(req as never, 'ch-1');
+      expect(result.deliveries[0].createdAt).toBe(logDate.toISOString());
+    });
+  });
 });

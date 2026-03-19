@@ -157,8 +157,9 @@ model AlertChannel {
   configJson Json
   createdAt  DateTime @default(now())
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
+  deliveryLogs  AlertDeliveryLog[]
 }
 
 model MonitorAlert {
@@ -411,4 +412,21 @@ model ScheduledReport {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model AlertDeliveryLog {
+  id             String   @id @default(cuid())
+  alertChannelId String
+  monitorId      String?
+  monitorName    String?
+  status         String   // "success" | "failed"
+  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test"
+  errorMessage   String?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+
+  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+
+  @@index([alertChannelId])
+  @@index([alertChannelId, createdAt])
 }

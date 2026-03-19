@@ -1503,6 +1503,7 @@ export default function StatusPageEditorPage() {
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
   const [passwordInput, setPasswordInput] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const versionHistoryKey = `sp-vhist-${id}`;
   const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
@@ -2647,47 +2648,71 @@ export default function StatusPageEditorPage() {
                 {page?.hasPassword ? (
                   <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-text-primary">🔒 Password is set</span>
-                      <button
-                        disabled={changingPassword}
-                        onClick={async () => {
-                          setChangingPassword(true);
-                          try {
-                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
-                            setPage((p) => p ? { ...p, hasPassword: false } : p);
-                            toastCtx.success("Password removed");
-                          } catch { toastCtx.error("Failed to remove password"); }
-                          finally { setChangingPassword(false); }
-                        }}
-                        className="text-xs text-danger hover:underline disabled:opacity-50"
-                      >Remove password</button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🔒</span>
+                        <div>
+                          <p className="text-xs font-medium text-text-primary">Password protected</p>
+                          <p className="text-[10px] text-text-secondary">Viewers must enter a password to access this page.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => { setShowChangePassword((v) => !v); setPasswordInput(""); }}
+                          className="text-xs text-accent hover:underline"
+                        >{showChangePassword ? "Cancel" : "Change"}</button>
+                        <button
+                          type="button"
+                          disabled={changingPassword}
+                          onClick={async () => {
+                            if (!confirm("Remove password? The page will become publicly accessible.")) return;
+                            setChangingPassword(true);
+                            try {
+                              await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
+                              setPage((p) => p ? { ...p, hasPassword: false } : p);
+                              setShowChangePassword(false);
+                              toastCtx.success("Password removed");
+                            } catch { toastCtx.error("Failed to remove password"); }
+                            finally { setChangingPassword(false); }
+                          }}
+                          className="text-xs text-danger hover:underline disabled:opacity-50"
+                        >Remove</button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        placeholder="Set new password"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                      />
-                      <button
-                        disabled={changingPassword || !passwordInput}
-                        onClick={async () => {
-                          setChangingPassword(true);
-                          try {
-                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
-                            setPasswordInput("");
-                            toastCtx.success("Password updated");
-                          } catch { toastCtx.error("Failed to update password"); }
-                          finally { setChangingPassword(false); }
-                        }}
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                      >Update</button>
-                    </div>
+                    {showChangePassword && (
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          type="password"
+                          placeholder="New password"
+                          value={passwordInput}
+                          onChange={(e) => setPasswordInput(e.target.value)}
+                          className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          disabled={changingPassword || !passwordInput}
+                          onClick={async () => {
+                            setChangingPassword(true);
+                            try {
+                              await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                              setPasswordInput("");
+                              setShowChangePassword(false);
+                              toastCtx.success("Password updated");
+                            } catch { toastCtx.error("Failed to update password"); }
+                            finally { setChangingPassword(false); }
+                          }}
+                          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        >Update</button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
-                    <p className="text-xs text-text-secondary">No password set — page is publicly accessible.</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm">🌐</span>
+                      <p className="text-xs text-text-secondary">No password — page is publicly accessible.</p>
+                    </div>
                     <div className="flex gap-2">
                       <input
                         type="password"
@@ -2697,6 +2722,7 @@ export default function StatusPageEditorPage() {
                         className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
                       />
                       <button
+                        type="button"
                         disabled={changingPassword || !passwordInput}
                         onClick={async () => {
                           setChangingPassword(true);
@@ -2704,7 +2730,7 @@ export default function StatusPageEditorPage() {
                             await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
                             setPasswordInput("");
                             setPage((p) => p ? { ...p, hasPassword: true } : p);
-                            toastCtx.success("Password set");
+                            toastCtx.success("Password set — viewers must enter it to access");
                           } catch { toastCtx.error("Failed to set password"); }
                           finally { setChangingPassword(false); }
                         }}

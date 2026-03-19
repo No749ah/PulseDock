@@ -11,6 +11,9 @@ import {
   EyeOff,
   ExternalLink,
   LayoutTemplate,
+  Copy,
+  Clock,
+  Layers,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import { getUser } from "../../components/auth";
@@ -25,6 +28,7 @@ interface StatusPage {
   description: string | null;
   isPublished: boolean;
   hasPassword: boolean;
+  widgetCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +45,7 @@ export default function StatusPagesPage() {
   const [createSlug, setCreateSlug] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [slugAvailability, setSlugAvailability] = useState<{ available: boolean; checking: boolean } | null>(null);
   const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,6 +148,28 @@ export default function StatusPagesPage() {
     }
   }
 
+  async function handleDuplicate(page: StatusPage) {
+    setDuplicatingId(page.id);
+    try {
+      const copyTitle = `Copy of ${page.title}`;
+      const copySlug = `${page.slug}-copy-${Date.now().toString(36)}`;
+      const created = await api<StatusPage>("/v1/status-pages", undefined, {
+        method: "POST",
+        body: JSON.stringify({ title: copyTitle, slug: copySlug }),
+      });
+      toastCtx.success("Status page duplicated");
+      router.push(`/status-pages/${created.id}/edit`);
+    } catch {
+      // Fall back to pre-filled create flow
+      setCreateTitle(`Copy of ${page.title}`);
+      setCreateSlug(`${page.slug}-copy`);
+      setShowCreate(true);
+      toastCtx.info("Fill in the details for the duplicate page");
+    } finally {
+      setDuplicatingId(null);
+    }
+  }
+
   const publicBase = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
@@ -194,11 +221,25 @@ export default function StatusPagesPage() {
                   key={page.id}
                   className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:border-accent/30 sm:flex-row sm:items-center"
                 >
+                  {/* Preview thumbnail */}
+                  <div className="hidden sm:flex h-16 w-24 shrink-0 items-center justify-center rounded-xl bg-surface-elevated border border-border/60 overflow-hidden">
+                    <div className="flex flex-col items-center gap-1 p-2 w-full h-full">
+                      <div className="w-full flex items-center gap-1 mb-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-success/70" />
+                        <div className="h-1 flex-1 rounded bg-surface/60" />
+                      </div>
+                      <div className="h-1 w-full rounded bg-accent/20 mb-0.5" />
+                      <div className="h-1 w-4/5 rounded bg-border/60" />
+                      <div className="h-1 w-3/5 rounded bg-border/40" />
+                      <span className="text-[7px] text-text-muted font-mono mt-auto truncate w-full text-center opacity-60">{page.slug}</span>
+                    </div>
+                  </div>
+
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+                    <div className="sm:hidden mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10">
                       <Globe className="h-5 w-5 text-accent" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-semibold text-text-primary">{page.title}</span>
                         {page.isPublished ? (
@@ -217,7 +258,7 @@ export default function StatusPagesPage() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
                         <code className="rounded bg-bg px-1.5 py-0.5 font-mono text-text-secondary">
                           /{page.slug}
                         </code>
@@ -228,9 +269,26 @@ export default function StatusPagesPage() {
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 text-accent hover:underline"
                           >
-                            View <ExternalLink className="h-3 w-3" />
+                            View live <ExternalLink className="h-3 w-3" />
                           </a>
                         )}
+                        {page.widgetCount != null && (
+                          <span className="flex items-center gap-1">
+                            <Layers className="h-3 w-3 opacity-60" />
+                            {page.widgetCount} widget{page.widgetCount !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1" title={`Last modified ${new Date(page.updatedAt).toLocaleString()}`}>
+                          <Clock className="h-3 w-3 opacity-60" />
+                          {(() => {
+                            const diff = Date.now() - new Date(page.updatedAt).getTime();
+                            const s = Math.floor(diff / 1000);
+                            if (s < 60) return `${s}s ago`;
+                            if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+                            if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+                            return new Date(page.updatedAt).toLocaleDateString();
+                          })()}
+                        </span>
                       </div>
                       {page.description && (
                         <p className="mt-1 truncate text-xs text-text-secondary">{page.description}</p>
@@ -238,7 +296,7 @@ export default function StatusPagesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => togglePublish(page)}
                       title={page.isPublished ? "Unpublish" : "Publish"}
@@ -253,9 +311,17 @@ export default function StatusPagesPage() {
                     <button
                       onClick={() => router.push(`/status-pages/${page.id}/edit`)}
                       title="Edit"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg text-text-secondary transition hover:border-accent/50 hover:text-text-primary"
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:border-accent/50 hover:text-text-primary"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(page)}
+                      disabled={duplicatingId === page.id}
+                      title="Duplicate page"
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:border-accent/50 hover:text-text-primary disabled:opacity-50"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> {duplicatingId === page.id ? "Duplicating…" : "Duplicate"}
                     </button>
                     <button
                       onClick={() => handleDelete(page.id)}

@@ -538,7 +538,7 @@ export default function LandingPage() {
             </Link>
             {/* Mobile hamburger */}
             <button
-              className="md:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+              className="md:hidden p-2.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={() => setMobileMenuOpen((v) => !v)}
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
@@ -569,7 +569,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ─── Hero ─── */}
-      <section aria-label="Hero section" className="relative pt-32 pb-20 md:pt-48 md:pb-32">
+      <section aria-label="Hero section" className="relative pt-24 pb-16 md:pt-48 md:pb-32">
         {/* Animated background blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[15%] w-72 h-72 md:w-[500px] md:h-[500px] rounded-full bg-accent/8 blur-[100px] motion-safe:animate-blob" />
@@ -577,7 +577,7 @@ export default function LandingPage() {
           <div className="absolute bottom-[-5%] left-[40%] w-56 h-56 md:w-[400px] md:h-[400px] rounded-full bg-success/6 blur-[100px] motion-safe:animate-blob animation-delay-4000" />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-6 text-center">
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 text-center">
           <FadeIn>
             <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6">
               <span className="animated-gradient-text">
@@ -721,7 +721,7 @@ export default function LandingPage() {
             {stats.map((stat, i) => (
               <FadeIn key={stat.label} delay={i * 0.08}>
                 <div className="text-center">
-                  <div className="text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
+                  <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary tracking-tight">
                     <CountUp value={stat.value} duration={1600} />
                   </div>
                   <div className="text-sm text-text-muted mt-2 uppercase tracking-wider">
@@ -752,10 +752,10 @@ export default function LandingPage() {
             </div>
           </FadeIn>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {features.map((feature, i) => (
               <FadeIn key={feature.title} delay={i * 0.06}>
-                <div className="group p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 hover:-translate-y-1 transition-all duration-300 h-full min-h-[120px]">
+                <div className="group p-4 sm:p-6 rounded-2xl border border-border bg-surface/60 backdrop-blur-sm hover:bg-surface-elevated hover:border-accent/30 hover:-translate-y-1 transition-all duration-300 h-full min-h-[100px]">
                   <feature.icon className="w-9 h-9 text-accent mb-4 group-hover:scale-110 transition-transform duration-300" />
                   <h3 className="text-base font-semibold mb-2">{feature.title}</h3>
                   <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
@@ -783,7 +783,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {/* Step 1 */}
             <FadeIn delay={0}>
-              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-5 h-full">
+              <div className="rounded-2xl border border-border bg-surface/40 p-5 sm:p-6 flex flex-col gap-5 h-full">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-bg">01</span>
@@ -813,7 +813,7 @@ export default function LandingPage() {
 
             {/* Step 2 */}
             <FadeIn delay={0.15}>
-              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-5 h-full">
+              <div className="rounded-2xl border border-border bg-surface/40 p-5 sm:p-6 flex flex-col gap-5 h-full">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-success to-accent flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-bg">02</span>
@@ -842,7 +842,7 @@ export default function LandingPage() {
 
             {/* Step 3 */}
             <FadeIn delay={0.3}>
-              <div className="rounded-2xl border border-border bg-surface/40 p-6 flex flex-col gap-5 h-full">
+              <div className="rounded-2xl border border-border bg-surface/40 p-5 sm:p-6 flex flex-col gap-5 h-full">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-warning to-danger flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-bg">03</span>
@@ -1039,6 +1039,7 @@ export default function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.1}>
+            <p className="text-xs text-text-muted text-right mb-2 sm:hidden">← scroll to see all →</p>
             <div className="rounded-2xl border border-border bg-surface/60 backdrop-blur-sm overflow-hidden overflow-x-auto">
               <div className="min-w-[600px]">
                 <table className="w-full text-sm">
@@ -1097,7 +1098,7 @@ export default function LandingPage() {
       <section aria-label="Open source" className="py-20 md:py-28 border-t border-border">
         <div className="mx-auto max-w-4xl px-6">
           <FadeIn>
-            <div className="relative rounded-3xl border border-border bg-surface/60 backdrop-blur-sm p-10 md:p-16 text-center overflow-hidden">
+            <div className="relative rounded-3xl border border-border bg-surface/60 backdrop-blur-sm p-6 sm:p-10 md:p-16 text-center overflow-hidden">
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-[-50%] left-[20%] w-[400px] h-[400px] rounded-full bg-accent/5 blur-[100px]" />
               </div>
@@ -1208,7 +1209,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {/* Self-Hosted Card */}
             <FadeIn delay={0.1}>
-              <div className="relative rounded-2xl border-2 border-accent/50 bg-surface/60 p-8 flex flex-col h-full overflow-hidden">
+              <div className="relative rounded-2xl border-2 border-accent/50 bg-surface/60 p-5 sm:p-8 flex flex-col h-full overflow-hidden">
                 {/* Subtle glow */}
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
 
@@ -1246,7 +1247,7 @@ export default function LandingPage() {
 
             {/* Cloud Card */}
             <FadeIn delay={0.2}>
-              <div className="relative rounded-2xl border border-border bg-surface/40 p-8 flex flex-col h-full opacity-80">
+              <div className="relative rounded-2xl border border-border bg-surface/40 p-5 sm:p-8 flex flex-col h-full opacity-80">
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h3 className="text-xl font-bold text-text-primary">Cloud</h3>

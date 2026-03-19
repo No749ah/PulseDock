@@ -1,3 +1,33 @@
+## Status Summary (2026-03-19 20:58 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-20-quality
+- **This session (2026-03-19 20:58 UTC):**
+  - **Mobile landing audit**: reduced hero top padding (pt-32→pt-24), smaller px on xs screens (px-4 sm:px-6), tighter feature/pricing card padding on mobile, comparison table scroll hint for mobile, larger nav hamburger touch target (p-2.5), stat numbers scale down (text-3xl sm:text-4xl md:text-5xl)
+  - **Incidents page overhaul**: search filter, sortable columns (title/status/severity/date desc default), CSV export button — using existing useTableSort hook
+  - **BACKLOG**: marked Mobile landing and Data Tables (partial) complete
+
+## Status Summary (2026-03-19 20:50 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 12 routes clean
+- **Branch:** heartbeat/2026-03-20-quality
+- **This session (2026-03-19 20:50 UTC):**
+  - **Changelog v1.0.3**: Updated with comprehensive release notes for this session's work, removed FadeIn, full-width layout
+  - **.env.example**: Added INTERNAL_API_URL, NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_APP_VERSION vars
+  - **Marked complete**: Password Protection UX (already implemented in prior session), CONTRIBUTING.md (architecture overview already added)
+
+## Status Summary (2026-03-19 20:43 UTC)
+- **Build/Test:** ✅ Clean build, 1515 tests passing (1493 API + 10 CLI + 12 Agent), zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200
+- **Branch:** heartbeat/2026-03-20-quality (rotated from heartbeat/2026-03-19-evening)
+- **This session (2026-03-19 20:43 UTC):**
+  - **Branch rotation**: Merged heartbeat/2026-03-19-evening (21 commits) → dev, deleted old branch, created heartbeat/2026-03-20-quality
+  - **Docs overhaul**: GETTING-STARTED.md fully rewritten (comprehensive quick start, Docker + local dev, first monitor/alert/status page, CLI/agent/extension, production checklist). ARCHITECTURE.md rewritten (data flows, tech stack table, module structure, DB schema highlights, security model). TOOL-REGISTRY.md rewritten (format spec, category table, adding new tools, linting, Simple Icons). All marked complete in BACKLOG.
+  - **Confirmed complete from prior session**: Password Protection UX (confirm field, inline remove confirmation, amber locked card), status page SVG badge, PDF export, webhook on status change, widget visual overhaul, admin user management overhaul, backup service TS fixes
+
 ## Status Summary (2026-03-19 20:34 UTC)
 - **Build/Test:** ✅ Clean build, tests passing
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only); no critical
@@ -890,7 +920,7 @@
 - [x] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex) — all in Page Settings modal + wired into generateMetadata() with Twitter card support
 - [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
 - [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
-- [ ] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
+- [x] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
 - [x] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
 
 ### P2 — Public Page Rendering
@@ -1174,7 +1204,7 @@
 - [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
 - [x] **SEO deep pass** — JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
 - [x] **Animations polish** — FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
-- [ ] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
+- [x] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
 - [x] **i18n landing** — EN + DE translations for landing page key content via I18nProvider + LocaleSwitcher
 
 ### P0 — Documentation & Codebase Cleanup
@@ -1208,7 +1238,7 @@
 - [ ] **Review and update ALL existing docs** — Go through every doc file: fix outdated info, add missing sections, verify all code samples work, update screenshots, ensure consistent formatting (headings, code blocks, tables).
 - [x] **Delete stale/unused files** — Removed 4 dead web components (Breadcrumbs, ConfirmModal, ResponseTimeChart, TextInput) — all superseded by newer implementations. No TODO/FIXME/console.log debris. Build verified clean after removal.
 - [x] **README.md overhaul** — Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
-- [ ] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
+- [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
 - [ ] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
 - [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
 - [ ] **API documentation audit** — Verify all 95 Swagger endpoints have accurate descriptions, correct request/response examples, proper error codes documented.

@@ -43,6 +43,7 @@ export class MonitorsService {
   }
 
   async list(userId: string, tagFilter?: string) {
+    // Performance: single query with nested include avoids N+1
     const monitors = await this.prisma.monitor.findMany({
       where: {
         userId,
@@ -52,6 +53,7 @@ export class MonitorsService {
       include: {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
         monitorTags: { include: { tag: true } },
+        runs: { take: 1, orderBy: { checkedAt: 'desc' } },
       },
     });
 
@@ -963,16 +965,21 @@ export class MonitorsService {
   }
 
   async versionSummary(userId: string) {
+    // Performance: single query with nested include avoids N+1
     const monitors = await this.prisma.monitor.findMany({
       where: { userId, type: { in: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
       orderBy: { createdAt: 'desc' },
       include: {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        runs: {
+          take: 1,
+          orderBy: { checkedAt: 'desc' },
+        },
       },
     });
 
-    const rows = await Promise.all(monitors.map(async (m) => {
-      const latest = await this.prisma.monitorRun.findFirst({ where: { monitorId: m.id }, orderBy: { checkedAt: 'desc' } });
+    const rows = monitors.map((m) => {
+      const latest = m.runs[0] ?? null;
       const config = (m.configJson as Record<string, unknown> | null) ?? {};
       return {
         id: m.id,
@@ -986,7 +993,7 @@ export class MonitorsService {
         intervalSec: m.intervalSec,
         alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
       };
-    }));
+    });
 
     return {
       stats: {

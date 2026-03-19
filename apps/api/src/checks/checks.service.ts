@@ -1099,7 +1099,7 @@ export class ChecksService {
       try {
         const pages = await this.prisma.publicStatusPage.findMany({
           where: { userId: monitor.userId, isPublished: true },
-          select: { slug: true, layout: true },
+          select: { slug: true, layout: true, notifyWebhookUrl: true, lastNotifiedStatus: true, id: true },
         });
         const monitorId = monitor.id;
         for (const page of pages) {
@@ -1111,6 +1111,11 @@ export class ChecksService {
               latencyMs: result.latencyMs,
               checkedAt: new Date().toISOString(),
             });
+
+            // Fire webhook if configured and overall status changed
+            if (page.notifyWebhookUrl) {
+              void this.fireStatusPageWebhook(page, monitor.userId);
+            }
           }
         }
       } catch {
@@ -1119,5 +1124,74 @@ export class ChecksService {
     }
 
     return run;
+  }
+
+  /**
+   * Computes the current overall status of a published status page and fires its
+   * notification webhook if the status has changed since the last notification.
+   * @param page - Status page record (must include id, slug, notifyWebhookUrl, lastNotifiedStatus)
+   * @param userId - Owner user ID for querying monitors
+   */
+  private async fireStatusPageWebhook(
+    page: { id: string; slug: string; notifyWebhookUrl: string | null; lastNotifiedStatus: string | null; layout: unknown },
+    userId: string,
+  ): Promise<void> {
+    try {
+      // Extract unique monitor IDs referenced in the layout
+      const layoutStr = JSON.stringify(page.layout);
+      const monitorIdRegex = /"monitorId"\s*:\s*"([^"]+)"/g;
+      const monitorIds = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = monitorIdRegex.exec(layoutStr)) !== null) monitorIds.add(m[1]);
+
+      // Fetch latest run for each referenced monitor
+      const monitors = await this.prisma.monitor.findMany({
+        where: { id: { in: [...monitorIds] }, userId, enabled: true },
+        select: {
+          id: true,
+          name: true,
+          runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true, ok: true } },
+        },
+      });
+
+      const hasDown = monitors.some(mon => mon.runs[0]?.level === 'red');
+      const hasDegraded = monitors.some(mon => mon.runs[0]?.level === 'yellow');
+      const overallStatus: string = hasDown ? 'outage' : hasDegraded ? 'degraded' : 'operational';
+
+      // Only fire if status actually changed
+      if (overallStatus === page.lastNotifiedStatus) return;
+
+      // Persist new status before firing webhook
+      await this.prisma.publicStatusPage.update({
+        where: { id: page.id },
+        data: { lastNotifiedStatus: overallStatus },
+      });
+
+      const payload = {
+        event: 'status_page.status_changed',
+        slug: page.slug,
+        status: overallStatus,
+        previousStatus: page.lastNotifiedStatus,
+        timestamp: new Date().toISOString(),
+        affectedMonitors: monitors
+          .filter(mon => mon.runs[0]?.ok === false)
+          .map(mon => ({ id: mon.id, name: mon.name })),
+      };
+
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10_000);
+      try {
+        await fetch(page.notifyWebhookUrl!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock-StatusPage/1.0' },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch {
+      // Webhook delivery failure is non-critical
+    }
   }
 }

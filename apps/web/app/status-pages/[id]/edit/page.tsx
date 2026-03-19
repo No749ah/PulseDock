@@ -116,6 +116,8 @@ interface PageSettings {
   metaDescription?: string;
   ogImageUrl?: string;
   robotsIndex?: boolean;
+  // Webhook notifications
+  notifyWebhookUrl?: string;
 }
 
 interface PageLayout {
@@ -130,6 +132,7 @@ interface StatusPage {
   description: string | null;
   isPublished: boolean;
   hasPassword: boolean;
+  notifyWebhookUrl?: string | null;
   layout: PageLayout;
 }
 
@@ -1667,8 +1670,10 @@ export default function StatusPageEditorPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
   const [passwordInput, setPasswordInput] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [confirmRemovePassword, setConfirmRemovePassword] = useState(false);
 
   const versionHistoryKey = `sp-vhist-${id}`;
   const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
@@ -1710,7 +1715,11 @@ export default function StatusPageEditorPage() {
       setPage(data);
       const loadedWidgets = data.layout?.widgets ?? [];
       setWidgets(loadedWidgets);
-      setPageSettings(data.layout?.settings ?? {});
+      // Merge layout settings with top-level page fields (like notifyWebhookUrl)
+      setPageSettings({
+        ...(data.layout?.settings ?? {}),
+        ...(data.notifyWebhookUrl ? { notifyWebhookUrl: data.notifyWebhookUrl } : {}),
+      });
       savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -1759,10 +1768,16 @@ export default function StatusPageEditorPage() {
     if (!page) return;
     setSaving(true);
     try {
+      // notifyWebhookUrl is a top-level page field (not inside layout)
+      const { notifyWebhookUrl: _webhookInSettings, ...layoutSettings } = pageSettings;
+      const patchBody: Record<string, unknown> = { layout: { widgets, settings: layoutSettings } };
+      if (pageSettings.notifyWebhookUrl !== undefined) {
+        patchBody.notifyWebhookUrl = pageSettings.notifyWebhookUrl;
+      }
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout: { widgets, settings: pageSettings } }),
+        body: JSON.stringify(patchBody),
       });
       // Mark as clean after successful save
       savedWidgetsRef.current = JSON.stringify(widgets);
@@ -2847,99 +2862,179 @@ export default function StatusPageEditorPage() {
               <div className="pt-2 border-t border-border/50">
                 <p className="text-xs font-semibold text-text-primary mb-2">Password Protection</p>
                 {page?.hasPassword ? (
-                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
+                    {/* Status row */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm">🔒</span>
+                        <Lock className="w-4 h-4 text-amber-400 shrink-0" />
                         <div>
-                          <p className="text-xs font-medium text-text-primary">Password protected</p>
-                          <p className="text-[10px] text-text-secondary">Viewers must enter a password to access this page.</p>
+                          <p className="text-xs font-semibold text-text-primary">Password protected</p>
+                          <p className="text-[10px] text-text-secondary">Viewers must enter the password to view this page.</p>
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { setShowChangePassword((v) => !v); setPasswordInput(""); }}
-                          className="text-xs text-accent hover:underline"
-                        >{showChangePassword ? "Cancel" : "Change"}</button>
-                        <button
-                          type="button"
-                          disabled={changingPassword}
-                          onClick={async () => {
-                            if (!confirm("Remove password? The page will become publicly accessible.")) return;
-                            setChangingPassword(true);
-                            try {
-                              await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
-                              setPage((p) => p ? { ...p, hasPassword: false } : p);
-                              setShowChangePassword(false);
-                              toastCtx.success("Password removed");
-                            } catch { toastCtx.error("Failed to remove password"); }
-                            finally { setChangingPassword(false); }
-                          }}
-                          className="text-xs text-danger hover:underline disabled:opacity-50"
-                        >Remove</button>
-                      </div>
                     </div>
-                    {showChangePassword && (
-                      <div className="flex gap-2 pt-1">
-                        <input
-                          type="password"
-                          placeholder="New password"
-                          value={passwordInput}
-                          onChange={(e) => setPasswordInput(e.target.value)}
-                          className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                          autoFocus
-                        />
+
+                    {/* Change password toggle */}
+                    {!confirmRemovePassword && (
+                      <div className="space-y-2">
                         <button
                           type="button"
-                          disabled={changingPassword || !passwordInput}
-                          onClick={async () => {
-                            setChangingPassword(true);
-                            try {
-                              await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
-                              setPasswordInput("");
-                              setShowChangePassword(false);
-                              toastCtx.success("Password updated");
-                            } catch { toastCtx.error("Failed to update password"); }
-                            finally { setChangingPassword(false); }
-                          }}
-                          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                        >Update</button>
+                          onClick={() => { setShowChangePassword((v) => !v); setPasswordInput(""); setPasswordConfirm(""); }}
+                          className="text-xs text-accent hover:text-accent/80 transition-colors"
+                        >{showChangePassword ? "↑ Cancel" : "Change password"}</button>
+
+                        {showChangePassword && (
+                          <div className="space-y-2">
+                            <input
+                              type="password"
+                              placeholder="New password"
+                              value={passwordInput}
+                              onChange={(e) => setPasswordInput(e.target.value)}
+                              className="w-full rounded-lg border border-border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                              autoFocus
+                            />
+                            <input
+                              type="password"
+                              placeholder="Confirm new password"
+                              value={passwordConfirm}
+                              onChange={(e) => setPasswordConfirm(e.target.value)}
+                              className={`w-full rounded-lg border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${passwordConfirm && passwordInput !== passwordConfirm ? "border-danger focus:border-danger" : "border-border focus:border-accent"}`}
+                            />
+                            {passwordConfirm && passwordInput !== passwordConfirm && (
+                              <p className="text-[10px] text-danger">Passwords don't match</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => { setShowChangePassword(false); setPasswordInput(""); setPasswordConfirm(""); }}
+                                className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                              >Cancel</button>
+                              <button
+                                type="button"
+                                disabled={changingPassword || !passwordInput || passwordInput !== passwordConfirm}
+                                onClick={async () => {
+                                  setChangingPassword(true);
+                                  try {
+                                    await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
+                                    setPasswordInput(""); setPasswordConfirm(""); setShowChangePassword(false);
+                                    toastCtx.success("Password updated");
+                                  } catch { toastCtx.error("Failed to update password"); }
+                                  finally { setChangingPassword(false); }
+                                }}
+                                className="flex-1 rounded-lg bg-accent py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition-colors"
+                              >{changingPassword ? "Updating…" : "Update"}</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    )}
+
+                    {/* Remove confirmation */}
+                    {!showChangePassword && (
+                      confirmRemovePassword ? (
+                        <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 space-y-2">
+                          <p className="text-xs font-medium text-danger">Remove password?</p>
+                          <p className="text-[10px] text-text-secondary">The page will become publicly accessible to anyone with the link.</p>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setConfirmRemovePassword(false)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
+                            <button
+                              type="button"
+                              disabled={changingPassword}
+                              onClick={async () => {
+                                setChangingPassword(true);
+                                try {
+                                  await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
+                                  setPage((p) => p ? { ...p, hasPassword: false } : p);
+                                  setConfirmRemovePassword(false);
+                                  toastCtx.success("Password removed — page is now public");
+                                } catch { toastCtx.error("Failed to remove password"); }
+                                finally { setChangingPassword(false); }
+                              }}
+                              className="flex-1 rounded-lg bg-danger py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition-colors"
+                            >{changingPassword ? "Removing…" : "Yes, remove"}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmRemovePassword(true)} className="text-xs text-danger/70 hover:text-danger transition-colors">
+                          Remove password protection
+                        </button>
+                      )
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">🌐</span>
-                      <p className="text-xs text-text-secondary">No password — page is publicly accessible.</p>
+                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-text-secondary shrink-0" />
+                      <p className="text-xs text-text-secondary">No password — page is publicly accessible to anyone.</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
                       <input
                         type="password"
-                        placeholder="Set a password to restrict access"
+                        placeholder="Enter a password to restrict access"
                         value={passwordInput}
                         onChange={(e) => setPasswordInput(e.target.value)}
-                        className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                        className="w-full rounded-lg border border-border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
                       />
+                      <input
+                        type="password"
+                        placeholder="Confirm password"
+                        value={passwordConfirm}
+                        onChange={(e) => setPasswordConfirm(e.target.value)}
+                        className={`w-full rounded-lg border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${passwordConfirm && passwordInput !== passwordConfirm ? "border-danger focus:border-danger" : "border-border focus:border-accent"}`}
+                      />
+                      {passwordConfirm && passwordInput !== passwordConfirm && (
+                        <p className="text-[10px] text-danger">Passwords don't match</p>
+                      )}
                       <button
                         type="button"
-                        disabled={changingPassword || !passwordInput}
+                        disabled={changingPassword || !passwordInput || passwordInput !== passwordConfirm}
                         onClick={async () => {
                           setChangingPassword(true);
                           try {
                             await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
-                            setPasswordInput("");
+                            setPasswordInput(""); setPasswordConfirm("");
                             setPage((p) => p ? { ...p, hasPassword: true } : p);
                             toastCtx.success("Password set — viewers must enter it to access");
                           } catch { toastCtx.error("Failed to set password"); }
                           finally { setChangingPassword(false); }
                         }}
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-                      >Set</button>
+                        className="w-full rounded-lg bg-accent py-2 text-xs font-semibold text-white disabled:opacity-50 transition-colors hover:bg-accent/90"
+                      >{changingPassword ? "Setting…" : "Set password"}</button>
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Webhook Notifications */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-1">Webhook Notifications</p>
+                <p className="text-[11px] text-text-muted mb-3">Receive a POST request when the overall page status changes between <span className="text-green-400 font-medium">operational</span>, <span className="text-yellow-400 font-medium">degraded</span>, and <span className="text-red-400 font-medium">outage</span>.</p>
+                <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Webhook URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/webhook/status"
+                      value={pageSettings.notifyWebhookUrl ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, notifyWebhookUrl: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="text-[10px] text-text-secondary mt-1">Leave empty to disable. Save the page to apply changes.</p>
+                  </div>
+                  {pageSettings.notifyWebhookUrl && (
+                    <div className="rounded-lg bg-surface-elevated/50 border border-border/50 p-2.5">
+                      <p className="text-[10px] font-semibold text-text-secondary mb-1.5">Example payload</p>
+                      <pre className="text-[10px] text-text-muted font-mono whitespace-pre-wrap leading-relaxed">{JSON.stringify({
+                        event: "status_page.status_changed",
+                        slug: page?.slug ?? "my-page",
+                        status: "degraded",
+                        previousStatus: "operational",
+                        timestamp: new Date().toISOString(),
+                        affectedMonitors: [{ id: "abc123", name: "API" }],
+                      }, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* SEO Section */}

@@ -152,6 +152,23 @@ docker compose -f docker-compose.prod.yml logs -f pulsedock-api
 docker compose -f docker-compose.prod.yml logs --tail=100 pulsedock-api
 ```
 
+### Local development overrides
+
+For local development, use `docker-compose.override.yml` to customise settings without touching the base files:
+
+```bash
+# The override file is committed as an example — copy it:
+cp docker-compose.override.yml docker-compose.local.yml
+# Or use it directly (Docker Compose auto-merges override files)
+docker compose up
+```
+
+Common local overrides in `docker-compose.override.yml`:
+- Switch log level to `debug`
+- Point to a local mail catcher (Mailpit) instead of real SMTP
+- Expose extra ports (Node inspector, alternative DB port)
+- Use a local directory for Postgres data
+
 ---
 
 ## Option B — Kubernetes (recommended for high availability)

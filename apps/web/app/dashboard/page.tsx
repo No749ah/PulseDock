@@ -64,7 +64,13 @@ export default function DashboardPage() {
   const [hasAlertChannels, setHasAlertChannels] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30); // seconds: 10, 30, 60, 300
-  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d" | "30d">("24h");
+  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d" | "30d">(() => {
+    try {
+      const stored = localStorage.getItem("dashboard-time-range");
+      if (stored && ["1h", "6h", "24h", "7d", "30d"].includes(stored)) return stored as "1h" | "6h" | "24h" | "7d" | "30d";
+    } catch { /* ignore */ }
+    return "24h";
+  });
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -253,6 +259,21 @@ export default function DashboardPage() {
   return (
     <AppFrame title="Dashboard" subtitle={`Welcome back, ${user.name || "there"}!`}>
       <div className="space-y-8">
+        {/* Heading row with Live indicator and time range label */}
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-text-primary">
+            Last {timeRange === "1h" ? "1 hour" : timeRange === "6h" ? "6 hours" : timeRange === "24h" ? "24 hours" : timeRange === "7d" ? "7 days" : "30 days"}
+          </h2>
+          {autoRefresh && (
+            <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Live
+            </span>
+          )}
+        </div>
         {/* Controls row: time range + auto-refresh */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Time range selector */}
@@ -260,7 +281,7 @@ export default function DashboardPage() {
             {(["1h", "6h", "24h", "7d", "30d"] as const).map((r) => (
               <button
                 key={r}
-                onClick={() => setTimeRange(r)}
+                onClick={() => { setTimeRange(r); try { localStorage.setItem("dashboard-time-range", r); } catch { /* ignore */ } }}
                 className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   timeRange === r
                     ? "bg-accent/10 text-accent"

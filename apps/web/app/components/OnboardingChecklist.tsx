@@ -13,6 +13,7 @@ interface Step {
   done: boolean;
   href: string;
   action: string;
+  note?: string;
 }
 
 interface OnboardingChecklistProps {
@@ -22,6 +23,7 @@ interface OnboardingChecklistProps {
 }
 
 const DISMISSED_KEY_PREFIX = "pulsedock_onboarding_dismissed_";
+const GLOBAL_DISMISSED_KEY = "onboarding-dismissed";
 
 export function OnboardingChecklist({
   userId,
@@ -33,18 +35,24 @@ export function OnboardingChecklist({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const key = DISMISSED_KEY_PREFIX + userId;
-    setDismissed(localStorage.getItem(key) === "true");
+    const perUserKey = DISMISSED_KEY_PREFIX + userId;
+    const globalKey = GLOBAL_DISMISSED_KEY;
+    const isDismissed =
+      localStorage.getItem(perUserKey) === "true" ||
+      localStorage.getItem(globalKey) === "true";
+    setDismissed(isDismissed);
     setMounted(true);
   }, [userId]);
 
   const handleDismiss = () => {
-    const key = DISMISSED_KEY_PREFIX + userId;
-    localStorage.setItem(key, "true");
+    const perUserKey = DISMISSED_KEY_PREFIX + userId;
+    localStorage.setItem(perUserKey, "true");
+    localStorage.setItem(GLOBAL_DISMISSED_KEY, "true");
     setDismissed(true);
   };
 
   if (!mounted || dismissed) return null;
+  // Don't show if all complete (check after steps are defined — handled below)
 
   const steps: Step[] = [
     {
@@ -71,11 +79,34 @@ export function OnboardingChecklist({
       href: "/dashboard",
       action: "View Dashboard",
     },
+    {
+      id: "status-page",
+      label: "Create a status page",
+      description: "Share a public status page with your users",
+      done: false,
+      href: "/status-pages",
+      action: "Create Page",
+    },
+    {
+      id: "team",
+      label: "Invite a team member",
+      description: "Collaborate with your team on monitoring",
+      done: false,
+      href: "/account",
+      action: "Go to Account",
+      note: "Team features coming soon",
+    },
   ];
 
   const completedCount = steps.filter((s) => s.done).length;
   const allComplete = completedCount === steps.length;
   const progressPct = Math.round((completedCount / steps.length) * 100);
+
+  // Hide if all steps complete (steps 1-3 matter most — team/status-page are always incomplete)
+  // Only hide if the first 3 core steps are all done and user hasn't manually dismissed
+  const coreSteps = steps.slice(0, 3);
+  const coreAllDone = coreSteps.every((s) => s.done);
+  if (coreAllDone && allComplete) return null;
 
   return (
     <Card className="relative border-accent/30 bg-gradient-to-br from-accent/5 to-transparent">
@@ -144,6 +175,9 @@ export function OnboardingChecklist({
                 {step.label}
               </p>
               <p className="text-xs text-text-secondary mt-0.5">{step.description}</p>
+              {step.note && !step.done && (
+                <p className="text-xs text-text-muted mt-0.5 italic">{step.note}</p>
+              )}
             </div>
             {!step.done && (
               <Button
@@ -160,7 +194,7 @@ export function OnboardingChecklist({
       </div>
 
       {/* All done banner */}
-      {allComplete && (
+      {coreAllDone && (
         <div className="mt-4 p-4 rounded-xl bg-success/10 border border-success/20 flex items-center justify-between gap-4">
           <p className="text-sm text-success font-medium">
             🎉 You&apos;re all set! PulseDock is monitoring your services.

@@ -53,6 +53,8 @@ import { SettingsController } from './settings/settings.controller';
 import { SettingsService } from './settings/settings.service';
 import { BackupService } from './settings/backup.service';
 import { FeedbackController } from './feedback/feedback.controller';
+import { GrafanaController } from './grafana/grafana.controller';
+import { GrafanaService } from './grafana/grafana.service';
 
 @Module({
   imports: [
@@ -88,6 +90,7 @@ import { FeedbackController } from './feedback/feedback.controller';
     TeamController,
     SettingsController,
     FeedbackController,
+    GrafanaController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -113,6 +116,7 @@ import { FeedbackController } from './feedback/feedback.controller';
     TeamService,
     SettingsService,
     BackupService,
+    GrafanaService,
   ],
 })
 export class AppModule implements NestModule {

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { GrafanaService } from './grafana.service';
+import { GrafanaService, TimeseriesResult, TableResult, AnnotationResult } from './grafana.service';
 
 /** Grafana SimpleJSON datasource target */
 interface SimpleJsonTarget {
@@ -72,7 +72,7 @@ export class GrafanaController {
     description: 'Returns metric data for Grafana panels. Supported targets: monitor uptime%, latency, status over time.',
   })
   @ApiResponse({ status: 200, description: 'Query results returned.' })
-  async query(@Req() req: { user: { id: string } }, @Body() body: SimpleJsonQueryBody) {
+  async query(@Req() req: { user: { id: string } }, @Body() body: SimpleJsonQueryBody): Promise<(TimeseriesResult | TableResult)[]> {
     return this.grafanaService.query(req.user.id, body);
   }
 
@@ -86,7 +86,7 @@ export class GrafanaController {
     description: 'Returns incident and downtime events as Grafana annotations for timeline panels.',
   })
   @ApiResponse({ status: 200, description: 'Annotations returned.' })
-  async annotations(@Req() req: { user: { id: string } }, @Body() body: AnnotationRequest) {
+  async annotations(@Req() req: { user: { id: string } }, @Body() body: AnnotationRequest): Promise<AnnotationResult[]> {
     return this.grafanaService.annotations(req.user.id, body);
   }
 

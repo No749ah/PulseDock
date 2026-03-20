@@ -187,8 +187,10 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "check-history-feed", label: "Check History", description: "Live-updating log of recent check results", icon: Clock, category: "Performance", defaultW: 12, defaultH: 4 },
   { type: "incident-history", label: "Incident History", description: "Paginated list of past incidents", icon: AlertTriangle, category: "Incidents", defaultW: 12, defaultH: 4 },
   { type: "text-block", label: "Text Block", description: "Free text / markdown for announcements", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "metric-counter", label: "Metric Counter", description: "Single big stat (uptime, latency, checks, incidents) with optional suffix", icon: BarChart2, category: "Metrics", defaultW: 4, defaultH: 2 },
   { type: "scheduled-maintenance", label: "Maintenance", description: "Shows upcoming maintenance windows", icon: Clock, category: "Content", defaultW: 6, defaultH: 2 },
   { type: "monitor-group", label: "Monitor Group", description: "Group monitors by tag or folder with status overview", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
+  { type: "monitor-group-status", label: "Monitor Group Status", description: "Alias of monitor group widget for legacy layouts", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
   { type: "multi-status-badges", label: "Multi Status", description: "Multiple monitor status badges in a compact grid", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 3 },
   { type: "version-status-grid", label: "Version Grid", description: "Grid showing current vs latest version for all monitors", icon: BarChart2, category: "Versions", defaultW: 12, defaultH: 4 },
   { type: "version-check-badge", label: "Version Badge", description: "Single monitor version status badge", icon: CheckCircle, category: "Versions", defaultW: 6, defaultH: 2 },
@@ -233,6 +235,7 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "embed-iframe", label: "Embed / iFrame", description: "Embed external dashboards or Grafana panels in an iframe", icon: Type, category: "Content", defaultW: 12, defaultH: 6 },
   { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "last-updated-footer", label: "Last Updated Footer", description: "Displays the latest data refresh time with auto-refresh hint", icon: RefreshCw, category: "Content", defaultW: 12, defaultH: 1 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
   { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
   { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
@@ -295,6 +298,68 @@ function needsMonitorConfig(widget: Widget): boolean {
   const hasMonitor = Boolean(monitorId);
   const hasMonitors = Array.isArray(monitorIds) && monitorIds.length > 0;
   return !hasMonitor && !hasMonitors;
+}
+
+function hasMappedMonitorRecord(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.values(value as Record<string, unknown>).some(
+    (entry) => Array.isArray(entry) && entry.length > 0,
+  );
+}
+
+function getConfigWarnings(widget: Widget, monitorMode: string): string[] {
+  const warnings: string[] = [];
+
+  if (monitorMode === "single" && !NO_MONITOR_NEEDED_TYPES.has(widget.type) && !widget.config.monitorId) {
+    warnings.push("Select a monitor (or switch monitor scope to Multiple/All).");
+  }
+
+  if (monitorMode === "multiple" && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
+    warnings.push("Select at least one monitor in multi-monitor mode.");
+  }
+
+  if (widget.type === "custom-metric-chart" && !widget.config.monitorId) {
+    warnings.push("Custom Metric Chart requires a monitor selection.");
+  }
+
+  if (widget.type === "security-advisory" && !String(widget.config.packageName ?? "").trim()) {
+    warnings.push("Package name is required for Security Advisory.");
+  }
+
+  if (widget.type === "tab-container" && (!Array.isArray(widget.config.tabs) || widget.config.tabs.length === 0)) {
+    warnings.push("Add at least one tab entry ({ title, content }).");
+  }
+
+  if (widget.type === "dependency-map" && (!Array.isArray(widget.config.edges) || widget.config.edges.length === 0)) {
+    warnings.push("Add at least one dependency edge ({ source, target }).");
+  }
+
+  if (widget.type === "multi-environment-status" && !hasMappedMonitorRecord(widget.config.envMonitors)) {
+    warnings.push("Define envMonitors with at least one monitor ID per environment.");
+  }
+
+  if (widget.type === "region-status-map" && !hasMappedMonitorRecord(widget.config.regionMonitors)) {
+    warnings.push("Define regionMonitors with at least one monitor ID per region.");
+  }
+
+  if (widget.type === "third-party-dependencies" && (!Array.isArray(widget.config.services) || widget.config.services.length === 0)) {
+    warnings.push("Add at least one external service ({ name, url }).");
+  }
+
+  if (widget.type === "embed-iframe" && !String(widget.config.url ?? "").trim()) {
+    warnings.push("Embed URL is required for iFrame widgets.");
+  }
+
+  if ((widget.type === "version-comparison-table" || widget.type === "outdated-components-alert" || widget.type === "metric-comparison-row")
+    && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
+    warnings.push("Select at least one monitor for this comparison widget.");
+  }
+
+  if ((widget.type === "table-of-contents" || widget.type === "column-layout") && (!Array.isArray(widget.config.items) || widget.config.items.length === 0)) {
+    warnings.push("Add at least one item entry in JSON configuration.");
+  }
+
+  return warnings;
 }
 
 // ── Template Gallery ────────────────────────────────────────────────────────
@@ -477,15 +542,23 @@ function PaletteWidget({ item, onQuickAdd }: { item: WidgetPaletteItem; onQuickA
 // ── Canvas widget (draggable on canvas) ─────────────────────────────────
 
 /** Live preview content for widgets in the editor */
-function WidgetPreview({ type, config, w }: { type: string; config: Record<string, unknown>; w: number }) {
+function WidgetPreview({ type, config, w, liveData }: { type: string; config: Record<string, unknown>; w: number; liveData?: unknown }) {
+  // Extract live values when available
+  const live = liveData as Record<string, unknown> | undefined;
   const label = (config.label as string) || "";
   switch (type) {
     case "overall-status":
       return (<div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-success animate-pulse" /><span className="text-sm font-semibold text-success">{label || "All Systems Operational"}</span></div>);
     case "current-status-badge":
       return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium text-text-primary">{label || "Monitor"}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">Up</span></div>);
-    case "uptime-bar":
-      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className="text-success font-medium">99.9%</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className="h-full w-[99.9%] rounded-full bg-success/70" /></div></div>);
+    case "uptime-bar": {
+      const uptimePct = typeof live?.uptimePct === "number" ? Math.round(live.uptimePct * 100) / 100 : null;
+      const barColor = uptimePct !== null ? (uptimePct >= 99.5 ? "bg-success/70" : uptimePct >= 90 ? "bg-warning/70" : "bg-danger/70") : "bg-success/70";
+      const pctColor = uptimePct !== null ? (uptimePct >= 99.5 ? "text-success" : uptimePct >= 90 ? "text-warning" : "text-danger") : "text-success";
+      const pctStr = uptimePct !== null ? `${uptimePct}%` : "99.9%";
+      const barWidth = uptimePct !== null ? `${uptimePct}%` : "99.9%";
+      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className={`font-medium ${pctColor}`}>{pctStr}{live && <span className="ml-1 text-green-400/60">●</span>}</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: barWidth }} /></div></div>);
+    }
     case "uptime-timeline":
       return (<div className="space-y-1">{label && <span className="text-[10px] text-text-secondary">{label}</span>}<div className="flex gap-px">{Array.from({ length: Math.min(w * 3, 30) }).map((_, i) => (<div key={i} className={`flex-1 h-4 rounded-sm ${i === 18 ? "bg-warning/60" : i === 22 ? "bg-danger/60" : "bg-success/50"}`} />))}</div></div>);
     case "response-time-chart":
@@ -498,8 +571,11 @@ function WidgetPreview({ type, config, w }: { type: string; config: Record<strin
       return (<div className="flex items-center gap-2 px-2 py-1 rounded bg-success/10 border border-success/20"><div className="h-2 w-2 rounded-full bg-success" /><span className="text-[10px] font-medium text-success">{label || "All clear — no active incidents"}</span></div>);
     case "text-block":
       return <p className="text-xs text-text-secondary">{label || "Announcement text goes here..."}</p>;
-    case "metric-counter":
-      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">99.9%</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
+    case "metric-counter": {
+      const mcVal = typeof live?.value === "number" ? live.value : typeof live?.uptimePct === "number" ? live.uptimePct : null;
+      const mcDisplay = mcVal !== null ? `${Math.round(mcVal * 100) / 100}%` : "—";
+      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">{mcVal !== null ? mcDisplay : "99.9%"}{live && <span className="ml-1 text-[8px] text-green-400/60 align-top">●</span>}</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
+    }
     case "last-updated-footer":
       return <div className="text-[10px] text-text-muted text-center">Last updated: just now</div>;
     case "custom-header":
@@ -661,6 +737,7 @@ interface CanvasWidgetProps {
   isSelected: boolean;
   isMultiSelected: boolean;
   colWidth: number;
+  liveData?: unknown;
   onSelect: (id: string, shiftKey: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -668,7 +745,7 @@ interface CanvasWidgetProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, liveData, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
   const isLocked = Boolean(widget.locked);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
@@ -781,7 +858,7 @@ function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect,
       </div>
       {/* Widget preview */}
       <div className="flex-1 overflow-hidden p-2 relative">
-        <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
+        <WidgetPreview type={widget.type} config={widget.config} w={widget.w} liveData={liveData} />
         {/* Unconfigured monitor badge — top-right corner */}
         {needsMonitorConfig(widget) && (
           <div className="absolute top-1 right-1 z-10 pointer-events-none">
@@ -826,6 +903,8 @@ interface CanvasProps {
   showGrid: boolean;
   alignGuides: { type: "h" | "v"; pos: number }[];
   paletteDropPreview: { x: number; y: number; w: number; h: number } | null;
+  liveDataMode?: boolean;
+  liveWidgetData?: Record<string, unknown>;
   onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -833,7 +912,7 @@ interface CanvasProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, paletteDropPreview, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, paletteDropPreview, liveDataMode, liveWidgetData, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -946,6 +1025,7 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
             isSelected={selectedId === widget.id}
             isMultiSelected={selectedIds.has(widget.id)}
             colWidth={colWidth}
+            liveData={liveDataMode ? liveWidgetData?.[widget.id] : undefined}
             onSelect={onSelect}
             onDelete={onDelete}
             onDuplicate={onDuplicate}
@@ -1000,6 +1080,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
   const supportsResponsive = w.type !== "divider";
+  const configWarnings = getConfigWarnings(w, monitorMode);
 
   function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
     if (nextMode === "multiple") {
@@ -1037,6 +1118,17 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         <p className="mb-1 text-xs font-semibold text-text-primary">{paletteItem?.label ?? w.type}</p>
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
+
+      {configWarnings.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-300">Configuration needed</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[10px] text-amber-200/90">
+            {configWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {supportsLabel && (
         <div>
@@ -1456,8 +1548,14 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             <label className="mb-1 block text-xs font-medium text-text-secondary">Column Items (JSON)</label>
             <textarea
               rows={4}
-              value={(w.config.items as string) ?? '[{"heading":"Column 1","body":"Content here"},{"heading":"Column 2","body":"Content here"}]'}
-              onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+              value={JSON.stringify((w.config.items as unknown[] | undefined) ?? [{ heading: "Column 1", body: "Content here" }, { heading: "Column 2", body: "Content here" }], null, 2)}
+              onChange={(e) => {
+                try {
+                  update("items", JSON.parse(e.target.value));
+                } catch {
+                  // keep previous valid value until JSON is valid
+                }
+              }}
               placeholder='[{"heading":"Col 1","body":"..."},{"heading":"Col 2","body":"..."}]'
               className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
             />
@@ -1477,8 +1575,14 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
           <label className="mb-1 block text-xs font-medium text-text-secondary">Items (JSON)</label>
           <textarea
             rows={5}
-            value={(w.config.items as string) ?? '[{"label":"System Status","anchor":"status"},{"label":"Incidents","anchor":"incidents"}]'}
-            onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+            value={JSON.stringify((w.config.items as unknown[] | undefined) ?? [{ label: "System Status", anchor: "status" }, { label: "Incidents", anchor: "incidents" }], null, 2)}
+            onChange={(e) => {
+              try {
+                update("items", JSON.parse(e.target.value));
+              } catch {
+                // keep previous valid value until JSON is valid
+              }
+            }}
             placeholder='[{"label":"Section Title","anchor":"section-id"}]'
             className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
           />
@@ -1718,6 +1822,9 @@ export default function StatusPageEditorPage() {
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
+  const [liveDataMode, setLiveDataMode] = useState(false);
+  const [liveWidgetData, setLiveWidgetData] = useState<Record<string, unknown>>({});
+  const [loadingLiveData, setLoadingLiveData] = useState(false);
   const [alignGuides, setAlignGuides] = useState<{ type: "h" | "v"; pos: number }[]>([]);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
@@ -1887,8 +1994,64 @@ export default function StatusPageEditorPage() {
     return () => clearTimeout(timer);
   }, [isDirty, widgets, page, handleSave, autoSaveEnabled]);
 
+  async function fetchLiveData() {
+    if (!page?.slug) return;
+    setLoadingLiveData(true);
+    try {
+      const dataMap: Record<string, unknown> = {};
+      await Promise.allSettled(
+        widgets.map(async (w) => {
+          try {
+            const result = await fetch(
+              `/api/v1/public/status/${page.slug}/widget/${w.id}`,
+              { credentials: 'include' }
+            );
+            if (result.ok) {
+              dataMap[w.id] = await result.json();
+            }
+          } catch {
+            // widget data not available, keep empty
+          }
+        })
+      );
+      setLiveWidgetData(dataMap);
+    } finally {
+      setLoadingLiveData(false);
+    }
+  }
+
+  async function handleToggleLiveData() {
+    if (!liveDataMode) {
+      setLiveDataMode(true);
+      await fetchLiveData();
+    } else {
+      setLiveDataMode(false);
+      setLiveWidgetData({});
+    }
+  }
+
   async function handleTogglePublish() {
     if (!page) return;
+
+    // Pre-publish validation: warn if widgets are not configured.
+    if (!page.isPublished) {
+      const unconfigured = widgets.filter((w) => needsMonitorConfig(w));
+      if (unconfigured.length > 0) {
+        const names = unconfigured
+          .slice(0, 5)
+          .map((w) => WIDGET_PALETTE.find((p) => p.type === w.type)?.label ?? w.type)
+          .join(', ');
+        const remainder = unconfigured.length > 5 ? `, +${unconfigured.length - 5} more` : '';
+        const proceed = confirm(
+          `⚠️ ${unconfigured.length} widget${unconfigured.length === 1 ? '' : 's'} need configuration before publish (${names}${remainder}).\n\nPublish anyway?`,
+        );
+        if (!proceed) {
+          toastCtx.info('Publish cancelled — configure widgets first.');
+          return;
+        }
+      }
+    }
+
     setPublishing(true);
     try {
       const updated = await api<{ isPublished: boolean }>(`/v1/status-pages/${id}/publish`, undefined, { method: "POST" });
@@ -2614,6 +2777,20 @@ export default function StatusPageEditorPage() {
               <Grid className="h-3.5 w-3.5" />
             </button>
 
+            {/* Live data preview toggle */}
+            <button
+              onClick={handleToggleLiveData}
+              disabled={loadingLiveData}
+              title={liveDataMode ? "Showing live data — click to switch back to static preview" : "Preview with live data from your monitors"}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition disabled:opacity-50 ${liveDataMode ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
+            >
+              {loadingLiveData ? (
+                <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading…</>
+              ) : (
+                <><Activity className="h-3.5 w-3.5" /> {liveDataMode ? "Live" : "Live"}</>
+              )}
+            </button>
+
             {/* Canvas zoom controls */}
             <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
               <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
@@ -2765,6 +2942,8 @@ export default function StatusPageEditorPage() {
               showGrid={showGrid}
               alignGuides={alignGuides}
               paletteDropPreview={paletteDropPreview}
+              liveDataMode={liveDataMode}
+              liveWidgetData={liveWidgetData}
               onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}

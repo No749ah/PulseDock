@@ -1,3 +1,42 @@
+## Status Summary (2026-03-20 15:05 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent)
+- **Deployment:** ✅ Web restarted; local routes healthy, public URL 200, sampled `_next/static` CSS/JS assets 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget config audit hardening (P0 widget audit):** Extended `scripts/widget-audit.mjs` with a new parity check that compares resolver `_noConfig` widget types against editor-side warning coverage.
+  - **Config warning parity fixes:** Added missing editor warnings in status-page builder for `embed-iframe` (missing URL) and comparison/version widgets (`metric-comparison-row`, `version-comparison-table`, `outdated-components-alert`) when monitor selection is missing.
+  - **Result:** `npm run widget:audit` now reports 0 missing editor warnings for `_noConfig` widgets.
+  - **Auth smoke note:** Bearer-auth endpoint probe could not be fully completed on the deployed instance due unavailable valid credentials (login/register both rejected by policy/config).
+
+## Status Summary (2026-03-20 14:32 UTC)
+- **Build/Test:** ✅ Clean build, 1603 tests passing
+- **Deployment:** ✅ Restarted API + web; public URL 200 and sampled `_next/static` CSS/JS assets all 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget audit baseline (P0 kickoff):** Added `scripts/widget-audit.mjs` + root script `npm run widget:audit` to enforce type parity across widget union, editor palette, public renderer, and resolver coverage allowlist. Current baseline: 82 widget types, 0 palette gaps, 0 renderer gaps, 0 unexpected resolver gaps.
+  - **Renderer/resolver parity fixes:** Added public rendering/data support for `metric-counter` and `last-updated-footer`; mapped `monitor-group-status` alias to the existing monitor-group component/resolver branch.
+  - **Editor save stability:** Status page `PATCH` update route now accepts raw body record to avoid ValidationPipe/class-transformer stripping nested `layout` payload fields from the drag/drop editor.
+
+## Status Summary (2026-03-20 14:26 UTC)
+- **Build/Test:** ✅ Build clean; tests passing
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget validation before publish:** Added pre-publish guard in status-page editor. When publishing, editor now detects unconfigured widgets (missing monitor config), shows a warning with affected widget names/count, and requires explicit confirmation to publish anyway.
+  - Files: `apps/web/app/status-pages/[id]/edit/page.tsx`
+
+## Status Summary (2026-03-20 14:06 UTC)
+- **Build/Test:** ✅ Clean build, 1603 tests passing
+- **Deployment:** ✅ Restarted; local routes + reverse proxy checks all 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Monitor dependencies UI completed:** Expanded monitor row now supports full dependency management.
+    - Lazy-load existing dependencies via `GET /v1/monitors/:id/dependencies`
+    - Add dependency with dropdown + action (`POST /v1/monitors/:id/dependencies/:dependsOnId`)
+    - Remove dependency inline (`DELETE /v1/monitors/:id/dependencies/:dependsOnId`)
+    - Dependency health dot (green/red/unknown) shown next to each dependency
+    - Added saving/disabled states and toast feedback for add/remove flows
+  - **Cleanup:** Removed stray debug logs from `status-pages.service.ts` update path.
+
 ## Status Summary (2026-03-20 13:50 UTC)
 - **Build/Test:** ✅ Clean build, 1603 tests passing (1581 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ All routes 200 (local + API health)
@@ -756,14 +795,14 @@
 
 > Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
 
-- [ ] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data.
-- [ ] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text.
-- [ ] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
-- [ ] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
-- [ ] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload.
+- [~] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
+- [~] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. Remaining: real-data preview mode + broader field-level UX polish.)*
+- [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
+- [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
+- [~] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload. *(2026-03-20: replaced hard `window.location.reload()` in public status live refresh with `router.refresh()` for WebSocket and polling paths, so widget data updates without full browser reload. Remaining: true per-widget incremental fetch/state updates to avoid full route re-render.)*
 - [ ] **Widget design overhaul** — All widgets should look polished, modern, and information-dense. Current widgets are too sparse and basic. Reference: Grafana dashboards, Linear status pages, Atlassian Statuspage. Each widget should show: title, key metric (large), context (small), trend, last updated time.
 - [ ] **"Preview with data" mode** — In the editor, a button that loads real live data into the preview so you can see exactly what the public page will look like.
-- [ ] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user.
+- [x] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
 
 ---
 

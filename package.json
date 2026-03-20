@@ -28,6 +28,7 @@
     "perf:prod": "bash ./scripts/perf-check.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
     "quality": "bash ./scripts/code-quality.sh",
     "ux:review": "node ./scripts/ux-review.mjs",
+    "widget:audit": "node ./scripts/widget-audit.mjs",
     "restart": "npm run restart:api && sleep 2 && npm run restart:web",
     "test:e2e": "npm run test -w @pulsedock/e2e",
     "prisma:generate": "prisma generate",

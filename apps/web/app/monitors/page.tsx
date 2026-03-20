@@ -2813,8 +2813,8 @@ function MonitorsPageInner() {
         const badgeBase = typeof window !== "undefined" ? `${window.location.origin}/api/v1/public/badge` : "/api/v1/public/badge";
         return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="badge-modal-title">
-          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
               <h2 id="badge-modal-title" className="text-lg font-semibold text-text-primary flex items-center gap-2">
                 <Shield className="w-5 h-5 text-accent" />
                 Embed Badge — {badgeMonitor.name}
@@ -2823,7 +2823,7 @@ function MonitorsPageInner() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
               <p className="text-sm text-text-secondary">
                 Embed a live status badge anywhere — GitHub READMEs, documentation, or websites. Updates every 60 seconds.
               </p>

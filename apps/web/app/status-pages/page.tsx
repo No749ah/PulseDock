@@ -394,63 +394,76 @@ export default function StatusPagesPage() {
         }
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setBadgePage(null)}>
-            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
+            <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                 <h2 className="text-base font-semibold text-text-primary flex items-center gap-2"><Shield className="h-4 w-4 text-accent" /> Embed Badge</h2>
                 <button onClick={() => setBadgePage(null)} className="rounded-lg p-1 text-text-secondary hover:text-text-primary transition-colors"><X className="h-4 w-4" /></button>
               </div>
-              <p className="text-xs text-text-secondary mb-4">Embed a live status badge for <strong className="text-text-primary">{badgePage.title}</strong> anywhere — GitHub READMEs, wikis, dashboards.</p>
 
-              {/* Live preview */}
-              <div className="mb-4 flex items-center justify-center rounded-xl border border-border bg-bg/60 py-6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/v1/public/status-badge/${badgePage.slug}.svg?style=${badgeStyle}&_t=${Date.now()}`} alt="Status badge preview" className="h-6" />
-              </div>
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+                <p className="text-sm text-text-secondary">Embed a live status badge for <strong className="text-text-primary">{badgePage.title}</strong> anywhere — GitHub READMEs, wikis, dashboards.</p>
 
-              {/* Style selector */}
-              <div className="mb-4">
-                <p className="text-xs font-medium text-text-secondary mb-2">SVG Badge Style</p>
-                <div className="flex gap-2">
-                  {(["flat", "flat-square", "for-the-badge"] as const).map(s => (
-                    <button
-                      key={s}
-                      onClick={() => setBadgeStyle(s)}
-                      className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-colors ${badgeStyle === s ? "border-accent bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-text-primary"}`}
-                    >
-                      {s === "flat" ? "Flat" : s === "flat-square" ? "Square" : "Large"}
-                    </button>
+                {/* Live preview */}
+                <div className="flex items-center justify-center rounded-xl border border-border bg-bg/60 py-6">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/v1/public/status-badge/${badgePage.slug}.svg?style=${badgeStyle}&_t=${Date.now()}`} alt="Status badge preview" className="h-6" />
+                </div>
+
+                {/* Style selector */}
+                <div>
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">SVG Badge Style</p>
+                  <div className="flex gap-2">
+                    {(["flat", "flat-square", "for-the-badge"] as const).map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setBadgeStyle(s)}
+                        className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${badgeStyle === s ? "border-accent bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-text-primary"}`}
+                      >
+                        {s === "flat" ? "Flat" : s === "flat-square" ? "Square" : "Large"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Copy snippets */}
+                <div className="space-y-3">
+                  {(["markdown", "html", "url"] as const).map(key => (
+                    <div key={key}>
+                      <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-1.5">{key === "url" ? "Direct URL" : key.charAt(0).toUpperCase() + key.slice(1)}</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 min-w-0 block font-mono text-xs text-text-primary bg-surface-elevated border border-border rounded-lg px-3 py-2 overflow-x-auto whitespace-nowrap">{snippets[key]}</code>
+                        <button
+                          onClick={() => copySnippet(key)}
+                          className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${badgeCopied === key ? "bg-success/15 text-success" : "bg-surface-elevated border border-border text-text-secondary hover:text-text-primary"}`}
+                        >
+                          {badgeCopied === key ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : key.charAt(0).toUpperCase() + key.slice(1)}
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Copy snippets */}
-              <div className="space-y-2">
-                {(["markdown", "html", "url"] as const).map(key => (
-                  <div key={key} className="flex items-center gap-2 rounded-lg border border-border bg-bg/60 px-3 py-2">
-                    <code className="flex-1 truncate font-mono text-[10px] text-text-secondary">{snippets[key]}</code>
+                {/* Floating widget embed */}
+                <div className="rounded-xl border border-border bg-surface-elevated p-4">
+                  <p className="text-sm font-semibold text-text-primary mb-1">Floating Widget</p>
+                  <p className="text-xs text-text-secondary mb-3">Drop this into any webpage to show a live floating status badge in the corner.</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 min-w-0 block font-mono text-xs text-text-primary bg-surface border border-border rounded-lg px-3 py-2 overflow-x-auto whitespace-nowrap">{snippets.script}</code>
                     <button
-                      onClick={() => copySnippet(key)}
-                      className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors ${badgeCopied === key ? "bg-success/15 text-success" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+                      onClick={() => copySnippet("script")}
+                      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${badgeCopied === "script" ? "bg-success/15 text-success" : "bg-surface border border-border text-text-secondary hover:text-text-primary"}`}
                     >
-                      {badgeCopied === key ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : key.charAt(0).toUpperCase() + key.slice(1)}
+                      {badgeCopied === "script" ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : "Copy"}
                     </button>
                   </div>
-                ))}
+                </div>
               </div>
 
-              {/* Floating widget embed */}
-              <div className="mt-4 rounded-xl border border-border bg-bg/60 p-3">
-                <p className="text-xs font-medium text-text-primary mb-1">Floating Widget</p>
-                <p className="text-[11px] text-text-secondary mb-2">Drop this into any webpage to show a live floating status badge in the corner.</p>
-                <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2">
-                  <code className="flex-1 truncate font-mono text-[10px] text-text-secondary">{snippets.script}</code>
-                  <button
-                    onClick={() => copySnippet("script")}
-                    className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors ${badgeCopied === "script" ? "bg-success/15 text-success" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
-                  >
-                    {badgeCopied === "script" ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : "Copy"}
-                  </button>
-                </div>
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-border shrink-0 flex justify-end">
+                <button onClick={() => setBadgePage(null)} className="px-4 py-2 rounded-lg border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Close</button>
               </div>
             </div>
           </div>

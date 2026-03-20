@@ -4,6 +4,12 @@ import { MetricsService } from './common/metrics.service';
 
 const mockPrisma = {
   $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+  monitor: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  monitorRun: {
+    groupBy: vi.fn().mockResolvedValue([]),
+  },
 };
 
 const mockScheduler = {
@@ -81,21 +87,28 @@ describe('AppController', () => {
   });
 
   describe('metricsPrometheus()', () => {
-    it('returns Prometheus text format string', () => {
-      const result = controller.metricsPrometheus();
+    it('returns Prometheus text format string', async () => {
+      const result = await controller.metricsPrometheus();
       expect(typeof result).toBe('string');
       expect(result).toContain('# HELP pulsedock_requestsTotal');
       expect(result).toContain('# TYPE pulsedock_requestsTotal counter');
     });
 
-    it('ends with a trailing newline (Prometheus requirement)', () => {
-      const result = controller.metricsPrometheus();
+    it('ends with a trailing newline (Prometheus requirement)', async () => {
+      const result = await controller.metricsPrometheus();
       expect(result.endsWith('\n')).toBe(true);
     });
 
-    it('includes process uptime gauge', () => {
-      const result = controller.metricsPrometheus();
+    it('includes process uptime gauge', async () => {
+      const result = await controller.metricsPrometheus();
       expect(result).toContain('pulsedock_process_uptime_seconds');
+    });
+
+    it('includes aggregate monitor gauges', async () => {
+      const result = await controller.metricsPrometheus();
+      expect(result).toContain('pulsedock_monitors_total');
+      expect(result).toContain('pulsedock_monitors_up_total');
+      expect(result).toContain('pulsedock_monitors_down_total');
     });
   });
 });

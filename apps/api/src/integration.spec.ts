@@ -79,6 +79,7 @@ const mockPrisma = {
   monitorRun: {
     findMany: vi.fn().mockResolvedValue([]),
     count: vi.fn().mockResolvedValue(0),
+    groupBy: vi.fn().mockResolvedValue([]),
   },
   alertChannel: {
     findMany: vi.fn().mockResolvedValue([]),

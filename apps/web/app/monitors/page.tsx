@@ -1711,7 +1711,7 @@ function MonitorsPageInner() {
                             </button>
                           </TableCell>}
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 group-hover/row:opacity-0 group-hover/row:pointer-events-none transition-opacity">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1763,7 +1763,7 @@ function MonitorsPageInner() {
                             </div>
                           </TableCell>
                           {/* Hover quick-action overlay */}
-                          <td className="absolute right-0 top-0 bottom-0 hidden group-hover/row:flex items-center gap-1 px-3 bg-gradient-to-l from-surface via-surface/95 to-transparent pointer-events-none">
+                          <td className="absolute right-0 top-0 bottom-0 z-10 hidden group-hover/row:flex items-center gap-1 px-3 bg-gradient-to-l from-surface via-surface/95 to-transparent pointer-events-none">
                             <div className="flex items-center gap-1 pointer-events-auto">
                               <button
                                 onClick={() => {

@@ -32,8 +32,8 @@ export function MiniSparkline({
   }
 
   return (
-    <div className={className} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={className} style={{ height, minHeight: typeof height === 'number' ? height : 36 }}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={typeof height === 'number' ? height : 36}>
         <LineChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
           <Line
             type="monotone"

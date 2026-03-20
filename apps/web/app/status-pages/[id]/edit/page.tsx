@@ -1840,8 +1840,10 @@ export default function StatusPageEditorPage() {
 
       // Only show toast on manual save
       if (!opts?.silent) toastCtx.success("Saved");
-    } catch {
-      toastCtx.error("Failed to save");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Always show error — even for auto-saves, so the user knows saves are failing
+      toastCtx.error(`Save failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -2193,13 +2195,14 @@ export default function StatusPageEditorPage() {
   function resizeWidgetById(widgetId: string, size: { w: number; h: number }) {
     const nextW = Math.max(1, Math.min(COL_COUNT, Number.isFinite(size.w) ? size.w : 1));
     const nextH = Math.max(1, Math.min(10, Number.isFinite(size.h) ? size.h : 1));
-    setWidgets((prev) =>
-      prev.map((w) => {
+    setWidgets((prev) => {
+      const resized = prev.map((w) => {
         if (w.id !== widgetId) return w;
         const boundedX = Math.max(0, Math.min(COL_COUNT - nextW, w.x));
         return { ...w, w: nextW, h: nextH, x: boundedX };
-      })
-    );
+      });
+      return resolveCollisions(resized);
+    });
   }
 
   function handleZOrder(widgetId: string, action: "front" | "back" | "forward" | "backward") {
@@ -2323,6 +2326,46 @@ export default function StatusPageEditorPage() {
     }
   }
 
+  /**
+   * After placing/moving a widget, push any overlapping widgets downward
+   * so they don't overlap. Iterates until stable (max 100 passes).
+   */
+  function resolveCollisions(allWidgets: Widget[]): Widget[] {
+    let widgets = [...allWidgets];
+    const MAX_PASSES = 100;
+
+    for (let pass = 0; pass < MAX_PASSES; pass++) {
+      let changed = false;
+      // Sort by y then x so we process top-left first (the "fixed" anchor)
+      const sorted = [...widgets].sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+
+      for (let i = 0; i < sorted.length; i++) {
+        const a = sorted[i];
+        for (let j = i + 1; j < sorted.length; j++) {
+          const b = sorted[j];
+          // Check if a and b overlap
+          const overlapX = a.x < b.x + b.w && a.x + a.w > b.x;
+          const overlapY = a.y < b.y + b.h && a.y + a.h > b.y;
+          if (overlapX && overlapY) {
+            // Push b down so it sits below a
+            const newY = a.y + a.h;
+            if (b.y !== newY) {
+              const idx = widgets.findIndex(w => w.id === b.id);
+              if (idx >= 0) {
+                widgets = [...widgets];
+                widgets[idx] = { ...widgets[idx], y: newY };
+                sorted[j] = { ...sorted[j], y: newY };
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      if (!changed) break;
+    }
+    return widgets;
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null);
     setAlignGuides([]);
@@ -2353,7 +2396,7 @@ export default function StatusPageEditorPage() {
             h: paletteItem.defaultH,
             config: {},
           };
-          setWidgets((prev) => [...prev, newWidget]);
+          setWidgets((prev) => resolveCollisions([...prev, newWidget]));
           setSelectedId(newWidget.id);
         } else {
           addWidget(type);
@@ -2377,14 +2420,15 @@ export default function StatusPageEditorPage() {
       if (selectedId) allSelected.add(selectedId);
       const moveSet = allSelected.size > 1 ? allSelected : new Set([widgetId]);
 
-      setWidgets((prev) =>
-        prev.map((w) => {
+      setWidgets((prev) => {
+        const moved = prev.map((w) => {
           if (!moveSet.has(w.id) || w.locked) return w;
           const newX = Math.max(0, Math.min(COL_COUNT - w.w, w.x + deltaCol));
           const newY = Math.max(0, w.y + deltaRow);
           return { ...w, x: newX, y: newY };
-        })
-      );
+        });
+        return resolveCollisions(moved);
+      });
     }
   }
 

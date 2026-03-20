@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PrismaService } from './prisma.service';
 
 const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge' }> = {
   requestsTotal: { help: 'Total HTTP requests handled by the API', type: 'counter' },
@@ -8,13 +9,21 @@ const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge' }> =
   alertsFailed: { help: 'Total alert notifications that failed to dispatch', type: 'counter' },
 };
 
+/** Sanitize a Prometheus label value by escaping backslash, double-quote, and newline. */
+function sanitizeLabel(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n');
+}
+
 /**
  * In-process metrics service that tracks lightweight counters for key events.
  *
  * Counters are stored in memory and reset on process restart (i.e. they are not
  * persisted). The `/v1/admin/metrics` endpoint exposes a JSON snapshot, and the
- * dedicated `/metrics` endpoint exposes the same data as Prometheus text format
- * so it can be scraped by a Prometheus server or Grafana Alloy.
+ * dedicated `/metrics/prometheus` endpoint exposes the same data as Prometheus text
+ * format so it can be scraped by a Prometheus server or Grafana Alloy.
  *
  * For high-cardinality or persistent metrics, consider shipping to an external
  * TSDB via OpenTelemetry rather than extending this service.
@@ -52,8 +61,8 @@ export class MetricsService {
   }
 
   /**
-   * Renders metrics in Prometheus text exposition format (version 0.0.4).
-   * Content-Type: text/plain; version=0.0.4; charset=utf-8
+   * Renders base metrics (process + counters) in Prometheus text exposition format.
+   * Does not include per-monitor data (use `prometheusFullText` for that).
    */
   prometheusText(): string {
     const lines: string[] = [];
@@ -72,6 +81,155 @@ export class MetricsService {
     lines.push(`pulsedock_process_uptime_seconds ${Math.floor(process.uptime())}`);
 
     // Trailing newline required by Prometheus text format
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /**
+   * Returns full Prometheus text including per-monitor gauges by querying the database.
+   *
+   * Exports:
+   * - `pulsedock_monitor_up` — 1=up, 0=down/degraded, -1=paused
+   * - `pulsedock_monitor_latency_ms` — last check latency in milliseconds (-1 if unavailable)
+   * - `pulsedock_monitor_uptime_pct_7d` — 7-day rolling uptime percentage (0–100)
+   * - `pulsedock_monitor_checks_total` — total check count over last 7 days
+   * - `pulsedock_monitors_total` — total monitor count
+   * - `pulsedock_monitors_up_total` — monitors currently up
+   * - `pulsedock_monitors_down_total` — monitors currently down
+   * - `pulsedock_monitors_paused_total` — monitors currently paused
+   *
+   * @param prisma - PrismaService instance (injected at call site)
+   * @returns Prometheus text exposition format string
+   */
+  async prometheusFullText(prisma: PrismaService): Promise<string> {
+    const lines: string[] = [this.prometheusText()];
+
+    // Limit to first 500 monitors to avoid huge payloads
+    const monitors = await prisma.monitor.findMany({
+      take: 500,
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        enabled: true,
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: {
+            status: true,
+            latencyMs: true,
+            checkedAt: true,
+          },
+        },
+      },
+    });
+
+    // Compute 7-day uptime per monitor in a single batched query
+    const since7d = new Date(Date.now() - 7 * 86_400_000);
+    const runCounts = await prisma.monitorRun.groupBy({
+      by: ['monitorId', 'status'],
+      where: {
+        monitorId: { in: monitors.map((m) => m.id) },
+        checkedAt: { gte: since7d },
+      },
+      _count: { _all: true },
+    });
+
+    // Build lookup: monitorId → { up: n, total: n }
+    const uptimeMap = new Map<string, { up: number; total: number }>();
+    for (const row of runCounts) {
+      const current = uptimeMap.get(row.monitorId) ?? { up: 0, total: 0 };
+      current.total += row._count._all;
+      // row.status is typed as an enum — compare as string via cast
+      if ((row.status as unknown as string) === 'up') current.up += row._count._all;
+      uptimeMap.set(row.monitorId, current);
+    }
+
+    // Summary counters
+    let totalUp = 0;
+    let totalDown = 0;
+    let totalPaused = 0;
+
+    // Per-monitor metric lines
+    const monitorUpLines: string[] = [];
+    const latencyLines: string[] = [];
+    const uptimePctLines: string[] = [];
+    const checksTotalLines: string[] = [];
+
+    for (const monitor of monitors) {
+      const latestRun = monitor.runs[0] as unknown as { status: string; latencyMs: number | null; checkedAt: Date } | undefined;
+      const id = sanitizeLabel(monitor.id);
+      const name = sanitizeLabel(monitor.name);
+      const type = sanitizeLabel(monitor.type);
+      const target = sanitizeLabel(monitor.target);
+
+      const labels = `id="${id}",name="${name}",type="${type}",target="${target}"`;
+      const nameLabels = `id="${id}",name="${name}"`;
+
+      let upValue: number;
+      if (!monitor.enabled) {
+        upValue = -1;
+        totalPaused++;
+      } else if (!latestRun) {
+        upValue = -1; // no data yet
+        totalPaused++;
+      } else if (latestRun.status === 'up') {
+        upValue = 1;
+        totalUp++;
+      } else {
+        upValue = 0;
+        totalDown++;
+      }
+
+      monitorUpLines.push(`pulsedock_monitor_up{${labels}} ${upValue}`);
+
+      const latencyVal = latestRun?.latencyMs ?? -1;
+      latencyLines.push(`pulsedock_monitor_latency_ms{${labels}} ${latencyVal}`);
+
+      const counts = uptimeMap.get(monitor.id);
+      const uptimePct = counts && counts.total > 0 ? (counts.up / counts.total) * 100 : -1;
+      uptimePctLines.push(`pulsedock_monitor_uptime_pct_7d{${nameLabels}} ${uptimePct < 0 ? -1 : Number(uptimePct.toFixed(4))}`);
+
+      const totalChecks = counts?.total ?? 0;
+      checksTotalLines.push(`pulsedock_monitor_checks_total{${nameLabels}} ${totalChecks}`);
+    }
+
+    // Summary aggregate gauges
+    lines.push('# HELP pulsedock_monitors_total Total number of configured monitors');
+    lines.push('# TYPE pulsedock_monitors_total gauge');
+    lines.push(`pulsedock_monitors_total ${monitors.length}`);
+
+    lines.push('# HELP pulsedock_monitors_up_total Number of monitors currently reporting up status');
+    lines.push('# TYPE pulsedock_monitors_up_total gauge');
+    lines.push(`pulsedock_monitors_up_total ${totalUp}`);
+
+    lines.push('# HELP pulsedock_monitors_down_total Number of monitors currently reporting down or degraded status');
+    lines.push('# TYPE pulsedock_monitors_down_total gauge');
+    lines.push(`pulsedock_monitors_down_total ${totalDown}`);
+
+    lines.push('# HELP pulsedock_monitors_paused_total Number of monitors that are paused or have no data');
+    lines.push('# TYPE pulsedock_monitors_paused_total gauge');
+    lines.push(`pulsedock_monitors_paused_total ${totalPaused}`);
+
+    // Per-monitor metrics
+    lines.push('# HELP pulsedock_monitor_up Monitor up status: 1=up, 0=down/degraded, -1=paused/no-data');
+    lines.push('# TYPE pulsedock_monitor_up gauge');
+    lines.push(...monitorUpLines);
+
+    lines.push('# HELP pulsedock_monitor_latency_ms Last check latency in milliseconds (-1 if unavailable)');
+    lines.push('# TYPE pulsedock_monitor_latency_ms gauge');
+    lines.push(...latencyLines);
+
+    lines.push('# HELP pulsedock_monitor_uptime_pct_7d 7-day rolling uptime percentage (0-100), -1 if no data');
+    lines.push('# TYPE pulsedock_monitor_uptime_pct_7d gauge');
+    lines.push(...uptimePctLines);
+
+    lines.push('# HELP pulsedock_monitor_checks_total Total checks run in last 7 days');
+    lines.push('# TYPE pulsedock_monitor_checks_total gauge');
+    lines.push(...checksTotalLines);
+
     lines.push('');
     return lines.join('\n');
   }

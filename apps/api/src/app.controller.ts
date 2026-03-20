@@ -119,12 +119,13 @@ export class AppController {
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   @ApiOperation({
     summary: 'Prometheus metrics',
-    description: 'Returns runtime metrics in Prometheus text exposition format (version 0.0.4). Suitable for scraping by a Prometheus server.',
+    description:
+      'Returns runtime metrics in Prometheus text exposition format (version 0.0.4). Includes per-monitor up/down status, latency, 7-day uptime%, and aggregate counters. Suitable for scraping by a Prometheus server or Grafana Alloy.',
   })
   @ApiProduces('text/plain')
   @ApiResponse({ status: 200, description: 'Prometheus metrics text returned.' })
-  metricsPrometheus(): string {
-    return this.metrics.prometheusText();
+  async metricsPrometheus(): Promise<string> {
+    return this.metrics.prometheusFullText(this.prisma);
   }
 
   @Get('v1/system/version')

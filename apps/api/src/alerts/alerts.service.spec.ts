@@ -762,6 +762,57 @@ describe('AlertsService', () => {
     });
   });
 
+  // ─── SMS channel ─────────────────────────────────────────────────────────────
+
+  describe('sms channel', () => {
+    it('posts to Twilio Messages API with correct auth and body', async () => {
+      const monitor = makeMonitor({ name: 'Prod API' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Connection refused' });
+      const channel = makeChannel({
+        type: 'sms' as never,
+        config: { accountSid: 'ACtest123', authToken: 'token456', from: '+15550001111', to: '+15559998888' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
+      expect(url).toContain('ACtest123/Messages.json');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers['Authorization']).toMatch(/^Basic /);
+      expect(opts.body).toContain('To=%2B15559998888');
+      expect(opts.body).toContain('From=%2B15550001111');
+    });
+
+    it('records failed delivery log when Twilio returns non-ok response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Bad request' } as Response);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', ok: false });
+      const channel = makeChannel({
+        type: 'sms' as never,
+        config: { accountSid: 'ACbad', authToken: 'tok', from: '+10000000000', to: '+19999999999' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      try { await promise; } catch { /* expected */ }
+      vi.useRealTimers();
+
+      expect(prismaWithChannel.alertDeliveryLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'failed' }),
+        }),
+      );
+    });
+  });
+
   // ─── Delivery log ────────────────────────────────────────────────────────────
 
   describe('alert delivery log', () => {

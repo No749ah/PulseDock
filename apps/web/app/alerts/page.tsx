@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -16,7 +16,7 @@ import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
 
 type AlertChannel = {
   id: string;
@@ -44,6 +44,8 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <Bell className={`${iconClass} text-green-500`} />;
     case 'opsgenie':
       return <Bell className={`${iconClass} text-orange-500`} />;
+    case 'sms':
+      return <Smartphone className={`${iconClass} text-green-400`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -191,6 +193,7 @@ export default function AlertsPage() {
     }
     if (type === 'pagerduty') return { integrationKey: a };
     if (type === 'opsgenie') return { apiKey: a, region: b || 'us' };
+    if (type === 'sms') return { accountSid: a, authToken: secret ?? '', from: b, to: extras?.username ?? '' };
     return { to: a };
   }
 
@@ -258,6 +261,11 @@ export default function AlertsPage() {
       setEditA(String(channel.config.apiKey ?? ''));
       setEditB(String(channel.config.region ?? 'us'));
       setEditSecret('');
+    } else if (channel.type === 'sms') {
+      setEditA(String(channel.config.accountSid ?? ''));
+      setEditB(String(channel.config.from ?? ''));
+      setEditSecret(String(channel.config.authToken ?? ''));
+      setEditUsername(String(channel.config.to ?? ''));
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -373,6 +381,7 @@ export default function AlertsPage() {
                     { value: 'email', label: 'Email' },
                     { value: 'pagerduty', label: 'PagerDuty' },
                     { value: 'opsgenie', label: 'OpsGenie' },
+                    { value: 'sms', label: 'SMS (Twilio)' },
                   ]}
                 />
               </div>
@@ -382,11 +391,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
@@ -414,6 +423,24 @@ export default function AlertsPage() {
                       <option value="eu">EU (api.eu.opsgenie.com)</option>
                     </select>
                   </div>
+                )}
+                {form.type === 'sms' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Auth Token</label>
+                      <input className={inputClass} type="password" placeholder="Twilio Auth Token" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">From number <span className="font-normal text-text-secondary">(E.164 format)</span></label>
+                      <input className={inputClass} placeholder="+15551234567" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Your Twilio phone number.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">To number <span className="font-normal text-text-secondary">(E.164 format)</span></label>
+                      <input className={inputClass} placeholder="+15559876543" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">The recipient phone number.</p>
+                    </div>
+                  </>
                 )}
                 {form.type === 'webhook' && (
                   <div>
@@ -466,7 +493,7 @@ export default function AlertsPage() {
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : 'URL'}: {form.a ? 'configured' : 'missing'}
                 </p>
                 {form.type === 'telegram' && (
                   <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
@@ -476,6 +503,13 @@ export default function AlertsPage() {
                 )}
                 {form.type === 'webhook' && (
                   <p className="text-sm text-text-secondary">Signing secret: {form.secret ? '✓ set' : 'not set (optional)'}</p>
+                )}
+                {form.type === 'sms' && (
+                  <>
+                    <p className="text-sm text-text-secondary">Auth Token: {form.secret ? '✓ set' : 'missing'}</p>
+                    <p className="text-sm text-text-secondary">From: {form.b || 'missing'}</p>
+                    <p className="text-sm text-text-secondary">To: {form.username || 'missing'}</p>
+                  </>
                 )}
               </div>
             )}

@@ -260,6 +260,53 @@ export class AlertsService {
       }
       return;
     }
+
+    if (
+      channel.type === 'sms' &&
+      typeof channel.config.accountSid === 'string' &&
+      typeof channel.config.authToken === 'string' &&
+      typeof channel.config.from === 'string' &&
+      typeof channel.config.to === 'string'
+    ) {
+      // Twilio SMS via REST API (no SDK required)
+      const { accountSid, authToken, from, to: toNumber } = channel.config as {
+        accountSid: string;
+        authToken: string;
+        from: string;
+        to: string;
+      };
+      const ctx = extra as {
+        monitor?: { name?: string };
+        run?: { level?: string; message?: string };
+        test?: boolean;
+      } | undefined;
+      const level = ctx?.run?.level ?? 'red';
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const smsBody = `${emoji} PulseDock: ${ctx?.monitor?.name ?? 'Monitor'} — ${text.slice(0, 120)}`;
+
+      const params = new URLSearchParams({
+        From: from,
+        To: toNumber,
+        Body: smsBody,
+      });
+      const creds = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      const resp = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${creds}`,
+          },
+          body: params.toString(),
+        },
+      );
+      if (!resp.ok) {
+        const respBody = await resp.text().catch(() => '');
+        throw new Error(`Twilio SMS returned ${resp.status}: ${respBody}`);
+      }
+      return;
+    }
   }
 
   /**

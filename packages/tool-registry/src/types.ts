@@ -92,5 +92,18 @@ export interface ToolRegistryEntry {
   checkInterval: number;
   /** Whether instance URL is required (self-hosted tools) */
   requiresInstanceUrl: boolean;
+  /** Whether this entry has been manually verified against a real instance */
   verified: boolean;
+  /**
+   * Verification status for runtime checks.
+   * - 'verified'     — manually confirmed working against a real instance
+   * - 'community'    — contributed by community, not yet verified by maintainers
+   * - 'experimental' — endpoint exists but may not work across versions/distros
+   * - 'deprecated'   — endpoint no longer works; needs replacement
+   */
+  verificationStatus?: 'verified' | 'community' | 'experimental' | 'deprecated';
+  /** ISO timestamp of when this entry was last verified against a live instance */
+  lastVerifiedAt?: string;
+  /** Tool version this entry was verified against */
+  verifiedOnVersion?: string;
 }

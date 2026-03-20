@@ -180,6 +180,15 @@ function main() {
   if (idSet.size < TOOL_REGISTRY.length) {
     console.log(`⚠️  ${TOOL_REGISTRY.length - idSet.size} duplicate ID(s) detected!`);
   }
+
+  // Verification status distribution
+  const verifiedCount = TOOL_REGISTRY.filter((e) => e.verified).length;
+  const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
+  const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
+  console.log(`\nVerification stats:`);
+  console.log(`  verified=true:         ${verifiedCount} / ${TOOL_REGISTRY.length}`);
+  console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
+  console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
   console.log();
 
   // Exit with error code if there are hard errors

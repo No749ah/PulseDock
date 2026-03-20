@@ -5,6 +5,7 @@ import { PrintButton } from "./widgets/PrintButton";
 import { ExportImageButton } from "./widgets/ExportImageButton";
 import { ExportPDFButton } from "./widgets/ExportPDFButton";
 import { OfflineBanner } from "./widgets/OfflineBanner";
+import { LazyWidget } from "./widgets/LazyWidget";
 import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 
 const API_BASE =
@@ -348,23 +349,37 @@ export default async function PublicStatusSlugPage({
               {/* Mobile + Print: single-column flow
                   `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
               <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget) => (
-                  <div key={`m-${widget.id}`}>
-                    {renderWidget(widget, data.monitors, {
-                      incidents: data.incidents ?? [],
-                      maintenance: data.maintenance ?? [],
-                      recentChecks: data.recentChecks ?? [],
-                      widgetDataById,
-                    })}
-                  </div>
-                ))}
+                {visible.map((widget, idx) => {
+                  const content = renderWidget(widget, data.monitors, {
+                    incidents: data.incidents ?? [],
+                    maintenance: data.maintenance ?? [],
+                    recentChecks: data.recentChecks ?? [],
+                    widgetDataById,
+                  });
+                  // First 3 widgets render immediately (above fold); rest are lazy
+                  return (
+                    <div key={`m-${widget.id}`}>
+                      {idx < 3 ? content : (
+                        <LazyWidget placeholderHeight={widget.h * 80}>
+                          {content}
+                        </LazyWidget>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Tablet: 6-column responsive grid */}
               <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget) => {
+                {visible.map((widget, idx) => {
                   const t = tablet.get(widget.id);
                   if (!t) return null;
+                  const content = renderWidget(widget, data.monitors, {
+                    incidents: data.incidents ?? [],
+                    maintenance: data.maintenance ?? [],
+                    recentChecks: data.recentChecks ?? [],
+                    widgetDataById,
+                  });
                   return (
                     <div
                       key={`t-${widget.id}`}
@@ -374,12 +389,11 @@ export default async function PublicStatusSlugPage({
                         minWidth: 0,
                       }}
                     >
-                      {renderWidget(widget, data.monitors, {
-                        incidents: data.incidents ?? [],
-                        maintenance: data.maintenance ?? [],
-                        recentChecks: data.recentChecks ?? [],
-                        widgetDataById,
-                      })}
+                      {idx < 4 ? content : (
+                        <LazyWidget placeholderHeight={t.h * 80}>
+                          {content}
+                        </LazyWidget>
+                      )}
                     </div>
                   );
                 })}
@@ -387,9 +401,15 @@ export default async function PublicStatusSlugPage({
 
               {/* Desktop: 12-column editor-parity grid */}
               <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget) => {
+                {visible.map((widget, idx) => {
                   const d = desktop.get(widget.id);
                   if (!d) return null;
+                  const content = renderWidget(widget, data.monitors, {
+                    incidents: data.incidents ?? [],
+                    maintenance: data.maintenance ?? [],
+                    recentChecks: data.recentChecks ?? [],
+                    widgetDataById,
+                  });
                   return (
                     <div
                       key={`d-${widget.id}`}
@@ -399,12 +419,11 @@ export default async function PublicStatusSlugPage({
                         minWidth: 0,
                       }}
                     >
-                      {renderWidget(widget, data.monitors, {
-                        incidents: data.incidents ?? [],
-                        maintenance: data.maintenance ?? [],
-                        recentChecks: data.recentChecks ?? [],
-                        widgetDataById,
-                      })}
+                      {idx < 4 ? content : (
+                        <LazyWidget placeholderHeight={d.h * 80}>
+                          {content}
+                        </LazyWidget>
+                      )}
                     </div>
                   );
                 })}

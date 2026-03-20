@@ -34,6 +34,7 @@ const EXEMPT_PREFIXES: string[] = [
   '/v1/heartbeat/',
   '/v1/public/',
   '/v1/team/invite/', // invite accept links come from email — no CSRF cookie yet
+  '/v1/auth/oauth/', // OAuth2 callbacks arrive from external providers — no CSRF cookie yet
 ];
 
 /**

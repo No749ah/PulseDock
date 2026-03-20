@@ -65,14 +65,36 @@ export default function LoginPage() {
     const invite = params.get("invite") ?? "";
     const reset = params.get("reset") ?? "";
     const queryEmail = params.get("email") ?? "";
+    const oauthToken = params.get("token") ?? "";
+    const oauthError = params.get("error") ?? "";
     const rememberedEmail =
       localStorage.getItem("pulsedock_remembered_user") ?? "";
 
     setInviteToken(invite);
     setResetToken(reset);
 
+    if (oauthError) {
+      setError("OAuth login failed. Please try again.");
+    }
+
     if (!invite && queryEmail) setEmail(queryEmail);
     else if (!invite && !reset && rememberedEmail) setEmail(rememberedEmail);
+
+    // Handle OAuth2 callback token exchange
+    if (oauthToken) {
+      (async () => {
+        try {
+          const res = await api<{ accessToken: string; refreshToken: string; user: LoginUser }>(
+            "/v1/auth/refresh",
+            undefined,
+            { method: "POST", body: JSON.stringify({ token: oauthToken }) }
+          );
+          completeLogin(res);
+        } catch {
+          setError("OAuth session exchange failed. Please try again.");
+        }
+      })();
+    }
   }, []);
 
   useEffect(() => {

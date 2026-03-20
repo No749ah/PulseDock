@@ -26,7 +26,7 @@ enum MonitorType {
 model User {
   id                 String         @id @default(cuid())
   email              String         @unique
-  passwordHash       String
+  passwordHash       String?
   role               Role           @default(user)
   isActive           Boolean        @default(true)
   mustChangePassword Boolean        @default(false)
@@ -64,6 +64,7 @@ model User {
   templateFeedback        ToolTemplateFeedback[]
   onCallSchedules         OnCallSchedule[]
   escalationPolicies      EscalationPolicy[]
+  oauthAccounts           OAuthAccount[]
 }
 
 model Session {
@@ -639,4 +640,18 @@ model EscalationStep {
   policy          EscalationPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@index([policyId])
+}
+
+model OAuthAccount {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  providerId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
 }

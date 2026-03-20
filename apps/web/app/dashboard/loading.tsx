@@ -3,7 +3,7 @@ import { AppFrame } from '../../components/app-frame';
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+    <div className="rounded-2xl border border-border bg-surface p-6 space-y-3">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="h-3 w-20 animate-pulse rounded bg-surface-elevated" />

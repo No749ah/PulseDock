@@ -27,7 +27,7 @@ export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
 
         {/* Error Details (Development Only) */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="bg-surface border border-danger/30 rounded-lg p-4 text-left max-h-40 overflow-y-auto">
+          <div className="bg-surface-elevated border border-danger/30 rounded-xl p-4 text-left max-h-40 overflow-y-auto">
             <p className="text-xs text-danger font-mono break-words">{error.message}</p>
             {error.digest && (
               <p className="text-xs text-text-secondary font-mono mt-2">ID: {error.digest}</p>
@@ -39,14 +39,14 @@ export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
           <button
             onClick={reset}
-            className="px-6 py-2 bg-accent hover:bg-accent/90 text-bg rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            className="px-6 py-2 bg-accent hover:bg-accent-hover text-bg rounded-xl font-semibold transition-all active:scale-[0.97] flex items-center justify-center gap-2"
           >
             <RotateCcw size={18} />
             Try again
           </button>
           <a
             href="/"
-            className="px-6 py-2 bg-surface border border-border hover:border-accent text-text-primary rounded-lg font-medium transition-colors"
+            className="px-6 py-2 bg-surface border border-border hover:border-border-hover text-text-primary rounded-xl font-semibold transition-all"
           >
             Go Home
           </a>

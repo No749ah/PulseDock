@@ -357,12 +357,14 @@ export default function StatusPagesPage() {
         const publicBase = typeof window !== "undefined" ? window.location.origin : "";
         const badgeUrl = `${publicBase}/api/v1/public/status-badge/${badgePage.slug}.svg?style=${badgeStyle}`;
         const pageUrl = `${publicBase}/status/${badgePage.slug}`;
+        const embedScriptUrl = `${publicBase}/api/v1/public/embed/status/${badgePage.slug}.js`;
         const snippets = {
           markdown: `[![Status](${badgeUrl})](${pageUrl})`,
           html: `<a href="${pageUrl}"><img src="${badgeUrl}" alt="Status" /></a>`,
           url: badgeUrl,
+          script: `<script src="${embedScriptUrl}"></script>`,
         };
-        function copySnippet(key: "markdown" | "html" | "url") {
+        function copySnippet(key: "markdown" | "html" | "url" | "script") {
           navigator.clipboard.writeText(snippets[key]).then(() => {
             setBadgeCopied(key);
             setTimeout(() => setBadgeCopied(null), 2000);
@@ -385,7 +387,7 @@ export default function StatusPagesPage() {
 
               {/* Style selector */}
               <div className="mb-4">
-                <p className="text-xs font-medium text-text-secondary mb-2">Style</p>
+                <p className="text-xs font-medium text-text-secondary mb-2">SVG Badge Style</p>
                 <div className="flex gap-2">
                   {(["flat", "flat-square", "for-the-badge"] as const).map(s => (
                     <button
@@ -412,6 +414,21 @@ export default function StatusPagesPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+
+              {/* Floating widget embed */}
+              <div className="mt-4 rounded-xl border border-border bg-bg/60 p-3">
+                <p className="text-xs font-medium text-text-primary mb-1">Floating Widget</p>
+                <p className="text-[11px] text-text-secondary mb-2">Drop this into any webpage to show a live floating status badge in the corner.</p>
+                <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2">
+                  <code className="flex-1 truncate font-mono text-[10px] text-text-secondary">{snippets.script}</code>
+                  <button
+                    onClick={() => copySnippet("script")}
+                    className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors ${badgeCopied === "script" ? "bg-success/15 text-success" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+                  >
+                    {badgeCopied === "script" ? <><Check className="h-3 w-3 inline mr-1" />Copied</> : "Copy"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

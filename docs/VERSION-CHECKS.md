@@ -52,7 +52,8 @@ For tools not in the registry:
 | `npm` | npm registry | `@nestjs/core` |
 | `pypi` | PyPI | `django` |
 | `cargo` | crates.io | `tokio` |
-| `helm` | Artifact Hub | `prometheus` |
+| `apt` | Debian Sources API | `nginx` |
+| `helm` | Artifact Hub | `prometheus/prometheus` |
 | `maven` | Maven Central | `org.springframework.boot:spring-boot` |
 
 ## Version Diff Levels

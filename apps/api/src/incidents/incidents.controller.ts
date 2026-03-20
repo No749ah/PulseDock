@@ -69,32 +69,41 @@ export class IncidentsController {
   constructor(private readonly incidents: IncidentsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all incidents' })
-  @ApiResponse({ status: 200, description: 'List of incidents' })
+  @ApiOperation({ summary: 'List all incidents', description: 'Returns all incidents for the authenticated user, ordered by creation date descending. Includes active incidents first, then resolved.' })
+  @ApiResponse({ status: 200, description: 'List of incidents ordered by createdAt descending.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated — Bearer token missing or expired.' })
   findAll(@Req() req: AuthenticatedRequest) {
     return this.incidents.findAll(req.user.sub);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a single incident with full timeline' })
-  @ApiParam({ name: 'id', description: 'Incident ID' })
-  @ApiResponse({ status: 200, description: 'Incident detail' })
-  @ApiResponse({ status: 404, description: 'Incident not found' })
+  @ApiOperation({ summary: 'Get a single incident with full timeline', description: 'Returns a single incident including all status updates and affected monitors.' })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 200, description: 'Incident detail with timeline updates and affected monitors.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied — incident belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
   findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.incidents.findOne(req.user.sub, id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new incident' })
-  @ApiResponse({ status: 201, description: 'Incident created' })
+  @ApiOperation({ summary: 'Create a new incident', description: 'Creates an incident with the given title, severity, and optionally links monitors that are affected.' })
+  @ApiResponse({ status: 201, description: 'Incident created. Returns the full incident object.' })
+  @ApiResponse({ status: 400, description: 'Validation error — title is required and must be 1–255 characters.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   create(@Req() req: AuthenticatedRequest, @Body() body: CreateIncidentBody) {
     return this.incidents.create(req.user.sub, body);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update incident (status, severity, title, monitors)' })
-  @ApiParam({ name: 'id', description: 'Incident ID' })
-  @ApiResponse({ status: 200, description: 'Incident updated' })
+  @ApiOperation({ summary: 'Update incident (status, severity, title, monitors)', description: 'Partially updates an incident. All fields are optional. Changing status to RESOLVED sets resolvedAt.' })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 200, description: 'Updated incident object.' })
+  @ApiResponse({ status: 400, description: 'Validation error.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
   update(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
@@ -104,9 +113,13 @@ export class IncidentsController {
   }
 
   @Post(':id/updates')
-  @ApiOperation({ summary: 'Post a status update to an incident' })
-  @ApiParam({ name: 'id', description: 'Incident ID' })
-  @ApiResponse({ status: 201, description: 'Update posted' })
+  @ApiOperation({ summary: 'Post a status update to an incident', description: 'Appends a timeline update (message + status transition) to an existing incident. Also updates the parent incident\'s status.' })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 201, description: 'Update posted. Returns the new IncidentUpdate object.' })
+  @ApiResponse({ status: 400, description: 'Validation error — body is required; status must be a valid IncidentStatus enum value.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
   addUpdate(
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
@@ -117,9 +130,12 @@ export class IncidentsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete an incident' })
-  @ApiParam({ name: 'id', description: 'Incident ID' })
-  @ApiResponse({ status: 204, description: 'Incident deleted' })
+  @ApiOperation({ summary: 'Delete an incident', description: 'Permanently deletes an incident and all its timeline updates.' })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 204, description: 'Incident deleted successfully. No response body.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
   async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     await this.incidents.delete(req.user.sub, id);
   }

@@ -16,12 +16,12 @@ Also clear browser cookies and re-login.
 
 ### Static assets (JS/CSS) return 500
 
-**Cause:** Usually a proxy caching issue or Next.js host validation.
+**Cause:** Usually a proxy caching issue. Old Next.js content hashes can be cached by the proxy after a redeploy.
 
 **Fix:**
 1. Clear nginx/proxy cache: `sudo find /var/cache/nginx -type f -delete`
 2. Restart nginx: `sudo systemctl restart nginx`
-3. Ensure `allowedHosts` in `next.config.mjs` includes your domain
+3. Restart the web server to generate fresh asset hashes: `npm run restart:web`
 
 ---
 
@@ -180,9 +180,42 @@ npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schem
 
 ---
 
+### Status page real-time not updating
+
+**Cause:** WebSocket connection fails when the status page is accessed through a reverse proxy that doesn't forward Upgrade headers.
+
+**Fix:** Add proper WebSocket proxy config — see [NGINX.md](./NGINX.md) for the required `location /api/socket.io/` block. The page will fall back to HTTP polling automatically if WebSocket is unavailable.
+
+---
+
+### Version check shows "No run yet" / always yellow
+
+**Cause:** The scheduler hasn't run yet, or the monitor is disabled.
+
+**Fix:**
+1. Check the monitor is enabled on the Monitors page
+2. Click **Run Now** to trigger an immediate check
+3. Check API logs for scheduler errors: `docker compose logs pulsedock-api -f | grep scheduler`
+
+---
+
+### Alert not firing despite monitor being down
+
+**Cause 1:** Monitor has a `confirmations` threshold > 1 (requires N consecutive failures before alerting).
+
+**Cause 2:** Monitor is within an active maintenance window.
+
+**Fix:**
+1. Check **Edit Monitor → Failure Confirmations** (default: 1)
+2. Check **Maintenance** page for active windows covering that monitor
+3. Verify the alert channel is configured and tested successfully
+
+---
+
 ## Getting Help
 
 - GitHub Issues: https://github.com/No749ah/PulseDock/issues
+- Swagger API docs: `http://localhost:4321/docs`
 - API logs: `docker compose logs pulsedock-api -f`
 - Web logs: `docker compose logs pulsedock-web -f`
 - Check API health: `curl http://localhost:4321/health`

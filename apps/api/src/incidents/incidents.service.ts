@@ -3,9 +3,11 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
+import { StatusPagesService } from '../status-pages/status-pages.service';
 import { IncidentStatus, IncidentSeverity } from '@prisma/client';
 
 export interface CreateIncidentDto {
@@ -30,9 +32,12 @@ export interface AddUpdateDto {
 
 @Injectable()
 export class IncidentsService {
+  private readonly logger = new Logger(IncidentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly statusPagesService: StatusPagesService,
   ) {}
 
   /**
@@ -122,6 +127,11 @@ export class IncidentsService {
       severity: incident.severity,
     });
 
+    // Notify status page subscribers
+    this.statusPagesService.notifySubscribersOfIncident(incident.id, 'created').catch((err) =>
+      this.logger.warn(`Subscriber notification failed for incident ${incident.id}: ${err instanceof Error ? err.message : String(err)}`),
+    );
+
     return incident;
   }
 
@@ -181,6 +191,13 @@ export class IncidentsService {
       incidentId: id,
       changes: dto,
     });
+
+    // Notify subscribers when incident is resolved
+    if (dto.status === IncidentStatus.RESOLVED && existing.status !== IncidentStatus.RESOLVED) {
+      this.statusPagesService.notifySubscribersOfIncident(id, 'resolved').catch((err) =>
+        this.logger.warn(`Subscriber resolve notification failed for incident ${id}: ${err instanceof Error ? err.message : String(err)}`),
+      );
+    }
 
     return updated;
   }

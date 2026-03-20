@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -987,6 +987,15 @@ function MonitorsPageInner() {
                   <span className="hidden sm:inline">CSV</span>
                   <span className="sm:hidden"><Download className="w-3.5 h-3.5" /></span>
                 </button>
+                <div className="w-px h-4 bg-border" />
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+                  title="Print monitor list"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Print</span>
+                </button>
               </div>
               <Button
                 variant="secondary"
@@ -1372,7 +1381,7 @@ function MonitorsPageInner() {
                 {paginatedMonitors.map((monitor) => {
                   const lastRun = runs.find((r) => r.monitorId === monitor.id);
                   const level = !monitor.enabled ? "paused" : (lastRun?.level ?? "green");
-                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-zinc-500" : "bg-danger";
+                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-text-muted/60" : "bg-danger";
                   const typeLabel = monitor.type === "HTTP" ? "HTTP" : monitor.type === "TCP" ? "TCP" : monitor.type === "SSL_CERT" ? "SSL" : monitor.type === "HEARTBEAT" ? "Heartbeat" : monitor.type;
                   const monitorRuns = runs.filter((r) => r.monitorId === monitor.id);
                   const upCount = monitorRuns.filter((r) => r.ok).length;
@@ -1382,7 +1391,7 @@ function MonitorsPageInner() {
                   // Interval label
                   const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
                   return (
-                    <div key={monitor.id} className="rounded-2xl border border-border bg-surface p-6 transition-all hover:border-zinc-600 group">
+                    <div key={monitor.id} className="rounded-2xl border border-border bg-surface p-6 transition-all hover:border-border-hover group">
                       {/* Top row: status dot + name + type badge */}
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0">
@@ -2792,6 +2801,99 @@ function MonitorsPageInner() {
                       <span className="text-xs text-text-secondary">{s}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+              {/* iFrame embed */}
+              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-text-primary mb-1">iFrame Embed</p>
+                  <p className="text-xs text-text-secondary mb-3">Embed a live status widget on any webpage. Supports <code className="text-accent">?style=compact|card</code> and <code className="text-accent">?theme=dark|light</code>.</p>
+                  {/* iFrame preview */}
+                  <div className="mb-3 rounded overflow-hidden border border-border">
+                    <iframe
+                      src={`/embed/${badgeMonitor.id}?style=compact&theme=dark`}
+                      width="100%"
+                      height="40"
+                      style={{ border: 'none', display: 'block' }}
+                      title={`${badgeMonitor.name} status widget preview`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`);
+                        success("iFrame snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                {/* Card style iFrame */}
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">Card style (120px tall, includes uptime %)</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`);
+                        success("Card iFrame snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              {/* Script tag embed */}
+              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-text-primary mb-1">Script Tag Embed</p>
+                  <p className="text-xs text-text-secondary mb-3">Injects a status widget inline — no iframe needed. Add the <code className="text-accent">data-pulsedock-monitor</code> attribute to any div.</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`);
+                        success("Script tag snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              {/* Floating widget embed */}
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
+                <p className="text-xs font-semibold text-text-primary mb-1">Floating Widget</p>
+                <p className="text-xs text-text-secondary mb-3">Paste into any webpage to show a live floating badge in the bottom-right corner.</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                    {`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`);
+                      success("Script tag copied!");
+                    }}
+                  >
+                    Copy
+                  </Button>
                 </div>
               </div>
             </div>

@@ -9,6 +9,9 @@ export class NotificationsService {
   /**
    * Returns the notification preference for a user.
    * Creates a default record if one doesn't exist yet (upsert on first access).
+   *
+   * @param userId - Authenticated user ID
+   * @returns Notification preference DTO (all fields serialised to plain objects)
    */
   async getPreference(userId: string) {
     const pref = await this.prisma.notificationPreference.upsert({
@@ -22,6 +25,10 @@ export class NotificationsService {
   /**
    * Updates the notification preference for a user (partial update).
    * Creates a default record first if one doesn't exist.
+   *
+   * @param userId - Authenticated user ID
+   * @param dto    - Partial preference update payload (all fields optional)
+   * @returns Updated notification preference DTO
    */
   async updatePreference(userId: string, dto: UpdateNotificationPreferenceDto) {
     const pref = await this.prisma.notificationPreference.upsert({
@@ -52,6 +59,11 @@ export class NotificationsService {
   /**
    * Checks whether a notification should fire right now, given the user's preferences.
    * Used by the alerts service before dispatching notifications.
+   *
+   * @param userId    - Authenticated user ID
+   * @param eventType - Type of event: 'down', 'recovery', or 'degraded'
+   * @returns `true` if a notification should be dispatched; `false` if suppressed by preference,
+   *          frequency setting, or quiet hours
    */
   async shouldNotify(userId: string, eventType: 'down' | 'recovery' | 'degraded'): Promise<boolean> {
     const pref = await this.prisma.notificationPreference.findUnique({ where: { userId } });

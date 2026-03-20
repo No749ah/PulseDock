@@ -25,7 +25,7 @@ export function Skeleton({ className = '' }: SkeletonProps) {
 /** Generic card skeleton with N text rows */
 export function SkeletonCard({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 space-y-3" aria-hidden="true">
+    <div className="rounded-2xl border border-border bg-surface p-6 space-y-3" aria-hidden="true">
       <Skeleton className="h-4 w-2/5" />
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className={`h-3 ${i === rows - 1 ? 'w-1/3' : 'w-full'}`} />
@@ -77,14 +77,14 @@ export function DashboardStatsSkeleton() {
       {/* Stat cards row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-surface p-5 space-y-2">
+          <div key={i} className="rounded-2xl border border-border bg-surface p-6 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-8 w-12" />
           </div>
         ))}
       </div>
       {/* Recent runs table */}
-      <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
+      <div className="rounded-2xl border border-border bg-surface p-6 space-y-3">
         <Skeleton className="h-4 w-32" />
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">

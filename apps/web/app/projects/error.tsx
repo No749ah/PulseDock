@@ -21,7 +21,7 @@ export default function PageError({ error, reset }: PageErrorProps) {
           <p className="text-sm text-text-secondary">Something went wrong loading this page.</p>
         </div>
         {process.env.NODE_ENV === 'development' && (
-          <div className="bg-surface border border-danger/20 rounded-lg p-3 text-left max-h-32 overflow-y-auto">
+          <div className="bg-surface-elevated border border-danger/20 rounded-xl p-3 text-left max-h-32 overflow-y-auto">
             <p className="text-xs text-danger font-mono break-words">{error.message}</p>
             {error.digest && (
               <p className="text-xs text-text-secondary font-mono mt-1">ID: {error.digest}</p>
@@ -30,7 +30,7 @@ export default function PageError({ error, reset }: PageErrorProps) {
         )}
         <button
           onClick={reset}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-bg rounded-lg text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-bg rounded-xl text-sm font-semibold transition-all active:scale-[0.97]"
         >
           <RotateCcw size={14} />
           Retry

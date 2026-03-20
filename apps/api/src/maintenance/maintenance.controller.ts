@@ -32,40 +32,49 @@ export class MaintenanceController {
   constructor(private readonly service: MaintenanceService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all maintenance windows for the current user' })
-  @ApiResponse({ status: 200, description: 'Array of maintenance windows' })
+  @ApiOperation({ summary: 'List all maintenance windows', description: 'Returns all maintenance windows for the authenticated user, ordered by startsAt ascending. Includes `isActive` computed flag.' })
+  @ApiResponse({ status: 200, description: 'Array of maintenance windows with monitorIds and isActive flag.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   list(@Req() req: AuthenticatedRequest) {
     return this.service.list(req.user.id);
   }
 
   @Get('active')
-  @ApiOperation({ summary: 'List currently active maintenance windows' })
-  @ApiResponse({ status: 200, description: 'Array of currently active windows' })
+  @ApiOperation({ summary: 'List currently active maintenance windows', description: 'Returns only windows whose startsAt ≤ now ≤ endsAt. Used internally by alert suppression logic.' })
+  @ApiResponse({ status: 200, description: 'Array of currently active maintenance windows.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   listActive(@Req() req: AuthenticatedRequest) {
     return this.service.listActive(req.user.id);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a single maintenance window by ID' })
-  @ApiParam({ name: 'id', description: 'Maintenance window ID' })
-  @ApiResponse({ status: 200, description: 'Maintenance window' })
-  @ApiResponse({ status: 404, description: 'Not found' })
+  @ApiParam({ name: 'id', description: 'MaintenanceWindow CUID', example: 'clfxyz456' })
+  @ApiResponse({ status: 200, description: 'Maintenance window with monitorIds and isActive flag.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied — window belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Maintenance window not found.' })
   getOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.service.getOne(id, req.user.id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a maintenance window' })
-  @ApiResponse({ status: 201, description: 'Created maintenance window' })
+  @ApiOperation({ summary: 'Create a maintenance window', description: 'Creates a maintenance window. During active windows, alerts for linked monitors are suppressed.' })
+  @ApiResponse({ status: 201, description: 'Created maintenance window.' })
+  @ApiResponse({ status: 400, description: 'Validation error — name, startsAt, and endsAt are required; endsAt must be after startsAt.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   create(@Req() req: AuthenticatedRequest, @Body() dto: CreateMaintenanceWindowDto) {
     return this.service.create(req.user.id, dto);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a maintenance window' })
-  @ApiParam({ name: 'id', description: 'Maintenance window ID' })
-  @ApiResponse({ status: 200, description: 'Updated maintenance window' })
-  @ApiResponse({ status: 404, description: 'Not found' })
+  @ApiOperation({ summary: 'Update a maintenance window', description: 'Partially updates a maintenance window. Providing monitorIds replaces all linked monitors.' })
+  @ApiParam({ name: 'id', description: 'MaintenanceWindow CUID', example: 'clfxyz456' })
+  @ApiResponse({ status: 200, description: 'Updated maintenance window.' })
+  @ApiResponse({ status: 400, description: 'Validation error.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Maintenance window not found.' })
   update(
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
@@ -75,10 +84,12 @@ export class MaintenanceController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a maintenance window' })
-  @ApiParam({ name: 'id', description: 'Maintenance window ID' })
-  @ApiResponse({ status: 200, description: 'Deleted' })
-  @ApiResponse({ status: 404, description: 'Not found' })
+  @ApiOperation({ summary: 'Delete a maintenance window', description: 'Permanently deletes the maintenance window and unlinks all associated monitors.' })
+  @ApiParam({ name: 'id', description: 'MaintenanceWindow CUID', example: 'clfxyz456' })
+  @ApiResponse({ status: 200, description: '`{ ok: true }` on success.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Maintenance window not found.' })
   remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.service.remove(id, req.user.id);
   }

@@ -50,15 +50,23 @@ function makeAudit() {
   return { log: vi.fn().mockResolvedValue(undefined) };
 }
 
+function makeStatusPages() {
+  return {
+    notifySubscribersOfIncident: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('IncidentsService', () => {
   let service: IncidentsService;
   let prisma: ReturnType<typeof makePrisma>;
   let audit: ReturnType<typeof makeAudit>;
+  let statusPages: ReturnType<typeof makeStatusPages>;
 
   beforeEach(() => {
     prisma = makePrisma();
     audit = makeAudit();
-    service = new IncidentsService(prisma as never, audit as never);
+    statusPages = makeStatusPages();
+    service = new IncidentsService(prisma as never, audit as never, statusPages as never);
   });
 
   // ── findAll ──────────────────────────────────────────────

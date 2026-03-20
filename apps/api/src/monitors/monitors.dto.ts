@@ -9,6 +9,13 @@ export class CreateMonitorDto {
   @MaxLength(255)
   name!: string;
 
+  @ApiPropertyOptional({ description: 'Optional notes or description for this monitor', maxLength: 2048, example: 'Production API health check — critical for checkout flow' })
+  @IsOptional()
+  @SanitizeHtml()
+  @IsString()
+  @MaxLength(2048)
+  description?: string;
+
   @ApiProperty({
     description: 'Target URL, host:port, GitHub repo slug, Docker image, etc. depending on type',
     maxLength: 1024,
@@ -108,6 +115,12 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(255)
   name?: string;
+
+  @IsOptional()
+  @SanitizeHtml()
+  @IsString()
+  @MaxLength(2048)
+  description?: string;
 
   @IsOptional()
   @IsString()

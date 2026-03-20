@@ -101,6 +101,7 @@ export class MonitorsService {
    */
   async create(userId: string, body: {
     name: string;
+    description?: string;
     target: string;
     type: MonitorType;
     intervalSec?: number;
@@ -127,6 +128,7 @@ export class MonitorsService {
       data: {
         userId,
         name: body.name,
+        description: body.description ?? null,
         target: body.target,
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
@@ -196,6 +198,7 @@ export class MonitorsService {
    */
   async update(userId: string, monitorId: string, body: {
     name?: string;
+    description?: string | null;
     target?: string;
     type?: MonitorType;
     intervalSec?: number;
@@ -228,6 +231,7 @@ export class MonitorsService {
       where: { id: monitorId },
       data: {
         name: body.name ?? current.name,
+        ...(body.description !== undefined ? { description: body.description } : {}),
         target: body.target ?? current.target,
         type: body.type ?? current.type,
         intervalSec: body.intervalSec ?? current.intervalSec,

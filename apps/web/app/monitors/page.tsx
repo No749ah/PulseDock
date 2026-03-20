@@ -48,6 +48,7 @@ interface AlertChannelSummary {
 interface MonitorItem {
   id: string;
   name: string;
+  description?: string | null;
   type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
   target: string;
   intervalSec: number;
@@ -193,6 +194,7 @@ function MonitorsPageInner() {
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
+    description: string;
     type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
     target: string;
     intervalSec: number;
@@ -207,6 +209,7 @@ function MonitorsPageInner() {
     slaPeriodDays: number;
   }>({
     name: "",
+    description: "",
     type: "HTTP",
     target: "",
     intervalSec: 60,
@@ -501,7 +504,7 @@ function MonitorsPageInner() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -1060,7 +1063,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                  setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1363,7 +1366,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -1467,7 +1470,7 @@ function MonitorsPageInner() {
                         <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border/60 text-text-muted">{intervalLabel}</span>
                         <div className="flex items-center gap-1 ml-auto">
                           <button
-                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData({ name: monitor.name, type: monitor.type, target: monitor.target, intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1, enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""), expectedText: String(monitor.config?.expectedText ?? ""), heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5), heartbeatToken: String(monitor.config?.token ?? ""), folderId: monitor.folderId ?? "", slaTarget: monitor.slaTarget ?? "", slaPeriodDays: monitor.slaPeriodDays ?? 30 } as typeof formData); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
+                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData({ name: monitor.name, description: monitor.description ?? "", type: monitor.type, target: monitor.target, intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1, enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""), expectedText: String(monitor.config?.expectedText ?? ""), heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5), heartbeatToken: String(monitor.config?.token ?? ""), folderId: monitor.folderId ?? "", slaTarget: monitor.slaTarget ?? "", slaPeriodDays: monitor.slaPeriodDays ?? 30 } as typeof formData); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
                             className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border/60 text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
                           >
                             <Pencil className="w-3 h-3" /> Edit
@@ -1810,10 +1813,10 @@ function MonitorsPageInner() {
                         {/* Row expansion panel */}
                         {isExpanded && (
                           <tr className="bg-surface-elevated/40 border-b border-border/60">
-                            <td colSpan={totalCols} className="px-6 py-4">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                            <td colSpan={totalCols} className="px-6 py-4 overflow-hidden max-w-0 w-full">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm min-w-0">
                                 {/* Recent check history + sparkline */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 min-w-0 overflow-hidden">
                                   <div className="flex items-center justify-between">
                                     <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks</p>
                                     <Link href={`/monitors/${monitor.id}`} className="text-xs text-accent hover:underline">View detail →</Link>
@@ -1823,7 +1826,7 @@ function MonitorsPageInner() {
                                   ) : (
                                     <>
                                       {/* Status dots row */}
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-1.5 flex-wrap overflow-hidden">
                                         {recentRuns.map((r) => {
                                           const dotColor = r.ok ? "bg-success" : "bg-danger";
                                           const title = `${r.ok ? "OK" : "Failed"} — ${new Date(r.checkedAt).toLocaleString()}${r.latencyMs != null ? ` (${r.latencyMs}ms)` : ""}`;
@@ -1867,7 +1870,7 @@ function MonitorsPageInner() {
                                   )}
                                 </div>
                                 {/* Tags */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 min-w-0">
                                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
                                     <Tag className="w-3 h-3" /> Tags
                                   </p>
@@ -1888,7 +1891,7 @@ function MonitorsPageInner() {
                                   )}
                                 </div>
                                 {/* Interval & config info */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 min-w-0">
                                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
                                     <Clock className="w-3 h-3" /> Schedule
                                   </p>

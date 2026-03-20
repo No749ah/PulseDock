@@ -120,6 +120,8 @@ interface PageSettings {
   notifyWebhookUrl?: string;
   slackWebhookUrl?: string;
   discordWebhookUrl?: string;
+  // Advanced
+  customCss?: string;
 }
 
 interface PageLayout {
@@ -137,6 +139,7 @@ interface StatusPage {
   notifyWebhookUrl?: string | null;
   slackWebhookUrl?: string | null;
   discordWebhookUrl?: string | null;
+  customCss?: string | null;
   layout: PageLayout;
 }
 
@@ -1725,6 +1728,7 @@ export default function StatusPageEditorPage() {
         ...(data.notifyWebhookUrl ? { notifyWebhookUrl: data.notifyWebhookUrl } : {}),
         ...(data.slackWebhookUrl ? { slackWebhookUrl: data.slackWebhookUrl } : {}),
         ...(data.discordWebhookUrl ? { discordWebhookUrl: data.discordWebhookUrl } : {}),
+        ...(data.customCss ? { customCss: data.customCss } : {}),
       });
       savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
@@ -1774,8 +1778,8 @@ export default function StatusPageEditorPage() {
     if (!page) return;
     setSaving(true);
     try {
-      // notifyWebhookUrl, slackWebhookUrl, discordWebhookUrl are top-level page fields (not inside layout)
-      const { notifyWebhookUrl: _webhookInSettings, slackWebhookUrl: _slackInSettings, discordWebhookUrl: _discordInSettings, ...layoutSettings } = pageSettings;
+      // notifyWebhookUrl, slackWebhookUrl, discordWebhookUrl, customCss are top-level page fields (not inside layout)
+      const { notifyWebhookUrl: _webhookInSettings, slackWebhookUrl: _slackInSettings, discordWebhookUrl: _discordInSettings, customCss: _cssInSettings, ...layoutSettings } = pageSettings;
       const patchBody: Record<string, unknown> = { layout: { widgets, settings: layoutSettings } };
       if (pageSettings.notifyWebhookUrl !== undefined) {
         patchBody.notifyWebhookUrl = pageSettings.notifyWebhookUrl;
@@ -1785,6 +1789,9 @@ export default function StatusPageEditorPage() {
       }
       if (pageSettings.discordWebhookUrl !== undefined) {
         patchBody.discordWebhookUrl = pageSettings.discordWebhookUrl;
+      }
+      if (pageSettings.customCss !== undefined) {
+        patchBody.customCss = pageSettings.customCss;
       }
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
@@ -3068,6 +3075,27 @@ export default function StatusPageEditorPage() {
                     />
                     <p className="text-[10px] text-text-secondary mt-1">Optional. Posts a Discord embed when the page status changes.</p>
                   </div>
+                </div>
+              </div>
+
+              {/* Advanced / Custom CSS */}
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs font-semibold text-text-primary mb-3">Advanced</p>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                    Custom CSS <span className="text-text-muted">(advanced)</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    placeholder={"/* Add custom styles for your status page */\nbody { font-family: 'Inter', sans-serif; }\n.page-title { color: #6366f1; }"}
+                    value={pageSettings.customCss ?? ""}
+                    onChange={(e) => setPageSettings((s) => ({ ...s, customCss: e.target.value || undefined }))}
+                    className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none font-mono resize-y min-h-[80px]"
+                    spellCheck={false}
+                  />
+                  <p className="text-[10px] text-text-secondary mt-1">
+                    CSS injected into the public page &lt;head&gt;. Use to override fonts, colors, or layout. Max 10,000 characters.
+                  </p>
                 </div>
               </div>
 

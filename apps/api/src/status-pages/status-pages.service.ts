@@ -149,6 +149,9 @@ export class StatusPagesService {
     if (dto.discordWebhookUrl !== undefined) {
       updateData['discordWebhookUrl'] = dto.discordWebhookUrl.trim() || null;
     }
+    if (dto.customCss !== undefined) {
+      updateData['customCss'] = dto.customCss.trim() || null;
+    }
 
     // Snapshot current layout before overwriting (version history)
     if (dto.layout !== undefined) {

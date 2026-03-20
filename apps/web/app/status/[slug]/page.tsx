@@ -79,6 +79,7 @@ interface PublicPageData {
   incidents?: IncidentData[];
   maintenance?: MaintenanceData[];
   recentChecks?: CheckData[];
+  customCss?: string | null;
 }
 
 interface GridPlacement {
@@ -318,6 +319,11 @@ export default async function PublicStatusSlugPage({
 
   return (
     <>
+      {/* Custom CSS injection — admins can add branding/style overrides via Page Settings */}
+      {data.customCss && (
+        // eslint-disable-next-line react/no-danger
+        <style dangerouslySetInnerHTML={{ __html: data.customCss }} />
+      )}
       <OfflineBanner />
       {/* Live refresh client component replaces meta http-equiv refresh */}
       <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />

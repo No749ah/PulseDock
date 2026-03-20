@@ -276,4 +276,13 @@ export class UpdateStatusPageDto {
   @IsString()
   @MaxLength(500)
   discordWebhookUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Custom CSS injected into the public status page <head>. Allows branding and style customization. Max 10,000 characters.',
+    example: 'body { font-family: "Inter", sans-serif; } .page-title { color: #6366f1; }',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10000)
+  customCss?: string;
 }

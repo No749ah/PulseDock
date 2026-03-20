@@ -93,6 +93,7 @@ model Monitor {
   userId        String
   folderId      String?
   name          String
+  description   String?     // Optional free-text notes/description for this monitor
   type          MonitorType
   target        String
   intervalSec   Int         @default(60)
@@ -280,6 +281,7 @@ model PublicStatusPage {
   slackWebhookUrl     String?  // Slack incoming webhook URL for status change notifications
   discordWebhookUrl   String?  // Discord webhook URL for status change notifications
   lastNotifiedStatus  String?  // last status we notified about (operational/degraded/outage)
+  customCss           String?  // Optional custom CSS injected into the public status page <head>
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

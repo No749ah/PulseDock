@@ -160,6 +160,20 @@ export class StatusPagesController {
   }
 
   // ── Public routes (no auth) ───────────────────────────────────────────────
+  // IMPORTANT: static routes must come before parameterized :slug routes
+
+  @Get('public/status/unsubscribe')
+  @ApiOperation({
+    summary: 'Unsubscribe from status page updates (public)',
+    description: 'Removes the subscriber identified by the one-time unsubscribe token from status page notifications.',
+  })
+  @ApiQuery({ name: 'token', description: 'Unsubscribe token from the notification email' })
+  @ApiResponse({ status: 200, description: 'Successfully unsubscribed.' })
+  @ApiResponse({ status: 404, description: 'Invalid or expired unsubscribe token.' })
+  async unsubscribe(@Query('token') token: string) {
+    await this.statusPagesService.unsubscribe(token);
+    return { message: 'Successfully unsubscribed' };
+  }
 
   @Get('public/status/:slug')
   @ApiOperation({
@@ -228,19 +242,6 @@ export class StatusPagesController {
   async getRssFeed(@Param('slug') slug: string, @Res() res: Response) {
     const xml = await this.statusPagesService.getRssFeed(slug);
     res.send(xml);
-  }
-
-  @Get('public/status/unsubscribe')
-  @ApiOperation({
-    summary: 'Unsubscribe from status page updates (public)',
-    description: 'Removes the subscriber identified by the one-time unsubscribe token from status page notifications.',
-  })
-  @ApiQuery({ name: 'token', description: 'Unsubscribe token from the notification email' })
-  @ApiResponse({ status: 200, description: 'Successfully unsubscribed.' })
-  @ApiResponse({ status: 404, description: 'Invalid or expired unsubscribe token.' })
-  async unsubscribe(@Query('token') token: string) {
-    await this.statusPagesService.unsubscribe(token);
-    return { message: 'Successfully unsubscribed' };
   }
 
   @Get('public/status/:slug/json')

@@ -1,3 +1,16 @@
+## Status Summary (2026-03-20 03:04 UTC)
+- **Build/Test:** ✅ Clean build, all 1503 tests passing, zero TS errors
+- **Deployment:** ✅ Public URL 200, API healthy
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Public JSON API**: `GET /v1/public/status/:slug/json` — CORS-open (`Access-Control-Allow-Origin: *`), auth-free, returns structured JSON (overall status, monitors, incidents, maintenance). Already existed from prior session, added CORS header and fixed MonitorType to include DNS/PING.
+  - **Email Subscriber System — Unsubscribe**: Added `unsubscribeToken` field to `StatusPageSubscriber` (DB migration via `prisma db push`). New `GET /v1/public/status/unsubscribe?token=xxx` endpoint. Confirmed route ordering (static before parameterized).
+  - **Confirmation email on subscribe**: Now sends a confirmation email via `MailerService.sendStatusPageUpdateEmail` with unsubscribe link.
+  - **Subscriber count in admin list**: `findAll()` now includes `subscriberCount` via `_count.subscribers`.
+  - **Incident notifications**: `IncidentsService` now injects `StatusPagesService`. On incident create/resolve, calls `notifySubscribersOfIncident()` which emails all subscribers of affected status pages.
+  - **Prisma schema**: Added `subscribers StatusPageSubscriber[]` relation to `PublicStatusPage`, proper back-ref in `StatusPageSubscriber`.
+  - **Type fix**: Added `DNS | PING` to `MonitorType` union in `types.ts` (pre-existing build error).
+
 ## Status Summary (2026-03-20 02:44 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Deployment:** ✅ Public URL 200, `/embed/test-id` returns 200 with `X-Frame-Options: ALLOWALL`
@@ -1427,9 +1440,9 @@
 
 - [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
 - [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
-- [ ] **Public JSON API** — `GET /api/v1/public/status/:slug/json` for third-party integrations
+- [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
-- [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
+- [x] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance. Unsubscribe via token link. Subscriber count in admin list. Incident create/resolve notifies all status page subscribers.
 - [ ] **Slack/Discord Integration** — Auto-post status changes to channels
 - [x] **Embeddable Widget** — iFrame embed (`/embed/[monitorId]`), JSON API (`/v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), embed code modal in dashboard
 - [ ] **Status Page Badge** — "Status: Operational" badge for README/websites (already have SVG badges, extend to status page level)

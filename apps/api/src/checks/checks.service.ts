@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
+import * as dns from 'node:dns/promises';
+import { execFile } from 'node:child_process';
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/i;
 import type { Monitor, MonitorRun } from '../types';
@@ -898,6 +900,147 @@ export class ChecksService {
     };
   }
 
+  /**
+   * Resolves a hostname via DNS and measures lookup latency.
+   * Config options:
+   *   - `recordType`: 'A' | 'AAAA' | 'MX' | 'TXT' | 'CNAME' | 'NS' (default 'A')
+   *   - `expectedValue`: Optional — if set, the first resolved value must contain this string.
+   *
+   * @param target  - Hostname to resolve (e.g. "example.com")
+   * @param config  - Monitor configJson
+   * @param timeoutMs - Lookup timeout in milliseconds
+   */
+  private async runDnsCheck(target: string, config: Record<string, unknown>, timeoutMs = 5000): Promise<PluginExecutionResult> {
+    const hostname = target.trim().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+    if (!hostname) {
+      return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid DNS target — provide a hostname', level: 'red' as const };
+    }
+
+    const recordType = (typeof config.recordType === 'string' ? config.recordType.toUpperCase() : 'A') as 'A' | 'AAAA' | 'MX' | 'TXT' | 'CNAME' | 'NS';
+    const expectedValue = typeof config.expectedValue === 'string' && config.expectedValue.trim() ? config.expectedValue.trim() : null;
+
+    const started = Date.now();
+
+    try {
+      // Race the DNS lookup against a timeout
+      let resolved: string[] = [];
+      await Promise.race([
+        (async () => {
+          switch (recordType) {
+            case 'A':    resolved = await dns.resolve4(hostname); break;
+            case 'AAAA': resolved = await dns.resolve6(hostname); break;
+            case 'CNAME': resolved = [await dns.resolveCname(hostname).then(r => r[0] ?? '')]; break;
+            case 'NS':   resolved = await dns.resolveNs(hostname); break;
+            case 'TXT':  resolved = (await dns.resolveTxt(hostname)).map(a => a.join('')); break;
+            case 'MX':   resolved = (await dns.resolveMx(hostname)).map(r => `${r.exchange} (${r.priority})`); break;
+            default:     resolved = await dns.resolve4(hostname);
+          }
+        })(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('DNS lookup timed out')), timeoutMs)),
+      ]);
+
+      const latencyMs = Date.now() - started;
+      const first = resolved[0] ?? '';
+
+      if (expectedValue && !resolved.some(r => r.includes(expectedValue))) {
+        return {
+          ok: false,
+          statusCode: 0,
+          latencyMs,
+          message: `DNS resolved but expected value "${expectedValue}" not found in ${recordType} records: ${resolved.slice(0, 3).join(', ')}`,
+          level: 'yellow' as const,
+        };
+      }
+
+      return {
+        ok: true,
+        statusCode: 200,
+        latencyMs,
+        message: `${recordType} resolved: ${resolved.length > 1 ? `${first} (+${resolved.length - 1} more)` : first}`,
+        level: latencyMs > 2000 ? 'yellow' : 'green' as const,
+      };
+    } catch (error) {
+      const latencyMs = Date.now() - started;
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs,
+        message: error instanceof Error ? `DNS ${recordType} failed: ${error.message}` : `DNS ${recordType} check failed`,
+        level: 'red' as const,
+      };
+    }
+  }
+
+  /**
+   * Sends ICMP pings to a host and reports round-trip latency.
+   * Uses the system `ping` command (available on Linux/macOS via exec).
+   * Config options:
+   *   - `pingCount`: number of pings to send (default 3, max 10)
+   *   - `warnLatencyMs`: warn threshold in ms (default 200)
+   *   - `critLatencyMs`: crit threshold in ms (default 1000)
+   *
+   * @param target   - Hostname or IP to ping
+   * @param config   - Monitor configJson
+   * @param timeoutMs - Total timeout in milliseconds
+   */
+  private async runPingCheck(target: string, config: Record<string, unknown>, timeoutMs = 10000): Promise<PluginExecutionResult> {
+    const host = target.trim().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+    if (!host) {
+      return { ok: false, statusCode: 400, latencyMs: null, message: 'Invalid PING target — provide a hostname or IP', level: 'red' as const };
+    }
+
+    const count = Math.min(Math.max(Number(config.pingCount ?? 3), 1), 10);
+    const warnMs = Number(config.warnLatencyMs ?? 200);
+    const critMs = Number(config.critLatencyMs ?? 1000);
+
+    const started = Date.now();
+
+    return new Promise((resolve) => {
+      const args = ['-c', String(count), '-W', '2', host]; // -W 2: per-ping timeout 2s
+      const child = execFile('ping', args, { timeout: timeoutMs }, (err, stdout) => {
+        const elapsed = Date.now() - started;
+
+        if (err) {
+          resolve({
+            ok: false,
+            statusCode: 0,
+            latencyMs: elapsed,
+            message: err.code === 'ETIMEDOUT' ? `Ping timed out (${host})` : `Ping failed: ${host} unreachable`,
+            level: 'red' as const,
+          });
+          return;
+        }
+
+        // Parse avg RTT from ping output: rtt min/avg/max/mdev = X/Y/Z/W ms
+        const rttMatch = stdout.match(/rtt[^=]*=\s*[\d.]+\/([\d.]+)\/[\d.]+\/[\d.]+ ms/);
+        const avgMs = rttMatch ? Math.round(parseFloat(rttMatch[1])) : elapsed;
+
+        // Parse packet loss
+        const lossMatch = stdout.match(/(\d+)%\s+packet loss/);
+        const loss = lossMatch ? parseInt(lossMatch[1], 10) : 0;
+
+        if (loss === 100) {
+          resolve({ ok: false, statusCode: 0, latencyMs: avgMs, message: `100% packet loss to ${host}`, level: 'red' as const });
+          return;
+        }
+
+        const level = avgMs >= critMs ? 'red' : avgMs >= warnMs ? 'yellow' : 'green';
+        const lossStr = loss > 0 ? ` (${loss}% loss)` : '';
+
+        resolve({
+          ok: level !== 'red',
+          statusCode: 200,
+          latencyMs: avgMs,
+          message: `Ping ${host}: avg ${avgMs}ms${lossStr}`,
+          level: level as 'green' | 'yellow' | 'red',
+        });
+      });
+
+      // Ensure the process is killed if timeout fires before child exits
+      setTimeout(() => { try { child.kill(); } catch { /* ignore */ } }, timeoutMs + 500);
+    });
+  }
+
   private async dispatchCheck(monitor: Monitor) {
     switch (monitor.type) {
       case 'HTTP':
@@ -912,6 +1055,10 @@ export class ChecksService {
         return this.runSslCheck(monitor.target, monitor.timeoutMs);
       case 'HEARTBEAT':
         return this.runHeartbeatCheck(monitor);
+      case 'DNS':
+        return this.runDnsCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'PING':
+        return this.runPingCheck(monitor.target, monitor.config, monitor.timeoutMs);
       default:
         return this.runHttpCheck(monitor.target, monitor.timeoutMs);
     }

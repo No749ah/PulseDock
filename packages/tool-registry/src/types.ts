@@ -86,6 +86,47 @@ export interface VersionSource {
   agentNote?: string;
 }
 
+/**
+ * A platform/edition variant of a tool.
+ *
+ * Many tools have multiple distributions (CE/EE, OSS/Cloud, Docker/K8s, etc.)
+ * with different version endpoints, auth requirements, or URL structures.
+ * Variants allow the setup UI to offer a platform selector that auto-adjusts
+ * the monitor config for the chosen deployment type.
+ *
+ * @example
+ * // GitLab CE (self-hosted) vs GitLab EE vs GitLab.com (cloud)
+ * variants: [
+ *   { id: 'ce', label: 'Community Edition (CE)', requiresInstanceUrl: true, versionSource: {...} },
+ *   { id: 'ee', label: 'Enterprise Edition (EE)', requiresInstanceUrl: true, versionSource: {...} },
+ *   { id: 'cloud', label: 'GitLab.com (Cloud)', requiresInstanceUrl: false, versionSource: {...} },
+ * ]
+ */
+export interface ToolVariant {
+  /** Unique identifier within this tool's variants (e.g. 'ce', 'ee', 'docker', 'k8s') */
+  id: string;
+  /** Human-readable label shown in UI dropdown (e.g. 'Community Edition (CE)') */
+  label: string;
+  /** Short description of this variant's differences */
+  description?: string;
+  /** Override: whether instance URL is required for this variant */
+  requiresInstanceUrl?: boolean;
+  /** Override: how to get the CURRENT (deployed) version for this variant */
+  versionSource?: VersionSource;
+  /** Override: how to get the LATEST (upstream) version for this variant */
+  latestSource?: VersionSource;
+  /** Override: endpoint fallbacks specific to this variant */
+  endpointFallbacks?: string[];
+  /** Whether auth is required by default for this variant */
+  authRequired?: boolean;
+  /** Suggested URL placeholder for this variant (e.g. 'https://gitlab.example.com') */
+  urlPlaceholder?: string;
+  /** Link to docs showing the version endpoint for this variant */
+  evidenceUrl?: string;
+  /** Tags unique to this variant */
+  tags?: string[];
+}
+
 export interface ToolRegistryEntry {
   id: string;
   name: string;
@@ -131,4 +172,20 @@ export interface ToolRegistryEntry {
    * @example [{ type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/version', jsonPath: '$.version' }]
    */
   versionSourceFallbacks?: VersionSource[];
+  /**
+   * Platform/edition variants for this tool.
+   *
+   * When present, the setup UI shows a "Platform" dropdown that lets the user
+   * choose their deployment type. The selected variant's fields override the
+   * top-level entry fields (requiresInstanceUrl, versionSource, latestSource, etc.)
+   *
+   * Tools with no variants default to the top-level config.
+   */
+  variants?: ToolVariant[];
+  /**
+   * Link to documentation or API reference proving the version endpoint exists.
+   * Used for audit trails and verification quality.
+   * @example 'https://docs.gitlab.com/ce/api/version.html'
+   */
+  evidenceUrl?: string;
 }

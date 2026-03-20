@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHtml } from '../common/sanitize';
 
@@ -87,6 +87,19 @@ export class CreateMonitorDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'SLA target uptime percentage (0–100), e.g. 99.9 for 99.9% uptime', minimum: 0, maximum: 100, example: 99.9 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  slaTarget?: number;
+
+  @ApiPropertyOptional({ description: 'Rolling window in days for SLA calculation (7, 14, 30, or 90)', enum: [7, 14, 30, 90], example: 30 })
+  @IsOptional()
+  @IsInt()
+  @IsIn([7, 14, 30, 90])
+  slaPeriodDays?: number;
 }
 
 export class UpdateMonitorDto {
@@ -141,6 +154,17 @@ export class UpdateMonitorDto {
   @IsString({ each: true })
   @MaxLength(50, { each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  slaTarget?: number;
+
+  @IsOptional()
+  @IsInt()
+  @IsIn([7, 14, 30, 90])
+  slaPeriodDays?: number;
 }
 
 export class RunMonitorDto {

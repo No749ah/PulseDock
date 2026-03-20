@@ -15,6 +15,20 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useDebounce } from '../../lib/useDebounce';
 
+// Minimal ToolVariant type (mirrors packages/tool-registry/src/types.ts)
+type ToolVariant = {
+  id: string;
+  label: string;
+  description?: string;
+  requiresInstanceUrl?: boolean;
+  authRequired?: boolean;
+  urlPlaceholder?: string;
+  evidenceUrl?: string;
+  versionSource?: { type: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean; endpointFallbacks?: string[] };
+  latestSource?: { type: string; target?: string };
+  tags?: string[];
+};
+
 type AlertChannelSummary = {
   id: string;
   name: string;
@@ -198,6 +212,9 @@ export default function VersionsPage() {
   const [sourceStatus, setSourceStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [appStatus, setAppStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [showAuthHint, setShowAuthHint] = useState(false);
+  // Tool variant selection
+  const [toolVariants, setToolVariants] = useState<ToolVariant[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [showTemplateReport, setShowTemplateReport] = useState(false);
   const [templateReportNote, setTemplateReportNote] = useState('');
   const [templateReportSent, setTemplateReportSent] = useState(false);
@@ -546,8 +563,47 @@ export default function VersionsPage() {
     ? `${window.location.protocol}//${window.location.host}`
     : 'https://your-pulsedock.example.com';
 
+  /**
+   * Apply a variant's overrides to the form (auth, endpoint, placeholders).
+   * Called when a tool is selected (auto-picks first variant) or when the user
+   * manually switches variant via the Platform dropdown.
+   */
+  function applyVariantOverride(tool: ToolEntry, variant: ToolVariant) {
+    const vs = variant.versionSource ?? tool.versionSource;
+    const ls = variant.latestSource ?? tool.latestSource;
+    const requiresUrl = variant.requiresInstanceUrl ?? tool.requiresInstanceUrl;
+
+    // Override auth type from variant
+    const authRequired = variant.authRequired ?? vs.authRequired ?? tool.versionSource.authRequired ?? false;
+    setAppAuthType(authRequired ? 'token' : 'none');
+
+    // Override endpoint from variant
+    if (requiresUrl && vs.urlTemplate) {
+      setAppVersionEndpoint(vs.urlTemplate.replace('{{instanceUrl}}', '').replace(/^\//, ''));
+    } else if (!requiresUrl) {
+      setAppVersionEndpoint('');
+      setAppUrl('');
+    }
+
+    // Override target from variant's latestSource if provided
+    if (ls.target) setTarget(ls.target);
+  }
+
   function applyToolToForm(tool: ToolEntry) {
     setSelectedTool(tool);
+    setSelectedVariantId('');
+    setToolVariants([]);
+    // Fetch variants in background — non-blocking
+    fetch(`/api/v1/tool-registry/${tool.id}/variants`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { variants: ToolVariant[] } | null) => {
+        if (d?.variants?.length) {
+          setToolVariants(d.variants);
+          setSelectedVariantId(d.variants[0].id);
+          applyVariantOverride(tool, d.variants[0]);
+        }
+      })
+      .catch(() => null);
     setName(tool.name);
     setIntervalSec(tool.checkInterval);
     setIntervalInput(String(Math.round((tool.checkInterval) / 60)));
@@ -653,6 +709,8 @@ export default function VersionsPage() {
     setToolSearch('');
     setToolCategory('');
     setSelectedTool(null);
+    setToolVariants([]);
+    setSelectedVariantId('');
     setName('');
     setType('GIT_RELEASE');
     setProvider('github');
@@ -993,7 +1051,7 @@ export default function VersionsPage() {
                           Not in the registry?{' '}
                           <button
                             className="text-accent hover:underline"
-                            onClick={() => { setToolSearch(''); setSelectedTool(null); }}
+                            onClick={() => { setToolSearch(''); setSelectedTool(null); setToolVariants([]); setSelectedVariantId(''); }}
                           >
                             Use manual config
                           </button>
@@ -1163,6 +1221,44 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 ) : (
                   <p className="font-semibold text-text-primary">Step 1/4 · Source</p>
                 )}
+                {/* Platform variant selector — only shown when tool has multiple variants */}
+                {toolVariants.length > 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Platform / Edition
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      value={selectedVariantId}
+                      onChange={(e) => {
+                        const variantId = e.target.value;
+                        setSelectedVariantId(variantId);
+                        const variant = toolVariants.find((v) => v.id === variantId);
+                        if (variant && selectedTool) applyVariantOverride(selectedTool, variant);
+                      }}
+                    >
+                      {toolVariants.map((v) => (
+                        <option key={v.id} value={v.id}>{v.label}</option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const activeVariant = toolVariants.find((v) => v.id === selectedVariantId);
+                      return activeVariant?.description ? (
+                        <p className="mt-1.5 text-xs text-text-secondary">{activeVariant.description}</p>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const activeVariant = toolVariants.find((v) => v.id === selectedVariantId);
+                      return activeVariant?.evidenceUrl ? (
+                        <p className="mt-1 text-xs text-text-secondary/60">
+                          <a href={activeVariant.evidenceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent underline underline-offset-2">
+                            View endpoint docs ↗
+                          </a>
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Name</label>
                   <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. API backend" />
@@ -1193,7 +1289,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                     placeholder={provider === 'docker' ? 'library/nginx' : provider === 'apt' ? 'openssl' : provider === 'gitlab' ? 'group/project' : provider === 'npm' ? 'react' : provider === 'pypi' ? 'requests' : provider === 'cargo' ? 'serde' : provider === 'maven' ? 'org.springframework.boot:spring-boot' : provider === 'helm' ? 'bitnami/postgresql' : 'owner/repo'}
                   />
                   {selectedTool && target && (
-                    <p className="mt-1 text-xs text-text-secondary">Target pre-filled from the {selectedTool.name} registry entry. <button type="button" className="text-accent hover:underline" onClick={() => setSelectedTool(null)}>Clear tool selection</button> to edit manually.</p>
+                    <p className="mt-1 text-xs text-text-secondary">Target pre-filled from the {selectedTool.name} registry entry. <button type="button" className="text-accent hover:underline" onClick={() => { setSelectedTool(null); setToolVariants([]); setSelectedVariantId(''); }}>Clear tool selection</button> to edit manually.</p>
                   )}
                 </div>
                 {((provider === 'github' || provider === 'gitlab') || showTokenField) && (

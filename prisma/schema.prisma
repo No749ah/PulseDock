@@ -96,10 +96,13 @@ model Monitor {
   target        String
   intervalSec   Int         @default(60)
   timeoutMs     Int         @default(5000)
-  confirmations Int         @default(1)
-  enabled       Boolean     @default(true)
-  configJson    Json?
-  createdAt     DateTime    @default(now())
+  confirmations       Int         @default(1)
+  enabled             Boolean     @default(true)
+  configJson          Json?
+  slaTarget           Float?
+  slaPeriodDays       Int?        @default(30)
+  slaBreachAlertedAt  DateTime?
+  createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)

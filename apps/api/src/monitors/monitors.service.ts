@@ -84,6 +84,9 @@ export class MonitorsService {
       folderId: m.folderId,
       tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
       enabled: m.enabled,
+      slaTarget: m.slaTarget,
+      slaPeriodDays: m.slaPeriodDays,
+      slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
       createdAt: m.createdAt.toISOString(),
     }));
   }
@@ -108,6 +111,8 @@ export class MonitorsService {
     folderId?: string | null;
     tags?: string[];
     enabled?: boolean;
+    slaTarget?: number;
+    slaPeriodDays?: number;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -130,6 +135,8 @@ export class MonitorsService {
         configJson: config as Prisma.InputJsonValue,
         enabled: body.enabled ?? true,
         folderId: body.folderId ?? null,
+        slaTarget: body.slaTarget ?? null,
+        slaPeriodDays: body.slaPeriodDays ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -166,6 +173,9 @@ export class MonitorsService {
       folderId: created.folderId,
       tags: createdTags,
       enabled: created.enabled,
+      slaTarget: created.slaTarget,
+      slaPeriodDays: created.slaPeriodDays,
+      slaBreachAlertedAt: created.slaBreachAlertedAt?.toISOString() ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -196,6 +206,8 @@ export class MonitorsService {
     folderId?: string | null;
     enabled?: boolean;
     tags?: string[];
+    slaTarget?: number | null;
+    slaPeriodDays?: number | null;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -224,6 +236,8 @@ export class MonitorsService {
         configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,
+        ...(body.slaTarget !== undefined ? { slaTarget: body.slaTarget } : {}),
+        ...(body.slaPeriodDays !== undefined ? { slaPeriodDays: body.slaPeriodDays } : {}),
       },
     });
 
@@ -512,6 +526,9 @@ export class MonitorsService {
       folderId: monitor.folderId,
       enabled: monitor.enabled,
       createdAt: monitor.createdAt.toISOString(),
+      slaTarget: monitor.slaTarget ?? null,
+      slaPeriodDays: monitor.slaPeriodDays ?? null,
+      slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
     });
   }
 

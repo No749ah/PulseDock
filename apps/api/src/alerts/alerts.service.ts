@@ -406,6 +406,73 @@ export class AlertsService {
   }
 
   /**
+   * Sends SLA breach alert to all alert channels for a monitor.
+   * Fires when rolling uptime drops below the configured SLA target.
+   */
+  async notifySlaBreached(
+    monitorId: string,
+    monitorName: string,
+    userId: string,
+    actualPct: number,
+    targetPct: number,
+    periodDays: number,
+  ): Promise<void> {
+    const text = `⚠️ SLA Breach: ${monitorName} — uptime ${actualPct}% is below target ${targetPct}% (last ${periodDays}d)`;
+    await this.sendSlaNotification(monitorId, monitorName, userId, text, 'sla_breach');
+  }
+
+  /**
+   * Sends SLA recovered alert to all alert channels for a monitor.
+   * Fires when rolling uptime recovers above the configured SLA target.
+   */
+  async notifySlaRecovered(
+    monitorId: string,
+    monitorName: string,
+    userId: string,
+    actualPct: number,
+    targetPct: number,
+    periodDays: number,
+  ): Promise<void> {
+    const text = `✅ SLA Recovered: ${monitorName} — uptime back at ${actualPct}% (target ${targetPct}%, last ${periodDays}d)`;
+    await this.sendSlaNotification(monitorId, monitorName, userId, text, 'sla_recovered');
+  }
+
+  /**
+   * Internal helper: sends a plain-text notification to all alert channels for a monitor.
+   */
+  private async sendSlaNotification(
+    monitorId: string,
+    monitorName: string,
+    userId: string,
+    text: string,
+    trigger: string,
+  ): Promise<void> {
+    const links = await this.prisma.monitorAlert.findMany({
+      where: { monitorId },
+      include: { alertChannel: true },
+    });
+
+    const channels: AlertChannel[] = links
+      .filter((l) => l.alertChannel.userId === userId)
+      .map((l) => ({
+        id: l.alertChannel.id,
+        userId: l.alertChannel.userId,
+        name: l.alertChannel.name,
+        type: l.alertChannel.type as AlertChannel['type'],
+        config: (l.alertChannel.configJson as Record<string, unknown>) ?? {},
+        createdAt: l.alertChannel.createdAt.toISOString(),
+      }));
+
+    for (const channel of channels) {
+      try {
+        await this.sendWithRetry(channel, text, undefined, { monitorId, monitorName, trigger });
+      } catch (error) {
+        this.logger.error(`SLA alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
+      }
+    }
+  }
+
+  /**
    * Sends a test notification through a given alert channel to verify configuration.
    * Uses the same retry logic as production alerts (3 attempts with exponential backoff).
    * @param channel - The alert channel to test (webhook, discord, slack, telegram, email)

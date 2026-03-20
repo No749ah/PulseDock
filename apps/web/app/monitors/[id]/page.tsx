@@ -25,6 +25,8 @@ interface MonitorItem {
   enabled: boolean;
   createdAt: string;
   config?: Record<string, unknown>;
+  slaTarget?: number | null;
+  slaPeriodDays?: number | null;
 }
 
 interface AlertChannelInfo {
@@ -361,6 +363,14 @@ export default function MonitorDetailPage() {
                   {uptime !== null ? `${uptime.uptimePct}%` : "—"}
                 </span>
                 <span className="text-xs text-text-secondary">last {PERIOD_LABELS[uptimePeriod]}</span>
+                {monitor?.slaTarget != null && uptime !== null && (
+                  <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold w-fit ${uptime.uptimePct >= monitor.slaTarget ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}>
+                    {uptime.uptimePct >= monitor.slaTarget ? "SLA MET ✓" : "SLA BREACHED ✗"}
+                  </span>
+                )}
+                {monitor?.slaTarget != null && (
+                  <span className="text-xs text-text-secondary">Target: {monitor.slaTarget}% over {monitor.slaPeriodDays ?? 30}d</span>
+                )}
               </div>
 
               {/* Incidents */}

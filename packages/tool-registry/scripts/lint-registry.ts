@@ -130,6 +130,28 @@ function lintRegistry(entries: ToolRegistryEntry[]): LintError[] {
     if (entry.id && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.id)) {
       errors.push({ id, field: "id", severity: "warning", message: `ID "${entry.id}" is not kebab-case` });
     }
+
+    // Evidence URL check for verified entries
+    if (entry.verified && entry.verificationStatus === 'verified' && !entry.evidenceUrl && !entry.docsUrl) {
+      errors.push({ id, field: "evidenceUrl", severity: "warning", message: "Verified entry missing evidenceUrl or docsUrl — add reference to endpoint documentation" });
+    }
+
+    // Variant validation
+    if (entry.variants && entry.variants.length > 0) {
+      const variantIds = new Set<string>();
+      for (const variant of entry.variants) {
+        if (!variant.id || variant.id.trim() === '') {
+          errors.push({ id, field: "variants[].id", severity: "error", message: "Variant missing id" });
+        } else if (variantIds.has(variant.id)) {
+          errors.push({ id, field: "variants[].id", severity: "error", message: `Duplicate variant id: "${variant.id}"` });
+        } else {
+          variantIds.add(variant.id);
+        }
+        if (!variant.label || variant.label.trim() === '') {
+          errors.push({ id, field: "variants[].label", severity: "warning", message: `Variant "${variant.id}" missing label` });
+        }
+      }
+    }
   }
 
   return errors;
@@ -185,10 +207,14 @@ function main() {
   const verifiedCount = TOOL_REGISTRY.filter((e) => e.verified).length;
   const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
   const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
+  const withEvidence = TOOL_REGISTRY.filter((e) => e.evidenceUrl).length;
+  const withVariants = TOOL_REGISTRY.filter((e) => e.variants && e.variants.length > 0).length;
   console.log(`\nVerification stats:`);
   console.log(`  verified=true:         ${verifiedCount} / ${TOOL_REGISTRY.length}`);
   console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
   console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
+  console.log(`  evidenceUrl:           ${withEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  with variants:         ${withVariants} / ${TOOL_REGISTRY.length}`);
   console.log();
 
   // Exit with error code if there are hard errors

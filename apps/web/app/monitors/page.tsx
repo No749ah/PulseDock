@@ -58,6 +58,8 @@ interface MonitorItem {
   config?: Record<string, unknown>;
   tags?: MonitorTag[];
   alertChannels?: AlertChannelSummary[];
+  slaTarget?: number | null;
+  slaPeriodDays?: number | null;
 }
 
 interface MonitorRun {
@@ -201,6 +203,8 @@ function MonitorsPageInner() {
     heartbeatTimeoutMin: number;
     heartbeatToken: string;
     folderId: string;
+    slaTarget: number | "";
+    slaPeriodDays: number;
   }>({
     name: "",
     type: "HTTP",
@@ -213,6 +217,8 @@ function MonitorsPageInner() {
     heartbeatTimeoutMin: 5,
     heartbeatToken: "",
     folderId: "",
+    slaTarget: "",
+    slaPeriodDays: 30,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -483,10 +489,12 @@ function MonitorsPageInner() {
           config,
           tags: selectedTags,
           folderId: formData.folderId || null,
+          ...(formData.slaTarget !== "" ? { slaTarget: formData.slaTarget } : {}),
+          slaPeriodDays: formData.slaPeriodDays,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
+      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -547,6 +555,8 @@ function MonitorsPageInner() {
           config,
           tags: selectedTags,
           folderId: formData.folderId || null,
+          slaTarget: formData.slaTarget !== "" ? formData.slaTarget : null,
+          slaPeriodDays: formData.slaPeriodDays,
         }),
       });
       setShowModal(false);
@@ -664,6 +674,8 @@ function MonitorsPageInner() {
       heartbeatTimeoutMin: 5,
       heartbeatToken: "",
       folderId: "",
+      slaTarget: "",
+      slaPeriodDays: 30,
     });
     setShowTemplates(false);
   };
@@ -1033,7 +1045,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
+                  setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1331,7 +1343,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "" });
+                      setFormData({ name: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -1435,7 +1447,7 @@ function MonitorsPageInner() {
                         <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border/60 text-text-muted">{intervalLabel}</span>
                         <div className="flex items-center gap-1 ml-auto">
                           <button
-                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData({ name: monitor.name, type: monitor.type, target: monitor.target, intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1, enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""), expectedText: String(monitor.config?.expectedText ?? ""), heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5), heartbeatToken: String(monitor.config?.token ?? ""), folderId: monitor.folderId ?? "" } as typeof formData); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
+                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData({ name: monitor.name, type: monitor.type, target: monitor.target, intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1, enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""), expectedText: String(monitor.config?.expectedText ?? ""), heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5), heartbeatToken: String(monitor.config?.token ?? ""), folderId: monitor.folderId ?? "", slaTarget: monitor.slaTarget ?? "", slaPeriodDays: monitor.slaPeriodDays ?? 30 } as typeof formData); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
                             className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border/60 text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
                           >
                             <Pencil className="w-3 h-3" /> Edit
@@ -2346,6 +2358,42 @@ function MonitorsPageInner() {
             ) : (
               <p className="mt-1 text-xs text-text-secondary">How many consecutive failures before sending an alert (1-10).</p>
             )}
+          </div>
+
+          {/* SLA Target */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              SLA Target (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              placeholder="e.g. 99.9"
+              value={formData.slaTarget}
+              onChange={(e) => setFormData({ ...formData, slaTarget: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-text-secondary">Optional. Alert when rolling uptime drops below this percentage.</p>
+          </div>
+
+          {/* SLA Period */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              SLA Period
+            </label>
+            <select
+              value={formData.slaPeriodDays}
+              onChange={(e) => setFormData({ ...formData, slaPeriodDays: parseInt(e.target.value) })}
+              className={inputClass}
+            >
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
+              <option value={90}>90 days</option>
+            </select>
+            <p className="mt-1 text-xs text-text-secondary">Rolling window for SLA uptime calculation.</p>
           </div>
 
           <div>

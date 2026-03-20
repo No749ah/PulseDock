@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from './checks.service';
+import { AlertsService } from '../alerts/alerts.service';
 
 /** How many days of MonitorRun history to keep. Configurable via RUN_RETENTION_DAYS env var. Default: 90 days. */
 const RUN_RETENTION_DAYS = Math.max(1, parseInt(process.env['RUN_RETENTION_DAYS'] ?? '90', 10) || 90);
@@ -26,6 +27,7 @@ export class ChecksScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly checksService: ChecksService,
+    private readonly alertsService: AlertsService,
   ) {}
 
   /** Returns the current check queue depth (number of monitors actively being checked). */
@@ -113,6 +115,9 @@ export class ChecksScheduler {
     folderId: string | null;
     enabled: boolean;
     createdAt: Date;
+    slaTarget?: number | null;
+    slaPeriodDays?: number | null;
+    slaBreachAlertedAt?: Date | null;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -139,9 +144,110 @@ export class ChecksScheduler {
         folderId: monitor.folderId,
         enabled: monitor.enabled,
         createdAt: monitor.createdAt.toISOString(),
+        slaTarget: monitor.slaTarget ?? null,
+        slaPeriodDays: monitor.slaPeriodDays ?? null,
+        slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
       });
     } finally {
       this.queueDepth--;
+    }
+  }
+
+  /**
+   * Every 15 minutes: check SLA targets across all monitors that have slaTarget set.
+   * Fires a breach alert when rolling uptime drops below the target (at most once per 24h).
+   * Fires a recovery alert when uptime returns above the target and was previously breached.
+   */
+  @Cron('*/15 * * * *')
+  async checkSlaBreach() {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { enabled: true, slaTarget: { not: null } },
+    });
+
+    for (const monitor of monitors) {
+      if (monitor.slaTarget === null) continue;
+
+      const periodDays = monitor.slaPeriodDays ?? 30;
+      const from = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId: monitor.id, checkedAt: { gte: from } },
+        select: { ok: true },
+      });
+
+      const totalChecks = runs.length;
+      if (totalChecks === 0) continue;
+
+      const successChecks = runs.filter((r) => r.ok).length;
+      const actualPct = Math.round((successChecks / totalChecks) * 10000) / 100;
+      const targetPct = monitor.slaTarget;
+
+      const now = new Date();
+
+      if (actualPct < targetPct) {
+        // Check if we should fire (no prior alert OR last alert > 24h ago)
+        const lastAlerted = monitor.slaBreachAlertedAt;
+        const hoursSinceLastAlert = lastAlerted
+          ? (now.getTime() - lastAlerted.getTime()) / 3_600_000
+          : Infinity;
+
+        if (hoursSinceLastAlert >= 24) {
+          try {
+            await this.alertsService.notifySlaBreached(
+              monitor.id,
+              monitor.name,
+              monitor.userId,
+              actualPct,
+              targetPct,
+              periodDays,
+            );
+          } catch (err) {
+            this.logger.error(`SLA breach notification failed for monitor ${monitor.id}`, err instanceof Error ? err.message : String(err));
+          }
+
+          await this.prisma.monitor.update({
+            where: { id: monitor.id },
+            data: { slaBreachAlertedAt: now },
+          });
+
+          this.logger.log(JSON.stringify({
+            event: 'sla.breach',
+            monitorId: monitor.id,
+            monitorName: monitor.name,
+            actualPct,
+            targetPct,
+            periodDays,
+          }));
+        }
+      } else if (monitor.slaBreachAlertedAt !== null) {
+        // Uptime recovered — fire recovery alert and clear the breach state
+        try {
+          await this.alertsService.notifySlaRecovered(
+            monitor.id,
+            monitor.name,
+            monitor.userId,
+            actualPct,
+            targetPct,
+            periodDays,
+          );
+        } catch (err) {
+          this.logger.error(`SLA recovery notification failed for monitor ${monitor.id}`, err instanceof Error ? err.message : String(err));
+        }
+
+        await this.prisma.monitor.update({
+          where: { id: monitor.id },
+          data: { slaBreachAlertedAt: null },
+        });
+
+        this.logger.log(JSON.stringify({
+          event: 'sla.recovered',
+          monitorId: monitor.id,
+          monitorName: monitor.name,
+          actualPct,
+          targetPct,
+          periodDays,
+        }));
+      }
     }
   }
 

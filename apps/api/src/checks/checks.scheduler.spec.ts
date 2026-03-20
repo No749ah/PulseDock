@@ -13,6 +13,9 @@ function makeMonitor(overrides: Record<string, unknown> = {}) {
     configJson: {},
     folderId: null,
     enabled: true,
+    slaTarget: null as number | null,
+    slaPeriodDays: 30 as number | null,
+    slaBreachAlertedAt: null as Date | null,
     createdAt: new Date('2026-01-01'),
     runs: [] as Array<{ checkedAt: Date }>,
     ...overrides,
@@ -23,9 +26,11 @@ function makePrisma(monitors?: ReturnType<typeof makeMonitor>[]) {
   return {
     monitor: {
       findMany: vi.fn().mockResolvedValue(monitors ?? []),
+      update: vi.fn().mockResolvedValue({}),
     },
     monitorRun: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
 }
@@ -36,19 +41,29 @@ function makeChecksService() {
   };
 }
 
+function makeAlertsService() {
+  return {
+    notifySlaBreached: vi.fn().mockResolvedValue(undefined),
+    notifySlaRecovered: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 function makeScheduler(
   prismaOverride?: ReturnType<typeof makePrisma>,
   checksOverride?: ReturnType<typeof makeChecksService>,
+  alertsOverride?: ReturnType<typeof makeAlertsService>,
 ) {
   return new ChecksScheduler(
     (prismaOverride ?? makePrisma()) as never,
     (checksOverride ?? makeChecksService()) as never,
+    (alertsOverride ?? makeAlertsService()) as never,
   );
 }
 
 describe('ChecksScheduler', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let checks: ReturnType<typeof makeChecksService>;
+  let alerts: ReturnType<typeof makeAlertsService>;
   let scheduler: ChecksScheduler;
 
   beforeEach(() => {
@@ -58,7 +73,8 @@ describe('ChecksScheduler', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     prisma = makePrisma([]);
     checks = makeChecksService();
-    scheduler = makeScheduler(prisma, checks);
+    alerts = makeAlertsService();
+    scheduler = makeScheduler(prisma, checks, alerts);
   });
 
   afterEach(() => {
@@ -270,6 +286,90 @@ describe('ChecksScheduler', () => {
       const eightyNineDaysAgo = new Date(before.getTime() - 89 * 24 * 60 * 60 * 1000);
       expect(cutoff.getTime()).toBeGreaterThan(ninetyOneDaysAgo.getTime());
       expect(cutoff.getTime()).toBeLessThan(eightyNineDaysAgo.getTime());
+    });
+  });
+
+  describe('checkSlaBreach()', () => {
+    it('does nothing when there are no SLA monitors', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      await scheduler.checkSlaBreach();
+      expect(alerts.notifySlaBreached).not.toHaveBeenCalled();
+      expect(alerts.notifySlaRecovered).not.toHaveBeenCalled();
+    });
+
+    it('fires notifySlaBreached and updates slaBreachAlertedAt when uptime is below target and never alerted', async () => {
+      const monitor = makeMonitor({
+        slaTarget: 99.9,
+        slaPeriodDays: 30,
+        slaBreachAlertedAt: null,
+      });
+      // findMany for monitors (first call) returns the SLA monitor
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      // findMany for monitorRun: 10 runs, 1 failed → 90% uptime (below 99.9%)
+      prisma.monitorRun.findMany.mockResolvedValueOnce([
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: true },
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: false },
+      ]);
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaBreached).toHaveBeenCalledOnce();
+      expect(alerts.notifySlaBreached).toHaveBeenCalledWith(
+        'monitor-1', 'Test Monitor', 'user-1', 90, 99.9, 30,
+      );
+      expect(prisma.monitor.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'monitor-1' },
+          data: { slaBreachAlertedAt: expect.any(Date) },
+        }),
+      );
+    });
+
+    it('skips breach alert when already alerted within the last hour (deduplication)', async () => {
+      const recentAlert = new Date(Date.now() - 30 * 60 * 1000); // 30 min ago
+      const monitor = makeMonitor({
+        slaTarget: 99.9,
+        slaPeriodDays: 30,
+        slaBreachAlertedAt: recentAlert,
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      // 90% uptime — still below 99.9%
+      prisma.monitorRun.findMany.mockResolvedValueOnce([
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: true },
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: false },
+      ]);
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaBreached).not.toHaveBeenCalled();
+      expect(prisma.monitor.update).not.toHaveBeenCalled();
+    });
+
+    it('fires notifySlaRecovered and clears slaBreachAlertedAt when uptime recovers above target', async () => {
+      const previousBreachTime = new Date(Date.now() - 48 * 60 * 60 * 1000); // 48h ago
+      const monitor = makeMonitor({
+        slaTarget: 99.0,
+        slaPeriodDays: 30,
+        slaBreachAlertedAt: previousBreachTime,
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      // 100% uptime — above 99%
+      prisma.monitorRun.findMany.mockResolvedValueOnce([
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: true },
+      ]);
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaRecovered).toHaveBeenCalledOnce();
+      expect(alerts.notifySlaRecovered).toHaveBeenCalledWith(
+        'monitor-1', 'Test Monitor', 'user-1', 100, 99, 30,
+      );
+      expect(prisma.monitor.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'monitor-1' },
+          data: { slaBreachAlertedAt: null },
+        }),
+      );
     });
   });
 });

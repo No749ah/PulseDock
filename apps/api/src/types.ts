@@ -46,6 +46,9 @@ export interface Monitor {
   alertChannelIds: string[];
   folderId: string | null;
   enabled: boolean;
+  slaTarget: number | null;
+  slaPeriodDays: number | null;
+  slaBreachAlertedAt: string | null;
   createdAt: string;
 }
 

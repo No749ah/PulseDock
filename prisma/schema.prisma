@@ -65,6 +65,8 @@ model User {
   onCallSchedules         OnCallSchedule[]
   escalationPolicies      EscalationPolicy[]
   oauthAccounts           OAuthAccount[]
+  activeOrgId             String?
+  orgMemberships          OrgMember[]
 }
 
 model Session {
@@ -654,4 +656,61 @@ model OAuthAccount {
 
   @@unique([provider, providerId])
   @@index([userId])
+}
+
+/// Organization model for multi-workspace/multi-team support.
+/// Users can belong to multiple organizations and switch between them.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  website   String?
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members OrgMember[]
+  invites OrgInvite[]
+
+  @@index([slug])
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+/// Membership linking users to organizations with a role.
+model OrgMember {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole      @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+/// Pending organization invite by email.
+model OrgInvite {
+  id             String   @id @default(cuid())
+  email          String
+  organizationId String
+  role           OrgRole  @default(MEMBER)
+  token          String   @unique @default(cuid())
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
 }

@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   BarChart2,
   Bell,
+  Building2,
   ScrollText,
   CalendarClock,
   ChevronDown,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 import { clearSession, getCachedUser, getUser } from './auth';
 import { useTheme } from './theme-provider';
+import { OrgSwitcher } from '../app/components/OrgSwitcher';
 import { api } from '../lib/api';
 
 type NavItem = {
@@ -68,6 +70,12 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Insights',
     items: [
       { href: '/reports', label: 'Reports', icon: BarChart2 },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { href: '/account/organizations', label: 'Organizations', icon: Building2 },
     ],
   },
   {
@@ -265,6 +273,11 @@ export function AppFrame({
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Org switcher */}
+        <div className="px-3 py-2 border-b border-border/40 shrink-0">
+          <OrgSwitcher />
         </div>
 
         {/* Nav groups */}

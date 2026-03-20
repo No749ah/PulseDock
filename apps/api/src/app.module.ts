@@ -49,6 +49,8 @@ import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { TeamController } from './team/team.controller';
 import { TeamService } from './team/team.service';
+import { OrganizationsController } from './organizations/organizations.controller';
+import { OrganizationsService } from './organizations/organizations.service';
 import { SettingsController } from './settings/settings.controller';
 import { SettingsService } from './settings/settings.service';
 import { BackupService } from './settings/backup.service';
@@ -94,6 +96,7 @@ import { OnCallService } from './oncall/oncall.service';
     FeedbackController,
     GrafanaController,
     OnCallController,
+    OrganizationsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -121,6 +124,7 @@ import { OnCallService } from './oncall/oncall.service';
     BackupService,
     GrafanaService,
     OnCallService,
+    OrganizationsService,
   ],
 })
 export class AppModule implements NestModule {

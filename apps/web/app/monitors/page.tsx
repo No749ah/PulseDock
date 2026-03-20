@@ -254,6 +254,52 @@ function MonitorsPageInner() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [monitorDeps, setMonitorDeps] = useState<Map<string, { id: string; name: string; type: string }[]>>(new Map());
   const [depsLoading, setDepsLoading] = useState<Set<string>>(new Set());
+  const [depSelection, setDepSelection] = useState<Map<string, string>>(new Map());
+  const [depsSaving, setDepsSaving] = useState<Set<string>>(new Set());
+  async function loadDependencies(id: string) {
+    const userId = getUser()?.id;
+    setDepsLoading((s) => new Set(s).add(id));
+    try {
+      const deps = await api<{ id: string; name: string; type: string }[]>(`/v1/monitors/${id}/dependencies`, userId);
+      setMonitorDeps((m) => new Map(m).set(id, deps));
+    } catch {
+      setMonitorDeps((m) => new Map(m).set(id, []));
+    } finally {
+      setDepsLoading((s) => { const ns = new Set(s); ns.delete(id); return ns; });
+    }
+  }
+
+  async function addDependency(monitorId: string) {
+    const dependsOnId = depSelection.get(monitorId);
+    if (!dependsOnId) return;
+    const userId = getUser()?.id;
+    setDepsSaving((s) => new Set(s).add(monitorId));
+    try {
+      await api(`/v1/monitors/${monitorId}/dependencies/${dependsOnId}`, userId, { method: 'POST' });
+      success('Dependency added');
+      await loadDependencies(monitorId);
+      setDepSelection((m) => { const nm = new Map(m); nm.delete(monitorId); return nm; });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to add dependency');
+    } finally {
+      setDepsSaving((s) => { const ns = new Set(s); ns.delete(monitorId); return ns; });
+    }
+  }
+
+  async function removeDependency(monitorId: string, dependsOnId: string) {
+    const userId = getUser()?.id;
+    setDepsSaving((s) => new Set(s).add(monitorId));
+    try {
+      await api(`/v1/monitors/${monitorId}/dependencies/${dependsOnId}`, userId, { method: 'DELETE' });
+      success('Dependency removed');
+      await loadDependencies(monitorId);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Failed to remove dependency');
+    } finally {
+      setDepsSaving((s) => { const ns = new Set(s); ns.delete(monitorId); return ns; });
+    }
+  }
+
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -261,21 +307,7 @@ function MonitorsPageInner() {
         next.delete(id);
       } else {
         next.add(id);
-        // Lazy-load dependencies when row is first expanded
-        if (!monitorDeps.has(id)) {
-          const userId = getUser()?.id;
-          setDepsLoading((s) => new Set(s).add(id));
-          api<{ id: string; name: string; type: string }[]>(`/v1/monitors/${id}/dependencies`, userId)
-            .then((deps) => {
-              setMonitorDeps((m) => new Map(m).set(id, deps));
-            })
-            .catch(() => {
-              setMonitorDeps((m) => new Map(m).set(id, []));
-            })
-            .finally(() => {
-              setDepsLoading((s) => { const ns = new Set(s); ns.delete(id); return ns; });
-            });
-        }
+        if (!monitorDeps.has(id)) void loadDependencies(id);
       }
       return next;
     });
@@ -1938,21 +1970,67 @@ function MonitorsPageInner() {
                                   </p>
                                   {depsLoading.has(monitor.id) ? (
                                     <p className="text-xs text-text-secondary">Loading…</p>
-                                  ) : (monitorDeps.get(monitor.id) ?? []).length === 0 ? (
-                                    <p className="text-xs text-text-secondary">No dependencies</p>
                                   ) : (
-                                    <div className="space-y-1">
-                                      {(monitorDeps.get(monitor.id) ?? []).map((dep) => {
-                                        const depLastRun = runs.find((r) => r.monitorId === dep.id);
-                                        const depOk = depLastRun?.ok;
-                                        return (
-                                          <div key={dep.id} className="flex items-center gap-1.5 text-xs">
-                                            <div className={`w-2 h-2 rounded-full shrink-0 ${depOk === true ? "bg-success" : depOk === false ? "bg-danger" : "bg-border"}`} />
-                                            <span className="text-text-primary truncate">{dep.name}</span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
+                                    <>
+                                      {(monitorDeps.get(monitor.id) ?? []).length === 0 ? (
+                                        <p className="text-xs text-text-secondary">No dependencies</p>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          {(monitorDeps.get(monitor.id) ?? []).map((dep) => {
+                                            const depLastRun = runs.find((r) => r.monitorId === dep.id);
+                                            const depOk = depLastRun?.ok;
+                                            return (
+                                              <div key={dep.id} className="flex items-center justify-between gap-2 text-xs">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                  <div className={`w-2 h-2 rounded-full shrink-0 ${depOk === true ? "bg-success" : depOk === false ? "bg-danger" : "bg-border"}`} />
+                                                  <span className="text-text-primary truncate">{dep.name}</span>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  className="text-text-secondary hover:text-danger transition-colors"
+                                                  disabled={depsSaving.has(monitor.id)}
+                                                  onClick={() => void removeDependency(monitor.id, dep.id)}
+                                                  title="Remove dependency"
+                                                >
+                                                  <X className="w-3 h-3" />
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      <div className="pt-2 border-t border-border/40 space-y-1.5">
+                                        {(() => {
+                                          const deps = monitorDeps.get(monitor.id) ?? [];
+                                          const existing = new Set(deps.map((d) => d.id));
+                                          const candidates = monitors.filter((m) => m.id !== monitor.id && !existing.has(m.id));
+                                          return (
+                                            <>
+                                              <select
+                                                value={depSelection.get(monitor.id) ?? ''}
+                                                onChange={(e) => setDepSelection((m) => new Map(m).set(monitor.id, e.target.value))}
+                                                className="w-full px-2 py-1.5 rounded-md bg-surface border border-border text-xs text-text-primary"
+                                                disabled={depsSaving.has(monitor.id) || candidates.length === 0}
+                                              >
+                                                <option value="">Add dependency…</option>
+                                                {candidates.map((c) => (
+                                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                              </select>
+                                              <button
+                                                type="button"
+                                                className="w-full px-2 py-1.5 rounded-md bg-accent/15 text-accent text-xs font-medium hover:bg-accent/25 disabled:opacity-50"
+                                                disabled={!depSelection.get(monitor.id) || depsSaving.has(monitor.id)}
+                                                onClick={() => void addDependency(monitor.id)}
+                                              >
+                                                Add dependency
+                                              </button>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    </>
                                   )}
                                 </div>
                               </div>

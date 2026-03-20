@@ -1,3 +1,16 @@
+## Status Summary (2026-03-20 14:06 UTC)
+- **Build/Test:** ✅ Clean build, 1603 tests passing
+- **Deployment:** ✅ Restarted; local routes + reverse proxy checks all 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Monitor dependencies UI completed:** Expanded monitor row now supports full dependency management.
+    - Lazy-load existing dependencies via `GET /v1/monitors/:id/dependencies`
+    - Add dependency with dropdown + action (`POST /v1/monitors/:id/dependencies/:dependsOnId`)
+    - Remove dependency inline (`DELETE /v1/monitors/:id/dependencies/:dependsOnId`)
+    - Dependency health dot (green/red/unknown) shown next to each dependency
+    - Added saving/disabled states and toast feedback for add/remove flows
+  - **Cleanup:** Removed stray debug logs from `status-pages.service.ts` update path.
+
 ## Status Summary (2026-03-20 13:50 UTC)
 - **Build/Test:** ✅ Clean build, 1603 tests passing (1581 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ All routes 200 (local + API health)

@@ -7,8 +7,8 @@ export class CreateAlertChannelDto {
   @MaxLength(255)
   name!: string;
 
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email'])
-  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie'])
+  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie';
 
   @IsObject()
   config!: Record<string, unknown>;
@@ -22,8 +22,8 @@ export class UpdateAlertChannelDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email'])
-  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie'])
+  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie';
 
   @IsOptional()
   @IsObject()

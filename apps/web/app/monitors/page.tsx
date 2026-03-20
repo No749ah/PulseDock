@@ -465,9 +465,11 @@ function MonitorsPageInner() {
         if (f.checkTls) config.checkTls = f.checkTls;
       }
             if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
+        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
         if (f.requestHeaders?.trim()) {
           try {
@@ -536,9 +538,11 @@ function MonitorsPageInner() {
         if (f.checkTls) config.checkTls = f.checkTls;
       }
             if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
+        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
         if (f.requestHeaders?.trim()) {
           try {
@@ -1738,7 +1742,9 @@ function MonitorsPageInner() {
                                       : "",
                                     requestBody: String(monitor.config?.requestBody ?? ""),
                                     responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
-                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
+                                    bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
+                                    bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
+                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -2343,6 +2349,36 @@ function MonitorsPageInner() {
                   maxLength={500}
                 />
                 <p className="mt-1 text-xs text-text-secondary">If set, the response body must contain this string (case-insensitive). Leave blank to skip body check.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  JSON path assertion <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={(formData as unknown as { bodyJsonPath?: string }).bodyJsonPath ?? ""}
+                    onChange={(e) => {
+                      setFormData({ ...formData, bodyJsonPath: e.target.value } as typeof formData & { bodyJsonPath?: string });
+                    }}
+                    className={inputClass + " flex-1"}
+                    placeholder="e.g. status or data.health"
+                    maxLength={200}
+                    aria-label="JSON path"
+                  />
+                  <input
+                    type="text"
+                    value={(formData as unknown as { bodyJsonPathExpected?: string }).bodyJsonPathExpected ?? ""}
+                    onChange={(e) => {
+                      setFormData({ ...formData, bodyJsonPathExpected: e.target.value } as typeof formData & { bodyJsonPathExpected?: string });
+                    }}
+                    className={inputClass + " w-36"}
+                    placeholder='Expected value'
+                    maxLength={200}
+                    aria-label="Expected value"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">Assert a JSON field in the response (dot-notation, e.g. <code className="bg-surface px-1 rounded">data.status</code>). Optional expected value — leave blank for a truthy check. Requires JSON response.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">

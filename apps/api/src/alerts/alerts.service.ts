@@ -186,6 +186,80 @@ export class AlertsService {
       await this.mailer.sendAlertEmail(channel.config.to, text, extra);
       return;
     }
+
+    if (channel.type === 'pagerduty' && typeof channel.config.integrationKey === 'string') {
+      const ctx = extra as { run?: { level?: string }; monitor?: { name?: string; target?: string }; monitorId?: string; test?: boolean } | undefined;
+      const level = (ctx?.run?.level ?? 'red') as string;
+      const monitorId = (extra as Record<string, unknown> | undefined)?.monitorId as string | undefined
+        ?? ctx?.monitor?.name
+        ?? 'unknown';
+      const eventAction = level === 'green' ? 'resolve' : 'trigger';
+      const severity = level === 'red' ? 'critical' : level === 'yellow' ? 'warning' : 'info';
+      const body = JSON.stringify({
+        routing_key: channel.config.integrationKey,
+        event_action: eventAction,
+        dedup_key: monitorId,
+        payload: {
+          summary: text,
+          severity,
+          source: ctx?.monitor?.target ?? 'PulseDock',
+          custom_details: ctx,
+        },
+      });
+      const resp = await fetch('https://events.pagerduty.com/v2/enqueue', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      });
+      if (!resp.ok) {
+        const respBody = await resp.text().catch(() => '');
+        throw new Error(`PagerDuty returned ${resp.status}: ${respBody}`);
+      }
+      return;
+    }
+
+    if (channel.type === 'opsgenie' && typeof channel.config.apiKey === 'string') {
+      const ctx = extra as { run?: { level?: string }; monitor?: { name?: string; target?: string }; monitorId?: string; test?: boolean } | undefined;
+      const level = (ctx?.run?.level ?? 'red') as string;
+      const monitorId = (extra as Record<string, unknown> | undefined)?.monitorId as string | undefined
+        ?? ctx?.monitor?.name
+        ?? 'unknown';
+      const region = channel.config.region === 'eu' ? 'eu' : 'us';
+      const baseUrl = region === 'eu' ? 'https://api.eu.opsgenie.com/v2/alerts' : 'https://api.opsgenie.com/v2/alerts';
+      const authHeader = `GenieKey ${channel.config.apiKey}`;
+
+      if (level === 'green') {
+        // Close/resolve the alert via alias
+        const resp = await fetch(`${baseUrl}/${encodeURIComponent(monitorId)}/close`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'Authorization': authHeader },
+          body: JSON.stringify({ note: text }),
+        });
+        if (!resp.ok && resp.status !== 404) {
+          const respBody = await resp.text().catch(() => '');
+          throw new Error(`OpsGenie close returned ${resp.status}: ${respBody}`);
+        }
+      } else {
+        const priority = level === 'red' ? 'P1' : level === 'yellow' ? 'P2' : 'P3';
+        const body = JSON.stringify({
+          message: text,
+          alias: monitorId,
+          description: text,
+          priority,
+          details: ctx as Record<string, unknown>,
+        });
+        const resp = await fetch(baseUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'Authorization': authHeader },
+          body,
+        });
+        if (!resp.ok) {
+          const respBody = await resp.text().catch(() => '');
+          throw new Error(`OpsGenie returned ${resp.status}: ${respBody}`);
+        }
+      }
+      return;
+    }
   }
 
   /**

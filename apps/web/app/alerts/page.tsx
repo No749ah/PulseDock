@@ -16,7 +16,7 @@ import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie';
 
 type AlertChannel = {
   id: string;
@@ -40,6 +40,10 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <Globe className={`${iconClass} text-orange-400`} />;
     case 'telegram':
       return <Send className={`${iconClass} text-sky-400`} />;
+    case 'pagerduty':
+      return <Bell className={`${iconClass} text-green-500`} />;
+    case 'opsgenie':
+      return <Bell className={`${iconClass} text-orange-500`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -185,6 +189,8 @@ export default function AlertsPage() {
       if (extras?.parseMode) cfg.parseMode = extras.parseMode;
       return cfg;
     }
+    if (type === 'pagerduty') return { integrationKey: a };
+    if (type === 'opsgenie') return { apiKey: a, region: b || 'us' };
     return { to: a };
   }
 
@@ -244,6 +250,14 @@ export default function AlertsPage() {
     } else if (channel.type === 'telegram') {
       setEditA(String(channel.config.botToken ?? ''));
       setEditB(String(channel.config.chatId ?? ''));
+    } else if (channel.type === 'pagerduty') {
+      setEditA(String(channel.config.integrationKey ?? ''));
+      setEditB('');
+      setEditSecret('');
+    } else if (channel.type === 'opsgenie') {
+      setEditA(String(channel.config.apiKey ?? ''));
+      setEditB(String(channel.config.region ?? 'us'));
+      setEditSecret('');
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -357,6 +371,8 @@ export default function AlertsPage() {
                     { value: 'slack', label: 'Slack' },
                     { value: 'telegram', label: 'Telegram' },
                     { value: 'email', label: 'Email' },
+                    { value: 'pagerduty', label: 'PagerDuty' },
+                    { value: 'opsgenie', label: 'OpsGenie' },
                   ]}
                 />
               </div>
@@ -366,11 +382,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
@@ -389,6 +405,15 @@ export default function AlertsPage() {
                       </select>
                     </div>
                   </>
+                )}
+                {form.type === 'opsgenie' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Region</label>
+                    <select className={inputClass} value={form.b || 'us'} onChange={(e) => setForm({ ...form, b: e.target.value })}>
+                      <option value="us">US (api.opsgenie.com)</option>
+                      <option value="eu">EU (api.eu.opsgenie.com)</option>
+                    </select>
+                  </div>
                 )}
                 {form.type === 'webhook' && (
                   <div>
@@ -441,10 +466,13 @@ export default function AlertsPage() {
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : 'URL'}: {form.a ? 'configured' : 'missing'}
                 </p>
                 {form.type === 'telegram' && (
                   <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
+                )}
+                {form.type === 'opsgenie' && (
+                  <p className="text-sm text-text-secondary">Region: {form.b === 'eu' ? 'EU (api.eu.opsgenie.com)' : 'US (api.opsgenie.com)'}</p>
                 )}
                 {form.type === 'webhook' && (
                   <p className="text-sm text-text-secondary">Signing secret: {form.secret ? '✓ set' : 'not set (optional)'}</p>
@@ -472,10 +500,19 @@ export default function AlertsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : 'URL'}
+                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : 'URL'}
                 </label>
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>
+              {selected?.type === 'opsgenie' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Region</label>
+                  <select className={inputClass} value={editB || 'us'} onChange={(e) => setEditB(e.target.value)}>
+                    <option value="us">US (api.opsgenie.com)</option>
+                    <option value="eu">EU (api.eu.opsgenie.com)</option>
+                  </select>
+                </div>
+              )}
               {selected?.type === 'telegram' && (
                 <>
                   <div>

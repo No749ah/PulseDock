@@ -15,7 +15,7 @@ import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
-import { runExtractorPipeline, normalizeExtractors } from './version-extractor.util';
+import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
 
 @Injectable()
 export class ChecksService {
@@ -173,17 +173,21 @@ export class ChecksService {
     // Config options:
     //   expectedStatus: number | number[]  — expected HTTP status code(s) (default: any 2xx)
     //   bodyContains: string               — response body must contain this string (case-insensitive)
+    //   bodyJsonPath: string               — dot-notation path into JSON response body (e.g. "status" or "data.health")
+    //   bodyJsonPathExpected: string       — expected string value at bodyJsonPath (empty = truthy check)
     //   httpMethod: string                 — HTTP method to use (default: GET)
     //   requestHeaders: Record<string,string> — custom request headers to send
     //   requestBody: string                — request body for POST/PUT/PATCH
     //   responseTimeThresholdMs: number    — if response latency exceeds this, return yellow (degraded)
     const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
     const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
+    const bodyJsonPath = typeof config['bodyJsonPath'] === 'string' && config['bodyJsonPath'].trim() ? config['bodyJsonPath'].trim() : undefined;
+    const bodyJsonPathExpected = typeof config['bodyJsonPathExpected'] === 'string' ? config['bodyJsonPathExpected'].trim() : undefined;
     const responseTimeThresholdMs =
       typeof config['responseTimeThresholdMs'] === 'number' && config['responseTimeThresholdMs'] > 0
         ? config['responseTimeThresholdMs']
         : undefined;
-    const needsBody = !!bodyContains;
+    const needsBody = !!bodyContains || !!bodyJsonPath;
     const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
     const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
     const requestHeaders: Record<string, string> = {};
@@ -233,34 +237,75 @@ export class ChecksService {
         };
       }
 
-      // Check body keyword if requested
+      // Check body keyword / JSON path assertion if requested
       if (needsBody) {
         const body = await response.text().catch(() => '');
-        const found = body.toLowerCase().includes(bodyContains!.toLowerCase());
-        if (!found) {
-          return {
-            ok: false,
-            statusCode: response.status,
-            latencyMs,
-            message: `HTTP ${response.status} — body does not contain "${bodyContains}"`,
-            level: 'red' as const,
-          };
+
+        // bodyContains check
+        if (bodyContains) {
+          const found = body.toLowerCase().includes(bodyContains.toLowerCase());
+          if (!found) {
+            return {
+              ok: false,
+              statusCode: response.status,
+              latencyMs,
+              message: `HTTP ${response.status} — body does not contain "${bodyContains}"`,
+              level: 'red' as const,
+            };
+          }
         }
-        // Check response time threshold even when body keyword matches
+
+        // bodyJsonPath assertion check
+        if (bodyJsonPath) {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(body);
+          } catch {
+            return {
+              ok: false,
+              statusCode: response.status,
+              latencyMs,
+              message: `HTTP ${response.status} — response is not valid JSON (cannot assert JSON path "${bodyJsonPath}")`,
+              level: 'red' as const,
+            };
+          }
+          const normalizedPath = bodyJsonPath.startsWith('$.') ? bodyJsonPath.slice(2) : bodyJsonPath.startsWith('$') ? bodyJsonPath.slice(1) : bodyJsonPath;
+          const actual = extractByPath(parsed, normalizedPath);
+          const actualStr = actual === null || actual === undefined ? '' : String(actual);
+          const assertionPasses = bodyJsonPathExpected
+            ? actualStr === bodyJsonPathExpected
+            : actual !== null && actual !== undefined && actual !== false && actual !== '' && actual !== 0;
+          if (!assertionPasses) {
+            const expectDesc = bodyJsonPathExpected ? `"${bodyJsonPathExpected}"` : 'truthy value';
+            return {
+              ok: false,
+              statusCode: response.status,
+              latencyMs,
+              message: `HTTP ${response.status} — JSON path "${bodyJsonPath}" is ${actualStr ? `"${actualStr}"` : 'missing/falsy'} (expected ${expectDesc})`,
+              level: 'red' as const,
+            };
+          }
+        }
+
+        // Check response time threshold even when body assertions pass
         if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+          const assertDesc = bodyJsonPath ? `JSON path "${bodyJsonPath}" OK` : `body contains "${bodyContains}"`;
           return {
             ok: false,
             statusCode: response.status,
             latencyMs,
-            message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), body contains "${bodyContains}"`,
+            message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), ${assertDesc}`,
             level: 'yellow' as const,
           };
         }
+        const okDesc = bodyJsonPath
+          ? `JSON path "${bodyJsonPath}"${bodyJsonPathExpected ? ` = "${bodyJsonPathExpected}"` : ' is truthy'}`
+          : `body contains "${bodyContains}"`;
         return {
           ok: true,
           statusCode: response.status,
           latencyMs,
-          message: `OK — body contains "${bodyContains}"`,
+          message: `OK — ${okDesc}`,
           level: 'green' as const,
         };
       }

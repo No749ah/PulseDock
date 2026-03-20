@@ -212,10 +212,11 @@ export class CreateStatusPageDto {
   })
   slug?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Initial page layout (widgets + settings). Stored as raw JSON.' })
   @IsOptional()
   @IsObject()
-  layout?: PageLayoutDto;
+  @Type(() => Object)
+  layout?: Record<string, unknown>;
 }
 
 export class UpdateStatusPageDto {
@@ -232,10 +233,11 @@ export class UpdateStatusPageDto {
   @MaxLength(500)
   description?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Page layout (widgets + settings). Stored as raw JSON — no deep validation.' })
   @IsOptional()
   @IsObject()
-  layout?: PageLayoutDto;
+  @Type(() => Object)
+  layout?: Record<string, unknown>;
 
   @ApiPropertyOptional()
   @IsOptional()

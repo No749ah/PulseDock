@@ -44,6 +44,21 @@ export interface Widget {
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
+/** Returns true if the API indicated this widget has no monitor configured. */
+function isNoConfig(data: unknown): boolean {
+  return typeof data === 'object' && data !== null && '_noConfig' in data && (data as Record<string, unknown>)._noConfig === true;
+}
+
+/** Shown on the public page when a widget has no monitor configured. Only visible in editor preview; hidden on live published pages. */
+function NoConfigPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/60 bg-surface/30 p-4 flex items-center justify-center gap-2 text-text-secondary/60 text-xs">
+      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+      <span>{label} — no monitor selected</span>
+    </div>
+  );
+}
+
 function formatRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -274,6 +289,7 @@ export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
 
 // Uptime Bar — simplified stat
 export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="Uptime Bar" />;
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const widgetData = extra.widgetDataById[widget.id] as {
     uptimePct?: number;
@@ -345,6 +361,7 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
 
 // Uptime Timeline — per-day status bars from real MonitorRun data
 export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="Uptime Timeline" />;
   const monitor = monitors.find((m) => m.id === widget.config.monitorId);
   const label = widget.config.label ?? monitor?.name ?? "Uptime Timeline";
 
@@ -418,6 +435,7 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
 
 // SLA Summary
 export function SLASummary({ widget, monitors, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="SLA Summary" />; 
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const label = widget.config.label ?? monitor?.name ?? "SLA";
 
@@ -509,6 +527,7 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
 
 // Response Time Chart — real SVG sparkline from MonitorRun latencyMs values
 export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="Response Time" />; 
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const label = widget.config.label ?? monitor?.name ?? "Response Time";
 
@@ -640,6 +659,7 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
 
 // Response Time Heatmap — hour-of-day × day-of-week latency grid
 export function ResponseTimeHeatmap({ widget, monitors, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="Response Time Heatmap" />; 
   const monitor = monitors.find((m) => m.id === widget.config.monitorId) ?? monitors[0];
   const label = (widget.config.label as string) ?? monitor?.name ?? "Response Time Heatmap";
 
@@ -989,6 +1009,7 @@ function ComponentStatusList({ widget, extra }: WidgetProps) {
 
 // Rolling Uptime Cards — row of cards: 24h / 7d / 30d / 90d uptime%
 function RollingUptimeCards({ widget, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="Rolling Uptime" />; 
   const data = extra.widgetDataById[widget.id] as {
     monitorId: string;
     cards: Array<{ label: string; days: number; uptimePct: number; total: number }>;
@@ -2754,6 +2775,7 @@ export function ResponseTimeComparison({ widget, extra }: WidgetProps) {
 // ── Uptime Comparison Chart ──────────────────────────────────────────────
 
 export function UptimeComparisonChart({ widget, extra }: WidgetProps) {
+  if (isNoConfig(extra.widgetDataById?.[widget.id])) return <NoConfigPlaceholder label="Uptime Comparison" />;
   const raw = extra.widgetDataById?.[widget.id] as {
     monitors: { id: string; name: string; uptimePct: number }[];
     periodDays: number;

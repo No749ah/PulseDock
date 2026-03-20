@@ -644,7 +644,7 @@ export class StatusPagesService {
 
     switch (widget.type) {
       case 'uptime-bar': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = overrideDays ?? (widget.config.periodDays as number) ?? 30;
         const since = new Date(Date.now() - periodDays * 86_400_000);
         const runs = await this.prisma.monitorRun.findMany({
@@ -658,7 +658,7 @@ export class StatusPagesService {
       }
 
       case 'uptime-timeline': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const days = overrideDays ?? Math.min(Math.max((widget.config.days as number) ?? 90, 7), 365);
         const now = new Date();
         // Build day buckets: index 0 = oldest, index (days-1) = today
@@ -704,7 +704,7 @@ export class StatusPagesService {
       }
 
       case 'current-status-badge': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const monitor = await this.prisma.monitor.findFirst({
           where: { id: monitorId, userId },
           include: { runs: { orderBy: { checkedAt: 'desc' }, take: 1 } },
@@ -732,7 +732,7 @@ export class StatusPagesService {
       }
 
       case 'sla-summary': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = overrideDays ?? Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
         const slaTgt = Math.min(Math.max((widget.config.slaTarget as number) ?? 99.9, 0), 100);
         const since = new Date(Date.now() - periodDays * 86_400_000);
@@ -764,7 +764,7 @@ export class StatusPagesService {
       }
 
       case 'response-time-chart': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         // Default: last 60 data points (configurable via periodHours or points)
         const points = Math.min(Math.max((widget.config.points as number) ?? 60, 10), 200);
         const periodHours = (widget.config.periodHours as number) ?? 0; // 0 = use last N points
@@ -806,7 +806,7 @@ export class StatusPagesService {
       case 'response-time-heatmap': {
         // Hour-of-day (0-23) × Day-of-week (0=Sun … 6=Sat) latency heatmap
         // Returns avg latency per cell + overall stats for color scale
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 90, 7), 365);
         const since = new Date(Date.now() - periodDays * 86_400_000);
         const runs = await this.prisma.monitorRun.findMany({
@@ -888,7 +888,7 @@ export class StatusPagesService {
 
       case 'rolling-uptime-cards': {
         // Returns uptime% for multiple periods: 24h / 7d / 30d / 90d
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periods = [
           { label: '24h', days: 1 },
           { label: '7d', days: 7 },
@@ -915,7 +915,7 @@ export class StatusPagesService {
         // Per monitor: last 90 days as horizontal colored bar (like GitHub status)
         const monitorIds = (widget.config.monitorIds as string[] | undefined) ??
           (monitorId ? [monitorId] : []);
-        if (monitorIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+        if (monitorIds.length === 0) return { _noConfig: true };
         const days = Math.min(Math.max((widget.config.days as number) ?? 90, 7), 180);
         const since = new Date(Date.now() - days * 86_400_000);
         // Fetch all runs for all monitors in one query
@@ -967,7 +967,7 @@ export class StatusPagesService {
 
       case 'uptime-percentage-card': {
         // Big number display: "99.97%" with trend arrow vs previous period
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
         const currentSince = new Date(Date.now() - periodDays * 86_400_000);
         const prevSince = new Date(Date.now() - 2 * periodDays * 86_400_000);
@@ -1114,7 +1114,7 @@ export class StatusPagesService {
       }
 
       case 'latency-percentiles-card': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = (widget.config.periodDays as number) ?? 7;
         const currentSince = new Date(Date.now() - periodDays * 86_400_000);
         const prevSince = new Date(Date.now() - 2 * periodDays * 86_400_000);
@@ -1333,7 +1333,7 @@ export class StatusPagesService {
         });
 
         if (monitors.length === 0) {
-          throw new BadRequestException('Widget missing monitorId(s) config or no monitors found');
+          return { _noConfig: true };
         }
 
         const rows = await Promise.all(
@@ -1361,7 +1361,7 @@ export class StatusPagesService {
       }
 
       case 'uptime-heatmap': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const days = 7;
         const since = new Date(Date.now() - days * 86_400_000);
 
@@ -1680,7 +1680,7 @@ export class StatusPagesService {
       }
 
       case 'performance-trend': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const days = 14;
         const since = new Date(Date.now() - days * 86_400_000);
 
@@ -1733,7 +1733,7 @@ export class StatusPagesService {
       }
 
       case 'apdex-score': {
-        if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
+        if (!monitorId) return { _noConfig: true };
         const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 7, 1), 90);
         const satisfiedThresholdMs = (widget.config.satisfiedThresholdMs as number) ?? 200;
         const toleratingThresholdMs = (widget.config.toleratingThresholdMs as number) ?? 800;
@@ -1819,7 +1819,7 @@ export class StatusPagesService {
         const resolvedIds = monitorIds?.length
           ? monitorIds.slice(0, 8)
           : monitorId ? [monitorId] : [];
-        if (resolvedIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+        if (resolvedIds.length === 0) return { _noConfig: true };
 
         const points = Math.min(Math.max((widget.config.points as number) ?? 24, 5), 100);
         const periodHours = (widget.config.periodHours as number) ?? 0;
@@ -1873,7 +1873,7 @@ export class StatusPagesService {
         const resolvedIds = monitorIds?.length
           ? monitorIds
           : monitorId ? [monitorId] : [];
-        if (resolvedIds.length === 0) throw new BadRequestException('Widget missing monitorId(s) config');
+        if (resolvedIds.length === 0) return { _noConfig: true };
 
         const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
         const since = new Date(Date.now() - periodDays * 86_400_000);

@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 12:00 UTC)
+- **Build/Test:** ✅ Clean
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Layout width:** `max-w-[1220px]` → `max-w-[1600px]` globally — all pages wider
+  - **Expanded row scrollbars:** Fixed in monitors + versions — `overflow-hidden` + `noScroll` on inner Table
+  - **Embed badge modals:** Widened to `max-w-2xl`, scrollable body, code snippets now readable (not truncated)
+  - **Projects page:** Default view set to table
+  - **Status page widgets:** API no longer throws on unconfigured widgets — returns `{ _noConfig: true }` gracefully. Widgets show "no monitor selected" placeholder instead of empty boxes.
+
 ## Status Summary (2026-03-20 09:25 UTC)
 - **Build/Test:** ✅ Build fixed and green, tests passing (API 1542 + CLI 10 + Agent 12)
 - **Deployment:** ✅ Restarted via `npm run restart`; local + proxy route checks all 200
@@ -720,6 +730,21 @@
 ## Next Up (Priority Order)
 
 > **NOTE:** Items marked 🔴 are critical for production. Do not skip them.
+
+---
+
+### 🔴 STATUS PAGE — Widget System Refactor (HIGH PRIORITY)
+
+> Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
+
+- [ ] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data.
+- [ ] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text.
+- [ ] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
+- [ ] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
+- [ ] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload.
+- [ ] **Widget design overhaul** — All widgets should look polished, modern, and information-dense. Current widgets are too sparse and basic. Reference: Grafana dashboards, Linear status pages, Atlassian Statuspage. Each widget should show: title, key metric (large), context (small), trend, last updated time.
+- [ ] **"Preview with data" mode** — In the editor, a button that loads real live data into the preview so you can see exactly what the public page will look like.
+- [ ] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user.
 
 ---
 

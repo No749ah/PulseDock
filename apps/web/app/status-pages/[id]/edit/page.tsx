@@ -258,6 +258,22 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
 
 const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
 
+/** Widget types that require a monitor to be configured to show real data. */
+const NEEDS_MONITOR_TYPES = new Set([
+  'uptime-bar', 'uptime-timeline', 'sla-summary', 'response-time-chart', 'response-time-heatmap',
+  'current-status-badge', 'rolling-uptime-cards', 'uptime-percentage-card', 'ssl-certificate-status',
+  'latency-percentiles-card', 'performance-trend', 'apdex-score', 'dns-resolution-time',
+  'uptime-heatmap', 'status-history-ribbon', 'gauge', 'progress-ring', 'throughput-counter',
+  'custom-metric-chart', 'changelog-widget',
+]);
+
+/** Widget types that require monitorIds (array) to be configured. */
+const NEEDS_MONITORS_TYPES = new Set([
+  'uptime-comparison-chart', 'response-time-comparison', 'sla-compliance-table',
+  'service-health-matrix', 'sparkline-row', 'component-status-list',
+  'aggregate-health-score', 'multi-environment-status',
+]);
+
 // ── Template Gallery ────────────────────────────────────────────────────────
 
 interface StatusTemplate {
@@ -741,8 +757,18 @@ function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect,
         </button>
       </div>
       {/* Widget preview */}
-      <div className="flex-1 overflow-hidden p-2">
+      <div className="flex-1 overflow-hidden p-2 relative">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
+        {/* Unconfigured monitor warning */}
+        {((NEEDS_MONITOR_TYPES.has(widget.type) && !widget.config.monitorId) ||
+          (NEEDS_MONITORS_TYPES.has(widget.type) && (!widget.config.monitorIds || (widget.config.monitorIds as string[]).length === 0))) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-surface/80 backdrop-blur-[1px] rounded-lg">
+            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400">
+              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+              Select a monitor
+            </div>
+          </div>
+        )}
       </div>
       {/* Resize handle — bottom-right corner (hidden when locked) */}
       {!isLocked && (

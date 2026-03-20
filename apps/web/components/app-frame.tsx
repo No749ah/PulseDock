@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   BarChart2,
   Bell,
+  Building2,
   ScrollText,
   CalendarClock,
   ChevronDown,
@@ -68,6 +69,12 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Insights',
     items: [
       { href: '/reports', label: 'Reports', icon: BarChart2 },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { href: '/account/organizations', label: 'Organizations', icon: Building2 },
     ],
   },
   {

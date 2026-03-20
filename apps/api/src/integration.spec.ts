@@ -182,6 +182,25 @@ const mockPrisma = {
     findMany: vi.fn().mockResolvedValue([]),
     updateMany: vi.fn().mockResolvedValue({ count: 0 }),
   },
+  organization: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({}),
+    update: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  orgMember: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    findMany: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({}),
+    update: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  orgInvite: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({ token: 'test-token' }),
+    delete: vi.fn().mockResolvedValue({}),
+  },
   $transaction: vi.fn().mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 };
 

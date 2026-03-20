@@ -13,6 +13,7 @@ import { Select } from '../components/Select';
 import { VersionDiff, extractVersionsFromMessage } from '../components/VersionDiff';
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
+import { useDebounce } from '../../lib/useDebounce';
 
 type AlertChannelSummary = {
   id: string;
@@ -165,8 +166,7 @@ export default function VersionsPage() {
   // Tool registry
   const [toolRegistry, setToolRegistry] = useState<{ tools: ToolEntry[]; categories: string[] } | null>(null);
   const [toolSearch, setToolSearch] = useState('');
-  const [toolSearchDebounced, setToolSearchDebounced] = useState('');
-  const toolSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toolSearchDebounced = useDebounce(toolSearch, 250);
   const [toolCategory, setToolCategory] = useState('');
   const [toolVisibleCount, setToolVisibleCount] = useState(50);
   const [selectedTool, setSelectedTool] = useState<ToolEntry | null>(null);
@@ -617,7 +617,6 @@ export default function VersionsPage() {
   function resetCreateForm() {
     setCreateStep(-1);
     setToolSearch('');
-    setToolSearchDebounced('');
     setToolCategory('');
     setSelectedTool(null);
     setName('');
@@ -854,11 +853,7 @@ export default function VersionsPage() {
                       value={toolSearch}
                       onChange={(e) => {
                         setToolSearch(e.target.value);
-                        if (toolSearchTimerRef.current) clearTimeout(toolSearchTimerRef.current);
-                        toolSearchTimerRef.current = setTimeout(() => {
-                          setToolSearchDebounced(e.target.value);
-                          setToolVisibleCount(50);
-                        }, 200);
+                        setToolVisibleCount(50);
                       }}
                       autoFocus
                     />
@@ -957,7 +952,7 @@ export default function VersionsPage() {
                           Not in the registry?{' '}
                           <button
                             className="text-accent hover:underline"
-                            onClick={() => { setToolSearch(''); setToolSearchDebounced(''); setSelectedTool(null); }}
+                            onClick={() => { setToolSearch(''); setSelectedTool(null); }}
                           >
                             Use manual config
                           </button>

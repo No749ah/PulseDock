@@ -18,6 +18,7 @@ import { MonitorTemplates } from "../components/MonitorTemplates";
 import type { MonitorTemplate } from "../components/MonitorTemplates";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
+import { useDebounce } from "../../lib/useDebounce";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
@@ -142,6 +143,7 @@ function MonitorsPageInner() {
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 250);
   const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -255,7 +257,7 @@ function MonitorsPageInner() {
   const [alertPanelError, setAlertPanelError] = useState("");
 
   // Reset to page 1 when filters/sort change
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir, filterStatuses, filterTypes, filterTags]);
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir, filterStatuses, filterTypes, filterTags]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -802,8 +804,8 @@ function MonitorsPageInner() {
         if (lvl === "red" && !filterStatuses.has("down")) return false;
       }
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.toLowerCase();
       if (!m.name.toLowerCase().includes(q) && !m.target.toLowerCase().includes(q)) return false;
     }
     return true;

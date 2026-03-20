@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
@@ -3593,5 +3593,106 @@ describe('discoverCurrentVersion() — endpointFallbacks in detectDeployedVersio
     expect(result.currentVersion).toBe('10.0.0');
     // Only one fetch call should have been made (the custom endpoint)
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── Monitor Dependencies ────────────────────────────────────────────────────
+describe('listDependencies / addDependency / removeDependency', () => {
+  let service: MonitorsService;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
+
+  function makeDepsTestPrisma() {
+    return {
+      monitor: { findFirst: vi.fn() },
+      monitorDependency: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+        upsert: vi.fn(),
+        deleteMany: vi.fn(),
+      },
+      monitorRun: { findFirst: vi.fn() },
+    };
+  }
+
+  function makeService(overrides?: Record<string, unknown>) {
+    prisma = { ...makeDepsTestPrisma(), ...overrides };
+    service = new MonitorsService(
+      prisma as never,
+      { checkNow: vi.fn(), checkAppVersion: vi.fn() } as never,
+      { log: vi.fn() } as never,
+      { alertTriggered: vi.fn() } as never,
+    );
+    return service;
+  }
+
+  it('listDependencies returns 404 for unknown monitor', async () => {
+    const svc = makeService();
+    (prisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    await expect(svc.listDependencies('user-1', 'unknown')).rejects.toThrow(NotFoundException);
+  });
+
+  it('listDependencies returns formatted deps', async () => {
+    const svc = makeService();
+    (prisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1' });
+    (prisma.monitorDependency.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 'dep1', monitorId: 'm1', dependsOnId: 'm2', createdAt: new Date(), dependsOn: { id: 'm2', name: 'Dep', type: 'HTTP', target: 'https://dep.example.com', enabled: true } },
+    ]);
+    const result = await svc.listDependencies('user-1', 'm1');
+    expect(result).toHaveLength(1);
+    expect(result[0]?.dependsOn?.name).toBe('Dep');
+  });
+
+  it('addDependency rejects self-dependency', async () => {
+    const svc = makeService();
+    await expect(svc.addDependency('user-1', 'm1', 'm1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('addDependency rejects if circular (B already depends on A)', async () => {
+    const svc = makeService();
+    (prisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1' });
+    (prisma.monitorDependency.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'circular' });
+    await expect(svc.addDependency('user-1', 'm1', 'm2')).rejects.toThrow(BadRequestException);
+  });
+
+  it('addDependency succeeds and returns result', async () => {
+    const svc = makeService();
+    (prisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1' });
+    (prisma.monitorDependency.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.monitorDependency.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'dep1', monitorId: 'm1', dependsOnId: 'm2', dependsOn: { id: 'm2', name: 'DB' } });
+    const result = await svc.addDependency('user-1', 'm1', 'm2');
+    expect(result.monitorId).toBe('m1');
+    expect(result.dependsOnId).toBe('m2');
+  });
+
+  it('removeDependency deletes the dependency record', async () => {
+    const svc = makeService();
+    (prisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1' });
+    (prisma.monitorDependency.deleteMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
+    const result = await svc.removeDependency('user-1', 'm1', 'm2');
+    expect(result.ok).toBe(true);
+  });
+
+  it('hasDependencyDown returns false when no deps', async () => {
+    const svc = makeService();
+    (prisma.monitorDependency.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const result = await svc.hasDependencyDown('m1');
+    expect(result).toBe(false);
+  });
+
+  it('hasDependencyDown returns true when a dependency is failing', async () => {
+    const svc = makeService();
+    (prisma.monitorDependency.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ dependsOnId: 'm2' }]);
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false });
+    const result = await svc.hasDependencyDown('m1');
+    expect(result).toBe(true);
+  });
+
+  it('hasDependencyDown returns false when all dependencies are healthy', async () => {
+    const svc = makeService();
+    (prisma.monitorDependency.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ dependsOnId: 'm2' }]);
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
+    const result = await svc.hasDependencyDown('m1');
+    expect(result).toBe(false);
   });
 });

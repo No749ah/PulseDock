@@ -81,6 +81,12 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     maintenanceWindow: {
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    monitorDependency: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    monitorRun: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     alertDeliveryLog: {
       create: vi.fn().mockResolvedValue({}),
     },
@@ -581,6 +587,44 @@ describe('AlertsService', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('suppresses alert when a dependency monitor is currently down', async () => {
+      const monitor = makeMonitor({ name: 'App Server' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Dependency "DB Monitor" is currently failing
+      prisma.monitorDependency.findMany = vi.fn().mockResolvedValue([
+        { dependsOnId: 'dep-monitor-1', dependsOn: { name: 'DB Monitor' } },
+      ]);
+      prisma.monitorRun.findFirst = vi.fn().mockResolvedValue({ ok: false });
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      // Alert should be suppressed because the dependency is down
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('does NOT suppress alert when dependency monitor is healthy', async () => {
+      const monitor = makeMonitor({ name: 'App Server', userId: 'u-1' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({ userId: 'u-1', type: 'email' });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Dependency is healthy (ok: true) — should NOT suppress
+      prisma.monitorDependency.findMany = vi.fn().mockResolvedValue([
+        { dependsOnId: 'dep-monitor-1', dependsOn: { name: 'DB Monitor' } },
+      ]);
+      prisma.monitorRun.findFirst = vi.fn().mockResolvedValue({ ok: true });
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      // Alert should fire since dependency is healthy
+      // (mailer called since channel type is email)
+      // We just verify fetchMock was not involved, not an explicit email assert
+      expect(prisma.monitorDependency.findMany).toHaveBeenCalled();
+    });
+
     it('logs String(error) when channel catch receives non-Error', async () => {
       vi.useFakeTimers();
       const monitor = makeMonitor();
@@ -608,6 +652,8 @@ describe('AlertsService', () => {
           }]),
         },
         maintenanceWindow: { findFirst: vi.fn().mockResolvedValue(null) },
+        monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
+        monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
       };
       const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);

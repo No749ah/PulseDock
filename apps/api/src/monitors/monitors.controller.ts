@@ -223,4 +223,56 @@ export class MonitorsController {
   ) {
     return this.monitorsService.removeMonitorAlert(req.user.id, id, channelId);
   }
+
+  // ── Dependencies ──────────────────────────────────────────────────────────
+
+  @Get(':id/dependencies')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'List dependencies for a monitor',
+    description:
+      'Returns all monitors that this monitor depends on. When a dependency is down, alerts on this monitor are suppressed.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Dependencies returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  listDependencies(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.listDependencies(req.user.id, id);
+  }
+
+  @Post(':id/dependencies/:dependsOnId')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Add a dependency to a monitor',
+    description:
+      'Mark another monitor as a dependency. Alerts on this monitor are suppressed while the dependency is down.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'dependsOnId', description: 'ID of the monitor this one depends on' })
+  @ApiResponse({ status: 200, description: 'Dependency added.' })
+  @ApiResponse({ status: 400, description: 'Self-dependency or circular dependency.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  addDependency(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('dependsOnId') dependsOnId: string,
+  ) {
+    return this.monitorsService.addDependency(req.user.id, id, dependsOnId);
+  }
+
+  @Delete(':id/dependencies/:dependsOnId')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Remove a dependency from a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'dependsOnId', description: 'ID of the dependency to remove' })
+  @ApiResponse({ status: 200, description: 'Dependency removed.' })
+  @ApiResponse({ status: 404, description: 'Dependency not found.' })
+  removeDependency(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('dependsOnId') dependsOnId: string,
+  ) {
+    return this.monitorsService.removeDependency(req.user.id, id, dependsOnId);
+  }
 }

@@ -113,10 +113,31 @@ model Monitor {
   monitorTags   MonitorTag[]
   maintenanceWindows MaintenanceWindowMonitor[]
   incidentMonitors   IncidentMonitor[]
+  // Dependency graph: this monitor depends on other monitors
+  dependencies  MonitorDependency[] @relation("DependentMonitor")
+  // Monitors that depend on this monitor
+  dependents    MonitorDependency[] @relation("DependencyMonitor")
 
   @@index([userId])
   @@index([enabled])
   @@index([userId, enabled])
+}
+
+/// Monitor dependency: when the "dependency" monitor is down, suppress alerts on the "dependent" monitor
+model MonitorDependency {
+  id           String   @id @default(cuid())
+  /// The monitor that is suppressed when the dependency is down
+  monitorId    String
+  /// The monitor that must be UP for the dependent monitor to alert normally
+  dependsOnId  String
+  createdAt    DateTime @default(now())
+
+  monitor    Monitor @relation("DependentMonitor", fields: [monitorId], references: [id], onDelete: Cascade)
+  dependsOn  Monitor @relation("DependencyMonitor", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, dependsOnId])
+  @@index([monitorId])
+  @@index([dependsOnId])
 }
 
 model Tag {

@@ -1406,4 +1406,119 @@ export class MonitorsService {
       message: `Imported ${created.length} monitor${created.length !== 1 ? 's' : ''}${skipped ? `, skipped ${skipped} duplicate${skipped !== 1 ? 's' : ''}` : ''}.`,
     };
   }
+
+  // ── Dependencies ───────────────────────────────────────────────────────────
+
+  /**
+   * List all monitors that `monitorId` depends on (i.e. alert suppression parents).
+   * @param userId - Authenticated user ID
+   * @param monitorId - The dependent monitor
+   * @returns Array of dependency monitor summaries
+   */
+  async listDependencies(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const deps = await this.prisma.monitorDependency.findMany({
+      where: { monitorId },
+      include: {
+        dependsOn: {
+          select: { id: true, name: true, type: true, target: true, enabled: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return deps.map((d) => ({
+      id: d.id,
+      monitorId: d.monitorId,
+      dependsOnId: d.dependsOnId,
+      createdAt: d.createdAt,
+      dependsOn: d.dependsOn,
+    }));
+  }
+
+  /**
+   * Add a dependency: `monitorId` depends on `dependsOnId`.
+   * Alerts on `monitorId` are suppressed while `dependsOnId` is down.
+   * @param userId - Authenticated user ID
+   * @param monitorId - The monitor to add the dependency to
+   * @param dependsOnId - The monitor to depend on
+   * @throws BadRequestException if self-dependency or circular dependency
+   * @throws NotFoundException if either monitor not found
+   */
+  async addDependency(userId: string, monitorId: string, dependsOnId: string) {
+    if (monitorId === dependsOnId) {
+      throw new BadRequestException('A monitor cannot depend on itself');
+    }
+
+    // Verify both monitors belong to this user
+    const [monitor, dep] = await Promise.all([
+      this.prisma.monitor.findFirst({ where: { id: monitorId, userId } }),
+      this.prisma.monitor.findFirst({ where: { id: dependsOnId, userId } }),
+    ]);
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    if (!dep) throw new NotFoundException('Dependency monitor not found');
+
+    // Prevent circular dependency: check if dependsOnId already depends on monitorId
+    const circular = await this.prisma.monitorDependency.findFirst({
+      where: { monitorId: dependsOnId, dependsOnId: monitorId },
+    });
+    if (circular) {
+      throw new BadRequestException('Circular dependency detected');
+    }
+
+    const result = await this.prisma.monitorDependency.upsert({
+      where: { monitorId_dependsOnId: { monitorId, dependsOnId } },
+      create: { monitorId, dependsOnId },
+      update: {},
+      include: { dependsOn: { select: { id: true, name: true, type: true, target: true } } },
+    });
+
+    return result;
+  }
+
+  /**
+   * Remove a dependency from a monitor.
+   * @param userId - Authenticated user ID
+   * @param monitorId - The dependent monitor
+   * @param dependsOnId - The dependency to remove
+   */
+  async removeDependency(userId: string, monitorId: string, dependsOnId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    await this.prisma.monitorDependency.deleteMany({
+      where: { monitorId, dependsOnId },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * Check if any of the monitor's dependencies are currently down.
+   * Used by alert logic to suppress alerts during parent outages.
+   * @param monitorId - The monitor to check
+   * @returns true if any dependency is currently unhealthy
+   */
+  async hasDependencyDown(monitorId: string): Promise<boolean> {
+    const deps = await this.prisma.monitorDependency.findMany({
+      where: { monitorId },
+      select: { dependsOnId: true },
+    });
+
+    if (!deps.length) return false;
+
+    for (const { dependsOnId } of deps) {
+      const lastRun = await this.prisma.monitorRun.findFirst({
+        where: { monitorId: dependsOnId },
+        orderBy: { checkedAt: 'desc' },
+        select: { ok: true },
+      });
+      if (lastRun && !lastRun.ok) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }

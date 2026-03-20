@@ -304,6 +304,27 @@ export class AlertsService {
       return;
     }
 
+    // Suppress alerts if any dependency monitor is currently down
+    const deps = await this.prisma.monitorDependency.findMany({
+      where: { monitorId: monitor.id },
+      select: { dependsOnId: true, dependsOn: { select: { name: true } } },
+    });
+    if (deps.length > 0) {
+      for (const dep of deps) {
+        const lastRun = await this.prisma.monitorRun.findFirst({
+          where: { monitorId: dep.dependsOnId },
+          orderBy: { checkedAt: 'desc' },
+          select: { ok: true },
+        });
+        if (lastRun && !lastRun.ok) {
+          this.logger.log(
+            `Suppressing alert for monitor "${monitor.name}" (id=${monitor.id}): dependency "${dep.dependsOn.name}" is currently down`,
+          );
+          return;
+        }
+      }
+    }
+
     // Check notification preferences before dispatching alerts
     const eventType = this.levelToEventType(run.level);
     const shouldSend = await this.notifications.shouldNotify(monitor.userId, eventType);

@@ -92,6 +92,112 @@ function LevelBadge({ level }: { level: "green" | "yellow" | "red" }) {
   );
 }
 
+/**
+ * Consistent card wrapper for all status-page widgets.
+ * Provides: rounded border, surface bg, optional header row, hover state.
+ */
+function WidgetCard({
+  title,
+  meta,
+  badge,
+  children,
+  className = "",
+  headerClassName = "",
+  accentColor,
+}: {
+  title?: string;
+  meta?: React.ReactNode;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  headerClassName?: string;
+  accentColor?: "green" | "yellow" | "red" | "blue" | "none";
+}) {
+  const borderMap = {
+    green: "border-green-500/25",
+    yellow: "border-yellow-500/25",
+    red: "border-red-500/25",
+    blue: "border-blue-500/25",
+    none: "border-border",
+    undefined: "border-border",
+  };
+  const border = borderMap[accentColor ?? "undefined"] ?? "border-border";
+  const hasHeader = title ?? meta ?? badge;
+  return (
+    <div className={`rounded-2xl border ${border} bg-surface transition-colors hover:border-border-hover overflow-hidden ${className}`}>
+      {hasHeader && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 border-b border-border/40 ${headerClassName}`}>
+          {title && (
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider truncate flex-1">
+              {title}
+            </span>
+          )}
+          {meta && <span className="text-xs text-text-muted ml-auto flex-shrink-0">{meta}</span>}
+          {badge && <span className="flex-shrink-0">{badge}</span>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+/** Compact status dot — green/yellow/red with optional pulse */
+function StatusDot({ level, pulse = false }: { level: "green" | "yellow" | "red" | "no-data"; pulse?: boolean }) {
+  const colorMap: Record<string, string> = {
+    green: "bg-green-400",
+    yellow: "bg-yellow-400",
+    red: "bg-red-400",
+    "no-data": "bg-border",
+  };
+  return (
+    <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+      {pulse && level !== "no-data" && (
+        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${colorMap[level]}`} />
+      )}
+      <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${colorMap[level]}`} />
+    </span>
+  );
+}
+
+/** Severity badge for incidents */
+function SeverityBadge({ severity }: { severity: string }) {
+  const s = severity.toUpperCase();
+  const cls =
+    s === "CRITICAL" ? "bg-red-500/15 text-red-400 ring-red-500/30"
+    : s === "HIGH" ? "bg-orange-500/15 text-orange-400 ring-orange-500/30"
+    : s === "MEDIUM" ? "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30"
+    : "bg-blue-500/15 text-blue-400 ring-blue-500/30";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 uppercase tracking-wide ${cls}`}>
+      {s}
+    </span>
+  );
+}
+
+/** Trend arrow for numeric deltas */
+function TrendArrow({
+  trend,
+  positiveIsGood = true,
+  delta,
+  unit = "",
+}: {
+  trend: "up" | "down" | "flat";
+  positiveIsGood?: boolean;
+  delta?: number;
+  unit?: string;
+}) {
+  if (trend === "flat") return null;
+  const isGood = (trend === "up") === positiveIsGood;
+  const color = isGood ? "text-green-400" : "text-red-400";
+  const arrow = trend === "up" ? "↑" : "↓";
+  const deltaStr = delta !== undefined ? `${Math.abs(delta).toFixed(2)}${unit}` : "";
+  return (
+    <span className={`text-xs font-medium ${color}`}>
+      {arrow} {deltaStr}
+    </span>
+  );
+}
+
 // ── Widget Components ────────────────────────────────────────────────────
 
 interface ExtraData {
@@ -246,22 +352,32 @@ export function CurrentStatusBadge({ widget, monitors }: WidgetProps) {
 
 // Multi-Monitor Status Grid
 export function MultiMonitorStatusGrid({ monitors }: WidgetProps) {
+  const downCount = monitors.filter(m => m.level === "red").length;
+  const degradedCount = monitors.filter(m => m.level === "yellow").length;
+  const metaText = downCount > 0 ? `${downCount} down` : degradedCount > 0 ? `${degradedCount} degraded` : `${monitors.length} operational`;
+  const accentColor = downCount > 0 ? "red" : degradedCount > 0 ? "yellow" : "green";
+
   if (monitors.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-secondary">
-        No monitors configured
-      </div>
+      <WidgetCard title="Monitor Status">
+        <div className="px-4 py-6 text-center text-sm text-text-secondary">No monitors configured</div>
+      </WidgetCard>
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {monitors.map((m) => (
-        <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-surface px-3 py-2.5">
-          <span className="truncate pr-2 text-sm font-medium text-text-primary">{m.name}</span>
-          <LevelBadge level={m.level} />
-        </div>
-      ))}
-    </div>
+    <WidgetCard title="Monitor Status" meta={metaText} accentColor={accentColor}>
+      <div className="p-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        {monitors.map((m) => (
+          <div key={m.id} className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-surface-elevated/20 hover:bg-surface-elevated/40 px-3 py-2 transition-colors">
+            <StatusDot level={m.level} pulse={m.level === "red"} />
+            <span className="truncate text-sm font-medium text-text-primary flex-1">{m.name}</span>
+            {m.latencyMs !== null && (
+              <span className="text-xs text-text-muted tabular-nums flex-shrink-0">{m.latencyMs}ms</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </WidgetCard>
   );
 }
 
@@ -808,32 +924,49 @@ export function ResponseTimeHeatmap({ widget, monitors, extra }: WidgetProps) {
 // Check History Feed
 export function CheckHistoryFeed({ extra }: WidgetProps) {
   const checks = extra.recentChecks;
+  const okCount = checks.filter(c => c.ok).length;
+  const failCount = checks.length - okCount;
   if (checks.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-secondary">
-        No check history available yet
-      </div>
+      <WidgetCard title="Recent Checks">
+        <div className="px-4 py-8 text-center text-sm text-text-secondary">
+          No check history available yet
+        </div>
+      </WidgetCard>
     );
   }
   return (
-    <div className="rounded-xl border border-border bg-surface">
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-medium text-text-primary">Recent Check Results</p>
-      </div>
-      <ul className="divide-y divide-border/60 max-h-80 overflow-y-auto">
-        {checks.slice(0, 20).map((c) => (
-          <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-            <LevelBadge level={c.level as "green" | "yellow" | "red"} />
-            <span className="flex-1 truncate text-sm text-text-primary">{c.monitorName}</span>
-            {c.message && <span className="truncate max-w-[200px] text-xs text-text-secondary">{c.message}</span>}
-            {c.latencyMs !== null && (
-              <span className="shrink-0 tabular-nums text-xs text-text-secondary">{c.latencyMs}ms</span>
-            )}
-            <span className="shrink-0 text-xs text-text-secondary">{formatRelative(c.checkedAt)}</span>
-          </li>
-        ))}
+    <WidgetCard
+      title="Recent Checks"
+      meta={
+        <span className="flex items-center gap-2">
+          {okCount > 0 && <span className="text-green-400 font-mono">{okCount}✓</span>}
+          {failCount > 0 && <span className="text-red-400 font-mono">{failCount}✗</span>}
+        </span>
+      }
+    >
+      <ul className="divide-y divide-border/40 max-h-80 overflow-y-auto">
+        {checks.slice(0, 20).map((c) => {
+          const level = c.level as "green" | "yellow" | "red";
+          const dotColor = level === "green" ? "bg-green-400" : level === "yellow" ? "bg-yellow-400" : "bg-red-400";
+          return (
+            <li key={c.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-elevated/30 transition-colors">
+              <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor} ${level !== "green" ? "animate-pulse" : ""}`} />
+              <span className="flex-1 truncate text-sm text-text-primary">{c.monitorName}</span>
+              {c.message && (
+                <span className="hidden sm:block truncate max-w-[150px] text-xs text-text-secondary italic">{c.message}</span>
+              )}
+              {c.latencyMs !== null && (
+                <span className={`shrink-0 tabular-nums text-xs font-mono ${c.latencyMs > 500 ? "text-warning" : "text-text-secondary"}`}>
+                  {c.latencyMs}ms
+                </span>
+              )}
+              <span className="shrink-0 text-xs text-text-muted w-14 text-right">{formatRelative(c.checkedAt)}</span>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+    </WidgetCard>
   );
 }
 
@@ -842,49 +975,68 @@ export function IncidentHistory({ extra }: WidgetProps) {
   const incidents = extra.incidents;
   const active = incidents.filter(i => i.status !== "resolved");
   const resolved = incidents.filter(i => i.status === "resolved");
+  const accentColor = active.length > 0 ? "red" : "green";
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="mb-3 text-sm font-medium text-text-primary">Incident History</p>
+    <WidgetCard
+      title="Incident History"
+      meta={`${incidents.length} total`}
+      accentColor={accentColor}
+    >
+      <div className="p-4">
       {incidents.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-lg bg-green-500/5 px-3 py-2.5">
-          <span className="h-2 w-2 rounded-full bg-green-400" />
-          <span className="text-sm text-green-400">No incidents in the last 30 days</span>
+        <div className="flex items-center gap-3 rounded-xl bg-green-500/8 border border-green-500/20 px-4 py-3">
+          <StatusDot level="green" />
+          <span className="text-sm font-medium text-green-400">No incidents in the last 30 days</span>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {active.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-danger uppercase tracking-wide">Active</p>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
+                <p className="text-[10px] font-bold text-danger uppercase tracking-widest">Active</p>
+              </div>
               {active.map(i => (
-                <div key={i.id} className="rounded-lg bg-danger/5 border border-danger/20 px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />
-                    <span className="text-sm font-medium text-text-primary">{i.title}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${i.severity === "critical" ? "bg-danger/15 text-danger" : i.severity === "major" ? "bg-warning/15 text-warning" : "bg-accent/15 text-accent"}`}>{i.severity}</span>
-                    <span className="ml-auto text-xs text-text-secondary">{formatRelative(i.createdAt)}</span>
+                <div key={i.id} className="rounded-xl bg-danger/5 border border-danger/25 px-3 py-3">
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <StatusDot level="red" pulse />
+                    <span className="text-sm font-semibold text-text-primary flex-1">{i.title}</span>
+                    <SeverityBadge severity={i.severity} />
+                    <span className="text-xs text-text-muted w-full sm:w-auto sm:ml-auto pl-4 sm:pl-0">{formatRelative(i.createdAt)}</span>
                   </div>
-                  {i.monitors.length > 0 && <p className="text-xs text-text-secondary mt-1">Affected: {i.monitors.map(m => m.name).join(", ")}</p>}
-                  {i.updates[0] && <p className="text-xs text-text-secondary mt-1">{i.updates[0].message}</p>}
+                  {i.monitors.length > 0 && (
+                    <p className="text-xs text-text-secondary mt-2 pl-4">
+                      <span className="font-medium">Affected:</span> {i.monitors.map(m => m.name).join(", ")}
+                    </p>
+                  )}
+                  {i.updates[0] && (
+                    <p className="text-xs text-text-secondary mt-1.5 pl-4 italic">{i.updates[0].message}</p>
+                  )}
                 </div>
               ))}
             </div>
           )}
           {resolved.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-success uppercase tracking-wide">Resolved</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                <p className="text-[10px] font-bold text-success uppercase tracking-widest">Resolved</p>
+              </div>
               {resolved.slice(0, 5).map(i => (
-                <div key={i.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-elevated/30">
-                  <span className="h-2 w-2 rounded-full bg-success" />
+                <div key={i.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface-elevated/20 hover:bg-surface-elevated/40 transition-colors">
+                  <span className="h-2 w-2 rounded-full bg-success/60 flex-shrink-0" />
                   <span className="text-sm text-text-primary flex-1 truncate">{i.title}</span>
-                  <span className="text-xs text-text-secondary">{formatRelative(i.resolvedAt ?? i.createdAt)}</span>
+                  <SeverityBadge severity={i.severity} />
+                  <span className="text-xs text-text-muted flex-shrink-0">{formatRelative(i.resolvedAt ?? i.createdAt)}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
       )}
-    </div>
+      </div>
+    </WidgetCard>
   );
 }
 
@@ -1435,9 +1587,9 @@ function LatencyPercentilesCard({ widget, extra }: WidgetProps) {
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-6 text-center">
-        <p className="text-sm text-text-secondary">Loading...</p>
-      </div>
+      <WidgetCard title={label ?? "Response Latency"}>
+        <div className="px-4 py-8 text-center text-sm text-text-secondary">Loading...</div>
+      </WidgetCard>
     );
   }
 
@@ -1448,39 +1600,56 @@ function LatencyPercentilesCard({ widget, extra }: WidgetProps) {
     return "text-red-400";
   }
 
-  function trend(current: number | null, prev: number | null): React.ReactNode {
-    if (current === null || prev === null) return null;
-    if (current > prev) return <span className="text-red-400 text-sm">↑</span>;
-    if (current < prev) return <span className="text-green-400 text-sm">↓</span>;
-    return null;
+  function latencyBg(ms: number | null): string {
+    if (ms === null) return "bg-border/10";
+    if (ms < 200) return "bg-green-500/8";
+    if (ms < 500) return "bg-yellow-500/8";
+    return "bg-red-500/8";
   }
 
-  const cells: Array<{ label: string; value: number | null; prev: number | null }> = [
-    { label: "P50", value: data.p50, prev: data.prevP50 },
-    { label: "P95", value: data.p95, prev: data.prevP95 },
-    { label: "P99", value: data.p99, prev: data.prevP99 },
+  function latencyBorder(ms: number | null): string {
+    if (ms === null) return "border-border/30";
+    if (ms < 200) return "border-green-500/20";
+    if (ms < 500) return "border-yellow-500/20";
+    return "border-red-500/20";
+  }
+
+  function trendNode(current: number | null, prev: number | null): React.ReactNode {
+    if (current === null || prev === null) return null;
+    if (current > prev) return <span className="text-red-400 text-xs">↑</span>;
+    if (current < prev) return <span className="text-green-400 text-xs">↓</span>;
+    return <span className="text-text-muted text-xs">→</span>;
+  }
+
+  const cells: Array<{ label: string; sublabel: string; value: number | null; prev: number | null }> = [
+    { label: "P50", sublabel: "Median", value: data.p50, prev: data.prevP50 },
+    { label: "P95", sublabel: "95th pct", value: data.p95, prev: data.prevP95 },
+    { label: "P99", sublabel: "99th pct", value: data.p99, prev: data.prevP99 },
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
-      <div className="grid grid-cols-3 gap-3">
+    <WidgetCard
+      title={label ?? "Response Latency"}
+      meta={`${data.sampleCount.toLocaleString()} samples · ${data.periodDays}d`}
+    >
+      <div className="p-4 grid grid-cols-3 gap-2">
         {cells.map((c) => (
-          <div key={c.label} className="text-center">
-            <p className="text-xs font-medium text-text-secondary mb-1">{c.label}</p>
+          <div key={c.label} className={`rounded-xl border ${latencyBorder(c.value)} ${latencyBg(c.value)} p-3 text-center`}>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{c.label}</p>
+            <p className="text-[9px] text-text-muted mb-1.5">{c.sublabel}</p>
             <div className="flex items-center justify-center gap-1">
-              <span className={`text-2xl font-bold tabular-nums ${latencyColor(c.value)}`}>
-                {c.value !== null ? `${c.value}ms` : "—"}
+              <span className={`text-xl font-bold tabular-nums leading-none ${latencyColor(c.value)}`}>
+                {c.value !== null ? c.value : "—"}
               </span>
-              {trend(c.value, c.prev)}
+              {c.value !== null && <span className="text-[10px] text-text-muted">ms</span>}
+            </div>
+            <div className="mt-1 flex justify-center">
+              {trendNode(c.value, c.prev)}
             </div>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[10px] text-text-muted text-center">
-        {data.sampleCount} samples · last {data.periodDays}d
-      </p>
-    </div>
+    </WidgetCard>
   );
 }
 
@@ -1633,38 +1802,40 @@ function MttrMttfCards({ widget, extra }: WidgetProps) {
     const m = Math.floor(ms / 60000);
     if (m < 60) return `${m}m`;
     const h = Math.floor(m / 60);
-    return `${h}h${m % 60 > 0 ? `${m % 60}m` : ""}`;
+    return `${h}h${m % 60 > 0 ? ` ${m % 60}m` : ""}`;
   }
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-6 text-center">
-        <p className="text-sm text-text-secondary">Loading...</p>
-      </div>
+      <WidgetCard title={label ?? "MTTR / MTTF"}>
+        <div className="px-4 py-8 text-center text-sm text-text-secondary">Loading...</div>
+      </WidgetCard>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
-      <div className="grid grid-cols-2 gap-3">
+    <WidgetCard title={label ?? "Reliability Metrics"} meta={`Last ${data.periodDays}d`}>
+      <div className="p-4 grid grid-cols-2 gap-3">
         {/* MTTR */}
-        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
-          <p className="text-xs font-medium text-text-secondary mb-1">MTTR</p>
-          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttrMs)}</p>
-          <p className="text-[10px] text-text-muted mt-1">Mean Time to Recovery</p>
-          <p className="text-[10px] text-text-muted">{data.recoveryCount} event{data.recoveryCount !== 1 ? "s" : ""}</p>
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-center">
+          <p className="text-[10px] font-bold text-blue-400/70 uppercase tracking-widest mb-2">MTTR</p>
+          <p className="text-3xl font-bold tabular-nums text-blue-400 leading-none">{formatDuration(data.mttrMs)}</p>
+          <p className="text-[10px] text-text-muted mt-2 leading-tight">Mean Time<br/>to Recovery</p>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-surface/60 px-2 py-0.5 text-[10px] text-text-secondary">
+            {data.recoveryCount} event{data.recoveryCount !== 1 ? "s" : ""}
+          </div>
         </div>
         {/* MTTF */}
-        <div className="rounded-lg border border-border/50 bg-surface/50 p-4 text-center">
-          <p className="text-xs font-medium text-text-secondary mb-1">MTTF</p>
-          <p className="text-3xl font-bold tabular-nums text-text-primary">{formatDuration(data.mttfMs)}</p>
-          <p className="text-[10px] text-text-muted mt-1">Mean Time to Failure</p>
-          <p className="text-[10px] text-text-muted">{data.failureCount} event{data.failureCount !== 1 ? "s" : ""}</p>
+        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 text-center">
+          <p className="text-[10px] font-bold text-purple-400/70 uppercase tracking-widest mb-2">MTTF</p>
+          <p className="text-3xl font-bold tabular-nums text-purple-400 leading-none">{formatDuration(data.mttfMs)}</p>
+          <p className="text-[10px] text-text-muted mt-2 leading-tight">Mean Time<br/>to Failure</p>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-surface/60 px-2 py-0.5 text-[10px] text-text-secondary">
+            {data.failureCount} event{data.failureCount !== 1 ? "s" : ""}
+          </div>
         </div>
       </div>
-      <p className="mt-2 text-[10px] text-text-muted text-center">Last {data.periodDays}d</p>
-    </div>
+    </WidgetCard>
   );
 }
 

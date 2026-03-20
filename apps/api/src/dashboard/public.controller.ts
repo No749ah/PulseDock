@@ -97,6 +97,72 @@ function buildBadgeSvg({ label, message, color, labelColor, style }: BadgeParams
 </svg>`;
 }
 
+// ---------------------------------------------------------------------------
+// Embed Script builder
+// ---------------------------------------------------------------------------
+
+interface EmbedScriptParams {
+  displayLabel: string;
+  status: string;
+  color: string;
+  pos: string;
+  isDark: boolean;
+  latency: string;
+  monitorId: string | null;
+  pageSlug: string | null;
+}
+
+/**
+ * Builds a self-contained JavaScript snippet that injects a floating status badge
+ * into any host page when included via a `<script>` tag.
+ */
+function buildEmbedScript(p: EmbedScriptParams): string {
+  const statusIcon = p.status === 'up' || p.status === 'operational' ? '●' :
+    p.status === 'degraded' ? '◐' : p.status === 'down' || p.status === 'outage' ? '○' : '?';
+
+  // Position CSS
+  const posStyle = p.pos === 'bottom-left' ? 'bottom:16px;left:16px' :
+    p.pos === 'top-right' ? 'top:16px;right:16px' :
+    p.pos === 'top-left' ? 'top:16px;left:16px' :
+    'bottom:16px;right:16px';
+
+  const bg = p.isDark ? '#161b22' : '#fff';
+  const borderColor = p.isDark ? '#30363d' : '#d0d7de';
+  const textColor = p.isDark ? '#e6edf3' : '#1f2328';
+  const subTextColor = p.isDark ? '#8b949e' : '#656d76';
+  const labelEscaped = JSON.stringify(p.displayLabel);
+  const statusEscaped = JSON.stringify(p.status);
+  const latencyEscaped = JSON.stringify(p.latency);
+  const colorEscaped = JSON.stringify(p.color);
+  const iconEscaped = JSON.stringify(statusIcon);
+
+  return `(function(){
+  if(document.getElementById('_pd_embed_badge'))return;
+  var el=document.createElement('div');
+  el.id='_pd_embed_badge';
+  el.style.cssText='position:fixed;${posStyle};z-index:99999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:12px;line-height:1.4;border-radius:8px;padding:8px 12px;background:${bg};border:1px solid ${borderColor};box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;color:${textColor};max-width:220px;';
+  var icon=document.createElement('span');
+  icon.textContent=${iconEscaped};
+  icon.style.cssText='color:'+${colorEscaped}+';font-size:10px;flex-shrink:0;';
+  var txt=document.createElement('span');
+  txt.style.cssText='display:flex;flex-direction:column;min-width:0;';
+  var lbl=document.createElement('span');
+  lbl.textContent=${labelEscaped};
+  lbl.style.cssText='font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${textColor};';
+  var sub=document.createElement('span');
+  var subText=${statusEscaped}+(${latencyEscaped}?' · '+${latencyEscaped}:'');
+  sub.textContent=subText;
+  sub.style.cssText='color:${subTextColor};font-size:11px;';
+  txt.appendChild(lbl);
+  txt.appendChild(sub);
+  el.appendChild(icon);
+  el.appendChild(txt);
+  el.setAttribute('role','status');
+  el.setAttribute('aria-label','Service status: '+${statusEscaped});
+  document.body.appendChild(el);
+})();`;
+}
+
 @ApiTags('Public')
 @Controller('v1/public')
 export class PublicDashboardController {
@@ -333,6 +399,131 @@ export class PublicDashboardController {
   // ---------------------------------------------------------------------------
   // Status Page Overall SVG Badge
   // ---------------------------------------------------------------------------
+
+  // ── Embeddable JS Widget ─────────────────────────────────────────────────
+
+  /**
+   * Returns a self-contained JavaScript snippet that injects a live status badge
+   * into the host page. Usage:
+   *   <script src="https://your-pulsedock.example/api/v1/public/embed/monitor/MONITOR_ID.js"></script>
+   *
+   * @param monitorId - The monitor to display status for
+   */
+  @Get('embed/monitor/:monitorId.js')
+  @Header('Content-Type', 'application/javascript; charset=utf-8')
+  @ApiOperation({
+    summary: 'Embeddable status badge script for a monitor',
+    description: 'Returns a self-contained `<script>` that injects a live status badge into any webpage. Supports `?position=bottom-right|bottom-left|top-right|top-left` and `?label=Custom+Label`.',
+  })
+  @ApiParam({ name: 'monitorId', description: 'Monitor ID' })
+  @ApiQuery({ name: 'position', required: false, enum: ['bottom-right', 'bottom-left', 'top-right', 'top-left'], description: 'Badge position (default: bottom-right)' })
+  @ApiQuery({ name: 'label', required: false, description: 'Custom label override' })
+  @ApiQuery({ name: 'theme', required: false, enum: ['dark', 'light'], description: 'Badge color theme (default: dark)' })
+  @ApiResponse({ status: 200, description: 'JavaScript bundle.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async embedMonitorScript(
+    @Param('monitorId') monitorId: string,
+    @Query('position') position: string | undefined,
+    @Query('label') label: string | undefined,
+    @Query('theme') theme: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: { id: true, name: true, enabled: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    // Get latest run
+    const run = await this.prisma.monitorRun.findFirst({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      select: { ok: true, level: true, latencyMs: true, checkedAt: true },
+    });
+
+    const status = !run ? 'unknown' : run.level === 'red' ? 'down' : run.level === 'yellow' ? 'degraded' : 'up';
+    const color = status === 'up' ? '#2da44e' : status === 'degraded' ? '#d1a317' : status === 'down' ? '#cf222e' : '#6e7681';
+    const displayLabel = label ?? monitor.name;
+    const pos = position === 'bottom-left' ? 'bottom-left' : position === 'top-right' ? 'top-right' : position === 'top-left' ? 'top-left' : 'bottom-right';
+    const isDark = theme !== 'light';
+    const latency = run?.latencyMs != null ? `${run.latencyMs}ms` : '';
+
+    const script = buildEmbedScript({ displayLabel, status, color, pos, isDark, latency, monitorId, pageSlug: null });
+
+    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(script);
+  }
+
+  /**
+   * Returns a self-contained JavaScript snippet for a status page (overall status).
+   * Usage:
+   *   <script src="https://your-pulsedock.example/api/v1/public/embed/status/PAGE_SLUG.js"></script>
+   */
+  @Get('embed/status/:slug.js')
+  @Header('Content-Type', 'application/javascript; charset=utf-8')
+  @ApiOperation({
+    summary: 'Embeddable status badge script for a status page',
+    description: 'Returns a self-contained `<script>` showing overall status page health as a floating badge on any webpage.',
+  })
+  @ApiParam({ name: 'slug', description: 'Status page slug' })
+  @ApiQuery({ name: 'position', required: false, enum: ['bottom-right', 'bottom-left', 'top-right', 'top-left'], description: 'Badge position (default: bottom-right)' })
+  @ApiQuery({ name: 'label', required: false, description: 'Custom label override' })
+  @ApiQuery({ name: 'theme', required: false, enum: ['dark', 'light'], description: 'Badge color theme (default: dark)' })
+  @ApiResponse({ status: 200, description: 'JavaScript bundle.' })
+  @ApiResponse({ status: 404, description: 'Status page not found or not published.' })
+  async embedStatusPageScript(
+    @Param('slug') slug: string,
+    @Query('position') position: string | undefined,
+    @Query('label') label: string | undefined,
+    @Query('theme') theme: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const page = await this.prisma.publicStatusPage.findUnique({
+      where: { slug },
+      select: { id: true, title: true, isPublished: true, layout: true },
+    });
+    if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
+
+    // Extract monitor IDs from layout
+    const layoutStr = JSON.stringify(page.layout);
+    const monitorIdRegex = /"monitorId"\s*:\s*"([^"]+)"/g;
+    const monitorIds = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = monitorIdRegex.exec(layoutStr)) !== null) monitorIds.add(m[1]);
+
+    let status: string;
+    let color: string;
+
+    if (monitorIds.size === 0) {
+      status = 'up';
+      color = '#2da44e';
+    } else {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId: { in: [...monitorIds] } },
+        orderBy: { checkedAt: 'desc' },
+        distinct: ['monitorId'],
+        select: { level: true },
+      });
+
+      const hasDown = runs.some(r => r.level === 'red');
+      const hasDegraded = runs.some(r => r.level === 'yellow');
+
+      if (hasDown) { status = 'outage'; color = '#cf222e'; }
+      else if (hasDegraded) { status = 'degraded'; color = '#d1a317'; }
+      else { status = 'operational'; color = '#2da44e'; }
+    }
+
+    const displayLabel = label ?? page.title;
+    const pos = position === 'bottom-left' ? 'bottom-left' : position === 'top-right' ? 'top-right' : position === 'top-left' ? 'top-left' : 'bottom-right';
+    const isDark = theme !== 'light';
+
+    const script = buildEmbedScript({ displayLabel, status, color, pos, isDark, latency: '', monitorId: null, pageSlug: slug });
+
+    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.end(script);
+  }
 
   @Get('status-badge/:slug.svg')
   @Header('Content-Type', 'image/svg+xml')

@@ -2794,6 +2794,26 @@ function MonitorsPageInner() {
                   ))}
                 </div>
               </div>
+              {/* Floating widget embed */}
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
+                <p className="text-xs font-semibold text-text-primary mb-1">Floating Widget</p>
+                <p className="text-xs text-text-secondary mb-3">Paste into any webpage to show a live floating badge in the bottom-right corner.</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                    {`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`}
+                  </code>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`);
+                      success("Script tag copied!");
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
             </div>
             <div className="px-6 py-4 border-t border-border flex justify-end">
               <Button variant="secondary" onClick={() => setBadgeMonitor(null)}>Close</Button>

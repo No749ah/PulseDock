@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compareSync, hashSync } from 'bcryptjs';
 import type ms from 'ms';
@@ -156,7 +156,7 @@ export class AuthService {
       throw new UnauthorizedException('account temporarily locked');
     }
 
-    if (!compareSync(password, user.passwordHash)) {
+    if (!user.passwordHash || !compareSync(password, user.passwordHash)) {
       const failedLoginCount = user.failedLoginCount + 1;
       const lockedUntil = failedLoginCount >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
       await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount, lockedUntil } });
@@ -418,7 +418,7 @@ export class AuthService {
     }
 
     const requiresCurrentPassword = !user.mustChangePassword;
-    if (requiresCurrentPassword && (!currentPassword || !compareSync(currentPassword, user.passwordHash))) {
+    if (requiresCurrentPassword && (!currentPassword || !user.passwordHash || !compareSync(currentPassword, user.passwordHash))) {
       throw new UnauthorizedException('invalid current password');
     }
 
@@ -732,7 +732,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('user not found');
     if (!user.totpEnabled || !user.totpSecret) throw new BadRequestException('2FA is not enabled');
 
-    if (!compareSync(password, user.passwordHash)) {
+    if (!user.passwordHash || !compareSync(password, user.passwordHash)) {
       throw new UnauthorizedException('invalid password');
     }
 
@@ -969,5 +969,187 @@ export class AuthService {
       contentType: 'text/csv',
       filename: `audit-log-${new Date().toISOString().slice(0, 10)}.csv`,
     };
+  }
+
+  // ─── OAuth2 / SSO ──────────────────────────────────────────────────────────
+
+  /**
+   * Returns the OAuth2 authorization URL for a given provider.
+   * Throws NotFoundException if the provider is not configured.
+   */
+  getOAuthRedirectUrl(provider: 'github' | 'google'): string {
+    const base = process.env.OAUTH_REDIRECT_BASE_URL ?? 'http://localhost:4321';
+    const callbackUrl = `${base}/v1/auth/oauth/${provider}/callback`;
+
+    if (provider === 'github') {
+      const clientId = process.env.GITHUB_CLIENT_ID;
+      if (!clientId) throw new NotFoundException('Provider not configured');
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        scope: 'user:email',
+      });
+      return `https://github.com/login/oauth/authorize?${params.toString()}`;
+    }
+
+    if (provider === 'google') {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      if (!clientId) throw new NotFoundException('Provider not configured');
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        response_type: 'code',
+        scope: 'openid email profile',
+        access_type: 'offline',
+        prompt: 'select_account',
+      });
+      return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    }
+
+    throw new NotFoundException('Provider not configured');
+  }
+
+  /**
+   * Handles the OAuth2 callback for a provider.
+   * Exchanges the code for an access token, fetches the user profile,
+   * and upserts the user + OAuthAccount. Returns session tokens.
+   */
+  async handleOAuthCallback(
+    provider: 'github' | 'google',
+    code: string,
+    context?: { userAgent?: string | null; ipAddress?: string | null },
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const base = process.env.OAUTH_REDIRECT_BASE_URL ?? 'http://localhost:4321';
+    const callbackUrl = `${base}/v1/auth/oauth/${provider}/callback`;
+
+    let profile: { id: string; email: string; name?: string | null };
+
+    if (provider === 'github') {
+      const clientId = process.env.GITHUB_CLIENT_ID;
+      const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+      if (!clientId || !clientSecret) throw new NotFoundException('Provider not configured');
+
+      // Exchange code for access token
+      const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: callbackUrl }),
+      });
+      const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+      if (!tokenData.access_token) throw new UnauthorizedException('GitHub OAuth failed');
+
+      const token = tokenData.access_token;
+      const userRes = await fetch('https://api.github.com/user', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      });
+      const userData = await userRes.json() as { id: number; login: string; name?: string | null; email?: string | null };
+
+      // Fetch primary email if not on profile
+      let email = userData.email;
+      if (!email) {
+        const emailsRes = await fetch('https://api.github.com/user/emails', {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+        });
+        const emails = await emailsRes.json() as Array<{ email: string; primary: boolean; verified: boolean }>;
+        const primary = emails.find((e) => e.primary && e.verified);
+        email = primary?.email ?? null;
+      }
+      if (!email) throw new BadRequestException('No verified email on GitHub account');
+      profile = { id: String(userData.id), email, name: userData.name };
+    } else if (provider === 'google') {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      if (!clientId || !clientSecret) throw new NotFoundException('Provider not configured');
+
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: callbackUrl,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+      if (!tokenData.access_token) throw new UnauthorizedException('Google OAuth failed');
+
+      const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      const userData = await userRes.json() as { sub: string; email: string; name?: string | null };
+      if (!userData.email) throw new BadRequestException('No email from Google account');
+      profile = { id: userData.sub, email: userData.email, name: userData.name };
+    } else {
+      throw new NotFoundException('Provider not configured');
+    }
+
+    // Upsert user + OAuthAccount
+    const user = await this.findOrCreateOAuthUser(provider, profile.id, profile.email, profile.name ?? null);
+
+    // Create session
+    const payloadUser = { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshTokenHash: 'pending',
+        userAgent: context?.userAgent ?? null,
+        ipAddress: context?.ipAddress ?? null,
+      },
+    });
+
+    const accessToken = this.signAccessToken(payloadUser, session.id);
+    const refreshToken = this.signRefreshToken(payloadUser, session.id);
+
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { refreshTokenHash: hashSync(refreshToken, 10) },
+    });
+
+    await this.audit.log('auth.oauth_login', user.id, user.id, { provider });
+    void this.checkNewIpAndNotify(user.id, user.email, context?.ipAddress ?? null, context?.userAgent ?? null);
+
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Finds or creates a user for an OAuth login.
+   * Priority: existing OAuthAccount → email match → create new user.
+   */
+  async findOrCreateOAuthUser(
+    provider: string,
+    providerId: string,
+    email: string,
+    displayName: string | null,
+  ) {
+    // 1. Check for existing OAuthAccount
+    const existing = await this.prisma.oAuthAccount.findUnique({
+      where: { provider_providerId: { provider, providerId } },
+      include: { user: true },
+    });
+    if (existing) return existing.user;
+
+    // 2. Find user by email and link
+    const userByEmail = await this.prisma.user.findUnique({ where: { email } });
+    if (userByEmail) {
+      await this.prisma.oAuthAccount.create({
+        data: { userId: userByEmail.id, provider, providerId },
+      });
+      return userByEmail;
+    }
+
+    // 3. Create new user
+    const newUser = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash: null,
+        emailVerified: true,
+        displayName: displayName ?? null,
+        oauthAccounts: { create: { provider, providerId } },
+      },
+    });
+    await this.audit.log('auth.register', newUser.id, newUser.id, { email, via: provider });
+    return newUser;
   }
 }

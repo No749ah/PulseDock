@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../common/auth.guard';
@@ -376,6 +376,45 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'All sessions revoked.' })
   revokeAllSessions(@Req() req: { user: { id: string } }) {
     return this.authService.revokeAllSessions(req.user.id);
+  }
+
+  // ─── OAuth2 / SSO ──────────────────────────────────────────────────────────
+
+  @Get('oauth/:provider')
+  @ApiOperation({ summary: 'Redirect to OAuth provider', description: 'Redirects the browser to the OAuth2 authorization URL. Supported providers: github, google.' })
+  @ApiResponse({ status: 302, description: 'Redirect to provider.' })
+  @ApiResponse({ status: 404, description: 'Provider not configured.' })
+  oauthRedirect(
+    @Param('provider') provider: string,
+    @Res() res: { redirect(url: string): void; status(code: number): { json(body: unknown): void } },
+  ) {
+    const url = this.authService.getOAuthRedirectUrl(provider as 'github' | 'google');
+    res.redirect(url);
+  }
+
+  @Get('oauth/:provider/callback')
+  @ApiOperation({ summary: 'OAuth2 callback handler', description: 'Handles the OAuth2 callback, issues session tokens, and redirects to the web app.' })
+  @ApiResponse({ status: 302, description: 'Redirect to web app with token.' })
+  async oauthCallback(
+    @Param('provider') provider: string,
+    @Query('code') code: string,
+    @Req() req: { headers: Record<string, string | undefined>; ip?: string },
+    @Res() res: { redirect(url: string): void },
+  ) {
+    const webBase = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:1234';
+    try {
+      const { refreshToken } = await this.authService.handleOAuthCallback(
+        provider as 'github' | 'google',
+        code,
+        {
+          userAgent: req.headers['user-agent'] ?? null,
+          ipAddress: req.ip ?? null,
+        },
+      );
+      res.redirect(`${webBase}/login?token=${encodeURIComponent(refreshToken)}`);
+    } catch {
+      res.redirect(`${webBase}/login?error=oauth_failed`);
+    }
   }
 
   // ─── Audit Log ──────────────────────────────────────────────────────────────

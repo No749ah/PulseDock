@@ -1,3 +1,11 @@
+## Status Summary (2026-03-20 03:36 UTC)
+- **Build/Test:** ✅ Clean build, 1505 tests passing (2 new tests added), zero TS errors
+- **Deployment:** ✅ Public URL 200, API healthy
+- **Branch:** heartbeat/2026-03-20-features (commit b84d35c)
+- **This session:**
+  - **Slack/Discord Status Page Notifications** (enhancement of existing feature): Schema fields `slackWebhookUrl` + `discordWebhookUrl` on `PublicStatusPage`. `fireStatusPageWebhook()` in `checks.service.ts` now posts Slack (rich attachment, color-coded) and Discord (embed with color, timestamp, link) when status changes. Page Settings modal in editor includes new inputs for both URLs.
+  - **Date Range Picker**: 24h/7d/30d/90d pill buttons on public status pages toolbar. URL-synced via `?range=` query param (shareable/bookmarkable). API `GET /widget/:id` now accepts `?range=` param, passes to `resolveWidgetData()`, overrides `periodDays` for uptime-bar, uptime-timeline, sla-summary widgets. Client `RangePicker` component uses `useRouter`/`useSearchParams` for clean navigation.
+
 ## Status Summary (2026-03-20 03:18 UTC)
 - **Build/Test:** ✅ Clean build, all 12 agent tests passing, zero TS errors
 - **Deployment:** ✅ Public URL 200, API healthy
@@ -1459,7 +1467,7 @@
 ### P3 — Advanced Data & API
 
 - [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
-- [ ] **Date Range Picker** — Custom time ranges for all time-based widgets
+- [x] **Date Range Picker** — Custom time ranges for all time-based widgets. 24h/7d/30d/90d pill buttons on public status pages, URL-synced (`?range=`), API accepts `range` param on `/widget/:id`, overrides widget `periodDays` for uptime-bar, uptime-timeline, sla-summary.
 - [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
 - [x] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance. Unsubscribe via token link. Subscriber count in admin list. Incident create/resolve notifies all status page subscribers.

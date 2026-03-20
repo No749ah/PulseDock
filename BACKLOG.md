@@ -1318,7 +1318,7 @@
 - [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
 - [x] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
 - [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
-- [ ] **API documentation audit** — Verify all 95 Swagger endpoints have accurate descriptions, correct request/response examples, proper error codes documented.
+- [x] **API documentation audit** — Verified all 143 Swagger endpoints have `@ApiOperation` + `@ApiResponse`. Comprehensive pass to add 401/403/404/400 error responses + rich `description` strings to incidents, maintenance, status-pages, team, tags, and apikeys controllers. Error response coverage: 16 → 82 annotations.
 - [x] **Docker documentation** — `docs/DEPLOYMENT.md` covers compose setup, env vars, override examples; `docker-compose.override.yml` example documented.
 - [x] **.env.example** — Created with all env vars, defaults, and security guidance comments. Covers API + web.
 

@@ -4388,3 +4388,90 @@ describe('runMonitor() — confirmations null falls back to 1 (line 969)', () =>
     expect(run.ok).toBe(true);
   });
 });
+
+// ── runMonitor() — SMTP type ───────────────────────────────────────────────
+
+describe('runMonitor() — SMTP type', () => {
+  it('returns red for target with port out of range (>65535)', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'SMTP', target: 'mail.example.com:99999' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toMatch(/Invalid SMTP target/);
+  });
+
+  it('returns red for invalid target (non-numeric port)', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'SMTP', target: 'mail.example.com:abc' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+
+  it('returns red for empty target', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'SMTP', target: '' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+
+  it('returns green for a real local SMTP-like server that sends a 220 banner', async () => {
+    const net = await import('node:net');
+    const server = net.createServer((socket) => {
+      socket.write('220 smtp.local ESMTP TestServer\r\n');
+      socket.on('data', (d) => {
+        const cmd = d.toString().trim().toUpperCase();
+        if (cmd.startsWith('EHLO')) socket.write('250-smtp.local\r\n250 OK\r\n');
+        else if (cmd.startsWith('QUIT')) { socket.write('221 Bye\r\n'); socket.end(); }
+      });
+    });
+    await new Promise<void>((res) => server.listen(0, '127.0.0.1', res));
+    const { port } = server.address() as { port: number };
+
+    try {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'SMTP', target: `127.0.0.1:${port}`, timeoutMs: 5000 });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+      expect(run.message).toMatch(/SMTP ok/);
+    } finally {
+      await new Promise<void>((res) => server.close(() => res()));
+    }
+  }, 8000);
+
+  it('returns red when connection is refused', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'SMTP', target: '127.0.0.1:1', timeoutMs: 2000 });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  }, 5000);
+
+  it('returns yellow when checkTls=true but STARTTLS not advertised', async () => {
+    const net = await import('node:net');
+    const server = net.createServer((socket) => {
+      socket.write('220 smtp.local ESMTP\r\n');
+      socket.on('data', (d) => {
+        const cmd = d.toString().trim().toUpperCase();
+        if (cmd.startsWith('EHLO')) socket.write('250-smtp.local\r\n250 8BITMIME\r\n'); // no STARTTLS
+        else if (cmd.startsWith('QUIT')) { socket.write('221 Bye\r\n'); socket.end(); }
+      });
+    });
+    await new Promise<void>((res) => server.listen(0, '127.0.0.1', res));
+    const { port } = server.address() as { port: number };
+
+    try {
+      const service = makeService();
+      const monitor = makeMonitor({ type: 'SMTP', target: `127.0.0.1:${port}`, config: { checkTls: true }, timeoutMs: 5000 });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('yellow');
+      expect(run.message).toMatch(/STARTTLS not supported/);
+    } finally {
+      await new Promise<void>((res) => server.close(() => res()));
+    }
+  }, 8000);
+});

@@ -48,7 +48,7 @@ interface AlertChannelSummary {
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -151,7 +151,7 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
@@ -193,7 +193,7 @@ function MonitorsPageInner() {
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
-    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
     target: string;
     intervalSec: number;
     confirmations: number;
@@ -424,6 +424,8 @@ function MonitorsPageInner() {
       try { new URL(target); } catch { errors.target = "Must be a valid URL (e.g. https://example.com)"; }
     } else if (formData.type === "TCP" && !/^[^:\s]+:\d+$/.test(target)) {
       errors.target = "Must be host:port (e.g. db.example.com:5432)";
+    } else if (formData.type === "SMTP" && !/^[^:\s]+:\d+$/.test(target)) {
+      errors.target = "Must be host:port (e.g. mail.example.com:25)";
     }
 
     if (formData.intervalSec < 30) errors.interval = "Minimum interval is 30 seconds";
@@ -454,7 +456,12 @@ function MonitorsPageInner() {
         config.token = token;
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
-      if (formData.type === "HTTP") {
+      if (formData.type === "SMTP") {
+        const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
+        if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
+        if (f.checkTls) config.checkTls = f.checkTls;
+      }
+            if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
@@ -520,7 +527,12 @@ function MonitorsPageInner() {
         config.token = formData.heartbeatToken;
         config.timeoutMin = formData.heartbeatTimeoutMin;
       }
-      if (formData.type === "HTTP") {
+      if (formData.type === "SMTP") {
+        const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
+        if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
+        if (f.checkTls) config.checkTls = f.checkTls;
+      }
+            if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
@@ -659,8 +671,8 @@ function MonitorsPageInner() {
 
   const handleApplyTemplate = (t: MonitorTemplate) => {
     // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
-    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"] as string[]).includes(t.type)
-      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT")
+    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP"] as string[]).includes(t.type)
+      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP")
       : "HTTP";
     setFormData({
       name: t.name,
@@ -781,7 +793,7 @@ function MonitorsPageInner() {
 
   // Compute active filter count for badge
   const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
-  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]);
   const activeFilterCount =
     (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
     (filterTypes.size < defaultTypes.size ? 1 : 0) +
@@ -824,7 +836,7 @@ function MonitorsPageInner() {
     return true;
   });
 
-  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"] as const;
+  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"] as const;
 
   function saveCurrentPreset() {
     const name = prompt("Save filter preset as:");
@@ -1164,7 +1176,7 @@ function MonitorsPageInner() {
                     <button
                       onClick={() => {
                         setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]));
+                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]));
                         setFilterTags(new Set());
                         setTypeFilter("all");
                         setStatusFilter("all");
@@ -1218,6 +1230,11 @@ function MonitorsPageInner() {
                       { key: "TCP", label: "TCP" },
                       { key: "SSL_CERT", label: "SSL" },
                       { key: "HEARTBEAT", label: "Heartbeat" },
+                      { key: "DNS", label: "DNS" },
+                      { key: "PING", label: "Ping" },
+                      { key: "SMTP", label: "SMTP" },
+                      { key: "GIT_RELEASE", label: "Git Release" },
+                      { key: "DOCKER_IMAGE", label: "Docker" },
                     ] as const).map(({ key, label }) => (
                       <label key={key} className="flex items-center gap-2 cursor-pointer group">
                         <input
@@ -2077,6 +2094,9 @@ function MonitorsPageInner() {
               <option value="TCP">TCP Port</option>
               <option value="SSL_CERT">SSL Certificate</option>
               <option value="HEARTBEAT">Heartbeat</option>
+              <option value="DNS">DNS Lookup</option>
+              <option value="PING">ICMP Ping</option>
+              <option value="SMTP">SMTP Email Server</option>
             </select>
           </div>
 
@@ -2141,6 +2161,7 @@ function MonitorsPageInner() {
                   if (!nextTarget) err = "Target is required";
                   else if (formData.type === "HTTP") { try { new URL(nextTarget); } catch { err = "Must be a valid URL"; } }
                   else if (formData.type === "TCP" && !/^[^:\s]+:\d+$/.test(nextTarget)) err = "Must be host:port";
+                  else if (formData.type === "SMTP" && !/^[^:\s]+:\d+$/.test(nextTarget)) err = "Must be host:port (e.g. mail.example.com:25)";
                   setFormErrors((prev) => ({ ...prev, target: err }));
                 }
               }}
@@ -2203,6 +2224,36 @@ function MonitorsPageInner() {
                 </div>
                 <p className="mt-1 text-xs text-text-secondary">Call this URL with POST from your cron job or app to mark it healthy.</p>
               </div>
+            </>
+          )}
+
+          {/* SMTP-specific config */}
+          {formData.type === "SMTP" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">EHLO Hostname</label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { ehlo?: string }).ehlo ?? "pulsedock.monitor"}
+                  onChange={(e) => setFormData({ ...formData, ehlo: e.target.value } as typeof formData & { ehlo?: string })}
+                  placeholder="pulsedock.monitor"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">The hostname sent in the EHLO command (default: pulsedock.monitor).</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="smtpCheckTls"
+                  checked={(formData as unknown as { checkTls?: boolean }).checkTls ?? false}
+                  onChange={(e) => setFormData({ ...formData, checkTls: e.target.checked } as typeof formData & { checkTls?: boolean })}
+                  className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+                />
+                <label htmlFor="smtpCheckTls" className="text-sm text-text-primary cursor-pointer">
+                  Test STARTTLS upgrade (port 587 / STARTTLS required)
+                </label>
+              </div>
+              <p className="text-xs text-text-secondary -mt-1">When enabled, PulseDock sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
             </>
           )}
 

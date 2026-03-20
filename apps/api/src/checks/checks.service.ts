@@ -1058,6 +1058,127 @@ export class ChecksService {
     });
   }
 
+  /**
+   * Checks connectivity and SMTP banner of a mail server.
+   * Target format: host:port (e.g. mail.example.com:25 or smtp.gmail.com:587)
+   * Config options:
+   *   - ehlo: string  — EHLO hostname to send (default: pulsedock.monitor)
+   *   - checkTls: boolean — attempt STARTTLS after EHLO (default: false)
+   * Returns green if 220 banner + EHLO/HELO succeeds, yellow if STARTTLS requested
+   * but not supported, red on timeout/error/4xx+5xx codes.
+   * @param target - host:port
+   * @param config - monitor configJson
+   * @param timeoutMs - connection timeout
+   */
+  private async runSmtpCheck(target: string, config: Record<string, unknown>, timeoutMs = 10000): Promise<PluginExecutionResult> {
+    const normalized = target.trim().replace(/^smtp[s]?:\/\//i, '');
+    const parts = normalized.split(':');
+    const host = parts[0];
+    const port = parts.length >= 2 ? Number(parts[1]) : 25;
+    const ehloHost = String(config.ehlo ?? 'pulsedock.monitor');
+    const checkTls = Boolean(config.checkTls ?? false);
+
+    if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+      return {
+        ok: false,
+        statusCode: 400,
+        latencyMs: null,
+        message: 'Invalid SMTP target. Use host:port (e.g. mail.example.com:25)',
+        level: 'red' as const,
+      };
+    }
+
+    return new Promise((resolve) => {
+      const started = Date.now();
+      let settled = false;
+      let banner = '';
+      let ehloSent = false;
+      let startTlsSent = false;
+      let tlsSupported = false;
+      const lines: string[] = [];
+
+      const finish = (ok: boolean, message: string, level: 'green' | 'yellow' | 'red') => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        clearTimeout(timer);
+        resolve({ ok, statusCode: ok ? 220 : 500, latencyMs: Date.now() - started, message, level });
+      };
+
+      const timer = setTimeout(() => finish(false, `SMTP timeout connecting to ${host}:${port}`, 'red'), timeoutMs);
+
+      const socket = net.createConnection({ host, port });
+
+      socket.once('error', (err) => finish(false, `SMTP error: ${err.message}`, 'red'));
+
+      const handleData = (data: Buffer) => {
+        const text = data.toString('utf8');
+        lines.push(text);
+        const linesText = lines.join('');
+        const allLines = linesText.split('\r\n').filter(Boolean);
+
+        for (const line of allLines) {
+          const code = parseInt(line.slice(0, 3), 10);
+          const isLast = line[3] === ' '; // space = last line of multi-line response
+
+          if (!isLast && line[3] !== '-') continue; // incomplete line
+
+          if (!ehloSent && !banner && code === 220) {
+            // Got 220 banner — send EHLO
+            banner = line.slice(4);
+            ehloSent = true;
+            socket.write(`EHLO ${ehloHost}\r\n`);
+            continue;
+          }
+
+          if (ehloSent && !startTlsSent) {
+            if (line.toUpperCase().includes('STARTTLS')) tlsSupported = true;
+            if (isLast && code === 250) {
+              // EHLO complete
+              if (checkTls && tlsSupported) {
+                startTlsSent = true;
+                socket.write(`STARTTLS\r\n`);
+              } else if (checkTls && !tlsSupported) {
+                // STARTTLS requested but not advertised
+                socket.write(`QUIT\r\n`);
+                finish(true, `SMTP ok (${host}:${port}) — banner: ${banner} — STARTTLS not supported`, 'yellow');
+              } else {
+                socket.write(`QUIT\r\n`);
+                finish(true, `SMTP ok (${host}:${port}) — banner: ${banner}`, 'green');
+              }
+              continue;
+            }
+            if (code >= 400) {
+              finish(false, `SMTP EHLO failed (${code}) on ${host}:${port}`, 'red');
+              continue;
+            }
+          }
+
+          if (startTlsSent) {
+            if (code === 220) {
+              socket.write(`QUIT\r\n`);
+              finish(true, `SMTP ok (${host}:${port}) — STARTTLS ready`, 'green');
+            } else if (code >= 400) {
+              finish(false, `SMTP STARTTLS failed (${code}) on ${host}:${port}`, 'red');
+            }
+            continue;
+          }
+
+          if (code === 221) {
+            // QUIT acknowledged — connection closing cleanly, already finished above
+            continue;
+          }
+
+          if (!banner && code >= 400) {
+            finish(false, `SMTP banner error (${code}) from ${host}:${port}`, 'red');
+          }
+        }
+      };
+
+      socket.on('data', handleData);
+    });
+  }
+
   private async dispatchCheck(monitor: Monitor) {
     switch (monitor.type) {
       case 'HTTP':
@@ -1076,6 +1197,8 @@ export class ChecksService {
         return this.runDnsCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'PING':
         return this.runPingCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'SMTP':
+        return this.runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       default:
         return this.runHttpCheck(monitor.target, monitor.timeoutMs);
     }

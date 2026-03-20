@@ -28,6 +28,9 @@ export function formatMonitorType(type: string): string {
     TCP: "TCP Port",
     SSL_CERT: "SSL Certificate",
     HEARTBEAT: "Heartbeat",
+    DNS: "DNS Lookup",
+    PING: "ICMP Ping",
+    SMTP: "SMTP Email",
   };
   return map[type] ?? type;
 }
@@ -57,6 +60,9 @@ export function targetPlaceholder(type: string): string {
     case "TCP": return "host:port  (e.g. db.example.com:5432)";
     case "SSL_CERT": return "example.com or https://example.com";
     case "HEARTBEAT": return "heartbeat-worker";
+    case "DNS": return "example.com or example.com:A";
+    case "PING": return "example.com or 192.168.1.1";
+    case "SMTP": return "mail.example.com:25 or smtp.example.com:587";
     default: return "https://api.example.com/health";
   }
 }
@@ -71,6 +77,9 @@ export function targetHelperText(type: string): string {
     case "TCP": return "PulseDock opens a TCP connection to host:port and reports connection failures.";
     case "SSL_CERT": return "Checks TLS certificate expiration and warns before expiry.";
     case "HEARTBEAT": return "Used as a monitor label. Use the generated ping URL to report health from your job.";
+    case "DNS": return "Resolves the hostname and optionally checks the record type (A, AAAA, MX, TXT, CNAME).";
+    case "PING": return "Sends ICMP echo requests and reports latency and packet loss.";
+    case "SMTP": return "Connects to the mail server, reads the 220 banner, and optionally tests STARTTLS.";
     default: return "PulseDock will send an HTTP request to this URL and check the response.";
   }
 }

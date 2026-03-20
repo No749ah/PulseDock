@@ -20,6 +20,7 @@ enum MonitorType {
   HEARTBEAT
   DNS
   PING
+  SMTP
 }
 
 model User {

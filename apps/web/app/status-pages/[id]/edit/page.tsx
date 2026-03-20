@@ -300,6 +300,59 @@ function needsMonitorConfig(widget: Widget): boolean {
   return !hasMonitor && !hasMonitors;
 }
 
+function hasMappedMonitorRecord(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return Object.values(value as Record<string, unknown>).some(
+    (entry) => Array.isArray(entry) && entry.length > 0,
+  );
+}
+
+function getConfigWarnings(widget: Widget, monitorMode: string): string[] {
+  const warnings: string[] = [];
+
+  if (monitorMode === "single" && !NO_MONITOR_NEEDED_TYPES.has(widget.type) && !widget.config.monitorId) {
+    warnings.push("Select a monitor (or switch monitor scope to Multiple/All).");
+  }
+
+  if (monitorMode === "multiple" && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
+    warnings.push("Select at least one monitor in multi-monitor mode.");
+  }
+
+  if (widget.type === "custom-metric-chart" && !widget.config.monitorId) {
+    warnings.push("Custom Metric Chart requires a monitor selection.");
+  }
+
+  if (widget.type === "security-advisory" && !String(widget.config.packageName ?? "").trim()) {
+    warnings.push("Package name is required for Security Advisory.");
+  }
+
+  if (widget.type === "tab-container" && (!Array.isArray(widget.config.tabs) || widget.config.tabs.length === 0)) {
+    warnings.push("Add at least one tab entry ({ title, content }).");
+  }
+
+  if (widget.type === "dependency-map" && (!Array.isArray(widget.config.edges) || widget.config.edges.length === 0)) {
+    warnings.push("Add at least one dependency edge ({ source, target }).");
+  }
+
+  if (widget.type === "multi-environment-status" && !hasMappedMonitorRecord(widget.config.envMonitors)) {
+    warnings.push("Define envMonitors with at least one monitor ID per environment.");
+  }
+
+  if (widget.type === "region-status-map" && !hasMappedMonitorRecord(widget.config.regionMonitors)) {
+    warnings.push("Define regionMonitors with at least one monitor ID per region.");
+  }
+
+  if (widget.type === "third-party-dependencies" && (!Array.isArray(widget.config.services) || widget.config.services.length === 0)) {
+    warnings.push("Add at least one external service ({ name, url }).");
+  }
+
+  if ((widget.type === "table-of-contents" || widget.type === "column-layout") && (!Array.isArray(widget.config.items) || widget.config.items.length === 0)) {
+    warnings.push("Add at least one item entry in JSON configuration.");
+  }
+
+  return warnings;
+}
+
 // ── Template Gallery ────────────────────────────────────────────────────────
 
 interface StatusTemplate {
@@ -1003,6 +1056,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   const supportsClickAction = w.type !== "divider";
   const supportsStyle = w.type !== "divider";
   const supportsResponsive = w.type !== "divider";
+  const configWarnings = getConfigWarnings(w, monitorMode);
 
   function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
     if (nextMode === "multiple") {
@@ -1040,6 +1094,17 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         <p className="mb-1 text-xs font-semibold text-text-primary">{paletteItem?.label ?? w.type}</p>
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
+
+      {configWarnings.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-300">Configuration needed</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[10px] text-amber-200/90">
+            {configWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {supportsLabel && (
         <div>
@@ -1459,8 +1524,14 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             <label className="mb-1 block text-xs font-medium text-text-secondary">Column Items (JSON)</label>
             <textarea
               rows={4}
-              value={(w.config.items as string) ?? '[{"heading":"Column 1","body":"Content here"},{"heading":"Column 2","body":"Content here"}]'}
-              onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+              value={JSON.stringify((w.config.items as unknown[] | undefined) ?? [{ heading: "Column 1", body: "Content here" }, { heading: "Column 2", body: "Content here" }], null, 2)}
+              onChange={(e) => {
+                try {
+                  update("items", JSON.parse(e.target.value));
+                } catch {
+                  // keep previous valid value until JSON is valid
+                }
+              }}
               placeholder='[{"heading":"Col 1","body":"..."},{"heading":"Col 2","body":"..."}]'
               className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
             />
@@ -1480,8 +1551,14 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
           <label className="mb-1 block text-xs font-medium text-text-secondary">Items (JSON)</label>
           <textarea
             rows={5}
-            value={(w.config.items as string) ?? '[{"label":"System Status","anchor":"status"},{"label":"Incidents","anchor":"incidents"}]'}
-            onChange={(e) => { try { JSON.parse(e.target.value); update("items", e.target.value as unknown as boolean); } catch { /* keep raw */ }}}
+            value={JSON.stringify((w.config.items as unknown[] | undefined) ?? [{ label: "System Status", anchor: "status" }, { label: "Incidents", anchor: "incidents" }], null, 2)}
+            onChange={(e) => {
+              try {
+                update("items", JSON.parse(e.target.value));
+              } catch {
+                // keep previous valid value until JSON is valid
+              }
+            }}
             placeholder='[{"label":"Section Title","anchor":"section-id"}]'
             className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
           />

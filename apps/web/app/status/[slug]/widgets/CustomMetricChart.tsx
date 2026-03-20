@@ -185,8 +185,8 @@ export function CustomMetricChart({ data, title, subtitle, chartType }: CustomMe
           {subtitle && <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>}
         </div>
       )}
-      <div className="h-36">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-36" style={{ minHeight: 144 }}>
+        <ResponsiveContainer width="100%" height="100%" minHeight={144}>
           {chart as React.ReactElement}
         </ResponsiveContainer>
       </div>

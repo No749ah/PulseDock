@@ -368,7 +368,7 @@ export class MonitorsService {
    * @param action - One of: 'enable' | 'disable' | 'delete' | 'run'
    * @returns { ok, affected } with count of successfully processed monitors
    */
-  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run') {
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag', tagId?: string) {
     if (!ids.length) return { ok: true, affected: 0 };
     // Verify ownership of all IDs first
     const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
@@ -395,6 +395,39 @@ export class MonitorsService {
       const results = await Promise.allSettled(ownedIds.map((id) => this.runNow(userId, id)));
       const succeeded = results.filter((r) => r.status === 'fulfilled').length;
       return { ok: true, affected: succeeded };
+    }
+
+    if ((action === 'add-tag' || action === 'remove-tag') && tagId) {
+      // Verify the tag belongs to this user
+      const tag = await this.prisma.tag.findFirst({ where: { id: tagId, userId } });
+      if (!tag) return { ok: false, affected: 0 };
+
+      if (action === 'add-tag') {
+        // Upsert MonitorTag for each monitor (skip if already tagged)
+        let affected = 0;
+        for (const monitorId of ownedIds) {
+          try {
+            await this.prisma.monitorTag.upsert({
+              where: { monitorId_tagId: { monitorId, tagId } },
+              update: {},
+              create: { monitorId, tagId },
+            });
+            affected++;
+          } catch {
+            // skip conflicts
+          }
+        }
+        await this.audit.log('monitor.bulk_add_tag', userId, userId, { ids: ownedIds, tagId });
+        return { ok: true, affected };
+      }
+
+      if (action === 'remove-tag') {
+        const result = await this.prisma.monitorTag.deleteMany({
+          where: { monitorId: { in: ownedIds }, tagId },
+        });
+        await this.audit.log('monitor.bulk_remove_tag', userId, userId, { ids: ownedIds, tagId });
+        return { ok: true, affected: result.count };
+      }
     }
 
     return { ok: false, affected: 0 };

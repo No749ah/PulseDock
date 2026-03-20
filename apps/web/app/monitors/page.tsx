@@ -245,6 +245,7 @@ function MonitorsPageInner() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastSelectedIndexRef = useRef<number>(-1);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkTagId, setBulkTagId] = useState<string>("");
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
 
   // badge modal
@@ -689,23 +690,47 @@ function MonitorsPageInner() {
     }
   };
 
-  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run") => {
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag") => {
     if (!selectedIds.size) return;
     if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
+    if ((action === "add-tag" || action === "remove-tag") && !bulkTagId) {
+      toastError("Please select a tag first");
+      return;
+    }
     setBulkLoading(true);
     try {
+      const body: Record<string, unknown> = { ids: Array.from(selectedIds), action };
+      if (action === "add-tag" || action === "remove-tag") body.tagId = bulkTagId;
       const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
         method: "POST",
-        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+        body: JSON.stringify(body),
       });
       if (action === "delete") {
         setMonitors((prev) => prev.filter((m) => !selectedIds.has(m.id)));
         setRuns((prev) => prev.filter((r) => !selectedIds.has(r.monitorId)));
       } else if (action === "enable" || action === "disable") {
         setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, enabled: action === "enable" } : m));
+      } else if (action === "add-tag" || action === "remove-tag") {
+        // Refresh monitors to reflect tag changes
+        const tag = allTags.find((t) => t.id === bulkTagId);
+        if (tag) {
+          setMonitors((prev) => prev.map((m) => {
+            if (!selectedIds.has(m.id)) return m;
+            const tags = m.tags ?? [];
+            if (action === "add-tag" && !tags.some((t) => t.id === tag.id)) {
+              return { ...m, tags: [...tags, tag] };
+            }
+            if (action === "remove-tag") {
+              return { ...m, tags: tags.filter((t) => t.id !== tag.id) };
+            }
+            return m;
+          }));
+        }
       }
       setSelectedIds(new Set());
-      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : "queued for check"}`);
+      const tagName = allTags.find((t) => t.id === bulkTagId)?.name;
+      const actionLabel = action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : action === "run" ? "queued for check" : action === "add-tag" ? `tagged "${tagName}"` : `tag "${tagName}" removed`;
+      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${actionLabel}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
     } finally {
@@ -1463,6 +1488,28 @@ function MonitorsPageInner() {
                 <Button size="sm" variant="secondary" onClick={() => handleBulkAction("run")} disabled={bulkLoading} className="flex items-center gap-1.5">
                   <PlayCircle className="w-3.5 h-3.5" />Run now
                 </Button>
+                {allTags.length > 0 && (
+                  <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+                    <Tag className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    <select
+                      value={bulkTagId}
+                      onChange={(e) => setBulkTagId(e.target.value)}
+                      className="text-xs px-2 py-1 bg-bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/50"
+                      aria-label="Select tag for bulk action"
+                    >
+                      <option value="">Select tag…</option>
+                      {allTags.map((tag) => (
+                        <option key={tag.id} value={tag.id}>{tag.name}</option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant="secondary" onClick={() => handleBulkAction("add-tag")} disabled={bulkLoading || !bulkTagId} className="flex items-center gap-1 text-xs">
+                      + Tag
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => handleBulkAction("remove-tag")} disabled={bulkLoading || !bulkTagId} className="flex items-center gap-1 text-xs">
+                      − Tag
+                    </Button>
+                  </div>
+                )}
                 <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
                   <Trash2 className="w-3.5 h-3.5" />Delete
                 </Button>

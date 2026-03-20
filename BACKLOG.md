@@ -1,3 +1,14 @@
+## Status Summary (2026-03-20 05:49 UTC)
+- **Build/Test:** ✅ Clean build, full tests green (API + CLI + Agent)
+- **Deployment:** ✅ Restarted with `npm run restart`; local + proxy checks 200, `/api/v1/monitors` protected (401 unauth)
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Dependency health pass (weekly):** ran outdated/audit review and implemented safe security update
+  - **Next.js security update:** `apps/web` upgraded `next` **16.1.6 → 16.2.0**
+  - **Validation after upgrade:** build + tests + restart all successful
+  - **Audit delta:** vulnerabilities reduced (**8 → 7 moderate**)
+  - **Stability fix:** kept `class-validator` at `0.14.4` (0.15.x caused ValidationPipe regression)
+
 ## Status Summary (2026-03-20 05:40 UTC)
 - **Build/Test:** ✅ Clean build, 1505 API tests + CLI/Agent green
 - **Deployment:** ✅ Web restarted, local + proxy 200
@@ -1503,7 +1514,7 @@
 - [x] **Automated self-testing cycle** — `scripts/perf-check.sh` + `scripts/smoke-test.sh`: full post-deploy verification covering API/web latency, HTTP status, bundle size, process health, TypeScript compliance, DB/Redis. `npm run perf` / `npm run smoke`.
 - [x] **Performance benchmarking** — `scripts/perf-check.sh` (`npm run perf` / `npm run perf:prod`) — 7-section benchmark: API p95 latency, Web TTFB, HTTP status verification, bundle size analysis, TypeScript compliance, process health, DB+Redis. All 22 checks pass: API 1-15ms p95, web 13-128ms TTFB, ~1.3MB gzip bundle (24 pages), zero TS errors, DB 1ms, Redis ok.
 - [x] **Code quality metrics** — `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
-- [ ] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes.
+- [~] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
 - [ ] **UX self-review** — After every UI change: screenshot before/after, check on 3 viewports (mobile/tablet/desktop), verify dark mode, check color contrast (WCAG AA), test with keyboard only, check loading states
 - [ ] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness
 - [ ] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. List every feature they have that PulseDock doesn't. Prioritize and build.

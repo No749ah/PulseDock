@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 12:38 UTC)
+- **Build/Test:** ✅ Clean build, 1598 tests passing (1576 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Restarted; all routes local + proxy 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Noon branch rotation:** merged heartbeat/2026-03-20-quality-features → dev, deleted old branch, created heartbeat/2026-03-20-enterprise-gaps
+  - **PagerDuty + OpsGenie alert channels:** Full implementation — `AlertChannelType` extended, DTO validators updated, delivery handlers added (PagerDuty Events API v2 with trigger/resolve dedup; OpsGenie Alerts API with POST trigger + close, EU region support). 4 new tests. Frontend: icons, options, labels, extractConfig, EU region selector.
+  - **HTTP JSONPath assertions:** `bodyJsonPath` + `bodyJsonPathExpected` config fields for HTTP monitors. Reuses `extractByPath` util for dot-notation path traversal into JSON response bodies. Truthy check when no expected value specified. 7 new tests. UI: two-field row in monitor create/edit form.
+
 ## Status Summary (2026-03-20 12:00 UTC)
 - **Build/Test:** ✅ Clean
 - **Branch:** heartbeat/2026-03-20-ux-polish
@@ -1595,8 +1604,8 @@
 - [ ] **Synthetic / Browser checks** — Full browser check type using Playwright/Puppeteer: navigate URL, assert selector present, measure time-to-interactive. Runs in Docker sidecar. New monitor type: BROWSER. Requires additional infra (browser runner).
 - [ ] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [ ] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
-- [ ] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
-- [ ] **API response assertion checks** — For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions.
+- [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
+- [x] **API response assertion checks** — For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions. `bodyJsonPath` + `bodyJsonPathExpected` implemented.
 
 ### P3 — Advanced Data & API
 

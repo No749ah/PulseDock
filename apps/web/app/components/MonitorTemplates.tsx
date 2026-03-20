@@ -7,7 +7,7 @@ export interface MonitorTemplate {
   label: string;
   description: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
   target: string;
   intervalSec: number;
   pluginId?: string;
@@ -15,6 +15,9 @@ export interface MonitorTemplate {
   config?: {
     appVersionEndpoint?: string;
     appAuthType?: 'none' | 'token';
+    ehlo?: string;
+    checkTls?: boolean;
+    recordType?: string;
   };
   /** If true, template target is a placeholder URL and user must update it */
   requiresUrl?: boolean;
@@ -595,6 +598,51 @@ const DNS_NETWORKING_TEMPLATES: MonitorTemplate[] = [
     intervalSec: 60,
     requiresUrl: true,
   },
+  {
+    label: "DNS Lookup — A Record",
+    description: "Verify your domain resolves to an A record (IPv4)",
+    name: "DNS A Record Check",
+    type: "DNS",
+    target: "example.com:A",
+    intervalSec: 300,
+    requiresUrl: true,
+  },
+  {
+    label: "DNS Lookup — MX Record",
+    description: "Verify your domain has valid MX (mail exchanger) records",
+    name: "DNS MX Record Check",
+    type: "DNS",
+    target: "example.com:MX",
+    intervalSec: 600,
+    requiresUrl: true,
+  },
+  {
+    label: "DNS Lookup — CNAME",
+    description: "Verify a CNAME record resolves correctly",
+    name: "DNS CNAME Check",
+    type: "DNS",
+    target: "www.example.com:CNAME",
+    intervalSec: 600,
+    requiresUrl: true,
+  },
+  {
+    label: "Ping — Server Reachability",
+    description: "ICMP ping check to verify host is reachable on the network",
+    name: "Server Ping",
+    type: "PING",
+    target: "your-server.example.com",
+    intervalSec: 120,
+    requiresUrl: true,
+  },
+  {
+    label: "Ping — Latency Monitor",
+    description: "ICMP ping with latency alerting (warn >200ms, critical >1000ms)",
+    name: "Latency Monitor",
+    type: "PING",
+    target: "192.168.1.1",
+    intervalSec: 60,
+    requiresUrl: true,
+  },
 ];
 
 const MAIL_COMMUNICATION_TEMPLATES: MonitorTemplate[] = [
@@ -687,6 +735,44 @@ const MAIL_COMMUNICATION_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://your-zulip.example.com/api/v1/server_settings",
     intervalSec: 120,
+    requiresUrl: true,
+  },
+  {
+    label: "SMTP — Port 25 (MTA)",
+    description: "Check SMTP banner on port 25 (mail transfer agent, server-to-server)",
+    name: "SMTP Port 25",
+    type: "SMTP",
+    target: "mail.example.com:25",
+    intervalSec: 300,
+    requiresUrl: true,
+  },
+  {
+    label: "SMTP — Port 587 (Submission + STARTTLS)",
+    description: "Check SMTP submission port 587 with STARTTLS capability test",
+    name: "SMTP Submission",
+    type: "SMTP",
+    target: "mail.example.com:587",
+    intervalSec: 300,
+    config: { checkTls: true } as MonitorTemplate['config'],
+    requiresUrl: true,
+  },
+  {
+    label: "SMTP — Port 465 (Implicit TLS)",
+    description: "Check SMTP with implicit SSL/TLS on port 465",
+    name: "SMTP SSL",
+    type: "SMTP",
+    target: "mail.example.com:465",
+    intervalSec: 300,
+    requiresUrl: true,
+  },
+  {
+    label: "Mailcow SMTP",
+    description: "Mailcow dockerized mail server SMTP banner check",
+    name: "Mailcow SMTP",
+    type: "SMTP",
+    target: "your-mailcow.example.com:587",
+    intervalSec: 300,
+    config: { checkTls: true } as MonitorTemplate['config'],
     requiresUrl: true,
   },
 ];
@@ -1516,12 +1602,24 @@ const TYPE_COLORS: Record<MonitorTemplate["type"], string> = {
   HTTP: "text-blue-400",
   GIT_RELEASE: "text-purple-400",
   DOCKER_IMAGE: "text-cyan-400",
+  TCP: "text-green-400",
+  SSL_CERT: "text-yellow-400",
+  HEARTBEAT: "text-orange-400",
+  DNS: "text-teal-400",
+  PING: "text-emerald-400",
+  SMTP: "text-pink-400",
 };
 
 const TYPE_LABELS: Record<MonitorTemplate["type"], string> = {
   HTTP: "HTTP",
   GIT_RELEASE: "Git",
   DOCKER_IMAGE: "Docker",
+  TCP: "TCP",
+  SSL_CERT: "SSL",
+  HEARTBEAT: "Heartbeat",
+  DNS: "DNS",
+  PING: "Ping",
+  SMTP: "SMTP",
 };
 
 export function MonitorTemplates({ onSelect }: Props) {

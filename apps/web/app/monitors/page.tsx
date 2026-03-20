@@ -688,7 +688,10 @@ function MonitorsPageInner() {
       folderId: "",
       slaTarget: "",
       slaPeriodDays: 30,
-    });
+      // Carry through SMTP-specific config from template
+      ...(t.config?.checkTls !== undefined ? { checkTls: t.config.checkTls } : {}),
+      ...(t.config?.ehlo ? { ehlo: t.config.ehlo } : {}),
+    } as typeof formData & { checkTls?: boolean; ehlo?: string });
     setShowTemplates(false);
   };
 

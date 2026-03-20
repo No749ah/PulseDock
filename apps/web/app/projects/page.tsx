@@ -86,7 +86,7 @@ export default function FoldersPage() {
   const [pageSize, setPageSize] = useState('12');
   const { sort: projSort, toggle: projToggle, sorted: projSorted } = useTableSort<'name' | 'monitorCount' | 'uptimePct' | 'createdAt'>('name');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem('projects-view') as 'grid' | 'table') || 'grid' : 'grid'
+    typeof window !== 'undefined' ? (localStorage.getItem('projects-view') as 'grid' | 'table') || 'table' : 'table'
   );
 
   const [editOpen, setEditOpen] = useState(false);

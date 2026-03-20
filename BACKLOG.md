@@ -1,3 +1,10 @@
+## Status Summary (2026-03-20 14:26 UTC)
+- **Build/Test:** ✅ Build clean; tests passing
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget validation before publish:** Added pre-publish guard in status-page editor. When publishing, editor now detects unconfigured widgets (missing monitor config), shows a warning with affected widget names/count, and requires explicit confirmation to publish anyway.
+  - Files: `apps/web/app/status-pages/[id]/edit/page.tsx`
+
 ## Status Summary (2026-03-20 14:06 UTC)
 - **Build/Test:** ✅ Clean build, 1603 tests passing
 - **Deployment:** ✅ Restarted; local routes + reverse proxy checks all 200

@@ -187,8 +187,10 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "check-history-feed", label: "Check History", description: "Live-updating log of recent check results", icon: Clock, category: "Performance", defaultW: 12, defaultH: 4 },
   { type: "incident-history", label: "Incident History", description: "Paginated list of past incidents", icon: AlertTriangle, category: "Incidents", defaultW: 12, defaultH: 4 },
   { type: "text-block", label: "Text Block", description: "Free text / markdown for announcements", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "metric-counter", label: "Metric Counter", description: "Single big stat (uptime, latency, checks, incidents) with optional suffix", icon: BarChart2, category: "Metrics", defaultW: 4, defaultH: 2 },
   { type: "scheduled-maintenance", label: "Maintenance", description: "Shows upcoming maintenance windows", icon: Clock, category: "Content", defaultW: 6, defaultH: 2 },
   { type: "monitor-group", label: "Monitor Group", description: "Group monitors by tag or folder with status overview", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
+  { type: "monitor-group-status", label: "Monitor Group Status", description: "Alias of monitor group widget for legacy layouts", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
   { type: "multi-status-badges", label: "Multi Status", description: "Multiple monitor status badges in a compact grid", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 3 },
   { type: "version-status-grid", label: "Version Grid", description: "Grid showing current vs latest version for all monitors", icon: BarChart2, category: "Versions", defaultW: 12, defaultH: 4 },
   { type: "version-check-badge", label: "Version Badge", description: "Single monitor version status badge", icon: CheckCircle, category: "Versions", defaultW: 6, defaultH: 2 },
@@ -233,6 +235,7 @@ const WIDGET_PALETTE: WidgetPaletteItem[] = [
   { type: "embed-iframe", label: "Embed / iFrame", description: "Embed external dashboards or Grafana panels in an iframe", icon: Type, category: "Content", defaultW: 12, defaultH: 6 },
   { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
   { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "last-updated-footer", label: "Last Updated Footer", description: "Displays the latest data refresh time with auto-refresh hint", icon: RefreshCw, category: "Content", defaultW: 12, defaultH: 1 },
   { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
   { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
   { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
@@ -1889,6 +1892,26 @@ export default function StatusPageEditorPage() {
 
   async function handleTogglePublish() {
     if (!page) return;
+
+    // Pre-publish validation: warn if widgets are not configured.
+    if (!page.isPublished) {
+      const unconfigured = widgets.filter((w) => needsMonitorConfig(w));
+      if (unconfigured.length > 0) {
+        const names = unconfigured
+          .slice(0, 5)
+          .map((w) => WIDGET_PALETTE.find((p) => p.type === w.type)?.label ?? w.type)
+          .join(', ');
+        const remainder = unconfigured.length > 5 ? `, +${unconfigured.length - 5} more` : '';
+        const proceed = confirm(
+          `⚠️ ${unconfigured.length} widget${unconfigured.length === 1 ? '' : 's'} need configuration before publish (${names}${remainder}).\n\nPublish anyway?`,
+        );
+        if (!proceed) {
+          toastCtx.info('Publish cancelled — configure widgets first.');
+          return;
+        }
+      }
+    }
+
     setPublishing(true);
     try {
       const updated = await api<{ isPublished: boolean }>(`/v1/status-pages/${id}/publish`, undefined, { method: "POST" });

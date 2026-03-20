@@ -2794,6 +2794,79 @@ function MonitorsPageInner() {
                   ))}
                 </div>
               </div>
+              {/* iFrame embed */}
+              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-text-primary mb-1">iFrame Embed</p>
+                  <p className="text-xs text-text-secondary mb-3">Embed a live status widget on any webpage. Supports <code className="text-accent">?style=compact|card</code> and <code className="text-accent">?theme=dark|light</code>.</p>
+                  {/* iFrame preview */}
+                  <div className="mb-3 rounded overflow-hidden border border-border">
+                    <iframe
+                      src={`/embed/${badgeMonitor.id}?style=compact&theme=dark`}
+                      width="100%"
+                      height="40"
+                      style={{ border: 'none', display: 'block' }}
+                      title={`${badgeMonitor.name} status widget preview`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`);
+                        success("iFrame snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                {/* Card style iFrame */}
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">Card style (120px tall, includes uptime %)</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`);
+                        success("Card iFrame snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              {/* Script tag embed */}
+              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-text-primary mb-1">Script Tag Embed</p>
+                  <p className="text-xs text-text-secondary mb-3">Injects a status widget inline — no iframe needed. Add the <code className="text-accent">data-pulsedock-monitor</code> attribute to any div.</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
+                      {`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`}
+                    </code>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`);
+                        success("Script tag snippet copied!");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
               {/* Floating widget embed */}
               <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
                 <p className="text-xs font-semibold text-text-primary mb-1">Floating Widget</p>

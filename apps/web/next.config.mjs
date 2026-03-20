@@ -25,6 +25,16 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Embed pages — allow framing from any origin (they're designed for iframes)
+        source: '/embed/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors *" },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cache-Control', value: 'public, max-age=30, s-maxage=30' },
+        ],
+      },
+      {
         // HTML pages must never be cached (chunk hashes change on rebuild)
         source: '/((?!_next/static|_next/image|favicon.ico).*)',
         headers: [

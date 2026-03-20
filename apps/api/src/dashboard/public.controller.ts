@@ -409,6 +409,91 @@ export class PublicDashboardController {
    *
    * @param monitorId - The monitor to display status for
    */
+  // ---------------------------------------------------------------------------
+  // JSON Embed Data Endpoint
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns JSON status data for a monitor, intended for the iframe embed page
+   * and the script-tag embed. No authentication required.
+   */
+  @Get('embed/:monitorId')
+  @ApiOperation({
+    summary: 'Monitor embed data (JSON)',
+    description: 'Returns current status, uptime%, response time, and last-checked timestamp for a monitor. No auth required. Used by the iframe embed page and script-tag widget.',
+  })
+  @ApiParam({ name: 'monitorId', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Monitor embed data.',
+    schema: {
+      example: {
+        monitorId: 'clxyz123',
+        name: 'My API',
+        status: 'up',
+        uptimePct: 99.97,
+        responseMs: 142,
+        lastChecked: '2026-03-20T02:30:00Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async embedData(
+    @Param('monitorId') monitorId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: { id: true, name: true, enabled: true },
+    });
+    if (!monitor) {
+      res.status(404).json({ error: 'Monitor not found' });
+      return;
+    }
+
+    // Latest run
+    const latest = await this.prisma.monitorRun.findFirst({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      select: { level: true, ok: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Uptime % over last 100 runs
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 100,
+      select: { level: true },
+    });
+    const greenCount = runs.filter((r) => r.level === 'green').length;
+    const uptimePct = runs.length === 0 ? 100 : Math.round((greenCount / runs.length) * 10000) / 100;
+
+    let status: 'up' | 'down' | 'degraded' | 'paused';
+    if (!monitor.enabled) {
+      status = 'paused';
+    } else if (!latest) {
+      status = 'up';
+    } else if (latest.level === 'red') {
+      status = 'down';
+    } else if (latest.level === 'yellow') {
+      status = 'degraded';
+    } else {
+      status = 'up';
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.json({
+      monitorId: monitor.id,
+      name: monitor.name,
+      status,
+      uptimePct,
+      responseMs: latest?.latencyMs ?? null,
+      lastChecked: latest?.checkedAt.toISOString() ?? null,
+    });
+  }
+
   @Get('embed/monitor/:monitorId.js')
   @Header('Content-Type', 'application/javascript; charset=utf-8')
   @ApiOperation({

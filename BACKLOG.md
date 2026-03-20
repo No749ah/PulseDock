@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 03:45 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL 200, web restarted
+- **Branch:** heartbeat/2026-03-20-features
+- **This session:**
+  - **Reports Page** (`/reports`): Full uptime report dashboard — period selector (7d/30d/90d), summary cards (total monitors, overall uptime%, total checks, incident count), per-monitor uptime table (name, type, status, uptime%, checks, incidents, downtime, avg response, MTTR), top incidents list sorted by duration. CSV export (all stats) + PDF export (html2canvas screenshot → A4 landscape). Uses existing `GET /v1/monitors` + `GET /v1/monitors/:id/uptime?period=` endpoints, computes stats client-side.
+  - **Reports Nav Item**: Added "Reports" (BarChart2 icon) to "Insights" group in `app-frame.tsx` nav sidebar.
+  - **Status Pages CSV Export**: Added "Export CSV" button to status pages list toolbar. Exports: slug, title, published, createdAt, updatedAt.
+  - **Print CSS enhanced**: Added `[data-no-print]` selector, `button:not(.print-visible)` targeting, `main`/`.main-content` full-width rules, `.page-break` utility to existing `@media print` block in `globals.css`.
+
 ## Status Summary (2026-03-20 03:36 UTC)
 - **Build/Test:** ✅ Clean build, 1505 tests passing (2 new tests added), zero TS errors
 - **Deployment:** ✅ Public URL 200, API healthy
@@ -1434,7 +1444,7 @@
 - [~] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). Remaining: sample data demo option + final empty-state CTA sweep across all pages.
 - [x] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
 - [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
-- [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
+- [x] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
 
 ### P2 — Self-Optimization & Continuous Improvement
 

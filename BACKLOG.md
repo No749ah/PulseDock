@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 05:29 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (API 1505 + CLI/Agent green)
+- **Deployment:** ✅ Services restarted with `npm run restart`; local + reverse proxy route audit green
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Dependency cleanup:** Removed unused `@mantine/core` and `@mantine/hooks` from `apps/web` (Tailwind migration had already replaced Mantine usage)
+  - **Validation:** `npm run build` clean; route checks all 200 (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`)
+  - **API smoke:** `GET /health` OK, web `/api/v1/monitors` correctly protected (401 without auth)
+
 ## Status Summary (2026-03-20 04:56 UTC)
 - **Build/Test:** ✅ Clean build, tests passing
 - **Deployment:** ✅ Services restarted (`npm run restart`), local + reverse proxy route audit green

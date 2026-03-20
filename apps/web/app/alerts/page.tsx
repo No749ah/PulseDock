@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -85,6 +85,24 @@ export default function AlertsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
   const { sort, toggle, sorted } = useTableSort<'name' | 'type' | 'lastTriggeredAt' | 'createdAt'>('name');
+
+  // Column visibility (persisted to localStorage)
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('alerts-col-visibility');
+      return stored ? JSON.parse(stored) : { name: true, type: true, lastTriggered: true, created: true, actions: true };
+    } catch {
+      return { name: true, type: true, lastTriggered: true, created: true, actions: true };
+    }
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const toggleCol = (col: string) => {
+    setVisibleCols((prev) => {
+      const next = { ...prev, [col]: !prev[col] };
+      try { localStorage.setItem('alerts-col-visibility', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -617,9 +635,41 @@ export default function AlertsPage() {
                 {channels.length} {channels.length === 1 ? 'channel' : 'channels'} configured
               </p>
             </div>
-            <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>
-              <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Column visibility toggle */}
+              {channels.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColPicker((v) => !v)}
+                    title="Toggle column visibility"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${showColPicker ? 'border-accent/50 bg-accent/10 text-accent' : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Columns</span>
+                  </button>
+                  {showColPicker && (
+                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
+                      {([['name', 'Name'], ['type', 'Type'], ['lastTriggered', 'Last Triggered'], ['created', 'Created'], ['actions', 'Actions']] as [string, string][]).map(([col, label]) => (
+                        <button
+                          key={col}
+                          onClick={() => toggleCol(col)}
+                          className="flex items-center justify-between w-full rounded-lg px-2 py-1.5 text-xs hover:bg-surface-elevated transition-colors"
+                        >
+                          <span className={visibleCols[col] ? 'text-text-primary' : 'text-text-muted'}>{label}</span>
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleCols[col] ? 'bg-accent border-accent text-white' : 'border-border'}`}>
+                            {visibleCols[col] ? '✓' : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>
+                <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
+              </Button>
+            </div>
           </div>
 
           {channels.length === 0 ? (
@@ -641,34 +691,34 @@ export default function AlertsPage() {
           <Card className="p-0">
             <div className="overflow-x-auto">
             <Table>
-              <TableHead>
+              <TableHead className="sticky top-0 z-10 bg-surface-elevated/95 backdrop-blur-sm">
                 <tr className="bg-surface-elevated border-b border-border">
-                  <SortableHeader sortKey="name" sort={sort} onSort={toggle}>Name</SortableHeader>
-                  <SortableHeader sortKey="type" sort={sort} onSort={toggle}>Type</SortableHeader>
-                  <SortableHeader sortKey="lastTriggeredAt" sort={sort} onSort={toggle}>Last Triggered</SortableHeader>
-                  <SortableHeader sortKey="createdAt" sort={sort} onSort={toggle}>Created</SortableHeader>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                  <SortableHeader sortKey="name" sort={sort} onSort={toggle} className={visibleCols.name ? '' : 'hidden'}>Name</SortableHeader>
+                  <SortableHeader sortKey="type" sort={sort} onSort={toggle} className={visibleCols.type ? '' : 'hidden'}>Type</SortableHeader>
+                  <SortableHeader sortKey="lastTriggeredAt" sort={sort} onSort={toggle} className={visibleCols.lastTriggered ? '' : 'hidden'}>Last Triggered</SortableHeader>
+                  <SortableHeader sortKey="createdAt" sort={sort} onSort={toggle} className={visibleCols.created ? '' : 'hidden'}>Created</SortableHeader>
+                  <th className={`px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider${visibleCols.actions ? '' : ' hidden'}`}>Actions</th>
                 </tr>
               </TableHead>
               <TableBody>
                 {pageRows.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>
+                    <TableCell className={visibleCols.name ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <ChannelTypeIcon type={c.type} />
                         <span className="font-medium text-text-primary">{c.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={visibleCols.type ? '' : 'hidden'}>
                       <Badge className="capitalize">{c.type}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={visibleCols.lastTriggered ? '' : 'hidden'}>
                       <span className="text-sm text-text-secondary">
                         {c.lastTriggeredAt ? relativeTime(c.lastTriggeredAt) : 'Never'}
                       </span>
                     </TableCell>
-                    <TableCell>{new Date(c.createdAt).toLocaleString()}</TableCell>
-                    <TableCell>
+                    <TableCell className={visibleCols.created ? '' : 'hidden'}>{new Date(c.createdAt).toLocaleString()}</TableCell>
+                    <TableCell className={visibleCols.actions ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={() => testChannel(c)}>Test</Button>
                         <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="History">

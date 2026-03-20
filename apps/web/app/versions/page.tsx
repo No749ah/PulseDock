@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell, CheckCircle2, ArrowUpCircle, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, Check, X, Info, AlertCircle, Play, GitBranch, Search, Grid2x2, List, Copy, ExternalLink, RefreshCw, Bell, CheckCircle2, ArrowUpCircle, Download, Eye } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -143,6 +143,23 @@ export default function VersionsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState('10');
+  // Column visibility (persisted to localStorage)
+  const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('versions-col-visibility');
+      return stored ? JSON.parse(stored) : { name: true, type: true, target: true, current: true, latest: true, status: true, lastChecked: true, interval: true, action: true };
+    } catch {
+      return { name: true, type: true, target: true, current: true, latest: true, status: true, lastChecked: true, interval: true, action: true };
+    }
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const toggleCol = (col: string) => {
+    setVisibleCols((prev) => {
+      const next = { ...prev, [col]: !prev[col] };
+      try { localStorage.setItem('versions-col-visibility', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState(-1); // -1 = tool picker, 0-3 = manual steps
   // Tool registry
@@ -1452,7 +1469,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                   </span>
                 </>
               )}
-              {/* Sort by dropdown */}
+              {/* Sort by + column picker */}
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-xs text-text-secondary">Sort by</span>
                 <select
@@ -1472,6 +1489,34 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                   <option value="lastChecked-desc">Last checked (newest)</option>
                   <option value="lastChecked-asc">Last checked (oldest)</option>
                 </select>
+                {/* Column visibility toggle */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowColPicker((v) => !v)}
+                    title="Toggle column visibility"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${showColPicker ? 'border-accent/50 bg-accent/10 text-accent' : 'border-border text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Columns</span>
+                  </button>
+                  {showColPicker && (
+                    <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
+                      <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
+                      {([['name', 'Name'], ['type', 'Type'], ['target', 'Target'], ['current', 'Current'], ['latest', 'Latest'], ['status', 'Status'], ['lastChecked', 'Last Checked'], ['interval', 'Interval'], ['action', 'Action']] as [string, string][]).map(([col, label]) => (
+                        <button
+                          key={col}
+                          onClick={() => toggleCol(col)}
+                          className="flex items-center justify-between w-full rounded-lg px-2 py-1.5 text-xs hover:bg-surface-elevated transition-colors"
+                        >
+                          <span className={visibleCols[col] ? 'text-text-primary' : 'text-text-muted'}>{label}</span>
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${visibleCols[col] ? 'bg-accent border-accent text-white' : 'border-border'}`}>
+                            {visibleCols[col] ? '✓' : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1515,29 +1560,29 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
           <Card className="p-0">
             <div className="overflow-x-auto">
             <Table>
-              <TableHead>
+              <TableHead className="sticky top-0 z-10 bg-surface-elevated/95 backdrop-blur-sm">
                 <TableRow hover={false}>
-                  <TableHeader>
+                  <TableHeader className={visibleCols.name ? '' : 'hidden'}>
                     <button onClick={() => handleVersionSort('name')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                       Name {sortBy === 'name' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                     </button>
                   </TableHeader>
-                  <TableHeader className="hidden sm:table-cell">Type</TableHeader>
-                  <TableHeader className="hidden md:table-cell">Target</TableHeader>
-                  <TableHeader className="hidden sm:table-cell">Current</TableHeader>
-                  <TableHeader>Latest</TableHeader>
-                  <TableHeader>
+                  <TableHeader className={visibleCols.type ? 'hidden sm:table-cell' : 'hidden'}>Type</TableHeader>
+                  <TableHeader className={visibleCols.target ? 'hidden md:table-cell' : 'hidden'}>Target</TableHeader>
+                  <TableHeader className={visibleCols.current ? 'hidden sm:table-cell' : 'hidden'}>Current</TableHeader>
+                  <TableHeader className={visibleCols.latest ? '' : 'hidden'}>Latest</TableHeader>
+                  <TableHeader className={visibleCols.status ? '' : 'hidden'}>
                     <button onClick={() => handleVersionSort('status')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                       Status {sortBy === 'status' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                     </button>
                   </TableHeader>
-                  <TableHeader className="hidden lg:table-cell">
+                  <TableHeader className={visibleCols.lastChecked ? 'hidden lg:table-cell' : 'hidden'}>
                     <button onClick={() => handleVersionSort('lastChecked')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                       Last check {sortBy === 'lastChecked' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
                     </button>
                   </TableHeader>
-                  <TableHeader className="hidden lg:table-cell">Interval</TableHeader>
-                  <TableHeader>Action</TableHeader>
+                  <TableHeader className={visibleCols.interval ? 'hidden lg:table-cell' : 'hidden'}>Interval</TableHeader>
+                  <TableHeader className={visibleCols.action ? '' : 'hidden'}>Action</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1554,13 +1599,13 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                   return (
                     <Fragment key={item.id}>
                       <TableRow>
-                        <TableCell>
+                        <TableCell className={visibleCols.name ? '' : 'hidden'}>
                           <button className="text-accent hover:underline flex items-center gap-1 text-left" onClick={() => toggleDetails(item.id)}>
                             {expandedId === item.id ? <ChevronUp className="w-3 h-3 shrink-0" /> : <ChevronDown className="w-3 h-3 shrink-0" />}
                             <span className="truncate max-w-[120px] sm:max-w-none">{item.name}</span>
                           </button>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell className={visibleCols.type ? 'hidden sm:table-cell' : 'hidden'}>
                           {(() => {
                             const cfg = (monitorDetails[item.id]?.config ?? {}) as Record<string, unknown>;
                             const prov = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase();
@@ -1572,7 +1617,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             return <span className="text-xs text-text-secondary">{providerLabels[prov] ?? item.type}</span>;
                           })()}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className={visibleCols.target ? 'hidden md:table-cell' : 'hidden'}>
                           <span
                             className="block max-w-[160px] truncate text-xs font-mono text-text-secondary"
                             title={item.target}
@@ -1580,12 +1625,12 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             {item.target}
                           </span>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell className={visibleCols.current ? 'hidden sm:table-cell' : 'hidden'}>
                           {item.currentVersion ? (
                             <span className="font-mono text-sm">{item.currentVersion}</span>
                           ) : '—'}
                         </TableCell>
-                        <TableCell className="max-w-[200px] sm:max-w-[320px]">
+                        <TableCell className={`max-w-[200px] sm:max-w-[320px]${visibleCols.latest ? '' : ' hidden'}`}>
                           {(() => {
                             const { from, to } = extractVersionsFromMessage(item.latestMessage);
                             if (from && to && from !== to) {
@@ -1594,7 +1639,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             return <span className="text-xs text-text-secondary break-all">{item.latestMessage}</span>;
                           })()}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={visibleCols.status ? '' : 'hidden'}>
                           {(() => {
                             const { from, to } = extractVersionsFromMessage(item.latestMessage);
                             const hasUpdate = item.level !== 'green';
@@ -1637,9 +1682,9 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                             );
                           })()}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{secondsToHuman(item.intervalSec)}</TableCell>
-                        <TableCell>
+                        <TableCell className={visibleCols.lastChecked ? 'hidden lg:table-cell' : 'hidden'}>{item.checkedAt ? new Date(item.checkedAt).toLocaleString() : 'Never'}</TableCell>
+                        <TableCell className={visibleCols.interval ? 'hidden lg:table-cell' : 'hidden'}>{secondsToHuman(item.intervalSec)}</TableCell>
+                        <TableCell className={visibleCols.action ? '' : 'hidden'}>
                           <div className="flex items-center gap-1">
                             <Button variant="secondary" size="sm" loading={runningId === item.id} onClick={() => runNow(item.id)}>
                               <span className="flex items-center gap-1"><Play className="w-3 h-3" /> Run</span>

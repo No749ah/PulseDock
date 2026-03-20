@@ -1372,7 +1372,7 @@ function MonitorsPageInner() {
                 {paginatedMonitors.map((monitor) => {
                   const lastRun = runs.find((r) => r.monitorId === monitor.id);
                   const level = !monitor.enabled ? "paused" : (lastRun?.level ?? "green");
-                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-zinc-500" : "bg-danger";
+                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-text-muted/60" : "bg-danger";
                   const typeLabel = monitor.type === "HTTP" ? "HTTP" : monitor.type === "TCP" ? "TCP" : monitor.type === "SSL_CERT" ? "SSL" : monitor.type === "HEARTBEAT" ? "Heartbeat" : monitor.type;
                   const monitorRuns = runs.filter((r) => r.monitorId === monitor.id);
                   const upCount = monitorRuns.filter((r) => r.ok).length;
@@ -1382,7 +1382,7 @@ function MonitorsPageInner() {
                   // Interval label
                   const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
                   return (
-                    <div key={monitor.id} className="rounded-2xl border border-border bg-surface p-6 transition-all hover:border-zinc-600 group">
+                    <div key={monitor.id} className="rounded-2xl border border-border bg-surface p-6 transition-all hover:border-border-hover group">
                       {/* Top row: status dot + name + type badge */}
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0">

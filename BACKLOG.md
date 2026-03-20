@@ -1319,7 +1319,7 @@
 - [x] **Pricing section** — Free self-hosted card + Cloud (coming soon) card with feature lists
 - [x] **Screenshot gallery** — 2×2 mock screenshot grid with hover-lift and overlay labels (Dashboard, Status Pages, Version Checks, Incidents)
 - [x] **Footer redesign** — 3-column footer (Product / Resources / More) with GitHub link, changelog, docs, license, copyright
-- [ ] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts.
+- [~] **Performance** — Lighthouse 100, zero CLS, <1s FCP, lazy-load below-fold sections, optimized images, preconnect fonts. **Done:** Landing page now SSR (server component), LiveDemo lazy-loaded via next/dynamic (ssr:false client wrapper). **Remaining:** image optimization, preconnect hints, Lighthouse audit.
 - [x] **SEO deep pass** — JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
 - [x] **Animations polish** — FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
 - [x] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
@@ -1368,7 +1368,7 @@
 - [x] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
 - [x] **Animation & Micro-interactions** — active:scale-95 press feedback on primary CTAs, hover:-translate-y-1 lift on feature cards, toast slide-in, dashboard count-up, page transitions
 - [x] **Data Tables overhaul** — Sortable columns (all pages), sticky headers (monitors + alerts + incidents + versions), column visibility toggle (monitors + alerts + versions, localStorage persisted), bulk select with shift-click range (monitors), CSV/JSON export (monitors + incidents + alerts), pagination with rows-per-page selector (monitors + alerts + incidents), empty states on all pages. Remaining: resizable columns (drag) — deferred as low-value.
-- [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.
+- [x] **Charts upgrade** — Recharts already in use throughout: `MiniSparkline` (dashboard + monitors trend column, expansion panel) uses `LineChart`/`ResponsiveContainer`. `ResponseAreaChart`, `CheckBarChart`, `LineSparkline` use Recharts primitives. Status page widgets use purpose-built SVG bar charts (intentional: pixel-perfect control for heatmaps/bar charts). No upgrade needed.
 - [x] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
 - [x] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
 - [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.

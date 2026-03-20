@@ -2438,7 +2438,7 @@ function BackupRestoreCard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-surface border border-border rounded-2xl shadow-2xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               Restore Complete
@@ -2454,7 +2454,7 @@ function BackupRestoreCard() {
                 <div key={label} className="flex justify-between text-sm">
                   <span className="text-text-secondary">{label}</span>
                   <span className="text-text-primary font-medium">
-                    <span className="text-emerald-400">{(stats as { created: number }).created} created</span>
+                    <span className="text-success">{(stats as { created: number }).created} created</span>
                     {" · "}
                     <span className="text-text-secondary/60">{(stats as { skipped: number }).skipped} skipped</span>
                   </span>
@@ -2463,13 +2463,13 @@ function BackupRestoreCard() {
             </div>
             {restoreResult.monitors.errors.length > 0 && (
               <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 mb-4">
-                <p className="text-xs font-semibold text-red-400 mb-1">Monitor errors ({restoreResult.monitors.errors.length})</p>
-                <ul className="text-xs text-red-300/80 space-y-0.5">
+                <p className="text-xs font-semibold text-danger mb-1">Monitor errors ({restoreResult.monitors.errors.length})</p>
+                <ul className="text-xs text-danger/80 space-y-0.5">
                   {restoreResult.monitors.errors.slice(0, 5).map((e, i) => (
                     <li key={i} className="truncate">{e}</li>
                   ))}
                   {restoreResult.monitors.errors.length > 5 && (
-                    <li className="text-red-400">…and {restoreResult.monitors.errors.length - 5} more</li>
+                    <li className="text-danger">…and {restoreResult.monitors.errors.length - 5} more</li>
                   )}
                 </ul>
               </div>

@@ -309,7 +309,7 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave, onDelete }: {
                 {u.isActive !== false ? 'Active' : 'Disabled'}
               </span>
               {u.totpEnabled && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-amber-400 bg-amber-400/10 border-amber-400/30">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-warning bg-warning/10 border-warning/30">
                   🔐 MFA On
                 </span>
               )}
@@ -422,7 +422,7 @@ function EditUserModal({ user: u, currentUserId, onClose, onSave, onDelete }: {
                   <button
                     disabled={isSelf || actionLoading === 'mfa'}
                     onClick={doResetMfa}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-400/30 bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ShieldOff className="w-3.5 h-3.5" />
                     {actionLoading === 'mfa' ? '…' : 'Remove MFA'}
@@ -657,7 +657,7 @@ export default function AdminPage() {
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <p className="text-xs text-text-secondary">Joined <RelativeTime iso={u.createdAt} /></p>
-                      {u.totpEnabled && <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full">🔐 MFA</span>}
+                      {u.totpEnabled && <span className="text-[10px] font-semibold text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded-full">🔐 MFA</span>}
                       {!u.emailVerified && <span className="text-[10px] font-semibold text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded-full">unverified</span>}
                     </div>
                   </div>

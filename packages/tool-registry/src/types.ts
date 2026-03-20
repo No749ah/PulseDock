@@ -73,6 +73,11 @@ export interface VersionSource {
   endpointFallbacks?: string[];
   /** JSONPath expression to extract version from response */
   jsonPath?: string;
+  /**
+   * Optional fallback keys/paths to try when jsonPath misses.
+   * Used by resilient runtime extractors for heterogeneous API responses.
+   */
+  jsonPathExtractors?: string[];
   /** Whether auth is required to call this endpoint */
   authRequired?: boolean;
   /** For pulsedock-agent type: shell command to get version */

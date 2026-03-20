@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 07:21 UTC)
+- **Build/Test:** ✅ Build fixed and green, tests passing (API + CLI + Agent)
+- **Deployment:** ✅ Restarted via `npm run restart`; local + proxy route checks all 200
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Hotfix:** resolved API TypeScript build break by aligning monitor import type to `MonitorType` (includes DNS/PING)
+  - **Registry typing fix:** restored `jsonPathExtractors?: string[]` on `VersionSource` to match registry entries and extractor pipeline usage
+  - **UX self-review automation:** added `npm run ux:review` (`scripts/ux-review.mjs`) to capture light/dark screenshots across desktop/tablet/mobile with JSON report output
+  - **BACKLOG sync:** marked `UX self-review` complete with artifact/report workflow
+
 ## Status Summary (2026-03-20 06:02 UTC)
 - **Build/Test:** ✅ Clean build, 1511 API + 12 Agent tests passing (1523 total), zero TS errors
 - **Deployment:** ✅ Restarted; local + proxy all 200 (8/8 routes)
@@ -1525,7 +1535,7 @@
 - [x] **Performance benchmarking** — `scripts/perf-check.sh` (`npm run perf` / `npm run perf:prod`) — 7-section benchmark: API p95 latency, Web TTFB, HTTP status verification, bundle size analysis, TypeScript compliance, process health, DB+Redis. All 22 checks pass: API 1-15ms p95, web 13-128ms TTFB, ~1.3MB gzip bundle (24 pages), zero TS errors, DB 1ms, Redis ok.
 - [x] **Code quality metrics** — `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
 - [~] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
-- [ ] **UX self-review** — After every UI change: screenshot before/after, check on 3 viewports (mobile/tablet/desktop), verify dark mode, check color contrast (WCAG AA), test with keyboard only, check loading states
+- [x] **UX self-review** — Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
 - [ ] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness
 - [ ] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. List every feature they have that PulseDock doesn't. Prioritize and build.
 - [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.

@@ -15,6 +15,7 @@ import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
+import { runExtractorPipeline, normalizeExtractors } from './version-extractor.util';
 
 @Injectable()
 export class ChecksService {
@@ -355,7 +356,13 @@ export class ChecksService {
         if (!resp.ok) continue;
         const contentType = resp.headers.get('content-type') ?? '';
         const body = contentType.includes('application/json') ? await resp.json() : await resp.text();
-        const detected = this.extractVersion(body);
+        const extractors = normalizeExtractors(
+          config.jsonPath as string | undefined,
+          Array.isArray(config.jsonPathExtractors) ? (config.jsonPathExtractors as string[]) : undefined,
+        );
+        const detected = extractors.length > 0
+          ? (runExtractorPipeline(body, extractors) ?? this.extractVersion(body))
+          : this.extractVersion(body);
         if (detected) return detected;
       } catch {
         continue;

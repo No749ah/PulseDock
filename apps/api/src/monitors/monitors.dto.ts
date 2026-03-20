@@ -20,11 +20,11 @@ export class CreateMonitorDto {
 
   @ApiProperty({
     description: 'Monitor type',
-    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'],
+    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING'],
     example: 'HTTP',
   })
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING';
 
   @ApiPropertyOptional({ description: 'Check interval in seconds (min 10)', minimum: 10, example: 60 })
   @IsOptional()
@@ -102,8 +102,8 @@ export class UpdateMonitorDto {
   target?: string;
 
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING'])
+  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING';
 
   @IsOptional()
   @IsInt()
@@ -177,8 +177,8 @@ export class ImportMonitorItemDto {
   @MaxLength(1024)
   target!: string;
 
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING';
 
   @IsOptional()
   @IsInt()
@@ -267,6 +267,27 @@ export class DiscoverVersionDto {
   @IsString({ each: true })
   @MaxLength(512, { each: true })
   endpointFallbacks?: string[];
+
+  /**
+   * Legacy JSONPath expression (dot-notation or $. prefix) to extract version from JSON body.
+   * Use jsonPathExtractors array for multiple extractors.
+   * @example '$.version' or 'data.version'
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  jsonPath?: string;
+
+  /**
+   * Ordered list of dot-notation paths to try for extracting version from JSON body.
+   * First non-null semver-like result wins. Falls back to heuristic when all fail.
+   * @example ['version', 'data.version', 'build.version']
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(256, { each: true })
+  jsonPathExtractors?: string[];
 }
 
 export class BulkActionDto {

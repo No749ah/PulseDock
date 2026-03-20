@@ -6,6 +6,7 @@ import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
+import { runExtractorPipeline, normalizeExtractors } from '../checks/version-extractor.util';
 
 @Injectable()
 export class MonitorsService {
@@ -287,7 +288,7 @@ export class MonitorsService {
   async importMonitors(userId: string, items: Array<{
     name: string;
     target: string;
-    type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
+    type: MonitorType;
     intervalSec?: number;
     timeoutMs?: number;
     confirmations?: number;
@@ -841,7 +842,7 @@ export class MonitorsService {
     return null;
   }
 
-  private async detectDeployedVersion(input: { appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[] }) {
+  private async detectDeployedVersion(input: { appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
     if (!input.appUrl) {
       return {
         currentVersion: null as string | null,
@@ -918,7 +919,10 @@ export class MonitorsService {
 
           const contentType = resp.headers.get('content-type') ?? '';
           const body = contentType.includes('application/json') ? await resp.json() : await resp.text();
-          const version = this.extractVersionFromPayload(body);
+          const extractors = normalizeExtractors(input.jsonPath, input.jsonPathExtractors);
+          const version = extractors.length > 0
+            ? (runExtractorPipeline(body, extractors) ?? this.extractVersionFromPayload(body))
+            : this.extractVersionFromPayload(body);
 
           if (version) {
             return {
@@ -1077,7 +1081,7 @@ export class MonitorsService {
    * @returns { currentVersion, strategy, tried, detectedFrom } — strategy indicates how version was found
    * @throws Error when probing endpoints fails unexpectedly
    */
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[] }) {
+  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
     const deployed = await this.detectDeployedVersion({
       appUrl: input.appUrl,
@@ -1087,6 +1091,8 @@ export class MonitorsService {
       openvpnUsername: input.openvpnUsername,
       openvpnPassword: input.openvpnPassword,
       endpointFallbacks: input.endpointFallbacks,
+      jsonPath: input.jsonPath,
+      jsonPathExtractors: input.jsonPathExtractors,
     });
     if (deployed.currentVersion) {
       return {

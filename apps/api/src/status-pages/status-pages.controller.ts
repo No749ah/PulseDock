@@ -41,8 +41,9 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('status-pages')
-  @ApiOperation({ summary: 'List my status pages' })
-  @ApiResponse({ status: 200, description: 'List of status pages owned by the authenticated user' })
+  @ApiOperation({ summary: 'List my status pages', description: 'Returns all status pages owned by the authenticated user, ordered by createdAt descending. Strips passwordHash (replaced with hasPassword boolean).' })
+  @ApiResponse({ status: 200, description: 'Array of status pages with hasPassword flag.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   list(@Req() req: AuthRequest) {
     return this.statusPagesService.findAll(req.user.id);
   }
@@ -50,8 +51,10 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Post('status-pages')
-  @ApiOperation({ summary: 'Create a status page' })
-  @ApiResponse({ status: 201, description: 'Status page created' })
+  @ApiOperation({ summary: 'Create a status page', description: 'Creates a new status page. Auto-generates a unique slug from the title if not provided. Appends a timestamp suffix if slug is already taken.' })
+  @ApiResponse({ status: 201, description: 'Created status page.' })
+  @ApiResponse({ status: 400, description: 'Validation error — title is required.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   create(@Req() req: AuthRequest, @Body() body: CreateStatusPageDto) {
     return this.statusPagesService.create(req.user.id, body);
   }
@@ -59,8 +62,12 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('status-pages/:id')
-  @ApiOperation({ summary: 'Get a status page by ID' })
+  @ApiOperation({ summary: 'Get a status page by ID', description: 'Returns a single status page with its full layout. Ownership is enforced.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Status page with layout and hasPassword flag.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied — page belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
   findOne(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.statusPagesService.findOne(req.user.id, id);
   }
@@ -68,8 +75,13 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Patch('status-pages/:id')
-  @ApiOperation({ summary: 'Update a status page layout / title / description' })
+  @ApiOperation({ summary: 'Update a status page', description: 'Partially updates a status page. Accepts title, description, layout, slug, isPublished, password, notifyWebhookUrl, and page settings. Saves a version history snapshot on each call.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Updated status page.' })
+  @ApiResponse({ status: 400, description: 'Validation error.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
   update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: UpdateStatusPageDto) {
     return this.statusPagesService.update(req.user.id, id, body);
   }
@@ -77,8 +89,12 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Post('status-pages/:id/publish')
-  @ApiOperation({ summary: 'Toggle publish state of a status page' })
+  @ApiOperation({ summary: 'Toggle publish state of a status page', description: 'Toggles isPublished between true and false. Published pages are accessible at /status/:slug.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Updated status page with new isPublished value.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
   publish(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.statusPagesService.publish(req.user.id, id);
   }
@@ -86,8 +102,12 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Delete('status-pages/:id')
-  @ApiOperation({ summary: 'Delete a status page' })
+  @ApiOperation({ summary: 'Delete a status page', description: 'Permanently deletes a status page and all its history snapshots and subscribers.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: '`{ deleted: true }` on success.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
   remove(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.statusPagesService.remove(req.user.id, id);
   }
@@ -95,8 +115,12 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('status-pages/:id/history')
-  @ApiOperation({ summary: 'Get version history (last 10 saves) for a status page' })
+  @ApiOperation({ summary: 'Get version history for a status page', description: 'Returns the last 10 saved snapshots (savedAt, label, layout). Use to restore a previous version.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Array of history entries ordered by savedAt descending.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
   getHistory(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.statusPagesService.getHistory(req.user.id, id);
   }
@@ -104,9 +128,13 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Post('status-pages/:id/history/:historyId/restore')
-  @ApiOperation({ summary: 'Restore a status page to a previous saved version' })
+  @ApiOperation({ summary: 'Restore a status page to a previous saved version', description: 'Saves the current layout as a pre-restore snapshot, then applies the selected history entry\'s layout.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })
-  @ApiParam({ name: 'historyId', description: 'History entry CUID' })
+  @ApiParam({ name: 'historyId', description: 'History entry CUID to restore from' })
+  @ApiResponse({ status: 200, description: 'Updated status page with restored layout.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page or history entry not found.' })
   restoreHistory(
     @Req() req: AuthRequest,
     @Param('id') id: string,
@@ -118,9 +146,11 @@ export class StatusPagesController {
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Get('status-pages/slug-check')
-  @ApiOperation({ summary: 'Check if a slug is available for the current user' })
-  @ApiQuery({ name: 'slug', required: true })
-  @ApiQuery({ name: 'excludeId', required: false })
+  @ApiOperation({ summary: 'Check if a slug is available', description: 'Validates format and checks uniqueness. Pass excludeId when editing an existing page to allow the page to keep its own slug.' })
+  @ApiQuery({ name: 'slug', required: true, description: 'Candidate slug (3–80 chars, lowercase alphanumeric + hyphens)' })
+  @ApiQuery({ name: 'excludeId', required: false, description: 'Status page ID to exclude from the uniqueness check (for edits)' })
+  @ApiResponse({ status: 200, description: '`{ available, valid, slug?, reason? }` — valid=false when format check fails.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
   async checkSlug(
     @Req() req: AuthRequest,
     @Query('slug') slug: string,
@@ -134,10 +164,13 @@ export class StatusPagesController {
   @Get('public/status/:slug')
   @ApiOperation({
     summary: 'Get published status page by slug (public)',
-    description: 'Returns page layout and live monitor data. No auth required.',
+    description: 'Returns page layout and live monitor data. No auth required. Supply ?password= for password-protected pages.',
   })
-  @ApiParam({ name: 'slug', description: 'Page slug' })
-  @ApiQuery({ name: 'password', required: false, description: 'Password if page is protected' })
+  @ApiParam({ name: 'slug', description: 'Page slug', example: 'my-services' })
+  @ApiQuery({ name: 'password', required: false, description: 'Password for password-protected pages' })
+  @ApiResponse({ status: 200, description: 'Published status page with live monitor data, incidents, and maintenance.' })
+  @ApiResponse({ status: 401, description: 'Page is password-protected and the supplied password is wrong or missing.' })
+  @ApiResponse({ status: 404, description: 'Page not found or not published.' })
   findPublic(@Param('slug') slug: string, @Query('password') password?: string) {
     return this.statusPagesService.findPublic(slug, password);
   }
@@ -146,9 +179,12 @@ export class StatusPagesController {
   @HttpCode(201)
   @ApiOperation({
     summary: 'Subscribe to status page updates (public)',
-    description: 'Adds email to subscriber list. Returns 201 on success, 409 if already subscribed.',
+    description: 'Adds email to the subscriber list for outage/degraded email notifications. Returns 409 if already subscribed.',
   })
-  @ApiParam({ name: 'slug', description: 'Page slug' })
+  @ApiParam({ name: 'slug', description: 'Page slug', example: 'my-services' })
+  @ApiResponse({ status: 201, description: '`{ subscribed: true }` when successfully added.' })
+  @ApiResponse({ status: 409, description: 'Email is already subscribed to this page.' })
+  @ApiResponse({ status: 404, description: 'Page not found or not published.' })
   async subscribe(
     @Param('slug') slug: string,
     @Body() body: { email: string },
@@ -163,11 +199,14 @@ export class StatusPagesController {
   @Get('public/status/:slug/widget/:widgetId')
   @ApiOperation({
     summary: 'Get live data for a single widget (public)',
-    description: 'Returns real-time data for a specific widget on a published status page.',
+    description: 'Returns real-time data for a specific widget on a published status page. The response shape depends on the widget type (uptimePct, dataPoints, grid, etc.).',
   })
-  @ApiParam({ name: 'slug', description: 'Page slug' })
-  @ApiParam({ name: 'widgetId', description: 'Widget ID within the layout' })
-  @ApiQuery({ name: 'password', required: false })
+  @ApiParam({ name: 'slug', description: 'Page slug', example: 'my-services' })
+  @ApiParam({ name: 'widgetId', description: 'Widget ID within the layout', example: 'w_abc123' })
+  @ApiQuery({ name: 'password', required: false, description: 'Password for password-protected pages' })
+  @ApiResponse({ status: 200, description: 'Widget-specific data object.' })
+  @ApiResponse({ status: 401, description: 'Page is password-protected and password is wrong/missing.' })
+  @ApiResponse({ status: 404, description: 'Page, widget, or published status not found.' })
   getWidgetData(
     @Param('slug') slug: string,
     @Param('widgetId') widgetId: string,
@@ -181,9 +220,11 @@ export class StatusPagesController {
   @Header('Cache-Control', 'public, max-age=300')
   @ApiOperation({
     summary: 'RSS feed for status page incidents (public)',
-    description: 'Returns an RSS 2.0 feed of incidents for the given status page. No auth required.',
+    description: 'Returns an RSS 2.0 feed of recent incidents for the given status page. Cached for 5 minutes. No auth required.',
   })
-  @ApiParam({ name: 'slug', description: 'Page slug' })
+  @ApiParam({ name: 'slug', description: 'Page slug', example: 'my-services' })
+  @ApiResponse({ status: 200, description: 'RSS 2.0 XML document.' })
+  @ApiResponse({ status: 404, description: 'Page not found or not published.' })
   async getRssFeed(@Param('slug') slug: string, @Res() res: Response) {
     const xml = await this.statusPagesService.getRssFeed(slug);
     res.send(xml);

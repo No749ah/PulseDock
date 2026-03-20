@@ -9,6 +9,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Portainer',
     category: 'Container',
     tags: ['docker', 'self-hosted', 'container'],
+    aliases: ['docker ui', 'container management', 'docker manager'],
     icon: `${SI}/portainer`,
     description: 'Docker/Kubernetes management UI',
     homepage: 'https://portainer.io',
@@ -17,12 +18,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'docker-engine',
     name: 'Docker Engine',
     category: 'Container',
     tags: ['docker', 'container', 'runtime'],
+    aliases: ['container runtime', 'docker daemon'],
     icon: `${SI}/docker`,
     description: 'Container runtime platform',
     homepage: 'https://docker.com',
@@ -37,6 +41,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Kubernetes',
     category: 'Container',
     tags: ['k8s', 'orchestration', 'cloud-native'],
+    aliases: ['k8s', 'kube', 'container orchestration'],
     icon: `${SI}/kubernetes`,
     description: 'Container orchestration system',
     homepage: 'https://kubernetes.io',
@@ -149,6 +154,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'GitLab CE',
     category: 'CI/CD',
     tags: ['git', 'devops', 'self-hosted'],
+    aliases: ['git', 'vcs', 'gitlab'],
     icon: `${SI}/gitlab`,
     description: 'Open-source DevOps platform',
     homepage: 'https://gitlab.com',
@@ -164,6 +170,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Gitea',
     category: 'CI/CD',
     tags: ['git', 'self-hosted', 'forge'],
+    aliases: ['git', 'self-hosted git'],
     icon: `${SI}/gitea`,
     description: 'Lightweight self-hosted Git service',
     homepage: 'https://gitea.io',
@@ -172,6 +179,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'forgejo',
@@ -192,6 +201,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Jenkins',
     category: 'CI/CD',
     tags: ['ci', 'automation', 'build'],
+    aliases: ['ci', 'cd', 'cicd', 'build server'],
     icon: `${SI}/jenkins`,
     description: 'Open-source automation server',
     homepage: 'https://jenkins.io',
@@ -206,6 +216,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'ArgoCD',
     category: 'CI/CD',
     tags: ['gitops', 'kubernetes', 'cd'],
+    aliases: ['gitops', 'cd', 'continuous delivery'],
     icon: `${SI}/argo`,
     description: 'Declarative GitOps CD for Kubernetes',
     homepage: 'https://argo-cd.readthedocs.io',
@@ -214,6 +225,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'woodpecker-ci',
@@ -332,6 +345,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'PostgreSQL',
     category: 'Database',
     tags: ['sql', 'relational', 'database'],
+    aliases: ['pg', 'postgres', 'psql', 'sql'],
     icon: `${SI}/postgresql`,
     description: 'Advanced open-source relational database',
     homepage: 'https://postgresql.org',
@@ -340,12 +354,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'mysql',
     name: 'MySQL',
     category: 'Database',
     tags: ['sql', 'relational', 'database'],
+    aliases: ['sql', 'relational database', 'rds'],
     icon: `${SI}/mysql`,
     description: 'World\'s most popular open-source database',
     homepage: 'https://mysql.com',
@@ -360,6 +377,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'MariaDB',
     category: 'Database',
     tags: ['sql', 'relational', 'mysql-compatible'],
+    aliases: ['mysql', 'sql', 'relational database'],
     icon: `${SI}/mariadb`,
     description: 'Community-developed MySQL fork',
     homepage: 'https://mariadb.org',
@@ -374,6 +392,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Redis',
     category: 'Database',
     tags: ['cache', 'in-memory', 'key-value'],
+    aliases: ['cache', 'kv', 'key-value', 'in-memory'],
     icon: `${SI}/redis`,
     description: 'In-memory data structure store',
     homepage: 'https://redis.io',
@@ -382,12 +401,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'mongodb',
     name: 'MongoDB',
     category: 'Database',
     tags: ['nosql', 'document', 'database'],
+    aliases: ['mongo', 'nosql', 'document db'],
     icon: `${SI}/mongodb`,
     description: 'Document-oriented NoSQL database',
     homepage: 'https://mongodb.com',
@@ -402,6 +424,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Elasticsearch',
     category: 'Database',
     tags: ['search', 'analytics', 'database'],
+    aliases: ['es', 'elastic', 'elk', 'search engine'],
     icon: `${SI}/elasticsearch`,
     description: 'Distributed search and analytics engine',
     homepage: 'https://elastic.co',
@@ -430,6 +453,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'InfluxDB',
     category: 'Database',
     tags: ['time-series', 'metrics', 'database'],
+    aliases: ['time series', 'tsdb', 'time-series db'],
     icon: `${SI}/influxdb`,
     description: 'Purpose-built time series database',
     homepage: 'https://influxdata.com',
@@ -584,6 +608,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Grafana',
     category: 'Observability',
     tags: ['dashboards', 'metrics', 'visualization'],
+    aliases: ['dashboard', 'charts', 'visualization'],
     icon: `${SI}/grafana`,
     description: 'Open observability & dashboards platform',
     homepage: 'https://grafana.com',
@@ -592,12 +617,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'prometheus',
     name: 'Prometheus',
     category: 'Observability',
     tags: ['metrics', 'monitoring', 'alerting'],
+    aliases: ['prom', 'metrics', 'monitoring'],
     icon: `${SI}/prometheus`,
     description: 'Systems monitoring and alerting toolkit',
     homepage: 'https://prometheus.io',
@@ -606,12 +634,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'uptime-kuma',
     name: 'Uptime Kuma',
     category: 'Observability',
     tags: ['uptime', 'monitoring', 'self-hosted'],
+    aliases: ['uptime monitoring', 'status monitoring'],
     icon: `${SI}/uptimekuma`,
     description: 'Self-hosted uptime monitoring tool',
     homepage: 'https://github.com/louislam/uptime-kuma',
@@ -621,6 +652,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'netdata',
@@ -669,6 +702,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Loki',
     category: 'Observability',
     tags: ['logs', 'grafana', 'log-aggregation', 'self-hosted'],
+    aliases: ['logs', 'logging', 'log aggregation'],
     icon: `${SI}/grafana`,
     description: 'Horizontally scalable log aggregation system',
     homepage: 'https://grafana.com/oss/loki',
@@ -677,12 +711,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'jaeger',
     name: 'Jaeger',
     category: 'Observability',
     tags: ['tracing', 'distributed', 'opentelemetry', 'self-hosted'],
+    aliases: ['tracing', 'distributed tracing', 'apm'],
     icon: `${SI}/jaeger`,
     description: 'Open source distributed tracing platform',
     homepage: 'https://www.jaegertracing.io',
@@ -795,6 +832,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Keycloak',
     category: 'Security',
     tags: ['iam', 'sso', 'auth'],
+    aliases: ['sso', 'auth', 'oidc', 'oauth', 'identity'],
     icon: `${SI}/keycloak`,
     description: 'Open-source identity and access management',
     homepage: 'https://keycloak.org',
@@ -804,6 +842,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'authelia',
@@ -825,6 +865,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Authentik',
     category: 'Security',
     tags: ['auth', 'sso', 'idp'],
+    aliases: ['sso', 'auth', 'oidc', 'identity provider'],
     icon: `${SI}/authentik`,
     description: 'Open-source identity provider',
     homepage: 'https://goauthentik.io',
@@ -840,6 +881,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'HashiCorp Vault',
     category: 'Security',
     tags: ['secrets', 'encryption', 'pki'],
+    aliases: ['secrets', 'hashicorp vault', 'secret management'],
     icon: `${SI}/vault`,
     description: 'Secrets management tool',
     homepage: 'https://vaultproject.io',
@@ -848,6 +890,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'vaultwarden',
@@ -980,6 +1024,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Nginx',
     category: 'Networking',
     tags: ['web-server', 'reverse-proxy', 'load-balancer'],
+    aliases: ['reverse proxy', 'web server', 'proxy'],
     icon: `${SI}/nginx`,
     description: 'High-performance web server and reverse proxy',
     homepage: 'https://nginx.org',
@@ -988,6 +1033,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'nginx-proxy-manager',
@@ -1008,6 +1055,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Traefik',
     category: 'Networking',
     tags: ['proxy', 'kubernetes', 'docker'],
+    aliases: ['proxy', 'load balancer', 'ingress', 'reverse proxy'],
     icon: `${SI}/traefikproxy`,
     description: 'Cloud-native application proxy',
     homepage: 'https://traefik.io',
@@ -1016,6 +1064,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'caddy',
@@ -1036,6 +1086,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Pi-hole',
     category: 'Networking',
     tags: ['dns', 'ad-block', 'self-hosted'],
+    aliases: ['dns', 'ad blocker', 'ad blocking', 'dns sinkhole'],
     icon: `${SI}/pihole`,
     description: 'Network-wide ad blocker',
     homepage: 'https://pi-hole.net',
@@ -1044,12 +1095,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'adguard-home',
     name: 'AdGuard Home',
     category: 'Networking',
     tags: ['dns', 'ad-block', 'privacy'],
+    aliases: ['dns', 'ad blocker', 'adguard', 'dns filtering'],
     icon: `${SI}/adguard`,
     description: 'Network-wide ad & tracker blocking',
     homepage: 'https://adguard.com/adguard-home',
@@ -1058,6 +1112,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'tailscale',
@@ -1148,6 +1204,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'WireGuard',
     category: 'Networking',
     tags: ['vpn', 'kernel', 'secure'],
+    aliases: ['vpn', 'wg', 'tunnel'],
     icon: `${SI}/wireguard`,
     description: 'Modern, fast, and secure VPN tunnel',
     homepage: 'https://wireguard.com',
@@ -1176,6 +1233,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'MinIO',
     category: 'Storage',
     tags: ['s3', 'object-storage', 'self-hosted'],
+    aliases: ['s3', 'object storage', 's3 compatible'],
     icon: `${SI}/minio`,
     description: 'S3-compatible object storage',
     homepage: 'https://min.io',
@@ -1185,12 +1243,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'nextcloud',
     name: 'Nextcloud',
     category: 'Storage',
     tags: ['file-sync', 'collaboration', 'self-hosted'],
+    aliases: ['file sharing', 'cloud storage', 'owncloud'],
     icon: `${SI}/nextcloud`,
     description: 'Self-hosted productivity platform',
     homepage: 'https://nextcloud.com',
@@ -1199,6 +1260,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'syncthing',
@@ -1527,6 +1590,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Jellyfin',
     category: 'Media',
     tags: ['media-server', 'streaming', 'self-hosted'],
+    aliases: ['media server', 'plex alternative', 'streaming'],
     icon: `${SI}/jellyfin`,
     description: 'Free software media system',
     homepage: 'https://jellyfin.org',
@@ -1535,12 +1599,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'home-assistant',
     name: 'Home Assistant',
     category: 'Media',
     tags: ['home-automation', 'iot', 'self-hosted'],
+    aliases: ['hass', 'home automation', 'smart home', 'iot'],
     icon: `${SI}/homeassistant`,
     description: 'Open-source home automation platform',
     homepage: 'https://home-assistant.io',
@@ -1549,6 +1616,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'immich',
@@ -1766,6 +1835,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'RabbitMQ',
     category: 'Messaging',
     tags: ['message-queue', 'amqp', 'broker'],
+    aliases: ['amqp', 'queue', 'message broker', 'broker'],
     icon: `${SI}/rabbitmq`,
     description: 'Open-source message broker',
     homepage: 'https://rabbitmq.com',
@@ -1780,6 +1850,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Apache Kafka',
     category: 'Messaging',
     tags: ['streaming', 'event-bus', 'distributed'],
+    aliases: ['streaming', 'events', 'event streaming', 'message broker'],
     icon: `${SI}/apachekafka`,
     description: 'Distributed event streaming platform',
     homepage: 'https://kafka.apache.org',
@@ -1865,6 +1936,7 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     name: 'Node-RED',
     category: 'Dev Tools',
     tags: ['flow', 'iot', 'low-code'],
+    aliases: ['flow automation', 'iot automation', 'nodered'],
     icon: `${SI}/nodered`,
     description: 'Low-code programming for event-driven applications',
     homepage: 'https://nodered.org',
@@ -1873,6 +1945,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified',
+    lastVerifiedAt: '2026-03-20',
   },
   {
     id: 'supabase',
@@ -18485,12 +18559,14 @@ export function searchTools(query: string, category?: string): ToolRegistryEntry
     const name = t.name.toLowerCase();
     const desc = t.description.toLowerCase();
     const id = t.id.toLowerCase();
+    const aliasMatch = t.aliases?.some((a) => a.toLowerCase() === q || a.toLowerCase().includes(q));
     return (
       name === q ||
       name.startsWith(q) ||
       name.includes(q) ||
       id === q ||
       id.startsWith(q) ||
+      aliasMatch ||
       t.tags.some((tag) => tag.toLowerCase() === q || tag.toLowerCase().includes(q)) ||
       desc.includes(q)
     );
@@ -18502,10 +18578,14 @@ export function searchTools(query: string, category?: string): ToolRegistryEntry
     const score = (t: ToolRegistryEntry): number => {
       const name = t.name.toLowerCase();
       const id = t.id.toLowerCase();
+      const aliasExact = t.aliases?.some((a) => a.toLowerCase() === q);
+      const aliasPartial = t.aliases?.some((a) => a.toLowerCase().includes(q));
       if (name === q) return 10;
       if (name.startsWith(q)) return 20;
       if (name.includes(q)) return 30;
-      if (id === q || id.startsWith(q)) return 40;
+      if (id === q || id.startsWith(q)) return 35;
+      if (aliasExact) return 38;
+      if (aliasPartial) return 42;
       if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
       if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
       return 70; // description match

@@ -94,6 +94,8 @@ export interface ToolRegistryEntry {
   requiresInstanceUrl: boolean;
   /** Whether this entry has been manually verified against a real instance */
   verified: boolean;
+  /** Alternative names/abbreviations users might search for (e.g. 'k8s' → Kubernetes) */
+  aliases?: string[];
   /**
    * Verification status for runtime checks.
    * - 'verified'     — manually confirmed working against a real instance

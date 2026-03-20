@@ -7,6 +7,18 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [Unreleased] — 2026-03-20 (ongoing)
+
+### Added
+- **Accessibility (a11y) — public status page widgets** — `LiveStatusRefresh`: `role="status"` + `aria-live="polite"` + descriptive `aria-label` for screen readers; decorative pulsing dots: `aria-hidden="true"`; `ServiceHealthMatrix` and `SLAComplianceTable` tables: `aria-label` + `scope="col"` on all `<th>` headers; `AggregateHealthScore` and `IncidentSeverityDistribution` SVGs: `role="img"` + `aria-label` + `<title>` element; `PerformanceTrend` sparkline SVG: `aria-hidden="true"` (value conveyed in text); color-only status dots marked `aria-hidden="true"` throughout
+- **Accessibility (a11y) — public status page root** — `role="main"` on page container; skip-to-content landmark link; `role="toolbar"` on controls bar; `role="region"` + `aria-label` on all widget grid containers; `OverallSystemStatus`: `role="status"` + `aria-live="polite"` + full status description in `aria-label`; `UptimeBar`: `role="progressbar"` with `aria-valuenow/min/max`; `ComponentStatusList`: converted to `<ul>`/`<li>` with per-item descriptive `aria-label`; `ActiveIncidentBanner`: `role="alert"` + `aria-live="assertive"` when incidents active
+- **JSDoc** — Comprehensive `@param`/`@returns`/`@throws` annotations added to: `checks.service.ts`, `maintenance.service.ts`, `status-pages.service.ts`, `agent.service.ts`, `audit.service.ts`, `bootstrap.service.ts`, `data.service.ts`, `mailer.service.ts`, `metrics.service.ts`, `prisma.service.ts`, `backup.service.ts`, `tags.service.ts`
+
+### Changed
+- **Docs** — Tool registry count updated to 2500+ in `docs/README.md` and `docs/VERSION-CHECKS.md`
+
+---
+
 ## [Unreleased] — 2026-03-19 (ongoing)
 
 ### Added

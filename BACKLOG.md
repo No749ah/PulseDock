@@ -1,3 +1,14 @@
+## Status Summary (2026-03-20 04:00 UTC)
+- **Build/Test:** ✅ Clean build (fixed jsPDF/fflate Turbopack SSR error via serverExternalPackages), 1505 API tests passing, zero TS errors
+- **Deployment:** ✅ Web server restarted, new build live
+- **Branch:** heartbeat/2026-03-20-registry-quality
+- **This session:**
+  - **Auth-toggle UX**: Amber dismissible callout when app version discover returns 401/403 (`authFailed=true`). "Enable auth →" button sets auth mode to `token`. Added `showAuthHint` state + API now forwards `authFailed` in the manual-strategy response.
+  - **Registry lint script**: `packages/tool-registry/scripts/lint-registry.ts` already existed; added `packages/tool-registry/package.json` with `lint` script. Root package.json already had `registry:lint` npm script.
+  - **Verified tool flag**: `verified: boolean` already in `ToolRegistryEntry` type; green checkmark badge in tool picker already in UI; verified tools sort first.
+  - **BACKLOG cleanup**: Marked API Keys management, Backup & Restore, Auth-toggle UX, CI-Check Registry-Lint, Tool-Templates verified flag as `[x]`.
+  - **Build fix (inherited)**: Added `serverExternalPackages: ['jspdf', 'fflate', 'html2canvas']` to next.config.mjs to fix pre-existing Turbopack SSR bundling error from reports page.
+
 ## Status Summary (2026-03-20 03:45 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Deployment:** ✅ Public URL 200, web restarted

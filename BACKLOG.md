@@ -1312,7 +1312,7 @@
   ├── CHANGELOG.md       (release notes — move from root)
   └── TROUBLESHOOTING.md (common issues + fixes)
   ```
-- [ ] **Review and update ALL existing docs** — Go through every doc file: fix outdated info, add missing sections, verify all code samples work, update screenshots, ensure consistent formatting (headings, code blocks, tables).
+- [x] **Review and update ALL existing docs** — Audited all 19 doc files. Fixed: stale `START.md` → `GETTING-STARTED.md` link in API.md; removed outdated `allowedHosts` reference in TROUBLESHOOTING.md; added missing `apt` and `helm` providers to VERSION-CHECKS.md; added comprehensive endpoint overview table + incidents/maintenance/status-pages/team/apikeys sections to API.md; added 3 new troubleshooting entries (status page real-time, version check yellowing, alert not firing).
 - [x] **Delete stale/unused files** — Removed 4 dead web components (Breadcrumbs, ConfirmModal, ResponseTimeChart, TextInput) — all superseded by newer implementations. No TODO/FIXME/console.log debris. Build verified clean after removal.
 - [x] **README.md overhaul** — Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
 - [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.

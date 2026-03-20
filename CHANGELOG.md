@@ -11,6 +11,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 - **Swagger API documentation audit** — Comprehensive pass across all 143 endpoints: added `@ApiResponse` decorators for 401 (Not authenticated), 403 (Access denied), 404 (Not found), and 400 (Validation error) where applicable. Added rich `description` strings to all `@ApiOperation` decorators explaining behaviour, parameter semantics, and edge cases. Error response annotation coverage increased from 16 → 82 annotations. Affected: incidents, maintenance, status-pages, team, tags, apikeys controllers.
+- **Documentation audit** — Updated `docs/API.md`: added endpoint overview table (143 endpoints across 19 controllers), comprehensive sections for incidents, maintenance, status pages, API keys, and team endpoints. Fixed stale link. Updated `docs/TROUBLESHOOTING.md`: fixed stale references, added 3 new troubleshooting entries. Updated `docs/VERSION-CHECKS.md`: added missing `apt` and `helm` providers.
 
 ### Changed
 - **Sticky table headers + column visibility** — Alerts and Versions tables now have sticky `<thead>` (stays visible while scrolling); column visibility toggle persisted to `localStorage` on both pages; Incidents table has sticky header too

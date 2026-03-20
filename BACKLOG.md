@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 09:25 UTC)
+- **Build/Test:** ✅ Build fixed and green, tests passing (API 1542 + CLI 10 + Agent 12)
+- **Deployment:** ✅ Restarted via `npm run restart`; local + proxy route checks all 200
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **SLA migration baseline fix:** Added Prisma migration `20260320091700_add_sla_slack_webhook_unsubscribe_fields` so migration history matches already-applied schema fields (`Monitor.sla*`, `PublicStatusPage.slackWebhookUrl/discordWebhookUrl`, `StatusPageSubscriber.unsubscribeToken`, `ToolTemplateFeedback` table/indexes/FK).
+  - **Build break resolved:** Fixed TypeScript/Prisma drift causing missing `slaTarget/slaPeriodDays/slaBreachAlertedAt` fields in scheduler query types by baselining migration + regenerating Prisma client.
+  - **Validation:** `npm run build` clean; full tests green; health + frontend route audit all 200 locally and via reverse proxy.
+
 ## Status Summary (2026-03-20 07:21 UTC)
 - **Build/Test:** ✅ Build fixed and green, tests passing (API + CLI + Agent)
 - **Deployment:** ✅ Restarted via `npm run restart`; local + proxy route checks all 200

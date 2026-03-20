@@ -27,6 +27,16 @@ interface MonitorItem {
   config?: Record<string, unknown>;
 }
 
+interface AlertChannelInfo {
+  alertChannelId: string;
+  notifyOn: string;
+  alertChannel: {
+    id: string;
+    name: string;
+    type: string;
+  };
+}
+
 interface MonitorRun {
   id: string;
   monitorId: string;
@@ -88,6 +98,7 @@ export default function MonitorDetailPage() {
   const [running, setRunning] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [toast, setToast] = useState("");
+  const [alertChannels, setAlertChannels] = useState<AlertChannelInfo[]>([]);
 
   useEffect(() => {
     const user = getUser();
@@ -100,9 +111,10 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRuns] = await Promise.all([
+        const [monitors, monitorRuns, alertChs] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
           api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user!.id),
+          api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
         ]);
         const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
@@ -111,6 +123,7 @@ export default function MonitorDetailPage() {
         }
         setMonitor(found);
         setRuns(monitorRuns);
+        setAlertChannels(alertChs);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitor");
       } finally {
@@ -758,6 +771,50 @@ export default function MonitorDetailPage() {
             </div>
           </Card>
         
+        {/* Alert Channels */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Alert Channels</h2>
+            <a href="/alerts" className="text-xs text-accent hover:underline">Manage →</a>
+          </div>
+          {alertChannels.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <p className="text-sm text-text-secondary">No alert channels assigned</p>
+              <a href="/alerts" className="text-xs text-accent hover:underline">Add an alert channel →</a>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {alertChannels.map((ac) => {
+                const typeColors: Record<string, string> = {
+                  email: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
+                  slack: "text-green-400 bg-green-400/10 border-green-400/20",
+                  discord: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20",
+                  webhook: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+                  telegram: "text-sky-400 bg-sky-400/10 border-sky-400/20",
+                };
+                const notifyLabels: Record<string, string> = {
+                  ON_CHANGE: "On change",
+                  ALWAYS: "Always",
+                  FIRST_ONLY: "First only",
+                  DAILY_DIGEST: "Daily digest",
+                  VERSION_ANY: "Any version",
+                  VERSION_MAJOR: "Major only",
+                };
+                const colorClass = typeColors[ac.alertChannel.type] ?? "text-text-secondary bg-surface-elevated border-border";
+                return (
+                  <div key={ac.alertChannelId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-elevated border border-border">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${colorClass}`}>
+                      {ac.alertChannel.type}
+                    </span>
+                    <span className="text-sm text-text-primary flex-1 truncate">{ac.alertChannel.name}</span>
+                    <span className="text-xs text-text-muted">{notifyLabels[ac.notifyOn] ?? ac.notifyOn}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
       </div>
     </AppFrame>
   );

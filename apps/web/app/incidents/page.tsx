@@ -13,6 +13,7 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV } from '../../lib/useTableSort';
+import { TablePagination } from '../components/SortableTable';
 
 // Types
 type IncidentStatus = 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
@@ -350,6 +351,8 @@ export default function IncidentsPage() {
   }
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [resolvedPage, setResolvedPage] = useState(1);
+  const [resolvedPageSize, setResolvedPageSize] = useState('10');
   const { sort: incidentSort, toggle: incidentToggle, sorted: incidentSorted } = useTableSort<'title' | 'status' | 'severity' | 'updatedAt'>('updatedAt', 'desc');
 
   const filteredIncidents = incidents.filter((i) => {
@@ -372,6 +375,15 @@ export default function IncidentsPage() {
 
   const activeIncidents = sortedFiltered.filter((i) => i.status !== 'RESOLVED');
   const resolvedIncidents = sortedFiltered.filter((i) => i.status === 'RESOLVED');
+
+  // Pagination for resolved incidents
+  const resolvedSize = Number(resolvedPageSize);
+  const resolvedPageCount = Math.max(1, Math.ceil(resolvedIncidents.length / resolvedSize));
+  const safeResolvedPage = Math.min(resolvedPage, resolvedPageCount);
+  const paginatedResolved = resolvedIncidents.slice(
+    (safeResolvedPage - 1) * resolvedSize,
+    safeResolvedPage * resolvedSize,
+  );
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -603,7 +615,7 @@ export default function IncidentsPage() {
                   type="text"
                   placeholder="Search incidents…"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setResolvedPage(1); }}
                   className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-border text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 />
               </div>
@@ -680,7 +692,7 @@ export default function IncidentsPage() {
                     Resolved ({resolvedIncidents.length})
                   </h3>
                   <div className="space-y-2">
-                    {resolvedIncidents.map((incident) => (
+                    {paginatedResolved.map((incident) => (
                       <IncidentRow
                         key={incident.id}
                         incident={incident}
@@ -692,6 +704,17 @@ export default function IncidentsPage() {
                       />
                     ))}
                   </div>
+                  {resolvedIncidents.length > resolvedSize && (
+                    <TablePagination
+                      page={safeResolvedPage}
+                      pageCount={resolvedPageCount}
+                      pageSize={resolvedPageSize}
+                      totalItems={resolvedIncidents.length}
+                      onPage={(p) => setResolvedPage(p)}
+                      onPageSize={(s) => { setResolvedPageSize(s); setResolvedPage(1); }}
+                      pageSizeOptions={[10, 25, 50, 100]}
+                    />
+                  )}
                 </section>
               )}
             </div>

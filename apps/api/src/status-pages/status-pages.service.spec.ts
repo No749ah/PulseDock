@@ -107,7 +107,7 @@ function makePrisma(opts: {
 }
 
 function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
-  return new StatusPagesService((prismaOverride ?? makePrisma()) as never);
+  return new StatusPagesService((prismaOverride ?? makePrisma()) as never, {} as never);
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────

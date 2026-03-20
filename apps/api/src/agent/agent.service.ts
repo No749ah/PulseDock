@@ -3,10 +3,31 @@ import { PrismaService } from '../common/prisma.service';
 import { Prisma } from '@prisma/client';
 import type { AgentReportBody, AgentReportResponse, AgentStatusItem } from './agent.dto';
 
+/**
+ * Service for the PulseDock local agent that reports tool versions from
+ * self-hosted environments without requiring external API access.
+ *
+ * Agents send version reports via POST /v1/agent/report, which updates the
+ * corresponding version-check monitor's configJson and writes a MonitorRun.
+ */
 @Injectable()
 export class AgentService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Receives a version report from a local PulseDock agent and updates the
+   * corresponding monitor.
+   *
+   * - Strips leading `v` prefix from version strings for consistency.
+   * - Matches monitor by explicit `monitorId` or by `toolId` / `agentToolId` in configJson.
+   * - Records a green MonitorRun with the reported version as the message.
+   *
+   * @param userId - Authenticated user ID (from API key or JWT)
+   * @param body   - Report payload: toolId, version, optional monitorId + hostname
+   * @returns Confirmation with resolved monitorId and cleaned version string
+   * @throws BadRequestException if toolId or version are missing/invalid
+   * @throws NotFoundException if no matching monitor is found
+   */
   async report(userId: string, body: AgentReportBody): Promise<AgentReportResponse> {
     const { toolId, version, monitorId, hostname } = body;
 
@@ -80,6 +101,15 @@ export class AgentService {
     return { ok: true, monitorId: monitor.id, version: cleanVersion };
   }
 
+  /**
+   * Returns all monitors that have received at least one agent report for this user.
+   *
+   * Filters monitors whose configJson contains `agentToolId` or `agentLastReport`,
+   * indicating they were populated by an agent rather than a direct API call.
+   *
+   * @param userId - Authenticated user ID
+   * @returns List of agent-managed monitor summaries with toolId, version, hostname, and last report time
+   */
   async status(userId: string): Promise<AgentStatusItem[]> {
     // Find all monitors that have agent data
     const monitors = await this.prisma.monitor.findMany({

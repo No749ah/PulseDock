@@ -12,6 +12,12 @@ export class SettingsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Returns the data-retention settings for a user.
+   * Defaults: 90-day retention, rollup enabled (if no settings row exists yet).
+   *
+   * @param userId - Owner's user ID
+   */
   async getRetention(userId: string): Promise<{ retentionDays: number; rollupEnabled: boolean }> {
     const settings = await this.prisma.userSettings.findUnique({ where: { userId } })
     return {
@@ -20,6 +26,13 @@ export class SettingsService {
     }
   }
 
+  /**
+   * Updates (or creates) the data-retention settings for a user.
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Retention update payload (retentionDays, optional rollupEnabled)
+   * @returns Updated settings with a confirmation message
+   */
   async updateRetention(
     userId: string,
     dto: UpdateRetentionDto,

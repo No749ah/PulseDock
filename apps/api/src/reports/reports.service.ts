@@ -13,10 +13,22 @@ export class ReportsService {
     private readonly mailer: MailerService,
   ) {}
 
+  /**
+   * Returns the scheduled-report config for a user, or `null` if none has been set up.
+   *
+   * @param userId - Owner's user ID
+   */
   async getReport(userId: string) {
     return this.prisma.scheduledReport.findUnique({ where: { userId } });
   }
 
+  /**
+   * Creates or updates the scheduled-report config for a user.
+   * There is at most one config record per user (unique on `userId`).
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Report settings (enabled, frequency, dayOfWeek, hourUtc)
+   */
   async upsertReport(userId: string, dto: UpsertReportDto) {
     return this.prisma.scheduledReport.upsert({
       where: { userId },
@@ -36,6 +48,12 @@ export class ReportsService {
     });
   }
 
+  /**
+   * Deletes the scheduled-report config for a user.
+   * Silently no-ops if no config exists.
+   *
+   * @param userId - Owner's user ID
+   */
   async deleteReport(userId: string) {
     try {
       await this.prisma.scheduledReport.delete({ where: { userId } });
@@ -44,6 +62,16 @@ export class ReportsService {
     }
   }
 
+  /**
+   * Cron job that runs every 15 minutes to dispatch scheduled uptime reports.
+   * For each enabled report it checks whether it is due (matches configured hour/day
+   * and respects the `lastSentAt` deduplication window), computes the report data,
+   * sends the HTML email via `MailerService`, and updates `lastSentAt`.
+   *
+   * @remarks
+   * Frequency "daily" requires ≥23 h since last send.
+   * Frequency "weekly" requires ≥167 h since last send (7 days minus 1 h tolerance).
+   */
   @Cron('0,15,30,45 * * * *')
   async sendDueReports() {
     const now = new Date();
@@ -82,6 +110,11 @@ export class ReportsService {
     }
   }
 
+  /**
+   * Determines whether a scheduled report should be sent right now.
+   * Checks UTC hour and (for weekly reports) day-of-week, then verifies
+   * that enough time has elapsed since the last send.
+   */
   private isDue(
     report: { frequency: string; dayOfWeek: number; hourUtc: number; lastSentAt: Date | null },
     now: Date,
@@ -103,6 +136,14 @@ export class ReportsService {
     return hoursAgo >= 23;
   }
 
+  /**
+   * Aggregates uptime report data for a user over the report period.
+   * Returns overall uptime%, per-monitor breakdown (worst first), active incident count,
+   * and green/yellow/red health buckets.
+   *
+   * @param userId    - Owner's user ID
+   * @param frequency - 'daily' (last 24 h) or 'weekly' (last 7 days)
+   */
   private async computeReportData(userId: string, frequency: string) {
     const periodMs = frequency === 'daily' ? 24 * 3_600_000 : 7 * 24 * 3_600_000;
     const since = new Date(Date.now() - periodMs);

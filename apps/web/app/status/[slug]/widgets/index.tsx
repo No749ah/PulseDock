@@ -132,15 +132,21 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
     },
   }[level];
 
+  const operationalCount = monitors.filter((m) => m.level === "green").length;
   return (
-    <div className={`flex items-center gap-4 rounded-2xl border p-6 ${config.bg}`}>
-      <span className="relative flex h-4 w-4 shrink-0">
+    <div
+      className={`flex items-center gap-4 rounded-2xl border p-6 ${config.bg}`}
+      role="status"
+      aria-label={`System status: ${config.label}. ${operationalCount} of ${monitors.length} services operational.`}
+      aria-live="polite"
+    >
+      <span className="relative flex h-4 w-4 shrink-0" aria-hidden="true">
         <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${config.dot}`} />
         <span className={`relative inline-flex h-4 w-4 rounded-full ${config.dot}${level !== "green" ? " animate-pulse" : ""}`} />
       </span>
       <span className={`text-xl font-semibold ${config.text}`}>{config.label}</span>
-      <span className="ml-auto text-sm font-semibold text-text-primary">
-        {monitors.filter((m) => m.level === "green").length}/{monitors.length} operational
+      <span className="ml-auto text-sm font-semibold text-text-primary" aria-label={`${operationalCount} of ${monitors.length} services operational`}>
+        {operationalCount}/{monitors.length} operational
       </span>
     </div>
   );
@@ -232,16 +238,16 @@ export function ActiveIncidentBanner({ monitors, extra }: WidgetProps) {
 
   if (activeIncidents.length === 0 && down.length === 0) {
     return (
-      <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3">
-        <span className="h-3 w-3 rounded-full bg-success" />
+      <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 flex items-center gap-3" role="status" aria-label="All systems operational — no active incidents" aria-live="polite">
+        <span className="h-3 w-3 rounded-full bg-success" aria-hidden="true" />
         <span className="text-sm font-medium text-success">All systems operational — no active incidents</span>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-      <p className="mb-3 font-semibold text-red-400">🔴 Active Incident{(activeIncidents.length + down.length) > 1 ? "s" : ""}</p>
+    <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5" role="alert" aria-live="assertive" aria-label={`Active incidents: ${activeIncidents.length + down.length}`}>
+      <p className="mb-3 font-semibold text-red-400"><span aria-hidden="true">🔴 </span>Active Incident{(activeIncidents.length + down.length) > 1 ? "s" : ""}</p>
       <ul className="space-y-2">
         {activeIncidents.map((i) => (
           <li key={i.id} className="flex items-start gap-2 text-sm">
@@ -318,15 +324,15 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
       : "text-red-400";
 
   return (
-    <div className={`rounded-xl border ${borderColor} bg-surface p-4`}>
+    <div className={`rounded-xl border ${borderColor} bg-surface p-4`} role="region" aria-label={`${label}: ${uptimePct}% uptime over last ${periodDays} days`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-          <StatusIcon className={`h-4 w-4 ${iconColor}`} />
+          <StatusIcon className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
           {label}
         </span>
-        <span className={`text-2xl font-bold tabular-nums ${pctColor}`}>{uptimePct}%</span>
+        <span className={`text-2xl font-bold tabular-nums ${pctColor}`} aria-label={`${uptimePct}% uptime`}>{uptimePct}%</span>
       </div>
-      <div className="h-3 w-full overflow-hidden rounded-full bg-bg">
+      <div className="h-3 w-full overflow-hidden rounded-full bg-bg" role="progressbar" aria-valuenow={uptimePct} aria-valuemin={0} aria-valuemax={100} aria-label={`${uptimePct}% uptime`}>
         <div
           className={`h-full rounded-full ${barColor} transition-all`}
           style={{ width: `${uptimePct}%` }}
@@ -375,14 +381,14 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
   const uptimePct = dataDays > 0 ? Math.round((upDays / dataDays) * 1000) / 10 : null;
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border bg-surface p-4" role="region" aria-label={`${label}: ${days}-day uptime timeline${uptimePct !== null ? `, ${uptimePct}% uptime` : ""}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-text-primary">{label}</span>
-        <span className="text-xs text-text-secondary">
+        <span className="text-xs text-text-secondary" aria-live="polite">
           {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}
         </span>
       </div>
-      <div className="flex gap-[2px] flex-wrap">
+      <div className="flex gap-[2px] flex-wrap" role="img" aria-label={`${days}-day uptime history chart: ${squares.filter(s => s.level === "green").length} days up, ${squares.filter(s => s.level === "red").length} days down`}>
         {squares.map((s, i) => (
           <div
             key={i}
@@ -396,10 +402,11 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
                 : "bg-border"
             }`}
             title={s.title}
+            aria-label={s.title}
           />
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-text-secondary">
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-text-secondary" aria-hidden="true">
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-green-500" />Up</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-yellow-500" />Degraded</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-red-500" />Down</span>
@@ -945,32 +952,37 @@ function ComponentStatusList({ widget, extra }: WidgetProps) {
     );
   }
 
+  const headerLabel = label ?? overallLabel(data.overallStatus);
   return (
-    <div className={`rounded-xl border ${overallBorder(data.overallStatus)} ${overallBg(data.overallStatus)} overflow-hidden`}>
+    <div
+      className={`rounded-xl border ${overallBorder(data.overallStatus)} ${overallBg(data.overallStatus)} overflow-hidden`}
+      role="region"
+      aria-label={`${headerLabel}: ${data.total} components, ${data.downCount} down, ${data.degradedCount} degraded`}
+    >
       {/* Overall header */}
       <div className="px-4 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
-          <div className={`h-2.5 w-2.5 rounded-full ${dotColor(data.downCount > 0 ? "red" : data.degradedCount > 0 ? "yellow" : "green")}`} />
+          <div className={`h-2.5 w-2.5 rounded-full ${dotColor(data.downCount > 0 ? "red" : data.degradedCount > 0 ? "yellow" : "green")}`} aria-hidden="true" />
           <span className={`text-sm font-bold ${overallColor(data.overallStatus)}`}>
-            {label ?? overallLabel(data.overallStatus)}
+            {headerLabel}
           </span>
         </div>
       </div>
       {/* Component rows */}
-      <div className="divide-y divide-border/30">
+      <ul className="divide-y divide-border/30" role="list" aria-label="Component list">
         {data.components.map((c) => (
-          <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor(c.level)}`} />
+          <li key={c.id} className="flex items-center gap-3 px-4 py-2.5" aria-label={`${c.name}: ${componentStatus(c.status)}${c.latencyMs !== null ? `, ${c.latencyMs}ms` : ""}`}>
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor(c.level)}`} aria-hidden="true" />
             <span className="text-sm text-text-primary flex-1 truncate">{c.name}</span>
             {c.latencyMs !== null && (
-              <span className="text-xs font-mono text-text-secondary">{c.latencyMs}ms</span>
+              <span className="text-xs font-mono text-text-secondary" aria-label={`${c.latencyMs} milliseconds`}>{c.latencyMs}ms</span>
             )}
             <span className={`text-xs font-medium ${componentColor(c.status)}`}>
               {componentStatus(c.status)}
             </span>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -1109,17 +1121,21 @@ function UptimePercentageCard({ widget, extra }: WidgetProps) {
     : `${data.trend === "up" ? "+" : ""}${data.delta.toFixed(2)}% vs prev ${data.periodDays}d`;
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6 text-center">
+    <div
+      className="rounded-xl border border-border bg-surface p-6 text-center"
+      role="region"
+      aria-label={`${label ?? "Uptime"}: ${data.uptimePct.toFixed(2)}% over last ${data.periodDays} days. Trend: ${trendLabel}`}
+    >
       {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
-      <div className={`text-5xl font-bold tabular-nums ${uptimeColor}`}>
+      <div className={`text-5xl font-bold tabular-nums ${uptimeColor}`} aria-label={`${data.uptimePct.toFixed(2)}% uptime`}>
         <AnimatedNumber value={data.uptimePct} decimals={2} duration={1400} suffix="%" />
       </div>
       <div className="text-xs text-text-secondary mt-2">
         Uptime — last {data.periodDays}d
       </div>
       {data.trend !== "flat" || data.previousPct !== 100 ? (
-        <div className={`mt-2 text-sm font-medium ${trendColor}`}>
-          {trendArrow} {trendLabel}
+        <div className={`mt-2 text-sm font-medium ${trendColor}`} aria-label={trendLabel}>
+          <span aria-hidden="true">{trendArrow}</span> {trendLabel}
         </div>
       ) : null}
     </div>

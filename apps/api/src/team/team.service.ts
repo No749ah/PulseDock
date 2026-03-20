@@ -15,6 +15,10 @@ export class TeamService {
     private readonly mailer: MailerService,
   ) {}
 
+  /**
+   * Returns all active team members for the workspace owned by `userId`.
+   * Ordered by join date ascending (earliest member first).
+   */
   async getMembers(userId: string): Promise<MemberWithUser[]> {
     return this.prisma.teamMember.findMany({
       where: { ownerId: userId },
@@ -27,6 +31,10 @@ export class TeamService {
     })
   }
 
+  /**
+   * Returns all pending (not yet accepted, not expired) invites sent by `userId`.
+   * Ordered by created-at descending (newest first).
+   */
   async getInvites(userId: string): Promise<TeamInvite[]> {
     return this.prisma.teamInvite.findMany({
       where: {
@@ -38,6 +46,16 @@ export class TeamService {
     })
   }
 
+  /**
+   * Invite a user to the workspace.
+   * - If the email belongs to an existing user: creates a `TeamMember` record immediately.
+   * - If the email is unknown: creates a `TeamInvite` with a 7-day token and fires a
+   *   fire-and-forget invite email via `MailerService`.
+   *
+   * @param userId - Workspace owner's user ID
+   * @param dto    - Invite payload (email + role)
+   * @throws BadRequestException if OWNER role is requested, self-invite, or already a member
+   */
   async inviteMember(
     userId: string,
     dto: InviteMemberDto,
@@ -96,6 +114,16 @@ export class TeamService {
     return { type: 'invite', data: invite }
   }
 
+  /**
+   * Change the role of a team member.
+   * Cannot promote anyone to OWNER or change the role of an existing OWNER.
+   *
+   * @param userId   - Workspace owner's user ID
+   * @param memberId - Target TeamMember record ID
+   * @param dto      - New role payload
+   * @throws NotFoundException if the member does not exist or belongs to another workspace
+   * @throws BadRequestException if attempting to assign or change the OWNER role
+   */
   async updateMemberRole(
     userId: string,
     memberId: string,
@@ -126,6 +154,15 @@ export class TeamService {
     })
   }
 
+  /**
+   * Remove a team member from the workspace.
+   * Owners cannot be removed via this method.
+   *
+   * @param userId   - Workspace owner's user ID
+   * @param memberId - Target TeamMember record ID
+   * @throws NotFoundException if the member does not belong to this workspace
+   * @throws BadRequestException if attempting to remove an OWNER
+   */
   async removeMember(userId: string, memberId: string): Promise<{ message: string }> {
     const member = await this.prisma.teamMember.findFirst({
       where: { id: memberId, ownerId: userId },
@@ -141,6 +178,13 @@ export class TeamService {
     return { message: 'Member removed' }
   }
 
+  /**
+   * Cancel a pending invite sent by `userId`.
+   *
+   * @param userId   - Workspace owner's user ID
+   * @param inviteId - Target TeamInvite record ID
+   * @throws NotFoundException if the invite does not exist or belongs to another workspace
+   */
   async cancelInvite(userId: string, inviteId: string): Promise<{ message: string }> {
     const invite = await this.prisma.teamInvite.findFirst({
       where: { id: inviteId, ownerId: userId },
@@ -153,6 +197,14 @@ export class TeamService {
     return { message: 'Invite cancelled' }
   }
 
+  /**
+   * Look up an invite by its one-time token for the accept-invite flow.
+   * Returns the invite details and the owner's public profile.
+   *
+   * @param token - UUID token from the invite URL
+   * @throws NotFoundException if no invite matches the token
+   * @throws BadRequestException if the invite is expired or already accepted
+   */
   async getInviteByToken(
     token: string,
   ): Promise<{
@@ -180,6 +232,18 @@ export class TeamService {
     return { invite: inviteData, owner }
   }
 
+  /**
+   * Accept a pending invite on behalf of an authenticated user.
+   * Validates: token exists, not expired, not already accepted, email matches
+   * the logged-in user's email, and the user is not already a member.
+   * Creates the `TeamMember` record and marks the invite as accepted in a single
+   * DB transaction.
+   *
+   * @param token  - UUID token from the invite URL
+   * @param userId - Authenticated user's ID
+   * @throws NotFoundException if the invite or user does not exist
+   * @throws BadRequestException if the invite is expired, accepted, email mismatch, self-accept, or already a member
+   */
   async acceptInvite(
     token: string,
     userId: string,

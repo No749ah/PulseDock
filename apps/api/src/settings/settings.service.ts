@@ -56,6 +56,9 @@ export class SettingsService {
 
   /**
    * Returns storage usage stats for a user: raw runs count, rollup count, oldest raw run date.
+   *
+   * @param userId - Authenticated user ID
+   * @returns Object with rawRunsTotal, rollupBucketsTotal, oldestRawRunAt, newestRawRunAt
    */
   async getStorageStats(userId: string): Promise<{
     rawRunsTotal: number

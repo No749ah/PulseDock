@@ -1,3 +1,10 @@
+## Status Summary (2026-03-20 02:45 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Design system**: Created `apps/web/app/design-tokens.ts` — canonical reference for card, heading, button, badge, and banner class constants. Fixed `rounded-xl` → `rounded-2xl` in `Skeleton.tsx` (SkeletonCard, DashboardStatsSkeleton) and `dashboard/loading.tsx` to match the `<Card>` component default. All card skeletons now render with consistent `rounded-2xl` border-radius.
+  - **JSDoc**: Added `@param`/`@returns` to `notifications.service.ts` (getPreference, updatePreference, shouldNotify) and `settings.service.ts` (getStorageStats). All other services (tags, backup, agent, monitors, team, apikeys, etc.) already had complete JSDoc.
+
 ## Status Summary (2026-03-20 02:30 UTC)
 - **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ API + Web + public URL all 200 (27/27 smoke checks pass)
@@ -1344,14 +1351,14 @@
 - [x] **README.md overhaul** — Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
 - [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
 - [x] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
-- [ ] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
+- [x] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
 - [x] **API documentation audit** — Verified all 143 Swagger endpoints have `@ApiOperation` + `@ApiResponse`. Comprehensive pass to add 401/403/404/400 error responses + rich `description` strings to incidents, maintenance, status-pages, team, tags, and apikeys controllers. Error response coverage: 16 → 82 annotations.
 - [x] **Docker documentation** — `docs/DEPLOYMENT.md` covers compose setup, env vars, override examples; `docker-compose.override.yml` example documented.
 - [x] **.env.example** — Created with all env vars, defaults, and security guidance comments. Covers API + web.
 
 ### P2 — Frontend Polish (Enterprise-Grade UI)
 
-- [ ] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
+- [x] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
 - [x] **Animation & Micro-interactions** — active:scale-95 press feedback on primary CTAs, hover:-translate-y-1 lift on feature cards, toast slide-in, dashboard count-up, page transitions
 - [x] **Data Tables overhaul** — Sortable columns (all pages), sticky headers (monitors + alerts + incidents + versions), column visibility toggle (monitors + alerts + versions, localStorage persisted), bulk select with shift-click range (monitors), CSV/JSON export (monitors + incidents + alerts), pagination with rows-per-page selector (monitors + alerts + incidents), empty states on all pages. Remaining: resizable columns (drag) — deferred as low-value.
 - [ ] **Charts upgrade** — Replace SVG placeholder sparklines with real chart library (lightweight: uPlot or Chart.js). Support: line, area, bar, stacked bar, donut, heatmap, candlestick. Consistent color palette. Tooltip on hover. Responsive. Dark mode native.

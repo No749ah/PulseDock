@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 04:01 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Deployment:** ✅ Web server restarted, new build live
+- **Branch:** heartbeat/2026-03-20-registry-correctness
+- **This session:**
+  - **Report Wrong Template**: "Wrong version format? Report this template →" link appears in version monitor setup when source check fails. Inline form with optional note. Submits to `POST /v1/feedback/template-report`.
+  - **Feedback endpoint**: `FeedbackController` — no DB, structured `logger.warn` JSON log entry. Wired into `AppModule`.
+  - **DB indexes**: All suggested indexes already present (`MonitorRun(monitorId, checkedAt)`, `Incident(userId, status)`, `StatusPageSubscriber(statusPageId)`). No changes needed.
+  - **BACKLOG cleanup**: Marked `Per-widget data endpoints` and `Report wrong template` as `[x]`.
+
 ## Status Summary (2026-03-20 04:00 UTC)
 - **Build/Test:** ✅ Clean build (fixed jsPDF/fflate Turbopack SSR error via serverExternalPackages), 1505 API tests passing, zero TS errors
 - **Deployment:** ✅ Web server restarted, new build live
@@ -1487,7 +1497,7 @@
 
 ### P3 — Advanced Data & API
 
-- [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
+- [x] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
 - [x] **Date Range Picker** — Custom time ranges for all time-based widgets. 24h/7d/30d/90d pill buttons on public status pages, URL-synced (`?range=`), API accepts `range` param on `/widget/:id`, overrides widget `periodDays` for uptime-bar, uptime-timeline, sla-summary.
 - [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
@@ -1565,7 +1575,7 @@
 - [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
 - [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
 - [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
-- [ ] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
+- [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
 
 ## Status Summary (2026-03-19 21:26 UTC)
 - **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors

@@ -841,7 +841,7 @@ export class MonitorsService {
     return null;
   }
 
-  private async detectDeployedVersion(input: { appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
+  private async detectDeployedVersion(input: { appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[] }) {
     if (!input.appUrl) {
       return {
         currentVersion: null as string | null,
@@ -854,6 +854,7 @@ export class MonitorsService {
 
     const base = input.appUrl.replace(/\/$/, '');
     const custom = String(input.appVersionEndpoint ?? '').trim();
+    const registryFallbacks = (input.endpointFallbacks ?? []).filter((s) => typeof s === 'string' && s.trim());
     const defaultCandidates = [
       '/version',
       '/api/version',
@@ -867,7 +868,12 @@ export class MonitorsService {
       '/actuator/info',
       '/actuator/health',
     ];
-    const candidates = custom ? [custom] : defaultCandidates;
+    // Priority: explicit custom endpoint first, then registry fallbacks, then generic defaults
+    const candidates = custom
+      ? [custom, ...registryFallbacks]
+      : registryFallbacks.length > 0
+        ? registryFallbacks
+        : defaultCandidates;
 
     const token = String(input.appToken ?? '').trim();
     const authType = (input.appAuthType ?? 'token') as 'none' | 'token' | 'openvpn';
@@ -1071,7 +1077,7 @@ export class MonitorsService {
    * @returns { currentVersion, strategy, tried, detectedFrom } — strategy indicates how version was found
    * @throws Error when probing endpoints fails unexpectedly
    */
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
+  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[] }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
     const deployed = await this.detectDeployedVersion({
       appUrl: input.appUrl,
@@ -1080,6 +1086,7 @@ export class MonitorsService {
       appAuthType: input.appAuthType,
       openvpnUsername: input.openvpnUsername,
       openvpnPassword: input.openvpnPassword,
+      endpointFallbacks: input.endpointFallbacks,
     });
     if (deployed.currentVersion) {
       return {

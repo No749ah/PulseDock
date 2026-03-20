@@ -256,6 +256,17 @@ export class DiscoverVersionDto {
   @IsString()
   @MaxLength(255)
   openvpnPassword?: string;
+
+  /**
+   * Ordered list of endpoint paths to try for app version detection.
+   * Sourced from the registry entry's versionSource.endpointFallbacks.
+   * Each path is tried in sequence after (or instead of) appVersionEndpoint.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(512, { each: true })
+  endpointFallbacks?: string[];
 }
 
 export class BulkActionDto {

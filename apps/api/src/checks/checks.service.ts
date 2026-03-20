@@ -331,9 +331,19 @@ export class ChecksService {
     if (!appUrl) return null;
     const base = appUrl.replace(/\/$/, '');
     const custom = String(config.appVersionEndpoint ?? '').trim();
+
+    // endpointFallbacks: ordered list from registry entry's versionSource.endpointFallbacks
+    // Stored in configJson when monitor is created from a registry tool.
+    const configFallbacks = Array.isArray(config.endpointFallbacks)
+      ? (config.endpointFallbacks as string[]).filter((s) => typeof s === 'string' && s.trim())
+      : [];
+
     const candidates = custom
-      ? [custom]
-      : ['/version', '/api/version', '/api/v1/version', '/api/v1/health', '/api/v1/info', '/health', '/api/health', '/status'];
+      ? [custom, ...configFallbacks]
+      : configFallbacks.length > 0
+        ? configFallbacks
+        : ['/version', '/api/version', '/api/v1/version', '/api/v1/health', '/api/v1/info', '/health', '/api/health', '/status'];
+
     const headers: Record<string, string> = { 'User-Agent': 'PulseDock' };
     const token = String(config.appToken ?? '').trim();
     if (token) headers.authorization = `Bearer ${token}`;

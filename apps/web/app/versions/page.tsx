@@ -82,7 +82,7 @@ type ToolEntry = {
   icon: string;
   description: string;
   homepage: string;
-  versionSource: { type: string; target?: string; urlTemplate?: string; jsonPath?: string; authRequired?: boolean; agentCommand?: string; agentNote?: string };
+  versionSource: { type: string; target?: string; urlTemplate?: string; endpointFallbacks?: string[]; jsonPath?: string; authRequired?: boolean; agentCommand?: string; agentNote?: string };
   latestSource: { type: string; target?: string; urlTemplate?: string };
   checkInterval: number;
   requiresInstanceUrl: boolean;
@@ -503,6 +503,9 @@ export default function VersionsPage() {
         appAuthType,
         openvpnUsername: openvpnUsername || undefined,
         openvpnPassword: openvpnPassword || undefined,
+        endpointFallbacks: selectedTool?.versionSource.endpointFallbacks?.length
+          ? selectedTool.versionSource.endpointFallbacks
+          : undefined,
       }),
     });
     setAppDetectedFrom(result.detectedFrom ?? '');
@@ -737,6 +740,9 @@ export default function VersionsPage() {
           openvpnUsername: openvpnUsername || undefined,
           openvpnPassword: openvpnPassword || undefined,
           appVersionEndpoint: appVersionEndpoint || undefined,
+          endpointFallbacks: selectedTool?.versionSource.endpointFallbacks?.length
+            ? selectedTool.versionSource.endpointFallbacks
+            : undefined,
         },
       }),
     });

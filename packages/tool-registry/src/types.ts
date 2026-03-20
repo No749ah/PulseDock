@@ -62,6 +62,15 @@ export interface VersionSource {
   host?: string;
   /** Template with {{instanceUrl}} placeholder */
   urlTemplate?: string;
+  /**
+   * Ordered list of URL path candidates to try for version detection.
+   * Each path is tried in sequence; the first successful response with
+   * a parseable version wins. Paths starting with 'http' are treated as
+   * absolute URLs; others are appended to the instance base URL.
+   * Takes precedence over the default candidate list when specified.
+   * @example ['/api/v1/version', '/version', '/api/health']
+   */
+  endpointFallbacks?: string[];
   /** JSONPath expression to extract version from response */
   jsonPath?: string;
   /** Whether auth is required to call this endpoint */
@@ -108,4 +117,13 @@ export interface ToolRegistryEntry {
   lastVerifiedAt?: string;
   /** Tool version this entry was verified against */
   verifiedOnVersion?: string;
+  /**
+   * Ordered fallback sources to try if versionSource fails.
+   * Enables resilient version detection across tool versions/variants.
+   * Each entry is tried in sequence; the first one that returns a valid
+   * version is used. Useful for tools that changed their version API path
+   * across major versions or have variant-specific endpoints.
+   * @example [{ type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/version', jsonPath: '$.version' }]
+   */
+  versionSourceFallbacks?: VersionSource[];
 }

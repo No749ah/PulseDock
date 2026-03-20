@@ -1827,6 +1827,80 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── detectAppVersion endpointFallbacks ────────────────────────────────────
+
+  describe('detectAppVersion() — endpointFallbacks from config', () => {
+    it('uses endpointFallbacks when appVersionEndpoint is not set and fallbacks are provided', async () => {
+      const service = makeService();
+
+      // Primary default candidates all fail, but endpointFallbacks path succeeds
+      // The fallback ['/api/health'] is tried after default list fails — but when fallbacks are
+      // explicitly provided, they replace the default list entirely.
+      globalThis.fetch = mockFetch([
+        { ok: true, status: 200, json: () => Promise.resolve({ version: '1.8.0' }) }, // /api/health fallback hits
+        { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v1.8.0' }) }, // github
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {
+          appUrl: 'https://grafana.example.com',
+          endpointFallbacks: ['/api/health', '/api/v1/health'],
+        },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('falls through all endpointFallbacks when none return a version', async () => {
+      const service = makeService();
+
+      // Both fallbacks return 404, then github succeeds for age-based check
+      const twoFail = [{ ok: false, status: 404 }, { ok: false, status: 404 }];
+      globalThis.fetch = mockFetch([
+        ...twoFail,
+        { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v2.0.0', published_at: new Date(Date.now() - 5 * 3600000).toISOString() }) },
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {
+          appUrl: 'https://app.example.com',
+          endpointFallbacks: ['/api/health', '/api/v1/version'],
+        },
+      });
+      const run = await service.runMonitor(monitor);
+      // Falls back to age-based check without currentVersion
+      expect(run.level).toBe('green');
+    });
+
+    it('custom appVersionEndpoint takes priority over endpointFallbacks', async () => {
+      const service = makeService();
+
+      // First fetch is the custom endpoint (succeeds), second is github
+      globalThis.fetch = mockFetch([
+        { ok: true, status: 200, json: () => Promise.resolve({ version: '3.1.0' }) },
+        { ok: true, status: 200, json: () => Promise.resolve({ tag_name: 'v3.1.0' }) },
+      ]);
+
+      const monitor = makeMonitor({
+        type: 'GIT_RELEASE',
+        target: 'owner/repo',
+        config: {
+          appUrl: 'https://app.example.com',
+          appVersionEndpoint: '/api/custom/version',
+          endpointFallbacks: ['/api/health'], // should not be reached since custom wins
+        },
+      });
+      const run = await service.runMonitor(monitor);
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+  });
+
   // ── fetchGithubLatestVersion — releases list fallback ─────────────────────
 
   describe('fetchGithubLatestVersion() — releases list fallback', () => {

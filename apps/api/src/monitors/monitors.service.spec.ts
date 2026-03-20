@@ -3529,3 +3529,69 @@ describe('discoverCurrentVersion — extractVersionFromText scoring branches', (
     expect(result.strategy).toBe('manual');
   });
 });
+
+// ── detectDeployedVersion — endpointFallbacks ─────────────────────────────────
+
+describe('discoverCurrentVersion() — endpointFallbacks in detectDeployedVersion', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('uses endpointFallbacks when no appVersionEndpoint set and fallbacks return version', async () => {
+    // endpointFallbacks replaces default candidate list when no custom endpoint set
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ version: '9.4.0' }) })
+      .mockResolvedValue({ ok: false, status: 404, headers: { get: () => 'text/plain' }, text: async () => '' });
+
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'github',
+      target: 'grafana/grafana',
+      appUrl: 'https://grafana.example.com',
+      endpointFallbacks: ['/api/health', '/api/v1/health'],
+    });
+    expect(result.currentVersion).toBe('9.4.0');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+
+  it('tries next fallback when first returns 404', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 404, headers: { get: () => 'text/plain' }, text: async () => '' })  // /api/health fails
+      .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ version: '9.4.1' }) });  // /api/v1/health succeeds
+
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'github',
+      target: 'grafana/grafana',
+      appUrl: 'https://grafana.example.com',
+      endpointFallbacks: ['/api/health', '/api/v1/health'],
+    });
+    expect(result.currentVersion).toBe('9.4.1');
+    expect(result.strategy).toBe('deployed-endpoint');
+  });
+
+  it('custom appVersionEndpoint takes priority over endpointFallbacks', async () => {
+    // First fetch = custom endpoint; should succeed and not attempt fallbacks
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ version: '10.0.0' }) });
+
+    const svc = makeService();
+    const result = await svc.discoverCurrentVersion({
+      provider: 'github',
+      target: 'grafana/grafana',
+      appUrl: 'https://grafana.example.com',
+      appVersionEndpoint: '/api/custom/version',
+      endpointFallbacks: ['/api/health'], // should not be reached
+    });
+    expect(result.currentVersion).toBe('10.0.0');
+    // Only one fetch call should have been made (the custom endpoint)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

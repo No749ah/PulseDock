@@ -1,3 +1,10 @@
+## Status Summary (2026-03-20 02:44 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL 200, `/embed/test-id` returns 200 with `X-Frame-Options: ALLOWALL`
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Embeddable Status Widget**: Full implementation — iFrame embed page (`/embed/[monitorId]`), JSON API endpoint (`GET /v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), updated badge modal with iFrame + script snippets + live preview. Compact + Card styles, Dark + Light themes, auto-refresh every 60s, CORS headers set.
+
 ## Status Summary (2026-03-20 02:38 UTC)
 - **Build/Test:** ✅ Clean build, tests passing, zero TS errors
 - **Deployment:** ✅ Local + public URL checks all 200 (plus expected 401 on protected API without valid auth)
@@ -1424,7 +1431,7 @@
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
 - [ ] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance
 - [ ] **Slack/Discord Integration** — Auto-post status changes to channels
-- [ ] **Embeddable Widget** — `<script>` tag to embed single widget on external sites
+- [x] **Embeddable Widget** — iFrame embed (`/embed/[monitorId]`), JSON API (`/v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), embed code modal in dashboard
 - [ ] **Status Page Badge** — "Status: Operational" badge for README/websites (already have SVG badges, extend to status page level)
 - [ ] **Historical Data Retention** — Configure how long to keep check data (7d/30d/90d/1y)
 - [ ] **Aggregation Pipelines** — Pre-compute hourly/daily rollups for fast chart rendering

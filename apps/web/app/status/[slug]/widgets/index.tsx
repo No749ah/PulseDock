@@ -199,7 +199,7 @@ export function CurrentStatusBadge({ widget, monitors }: WidgetProps) {
       <div className="space-y-1.5">
         {selected.map(m => (
           <div key={m.id} className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+            <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} aria-hidden="true" />
             <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
             {m.latencyMs !== null && <span className="text-xs font-mono text-text-secondary">{m.latencyMs}ms</span>}
             <LevelBadge level={m.level} />
@@ -1197,12 +1197,12 @@ function ServiceHealthMatrix({ widget, extra }: WidgetProps) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4 overflow-x-auto">
       {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
-      <table className="w-full text-xs border-collapse">
+      <table className="w-full text-xs border-collapse" aria-label={label ?? "Service health matrix"}>
         <thead>
           <tr>
-            <th className="text-left py-2 pr-4 text-text-secondary font-medium w-40">Service</th>
+            <th scope="col" className="text-left py-2 pr-4 text-text-secondary font-medium w-40">Service</th>
             {data.columns.map((col) => (
-              <th key={col} className="text-center py-2 px-2 text-text-secondary font-medium min-w-[100px]">{col}</th>
+              <th key={col} scope="col" className="text-center py-2 px-2 text-text-secondary font-medium min-w-[100px]">{col}</th>
             ))}
           </tr>
         </thead>
@@ -1282,7 +1282,8 @@ function AggregateHealthScore({ widget, extra }: WidgetProps) {
       <div className="flex items-center gap-6">
         {/* Gauge */}
         <div className="relative flex-shrink-0">
-          <svg width="140" height="140" viewBox="0 0 140 140" className="rotate-0">
+          <svg width="140" height="140" viewBox="0 0 140 140" className="rotate-0" role="img" aria-label={`Health score: ${Math.round(data.score)} out of 100 — ${statusLabel}`}>
+            <title>{`Health score: ${Math.round(data.score)}/100 — ${statusLabel}`}</title>
             {/* Track arc */}
             <circle
               cx={cx} cy={cy} r={r}
@@ -1641,13 +1642,13 @@ function SLAComplianceTable({ widget, extra }: WidgetProps) {
         <div className="px-4 py-6 text-center text-sm text-text-secondary">No monitors configured</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs" aria-label={label ?? "SLA compliance table"}>
             <thead>
               <tr className="border-b border-border/30">
-                <th className="text-left px-4 py-2 text-text-secondary font-medium">Monitor</th>
-                <th className="text-right px-4 py-2 text-text-secondary font-medium">Target</th>
-                <th className="text-right px-4 py-2 text-text-secondary font-medium">Actual</th>
-                <th className="text-center px-4 py-2 text-text-secondary font-medium">Status</th>
+                <th scope="col" className="text-left px-4 py-2 text-text-secondary font-medium">Monitor</th>
+                <th scope="col" className="text-right px-4 py-2 text-text-secondary font-medium">Target</th>
+                <th scope="col" className="text-right px-4 py-2 text-text-secondary font-medium">Actual</th>
+                <th scope="col" className="text-center px-4 py-2 text-text-secondary font-medium">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
@@ -2047,7 +2048,8 @@ function IncidentSeverityDistribution({ widget, extra }: WidgetProps) {
       <div className="flex items-center gap-6">
         {/* Donut */}
         <div className="relative flex-shrink-0">
-          <svg width="120" height="120" viewBox="0 0 120 120">
+          <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label={`Incident severity distribution: ${data.critical} critical, ${data.major} major, ${data.minor} minor`}>
+            <title>{`Incident severity: ${data.critical} critical, ${data.major} major, ${data.minor} minor`}</title>
             {/* Track */}
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
             {/* Segments */}
@@ -2310,7 +2312,7 @@ function PerformanceTrend({ widget, extra }: WidgetProps) {
           </p>
         </div>
         <div className="flex-1">
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 overflow-visible">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 overflow-visible" aria-hidden="true">
             <path d={pathD} fill="none" stroke="rgba(99,102,241,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <p className="text-[10px] text-text-muted text-center mt-1">14-day latency</p>
@@ -2587,7 +2589,8 @@ function VersionStatusGrid({ monitors }: WidgetProps) {
           const diffBg = diff === "major" ? "bg-danger/10" : diff === "minor" ? "bg-warning/10" : diff === "patch" ? "bg-accent/10" : "bg-success/10";
           return (
             <div key={m.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
-              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} />
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${m.level === "green" ? "bg-success" : m.level === "yellow" ? "bg-warning" : "bg-danger"}`} aria-hidden="true" />
+              <span className="sr-only">{levelLabel(m.level)}</span>
               <span className="text-sm text-text-primary font-medium flex-1 truncate">{m.name}</span>
               {current && <span className="text-xs font-mono text-text-secondary">{current}</span>}
               {current && latest && current !== latest && (
@@ -2617,7 +2620,8 @@ function VersionCheckBadge({ widget, monitors }: WidgetProps) {
   const statusBg = diff === "up-to-date" ? "bg-success/10" : diff === "major" ? "bg-danger/10" : "bg-warning/10";
   return (
     <div className={`rounded-xl border border-border ${statusBg} p-4 flex items-center gap-3`}>
-      <div className={`h-3 w-3 rounded-full flex-shrink-0 ${diff === "up-to-date" ? "bg-success" : diff === "major" ? "bg-danger" : "bg-warning"}`} />
+      <div className={`h-3 w-3 rounded-full flex-shrink-0 ${diff === "up-to-date" ? "bg-success" : diff === "major" ? "bg-danger" : "bg-warning"}`} aria-hidden="true" />
+      <span className="sr-only">{diff === "up-to-date" ? "Up to date" : diff === "major" ? "Major update available" : "Update available"}</span>
       <div className="flex-1 min-w-0">
         <span className="text-sm font-semibold text-text-primary">{widget.config.label || monitor.name}</span>
         <span className="ml-2 text-xs font-mono text-text-secondary">{current ?? "?"}</span>
@@ -2709,7 +2713,8 @@ export function ResponseTimeComparison({ widget, extra }: WidgetProps) {
   return (
     <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
       <div className="text-sm font-semibold text-text-primary">{title}</div>
-      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto" style={{ maxHeight: 180 }}>
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto" style={{ maxHeight: 180 }} role="img" aria-label={`${title} line chart`}>
+        <title>{title}</title>
         {/* Y-axis ticks */}
         {yTicks.map((tick) => (
           <g key={tick}>
@@ -2820,7 +2825,7 @@ export function NextMaintenanceCountdown({ widget, extra }: WidgetProps) {
       <div className="rounded-xl border border-border bg-surface/50 p-4 text-center space-y-2">
         <div className="text-sm font-semibold text-text-primary">{title}</div>
         <div className="flex items-center justify-center gap-2 text-green-400">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm">No upcoming maintenance</span>
@@ -2964,7 +2969,7 @@ export function VersionTimeline({ widget, extra }: WidgetProps) {
                   <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-white/5 text-text-secondary ring-1 ring-white/10">
                     {ev.fromVersion}
                   </span>
-                  <svg className="h-3 w-3 text-text-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="h-3 w-3 text-text-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                   <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono bg-accent/15 text-accent ring-1 ring-accent/30">
@@ -3047,7 +3052,7 @@ export function OutdatedComponentsAlert({ widget, extra }: WidgetProps) {
             <div className="text-sm font-medium text-text-primary truncate">{item.name}</div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <code className="text-xs bg-white/5 rounded px-1.5 py-0.5 text-text-secondary font-mono">{item.currentVersion}</code>
-              <svg className="h-3 w-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-3 w-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
               <code className="text-xs bg-accent/15 rounded px-1.5 py-0.5 text-accent font-mono ring-1 ring-accent/30">{item.latestVersion}</code>
@@ -3090,13 +3095,13 @@ export function VersionComparisonTable({ widget, extra }: WidgetProps) {
     <div className="rounded-xl border border-border bg-surface/50 p-4 space-y-3">
       <div className="text-sm font-semibold text-text-primary">{title}</div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        <table className="w-full text-xs" aria-label={title}>
           <thead>
             <tr className="border-b border-border text-text-secondary">
-              <th className="text-left py-1.5 pr-3 font-medium">Service</th>
-              <th className="text-left py-1.5 pr-3 font-medium">Current</th>
-              <th className="text-left py-1.5 pr-3 font-medium">Latest</th>
-              <th className="text-left py-1.5 font-medium">Status</th>
+              <th scope="col" className="text-left py-1.5 pr-3 font-medium">Service</th>
+              <th scope="col" className="text-left py-1.5 pr-3 font-medium">Current</th>
+              <th scope="col" className="text-left py-1.5 pr-3 font-medium">Latest</th>
+              <th scope="col" className="text-left py-1.5 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -3247,7 +3252,8 @@ export function Gauge({ widget, extra }: WidgetProps) {
   return (
     <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
       <div className="text-sm font-semibold text-text-primary">{title}</div>
-      <svg viewBox="0 10 200 110" className="w-full max-w-[220px]">
+      <svg viewBox="0 10 200 110" className="w-full max-w-[220px]" role="img" aria-label={`${title}: ${value.toFixed(1)}%`}>
+        <title>{`${title}: ${value.toFixed(1)}%`}</title>
         {/* Background arc */}
         <path d={bgPath} fill="none" stroke="#374151" strokeWidth={14} strokeLinecap="round" />
         {/* Colored foreground arc */}
@@ -3415,7 +3421,7 @@ function MiniSparkline({ dataPoints, color }: { dataPoints: number[]; color: str
   });
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible" aria-hidden="true">
       <polyline
         points={coords.join(" ")}
         fill="none"
@@ -3517,7 +3523,8 @@ export function ProgressRing({ widget, extra }: WidgetProps) {
   return (
     <div className="rounded-xl border border-border bg-surface/50 p-4 flex flex-col items-center space-y-2">
       <div className="text-sm font-semibold text-text-primary">{title}</div>
-      <svg width={140} height={140} viewBox="0 0 140 140">
+      <svg width={140} height={140} viewBox="0 0 140 140" role="img" aria-label={`${title}: ${pct.toFixed(1)}% ${label}`}>
+        <title>{`${title}: ${pct.toFixed(1)}% ${label}`}</title>
         {/* Track */}
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={12} />
         {/* Progress */}
@@ -3794,7 +3801,7 @@ export function EmbedIframe({ widget, extra }: WidgetProps) {
     <div className="rounded-xl border border-border bg-surface/50 overflow-hidden">
       {!isHttps && (
         <div className="flex items-center gap-2 bg-yellow-500/10 border-b border-yellow-500/30 px-3 py-2 text-xs text-yellow-400">
-          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           Non-HTTPS URL — content may be blocked by browsers.
@@ -4034,7 +4041,7 @@ export function ImageBanner({ widget }: WidgetProps) {
   if (!imageUrl) {
     return (
       <div className="bg-surface/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-text-secondary" style={{ minHeight: 80 }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
         </svg>
         <span className="text-sm">Add image URL in config</span>
@@ -4091,12 +4098,12 @@ export function DataTable({ widget, monitors }: WidgetProps) {
 
   return (
     <div className="bg-surface/50 border border-border rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm" aria-label="Monitor status table">
         {showHeader && (
           <thead>
             <tr className="border-b border-border">
               {columns.map((col) => (
-                <th key={col} className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wide">
+                <th key={col} scope="col" className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wide">
                   {colLabel[col] ?? col}
                 </th>
               ))}
@@ -4154,7 +4161,7 @@ export function RssFeedWidget({ widget }: WidgetProps) {
   return (
     <div className="bg-surface/50 border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-400" aria-hidden="true">
           <path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" />
         </svg>
         <span className="font-semibold text-text-primary">{feedTitle}</span>
@@ -4357,7 +4364,7 @@ export function DependencyMap({ widget, extra }: WidgetProps) {
       {data.nodes.length === 0 ? (
         <p className="text-sm text-text-secondary text-center py-4">No monitors configured. Add monitors in the config panel.</p>
       ) : (
-        <svg width={totalW} height={totalH} className="block mx-auto" style={{ minHeight: 80 }}>
+        <svg width={totalW} height={totalH} className="block mx-auto" style={{ minHeight: 80 }} role="img" aria-label={label ?? "Service dependency map"}>
           {/* Edges */}
           {data.edges.map((e, i) => {
             const src = posMap.get(e.source);
@@ -4620,7 +4627,7 @@ export function SecurityAdvisory({ widget, extra }: WidgetProps) {
       )}
       {raw.advisories.length === 0 && !raw.error && (
         <div className="flex items-center gap-2 text-green-400 py-2">
-          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm">No known vulnerabilities</span>

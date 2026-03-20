@@ -29,6 +29,7 @@ export class MaintenanceService {
    * Ordered by `startsAt` ascending.
    *
    * @param userId - Owner's user ID
+   * @returns Maintenance windows with computed activity metadata
    */
   async list(userId: string) {
     const now = new Date();
@@ -51,6 +52,7 @@ export class MaintenanceService {
    * Used by the alert suppression logic in `ChecksService`.
    *
    * @param userId - Owner's user ID
+   * @returns Active maintenance windows with computed activity metadata
    */
   async listActive(userId: string) {
     const now = new Date();
@@ -77,6 +79,7 @@ export class MaintenanceService {
    *
    * @param id     - MaintenanceWindow ID
    * @param userId - Owner's user ID
+   * @returns Maintenance window with computed activity metadata
    * @throws NotFoundException / ForbiddenException via `findOwned`
    */
   async getOne(id: string, userId: string) {
@@ -96,6 +99,7 @@ export class MaintenanceService {
    *
    * @param userId - Owner's user ID
    * @param dto    - Window payload (name, description, startsAt, endsAt, monitorIds)
+   * @returns Created maintenance window with computed activity metadata
    */
   async create(userId: string, dto: CreateMaintenanceWindowDto) {
     const { monitorIds = [], ...rest } = dto;
@@ -129,6 +133,7 @@ export class MaintenanceService {
    * @param id     - MaintenanceWindow ID
    * @param userId - Owner's user ID
    * @param dto    - Partial update payload
+   * @returns Updated maintenance window with computed activity metadata
    * @throws NotFoundException / ForbiddenException via `findOwned`
    */
   async update(id: string, userId: string, dto: UpdateMaintenanceWindowDto) {
@@ -162,6 +167,7 @@ export class MaintenanceService {
    *
    * @param id     - MaintenanceWindow ID
    * @param userId - Owner's user ID
+   * @returns `{ ok: true }` when deletion succeeds
    * @throws NotFoundException / ForbiddenException via `findOwned`
    */
   async remove(id: string, userId: string) {
@@ -170,7 +176,12 @@ export class MaintenanceService {
     return { ok: true };
   }
 
-  /** Returns true if monitorId is currently inside an active maintenance window for userId */
+  /**
+   * Returns whether a monitor is currently covered by an active maintenance window.
+   * @param monitorId - Monitor ID to check
+   * @param userId - Owner's user ID
+   * @returns `true` when at least one active maintenance window includes the monitor
+   */
   async isMonitorInMaintenance(monitorId: string, userId: string): Promise<boolean> {
     const now = new Date();
     const count = await this.prisma.maintenanceWindow.count({

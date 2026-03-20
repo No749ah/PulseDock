@@ -542,15 +542,23 @@ function PaletteWidget({ item, onQuickAdd }: { item: WidgetPaletteItem; onQuickA
 // ── Canvas widget (draggable on canvas) ─────────────────────────────────
 
 /** Live preview content for widgets in the editor */
-function WidgetPreview({ type, config, w }: { type: string; config: Record<string, unknown>; w: number }) {
+function WidgetPreview({ type, config, w, liveData }: { type: string; config: Record<string, unknown>; w: number; liveData?: unknown }) {
+  // Extract live values when available
+  const live = liveData as Record<string, unknown> | undefined;
   const label = (config.label as string) || "";
   switch (type) {
     case "overall-status":
       return (<div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-success animate-pulse" /><span className="text-sm font-semibold text-success">{label || "All Systems Operational"}</span></div>);
     case "current-status-badge":
       return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium text-text-primary">{label || "Monitor"}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">Up</span></div>);
-    case "uptime-bar":
-      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className="text-success font-medium">99.9%</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className="h-full w-[99.9%] rounded-full bg-success/70" /></div></div>);
+    case "uptime-bar": {
+      const uptimePct = typeof live?.uptimePct === "number" ? Math.round(live.uptimePct * 100) / 100 : null;
+      const barColor = uptimePct !== null ? (uptimePct >= 99.5 ? "bg-success/70" : uptimePct >= 90 ? "bg-warning/70" : "bg-danger/70") : "bg-success/70";
+      const pctColor = uptimePct !== null ? (uptimePct >= 99.5 ? "text-success" : uptimePct >= 90 ? "text-warning" : "text-danger") : "text-success";
+      const pctStr = uptimePct !== null ? `${uptimePct}%` : "99.9%";
+      const barWidth = uptimePct !== null ? `${uptimePct}%` : "99.9%";
+      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className={`font-medium ${pctColor}`}>{pctStr}{live && <span className="ml-1 text-green-400/60">●</span>}</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: barWidth }} /></div></div>);
+    }
     case "uptime-timeline":
       return (<div className="space-y-1">{label && <span className="text-[10px] text-text-secondary">{label}</span>}<div className="flex gap-px">{Array.from({ length: Math.min(w * 3, 30) }).map((_, i) => (<div key={i} className={`flex-1 h-4 rounded-sm ${i === 18 ? "bg-warning/60" : i === 22 ? "bg-danger/60" : "bg-success/50"}`} />))}</div></div>);
     case "response-time-chart":
@@ -563,8 +571,11 @@ function WidgetPreview({ type, config, w }: { type: string; config: Record<strin
       return (<div className="flex items-center gap-2 px-2 py-1 rounded bg-success/10 border border-success/20"><div className="h-2 w-2 rounded-full bg-success" /><span className="text-[10px] font-medium text-success">{label || "All clear — no active incidents"}</span></div>);
     case "text-block":
       return <p className="text-xs text-text-secondary">{label || "Announcement text goes here..."}</p>;
-    case "metric-counter":
-      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">99.9%</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
+    case "metric-counter": {
+      const mcVal = typeof live?.value === "number" ? live.value : typeof live?.uptimePct === "number" ? live.uptimePct : null;
+      const mcDisplay = mcVal !== null ? `${Math.round(mcVal * 100) / 100}%` : "—";
+      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">{mcVal !== null ? mcDisplay : "99.9%"}{live && <span className="ml-1 text-[8px] text-green-400/60 align-top">●</span>}</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
+    }
     case "last-updated-footer":
       return <div className="text-[10px] text-text-muted text-center">Last updated: just now</div>;
     case "custom-header":
@@ -726,6 +737,7 @@ interface CanvasWidgetProps {
   isSelected: boolean;
   isMultiSelected: boolean;
   colWidth: number;
+  liveData?: unknown;
   onSelect: (id: string, shiftKey: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -733,7 +745,7 @@ interface CanvasWidgetProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
+function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, liveData, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasWidgetProps) {
   const isLocked = Boolean(widget.locked);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `canvas-${widget.id}`,
@@ -846,7 +858,7 @@ function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect,
       </div>
       {/* Widget preview */}
       <div className="flex-1 overflow-hidden p-2 relative">
-        <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
+        <WidgetPreview type={widget.type} config={widget.config} w={widget.w} liveData={liveData} />
         {/* Unconfigured monitor badge — top-right corner */}
         {needsMonitorConfig(widget) && (
           <div className="absolute top-1 right-1 z-10 pointer-events-none">
@@ -891,6 +903,8 @@ interface CanvasProps {
   showGrid: boolean;
   alignGuides: { type: "h" | "v"; pos: number }[];
   paletteDropPreview: { x: number; y: number; w: number; h: number } | null;
+  liveDataMode?: boolean;
+  liveWidgetData?: Record<string, unknown>;
   onSelect: (id: string | null, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -898,7 +912,7 @@ interface CanvasProps {
   onToggleLock: (id: string) => void;
 }
 
-function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, paletteDropPreview, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
+function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas, canvasRef, zoom, viewportMode, showGrid, alignGuides, paletteDropPreview, liveDataMode, liveWidgetData, onSelect, onDelete, onDuplicate, onResize, onToggleLock }: CanvasProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas" });
 
   const maxY = widgets.length > 0
@@ -1011,6 +1025,7 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
             isSelected={selectedId === widget.id}
             isMultiSelected={selectedIds.has(widget.id)}
             colWidth={colWidth}
+            liveData={liveDataMode ? liveWidgetData?.[widget.id] : undefined}
             onSelect={onSelect}
             onDelete={onDelete}
             onDuplicate={onDuplicate}
@@ -1807,6 +1822,9 @@ export default function StatusPageEditorPage() {
   const [paletteSearch, setPaletteSearch] = useState("");
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
+  const [liveDataMode, setLiveDataMode] = useState(false);
+  const [liveWidgetData, setLiveWidgetData] = useState<Record<string, unknown>>({});
+  const [loadingLiveData, setLoadingLiveData] = useState(false);
   const [alignGuides, setAlignGuides] = useState<{ type: "h" | "v"; pos: number }[]>([]);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [showTemplateGallery, setShowTemplateGallery] = useState(false);
@@ -1975,6 +1993,42 @@ export default function StatusPageEditorPage() {
     const timer = setTimeout(() => { handleSave({ silent: true }); }, 2000);
     return () => clearTimeout(timer);
   }, [isDirty, widgets, page, handleSave, autoSaveEnabled]);
+
+  async function fetchLiveData() {
+    if (!page?.slug) return;
+    setLoadingLiveData(true);
+    try {
+      const dataMap: Record<string, unknown> = {};
+      await Promise.allSettled(
+        widgets.map(async (w) => {
+          try {
+            const result = await fetch(
+              `/api/v1/public/status/${page.slug}/widget/${w.id}`,
+              { credentials: 'include' }
+            );
+            if (result.ok) {
+              dataMap[w.id] = await result.json();
+            }
+          } catch {
+            // widget data not available, keep empty
+          }
+        })
+      );
+      setLiveWidgetData(dataMap);
+    } finally {
+      setLoadingLiveData(false);
+    }
+  }
+
+  async function handleToggleLiveData() {
+    if (!liveDataMode) {
+      setLiveDataMode(true);
+      await fetchLiveData();
+    } else {
+      setLiveDataMode(false);
+      setLiveWidgetData({});
+    }
+  }
 
   async function handleTogglePublish() {
     if (!page) return;
@@ -2723,6 +2777,20 @@ export default function StatusPageEditorPage() {
               <Grid className="h-3.5 w-3.5" />
             </button>
 
+            {/* Live data preview toggle */}
+            <button
+              onClick={handleToggleLiveData}
+              disabled={loadingLiveData}
+              title={liveDataMode ? "Showing live data — click to switch back to static preview" : "Preview with live data from your monitors"}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition disabled:opacity-50 ${liveDataMode ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
+            >
+              {loadingLiveData ? (
+                <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading…</>
+              ) : (
+                <><Activity className="h-3.5 w-3.5" /> {liveDataMode ? "Live" : "Live"}</>
+              )}
+            </button>
+
             {/* Canvas zoom controls */}
             <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
               <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
@@ -2874,6 +2942,8 @@ export default function StatusPageEditorPage() {
               showGrid={showGrid}
               alignGuides={alignGuides}
               paletteDropPreview={paletteDropPreview}
+              liveDataMode={liveDataMode}
+              liveWidgetData={liveWidgetData}
               onSelect={handleWidgetSelect}
               onDelete={deleteWidget}
               onDuplicate={duplicateWidget}

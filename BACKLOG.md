@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 02:38 UTC)
+- **Build/Test:** ✅ Clean build, tests passing, zero TS errors
+- **Deployment:** ✅ Local + public URL checks all 200 (plus expected 401 on protected API without valid auth)
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Design token consistency pass (app/dashboard)**: normalized semantic utility colors to token-based classes (`warning/success/danger/text-muted`) in account/admin/monitors pages; replaced lingering `zinc` border hover on monitor cards with `border-border-hover`
+  - **Backlog cleanup**: marked `Charts upgrade` as complete (Recharts already in active use for dashboard/monitors sparklines); updated landing performance line to partial `[~]` with done/remaining breakdown
+  - **Heartbeat restart + smoke**: `npm run restart` completed (API + web), route checks local + reverse proxy all green
+
 ## Status Summary (2026-03-20 02:32 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Deployment:** ✅ Public URL 200

@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
@@ -14,6 +15,14 @@ import { I18nProvider } from "../components/i18n-provider";
 import { KeyboardShortcuts } from "../components/keyboard-shortcuts";
 import { CommandPalette } from "../components/command-palette";
 import { PageTransition } from "../components/page-transition";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -103,25 +112,17 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${inter.variable}`}>
       <head>
         {/* Favicon */}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
         <link rel="manifest" href="/site.webmanifest" />
-        
-        {/* Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
+
+        {/* DNS prefetch for tool registry icon CDN */}
+        <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
+        <link rel="preconnect" href="https://cdn.simpleicons.org" crossOrigin="anonymous" />
 
         {/* JSON-LD structured data */}
         <script

@@ -57,7 +57,13 @@ export type ToolCategory =
   | 'Finance & Accounting'
   | 'Education & Learning'
   | 'Legal & Compliance'
-  | 'HR & People';
+  | 'HR & People'
+  | 'GIS & Mapping'
+  | 'Radio & SDR'
+  | 'Backup & Recovery'
+  | 'VoIP & Telephony'
+  | 'Digital Signage'
+  | 'Fleet & Asset Management';
 
 export interface VersionSource {
   type: VersionSourceType;

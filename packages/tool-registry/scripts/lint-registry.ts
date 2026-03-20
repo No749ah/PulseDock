@@ -29,6 +29,8 @@ const VALID_CATEGORIES = new Set([
   "Game Servers", "Compliance & Audit",
   "Finance & Accounting", "Education & Learning",
   "Legal & Compliance", "HR & People",
+  "GIS & Mapping", "Radio & SDR", "Backup & Recovery",
+  "VoIP & Telephony", "Digital Signage", "Fleet & Asset Management",
 ]);
 
 const VALID_VERSION_SOURCE_TYPES = new Set([

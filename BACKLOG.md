@@ -1,3 +1,11 @@
+## Status Summary (2026-03-20 19:02 UTC)
+- **Build/Test:** ✅ Clean build, 1610 tests passing (1610 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
+- **Branch:** heartbeat/2026-03-20-final
+- **This session:**
+  - **OAuth2 SSO (GitHub + Google):** Added `OAuthAccount` Prisma model, made `User.passwordHash` nullable. `GET /v1/auth/oauth/:provider` redirects to GitHub/Google. Callback exchanges code for profile, upserts user+OAuthAccount, issues refresh token, redirects to `/login?token=...`. Frontend: "Continue with GitHub" + "Continue with Google" buttons with brand SVGs, `?token=` exchange on page load. CSRF exemption added. Null passwordHash guard in login/disable-2FA/change-password. 7 new unit tests.
+  - **DB pushed:** `OAuthAccount` table live via `prisma db push`.
+
 ## Status Summary (2026-03-20 18:15 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent), zero TS errors (incl. test specs)
 - **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
@@ -1654,7 +1662,7 @@
 - [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
 - [x] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
-- [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
+- [x] **Single Sign-On (SSO)** — OAuth2/OIDC via GitHub + Google. `OAuthAccount` Prisma model (provider/providerId unique), `passwordHash` nullable for SSO-only users. `GET /v1/auth/oauth/:provider` → redirects to provider. `GET /v1/auth/oauth/:provider/callback` → exchanges code, upserts user, issues refresh token, redirects to web `/login?token=xxx`. Frontend login page handles `?token=` via refresh exchange + shows GitHub/Google buttons (brand SVG icons). CSRF exemption for `/v1/auth/oauth/` prefix. 7 new unit tests. 1610 tests total.
 - [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.

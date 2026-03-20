@@ -1506,7 +1506,7 @@ export class StatusPagesService {
         });
 
         if (monitors.length === 0) {
-          throw new BadRequestException('No SSL monitors found — configure monitors of type SSL_CERT');
+          return { _noConfig: true };
         }
 
         const certs = monitors.map((m) => {
@@ -2061,7 +2061,7 @@ export class StatusPagesService {
         });
 
         if (versionMonitors.length === 0) {
-          throw new BadRequestException('No VERSION monitors configured');
+          return { _noConfig: true };
         }
 
         type OutdatedEntry = {
@@ -2141,7 +2141,7 @@ export class StatusPagesService {
         });
 
         if (versionMonitors.length === 0) {
-          throw new BadRequestException('No VERSION monitors configured');
+          return { _noConfig: true };
         }
 
         const rows = versionMonitors.map((m) => {
@@ -2181,7 +2181,7 @@ export class StatusPagesService {
         });
 
         if (httpMonitors.length === 0) {
-          throw new BadRequestException('No HTTP monitors configured');
+          return { _noConfig: true };
         }
 
         type MonitorStats = { name: string; avgMs: number; trend: 'up' | 'down' | 'stable' };
@@ -2250,7 +2250,7 @@ export class StatusPagesService {
         });
 
         if (monitors.length === 0) {
-          throw new BadRequestException('No monitors configured for gauge');
+          return { _noConfig: true };
         }
 
         const ids = monitors.map((m) => m.id);
@@ -2389,7 +2389,7 @@ export class StatusPagesService {
         });
 
         if (scopeMonitors.length === 0) {
-          throw new BadRequestException('No monitors in scope for metric-comparison-row');
+          return { _noConfig: true };
         }
 
         const ids = scopeMonitors.map((m) => m.id);
@@ -2465,7 +2465,7 @@ export class StatusPagesService {
         });
 
         if (scopeMonitors.length === 0) {
-          throw new BadRequestException('No monitors in scope for sparkline-row');
+          return { _noConfig: true };
         }
 
         const monitors = await Promise.all(
@@ -2516,7 +2516,7 @@ export class StatusPagesService {
         });
 
         if (monitors.length === 0) {
-          throw new BadRequestException('No monitors configured for progress-ring');
+          return { _noConfig: true };
         }
 
         const ids = monitors.map((m) => m.id);
@@ -2579,7 +2579,7 @@ export class StatusPagesService {
 
       case 'embed-iframe': {
         const url = widget.config.url as string | undefined;
-        if (!url) throw new BadRequestException('embed-iframe widget missing url config');
+        if (!url) return { _noConfig: true };
         const height = (widget.config.height as number) ?? 400;
         const title = widget.config.title as string | undefined;
         const sandbox = (widget.config.sandbox as string) ?? 'allow-scripts allow-same-origin';

@@ -552,7 +552,7 @@ describe('StatusPagesService', () => {
       expect(result.periodDays).toBe(7);
     });
 
-    it('throws BadRequestException for uptime-bar without monitorId', async () => {
+    it('returns _noConfig for uptime-bar without monitorId', async () => {
       const layout = {
         widgets: [
           {
@@ -570,9 +570,8 @@ describe('StatusPagesService', () => {
         page: makePage({ isPublished: true, layout }),
       });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'w1')).rejects.toThrow(
-        BadRequestException,
-      );
+      const _result = await service.getWidgetData('my-status-page', 'w1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('resolves current-status-badge widget data', async () => {
@@ -599,7 +598,7 @@ describe('StatusPagesService', () => {
       expect(result.monitorId).toBe('mon-1');
     });
 
-    it('throws BadRequestException for current-status-badge without monitorId', async () => {
+    it('returns _noConfig for current-status-badge without monitorId', async () => {
       const layout = {
         widgets: [
           {
@@ -617,9 +616,8 @@ describe('StatusPagesService', () => {
         page: makePage({ isPublished: true, layout }),
       });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'w2')).rejects.toThrow(
-        BadRequestException,
-      );
+      const _result = await service.getWidgetData('my-status-page', 'w2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('throws NotFoundException for current-status-badge when monitor not found', async () => {
@@ -892,15 +890,14 @@ describe('StatusPagesService', () => {
       expect(timeline.every((t) => t.level === 'no-data')).toBe(true);
     });
 
-    it('uptime-timeline throws BadRequestException without monitorId', async () => {
+    it('uptime-timeline returns _noConfig without monitorId', async () => {
       const layout = {
         widgets: [{ id: 'wt5', type: 'uptime-timeline', config: {}, x: 0, y: 0, w: 12, h: 2 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'wt5')).rejects.toThrow(
-        BadRequestException,
-      );
+      const _result = await service.getWidgetData('my-status-page', 'wt5');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -960,13 +957,14 @@ describe('StatusPagesService', () => {
       expect(result.avgMs).toBeNull();
     });
 
-    it('throws BadRequestException when monitorId is missing', async () => {
+    it('returns _noConfig when monitorId is missing', async () => {
       const layout = {
         widgets: [{ id: 'rt4', type: 'response-time-chart', config: {}, x: 0, y: 0, w: 12, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'rt4')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'rt4');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('respects periodHours config to filter by time range', async () => {
@@ -1049,13 +1047,14 @@ describe('StatusPagesService', () => {
       expect(result.remainingDownMinutes).toBe(43.2); // no down time used
     });
 
-    it('throws BadRequestException when monitorId is missing', async () => {
+    it('returns _noConfig when monitorId is missing', async () => {
       const layout = {
         widgets: [{ id: 'sla5', type: 'sla-summary', config: {}, x: 0, y: 0, w: 12, h: 2 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'sla5')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'sla5');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -1111,13 +1110,14 @@ describe('StatusPagesService', () => {
       expect((result.cards as Array<{ uptimePct: number }>)[0].uptimePct).toBe(100);
     });
 
-    it('throws BadRequestException when monitorId is missing', async () => {
+    it('returns _noConfig when monitorId is missing', async () => {
       const layout = {
         widgets: [{ id: 'ruc2', type: 'rolling-uptime-cards', config: {}, x: 0, y: 0, w: 12, h: 2 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'ruc2')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'ruc2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -1142,13 +1142,14 @@ describe('StatusPagesService', () => {
       expect(row.ribbon).toHaveLength(90);
     });
 
-    it('throws BadRequestException when no monitorIds provided', async () => {
+    it('returns _noConfig when no monitorIds provided', async () => {
       const layout = {
         widgets: [{ id: 'shr2', type: 'status-history-ribbon', config: {}, x: 0, y: 0, w: 12, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'shr2')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'shr2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -1172,13 +1173,14 @@ describe('StatusPagesService', () => {
       expect(result.trend).toBe('up');
     });
 
-    it('throws BadRequestException when monitorId is missing', async () => {
+    it('returns _noConfig when monitorId is missing', async () => {
       const layout = {
         widgets: [{ id: 'upc2', type: 'uptime-percentage-card', config: {}, x: 0, y: 0, w: 4, h: 2 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'upc2')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'upc2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -1276,13 +1278,14 @@ describe('StatusPagesService', () => {
   // ── New P1 Widget Tests (latency-percentiles-card, downtime-log, active-incident-count, mttr-mttf-cards) ──
 
   describe('getWidgetData — latency-percentiles-card', () => {
-    it('throws BadRequestException when monitorId is missing', async () => {
+    it('returns _noConfig when monitorId is missing', async () => {
       const layout = {
         widgets: [{ id: 'lp1', type: 'latency-percentiles-card', config: {}, x: 0, y: 0, w: 6, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'lp1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'lp1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns percentile data with sampleCount', async () => {
@@ -1405,14 +1408,15 @@ describe('StatusPagesService', () => {
   // ── sla-compliance-table ─────────────────────────────────────────────────
 
   describe('getWidgetData — sla-compliance-table', () => {
-    it('throws BadRequestException when no monitors found', async () => {
+    it('returns _noConfig when no monitors found', async () => {
       const layout = {
         widgets: [{ id: 'sct1', type: 'sla-compliance-table', config: { monitorIds: ['nonexistent'] }, x: 0, y: 0, w: 12, h: 4 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'sct1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'sct1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns rows sorted by pass=false first with correct pass/fail logic', async () => {
@@ -1442,13 +1446,14 @@ describe('StatusPagesService', () => {
   // ── uptime-heatmap ───────────────────────────────────────────────────────
 
   describe('getWidgetData — uptime-heatmap', () => {
-    it('throws BadRequestException when monitorId missing', async () => {
+    it('returns _noConfig when monitorId missing', async () => {
       const layout = {
         widgets: [{ id: 'uh1', type: 'uptime-heatmap', config: {}, x: 0, y: 0, w: 12, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'uh1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'uh1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns 7×24 grid with correct shape', async () => {
@@ -1522,7 +1527,8 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'ssl1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'ssl1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns cert status with daysRemaining from latencyMs', async () => {
@@ -1672,13 +1678,14 @@ describe('StatusPagesService', () => {
   // ── performance-trend ────────────────────────────────────────────────────
 
   describe('getWidgetData — performance-trend', () => {
-    it('throws BadRequestException when no monitorId', async () => {
+    it('returns _noConfig when no monitorId', async () => {
       const layout = {
         widgets: [{ id: 'pt1', type: 'performance-trend', config: {}, x: 0, y: 0, w: 6, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'pt1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'pt1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns trend data with dataPoints array of length 14', async () => {
@@ -1697,13 +1704,14 @@ describe('StatusPagesService', () => {
   // ── apdex-score ──────────────────────────────────────────────────────────
 
   describe('getWidgetData — apdex-score', () => {
-    it('throws BadRequestException when no monitorId', async () => {
+    it('returns _noConfig when no monitorId', async () => {
       const layout = {
         widgets: [{ id: 'as1', type: 'apdex-score', config: {}, x: 0, y: 0, w: 4, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'as1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'as1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('computes Apdex score correctly', async () => {
@@ -1763,13 +1771,14 @@ describe('StatusPagesService', () => {
   // ── response-time-comparison ─────────────────────────────────────────────
 
   describe('getWidgetData — response-time-comparison', () => {
-    it('throws BadRequestException when no monitorIds configured', async () => {
+    it('returns _noConfig when no monitorIds configured', async () => {
       const layout = {
         widgets: [{ id: 'rtc1', type: 'response-time-comparison', config: {}, x: 0, y: 0, w: 12, h: 4 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'rtc1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'rtc1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns monitors with dataPoints and labels', async () => {
@@ -1800,13 +1809,14 @@ describe('StatusPagesService', () => {
   // ── uptime-comparison-chart ──────────────────────────────────────────────
 
   describe('getWidgetData — uptime-comparison-chart', () => {
-    it('throws BadRequestException when no monitorIds configured', async () => {
+    it('returns _noConfig when no monitorIds configured', async () => {
       const layout = {
         widgets: [{ id: 'ucc1', type: 'uptime-comparison-chart', config: {}, x: 0, y: 0, w: 8, h: 4 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'ucc1')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'ucc1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns monitors sorted by uptimePct descending', async () => {
@@ -1960,7 +1970,8 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'oca1')).rejects.toBeInstanceOf(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'oca1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns outdated list and upToDate count when versions differ', async () => {
@@ -1992,7 +2003,8 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'vct1')).rejects.toBeInstanceOf(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'vct1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns rows with upToDate flag and lastChecked', async () => {
@@ -2026,7 +2038,8 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'dns1')).rejects.toBeInstanceOf(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'dns1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns avgMs, p95Ms, and per-monitor breakdown', async () => {
@@ -2053,14 +2066,15 @@ describe('StatusPagesService', () => {
   // ── gauge ────────────────────────────────────────────────────────────────
 
   describe('getWidgetData — gauge', () => {
-    it('throws BadRequestException when no monitors configured', async () => {
+    it('returns _noConfig when no monitors configured', async () => {
       const layout = {
         widgets: [{ id: 'g1', type: 'gauge', config: { monitorId: 'nonexistent' }, x: 0, y: 0, w: 4, h: 4 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'g1')).rejects.toBeInstanceOf(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'g1');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
 
     it('returns value, metricType, label, and thresholds for uptime', async () => {
@@ -2144,14 +2158,15 @@ describe('StatusPagesService', () => {
       expect(monitors[1].status).toBe('down');
     });
 
-    it('throws BadRequestException when no monitors in scope', async () => {
+    it('returns _noConfig when no monitors in scope', async () => {
       const layout = {
         widgets: [{ id: 'spr2', type: 'sparkline-row', config: {}, x: 0, y: 0, w: 12, h: 3 }],
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([]);
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'spr2')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'spr2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 
@@ -2373,7 +2388,8 @@ describe('StatusPagesService', () => {
       };
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       service = makeService(prisma);
-      await expect(service.getWidgetData('my-status-page', 'ei2')).rejects.toThrow(BadRequestException);
+      const _result = await service.getWidgetData('my-status-page', 'ei2');
+      expect(_result).toMatchObject({ _noConfig: true });
     });
   });
 

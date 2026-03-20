@@ -306,7 +306,7 @@ export default function DashboardPage() {
         { name: "Cloudflare", type: "HTTP", target: "https://cloudflare.com", intervalMs: 60000, timeoutMs: 10000, enabled: true },
         { name: "PulseDock API", type: "HTTP", target: "http://localhost:4321/health", intervalMs: 30000, timeoutMs: 5000, enabled: true },
       ];
-      await Promise.all(sampleMonitors.map((m) => api("/v1/monitors", { method: "POST", body: m })));
+      await Promise.all(sampleMonitors.map((m) => api("/v1/monitors", undefined, { method: "POST", body: JSON.stringify(m) })));
       await loadDashboard();
     } catch {
       // ignore — user can create manually

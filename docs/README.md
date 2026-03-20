@@ -15,7 +15,7 @@ Welcome to the PulseDock documentation. This directory contains all guides for i
 | [API Versioning](./API_VERSIONING.md) | v1 vs v2 API surface documentation |
 | [Status Pages](./STATUS-PAGES.md) | Status page builder guide (drag & drop editor) |
 | [Version Checks](./VERSION-CHECKS.md) | Version monitoring and tool registry |
-| [Tool Registry](./TOOL-REGISTRY.md) | Pre-configured tool registry (1385+ tools) |
+| [Tool Registry](./TOOL-REGISTRY.md) | Pre-configured tool registry (2500+ tools) |
 | [CLI](./CLI.md) | `pulsedock` CLI tool reference |
 | [Agent](./AGENT.md) | PulseDock local agent (version reporter) |
 | [Browser Extension](./EXTENSION.md) | Chrome MV3 extension for quick monitor creation |

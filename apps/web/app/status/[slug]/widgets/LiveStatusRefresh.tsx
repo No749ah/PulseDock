@@ -120,24 +120,27 @@ export function LiveStatusRefresh({ intervalSec, slug }: LiveStatusRefreshProps)
     <span
       className="inline-flex items-center gap-1.5 print:hidden"
       title={wsConnected ? "Live via WebSocket" : `Polling every ${intervalSec}s`}
+      aria-label={wsConnected ? `Live status — updated ${formatAgo(secondsAgo)}` : `Auto-refreshing every ${intervalSec} seconds — updated ${formatAgo(secondsAgo)}`}
+      aria-live="polite"
+      role="status"
     >
       {wsConnected ? (
         <>
-          <span className="relative flex h-1.5 w-1.5">
+          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
           </span>
-          <span className="text-xs text-text-secondary">
+          <span className="text-xs text-text-secondary" aria-hidden="true">
             🟢 Live · Updated {formatAgo(secondsAgo)}
           </span>
         </>
       ) : (
         <>
-          <span className="relative flex h-1.5 w-1.5">
+          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
           </span>
-          <span className="text-xs text-text-secondary">
+          <span className="text-xs text-text-secondary" aria-hidden="true">
             ⟳ Polling · Updated {formatAgo(secondsAgo)}
           </span>
         </>

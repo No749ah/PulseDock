@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 02:30 UTC)
+- **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ API + Web + public URL all 200 (27/27 smoke checks pass)
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session (2026-03-20 02:30 UTC):**
+  - **LazyWidget**: Public status pages now lazy-load widgets below fold via IntersectionObserver — first 4 widgets render immediately, rest deferred until near viewport (400px pre-fetch margin)
+  - **Web restart**: Web server was down on heartbeat start — auto-restarted
+  - **Smoke test**: 27/27 local + public URL checks pass
+
 ## Status Summary (2026-03-20 02:23 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Deployment:** ✅ Public URL 200

@@ -49,12 +49,12 @@ function isNoConfig(data: unknown): boolean {
   return typeof data === 'object' && data !== null && '_noConfig' in data && (data as Record<string, unknown>)._noConfig === true;
 }
 
-/** Shown on the public page when a widget has no monitor configured. Only visible in editor preview; hidden on live published pages. */
-function NoConfigPlaceholder({ label }: { label: string }) {
+/** Shown on the public page when a widget has no monitor configured. */
+function NoConfigPlaceholder({ label: _label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border/60 bg-surface/30 p-4 flex items-center justify-center gap-2 text-text-secondary/60 text-xs">
-      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-      <span>{label} — no monitor selected</span>
+    <div className="rounded-2xl bg-surface border border-border p-4 flex items-center gap-2 text-text-secondary text-sm">
+      <span className="opacity-40">◌</span>
+      <span>Not configured</span>
     </div>
   );
 }

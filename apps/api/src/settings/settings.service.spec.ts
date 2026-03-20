@@ -145,7 +145,35 @@ describe('SettingsService', () => {
       expect(prisma.monitorRun.deleteMany).not.toHaveBeenCalled()
     })
 
-    it('aggregates runs into daily rollup buckets when rollupEnabled=true', async () => {
+    it('workspace: getWorkspace returns nulls when no settings row', async () => {
+    prisma.userSettings.findUnique.mockResolvedValue(null)
+    const result = await service.getWorkspace('u1')
+    expect(result).toEqual({ workspaceName: null, workspaceSlug: null, workspaceLogo: null, workspaceWebsite: null })
+  })
+
+  it('workspace: getWorkspace returns persisted values', async () => {
+    prisma.userSettings.findUnique.mockResolvedValue({
+      workspaceName: 'Acme Corp', workspaceSlug: 'acme-corp', workspaceLogo: null, workspaceWebsite: 'https://acme.com',
+    })
+    const result = await service.getWorkspace('u1')
+    expect(result.workspaceName).toBe('Acme Corp')
+    expect(result.workspaceWebsite).toBe('https://acme.com')
+  })
+
+  it('workspace: updateWorkspace upserts and returns updated fields', async () => {
+    prisma.userSettings.upsert.mockResolvedValue({
+      workspaceName: 'Beta Corp', workspaceSlug: 'beta-corp', workspaceLogo: 'https://logo.png', workspaceWebsite: null,
+    })
+    const result = await service.updateWorkspace('u1', { workspaceName: 'Beta Corp', workspaceSlug: 'beta-corp', workspaceLogo: 'https://logo.png' })
+    expect(result.workspaceName).toBe('Beta Corp')
+    expect(result.message).toBe('Workspace settings updated')
+    expect(prisma.userSettings.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId: 'u1' },
+      update: expect.objectContaining({ workspaceName: 'Beta Corp' }),
+    }))
+  })
+
+  it('aggregates runs into daily rollup buckets when rollupEnabled=true', async () => {
       const oldDate = new Date('2026-01-01T10:00:00Z')
       prisma.userSettings.findMany.mockResolvedValue([
         { userId: 'u1', retentionDays: 30, rollupEnabled: true },

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { PrismaService } from '../common/prisma.service'
-import { UpdateRetentionDto } from './settings.dto'
+import { UpdateRetentionDto, UpdateWorkspaceDto } from './settings.dto'
 
 /** Number of days of raw data to keep before rolling up to daily buckets. */
 const RAW_ROLLUP_THRESHOLD_DAYS = 7
@@ -246,5 +246,65 @@ export class SettingsService {
     }
 
     return processed
+  }
+
+  /**
+   * Returns workspace settings for a user.
+   * @param userId - Owner's user ID
+   */
+  async getWorkspace(userId: string): Promise<{
+    workspaceName: string | null
+    workspaceSlug: string | null
+    workspaceLogo: string | null
+    workspaceWebsite: string | null
+  }> {
+    const settings = await this.prisma.userSettings.findUnique({ where: { userId } })
+    return {
+      workspaceName: settings?.workspaceName ?? null,
+      workspaceSlug: settings?.workspaceSlug ?? null,
+      workspaceLogo: settings?.workspaceLogo ?? null,
+      workspaceWebsite: settings?.workspaceWebsite ?? null,
+    }
+  }
+
+  /**
+   * Updates (or creates) workspace settings for a user.
+   * @param userId - Owner's user ID
+   * @param dto    - Workspace update payload
+   * @returns Updated workspace settings
+   */
+  async updateWorkspace(
+    userId: string,
+    dto: UpdateWorkspaceDto,
+  ): Promise<{
+    workspaceName: string | null
+    workspaceSlug: string | null
+    workspaceLogo: string | null
+    workspaceWebsite: string | null
+    message: string
+  }> {
+    const result = await this.prisma.userSettings.upsert({
+      where: { userId },
+      create: {
+        userId,
+        workspaceName: dto.workspaceName ?? null,
+        workspaceSlug: dto.workspaceSlug ?? null,
+        workspaceLogo: dto.workspaceLogo ?? null,
+        workspaceWebsite: dto.workspaceWebsite ?? null,
+      },
+      update: {
+        workspaceName: dto.workspaceName,
+        workspaceSlug: dto.workspaceSlug,
+        workspaceLogo: dto.workspaceLogo,
+        workspaceWebsite: dto.workspaceWebsite,
+      },
+    })
+    return {
+      workspaceName: result.workspaceName ?? null,
+      workspaceSlug: result.workspaceSlug ?? null,
+      workspaceLogo: result.workspaceLogo ?? null,
+      workspaceWebsite: result.workspaceWebsite ?? null,
+      message: 'Workspace settings updated',
+    }
   }
 }

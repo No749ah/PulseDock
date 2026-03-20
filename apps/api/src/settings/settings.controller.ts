@@ -4,7 +4,7 @@ import { Response } from 'express'
 import { AuthGuard } from '../common/auth.guard'
 import { SettingsService } from './settings.service'
 import { BackupService, BackupDocument } from './backup.service'
-import { UpdateRetentionDto } from './settings.dto'
+import { UpdateRetentionDto, UpdateWorkspaceDto } from './settings.dto'
 
 @ApiTags('Settings')
 @ApiBearerAuth()
@@ -57,5 +57,19 @@ export class SettingsController {
     @Body() doc: BackupDocument,
   ) {
     return this.backupService.restoreBackup(req.user.id, doc)
+  }
+
+  @Get('workspace')
+  @ApiOperation({ summary: 'Get workspace settings', description: 'Returns workspace name, slug, logo, and website for the current user.' })
+  @ApiResponse({ status: 200, description: 'Workspace settings' })
+  getWorkspace(@Req() req: { user: { id: string } }) {
+    return this.settingsService.getWorkspace(req.user.id)
+  }
+
+  @Put('workspace')
+  @ApiOperation({ summary: 'Update workspace settings', description: 'Set workspace name, slug, logo URL, and website URL.' })
+  @ApiResponse({ status: 200, description: 'Updated workspace settings' })
+  updateWorkspace(@Req() req: { user: { id: string } }, @Body() dto: UpdateWorkspaceDto) {
+    return this.settingsService.updateWorkspace(req.user.id, dto)
   }
 }

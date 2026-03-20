@@ -230,8 +230,22 @@ export class StatusPagesController {
     res.send(xml);
   }
 
+  @Get('public/status/unsubscribe')
+  @ApiOperation({
+    summary: 'Unsubscribe from status page updates (public)',
+    description: 'Removes the subscriber identified by the one-time unsubscribe token from status page notifications.',
+  })
+  @ApiQuery({ name: 'token', description: 'Unsubscribe token from the notification email' })
+  @ApiResponse({ status: 200, description: 'Successfully unsubscribed.' })
+  @ApiResponse({ status: 404, description: 'Invalid or expired unsubscribe token.' })
+  async unsubscribe(@Query('token') token: string) {
+    await this.statusPagesService.unsubscribe(token);
+    return { message: 'Successfully unsubscribed' };
+  }
+
   @Get('public/status/:slug/json')
   @Header('Cache-Control', 'public, max-age=30')
+  @Header('Access-Control-Allow-Origin', '*')
   @ApiOperation({
     summary: 'Get status page as structured JSON (public)',
     description:

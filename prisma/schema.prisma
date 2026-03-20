@@ -18,6 +18,8 @@ enum MonitorType {
   TCP
   SSL_CERT
   HEARTBEAT
+  DNS
+  PING
 }
 
 model User {
@@ -253,8 +255,9 @@ model PublicStatusPage {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  user    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  history StatusPageHistory[]
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history     StatusPageHistory[]
+  subscribers StatusPageSubscriber[]
 
   @@index([userId])
   @@index([slug])
@@ -399,10 +402,13 @@ model IncidentMonitor {
 }
 
 model StatusPageSubscriber {
-  id           String   @id @default(cuid())
-  statusPageId String
-  email        String
-  createdAt    DateTime @default(now())
+  id               String           @id @default(cuid())
+  statusPageId     String
+  email            String
+  unsubscribeToken String           @default(cuid()) @unique
+  createdAt        DateTime         @default(now())
+
+  statusPage PublicStatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
 
   @@unique([statusPageId, email])
   @@index([statusPageId])

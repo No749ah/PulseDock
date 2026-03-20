@@ -21,6 +21,7 @@ function makePage(overrides: Record<string, unknown> = {}) {
     layout: { widgets: [] },
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
+    _count: { subscribers: 0 },
     ...overrides,
   };
 }
@@ -103,6 +104,13 @@ function makePrisma(opts: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       findUnique: vi.fn().mockResolvedValue(null),
     },
+    statusPageSubscriber: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'sub-1', statusPageId: data.statusPageId, email: data.email, unsubscribeToken: 'tok-abc', createdAt: new Date() })
+      ),
+      delete: vi.fn().mockResolvedValue({}),
+    },
   };
 }
 
@@ -129,6 +137,7 @@ describe('StatusPagesService', () => {
       expect(prisma.publicStatusPage.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
         orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { subscribers: true } } },
       });
       expect(result).toHaveLength(1);
     });
@@ -2424,6 +2433,73 @@ describe('StatusPagesService', () => {
       expect(result.expired).toBe(true);
       expect(result.secondsRemaining).toBe(0);
       expect(result.hideAfterExpiry).toBe(true);
+    });
+  });
+
+  // ── getPublicJson ─────────────────────────────────────────────────────────
+
+  describe('getPublicJson', () => {
+    it('throws NotFoundException for unpublished page', async () => {
+      prisma = makePrisma({ page: makePage({ isPublished: false }) });
+      service = makeService(prisma);
+      await expect(service.getPublicJson('my-status-page')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException for missing page', async () => {
+      prisma = makePrisma({ page: null });
+      service = makeService(prisma);
+      await expect(service.getPublicJson('missing-slug')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns structured JSON for published page with monitors', async () => {
+      const publishedPage = makePage({ isPublished: true });
+      const monitors = [
+        makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'green', ok: true, latencyMs: 100, checkedAt: new Date() }] }),
+        makeMonitor({ id: 'mon-2', name: 'DB', runs: [{ level: 'red', ok: false, latencyMs: 500, checkedAt: new Date() }] }),
+      ];
+      prisma = makePrisma({ page: publishedPage, monitors });
+      service = makeService(prisma);
+
+      const result = await service.getPublicJson('my-status-page');
+      expect(result).toHaveProperty('page');
+      expect(result).toHaveProperty('overallStatus');
+      expect(result).toHaveProperty('monitors');
+      expect(result).toHaveProperty('generatedAt');
+      // One monitor is red => overall status should be 'down'
+      expect(result.overallStatus).toBe('down');
+    });
+
+    it('returns operational status when all monitors are green', async () => {
+      const publishedPage = makePage({ isPublished: true });
+      const monitors = [
+        makeMonitor({ id: 'mon-1', name: 'API', runs: [{ level: 'green', ok: true, latencyMs: 50, checkedAt: new Date() }] }),
+      ];
+      prisma = makePrisma({ page: publishedPage, monitors });
+      service = makeService(prisma);
+
+      const result = await service.getPublicJson('my-status-page');
+      expect(result.overallStatus).toBe('operational');
+    });
+  });
+
+  // ── unsubscribe ───────────────────────────────────────────────────────────
+
+  describe('unsubscribe', () => {
+    it('throws NotFoundException for invalid token', async () => {
+      prisma = makePrisma();
+      (prisma.statusPageSubscriber.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      service = makeService(prisma);
+      await expect(service.unsubscribe('bad-token')).rejects.toThrow(NotFoundException);
+    });
+
+    it('deletes subscriber for valid token', async () => {
+      prisma = makePrisma();
+      const sub = { id: 'sub-1', statusPageId: 'page-1', email: 'user@example.com', unsubscribeToken: 'valid-tok', createdAt: new Date() };
+      (prisma.statusPageSubscriber.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(sub);
+      (prisma.statusPageSubscriber.delete as ReturnType<typeof vi.fn>).mockResolvedValue(sub);
+      service = makeService(prisma);
+      await expect(service.unsubscribe('valid-tok')).resolves.toBeUndefined();
+      expect(prisma.statusPageSubscriber.delete).toHaveBeenCalledWith({ where: { id: 'sub-1' } });
     });
   });
 });

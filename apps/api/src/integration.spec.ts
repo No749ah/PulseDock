@@ -823,6 +823,7 @@ describe('Status Pages', () => {
     layout: { widgets: [] },
     createdAt: new Date(),
     updatedAt: new Date(),
+    _count: { subscribers: 0 },
   };
 
   it('POST /v1/status-pages creates a status page', async () => {

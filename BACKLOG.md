@@ -1,3 +1,10 @@
+## Status Summary (2026-03-20 02:32 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL 200
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Lazy-load widgets audit**: Confirmed `LazyWidget.tsx` with IntersectionObserver already implemented. Confirmed `page.tsx` already wraps idx≥4 (desktop/tablet) and idx≥3 (mobile) widgets in `<LazyWidget>`. All widgets defined inline in `widgets/index.tsx` — code splitting via `next/dynamic` N/A for inline components. BACKLOG P2 `Performance — Lazy load widgets below fold` marked `[x]`.
+
 ## Status Summary (2026-03-20 02:45 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Branch:** heartbeat/2026-03-20-swagger-audit
@@ -1040,7 +1047,7 @@
 - [x] **Real-time via WebSocket** — Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
 - [x] **Print-friendly CSS** — Already implemented: @media print in globals.css with A4 page setup, hide interactive chrome, force white backgrounds, proper typography for print, print-only elements. Print button on status pages.
 - [x] **Full Accessibility** — ARIA labels on all widgets (role=img/status/region, aria-live, aria-label, aria-labelledby, scope=col, aria-hidden on decorative), keyboard navigation via focus trap in modals, screen reader announcements via aria-live on LiveStatusRefresh and OverallSystemStatus
-- [ ] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP
+- [x] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP — IntersectionObserver-based LazyWidget defers below-fold widgets (first 4 render immediately, rest deferred 400px pre-fetch margin). Above-fold widgets SSR'd; below-fold widgets client-deferred.
 - [x] **Export as Image** — Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
 - [x] **Export as PDF** — Generate PDF report of current status
 

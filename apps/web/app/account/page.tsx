@@ -889,7 +889,7 @@ export default function AccountPage() {
                           <button
                             onClick={() => handleRotateKey(key.id)}
                             disabled={rotatingKey}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-warning text-bg hover:bg-warning/90 transition-colors disabled:opacity-50"
                           >
                             {rotatingKey ? "Rotating…" : "Confirm rotate"}
                           </button>
@@ -921,7 +921,7 @@ export default function AccountPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => { setRotateConfirm(key.id); setRevokeConfirm(null); }}
-                            className="text-amber-400 hover:text-amber-300"
+                            className="text-warning hover:text-warning/80"
                             title="Rotate API key (generate new secret)"
                           >
                             <RefreshCw className="w-4 h-4" />
@@ -2347,8 +2347,8 @@ function BackupRestoreCard() {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-          <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
           </svg>
         </div>

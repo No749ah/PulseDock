@@ -87,6 +87,35 @@ Authorization: Bearer <accessToken>
 
 ---
 
+## Endpoint Overview
+
+PulseDock has **143 endpoints** across 19 controllers. All authenticated endpoints require a Bearer token or API key. Full interactive docs are available at `http://localhost:4321/docs` (Swagger UI).
+
+| Group | Prefix | Methods | Auth |
+|-------|--------|---------|------|
+| Health | `GET /health` | 1 | None |
+| Auth | `POST /v1/auth/...` | 14 | Mixed |
+| Monitors | `GET/POST/PATCH/DELETE /v1/monitors` | 22 | Required |
+| Checks | `GET /v1/checks` | 3 | Required |
+| Alerts | `GET/POST/PATCH/DELETE /v1/alerts` | 7 | Required |
+| Incidents | `GET/POST/PATCH/DELETE /v1/incidents` | 6 | Required |
+| Maintenance | `GET/POST/PATCH/DELETE /v1/maintenance` | 6 | Required |
+| Status Pages | `GET/POST/PATCH/DELETE /v1/status-pages` | 12 | Mixed |
+| Public Status | `GET/POST /v1/public/status/...` | 5 | None |
+| Tags | `GET/POST/PATCH/DELETE /v1/tags` | 4 | Required |
+| Folders | `GET/POST/PATCH/DELETE /v1/folders` | 4 | Required |
+| API Keys | `GET/POST/DELETE /v1/api-keys` | 4 | Required |
+| Team | `GET/POST/PATCH/DELETE /v1/team` | 8 | Mixed |
+| Notifications | `GET/PATCH /v1/notifications` | 2 | Required |
+| Settings | `GET/PATCH /v1/settings` | 3 | Required |
+| Reports | `GET /v1/reports` | 2 | Required |
+| Tool Registry | `GET /v1/tool-registry` | 1 | Required |
+| Agent | `POST/GET /v1/agent` | 2 | Required |
+| Admin | `GET/POST/PATCH/DELETE /v1/admin` | 12 | Admin role |
+| v2 | `GET /v2/...` | 5 | Required |
+
+---
+
 ## Endpoints
 
 ### Health Check
@@ -243,6 +272,148 @@ Authorization: Bearer <accessToken>
   }
 ]
 ```
+
+---
+
+### Incidents
+
+**Base:** `GET|POST|PATCH|DELETE /v1/incidents`
+
+**Authentication:** Required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/incidents` | List all incidents (active first, then resolved) |
+| `POST` | `/v1/incidents` | Create incident (`title`, optional `severity`, `monitorIds`) |
+| `GET` | `/v1/incidents/:id` | Get incident detail with timeline |
+| `PATCH` | `/v1/incidents/:id` | Update title/status/severity/monitorIds |
+| `POST` | `/v1/incidents/:id/updates` | Post status update (`body`, `status`) |
+| `DELETE` | `/v1/incidents/:id` | Delete incident |
+
+**Severity values:** `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+
+**Status values:** `INVESTIGATING`, `IDENTIFIED`, `MONITORING`, `RESOLVED`
+
+```bash
+# Create incident
+curl -X POST http://localhost:4321/v1/incidents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "API degraded", "severity": "HIGH", "monitorIds": ["mon123"]}'
+
+# Post update
+curl -X POST http://localhost:4321/v1/incidents/inc123/updates \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"body": "Root cause identified — DB connection pool exhausted", "status": "IDENTIFIED"}'
+```
+
+---
+
+### Maintenance Windows
+
+**Base:** `GET|POST|PATCH|DELETE /v1/maintenance`
+
+**Authentication:** Required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/maintenance` | List all windows (ordered by startsAt) |
+| `GET` | `/v1/maintenance/active` | List currently active windows |
+| `GET` | `/v1/maintenance/:id` | Get single window |
+| `POST` | `/v1/maintenance` | Create window (`name`, `startsAt`, `endsAt`, optional `monitorIds`) |
+| `PATCH` | `/v1/maintenance/:id` | Update window (monitorIds replaces all linked monitors) |
+| `DELETE` | `/v1/maintenance/:id` | Delete window |
+
+During active windows, alerts for linked monitors are **suppressed**.
+
+```bash
+# Schedule maintenance for next weekend
+curl -X POST http://localhost:4321/v1/maintenance \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Database migration",
+    "startsAt": "2026-03-22T02:00:00Z",
+    "endsAt": "2026-03-22T04:00:00Z",
+    "monitorIds": ["mon123", "mon456"]
+  }'
+```
+
+---
+
+### Status Pages
+
+**Base:** `GET|POST|PATCH|DELETE /v1/status-pages`
+
+**Authentication:** Required (management); None (public view)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/v1/status-pages` | ✅ | List my pages |
+| `POST` | `/v1/status-pages` | ✅ | Create page |
+| `GET` | `/v1/status-pages/:id` | ✅ | Get page + layout |
+| `PATCH` | `/v1/status-pages/:id` | ✅ | Update page |
+| `POST` | `/v1/status-pages/:id/publish` | ✅ | Toggle publish |
+| `DELETE` | `/v1/status-pages/:id` | ✅ | Delete page |
+| `GET` | `/v1/status-pages/:id/history` | ✅ | Version history |
+| `POST` | `/v1/status-pages/:id/history/:hid/restore` | ✅ | Restore snapshot |
+| `GET` | `/v1/status-pages/slug-check` | ✅ | Check slug availability |
+| `GET` | `/v1/public/status/:slug` | ❌ | Public page data |
+| `POST` | `/v1/public/status/:slug/subscribe` | ❌ | Subscribe to updates |
+| `GET` | `/v1/public/status/:slug/widget/:widgetId` | ❌ | Widget live data |
+| `GET` | `/v1/public/status/:slug/feed.xml` | ❌ | RSS feed |
+| `GET` | `/v1/public/status/:slug/json` | ❌ | JSON status summary |
+
+---
+
+### API Keys
+
+**Base:** `GET|POST|DELETE /v1/api-keys`
+
+**Authentication:** Required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/api-keys` | List keys (hash never exposed) |
+| `POST` | `/v1/api-keys` | Create key — plaintext returned **once only** |
+| `POST` | `/v1/api-keys/:id/rotate` | Rotate key — new plaintext returned once |
+| `DELETE` | `/v1/api-keys/:id` | Revoke key |
+
+**Scopes:** `read`, `write`, `admin`
+
+```bash
+# Create an API key
+curl -X POST http://localhost:4321/v1/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "CI/CD pipeline", "scope": "write"}'
+
+# Use API key instead of Bearer token
+curl http://localhost:4321/v1/monitors \
+  -H "X-API-Key: pd_live_abc123..."
+```
+
+---
+
+### Team
+
+**Base:** `GET|POST|PATCH|DELETE /v1/team`
+
+**Authentication:** Mixed
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/v1/team/invite/:token` | ❌ | Preview invite (for accept page) |
+| `POST` | `/v1/team/invite/:token/accept` | ✅ | Accept invite |
+| `GET` | `/v1/team/members` | ✅ | List members |
+| `GET` | `/v1/team/invites` | ✅ | List pending invites |
+| `POST` | `/v1/team/invite` | ✅ | Invite member (`email`, `role`) |
+| `PATCH` | `/v1/team/members/:id` | ✅ | Update member role |
+| `DELETE` | `/v1/team/members/:id` | ✅ | Remove member |
+| `DELETE` | `/v1/team/invites/:id` | ✅ | Cancel invite |
+
+**Roles:** `VIEWER`, `EDITOR`, `ADMIN`
 
 ---
 
@@ -421,4 +592,4 @@ Use Swagger UI to:
 
 See also:
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — System design
-- [START.md](./START.md) — Setup guide
+- [GETTING-STARTED.md](./GETTING-STARTED.md) — Setup guide

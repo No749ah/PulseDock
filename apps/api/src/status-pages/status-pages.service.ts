@@ -137,6 +137,9 @@ export class StatusPagesService {
     const updateData: Record<string, unknown> = {};
     if (dto.title !== undefined) updateData['title'] = dto.title.trim();
     if (dto.description !== undefined) updateData['description'] = dto.description.trim();
+    // layout is passed through raw (no class-transformer stripping) — log for debug
+    const incomingLayoutWidgets = (dto.layout as Record<string, unknown> | undefined)?.widgets;
+    this.logger.log(`[DEBUG] update(${id}) layout=${dto.layout !== undefined ? `defined,widgets=${Array.isArray(incomingLayoutWidgets) ? incomingLayoutWidgets.length : 'non-array'}` : 'undefined'}`);
     if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
     if (dto.notifyWebhookUrl !== undefined) {

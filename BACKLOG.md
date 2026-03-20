@@ -1649,10 +1649,10 @@
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
-- [ ] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
+- [x] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
 - [ ] **Synthetic / Browser checks** — Full browser check type using Playwright/Puppeteer: navigate URL, assert selector present, measure time-to-interactive. Runs in Docker sidecar. New monitor type: BROWSER. Requires additional infra (browser runner).
-- [ ] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
-- [ ] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
+- [x] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
+- [x] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
 - [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
 - [x] **API response assertion checks** — For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions. `bodyJsonPath` + `bodyJsonPathExpected` implemented.
 

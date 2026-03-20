@@ -27,7 +27,8 @@ import {
   CreateEscalationPolicyDto,
   UpdateEscalationPolicyDto,
 } from './oncall.dto';
-import type { Request } from 'express';
+
+type AuthRequest = { user: { id: string } };
 
 @ApiTags('On-Call')
 @ApiBearerAuth()
@@ -41,17 +42,15 @@ export class OnCallController {
   @Post('schedules')
   @ApiOperation({ summary: 'Create on-call schedule' })
   @ApiResponse({ status: 201, description: 'Schedule created' })
-  createSchedule(@Req() req: Request, @Body() dto: CreateOnCallScheduleDto) {
-    const userId = (req as any).user.id;
-    return this.oncallService.createSchedule(userId, dto);
+  createSchedule(@Req() req: AuthRequest, @Body() dto: CreateOnCallScheduleDto) {
+    return this.oncallService.createSchedule(req.user.id, dto);
   }
 
   @Get('schedules')
   @ApiOperation({ summary: 'List all on-call schedules' })
   @ApiResponse({ status: 200, description: 'List of schedules' })
-  listSchedules(@Req() req: Request) {
-    const userId = (req as any).user.id;
-    return this.oncallService.findAllSchedules(userId);
+  listSchedules(@Req() req: AuthRequest) {
+    return this.oncallService.findAllSchedules(req.user.id);
   }
 
   @Get('schedules/:id')
@@ -59,9 +58,8 @@ export class OnCallController {
   @ApiParam({ name: 'id', description: 'Schedule ID' })
   @ApiResponse({ status: 200, description: 'Schedule detail with current on-call' })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
-  getSchedule(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.id;
-    return this.oncallService.getScheduleWithCurrentOnCall(userId, id);
+  getSchedule(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.oncallService.getScheduleWithCurrentOnCall(req.user.id, id);
   }
 
   @Patch('schedules/:id')
@@ -70,12 +68,11 @@ export class OnCallController {
   @ApiResponse({ status: 200, description: 'Schedule updated' })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   updateSchedule(
-    @Req() req: Request,
+    @Req() req: AuthRequest,
     @Param('id') id: string,
     @Body() dto: UpdateOnCallScheduleDto,
   ) {
-    const userId = (req as any).user.id;
-    return this.oncallService.updateSchedule(userId, id, dto);
+    return this.oncallService.updateSchedule(req.user.id, id, dto);
   }
 
   @Delete('schedules/:id')
@@ -84,9 +81,8 @@ export class OnCallController {
   @ApiParam({ name: 'id', description: 'Schedule ID' })
   @ApiResponse({ status: 204, description: 'Schedule deleted' })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
-  async deleteSchedule(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.id;
-    await this.oncallService.deleteSchedule(userId, id);
+  async deleteSchedule(@Req() req: AuthRequest, @Param('id') id: string) {
+    await this.oncallService.deleteSchedule(req.user.id, id);
   }
 
   // ─── Participants ─────────────────────────────────────────────────────────
@@ -96,12 +92,11 @@ export class OnCallController {
   @ApiParam({ name: 'id', description: 'Schedule ID' })
   @ApiResponse({ status: 201, description: 'Participant added' })
   addParticipant(
-    @Req() req: Request,
+    @Req() req: AuthRequest,
     @Param('id') scheduleId: string,
     @Body() dto: AddParticipantDto,
   ) {
-    const userId = (req as any).user.id;
-    return this.oncallService.addParticipant(userId, scheduleId, dto);
+    return this.oncallService.addParticipant(req.user.id, scheduleId, dto);
   }
 
   @Delete('schedules/:id/participants/:participantId')
@@ -111,12 +106,11 @@ export class OnCallController {
   @ApiParam({ name: 'participantId', description: 'Participant ID' })
   @ApiResponse({ status: 204, description: 'Participant removed' })
   async removeParticipant(
-    @Req() req: Request,
+    @Req() req: AuthRequest,
     @Param('id') scheduleId: string,
     @Param('participantId') participantId: string,
   ) {
-    const userId = (req as any).user.id;
-    await this.oncallService.removeParticipant(userId, scheduleId, participantId);
+    await this.oncallService.removeParticipant(req.user.id, scheduleId, participantId);
   }
 
   // ─── Escalation Policies ──────────────────────────────────────────────────
@@ -124,17 +118,15 @@ export class OnCallController {
   @Post('policies')
   @ApiOperation({ summary: 'Create escalation policy' })
   @ApiResponse({ status: 201, description: 'Policy created' })
-  createPolicy(@Req() req: Request, @Body() dto: CreateEscalationPolicyDto) {
-    const userId = (req as any).user.id;
-    return this.oncallService.createPolicy(userId, dto);
+  createPolicy(@Req() req: AuthRequest, @Body() dto: CreateEscalationPolicyDto) {
+    return this.oncallService.createPolicy(req.user.id, dto);
   }
 
   @Get('policies')
   @ApiOperation({ summary: 'List all escalation policies' })
   @ApiResponse({ status: 200, description: 'List of policies' })
-  listPolicies(@Req() req: Request) {
-    const userId = (req as any).user.id;
-    return this.oncallService.findAllPolicies(userId);
+  listPolicies(@Req() req: AuthRequest) {
+    return this.oncallService.findAllPolicies(req.user.id);
   }
 
   @Get('policies/:id')
@@ -142,9 +134,8 @@ export class OnCallController {
   @ApiParam({ name: 'id', description: 'Policy ID' })
   @ApiResponse({ status: 200, description: 'Policy detail' })
   @ApiResponse({ status: 404, description: 'Policy not found' })
-  getPolicy(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.id;
-    return this.oncallService.findPolicy(userId, id);
+  getPolicy(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.oncallService.findPolicy(req.user.id, id);
   }
 
   @Patch('policies/:id')
@@ -153,12 +144,11 @@ export class OnCallController {
   @ApiResponse({ status: 200, description: 'Policy updated' })
   @ApiResponse({ status: 404, description: 'Policy not found' })
   updatePolicy(
-    @Req() req: Request,
+    @Req() req: AuthRequest,
     @Param('id') id: string,
     @Body() dto: UpdateEscalationPolicyDto,
   ) {
-    const userId = (req as any).user.id;
-    return this.oncallService.updatePolicy(userId, id, dto);
+    return this.oncallService.updatePolicy(req.user.id, id, dto);
   }
 
   @Delete('policies/:id')
@@ -166,8 +156,7 @@ export class OnCallController {
   @ApiOperation({ summary: 'Delete escalation policy' })
   @ApiParam({ name: 'id', description: 'Policy ID' })
   @ApiResponse({ status: 204, description: 'Policy deleted' })
-  async deletePolicy(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.id;
-    await this.oncallService.deletePolicy(userId, id);
+  async deletePolicy(@Req() req: AuthRequest, @Param('id') id: string) {
+    await this.oncallService.deletePolicy(req.user.id, id);
   }
 }

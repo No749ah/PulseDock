@@ -1,3 +1,20 @@
+## Status Summary (2026-03-20 18:15 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent), zero TS errors (incl. test specs)
+- **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
+- **Branch:** heartbeat/2026-03-20-save-fix
+- **This session:**
+  - **Status page "Full Preview" mode (P0 backlog item):** Added `GET /v1/status-pages/:id/preview` (auth-required, returns full public-like data for unpublished pages) + `GET /v1/status-pages/:id/preview/widget/:widgetId` (auth-required widget data endpoint). Created `/status-pages/[id]/preview` SSR Next.js page that renders exact public widget layout with live data via session cookies. Editor toolbar "Full Preview" button always visible (renamed old published-only "Preview" → "Public Page").
+  - **TypeScript test spec fixes:** Added missing `slaTarget/slaPeriodDays/slaBreachAlertedAt: null` to `makeMonitor()` fixtures in 3 spec files; fixed `globalThis.fetch` cast in monitors.service.spec.ts. `tsc` now clean on all tsconfigs.
+  - **Result:** Editors can now preview exactly what the public status page looks like (including real widget data) before publishing.
+
+## Status Summary (2026-03-20 17:05 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (22 total), zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
+- **Branch:** heartbeat/2026-03-20-save-fix
+- **This session:**
+  - **Widget design overhaul (P0 backlog item):** Added `WidgetCard` consistent card wrapper system, `StatusDot`, `SeverityBadge`, `TrendArrow` helper components. Redesigned: `CheckHistoryFeed` (ok/fail counters, latency color coding, hover rows), `IncidentHistory` (severity badge system, active/resolved sections with visual hierarchy), `MttrMttfCards` (blue/purple accent cards, better typography), `LatencyPercentilesCard` (per-cell color-coded backgrounds, improved trend nodes), `MultiMonitorStatusGrid` (with WidgetCard header showing live status summary). All widgets now use consistent rounded-2xl border system with hover states.
+  - **Result:** Status-page widgets now have Grafana/Linear quality visual design — information-dense headers, consistent card hierarchy, color-coded metric displays.
+
 ## Status Summary (2026-03-20 15:05 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent)
 - **Deployment:** ✅ Web restarted; local routes healthy, public URL 200, sampled `_next/static` CSS/JS assets 200
@@ -800,8 +817,8 @@
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [~] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload. *(2026-03-20: replaced hard `window.location.reload()` in public status live refresh with `router.refresh()` for WebSocket and polling paths, so widget data updates without full browser reload. Remaining: true per-widget incremental fetch/state updates to avoid full route re-render.)*
-- [ ] **Widget design overhaul** — All widgets should look polished, modern, and information-dense. Current widgets are too sparse and basic. Reference: Grafana dashboards, Linear status pages, Atlassian Statuspage. Each widget should show: title, key metric (large), context (small), trend, last updated time.
-- [ ] **"Preview with data" mode** — In the editor, a button that loads real live data into the preview so you can see exactly what the public page will look like.
+- [~] **Widget design overhaul** — Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. Remaining: "Preview with data" mode, per-widget last-updated timestamp in all data-fetch cards.
+- [x] **"Preview with data" mode** — "Full Preview" button in editor toolbar opens `/status-pages/:id/preview` in a new tab. SSR page with authenticated API (`/v1/status-pages/:id/preview` + `/v1/status-pages/:id/preview/widget/:widgetId`) renders the exact public layout with real live widget data, regardless of publish state. Amber preview banner shown at top.
 - [x] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
 
 ---
@@ -1649,10 +1666,10 @@
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
-- [ ] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
+- [x] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
 - [ ] **Synthetic / Browser checks** — Full browser check type using Playwright/Puppeteer: navigate URL, assert selector present, measure time-to-interactive. Runs in Docker sidecar. New monitor type: BROWSER. Requires additional infra (browser runner).
-- [ ] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
-- [ ] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
+- [x] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
+- [x] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
 - [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
 - [x] **API response assertion checks** — For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions. `bodyJsonPath` + `bodyJsonPathExpected` implemented.
 

@@ -13,6 +13,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -82,10 +83,11 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  // NOTE: keep body as raw record to avoid ValidationPipe/class-transformer stripping nested
-  // layout JSON payloads used by the drag/drop editor.
+  // Bypass the global ValidationPipe entirely so the deeply-nested `layout` JSON
+  // is never stripped or mangled by class-transformer/whitelist.
+  @UsePipes()
   update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.statusPagesService.update(req.user.id, id, body as UpdateStatusPageDto);
+    return this.statusPagesService.update(req.user.id, id, body as unknown as UpdateStatusPageDto);
   }
 
   @UseGuards(AuthGuard)
@@ -112,6 +114,39 @@ export class StatusPagesController {
   @ApiResponse({ status: 404, description: 'Status page not found.' })
   remove(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.statusPagesService.remove(req.user.id, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('status-pages/:id/preview')
+  @ApiOperation({ summary: 'Preview data for a status page (auth required)', description: 'Returns the full public-like data (monitors, incidents, maintenance, recent checks) for the owner\'s page regardless of publish state. Used by the editor\'s preview mode.' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Full preview data matching the public endpoint format.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
+  getPreview(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.statusPagesService.findPreview(req.user.id, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('status-pages/:id/preview/widget/:widgetId')
+  @ApiOperation({ summary: 'Live widget data for preview (auth required)', description: 'Returns live resolved widget data for the owner\'s status page, regardless of publish state. Used by the SSR preview page.' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiParam({ name: 'widgetId', description: 'Widget ID within the layout' })
+  @ApiQuery({ name: 'range', required: false, description: 'Time range: 24h | 7d | 30d | 90d' })
+  @ApiResponse({ status: 200, description: 'Widget-specific data object.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page or widget not found.' })
+  getPreviewWidgetData(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Param('widgetId') widgetId: string,
+    @Query('range') range?: string,
+  ) {
+    return this.statusPagesService.getPreviewWidgetData(req.user.id, id, widgetId, range);
   }
 
   @UseGuards(AuthGuard)

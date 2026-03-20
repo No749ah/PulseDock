@@ -214,8 +214,6 @@ export class CreateStatusPageDto {
 
   @ApiPropertyOptional({ description: 'Initial page layout (widgets + settings). Stored as raw JSON.' })
   @IsOptional()
-  @IsObject()
-  @Transform(({ value }) => value)
   layout?: Record<string, unknown>;
 }
 
@@ -233,10 +231,10 @@ export class UpdateStatusPageDto {
   @MaxLength(500)
   description?: string;
 
+  // layout is stored verbatim — skip class-validator/class-transformer entirely so NestJS
+  // whitelist mode never strips its nested widget array. The controller passes raw body.
   @ApiPropertyOptional({ description: 'Page layout (widgets + settings). Stored as raw JSON — no deep validation.' })
   @IsOptional()
-  @IsObject()
-  @Transform(({ value }) => value)
   layout?: Record<string, unknown>;
 
   @ApiPropertyOptional()

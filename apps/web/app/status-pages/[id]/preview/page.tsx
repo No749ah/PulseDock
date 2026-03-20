@@ -1,23 +1,26 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-import PasswordGate from "./PasswordGate";
-import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
-import { PrintButton } from "./widgets/PrintButton";
-import { ExportImageButton } from "./widgets/ExportImageButton";
-import { ExportPDFButton } from "./widgets/ExportPDFButton";
-import { OfflineBanner } from "./widgets/OfflineBanner";
-import { LazyWidget } from "./widgets/LazyWidget";
-import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
-import { RangePicker } from "./widgets/RangePicker";
-import { Suspense } from "react";
+/**
+ * Status Page Preview
+ *
+ * Server-rendered full preview of a status page using the owner's authenticated
+ * session. Renders the exact same layout and widget components as the public
+ * status page — including real live data — so the editor can show a pixel-perfect
+ * preview without requiring the page to be published.
+ *
+ * URL: /status-pages/[id]/preview
+ * Opened in a new tab from the editor toolbar "Full Preview" button.
+ */
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { renderWidget, type Widget, type MonitorSummary } from "../../../status/[slug]/widgets/index";
+import { LazyWidget } from "../../../status/[slug]/widgets/LazyWidget";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.API_BASE_URL ||
+const INTERNAL_API_BASE =
+  process.env.INTERNAL_API_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:4321";
 
 interface PageSettings {
-  autoRefreshInterval?: number; // seconds, 0 = off
+  autoRefreshInterval?: number;
   showBranding?: boolean;
   logoUrl?: string;
   faviconUrl?: string;
@@ -26,11 +29,6 @@ interface PageSettings {
   fontFamily?: "inter" | "roboto" | "system" | "mono";
   backgroundStyle?: "solid" | "gradient" | "grid-dots";
   backgroundColor?: string;
-  // SEO
-  metaTitle?: string;
-  metaDescription?: string;
-  ogImageUrl?: string;
-  robotsIndex?: boolean;
 }
 
 interface PageLayout {
@@ -69,7 +67,7 @@ interface CheckData {
   message: string | null;
 }
 
-interface PublicPageData {
+interface PreviewData {
   id: string;
   slug: string;
   title: string;
@@ -90,7 +88,7 @@ interface GridPlacement {
   h: number;
 }
 
-function clamp(n: number, min: number, max: number): number {
+function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
@@ -100,7 +98,6 @@ function getScopedMonitors(widget: Widget, monitors: MonitorSummary[]): MonitorS
   const tag = widget.config.tag as string | undefined;
   const folderId = widget.config.folderId as string | undefined;
   const monitorType = widget.config.monitorType as string | undefined;
-
   let scoped = monitors;
   if (ids?.length) scoped = scoped.filter((m) => ids.includes(m.id));
   else if (singleId) scoped = scoped.filter((m) => m.id === singleId);
@@ -114,10 +111,8 @@ function passesVisibilityRule(widget: Widget, scopedMonitors: MonitorSummary[]):
   const rule = (widget.config.visibility as string | undefined) ?? "always";
   if (rule === "always") return true;
   if (scopedMonitors.length === 0) return false;
-
   const hasRed = scopedMonitors.some((m) => m.level === "red");
   const hasYellow = scopedMonitors.some((m) => m.level === "yellow");
-
   if (rule === "outage") return hasRed;
   if (rule === "degraded") return !hasRed && hasYellow;
   if (rule === "operational") return !hasRed && !hasYellow;
@@ -131,40 +126,32 @@ function shouldRenderWidget(widget: Widget, monitors: MonitorSummary[]): boolean
 }
 
 function canPlace(occupied: Set<string>, x: number, y: number, w: number, h: number): boolean {
-  for (let ry = y; ry < y + h; ry++) {
-    for (let cx = x; cx < x + w; cx++) {
+  for (let ry = y; ry < y + h; ry++)
+    for (let cx = x; cx < x + w; cx++)
       if (occupied.has(`${ry}:${cx}`)) return false;
-    }
-  }
   return true;
 }
 
 function markPlaced(occupied: Set<string>, x: number, y: number, w: number, h: number): void {
-  for (let ry = y; ry < y + h; ry++) {
-    for (let cx = x; cx < x + w; cx++) {
+  for (let ry = y; ry < y + h; ry++)
+    for (let cx = x; cx < x + w; cx++)
       occupied.add(`${ry}:${cx}`);
-    }
-  }
 }
 
 function buildResponsivePlacement(widgets: Widget[], cols: number): Map<string, GridPlacement> {
   const map = new Map<string, GridPlacement>();
   const occupied = new Set<string>();
-
   for (const widget of widgets) {
     const w = clamp(Math.round((widget.w / 12) * cols), 1, cols);
     const h = Math.max(1, widget.h);
     const preferredX = clamp(Math.round((widget.x / 12) * cols), 0, cols - w);
     const preferredY = Math.max(0, widget.y);
-
     let y = preferredY;
     let placed = false;
-
     while (!placed) {
       const xCandidates: number[] = [];
       for (let x = preferredX; x <= cols - w; x++) xCandidates.push(x);
       for (let x = 0; x < preferredX; x++) xCandidates.push(x);
-
       for (const x of xCandidates) {
         if (!canPlace(occupied, x, y, w, h)) continue;
         markPlaced(occupied, x, y, w, h);
@@ -172,123 +159,54 @@ function buildResponsivePlacement(widgets: Widget[], cols: number): Map<string, 
         placed = true;
         break;
       }
-
       y += 1;
     }
   }
-
   return map;
 }
 
-// ── Metadata ─────────────────────────────────────────────────────────────
-
-export async function generateMetadata({
+export default async function StatusPagePreview({
   params,
 }: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  try {
-    const res = await fetch(`${API_BASE}/v1/public/status/${slug}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return {};
-    const data: PublicPageData = await res.json() as PublicPageData;
-    const settings = (data.layout?.settings ?? {}) as PageSettings;
-    const metaTitle = settings.metaTitle || `${data.title} — Status`;
-    const metaDesc = settings.metaDescription || data.description || `Live service status for ${data.title}`;
-    const ogImage = settings.ogImageUrl || undefined;
-    const allowIndex = settings.robotsIndex !== false;
-    return {
-      title: metaTitle,
-      description: metaDesc,
-      robots: allowIndex ? { index: true, follow: true } : { index: false, follow: false },
-      openGraph: {
-        title: metaTitle,
-        description: metaDesc,
-        ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
-      },
-      twitter: {
-        card: ogImage ? "summary_large_image" : "summary",
-        title: metaTitle,
-        description: metaDesc,
-        ...(ogImage ? { images: [ogImage] } : {}),
-      },
-      icons: settings.faviconUrl
-        ? { icon: settings.faviconUrl, shortcut: settings.faviconUrl }
-        : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────
-
-const VALID_RANGES = new Set(["24h", "7d", "30d", "90d"]);
-
-export default async function PublicStatusSlugPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ slug: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  params: Promise<{ id: string }>;
 }) {
-  const { slug } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const rawRange = Array.isArray(resolvedSearchParams.range)
-    ? resolvedSearchParams.range[0]
-    : resolvedSearchParams.range;
-  const range = rawRange && VALID_RANGES.has(rawRange) ? rawRange : "7d";
+  const { id } = await params;
 
-  const rawPassword = Array.isArray(resolvedSearchParams.password)
-    ? resolvedSearchParams.password[0]
-    : resolvedSearchParams.password;
-  const password = rawPassword as string | undefined;
+  // Forward the session cookie so the API can authenticate the user
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
 
-  const fetchUrl = password
-    ? `${API_BASE}/v1/public/status/${slug}?password=${encodeURIComponent(password)}`
-    : `${API_BASE}/v1/public/status/${slug}`;
+  const res = await fetch(`${INTERNAL_API_BASE}/v1/status-pages/${id}/preview`, {
+    cache: "no-store",
+    headers: { cookie: cookieHeader },
+  });
 
-  const res = await fetch(fetchUrl, { cache: "no-store" });
+  if (res.status === 401) redirect("/login");
+  if (res.status === 403) redirect("/status-pages");
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`Preview fetch failed: ${res.status}`);
 
-  // Password gate: page is protected
-  if (res.status === 403) {
-    const body = await res.json().catch(() => ({})) as { protected?: boolean; title?: string };
-    if (body.protected) {
-      return <PasswordGate slug={slug} title={body.title ?? 'Status Page'} />;
-    }
-  }
+  const data: PreviewData = await res.json() as PreviewData;
 
-  if (res.status === 404 || res.status === 401) notFound();
-  if (!res.ok) throw new Error(`Failed to load status page: ${res.status}`);
-
-  const data: PublicPageData = await res.json() as PublicPageData;
-
+  // Fetch per-widget data using the internal API with cookie auth
   const widgets = data.layout?.widgets ?? [];
   const settings = data.layout?.settings ?? {};
-  const autoRefreshSec = typeof settings.autoRefreshInterval === 'number' && settings.autoRefreshInterval > 0
-    ? settings.autoRefreshInterval
-    : 60;
-  const showBranding = settings.showBranding !== false; // default true
-  const logoUrl = settings.logoUrl ?? null;
-  const accentColor = settings.accentColor ?? null;
-
   const sorted = [...widgets].sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
   const visible = sorted.filter((w) => shouldRenderWidget(w, data.monitors));
 
+  // Use the authenticated preview widget endpoint (works for unpublished pages)
   const widgetDataEntries = await Promise.all(
     visible.map(async (widget) => {
       try {
-        const qs = new URLSearchParams();
-        if (range !== "7d") qs.set("range", range);
-        if (password) qs.set("password", password);
-        const rangeParam = qs.toString() ? `?${qs.toString()}` : "";
-        const widgetRes = await fetch(`${API_BASE}/v1/public/status/${slug}/widget/${widget.id}${rangeParam}`, {
-          cache: "no-store",
-        });
-        if (!widgetRes.ok) return [widget.id, null] as const;
-        const payload = await widgetRes.json() as Record<string, unknown>;
+        const wr = await fetch(
+          `${INTERNAL_API_BASE}/v1/status-pages/${id}/preview/widget/${widget.id}`,
+          { cache: "no-store", headers: { cookie: cookieHeader } },
+        );
+        if (!wr.ok) return [widget.id, null] as const;
+        const payload = await wr.json() as Record<string, unknown>;
         return [widget.id, payload] as const;
       } catch {
         return [widget.id, null] as const;
@@ -296,17 +214,20 @@ export default async function PublicStatusSlugPage({
     })
   );
   const widgetDataById = Object.fromEntries(
-    widgetDataEntries.filter((entry): entry is readonly [string, Record<string, unknown>] => entry[1] !== null)
+    widgetDataEntries.filter((e): e is readonly [string, Record<string, unknown>] => e[1] !== null)
   );
 
   const desktop = new Map<string, GridPlacement>(
-    visible.map((w) => [w.id, { x: clamp(w.x, 0, 11), y: Math.max(0, w.y), w: clamp(w.w, 1, 12), h: Math.max(1, w.h) }])
+    visible.map((w) => [
+      w.id,
+      { x: clamp(w.x, 0, 11), y: Math.max(0, w.y), w: clamp(w.w, 1, 12), h: Math.max(1, w.h) },
+    ])
   );
   const tablet = buildResponsivePlacement(visible, 6);
 
-  const now = new Date();
-  const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
-
+  const accentColor = settings.accentColor ?? null;
+  const logoUrl = settings.logoUrl ?? null;
+  const showBranding = settings.showBranding !== false;
   const theme = settings.theme ?? "dark";
   const fontFamily = settings.fontFamily ?? "inter";
   const backgroundStyle = settings.backgroundStyle ?? "solid";
@@ -320,7 +241,7 @@ export default async function PublicStatusSlugPage({
   };
 
   const containerStyle: React.CSSProperties = {
-    ...(accentColor ? { '--color-accent': accentColor } as React.CSSProperties : {}),
+    ...(accentColor ? ({ "--color-accent": accentColor } as React.CSSProperties) : {}),
     fontFamily: fontFamilyMap[fontFamily] ?? fontFamilyMap.inter,
     ...(backgroundColor && backgroundStyle === "solid" ? { backgroundColor } : {}),
   };
@@ -338,32 +259,36 @@ export default async function PublicStatusSlugPage({
 
   return (
     <>
-      {/* Custom CSS injection — admins can add branding/style overrides via Page Settings */}
+      {/* Custom CSS injection */}
       {data.customCss && (
         // eslint-disable-next-line react/no-danger
         <style dangerouslySetInnerHTML={{ __html: data.customCss }} />
       )}
-      <OfflineBanner />
-      {/* Live refresh client component replaces meta http-equiv refresh */}
-      <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
-      <main id="status-page-content" role="main" aria-label={`${data.title} status page`} className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
-        {/* Skip to main content link for keyboard users */}
-        <a href="#status-widgets" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-semibold">
-          Skip to status widgets
+      {/* Preview banner — not shown on the real public page */}
+      <div className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-xs font-medium text-yellow-400 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+          <span>Preview Mode — this page may not be published yet · Live data shown</span>
+        </div>
+        <a
+          href={`/status-pages/${id}/edit`}
+          className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-yellow-300 hover:bg-yellow-500/20 transition"
+        >
+          ← Back to Editor
         </a>
+      </div>
+
+      <main
+        id="status-page-content"
+        role="main"
+        aria-label={`${data.title} status page preview`}
+        className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`}
+        style={containerStyle}
+      >
         <div className="mx-auto max-w-6xl space-y-4">
           {/* Page header */}
-          <header className="mb-8 text-center relative">
-            {/* Action buttons — top-right of header, hidden when printing */}
-            <div className="absolute right-0 top-0 no-print flex items-center gap-2" role="toolbar" aria-label="Page actions">
-              <Suspense fallback={null}>
-                <RangePicker slug={slug} currentRange={range} />
-              </Suspense>
-              <ExportImageButton slug={slug} />
-              <ExportPDFButton slug={slug} />
-              <PrintButton />
-            </div>
+          <header className="mb-8 text-center">
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={`${data.title} logo`} className="mx-auto mb-4 h-12 w-auto object-contain" />
@@ -377,18 +302,25 @@ export default async function PublicStatusSlugPage({
             {data.description && (
               <p className="mt-1 text-sm text-text-secondary">{data.description}</p>
             )}
+            {!data.isPublished && (
+              <p className="mt-2 text-xs text-yellow-400/70">⚠️ Not published — only you can see this preview</p>
+            )}
           </header>
 
           {visible.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/50 px-8 py-20 text-center" role="status" aria-label="No widgets configured">
+            <div
+              className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/50 px-8 py-20 text-center"
+              role="status"
+            >
               <p className="text-sm text-text-secondary">This status page has no widgets yet.</p>
+              <p className="mt-2 text-xs text-text-muted">
+                Add widgets in the editor and refresh this preview.
+              </p>
             </div>
           ) : (
             <>
-              <h2 id="status-widgets-heading" className="sr-only">Status widgets</h2>
-              {/* Mobile + Print: single-column flow
-                  `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
-              <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
+              {/* Mobile: single-column flow */}
+              <div className="space-y-4 sm:hidden" role="region" aria-label="Status widgets">
                 {visible.map((widget, idx) => {
                   const content = renderWidget(widget, data.monitors, {
                     incidents: data.incidents ?? [],
@@ -396,21 +328,22 @@ export default async function PublicStatusSlugPage({
                     recentChecks: data.recentChecks ?? [],
                     widgetDataById,
                   });
-                  // First 3 widgets render immediately (above fold); rest are lazy
                   return (
                     <div key={`m-${widget.id}`}>
                       {idx < 3 ? content : (
-                        <LazyWidget placeholderHeight={widget.h * 80}>
-                          {content}
-                        </LazyWidget>
+                        <LazyWidget placeholderHeight={widget.h * 80}>{content}</LazyWidget>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Tablet: 6-column responsive grid */}
-              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
+              {/* Tablet: 6-column grid */}
+              <div
+                className="hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden"
+                role="region"
+                aria-label="Status widgets"
+              >
                 {visible.map((widget, idx) => {
                   const t = tablet.get(widget.id);
                   if (!t) return null;
@@ -430,9 +363,7 @@ export default async function PublicStatusSlugPage({
                       }}
                     >
                       {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={t.h * 80}>
-                          {content}
-                        </LazyWidget>
+                        <LazyWidget placeholderHeight={t.h * 80}>{content}</LazyWidget>
                       )}
                     </div>
                   );
@@ -440,7 +371,11 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Desktop: 12-column editor-parity grid */}
-              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-labelledby="status-widgets-heading">
+              <div
+                className="hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid"
+                role="region"
+                aria-label="Status widgets"
+              >
                 {visible.map((widget, idx) => {
                   const d = desktop.get(widget.id);
                   if (!d) return null;
@@ -460,9 +395,7 @@ export default async function PublicStatusSlugPage({
                       }}
                     >
                       {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={d.h * 80}>
-                          {content}
-                        </LazyWidget>
+                        <LazyWidget placeholderHeight={d.h * 80}>{content}</LazyWidget>
                       )}
                     </div>
                   );
@@ -472,20 +405,15 @@ export default async function PublicStatusSlugPage({
           )}
 
           {/* Footer */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
-            <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
+          <div className="pt-8 flex items-center justify-center gap-3 text-center text-xs text-text-secondary">
             {showBranding && (
               <span>
-                {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>
+                Powered by <span className="font-semibold text-accent">PulseDock</span>
               </span>
             )}
-            <span className="hidden sm:inline text-text-muted">·</span>
-            <PrintButton />
           </div>
         </div>
       </main>
-
-
     </>
   );
 }

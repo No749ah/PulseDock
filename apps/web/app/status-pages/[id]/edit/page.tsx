@@ -2706,6 +2706,17 @@ export default function StatusPageEditorPage() {
                 </>
               );
             })()}
+            {/* Full Preview — always available, opens authenticated preview route */}
+            <a
+              href={`/status-pages/${page.id}/preview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open full preview with live data (opens in new tab)"
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Full Preview
+            </a>
             {page.isPublished && (
               <a
                 href={`${publicBase}/status/${page.slug}`}
@@ -2714,7 +2725,7 @@ export default function StatusPageEditorPage() {
                 className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                Preview
+                Public Page
               </a>
             )}
             <button

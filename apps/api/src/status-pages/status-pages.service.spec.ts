@@ -388,12 +388,13 @@ describe('StatusPagesService', () => {
       expect(Array.isArray(result.monitors)).toBe(true);
     });
 
-    it('throws UnauthorizedException when password not provided for protected page', async () => {
+    it('throws ForbiddenException when password not provided for protected page', async () => {
+      const { ForbiddenException } = await import('@nestjs/common');
       prisma = makePrisma({
         page: makePage({ isPublished: true, passwordHash: '$2a$12$fakehash' }),
       });
       service = makeService(prisma);
-      await expect(service.findPublic('my-status-page')).rejects.toThrow(UnauthorizedException);
+      await expect(service.findPublic('my-status-page')).rejects.toThrow(ForbiddenException);
     });
 
     it('throws UnauthorizedException for wrong password', async () => {

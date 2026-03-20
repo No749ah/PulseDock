@@ -60,6 +60,7 @@ model User {
   ownedTeamMembers        TeamMember[]       @relation("workspace_owner")
   teamMemberships         TeamMember[]       @relation("workspace_member")
   sentTeamInvites         TeamInvite[]       @relation("sent_invites")
+  templateFeedback        ToolTemplateFeedback[]
 }
 
 model Session {
@@ -531,4 +532,21 @@ model MonitorRunRollup {
   @@unique([monitorId, granularity, bucketAt])
   @@index([userId, granularity, bucketAt])
   @@index([monitorId, granularity, bucketAt])
+}
+
+/// User-submitted report that a tool registry template is incorrect or broken.
+model ToolTemplateFeedback {
+  id         String   @id @default(cuid())
+  userId     String
+  toolId     String
+  endpoint   String?
+  statusCode Int?
+  error      String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([toolId])
+  @@index([userId])
 }

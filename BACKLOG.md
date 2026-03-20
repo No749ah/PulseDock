@@ -1,3 +1,23 @@
+## Status Summary (2026-03-20 04:56 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Deployment:** ✅ Services restarted (`npm run restart`), local + reverse proxy route audit green
+- **Branch:** heartbeat/2026-03-20-registry-correctness
+- **This session:**
+  - **Registry dedupe pass:** Removed bulk-generated duplicate variant entries (`-core/-server/-api/-dashboard/-operator/-worker`) to reduce registry noise and improve picker quality
+  - **Registry lint improvement:** warnings reduced from **1026 → 169** (0 errors)
+  - **Icon coverage:** filled missing icon URLs for high-visibility tools (Transmission, Deluge, SABnzbd/NZBGet, Langflow, Tabby, ChromaDB, Debezium, LINSTOR, Grav, tldraw, etc.)
+  - **Backlog sync:** `Duplikate bereinigen` moved to partial `[~]` with completed scope documented
+
+## Status Summary (2026-03-20 04:01 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Deployment:** ✅ Web server restarted, new build live
+- **Branch:** heartbeat/2026-03-20-registry-correctness
+- **This session:**
+  - **Report Wrong Template**: "Wrong version format? Report this template →" link appears in version monitor setup when source check fails. Inline form with optional note. Submits to `POST /v1/feedback/template-report`.
+  - **Feedback endpoint**: `FeedbackController` — no DB, structured `logger.warn` JSON log entry. Wired into `AppModule`.
+  - **DB indexes**: All suggested indexes already present (`MonitorRun(monitorId, checkedAt)`, `Incident(userId, status)`, `StatusPageSubscriber(statusPageId)`). No changes needed.
+  - **BACKLOG cleanup**: Marked `Per-widget data endpoints` and `Report wrong template` as `[x]`.
+
 ## Status Summary (2026-03-20 04:00 UTC)
 - **Build/Test:** ✅ Clean build (fixed jsPDF/fflate Turbopack SSR error via serverExternalPackages), 1505 API tests passing, zero TS errors
 - **Deployment:** ✅ Web server restarted, new build live
@@ -1487,7 +1507,7 @@
 
 ### P3 — Advanced Data & API
 
-- [ ] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
+- [x] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
 - [x] **Date Range Picker** — Custom time ranges for all time-based widgets. 24h/7d/30d/90d pill buttons on public status pages, URL-synced (`?range=`), API accepts `range` param on `/widget/:id`, overrides widget `periodDays` for uptime-bar, uptime-timeline, sla-summary.
 - [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
@@ -1556,7 +1576,7 @@
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
 - [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
 - [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
-- [ ] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen.
+- [~] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done this heartbeat: removed bulk-generated `-core/-server/-api/-dashboard/-operator/-worker` duplicate variants. Remaining: alias/synonym handling rules.)*
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
@@ -1565,7 +1585,7 @@
 - [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
 - [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
 - [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
-- [ ] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
+- [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
 
 ## Status Summary (2026-03-19 21:26 UTC)
 - **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors

@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 04:56 UTC)
+- **Build/Test:** ✅ Clean build, tests passing
+- **Deployment:** ✅ Services restarted (`npm run restart`), local + reverse proxy route audit green
+- **Branch:** heartbeat/2026-03-20-registry-correctness
+- **This session:**
+  - **Registry dedupe pass:** Removed bulk-generated duplicate variant entries (`-core/-server/-api/-dashboard/-operator/-worker`) to reduce registry noise and improve picker quality
+  - **Registry lint improvement:** warnings reduced from **1026 → 169** (0 errors)
+  - **Icon coverage:** filled missing icon URLs for high-visibility tools (Transmission, Deluge, SABnzbd/NZBGet, Langflow, Tabby, ChromaDB, Debezium, LINSTOR, Grav, tldraw, etc.)
+  - **Backlog sync:** `Duplikate bereinigen` moved to partial `[~]` with completed scope documented
+
 ## Status Summary (2026-03-20 04:01 UTC)
 - **Build/Test:** ✅ Clean build, tests passing
 - **Deployment:** ✅ Web server restarted, new build live
@@ -1566,7 +1576,7 @@
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
 - [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
 - [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
-- [ ] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen.
+- [~] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done this heartbeat: removed bulk-generated `-core/-server/-api/-dashboard/-operator/-worker` duplicate variants. Remaining: alias/synonym handling rules.)*
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.

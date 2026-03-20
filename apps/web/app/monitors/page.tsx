@@ -252,10 +252,31 @@ function MonitorsPageInner() {
 
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [monitorDeps, setMonitorDeps] = useState<Map<string, { id: string; name: string; type: string }[]>>(new Map());
+  const [depsLoading, setDepsLoading] = useState<Set<string>>(new Set());
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Lazy-load dependencies when row is first expanded
+        if (!monitorDeps.has(id)) {
+          const userId = getUser()?.id;
+          setDepsLoading((s) => new Set(s).add(id));
+          api<{ id: string; name: string; type: string }[]>(`/v1/monitors/${id}/dependencies`, userId)
+            .then((deps) => {
+              setMonitorDeps((m) => new Map(m).set(id, deps));
+            })
+            .catch(() => {
+              setMonitorDeps((m) => new Map(m).set(id, []));
+            })
+            .finally(() => {
+              setDepsLoading((s) => { const ns = new Set(s); ns.delete(id); return ns; });
+            });
+        }
+      }
       return next;
     });
   };
@@ -1820,7 +1841,7 @@ function MonitorsPageInner() {
                         {isExpanded && (
                           <tr className="bg-surface-elevated/40 border-b border-border/60">
                             <td colSpan={totalCols} className="px-6 py-4 overflow-hidden max-w-0 w-full">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm min-w-0">
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm min-w-0">
                                 {/* Recent check history + sparkline */}
                                 <div className="space-y-2 min-w-0 overflow-hidden">
                                   <div className="flex items-center justify-between">
@@ -1909,6 +1930,30 @@ function MonitorsPageInner() {
                                       <p>Project: <span className="font-semibold text-text-primary">{folders.find((f) => f.id === monitor.folderId)?.name ?? "—"}</span></p>
                                     )}
                                   </div>
+                                </div>
+                                {/* Dependencies */}
+                                <div className="space-y-2 min-w-0">
+                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" /> Dependencies
+                                  </p>
+                                  {depsLoading.has(monitor.id) ? (
+                                    <p className="text-xs text-text-secondary">Loading…</p>
+                                  ) : (monitorDeps.get(monitor.id) ?? []).length === 0 ? (
+                                    <p className="text-xs text-text-secondary">No dependencies</p>
+                                  ) : (
+                                    <div className="space-y-1">
+                                      {(monitorDeps.get(monitor.id) ?? []).map((dep) => {
+                                        const depLastRun = runs.find((r) => r.monitorId === dep.id);
+                                        const depOk = depLastRun?.ok;
+                                        return (
+                                          <div key={dep.id} className="flex items-center gap-1.5 text-xs">
+                                            <div className={`w-2 h-2 rounded-full shrink-0 ${depOk === true ? "bg-success" : depOk === false ? "bg-danger" : "bg-border"}`} />
+                                            <span className="text-text-primary truncate">{dep.name}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </td>

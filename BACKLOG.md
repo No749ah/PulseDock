@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 13:50 UTC)
+- **Build/Test:** ✅ Clean build, 1603 tests passing (1581 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ All routes 200 (local + API health)
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **SMS alert channel (Twilio):** `deliverSms()` via Twilio REST API (no SDK). Config: accountSid, authToken, from, to. DTO validators updated, type union extended, frontend form with 4-field UI, Smartphone icon. 2 new tests. Total: 1603.
+  - **On-call rotation (fix):** Fixed TS2564 strict mode errors in `oncall.dto.ts` (definite assignment `!` on all required fields). Build now clean.
+  - **Workspace settings:** `GET/PUT /v1/settings/workspace` endpoints. Prisma UserSettings schema extended: `workspaceName`, `workspaceSlug`, `workspaceLogo`, `workspaceWebsite`. Account page wired to real API (load + save). 3 new settings tests.
+  - **Status page widget audit:** Canvas editor now shows amber `⚠️ Configure` corner badge on widgets missing required monitor config. Public renderer shows polished "Not configured" placeholder for `_noConfig` widgets. `NO_MONITOR_NEEDED_TYPES` set of 23 exempt content/layout widgets.
+
 ## Status Summary (2026-03-20 12:38 UTC)
 - **Build/Test:** ✅ Clean build, 1598 tests passing (1576 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ Restarted; all routes local + proxy 200

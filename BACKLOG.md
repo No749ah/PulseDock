@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 06:02 UTC)
+- **Build/Test:** ✅ Clean build, 1511 API + 12 Agent tests passing (1523 total), zero TS errors
+- **Deployment:** ✅ Restarted; local + proxy all 200 (8/8 routes)
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Endpoint Fallback Chain (Registry Correctness P0):** Added `endpointFallbacks?: string[]` to `VersionSource` type and `versionSourceFallbacks?: VersionSource[]` to `ToolRegistryEntry`. Updated `detectAppVersion()` (checks.service) and `detectDeployedVersion()` (monitors.service) to use ordered fallback candidate list from config. Frontend passes `endpointFallbacks` to version-discover and monitor create. Added fallbacks to 8 key verified tools: grafana, prometheus, gitea, forgejo, portainer, argocd, vault, nextcloud, home-assistant.
+  - **DiscoverVersionDto extended:** Added `endpointFallbacks` field with array/string validation for the `/v1/monitors/version-discover` endpoint.
+  - **6 new tests:** checks.service (3: uses fallbacks, falls through all, custom wins) + monitors.service (3: fallback returns version, next tried on 404, custom takes priority). Total: 1511 API tests.
+  - **Registry lint:** Clean (1496 entries, 0 issues).
+
 ## Status Summary (2026-03-20 05:49 UTC)
 - **Build/Test:** ✅ Clean build, full tests green (API + CLI + Agent)
 - **Deployment:** ✅ Restarted with `npm run restart`; local + proxy checks 200, `/api/v1/monitors` protected (401 unauth)
@@ -1613,7 +1623,7 @@
 - [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
 - [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
 - [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
-- [ ] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint.
+- [x] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint. *(Done 2026-03-20: endpointFallbacks in VersionSource type + detectAppVersion/detectDeployedVersion logic + 8 verified tools updated)*
 - [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
 - [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
 

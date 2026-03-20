@@ -514,6 +514,8 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [resets, setResets] = useState<PasswordReset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [templateReports, setTemplateReports] = useState<{ id: string; toolId: string; endpoint?: string | null; statusCode?: number | null; error?: string | null; note?: string | null; createdAt: string; userId: string }[]>([]);
+  const [templateReportsPage, setTemplateReportsPage] = useState(1);
 
   // invite form
   const [inviteEmail, setInviteEmail] = useState('');
@@ -544,7 +546,9 @@ export default function AdminPage() {
         api<AuditLog[]>('/v1/admin/audit-logs'),
         api<PasswordReset[]>('/v1/admin/password-resets'),
       ]);
+      const fb = await api<{ total: number; reports: typeof templateReports }>('/v1/feedback/template-reports').catch(() => ({ total: 0, reports: [] }));
       setUsers(u); setInvites(inv); setAuditLogs(logs); setResets(rst);
+      setTemplateReports(fb.reports);
     } catch { router.push('/unauthorized'); }
     finally { setLoading(false); }
   }
@@ -829,6 +833,27 @@ export default function AdminPage() {
               ))}
             </div>
             <Pagination page={auditPage} pages={auditPages} onPage={setAuditPage} />
+          </Card>
+
+          {/* ── Template Feedback Reports ──────────────────────────────────── */}
+          <Card>
+            <SectionHeader icon={AlertCircle} title="Template Feedback Reports" count={templateReports.length} />
+            {templateReports.length === 0 && (
+              <p className="text-sm text-text-secondary text-center py-6">No template reports yet.</p>
+            )}
+            {templateReports.slice((templateReportsPage - 1) * PAGE_SIZE, templateReportsPage * PAGE_SIZE).map((r) => (
+              <div key={r.id} className="flex flex-col gap-1 px-3 py-3 rounded-lg border-b border-border/40 last:border-b-0 hover:bg-surface-elevated/60 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-text-primary font-mono">{r.toolId}</span>
+                  {r.statusCode != null && <Badge variant="danger">{String(r.statusCode)}</Badge>}
+                  <RelativeTime iso={r.createdAt} />
+                </div>
+                {r.endpoint && <p className="text-xs text-text-secondary font-mono truncate">Endpoint: {r.endpoint}</p>}
+                {r.error && <p className="text-xs text-danger truncate">Error: {r.error}</p>}
+                {r.note && <p className="text-xs text-text-secondary italic">&quot;{r.note}&quot;</p>}
+              </div>
+            ))}
+            <Pagination page={templateReportsPage} pages={Math.max(1, Math.ceil(templateReports.length / PAGE_SIZE))} onPage={setTemplateReportsPage} />
           </Card>
         </div>
       )}

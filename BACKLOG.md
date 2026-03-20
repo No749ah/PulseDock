@@ -27,6 +27,16 @@
   - **Backlog cleanup**: marked `Charts upgrade` as complete (Recharts already in active use for dashboard/monitors sparklines); updated landing performance line to partial `[~]` with done/remaining breakdown
   - **Heartbeat restart + smoke**: `npm run restart` completed (API + web), route checks local + reverse proxy all green
 
+## Status Summary (2026-03-20 03:04 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL + all local routes 200
+- **Branch:** heartbeat/2026-03-20-polish (rotated from swagger-audit)
+- **This session:**
+  - **Branch rotation:** Merged heartbeat/2026-03-20-swagger-audit → dev, deleted, created heartbeat/2026-03-20-polish
+  - **`useDebounce` hook:** Created `apps/web/lib/useDebounce.ts` — generic 250ms debounce hook with JSDoc
+  - **Monitors search:** Wired `useDebounce` into monitors page search input — filtering no longer fires on every keystroke
+  - **Versions tool search:** Replaced manual `setTimeout`/`clearTimeout` timer pattern with `useDebounce` hook — cleaner code, same behavior
+
 ## Status Summary (2026-03-20 02:32 UTC)
 - **Build/Test:** ✅ Clean build, zero TS errors
 - **Deployment:** ✅ Public URL 200
@@ -1496,7 +1506,7 @@
 - [x] Add empty-state suggestions (close matches / top tools from cross-category). 'Did you mean:' pill buttons.
 - [x] Keep first render lightweight: show ~50 tools initially (already was 50).
 - [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
-- [ ] Add debounced search to avoid re-filtering on every keystroke.
+- [x] Add debounced search to avoid re-filtering on every keystroke. — `useDebounce` hook (`apps/web/lib/useDebounce.ts`), wired into monitors page search + versions tool picker (replaced manual timer).
 - [ ] Add quick perf check for large registry filtering in browser.
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)

@@ -332,8 +332,13 @@ export class BulkActionDto {
   @IsString({ each: true })
   ids!: string[];
 
-  @IsIn(['enable', 'disable', 'delete', 'run'])
-  action!: 'enable' | 'disable' | 'delete' | 'run';
+  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag'])
+  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag';
+
+  /** Tag ID — required when action is 'add-tag' or 'remove-tag' */
+  @IsOptional()
+  @IsString()
+  tagId?: string;
 }
 
 export class ImportExternalDto {

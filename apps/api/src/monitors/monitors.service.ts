@@ -1095,6 +1095,7 @@ export class MonitorsService {
       return {
         currentVersion: null,
         strategy: 'manual',
+        authFailed: deployed.authFailed,
         message: deployed.authFailed
           ? 'Application endpoint requires valid auth token (401/403). Check token or auth header format.'
           : 'No application version endpoint returned a usable version. Add app token/custom endpoint or enter current version manually.',

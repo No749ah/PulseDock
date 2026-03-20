@@ -346,6 +346,15 @@ function getConfigWarnings(widget: Widget, monitorMode: string): string[] {
     warnings.push("Add at least one external service ({ name, url }).");
   }
 
+  if (widget.type === "embed-iframe" && !String(widget.config.url ?? "").trim()) {
+    warnings.push("Embed URL is required for iFrame widgets.");
+  }
+
+  if ((widget.type === "version-comparison-table" || widget.type === "outdated-components-alert" || widget.type === "metric-comparison-row")
+    && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
+    warnings.push("Select at least one monitor for this comparison widget.");
+  }
+
   if ((widget.type === "table-of-contents" || widget.type === "column-layout") && (!Array.isArray(widget.config.items) || widget.config.items.length === 0)) {
     warnings.push("Add at least one item entry in JSON configuration.");
   }

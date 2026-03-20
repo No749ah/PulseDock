@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 15:05 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent)
+- **Deployment:** ✅ Web restarted; local routes healthy, public URL 200, sampled `_next/static` CSS/JS assets 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget config audit hardening (P0 widget audit):** Extended `scripts/widget-audit.mjs` with a new parity check that compares resolver `_noConfig` widget types against editor-side warning coverage.
+  - **Config warning parity fixes:** Added missing editor warnings in status-page builder for `embed-iframe` (missing URL) and comparison/version widgets (`metric-comparison-row`, `version-comparison-table`, `outdated-components-alert`) when monitor selection is missing.
+  - **Result:** `npm run widget:audit` now reports 0 missing editor warnings for `_noConfig` widgets.
+  - **Auth smoke note:** Bearer-auth endpoint probe could not be fully completed on the deployed instance due unavailable valid credentials (login/register both rejected by policy/config).
+
 ## Status Summary (2026-03-20 14:32 UTC)
 - **Build/Test:** ✅ Clean build, 1603 tests passing
 - **Deployment:** ✅ Restarted API + web; public URL 200 and sampled `_next/static` CSS/JS assets all 200

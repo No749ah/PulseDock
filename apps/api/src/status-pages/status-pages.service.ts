@@ -182,7 +182,7 @@ export class StatusPagesService {
       data: updateData,
     });
 
-    this.logger.log(`Status page updated: ${id} by user ${userId}`);
+    this.logger.log(`Status page updated: ${id} by user ${userId} (updatedAt=${updated.updatedAt.toISOString()})`);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safe } = updated;
     return { ...safe, hasPassword: !!updated.passwordHash };
@@ -729,6 +729,73 @@ export class StatusPagesService {
         const degraded = monitors.filter((m) => m.runs[0]?.level === 'yellow').length;
         const status = down > 0 ? 'outage' : degraded > 0 ? 'degraded' : 'operational';
         return { status, monitorsDown: down, monitorsDegraded: degraded, total: monitors.length };
+      }
+
+      case 'metric-counter': {
+        const metricType = (widget.config.metricType as string | undefined) ?? 'uptime';
+        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const monitorId = widget.config.monitorId as string | undefined;
+        const since = new Date(Date.now() - periodDays * 86_400_000);
+
+        if (metricType === 'latency') {
+          const runs = await this.prisma.monitorRun.findMany({
+            where: {
+              ...(monitorId ? { monitorId } : { monitor: { userId } }),
+              checkedAt: { gte: since },
+              latencyMs: { not: null },
+            },
+            select: { latencyMs: true },
+          });
+          const avgMs = runs.length > 0
+            ? Math.round(runs.reduce((sum, run) => sum + (run.latencyMs as number), 0) / runs.length)
+            : 0;
+          return { label: (widget.config.label as string | undefined) ?? `Avg latency (${periodDays}d)`, value: avgMs, suffix: 'ms', metricType, periodDays };
+        }
+
+        if (metricType === 'checks') {
+          const total = await this.prisma.monitorRun.count({
+            where: {
+              ...(monitorId ? { monitorId } : { monitor: { userId } }),
+              checkedAt: { gte: since },
+            },
+          });
+          return { label: (widget.config.label as string | undefined) ?? `Checks (${periodDays}d)`, value: total, suffix: '', metricType, periodDays };
+        }
+
+        if (metricType === 'incidents') {
+          const total = await this.prisma.incident.count({
+            where: {
+              userId,
+              createdAt: { gte: since },
+              ...(monitorId ? { monitors: { some: { monitorId } } } : {}),
+            },
+          });
+          return { label: (widget.config.label as string | undefined) ?? `Incidents (${periodDays}d)`, value: total, suffix: '', metricType, periodDays };
+        }
+
+        // default uptime
+        const runs = await this.prisma.monitorRun.findMany({
+          where: {
+            ...(monitorId ? { monitorId } : { monitor: { userId } }),
+            checkedAt: { gte: since },
+          },
+          select: { level: true },
+        });
+        const total = runs.length;
+        const up = runs.filter((r) => r.level === 'green').length;
+        const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        return { label: (widget.config.label as string | undefined) ?? `Uptime (${periodDays}d)`, value: uptimePct, suffix: '%', metricType: 'uptime', periodDays };
+      }
+
+      case 'monitor-group':
+      case 'monitor-group-status': {
+        // Rendered from monitor summary payload on the public page.
+        return { type: widget.type };
+      }
+
+      case 'last-updated-footer': {
+        const autoRefreshSec = Math.min(Math.max((widget.config.autoRefreshSec as number) ?? 60, 0), 3600);
+        return { lastUpdated: new Date().toISOString(), autoRefreshSec };
       }
 
       case 'sla-summary': {

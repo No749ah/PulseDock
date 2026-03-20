@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 14:32 UTC)
+- **Build/Test:** ✅ Clean build, 1603 tests passing
+- **Deployment:** ✅ Restarted API + web; public URL 200 and sampled `_next/static` CSS/JS assets all 200
+- **Branch:** heartbeat/2026-03-20-enterprise-gaps
+- **This session:**
+  - **Widget audit baseline (P0 kickoff):** Added `scripts/widget-audit.mjs` + root script `npm run widget:audit` to enforce type parity across widget union, editor palette, public renderer, and resolver coverage allowlist. Current baseline: 82 widget types, 0 palette gaps, 0 renderer gaps, 0 unexpected resolver gaps.
+  - **Renderer/resolver parity fixes:** Added public rendering/data support for `metric-counter` and `last-updated-footer`; mapped `monitor-group-status` alias to the existing monitor-group component/resolver branch.
+  - **Editor save stability:** Status page `PATCH` update route now accepts raw body record to avoid ValidationPipe/class-transformer stripping nested `layout` payload fields from the drag/drop editor.
+
 ## Status Summary (2026-03-20 14:26 UTC)
 - **Build/Test:** ✅ Build clean; tests passing
 - **Branch:** heartbeat/2026-03-20-enterprise-gaps
@@ -776,7 +785,7 @@
 
 > Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
 
-- [ ] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data.
+- [~] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
 - [ ] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text.
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.

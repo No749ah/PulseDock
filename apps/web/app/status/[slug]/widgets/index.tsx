@@ -4973,6 +4973,7 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
       content = <ScheduledMaintenance {...props} />;
       break;
     case "monitor-group":
+    case "monitor-group-status":
       content = <MonitorGroup {...props} />;
       break;
     case "multi-status-badges":
@@ -5077,6 +5078,25 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "stats-grid":
       content = <StatsGrid {...props} />;
       break;
+    case "metric-counter": {
+      const widgetData = fullExtra.widgetDataById[widget.id] as {
+        label?: string;
+        value?: string | number;
+        suffix?: string;
+      } | undefined;
+      const value = widgetData?.value ?? '—';
+      const suffix = widgetData?.suffix ?? '';
+      const label = (widgetData?.label as string | undefined) ?? (widget.config.label as string | undefined) ?? 'Metric';
+      content = (
+        <div className="rounded-xl border border-border bg-surface p-4 text-center">
+          <div className="text-3xl font-bold tabular-nums text-text-primary">
+            {value}{suffix ? <span className="ml-1 text-sm text-text-secondary">{suffix}</span> : null}
+          </div>
+          <div className="mt-1 text-xs text-text-secondary">{label}</div>
+        </div>
+      );
+      break;
+    }
     case "metric-comparison-row":
       content = <MetricComparisonRow {...props} />;
       break;
@@ -5107,6 +5127,21 @@ export function renderWidget(widget: Widget, monitors: MonitorSummary[], extra?:
     case "countdown":
       content = <Countdown {...props} />;
       break;
+    case "last-updated-footer": {
+      const widgetData = fullExtra.widgetDataById[widget.id] as {
+        lastUpdated?: string;
+        autoRefreshSec?: number;
+      } | undefined;
+      const ts = widgetData?.lastUpdated;
+      const rel = ts ? formatRelative(ts) : 'just now';
+      const every = widgetData?.autoRefreshSec;
+      content = (
+        <div className="text-center text-xs text-text-secondary">
+          Last updated {rel}{typeof every === 'number' && every > 0 ? ` · refreshes every ${every}s` : ''}
+        </div>
+      );
+      break;
+    }
     case "divider":
       content = <Divider />;
       break;

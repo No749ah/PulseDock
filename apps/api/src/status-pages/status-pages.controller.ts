@@ -82,8 +82,10 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: UpdateStatusPageDto) {
-    return this.statusPagesService.update(req.user.id, id, body);
+  // NOTE: keep body as raw record to avoid ValidationPipe/class-transformer stripping nested
+  // layout JSON payloads used by the drag/drop editor.
+  update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.statusPagesService.update(req.user.id, id, body as UpdateStatusPageDto);
   }
 
   @UseGuards(AuthGuard)

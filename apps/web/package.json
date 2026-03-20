@@ -16,7 +16,7 @@
     "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/postcss": "^4.2.1",
     "chart.js": "^4.5.1",
-    "framer-motion": "^12.35.2",
+    "framer-motion": "^12.38.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.577.0",

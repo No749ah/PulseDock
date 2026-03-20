@@ -17,7 +17,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/platform-socket.io": "^11.1.16",
-    "@nestjs/schedule": "^5.0.1",
+    "@nestjs/schedule": "^6.1.1",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.16",

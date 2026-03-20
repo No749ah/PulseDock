@@ -52,6 +52,7 @@ import { TeamService } from './team/team.service';
 import { SettingsController } from './settings/settings.controller';
 import { SettingsService } from './settings/settings.service';
 import { BackupService } from './settings/backup.service';
+import { FeedbackController } from './feedback/feedback.controller';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { BackupService } from './settings/backup.service';
     ReportsController,
     TeamController,
     SettingsController,
+    FeedbackController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

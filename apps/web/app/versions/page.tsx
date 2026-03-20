@@ -198,6 +198,9 @@ export default function VersionsPage() {
   const [sourceStatus, setSourceStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [appStatus, setAppStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [showAuthHint, setShowAuthHint] = useState(false);
+  const [showTemplateReport, setShowTemplateReport] = useState(false);
+  const [templateReportNote, setTemplateReportNote] = useState('');
+  const [templateReportSent, setTemplateReportSent] = useState(false);
   const [currentVersionLocked, setCurrentVersionLocked] = useState(false);
   const [latestPreview, setLatestPreview] = useState('');
   const [latestPreviewLoading, setLatestPreviewLoading] = useState(false);
@@ -621,6 +624,27 @@ export default function VersionsPage() {
     }
   }
 
+  async function sendTemplateReport() {
+    if (!selectedTool) return;
+    try {
+      await api('/v1/feedback/template-report', undefined, {
+        method: 'POST',
+        body: JSON.stringify({
+          toolId: selectedTool.id,
+          endpoint: target || undefined,
+          statusCode: undefined,
+          error: testMessage || undefined,
+          note: templateReportNote || undefined,
+        }),
+      });
+      setTemplateReportSent(true);
+      setShowTemplateReport(false);
+      setTemplateReportNote('');
+    } catch {
+      // silently ignore
+    }
+  }
+
   function resetCreateForm() {
     setCreateStep(-1);
     setToolSearch('');
@@ -647,6 +671,9 @@ export default function VersionsPage() {
     setSourceStatus('unknown');
     setAppStatus('unknown');
     setShowAuthHint(false);
+    setShowTemplateReport(false);
+    setTemplateReportNote('');
+    setTemplateReportSent(false);
     setCurrentVersionLocked(false);
     setLatestPreview('');
     setLatestPreviewLoading(false);
@@ -1264,6 +1291,39 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 {appDetectedFrom && <p className="text-xs text-text-secondary">App version source endpoint: {appDetectedFrom}</p>}
                 {!appDetectedFrom && appTriedEndpoints.length > 0 && <p className="text-xs text-text-secondary">Tried: {appTriedEndpoints.join(', ')}</p>}
                 {appUrl && !currentVersion && !detectTried && <p className="text-xs text-text-secondary">Tip: click &quot;Validate and detect versions&quot; to auto-read deployed app version first.</p>}
+                {selectedTool && sourceStatus === 'fail' && !templateReportSent && (
+                  <div>
+                    {!showTemplateReport ? (
+                      <button
+                        type="button"
+                        className="text-xs text-text-secondary hover:text-text-primary underline underline-offset-2"
+                        onClick={() => setShowTemplateReport(true)}
+                      >
+                        Wrong version format? Report this template →
+                      </button>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-surface border border-border space-y-3">
+                        <p className="text-sm font-medium text-text-primary">Report template issue</p>
+                        <p className="text-xs text-text-secondary">Tool: <span className="text-text-primary">{selectedTool.name}</span> · Target: <span className="text-text-primary">{target || '—'}</span></p>
+                        {testMessage && <p className="text-xs text-text-secondary">Error: <span className="text-danger">{testMessage}</span></p>}
+                        <textarea
+                          className={`${inputClass} text-sm resize-none`}
+                          rows={3}
+                          placeholder="Optional note (e.g. expected format, actual response)…"
+                          value={templateReportNote}
+                          onChange={(e) => setTemplateReportNote(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={sendTemplateReport}>Send report</Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setShowTemplateReport(false); setTemplateReportNote(''); }}>Cancel</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {templateReportSent && (
+                  <p className="text-xs text-success">✓ Thanks — we&apos;ll review this template.</p>
+                )}
               </div>
             )}
 

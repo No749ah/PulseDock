@@ -560,7 +560,7 @@ export function AppFrame({
 
         {/* Content */}
         <main id="main-content" role="main" className="flex-1 overflow-y-auto">
-          <div className="max-w-[1220px] mx-auto w-full p-4 sm:p-6">
+          <div className="max-w-[1600px] mx-auto w-full p-4 sm:p-6">
             {children}
           </div>
         </main>

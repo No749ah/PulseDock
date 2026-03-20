@@ -5,12 +5,13 @@ import type { ReactNode } from "react";
 interface TableProps {
   children: ReactNode;
   className?: string;
+  noScroll?: boolean;
 }
 
-export function Table({ children, className = "" }: TableProps) {
+export function Table({ children, className = "", noScroll = false }: TableProps) {
   return (
-    <div className={`overflow-x-auto rounded-lg border border-border ${className}`}>
-      <table className="w-full text-sm">
+    <div className={`${noScroll ? "overflow-hidden" : "overflow-x-auto"} rounded-lg border border-border ${className}`}>
+      <table className="w-full text-sm min-w-0">
         {children}
       </table>
     </div>

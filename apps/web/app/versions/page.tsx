@@ -1901,7 +1901,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
 
                       {expandedId === item.id && (
                         <tr className="border-b border-border">
-                          <td colSpan={9} className="px-4 py-3 bg-surface-elevated overflow-x-auto">
+                          <td colSpan={9} className="px-4 py-3 bg-surface-elevated overflow-hidden max-w-0 w-full">
                             {runsLoadingId === item.id ? (
                               <p className="text-sm text-text-secondary">Loading runs…</p>
                             ) : (
@@ -1915,7 +1915,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                                 {runs.length === 0 ? (
                                   <p className="text-sm text-text-secondary">No runs yet.</p>
                                 ) : (
-                                  <Table>
+                                  <Table noScroll>
                                     <TableHead>
                                       <TableRow hover={false}>
                                         <TableHeader>Time</TableHeader>
@@ -1943,7 +1943,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                                                 <span className="text-xs text-text-secondary">—</span>
                                               )}
                                             </TableCell>
-                                            <TableCell className="text-xs text-text-secondary max-w-[200px]">{r.message}</TableCell>
+                                            <TableCell className="text-xs text-text-secondary max-w-[200px] truncate" title={r.message}>{r.message}</TableCell>
                                           </TableRow>
                                         );
                                       })}

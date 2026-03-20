@@ -780,7 +780,7 @@ export default function MonitorDetailPage() {
                 Last 20 Checks
               </h2>
             </div>
-            <div className="overflow-x-auto">
+            <div>
               {runs.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
                   No runs yet — this monitor hasn&apos;t checked yet.

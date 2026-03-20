@@ -21,7 +21,11 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   variable: "--font-inter",
-  preload: true,
+  // preload: true emits <link rel="preload"> hints that the browser warns about
+  // when heavy JS bundles (like the status-page editor) delay font usage past
+  // the browser's threshold. display:"swap" ensures text is visible immediately
+  // via the fallback font — no need for aggressive preloading.
+  preload: false,
 });
 
 export const viewport: Viewport = {

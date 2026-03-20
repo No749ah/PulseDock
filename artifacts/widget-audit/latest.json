@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-03-20T18:15:09.139Z",
+  "counts": {
+    "widgetTypes": 82,
+    "paletteTypes": 84,
+    "rendererCases": 83,
+    "resolverCases": 66,
+    "noConfigResolverTypes": 23,
+    "configWarningCoveredTypes": 39
+  },
+  "missingFromPalette": [],
+  "missingFromRenderer": [],
+  "missingFromResolver": [
+    "active-incident-banner",
+    "changelog-widget",
+    "code-block",
+    "collapsible-section",
+    "data-table",
+    "divider",
+    "image-banner",
+    "maintenance-calendar",
+    "multi-monitor-status-grid",
+    "multi-status-badges",
+    "rss-feed-widget",
+    "tab-container",
+    "text-block",
+    "update-summary",
+    "version-check-badge",
+    "video-embed"
+  ],
+  "unexpectedResolverMissing": [],
+  "noConfigMissingWarnings": [],
+  "allowedResolverMissing": [
+    "active-incident-banner",
+    "changelog-widget",
+    "code-block",
+    "collapsible-section",
+    "data-table",
+    "divider",
+    "image-banner",
+    "maintenance-calendar",
+    "multi-monitor-status-grid",
+    "multi-status-badges",
+    "rss-feed-widget",
+    "tab-container",
+    "text-block",
+    "update-summary",
+    "version-check-badge",
+    "video-embed"
+  ]
+}

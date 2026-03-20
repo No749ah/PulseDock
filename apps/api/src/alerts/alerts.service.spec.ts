@@ -41,6 +41,9 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     alertChannelIds: [],
     folderId: null,
     enabled: true,
+    slaTarget: null,
+    slaPeriodDays: null,
+    slaBreachAlertedAt: null,
     createdAt: new Date().toISOString(),
     ...overrides,
   };

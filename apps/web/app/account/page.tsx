@@ -162,6 +162,9 @@ export default function AccountPage() {
   // Workspace settings state
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("");
+  const [workspaceLogo, setWorkspaceLogo] = useState("");
+  const [workspaceWebsite, setWorkspaceWebsite] = useState("");
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
 
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
@@ -209,8 +212,18 @@ export default function AccountPage() {
         const dn = (profile as unknown as { displayName?: string }).displayName ?? "";
         setDisplayName(dn);
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
-        setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
-        setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
+        // Load workspace settings from API (fallback to derived defaults)
+        api<{ workspaceName: string | null; workspaceSlug: string | null; workspaceLogo: string | null; workspaceWebsite: string | null }>("/v1/settings/workspace", userId)
+          .then((ws) => {
+            setWorkspaceName(ws.workspaceName ?? (dn ? `${dn}'s Workspace` : "My Workspace"));
+            setWorkspaceSlug(ws.workspaceSlug ?? ((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace"));
+            setWorkspaceLogo(ws.workspaceLogo ?? "");
+            setWorkspaceWebsite(ws.workspaceWebsite ?? "");
+          })
+          .catch(() => {
+            setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
+            setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
+          });
         // Load audit log + notification preferences + team data lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
@@ -1412,29 +1425,72 @@ export default function AccountPage() {
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
                   Workspace Slug
-                  <span
-                    className="ml-1.5 text-xs text-text-secondary/60 cursor-help"
-                    title="Coming soon — custom workspace URLs are not yet available"
-                  >
-                    (Coming soon)
-                  </span>
                 </label>
                 <input
                   type="text"
                   value={workspaceSlug}
-                  disabled
-                  className="w-full px-3 py-2 bg-surface-elevated/50 border border-border rounded-lg text-text-secondary/50 text-sm cursor-not-allowed"
+                  onChange={(e) => setWorkspaceSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
                   placeholder="my-workspace"
+                  maxLength={60}
                 />
-                <p className="mt-1 text-xs text-text-secondary/50">Custom workspace URLs are coming soon.</p>
+                <p className="mt-1 text-xs text-text-secondary/60">Used as a URL-safe identifier for your workspace.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Logo URL <span className="font-normal text-text-secondary/60">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={workspaceLogo}
+                  onChange={(e) => setWorkspaceLogo(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
+                  placeholder="https://example.com/logo.png"
+                  maxLength={512}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Website <span className="font-normal text-text-secondary/60">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={workspaceWebsite}
+                  onChange={(e) => setWorkspaceWebsite(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
+                  placeholder="https://example.com"
+                  maxLength={512}
+                />
               </div>
 
               <Button
-                onClick={() => toastSuccess("Workspace settings saved")}
+                onClick={async () => {
+                  try {
+                    setWorkspaceSaving(true);
+                    const userId = getUser()?.id;
+                    await api("/v1/settings/workspace", userId, {
+                      method: "PUT",
+                      body: JSON.stringify({
+                        workspaceName: workspaceName.trim() || undefined,
+                        workspaceSlug: workspaceSlug.trim() || undefined,
+                        workspaceLogo: workspaceLogo.trim() || undefined,
+                        workspaceWebsite: workspaceWebsite.trim() || undefined,
+                      }),
+                    });
+                    toastSuccess("Workspace settings saved");
+                  } catch (e) {
+                    toastError(e instanceof Error ? e.message : "Failed to save workspace settings");
+                  } finally {
+                    setWorkspaceSaving(false);
+                  }
+                }}
+                disabled={workspaceSaving}
                 size="lg"
                 className="w-full"
               >
-                Save Workspace Settings
+                {workspaceSaving ? "Saving…" : "Save Workspace Settings"}
               </Button>
             </div>
           </Card>

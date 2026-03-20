@@ -19,13 +19,15 @@ function inferApiBaseFromLocation() {
     return 'http://localhost:4321';
   }
 
-  return '';
+  // Default for any hosted web surface: use same-origin /api proxy.
+  // This avoids cross-origin drift on alternate hosts (embedded control UI,
+  // preview domains, relay hosts) where saves could hit the wrong backend.
+  return `${protocol}//${host}/api`;
 }
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  inferApiBaseFromLocation() ||
-  'https://oc-api-test.no749ah.com';
+  inferApiBaseFromLocation();
 
 // ─── CSRF ────────────────────────────────────────────────────────────────────
 

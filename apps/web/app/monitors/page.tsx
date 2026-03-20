@@ -252,10 +252,31 @@ function MonitorsPageInner() {
 
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [monitorDeps, setMonitorDeps] = useState<Map<string, { id: string; name: string; type: string }[]>>(new Map());
+  const [depsLoading, setDepsLoading] = useState<Set<string>>(new Set());
   const toggleRowExpand = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Lazy-load dependencies when row is first expanded
+        if (!monitorDeps.has(id)) {
+          const userId = getUser()?.id;
+          setDepsLoading((s) => new Set(s).add(id));
+          api<{ id: string; name: string; type: string }[]>(`/v1/monitors/${id}/dependencies`, userId)
+            .then((deps) => {
+              setMonitorDeps((m) => new Map(m).set(id, deps));
+            })
+            .catch(() => {
+              setMonitorDeps((m) => new Map(m).set(id, []));
+            })
+            .finally(() => {
+              setDepsLoading((s) => { const ns = new Set(s); ns.delete(id); return ns; });
+            });
+        }
+      }
       return next;
     });
   };
@@ -465,9 +486,11 @@ function MonitorsPageInner() {
         if (f.checkTls) config.checkTls = f.checkTls;
       }
             if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
+        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
         if (f.requestHeaders?.trim()) {
           try {
@@ -536,9 +559,11 @@ function MonitorsPageInner() {
         if (f.checkTls) config.checkTls = f.checkTls;
       }
             if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
+        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
         if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
         if (f.requestHeaders?.trim()) {
           try {
@@ -1738,7 +1763,9 @@ function MonitorsPageInner() {
                                       : "",
                                     requestBody: String(monitor.config?.requestBody ?? ""),
                                     responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
-                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
+                                    bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
+                                    bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
+                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -1814,7 +1841,7 @@ function MonitorsPageInner() {
                         {isExpanded && (
                           <tr className="bg-surface-elevated/40 border-b border-border/60">
                             <td colSpan={totalCols} className="px-6 py-4 overflow-hidden max-w-0 w-full">
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm min-w-0">
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm min-w-0">
                                 {/* Recent check history + sparkline */}
                                 <div className="space-y-2 min-w-0 overflow-hidden">
                                   <div className="flex items-center justify-between">
@@ -1903,6 +1930,30 @@ function MonitorsPageInner() {
                                       <p>Project: <span className="font-semibold text-text-primary">{folders.find((f) => f.id === monitor.folderId)?.name ?? "—"}</span></p>
                                     )}
                                   </div>
+                                </div>
+                                {/* Dependencies */}
+                                <div className="space-y-2 min-w-0">
+                                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" /> Dependencies
+                                  </p>
+                                  {depsLoading.has(monitor.id) ? (
+                                    <p className="text-xs text-text-secondary">Loading…</p>
+                                  ) : (monitorDeps.get(monitor.id) ?? []).length === 0 ? (
+                                    <p className="text-xs text-text-secondary">No dependencies</p>
+                                  ) : (
+                                    <div className="space-y-1">
+                                      {(monitorDeps.get(monitor.id) ?? []).map((dep) => {
+                                        const depLastRun = runs.find((r) => r.monitorId === dep.id);
+                                        const depOk = depLastRun?.ok;
+                                        return (
+                                          <div key={dep.id} className="flex items-center gap-1.5 text-xs">
+                                            <div className={`w-2 h-2 rounded-full shrink-0 ${depOk === true ? "bg-success" : depOk === false ? "bg-danger" : "bg-border"}`} />
+                                            <span className="text-text-primary truncate">{dep.name}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -2343,6 +2394,36 @@ function MonitorsPageInner() {
                   maxLength={500}
                 />
                 <p className="mt-1 text-xs text-text-secondary">If set, the response body must contain this string (case-insensitive). Leave blank to skip body check.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  JSON path assertion <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={(formData as unknown as { bodyJsonPath?: string }).bodyJsonPath ?? ""}
+                    onChange={(e) => {
+                      setFormData({ ...formData, bodyJsonPath: e.target.value } as typeof formData & { bodyJsonPath?: string });
+                    }}
+                    className={inputClass + " flex-1"}
+                    placeholder="e.g. status or data.health"
+                    maxLength={200}
+                    aria-label="JSON path"
+                  />
+                  <input
+                    type="text"
+                    value={(formData as unknown as { bodyJsonPathExpected?: string }).bodyJsonPathExpected ?? ""}
+                    onChange={(e) => {
+                      setFormData({ ...formData, bodyJsonPathExpected: e.target.value } as typeof formData & { bodyJsonPathExpected?: string });
+                    }}
+                    className={inputClass + " w-36"}
+                    placeholder='Expected value'
+                    maxLength={200}
+                    aria-label="Expected value"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-text-secondary">Assert a JSON field in the response (dot-notation, e.g. <code className="bg-surface px-1 rounded">data.status</code>). Optional expected value — leave blank for a truthy check. Requires JSON response.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">

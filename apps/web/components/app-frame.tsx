@@ -20,6 +20,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  PhoneCall,
   Search,
   Settings,
   Shield,
@@ -57,6 +58,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
+      { href: '/oncall', label: 'On-Call', icon: PhoneCall },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
       { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },

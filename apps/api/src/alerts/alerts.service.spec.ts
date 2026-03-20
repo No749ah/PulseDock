@@ -681,6 +681,138 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── PagerDuty channel ───────────────────────────────────────────────────────
+
+  describe('pagerduty channel', () => {
+    it('sends trigger event on red level', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'pagerduty' as never, config: { integrationKey: 'test-integration-key' } });
+
+      await service.notifyTest(channel);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://events.pagerduty.com/v2/enqueue');
+      const body = JSON.parse(opts.body as string) as { routing_key: string; event_action: string; payload: { severity: string } };
+      expect(body.routing_key).toBe('test-integration-key');
+      expect(body.event_action).toBe('trigger');
+    });
+
+    it('sends resolve event on green level', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'pagerduty' as never, config: { integrationKey: 'test-integration-key' } });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const serviceWithChannel = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await serviceWithChannel.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://events.pagerduty.com/v2/enqueue');
+      const body = JSON.parse(opts.body as string) as { event_action: string; payload: { severity: string } };
+      expect(body.event_action).toBe('resolve');
+      expect(body.payload.severity).toBe('info');
+    });
+  });
+
+  // ── OpsGenie channel ─────────────────────────────────────────────────────────
+
+  describe('opsgenie channel', () => {
+    it('posts to alerts endpoint on red level', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ type: 'opsgenie' as never, config: { apiKey: 'test-api-key' } });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const serviceWithChannel = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await serviceWithChannel.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string>; body: string }];
+      expect(url).toBe('https://api.opsgenie.com/v2/alerts');
+      expect(opts.headers['Authorization']).toBe('GenieKey test-api-key');
+      const body = JSON.parse(opts.body) as { priority: string; alias: string };
+      expect(body.priority).toBe('P1');
+    });
+
+    it('posts close request on green level (resolve)', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200 });
+      const monitor = makeMonitor({ id: 'monitor-green-1' });
+      const run = makeRun({ level: 'green', ok: true, message: 'Recovered' });
+      const channel = makeChannel({ type: 'opsgenie' as never, config: { apiKey: 'test-api-key' } });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, { method: string; headers: Record<string, string> }];
+      expect(url).toContain('/close');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers['Authorization']).toBe('GenieKey test-api-key');
+    });
+  });
+
+  // ─── SMS channel ─────────────────────────────────────────────────────────────
+
+  describe('sms channel', () => {
+    it('posts to Twilio Messages API with correct auth and body', async () => {
+      const monitor = makeMonitor({ name: 'Prod API' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Connection refused' });
+      const channel = makeChannel({
+        type: 'sms' as never,
+        config: { accountSid: 'ACtest123', authToken: 'token456', from: '+15550001111', to: '+15559998888' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
+      expect(url).toContain('ACtest123/Messages.json');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers['Authorization']).toMatch(/^Basic /);
+      expect(opts.body).toContain('To=%2B15559998888');
+      expect(opts.body).toContain('From=%2B15550001111');
+    });
+
+    it('records failed delivery log when Twilio returns non-ok response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Bad request' } as Response);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', ok: false });
+      const channel = makeChannel({
+        type: 'sms' as never,
+        config: { accountSid: 'ACbad', authToken: 'tok', from: '+10000000000', to: '+19999999999' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      try { await promise; } catch { /* expected */ }
+      vi.useRealTimers();
+
+      expect(prismaWithChannel.alertDeliveryLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'failed' }),
+        }),
+      );
+    });
+  });
+
   // ─── Delivery log ────────────────────────────────────────────────────────────
 
   describe('alert delivery log', () => {

@@ -672,6 +672,92 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — HTTP config: bodyJsonPath assertions ─────────────────
+
+  describe('runMonitor() — HTTP bodyJsonPath assertion config', () => {
+    it('returns green when JSON path matches expected string value', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"ok","version":"1.2.3"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: '$.status', bodyJsonPathExpected: 'ok' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+      expect(run.message).toContain('$.status');
+    });
+
+    it('returns red when JSON path value does not match expected', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"degraded"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: 'status', bodyJsonPathExpected: 'ok' } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('"degraded"');
+      expect(run.message).toContain('"ok"');
+    });
+
+    it('returns green with truthy check when no expected value is specified', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"healthy":true}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: 'healthy' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('returns red when JSON path is missing (truthy check)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"other":"field"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: 'health.status' } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('missing/falsy');
+    });
+
+    it('returns red when response is not valid JSON and bodyJsonPath is set', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => 'not json at all' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: 'status' } }),
+      );
+      expect(run.ok).toBe(false);
+      expect(run.level).toBe('red');
+      expect(run.message).toContain('not valid JSON');
+    });
+
+    it('supports nested JSON path (dot notation)', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"data":{"health":"green"}}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyJsonPath: 'data.health', bodyJsonPathExpected: 'green' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+
+    it('combines bodyContains and bodyJsonPath — both must pass', async () => {
+      const service = makeService();
+      globalThis.fetch = mockFetch([{ ok: true, status: 200, text: () => '{"status":"ok","env":"prod"}' }]);
+
+      const run = await service.runMonitor(
+        makeMonitor({ type: 'HTTP', config: { bodyContains: '"env":"prod"', bodyJsonPath: 'status', bodyJsonPathExpected: 'ok' } }),
+      );
+      expect(run.ok).toBe(true);
+      expect(run.level).toBe('green');
+    });
+  });
+
   // ── runMonitor() — GIT_RELEASE (GitHub) ───────────────────────────────────
 
   describe('runMonitor() — GIT_RELEASE type (GitHub)', () => {

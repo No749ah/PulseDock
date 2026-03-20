@@ -274,6 +274,29 @@ const NEEDS_MONITORS_TYPES = new Set([
   'aggregate-health-score', 'multi-environment-status',
 ]);
 
+/**
+ * Widget types that do NOT need any monitor config — purely content/layout widgets.
+ * All other widget types will show a "⚠️ Configure" badge when no monitor is selected.
+ */
+const NO_MONITOR_NEEDED_TYPES = new Set([
+  'text', 'text-block', 'divider', 'spacer', 'custom-header', 'announcement-bar',
+  'faq-accordion', 'link-list', 'social-links', 'embed-iframe', 'video-embed',
+  'code-block', 'countdown', 'table-of-contents', 'page-navigation', 'image-banner',
+  'column-layout', 'collapsible-section', 'tab-container', 'sticky-header',
+  'subscriber-form', 'subscriber-form-widget', 'rss-feed-widget', 'offline-banner',
+  'offline-banner-widget',
+]);
+
+/** Returns true if a canvas widget is missing required monitor config and should show the "⚠️ Configure" badge. */
+function needsMonitorConfig(widget: Widget): boolean {
+  if (NO_MONITOR_NEEDED_TYPES.has(widget.type)) return false;
+  const { monitorId, monitorIds, monitorMode } = widget.config;
+  if (monitorMode === 'all') return false;
+  const hasMonitor = Boolean(monitorId);
+  const hasMonitors = Array.isArray(monitorIds) && monitorIds.length > 0;
+  return !hasMonitor && !hasMonitors;
+}
+
 // ── Template Gallery ────────────────────────────────────────────────────────
 
 interface StatusTemplate {
@@ -759,13 +782,12 @@ function CanvasWidget({ widget, isSelected, isMultiSelected, colWidth, onSelect,
       {/* Widget preview */}
       <div className="flex-1 overflow-hidden p-2 relative">
         <WidgetPreview type={widget.type} config={widget.config} w={widget.w} />
-        {/* Unconfigured monitor warning */}
-        {((NEEDS_MONITOR_TYPES.has(widget.type) && !widget.config.monitorId) ||
-          (NEEDS_MONITORS_TYPES.has(widget.type) && (!widget.config.monitorIds || (widget.config.monitorIds as string[]).length === 0))) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface/80 backdrop-blur-[1px] rounded-lg">
-            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400">
-              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-              Select a monitor
+        {/* Unconfigured monitor badge — top-right corner */}
+        {needsMonitorConfig(widget) && (
+          <div className="absolute top-1 right-1 z-10 pointer-events-none">
+            <div className="flex items-center gap-1 rounded-md bg-orange-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+              <span>⚠️</span>
+              <span>Configure</span>
             </div>
           </div>
         )}

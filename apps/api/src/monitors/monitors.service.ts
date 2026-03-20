@@ -940,6 +940,7 @@ export class MonitorsService {
    * @param input.token - Optional API token for authenticated requests
    * @param input.host - Optional custom GitLab host
    * @returns { ok, message, latestVersion } — ok=false if the connection failed
+   * @throws Error when an upstream request fails unexpectedly
    */
   async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
     if (input.provider === 'github') {
@@ -1068,6 +1069,7 @@ export class MonitorsService {
    * (3) return strategy='manual' if neither succeeds.
    * @param input - Connection details including provider, target, appUrl, auth config, etc.
    * @returns { currentVersion, strategy, tried, detectedFrom } — strategy indicates how version was found
+   * @throws Error when probing endpoints fails unexpectedly
    */
   async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
@@ -1119,6 +1121,7 @@ export class MonitorsService {
    * Used by the dashboard's version overview widget.
    * @param userId - The authenticated user's ID
    * @returns { stats, items } — stats is a count breakdown; items is the per-monitor detail list
+   * @throws Error when monitor summary query fails
    */
   async versionSummary(userId: string) {
     // Performance: single query with nested include avoids N+1

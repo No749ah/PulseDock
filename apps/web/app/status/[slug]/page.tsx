@@ -344,9 +344,10 @@ export default async function PublicStatusSlugPage({
             </div>
           ) : (
             <>
+              <h2 id="status-widgets-heading" className="sr-only">Status widgets</h2>
               {/* Mobile + Print: single-column flow
                   `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
-              <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-label="Status widgets">
+              <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget) => (
                   <div key={`m-${widget.id}`}>
                     {renderWidget(widget, data.monitors, {
@@ -360,7 +361,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Tablet: 6-column responsive grid */}
-              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-label="Status widgets">
+              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget) => {
                   const t = tablet.get(widget.id);
                   if (!t) return null;
@@ -385,7 +386,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Desktop: 12-column editor-parity grid */}
-              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-label="Status widgets">
+              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget) => {
                   const d = desktop.get(widget.id);
                   if (!d) return null;

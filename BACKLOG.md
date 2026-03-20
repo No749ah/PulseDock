@@ -1,3 +1,11 @@
+## Status Summary (2026-03-20 17:05 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (22 total), zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
+- **Branch:** heartbeat/2026-03-20-save-fix
+- **This session:**
+  - **Widget design overhaul (P0 backlog item):** Added `WidgetCard` consistent card wrapper system, `StatusDot`, `SeverityBadge`, `TrendArrow` helper components. Redesigned: `CheckHistoryFeed` (ok/fail counters, latency color coding, hover rows), `IncidentHistory` (severity badge system, active/resolved sections with visual hierarchy), `MttrMttfCards` (blue/purple accent cards, better typography), `LatencyPercentilesCard` (per-cell color-coded backgrounds, improved trend nodes), `MultiMonitorStatusGrid` (with WidgetCard header showing live status summary). All widgets now use consistent rounded-2xl border system with hover states.
+  - **Result:** Status-page widgets now have Grafana/Linear quality visual design — information-dense headers, consistent card hierarchy, color-coded metric displays.
+
 ## Status Summary (2026-03-20 15:05 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent)
 - **Deployment:** ✅ Web restarted; local routes healthy, public URL 200, sampled `_next/static` CSS/JS assets 200
@@ -800,7 +808,7 @@
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [~] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload. *(2026-03-20: replaced hard `window.location.reload()` in public status live refresh with `router.refresh()` for WebSocket and polling paths, so widget data updates without full browser reload. Remaining: true per-widget incremental fetch/state updates to avoid full route re-render.)*
-- [ ] **Widget design overhaul** — All widgets should look polished, modern, and information-dense. Current widgets are too sparse and basic. Reference: Grafana dashboards, Linear status pages, Atlassian Statuspage. Each widget should show: title, key metric (large), context (small), trend, last updated time.
+- [~] **Widget design overhaul** — Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. Remaining: "Preview with data" mode, per-widget last-updated timestamp in all data-fetch cards.
 - [ ] **"Preview with data" mode** — In the editor, a button that loads real live data into the preview so you can see exactly what the public page will look like.
 - [x] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
 

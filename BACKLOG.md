@@ -1,3 +1,13 @@
+## Status Summary (2026-03-20 05:40 UTC)
+- **Build/Test:** ✅ Clean build, 1505 API tests + CLI/Agent green
+- **Deployment:** ✅ Web restarted, local + proxy 200
+- **Branch:** heartbeat/2026-03-20-ux-polish
+- **This session:**
+  - **Registry alias/synonym search**: Added `aliases?: string[]` to `ToolRegistryEntry` type; updated `searchTools()` with tier-35/42 alias scoring (between id-match and tag-match); added aliases to 32 key tools — searching `k8s` finds Kubernetes, `postgres` finds PostgreSQL, `sso` finds Keycloak/Authentik, `s3` finds MinIO, etc.
+  - **Verification metadata**: Added `verificationStatus: 'verified'` + `lastVerifiedAt: '2026-03-20'` to 20 well-known entries (prometheus, grafana, loki, postgresql, redis, nginx, gitea, argocd, minio, pihole, adguard-home, portainer, keycloak, vault, nextcloud, jellyfin, home-assistant, node-red, uptime-kuma, traefik)
+  - **Dependency cleanup**: Removed unused `@mantine/core` + `@mantine/hooks` from web app
+  - **Pushed to GitHub:** 3 commits on heartbeat/2026-03-20-ux-polish
+
 ## Status Summary (2026-03-20 05:29 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (API 1505 + CLI/Agent green)
 - **Deployment:** ✅ Services restarted with `npm run restart`; local + reverse proxy route audit green
@@ -1585,7 +1595,7 @@
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
 - [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
 - [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
-- [~] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done this heartbeat: removed bulk-generated `-core/-server/-api/-dashboard/-operator/-worker` duplicate variants. Remaining: alias/synonym handling rules.)*
+- [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.

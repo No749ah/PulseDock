@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // jsPDF (via fflate) uses Node.js Worker which Turbopack cannot resolve in SSR.
+  // Mark as server-external so it is not bundled server-side.
+  // (jsPDF is only used client-side via dynamic import in reports/page.tsx)
+  serverExternalPackages: ['jspdf', 'fflate', 'html2canvas'],
+
   // Do NOT use output: 'standalone' — it requires manual static asset copying
   // and breaks when the reverse proxy caches error responses during restarts.
   // Regular `next start` serves static assets natively and works reliably.

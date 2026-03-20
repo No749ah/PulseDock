@@ -8,6 +8,7 @@ import {
   Activity,
   AlertOctagon,
   AlertTriangle,
+  BarChart2,
   Bell,
   ScrollText,
   CalendarClock,
@@ -59,6 +60,12 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
       { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { href: '/reports', label: 'Reports', icon: BarChart2 },
     ],
   },
   {

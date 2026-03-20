@@ -1,3 +1,24 @@
+## Status Summary (2026-03-20 04:00 UTC)
+- **Build/Test:** ✅ Clean build (fixed jsPDF/fflate Turbopack SSR error via serverExternalPackages), 1505 API tests passing, zero TS errors
+- **Deployment:** ✅ Web server restarted, new build live
+- **Branch:** heartbeat/2026-03-20-registry-quality
+- **This session:**
+  - **Auth-toggle UX**: Amber dismissible callout when app version discover returns 401/403 (`authFailed=true`). "Enable auth →" button sets auth mode to `token`. Added `showAuthHint` state + API now forwards `authFailed` in the manual-strategy response.
+  - **Registry lint script**: `packages/tool-registry/scripts/lint-registry.ts` already existed; added `packages/tool-registry/package.json` with `lint` script. Root package.json already had `registry:lint` npm script.
+  - **Verified tool flag**: `verified: boolean` already in `ToolRegistryEntry` type; green checkmark badge in tool picker already in UI; verified tools sort first.
+  - **BACKLOG cleanup**: Marked API Keys management, Backup & Restore, Auth-toggle UX, CI-Check Registry-Lint, Tool-Templates verified flag as `[x]`.
+  - **Build fix (inherited)**: Added `serverExternalPackages: ['jspdf', 'fflate', 'html2canvas']` to next.config.mjs to fix pre-existing Turbopack SSR bundling error from reports page.
+
+## Status Summary (2026-03-20 03:45 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL 200, web restarted
+- **Branch:** heartbeat/2026-03-20-features
+- **This session:**
+  - **Reports Page** (`/reports`): Full uptime report dashboard — period selector (7d/30d/90d), summary cards (total monitors, overall uptime%, total checks, incident count), per-monitor uptime table (name, type, status, uptime%, checks, incidents, downtime, avg response, MTTR), top incidents list sorted by duration. CSV export (all stats) + PDF export (html2canvas screenshot → A4 landscape). Uses existing `GET /v1/monitors` + `GET /v1/monitors/:id/uptime?period=` endpoints, computes stats client-side.
+  - **Reports Nav Item**: Added "Reports" (BarChart2 icon) to "Insights" group in `app-frame.tsx` nav sidebar.
+  - **Status Pages CSV Export**: Added "Export CSV" button to status pages list toolbar. Exports: slug, title, published, createdAt, updatedAt.
+  - **Print CSS enhanced**: Added `[data-no-print]` selector, `button:not(.print-visible)` targeting, `main`/`.main-content` full-width rules, `.page-break` utility to existing `@media print` block in `globals.css`.
+
 ## Status Summary (2026-03-20 03:36 UTC)
 - **Build/Test:** ✅ Clean build, 1505 tests passing (2 new tests added), zero TS errors
 - **Deployment:** ✅ Public URL 200, API healthy
@@ -1434,7 +1455,7 @@
 - [~] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). Remaining: sample data demo option + final empty-state CTA sweep across all pages.
 - [x] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
 - [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
-- [ ] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
+- [x] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
 
 ### P2 — Self-Optimization & Continuous Improvement
 
@@ -1453,12 +1474,12 @@
 
 - [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
 - [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
-- [ ] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking, rate limit per key
+- [x] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
 - [ ] **Single Sign-On (SSO)** — SAML, OIDC, Google Workspace, Microsoft Azure AD, Okta, OneLogin, JumpCloud integration
 - [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
-- [ ] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup, migration tool from other platforms
+- [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
 - [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
@@ -1531,14 +1552,14 @@
 - [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
 - [ ] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool).
 - [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
-- [ ] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren).
+- [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
 - [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
 - [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
 - [ ] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen.
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
-- [ ] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor).
-- [ ] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen.
+- [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
+- [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
 - [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
 - [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
 - [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.

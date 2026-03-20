@@ -17,12 +17,14 @@ import {
   Shield,
   X,
   Check,
+  Download,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
 import { FadeIn } from "../components/FadeIn";
 import { useToast } from "../../components/ui/toast";
+import { exportCSV } from "../../lib/useTableSort";
 
 interface StatusPage {
   id: string;
@@ -182,15 +184,35 @@ export default function StatusPagesPage() {
     <AppFrame title="Status Pages" subtitle="Build and share public status pages" breadcrumbs={[{ label: "Status Pages" }]}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div />
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent/90 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            New Page
-          </button>
+          <div className="flex items-center gap-2">
+            {pages.length > 0 && (
+              <button
+                onClick={() => {
+                  const csvRows = pages.map((p) => ({
+                    Slug: p.slug,
+                    Title: p.title,
+                    Published: p.isPublished ? "Yes" : "No",
+                    CreatedAt: new Date(p.createdAt).toISOString(),
+                    UpdatedAt: new Date(p.updatedAt).toISOString(),
+                  }));
+                  exportCSV(`pulsedock-status-pages-${new Date().toISOString().slice(0, 10)}.csv`, csvRows);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/60 px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </button>
+            )}
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent/90 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              New Page
+            </button>
+          </div>
         </div>
 
         {/* List */}

@@ -342,18 +342,29 @@ html, body {
   /* ── Hide interactive chrome ───────────────────────── */
   .print\:hidden,
   .no-print,
+  [data-no-print],
   nav,
   header,
   aside,
   [aria-label="Navigation"],
   [role="navigation"],
   footer,
-  button,
+  button:not(.print-visible),
   [role="button"],
   input,
   select,
   textarea,
   [data-print-hide="true"] { display: none !important; }
+
+  /* ── Full-width main content ───────────────────────── */
+  main, .main-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+
+  /* ── Page breaks ───────────────────────────────────── */
+  .page-break { page-break-after: always; }
 
   /* Keep print-only elements visible */
   [data-print-show="true"] { display: block !important; }

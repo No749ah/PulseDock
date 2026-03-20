@@ -197,6 +197,7 @@ export default function VersionsPage() {
   const [detectTried, setDetectTried] = useState(false);
   const [sourceStatus, setSourceStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [appStatus, setAppStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
+  const [showAuthHint, setShowAuthHint] = useState(false);
   const [currentVersionLocked, setCurrentVersionLocked] = useState(false);
   const [latestPreview, setLatestPreview] = useState('');
   const [latestPreviewLoading, setLatestPreviewLoading] = useState(false);
@@ -464,6 +465,7 @@ export default function VersionsPage() {
   }
 
   async function testConnection() {
+    setShowAuthHint(false);
     try {
       const result = await api<{ ok: boolean; message: string; latestVersion?: string | null; unauthorized?: boolean }>('/v1/monitors/version-test', undefined, {
         method: 'POST',
@@ -484,7 +486,8 @@ export default function VersionsPage() {
 
   async function discoverCurrentVersion() {
     setDetectTried(true);
-    const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[] }>('/v1/monitors/version-discover', undefined, {
+    setShowAuthHint(false);
+    const result = await api<{ currentVersion: string | null; message?: string; detectedFrom?: string | null; tried?: string[]; authFailed?: boolean }>('/v1/monitors/version-discover', undefined, {
       method: 'POST',
       body: JSON.stringify({
         provider,
@@ -510,6 +513,10 @@ export default function VersionsPage() {
     } else {
       setCurrentVersionLocked(false);
       setAppStatus(appUrl ? 'fail' : 'unknown');
+      // Show auth hint when the app endpoint returned 401/403
+      if (result.authFailed && appUrl && appAuthType === 'none') {
+        setShowAuthHint(true);
+      }
     }
     return result;
   }
@@ -639,6 +646,7 @@ export default function VersionsPage() {
     setDetectTried(false);
     setSourceStatus('unknown');
     setAppStatus('unknown');
+    setShowAuthHint(false);
     setCurrentVersionLocked(false);
     setLatestPreview('');
     setLatestPreviewLoading(false);
@@ -1229,6 +1237,30 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                 )}
                 <Button variant="primary" onClick={validateSetup}>✓ Verify connection</Button>
                 {testMessage && <p className={`text-sm ${sourceStatus === 'ok' ? 'text-success' : sourceStatus === 'fail' ? 'text-danger' : 'text-text-secondary'}`}>{testMessage}</p>}
+                {showAuthHint && (
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <span className="text-amber-400 text-base shrink-0 mt-0.5">⚠</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-amber-300">Got 401 Unauthorized — authentication required</p>
+                      <p className="text-xs text-amber-400/80 mt-0.5">This app requires a token to read its version endpoint. Switch to auth mode and add credentials.</p>
+                      <button
+                        type="button"
+                        className="mt-2 text-xs font-medium text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                        onClick={() => { setAppAuthType('token'); setShowAuthHint(false); }}
+                      >
+                        Enable auth →
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-amber-500/60 hover:text-amber-400 text-lg leading-none shrink-0"
+                      aria-label="Dismiss"
+                      onClick={() => setShowAuthHint(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
                 {appDetectedFrom && <p className="text-xs text-text-secondary">App version source endpoint: {appDetectedFrom}</p>}
                 {!appDetectedFrom && appTriedEndpoints.length > 0 && <p className="text-xs text-text-secondary">Tried: {appTriedEndpoints.join(', ')}</p>}
                 {appUrl && !currentVersion && !detectTried && <p className="text-xs text-text-secondary">Tip: click &quot;Validate and detect versions&quot; to auto-read deployed app version first.</p>}

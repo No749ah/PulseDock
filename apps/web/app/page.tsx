@@ -4,7 +4,7 @@ import { GradientText } from "./components/GradientText";
 import { Badge } from "./components/Badge";
 import { CountUp } from "./components/CountUp";
 import { LandingNav } from "./components/landing/LandingNav";
-import { LiveDemo } from "./components/landing/LiveDemo";
+import { LiveDemoLazy as LiveDemo } from "./components/landing/LiveDemoLazy";
 import {
   Activity,
   AlertTriangle,

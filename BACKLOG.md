@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 02:18 UTC)
+- **Build/Test:** ✅ Clean build, 1509 tests passing, zero TS errors
+- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
+- **Deployment:** ✅ API + Web + public URL all 200, all 12 routes clean
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session (2026-03-20 02:18 UTC):**
+  - **Landing page SSR refactor**: Removed "use client" from page.tsx — now a Server Component. Extracted LandingNav (mobile menu + auth redirect) and LiveDemo (URL checker + dashboard preview) as client islands into `apps/web/app/components/landing/`. FCP significantly improved — static HTML now server-rendered.
+  - **Tool registry expansion**: 2733 → 2773 entries (+40 new tools: Cacti, SmokePing, LibreNMS, Icinga2, Observium, Monit, Prometheus Pushgateway, Grafana Mimir, Thanos, Ceph Dashboard, Xen Orchestra, Proxmox Backup Server, Z-Wave JS UI, Frigate NVR, Double Take, Bazarr, Mealie, Grocy, yarr, Linkding, Gitea Act Runner, Appsmith, ToolJet, Budibase, NocoDB, Baserow, Grist, Metabase, Redash, Apache Superset, Lightdash, Cube, Twenty CRM, Chatwoot, Plane, Cal.com, Directus, Payload CMS v3, Medplum, Evidence)
+
 ## Status Summary (2026-03-20 00:23 UTC)
 - **Build/Test:** ✅ Clean build, 12 agent tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical

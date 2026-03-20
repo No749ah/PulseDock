@@ -1248,7 +1248,7 @@ export class ChecksService {
       try {
         const pages = await this.prisma.publicStatusPage.findMany({
           where: { userId: monitor.userId, isPublished: true },
-          select: { slug: true, layout: true, notifyWebhookUrl: true, lastNotifiedStatus: true, id: true, title: true },
+          select: { slug: true, layout: true, notifyWebhookUrl: true, slackWebhookUrl: true, discordWebhookUrl: true, lastNotifiedStatus: true, id: true, title: true },
         });
         const monitorId = monitor.id;
         for (const page of pages) {
@@ -1280,7 +1280,7 @@ export class ChecksService {
    * @param userId - Owner user ID for querying monitors
    */
   private async fireStatusPageWebhook(
-    page: { id: string; slug: string; title: string; notifyWebhookUrl: string | null; lastNotifiedStatus: string | null; layout: unknown },
+    page: { id: string; slug: string; title: string; notifyWebhookUrl: string | null; slackWebhookUrl?: string | null; discordWebhookUrl?: string | null; lastNotifiedStatus: string | null; layout: unknown },
     userId: string,
   ): Promise<void> {
     try {
@@ -1311,8 +1311,10 @@ export class ChecksService {
       // Skip persisting / notifying if there is nothing to notify
       // (no webhook URL and no mailer — avoids spurious DB writes in tests/lite deployments)
       const hasWebhook = Boolean(page.notifyWebhookUrl);
+      const hasSlack = Boolean(page.slackWebhookUrl);
+      const hasDiscord = Boolean(page.discordWebhookUrl);
       const hasMailer = Boolean(this.mailer);
-      if (!hasWebhook && !hasMailer) return;
+      if (!hasWebhook && !hasSlack && !hasDiscord && !hasMailer) return;
 
       // Persist new status so we don't re-fire on the next check
       await this.prisma.publicStatusPage.update({
@@ -1342,6 +1344,68 @@ export class ChecksService {
             body: JSON.stringify(payload),
             signal: ctrl.signal,
           });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      // Fire Slack + Discord webhooks if configured
+      const appBase = process.env.APP_BASE_URL ?? process.env.APP_URL ?? 'http://localhost:1234';
+      const pageUrl = `${appBase}/status/${page.slug}`;
+      const previousStatus = page.lastNotifiedStatus ?? 'unknown';
+
+      if (page.slackWebhookUrl) {
+        const slackColor = overallStatus === 'operational' ? 'good' : overallStatus === 'degraded' ? 'warning' : 'danger';
+        const slackPayload = {
+          text: `*${page.title}* status changed: ${previousStatus} → ${overallStatus}`,
+          attachments: [{
+            color: slackColor,
+            title: page.title,
+            title_link: pageUrl,
+            text: `System is now *${overallStatus}*`,
+            footer: 'PulseDock',
+            ts: Math.floor(Date.now() / 1000),
+          }],
+        };
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10_000);
+        try {
+          await fetch(page.slackWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock-StatusPage/1.0' },
+            body: JSON.stringify(slackPayload),
+            signal: ctrl.signal,
+          });
+        } catch (err) {
+          console.error('[PulseDock] Slack webhook delivery failed:', err instanceof Error ? err.message : String(err));
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      if (page.discordWebhookUrl) {
+        const discordColor = overallStatus === 'operational' ? 0x22c55e : overallStatus === 'degraded' ? 0xf59e0b : 0xef4444;
+        const discordPayload = {
+          embeds: [{
+            title: `${page.title} — ${overallStatus.toUpperCase()}`,
+            description: `Status changed: ${previousStatus} → ${overallStatus}`,
+            color: discordColor,
+            url: pageUrl,
+            timestamp: new Date().toISOString(),
+            footer: { text: 'PulseDock' },
+          }],
+        };
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10_000);
+        try {
+          await fetch(page.discordWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock-StatusPage/1.0' },
+            body: JSON.stringify(discordPayload),
+            signal: ctrl.signal,
+          });
+        } catch (err) {
+          console.error('[PulseDock] Discord webhook delivery failed:', err instanceof Error ? err.message : String(err));
         } finally {
           clearTimeout(timer);
         }

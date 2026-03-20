@@ -143,6 +143,12 @@ export class StatusPagesService {
       // Empty string = clear the webhook
       updateData['notifyWebhookUrl'] = dto.notifyWebhookUrl.trim() || null;
     }
+    if (dto.slackWebhookUrl !== undefined) {
+      updateData['slackWebhookUrl'] = dto.slackWebhookUrl.trim() || null;
+    }
+    if (dto.discordWebhookUrl !== undefined) {
+      updateData['discordWebhookUrl'] = dto.discordWebhookUrl.trim() || null;
+    }
 
     // Snapshot current layout before overwriting (version history)
     if (dto.layout !== undefined) {
@@ -586,7 +592,7 @@ export class StatusPagesService {
    * @throws NotFoundException if the page, its publication status, or the widget is not found
    * @throws UnauthorizedException if the page is password-protected and the supplied password is wrong/missing
    */
-  async getWidgetData(slug: string, widgetId: string, password?: string) {
+  async getWidgetData(slug: string, widgetId: string, password?: string, range?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
 
@@ -600,7 +606,21 @@ export class StatusPagesService {
     const widget = layout.widgets?.find((w: Widget) => w.id === widgetId);
     if (!widget) throw new NotFoundException('Widget not found');
 
-    return this.resolveWidgetData(page.userId, widget);
+    return this.resolveWidgetData(page.userId, widget, range);
+  }
+
+  /**
+   * Converts a range string (24h, 7d, 30d, 90d) to a start Date.
+   * Defaults to 7 days if unrecognized.
+   */
+  private getRangeStart(range?: string): Date {
+    const now = new Date();
+    switch (range) {
+      case '24h': return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      case '30d': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case '90d': return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      default: return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
   }
 
   /**
@@ -613,13 +633,16 @@ export class StatusPagesService {
    * @throws BadRequestException if required widget configuration is missing or invalid
    * @throws NotFoundException if a referenced resource (e.g. monitor) does not exist
    */
-  private async resolveWidgetData(userId: string, widget: Widget): Promise<Record<string, unknown>> {
+  private async resolveWidgetData(userId: string, widget: Widget, range?: string): Promise<Record<string, unknown>> {
     const monitorId = widget.config.monitorId as string | undefined;
+    // If a range param is provided, convert it to days and override widget's periodDays for time-based widgets
+    const rangeToDays: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
+    const overrideDays = range && rangeToDays[range] ? rangeToDays[range] : undefined;
 
     switch (widget.type) {
       case 'uptime-bar': {
         if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
-        const periodDays = (widget.config.periodDays as number) ?? 30;
+        const periodDays = overrideDays ?? (widget.config.periodDays as number) ?? 30;
         const since = new Date(Date.now() - periodDays * 86_400_000);
         const runs = await this.prisma.monitorRun.findMany({
           where: { monitorId, checkedAt: { gte: since } },
@@ -633,7 +656,7 @@ export class StatusPagesService {
 
       case 'uptime-timeline': {
         if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
-        const days = Math.min(Math.max((widget.config.days as number) ?? 90, 7), 365);
+        const days = overrideDays ?? Math.min(Math.max((widget.config.days as number) ?? 90, 7), 365);
         const now = new Date();
         // Build day buckets: index 0 = oldest, index (days-1) = today
         const buckets: Array<{ date: string; level: 'green' | 'yellow' | 'red' | 'no-data' }> = [];
@@ -707,7 +730,7 @@ export class StatusPagesService {
 
       case 'sla-summary': {
         if (!monitorId) throw new BadRequestException('Widget missing monitorId config');
-        const periodDays = Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
+        const periodDays = overrideDays ?? Math.min(Math.max((widget.config.periodDays as number) ?? 30, 1), 365);
         const slaTgt = Math.min(Math.max((widget.config.slaTarget as number) ?? 99.9, 0), 100);
         const since = new Date(Date.now() - periodDays * 86_400_000);
         const runs = await this.prisma.monitorRun.findMany({

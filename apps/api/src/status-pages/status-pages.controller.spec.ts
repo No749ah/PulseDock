@@ -163,12 +163,12 @@ describe('StatusPagesController', () => {
   describe('getWidgetData()', () => {
     it('calls getWidgetData with slug, widgetId, and no password', async () => {
       await controller.getWidgetData('my-page', 'widget-1');
-      expect(service.getWidgetData).toHaveBeenCalledWith('my-page', 'widget-1', undefined);
+      expect(service.getWidgetData).toHaveBeenCalledWith('my-page', 'widget-1', undefined, undefined);
     });
 
     it('calls getWidgetData with password when provided', async () => {
       await controller.getWidgetData('my-page', 'widget-1', 'secret');
-      expect(service.getWidgetData).toHaveBeenCalledWith('my-page', 'widget-1', 'secret');
+      expect(service.getWidgetData).toHaveBeenCalledWith('my-page', 'widget-1', 'secret', undefined);
     });
 
     it('returns the widget data from service', async () => {
@@ -181,9 +181,25 @@ describe('StatusPagesController', () => {
     it('passes all arguments correctly for current-status-badge widget', async () => {
       const badgeData = { widgetType: 'current-status-badge', level: 'green', monitorId: 'm2' };
       (service.getWidgetData as ReturnType<typeof vi.fn>).mockResolvedValue(badgeData);
-      const result = await controller.getWidgetData('status-page', 'badge-widget', 'pass123');
-      expect(service.getWidgetData).toHaveBeenCalledWith('status-page', 'badge-widget', 'pass123');
+      const result = await controller.getWidgetData('status-page', 'badge-widget', 'pass123', undefined);
+      expect(service.getWidgetData).toHaveBeenCalledWith('status-page', 'badge-widget', 'pass123', undefined);
       expect(result).toEqual(badgeData);
+    });
+
+    it('passes range param when provided', async () => {
+      const widgetData = { widgetType: 'uptime-bar', uptimePct: 98.5 };
+      (service.getWidgetData as ReturnType<typeof vi.fn>).mockResolvedValue(widgetData);
+      const result = await controller.getWidgetData('my-page', 'widget-1', undefined, '30d');
+      expect(service.getWidgetData).toHaveBeenCalledWith('my-page', 'widget-1', undefined, '30d');
+      expect(result).toEqual(widgetData);
+    });
+
+    it('passes range and password together', async () => {
+      const widgetData = { widgetType: 'uptime-timeline', days: 90 };
+      (service.getWidgetData as ReturnType<typeof vi.fn>).mockResolvedValue(widgetData);
+      const result = await controller.getWidgetData('locked-page', 'timeline-w', 'secret', '90d');
+      expect(service.getWidgetData).toHaveBeenCalledWith('locked-page', 'timeline-w', 'secret', '90d');
+      expect(result).toEqual(widgetData);
     });
   });
 });

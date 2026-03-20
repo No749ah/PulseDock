@@ -251,6 +251,8 @@ model PublicStatusPage {
   passwordHash        String?
   layout              Json     @default("{\"widgets\":[]}")
   notifyWebhookUrl    String?  // POST to this URL when overall status changes
+  slackWebhookUrl     String?  // Slack incoming webhook URL for status change notifications
+  discordWebhookUrl   String?  // Discord webhook URL for status change notifications
   lastNotifiedStatus  String?  // last status we notified about (operational/degraded/outage)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

@@ -258,4 +258,22 @@ export class UpdateStatusPageDto {
   @IsString()
   @MaxLength(500)
   notifyWebhookUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Slack incoming webhook URL for status change notifications. Leave empty to disable.',
+    example: 'https://hooks.slack.com/services/YOUR_WORKSPACE/YOUR_CHANNEL/YOUR_TOKEN',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  slackWebhookUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Discord webhook URL for status change notifications. Leave empty to disable.',
+    example: 'https://discord.com/api/webhooks/000000000000000000/XXXXXXXXXXXXXXXXXXXXXXXXX',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  discordWebhookUrl?: string;
 }

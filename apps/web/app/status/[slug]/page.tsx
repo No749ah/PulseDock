@@ -7,6 +7,8 @@ import { ExportPDFButton } from "./widgets/ExportPDFButton";
 import { OfflineBanner } from "./widgets/OfflineBanner";
 import { LazyWidget } from "./widgets/LazyWidget";
 import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
+import { RangePicker } from "./widgets/RangePicker";
+import { Suspense } from "react";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -221,12 +223,21 @@ export async function generateMetadata({
 
 // ── Page ─────────────────────────────────────────────────────────────────
 
+const VALID_RANGES = new Set(["24h", "7d", "30d", "90d"]);
+
 export default async function PublicStatusSlugPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const rawRange = Array.isArray(resolvedSearchParams.range)
+    ? resolvedSearchParams.range[0]
+    : resolvedSearchParams.range;
+  const range = rawRange && VALID_RANGES.has(rawRange) ? rawRange : "7d";
 
   const res = await fetch(`${API_BASE}/v1/public/status/${slug}`, {
     cache: "no-store",
@@ -252,7 +263,8 @@ export default async function PublicStatusSlugPage({
   const widgetDataEntries = await Promise.all(
     visible.map(async (widget) => {
       try {
-        const widgetRes = await fetch(`${API_BASE}/v1/public/status/${slug}/widget/${widget.id}`, {
+        const rangeParam = range !== "7d" ? `?range=${range}` : "";
+        const widgetRes = await fetch(`${API_BASE}/v1/public/status/${slug}/widget/${widget.id}${rangeParam}`, {
           cache: "no-store",
         });
         if (!widgetRes.ok) return [widget.id, null] as const;
@@ -320,6 +332,9 @@ export default async function PublicStatusSlugPage({
           <header className="mb-8 text-center relative">
             {/* Action buttons — top-right of header, hidden when printing */}
             <div className="absolute right-0 top-0 no-print flex items-center gap-2" role="toolbar" aria-label="Page actions">
+              <Suspense fallback={null}>
+                <RangePicker slug={slug} currentRange={range} />
+              </Suspense>
               <ExportImageButton slug={slug} />
               <ExportPDFButton slug={slug} />
               <PrintButton />

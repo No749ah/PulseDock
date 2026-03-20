@@ -229,6 +229,7 @@ function MonitorsPageInner() {
   const [showExternalImport, setShowExternalImport] = useState(false);
   const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "csv">("uptime-robot");
   const [externalImporting, setExternalImporting] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [externalImportResult, setExternalImportResult] = useState<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string } | null>(null);
 
   // bulk selection

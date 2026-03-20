@@ -126,42 +126,61 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
   const hasYellow = monitors.some((m) => m.level === "yellow");
   const level: "green" | "yellow" | "red" = hasRed ? "red" : hasYellow ? "yellow" : "green";
 
+  const degradedCount = monitors.filter((m) => m.level === "yellow").length;
+  const outageCount = monitors.filter((m) => m.level === "red").length;
+  const affectedCount = degradedCount + outageCount;
+  const operationalCount = monitors.filter((m) => m.level === "green").length;
+
   const config = {
     green: {
       label: "All Systems Operational",
+      subLabel: monitors.length > 0 ? `${monitors.length} monitor${monitors.length !== 1 ? "s" : ""} online` : null,
       bg: "bg-green-500/10 border-green-500/20",
       text: "text-green-400",
+      subText: "text-green-400/60",
       dot: "bg-green-400",
     },
     yellow: {
       label: "Partial Degradation",
+      subLabel: `${affectedCount} monitor${affectedCount !== 1 ? "s" : ""} degraded`,
       bg: "bg-yellow-500/10 border-yellow-500/20",
       text: "text-yellow-400",
+      subText: "text-yellow-400/70",
       dot: "bg-yellow-400",
     },
     red: {
       label: "Major Outage",
+      subLabel: `${outageCount} monitor${outageCount !== 1 ? "s" : ""} down${degradedCount > 0 ? `, ${degradedCount} degraded` : ""}`,
       bg: "bg-red-500/10 border-red-500/20",
       text: "text-red-400",
+      subText: "text-red-400/70",
       dot: "bg-red-400",
     },
   }[level];
 
-  const operationalCount = monitors.filter((m) => m.level === "green").length;
   return (
     <div
-      className={`flex items-center gap-4 rounded-2xl border p-6 ${config.bg}`}
+      className={`flex items-center gap-5 rounded-2xl border p-6 ${config.bg}`}
       role="status"
       aria-label={`System status: ${config.label}. ${operationalCount} of ${monitors.length} services operational.`}
       aria-live="polite"
     >
-      <span className="relative flex h-4 w-4 shrink-0" aria-hidden="true">
-        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${config.dot}`} />
-        <span className={`relative inline-flex h-4 w-4 rounded-full ${config.dot}${level !== "green" ? " animate-pulse" : ""}`} />
-      </span>
-      <span className={`text-xl font-semibold ${config.text}`}>{config.label}</span>
-      <span className="ml-auto text-sm font-semibold text-text-primary" aria-label={`${operationalCount} of ${monitors.length} services operational`}>
-        {operationalCount}/{monitors.length} operational
+      {level === "green" ? (
+        <CheckCircle2 className="h-8 w-8 shrink-0 text-green-400" aria-hidden="true" />
+      ) : (
+        <span className="relative flex h-7 w-7 shrink-0" aria-hidden="true">
+          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${config.dot}`} />
+          <span className={`relative inline-flex h-7 w-7 rounded-full animate-pulse ${config.dot}`} />
+        </span>
+      )}
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className={`text-2xl font-bold leading-tight ${config.text}`}>{config.label}</span>
+        {config.subLabel && (
+          <span className={`text-sm font-medium ${config.subText}`}>{config.subLabel}</span>
+        )}
+      </div>
+      <span className="ml-auto shrink-0 text-sm font-semibold text-text-secondary" aria-label={`${operationalCount} of ${monitors.length} services operational`}>
+        {operationalCount}<span className="text-text-muted">/{monitors.length}</span>
       </span>
     </div>
   );
@@ -339,22 +358,34 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
       ? "text-yellow-400"
       : "text-red-400";
 
+  const dotColor =
+    uptimePct >= 99.5
+      ? "bg-green-400"
+      : uptimePct >= 90
+      ? "bg-yellow-400"
+      : "bg-red-400";
+
   return (
     <div className={`rounded-xl border ${borderColor} bg-surface p-4`} role="region" aria-label={`${label}: ${uptimePct}% uptime over last ${periodDays} days`}>
-      <div className="mb-3 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-          <StatusIcon className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
-          {label}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-sm font-semibold text-text-primary min-w-0">
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${dotColor}`} aria-hidden="true" />
+          <span className="truncate">{label}</span>
         </span>
-        <span className={`text-2xl font-bold tabular-nums ${pctColor}`} aria-label={`${uptimePct}% uptime`}>{uptimePct}%</span>
+        <span className={`text-2xl font-bold tabular-nums shrink-0 ${pctColor}`} aria-label={`${uptimePct}% uptime`}>{uptimePct}%</span>
       </div>
-      <div className="h-3 w-full overflow-hidden rounded-full bg-bg" role="progressbar" aria-valuenow={uptimePct} aria-valuemin={0} aria-valuemax={100} aria-label={`${uptimePct}% uptime`}>
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-bg" role="progressbar" aria-valuenow={uptimePct} aria-valuemin={0} aria-valuemax={100} aria-label={`${uptimePct}% uptime`}>
         <div
           className={`h-full rounded-full ${barColor} transition-all`}
           style={{ width: `${uptimePct}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-text-secondary">Last {periodDays} days{typeof widgetData?.total === "number" ? ` · ${widgetData.total} checks` : ""}</p>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-text-secondary">Last {periodDays} days</p>
+        {typeof widgetData?.total === "number" && (
+          <p className="text-xs text-text-secondary tabular-nums">Based on {widgetData.total.toLocaleString()} checks</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -376,21 +407,29 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
 
   // Fallback: simple placeholder squares when no data yet
   const squares: Array<{ date: string; level: string; title: string }> = timeline
-    ? timeline.map((d) => ({
-        date: d.date,
-        level: d.level,
-        title: d.level === "no-data"
-          ? `${d.date}: No data`
-          : d.level === "green"
-          ? `${d.date}: All checks passed${d.counts ? ` (${d.counts.green} ok)` : ""}`
-          : d.level === "yellow"
-          ? `${d.date}: Some failures${d.counts ? ` (${d.counts.yellow + d.counts.red} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`
-          : `${d.date}: Majority failed${d.counts ? ` (${d.counts.red + d.counts.yellow} failed / ${d.counts.green + d.counts.yellow + d.counts.red} checks)` : ""}`,
-      }))
+    ? timeline.map((d) => {
+        const total = d.counts ? d.counts.green + d.counts.yellow + d.counts.red : 0;
+        const failed = d.counts ? d.counts.yellow + d.counts.red : 0;
+        const uptimePctDay = total > 0 ? Math.round((d.counts!.green / total) * 10000) / 100 : null;
+        const countSuffix = d.counts && total > 0
+          ? ` · ${d.counts.green}✓ ${d.counts.yellow}⚠ ${d.counts.red}✗ (${total} total)`
+          : "";
+        return {
+          date: d.date,
+          level: d.level,
+          title: d.level === "no-data"
+            ? `${d.date} — No data`
+            : d.level === "green"
+            ? `${d.date} — Operational${uptimePctDay !== null ? ` · ${uptimePctDay}% up` : ""}${countSuffix}`
+            : d.level === "yellow"
+            ? `${d.date} — Degraded${uptimePctDay !== null ? ` · ${uptimePctDay}% up` : ""}${countSuffix}${failed > 0 ? ` · ${failed} failed` : ""}`
+            : `${d.date} — Outage${uptimePctDay !== null ? ` · ${uptimePctDay}% up` : ""}${countSuffix}${failed > 0 ? ` · ${failed} failed` : ""}`,
+        };
+      })
     : Array.from({ length: days }, (_, i) => ({
         date: `Day ${i + 1}`,
         level: "no-data",
-        title: `Day ${i + 1}: No data`,
+        title: `Day ${i + 1} — No data`,
       }));
 
   const upDays = squares.filter((s) => s.level === "green").length;
@@ -477,48 +516,52 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-medium text-text-primary">{label}</p>
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-text-primary truncate">{label}</p>
         <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+          className={`shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide ${
             pass
-              ? "bg-green-500/15 text-green-400"
-              : "bg-red-500/15 text-red-400"
+              ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/30"
+              : "bg-red-500/20 text-red-400 ring-1 ring-red-500/30"
           }`}
         >
-          {pass ? "✓ Met" : "✗ Missed"}
+          {pass ? "✓ SLA Met" : "✗ SLA Breached"}
         </span>
       </div>
-      <div className="flex items-end gap-4 mb-3">
+      {/* Big number + target */}
+      <div className="flex items-end gap-5 mb-4">
         <div>
-          <p className={`text-3xl font-semibold tabular-nums ${pass ? "text-green-400" : "text-red-400"}`}>
+          <p className={`text-4xl font-bold tabular-nums leading-none ${pass ? "text-green-400" : "text-red-400"}`}>
             <AnimatedNumber value={actual} decimals={2} duration={1200} suffix="%" />
           </p>
-          <p className="text-xs text-text-secondary">
-            Actual · {periodDays}d
-            {totalChecks !== null ? ` · ${totalChecks} checks` : ""}
+          <p className="mt-1 text-xs text-text-secondary">
+            Actual uptime · {periodDays}d{totalChecks !== null ? ` · ${totalChecks.toLocaleString()} checks` : ""}
           </p>
         </div>
-        <div className="pb-0.5">
-          <p className="text-lg font-medium text-text-secondary tabular-nums">{target}%</p>
-          <p className="text-xs text-text-secondary">Target</p>
+        <div className="pb-0.5 border-l border-border pl-5">
+          <p className="text-2xl font-semibold tabular-nums text-text-secondary">{target}%</p>
+          <p className="text-xs text-text-secondary">SLA target</p>
         </div>
       </div>
       {/* Downtime budget bar */}
       {budgetUsed !== null && allowedDownMin !== null && (
         <div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg mb-1">
+          <div className="flex justify-between text-[10px] text-text-secondary mb-1">
+            <span>Downtime budget used</span>
+            <span className="tabular-nums">{budgetUsed}%</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-bg">
             <div
               className={`h-full rounded-full transition-all ${budgetUsed >= 90 ? "bg-red-400" : budgetUsed >= 60 ? "bg-yellow-400" : "bg-green-400"}`}
               style={{ width: `${budgetUsed}%` }}
             />
           </div>
-          <div className="flex justify-between text-[10px] text-text-secondary">
-            <span>Budget used: {budgetUsed}%</span>
-            {remainingDownMin !== null && (
-              <span>{formatMinutes(remainingDownMin)} remaining of {formatMinutes(allowedDownMin)} allowed</span>
-            )}
-          </div>
+          {remainingDownMin !== null && (
+            <p className="mt-1 text-[10px] text-text-secondary text-right tabular-nums">
+              {formatMinutes(remainingDownMin)} remaining of {formatMinutes(allowedDownMin)} allowed
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -572,9 +615,13 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
 
       {/* Chart */}
       {withLatency.length === 0 ? (
-        <div className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg bg-bg/50 border border-dashed border-border">
-          <Activity className="w-4 h-4 text-text-muted" />
-          <span className="text-xs text-text-secondary">Waiting for check data</span>
+        <div className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg bg-bg/50 border border-dashed border-border px-4 text-center">
+          <Activity className="w-4 h-4 text-text-muted shrink-0" />
+          <span className="text-xs text-text-secondary">
+            {dataPoints.length > 0
+              ? "No response time data — this monitor type doesn't track latency."
+              : "Waiting for check data"}
+          </span>
         </div>
       ) : (
         <svg

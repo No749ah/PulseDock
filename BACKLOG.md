@@ -758,8 +758,8 @@
 
 - [ ] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data.
 - [ ] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text.
-- [ ] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
-- [ ] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
+- [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
+- [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [ ] **Widget data loading** — Currently all widget data is fetched server-side on page load. Add client-side refresh so individual widgets can update without a full page reload.
 - [ ] **Widget design overhaul** — All widgets should look polished, modern, and information-dense. Current widgets are too sparse and basic. Reference: Grafana dashboards, Linear status pages, Atlassian Statuspage. Each widget should show: title, key metric (large), context (small), trend, last updated time.
 - [ ] **"Preview with data" mode** — In the editor, a button that loads real live data into the preview so you can see exactly what the public page will look like.

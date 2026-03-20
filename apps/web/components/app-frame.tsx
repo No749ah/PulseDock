@@ -94,12 +94,16 @@ export function AppFrame({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
 
-  // Update browser tab title to reflect the current page
-  useEffect(() => {
-    document.title = title ? `${title} — PulseDock` : 'PulseDock';
-  }, [title]);
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState<string | null>(null);
+  const [workspaceLogo, setWorkspaceLogo] = useState<string | null>(null);
+
+  // Update browser tab title to reflect the current page
+  useEffect(() => {
+    const brand = workspaceName ?? 'PulseDock';
+    document.title = title ? `${title} — ${brand}` : brand;
+  }, [title, workspaceName]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -157,8 +161,18 @@ export function AppFrame({
   };
 
   useEffect(() => {
-    setUser(getCachedUser() ?? getUser());
+    const currentUser = getCachedUser() ?? getUser();
+    setUser(currentUser);
     setMounted(true);
+    // Fetch workspace branding
+    if (currentUser?.id) {
+      api<{ workspaceName: string | null; workspaceLogo: string | null }>('/v1/settings/workspace', currentUser.id)
+        .then((ws) => {
+          if (ws.workspaceName) setWorkspaceName(ws.workspaceName);
+          if (ws.workspaceLogo) setWorkspaceLogo(ws.workspaceLogo);
+        })
+        .catch(() => { /* non-critical */ });
+    }
     // Fetch recent failed monitor runs as notifications
     fetchNotifications();
     // Auto-fetch every 60s to keep badge count fresh
@@ -235,13 +249,14 @@ export function AppFrame({
         <div className="flex items-center gap-3 px-5 h-[72px] border-b border-border/40 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/pulsedock-logo.svg"
-            alt="PulseDock"
+            src={workspaceLogo ?? '/brand/pulsedock-logo.svg'}
+            alt={workspaceName ?? 'PulseDock'}
             width={28}
             height={28}
             className="rounded-lg"
+            onError={(e) => { (e.target as HTMLImageElement).src = '/brand/pulsedock-logo.svg'; }}
           />
-          <span className="text-lg font-bold text-text-primary tracking-tight">PulseDock</span>
+          <span className="text-lg font-bold text-text-primary tracking-tight">{workspaceName ?? 'PulseDock'}</span>
           {/* Close button (mobile only) */}
           <button
             className="ml-auto sm:hidden p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"

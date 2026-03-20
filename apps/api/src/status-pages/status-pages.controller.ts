@@ -218,6 +218,7 @@ export class StatusPagesController {
   @ApiParam({ name: 'slug', description: 'Page slug', example: 'my-services' })
   @ApiParam({ name: 'widgetId', description: 'Widget ID within the layout', example: 'w_abc123' })
   @ApiQuery({ name: 'password', required: false, description: 'Password for password-protected pages' })
+  @ApiQuery({ name: 'range', required: false, description: 'Time range for time-based widgets: 24h | 7d | 30d | 90d (default: 7d)' })
   @ApiResponse({ status: 200, description: 'Widget-specific data object.' })
   @ApiResponse({ status: 401, description: 'Page is password-protected and password is wrong/missing.' })
   @ApiResponse({ status: 404, description: 'Page, widget, or published status not found.' })
@@ -225,8 +226,9 @@ export class StatusPagesController {
     @Param('slug') slug: string,
     @Param('widgetId') widgetId: string,
     @Query('password') password?: string,
+    @Query('range') range?: string,
   ) {
-    return this.statusPagesService.getWidgetData(slug, widgetId, password);
+    return this.statusPagesService.getWidgetData(slug, widgetId, password, range);
   }
 
   @Get('public/status/:slug/feed.xml')

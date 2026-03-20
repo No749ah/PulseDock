@@ -118,6 +118,8 @@ interface PageSettings {
   robotsIndex?: boolean;
   // Webhook notifications
   notifyWebhookUrl?: string;
+  slackWebhookUrl?: string;
+  discordWebhookUrl?: string;
 }
 
 interface PageLayout {
@@ -133,6 +135,8 @@ interface StatusPage {
   isPublished: boolean;
   hasPassword: boolean;
   notifyWebhookUrl?: string | null;
+  slackWebhookUrl?: string | null;
+  discordWebhookUrl?: string | null;
   layout: PageLayout;
 }
 
@@ -1719,6 +1723,8 @@ export default function StatusPageEditorPage() {
       setPageSettings({
         ...(data.layout?.settings ?? {}),
         ...(data.notifyWebhookUrl ? { notifyWebhookUrl: data.notifyWebhookUrl } : {}),
+        ...(data.slackWebhookUrl ? { slackWebhookUrl: data.slackWebhookUrl } : {}),
+        ...(data.discordWebhookUrl ? { discordWebhookUrl: data.discordWebhookUrl } : {}),
       });
       savedWidgetsRef.current = JSON.stringify(loadedWidgets); // mark clean
     } catch (err: unknown) {
@@ -1768,11 +1774,17 @@ export default function StatusPageEditorPage() {
     if (!page) return;
     setSaving(true);
     try {
-      // notifyWebhookUrl is a top-level page field (not inside layout)
-      const { notifyWebhookUrl: _webhookInSettings, ...layoutSettings } = pageSettings;
+      // notifyWebhookUrl, slackWebhookUrl, discordWebhookUrl are top-level page fields (not inside layout)
+      const { notifyWebhookUrl: _webhookInSettings, slackWebhookUrl: _slackInSettings, discordWebhookUrl: _discordInSettings, ...layoutSettings } = pageSettings;
       const patchBody: Record<string, unknown> = { layout: { widgets, settings: layoutSettings } };
       if (pageSettings.notifyWebhookUrl !== undefined) {
         patchBody.notifyWebhookUrl = pageSettings.notifyWebhookUrl;
+      }
+      if (pageSettings.slackWebhookUrl !== undefined) {
+        patchBody.slackWebhookUrl = pageSettings.slackWebhookUrl;
+      }
+      if (pageSettings.discordWebhookUrl !== undefined) {
+        patchBody.discordWebhookUrl = pageSettings.discordWebhookUrl;
       }
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
@@ -3034,6 +3046,28 @@ export default function StatusPageEditorPage() {
                       }, null, 2)}</pre>
                     </div>
                   )}
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Slack Webhook URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://hooks.slack.com/services/..."
+                      value={pageSettings.slackWebhookUrl ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, slackWebhookUrl: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="text-[10px] text-text-secondary mt-1">Optional. Posts a Slack message when the page status changes.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Discord Webhook URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://discord.com/api/webhooks/..."
+                      value={pageSettings.discordWebhookUrl ?? ""}
+                      onChange={(e) => setPageSettings((s) => ({ ...s, discordWebhookUrl: e.target.value || undefined }))}
+                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+                    />
+                    <p className="text-[10px] text-text-secondary mt-1">Optional. Posts a Discord embed when the page status changes.</p>
+                  </div>
                 </div>
               </div>
 

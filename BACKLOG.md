@@ -1463,11 +1463,11 @@
 - [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
 - [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
 - [x] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance. Unsubscribe via token link. Subscriber count in admin list. Incident create/resolve notifies all status page subscribers.
-- [ ] **Slack/Discord Integration** — Auto-post status changes to channels
+- [x] **Slack/Discord Integration** — Auto-post status changes to Slack/Discord channels. `slackWebhookUrl` + `discordWebhookUrl` on PublicStatusPage. Implemented in checks scheduler with rich embeds (color-coded, title, description, link, timestamp). Wired into Page Settings modal.
 - [x] **Embeddable Widget** — iFrame embed (`/embed/[monitorId]`), JSON API (`/v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), embed code modal in dashboard
-- [ ] **Status Page Badge** — "Status: Operational" badge for README/websites (already have SVG badges, extend to status page level)
-- [ ] **Historical Data Retention** — Configure how long to keep check data (7d/30d/90d/1y)
-- [ ] **Aggregation Pipelines** — Pre-compute hourly/daily rollups for fast chart rendering
+- [x] **Status Page Badge** — `GET /v1/public/status-badge/:slug.svg` — shields.io-style SVG badge for status pages (flat/flat-square/for-the-badge styles, operational/degraded/outage, CORS-open, 60s cache)
+- [x] **Historical Data Retention** — `RUN_RETENTION_DAYS` env var (default 90d). Daily cron in `ChecksScheduler` prunes `MonitorRun` records older than the configured period.
+- [x] **Aggregation Pipelines** — `MonitorRunRollup` table with hourly/daily granularity. Scheduler computes rollups. `rollupEnabled` flag per user.
 
 ---
 

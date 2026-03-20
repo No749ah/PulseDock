@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck, Zap } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -130,6 +130,7 @@ export default function DashboardPage() {
   });
   const [showCustomize, setShowCustomize] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [monitorView, setMonitorView] = useState<"table" | "grid">(() => {
     try { return (localStorage.getItem("dashboard-monitor-view") as "table" | "grid") ?? "table"; } catch { return "table"; }
   });
@@ -295,6 +296,24 @@ export default function DashboardPage() {
     autoRefreshTimerRef.current = setTimeout(tick, refreshInterval * 1000);
     return () => { if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current); };
   }, [autoRefresh, refreshInterval, loadDashboard]);
+
+  // Seed sample monitors for demo/onboarding
+  const handleSeedDemo = async () => {
+    setSeedingDemo(true);
+    try {
+      const sampleMonitors = [
+        { name: "GitHub", type: "HTTP", target: "https://github.com", intervalMs: 60000, timeoutMs: 10000, enabled: true },
+        { name: "Cloudflare", type: "HTTP", target: "https://cloudflare.com", intervalMs: 60000, timeoutMs: 10000, enabled: true },
+        { name: "PulseDock API", type: "HTTP", target: "http://localhost:4321/health", intervalMs: 30000, timeoutMs: 5000, enabled: true },
+      ];
+      await Promise.all(sampleMonitors.map((m) => api("/v1/monitors", { method: "POST", body: m })));
+      await loadDashboard();
+    } catch {
+      // ignore — user can create manually
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -641,7 +660,31 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-text-primary text-lg font-medium mb-2">No monitors configured yet</p>
                       <p className="text-text-secondary text-sm mb-6">Start monitoring your services, APIs, and endpoints</p>
-                      <Button onClick={() => router.push("/monitors")} size="lg">Create your first monitor</Button>
+                      <div className="flex items-center justify-center gap-3 flex-wrap">
+                        <Button onClick={() => router.push("/monitors")} size="lg">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create monitor
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          onClick={handleSeedDemo}
+                          disabled={seedingDemo}
+                        >
+                          {seedingDemo ? (
+                            <span className="flex items-center gap-2">
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Loading…
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <Zap className="w-4 h-4" />
+                              Load sample monitors
+                            </span>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-text-muted mt-4">Sample monitors check GitHub, Cloudflare, and your local API</p>
                     </Card>
                   ) : monitorView === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

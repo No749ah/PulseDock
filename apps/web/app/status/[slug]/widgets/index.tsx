@@ -44,6 +44,16 @@ export interface Widget {
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diffMs / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ago`;
+}
+
 /** Returns true if the API indicated this widget has no monitor configured. */
 function isNoConfig(data: unknown): boolean {
   return typeof data === 'object' && data !== null && '_noConfig' in data && (data as Record<string, unknown>)._noConfig === true;
@@ -1630,7 +1640,7 @@ function LatencyPercentilesCard({ widget, extra }: WidgetProps) {
   return (
     <WidgetCard
       title={label ?? "Response Latency"}
-      meta={`${data.sampleCount.toLocaleString()} samples · ${data.periodDays}d`}
+      meta={`${data.sampleCount.toLocaleString()} samples · ${data.periodDays}d${(data as Record<string, unknown>).fetchedAt ? ` · ${timeAgo((data as Record<string, unknown>).fetchedAt as string)}` : ''}`}
     >
       <div className="p-4 grid grid-cols-3 gap-2">
         {cells.map((c) => (
@@ -1814,7 +1824,7 @@ function MttrMttfCards({ widget, extra }: WidgetProps) {
   }
 
   return (
-    <WidgetCard title={label ?? "Reliability Metrics"} meta={`Last ${data.periodDays}d`}>
+    <WidgetCard title={label ?? "Reliability Metrics"} meta={`Last ${data.periodDays}d${(data as Record<string, unknown>).fetchedAt ? ` · ${timeAgo((data as Record<string, unknown>).fetchedAt as string)}` : ''}`}>
       <div className="p-4 grid grid-cols-2 gap-3">
         {/* MTTR */}
         <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-center">

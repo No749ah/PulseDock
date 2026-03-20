@@ -769,7 +769,7 @@ export class StatusPagesService {
         const total = runs.length;
         const up = runs.filter((r: { level: string }) => r.level === 'green').length;
         const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-        return { monitorId, uptimePct, periodDays, total };
+        return { monitorId, uptimePct, periodDays, total , fetchedAt: new Date().toISOString()};
       }
 
       case 'uptime-timeline': {
@@ -815,7 +815,7 @@ export class StatusPagesService {
           const level = failRate >= 0.5 ? 'red' : failRate > 0 ? 'yellow' : 'green';
           return { date: b.date, level, counts };
         });
-        return { monitorId, days, timeline };
+        return { monitorId, days, timeline , fetchedAt: new Date().toISOString()};
       }
 
       case 'current-status-badge': {
@@ -832,6 +832,7 @@ export class StatusPagesService {
           level: latest?.level ?? 'green',
           lastChecked: latest?.checkedAt ?? null,
           latencyMs: latest?.latencyMs ?? null,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -843,7 +844,7 @@ export class StatusPagesService {
         const down = monitors.filter((m) => m.runs[0]?.level === 'red').length;
         const degraded = monitors.filter((m) => m.runs[0]?.level === 'yellow').length;
         const status = down > 0 ? 'outage' : degraded > 0 ? 'degraded' : 'operational';
-        return { status, monitorsDown: down, monitorsDegraded: degraded, total: monitors.length };
+        return { status, monitorsDown: down, monitorsDegraded: degraded, total: monitors.length , fetchedAt: new Date().toISOString()};
       }
 
       case 'metric-counter': {
@@ -864,7 +865,7 @@ export class StatusPagesService {
           const avgMs = runs.length > 0
             ? Math.round(runs.reduce((sum, run) => sum + (run.latencyMs as number), 0) / runs.length)
             : 0;
-          return { label: (widget.config.label as string | undefined) ?? `Avg latency (${periodDays}d)`, value: avgMs, suffix: 'ms', metricType, periodDays };
+          return { label: (widget.config.label as string | undefined) ?? `Avg latency (${periodDays}d)`, value: avgMs, suffix: 'ms', metricType, periodDays, fetchedAt: new Date().toISOString() };
         }
 
         if (metricType === 'checks') {
@@ -874,7 +875,7 @@ export class StatusPagesService {
               checkedAt: { gte: since },
             },
           });
-          return { label: (widget.config.label as string | undefined) ?? `Checks (${periodDays}d)`, value: total, suffix: '', metricType, periodDays };
+          return { label: (widget.config.label as string | undefined) ?? `Checks (${periodDays}d)`, value: total, suffix: '', metricType, periodDays, fetchedAt: new Date().toISOString() };
         }
 
         if (metricType === 'incidents') {
@@ -885,7 +886,7 @@ export class StatusPagesService {
               ...(monitorId ? { monitors: { some: { monitorId } } } : {}),
             },
           });
-          return { label: (widget.config.label as string | undefined) ?? `Incidents (${periodDays}d)`, value: total, suffix: '', metricType, periodDays };
+          return { label: (widget.config.label as string | undefined) ?? `Incidents (${periodDays}d)`, value: total, suffix: '', metricType, periodDays, fetchedAt: new Date().toISOString() };
         }
 
         // default uptime
@@ -899,7 +900,7 @@ export class StatusPagesService {
         const total = runs.length;
         const up = runs.filter((r) => r.level === 'green').length;
         const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-        return { label: (widget.config.label as string | undefined) ?? `Uptime (${periodDays}d)`, value: uptimePct, suffix: '%', metricType: 'uptime', periodDays };
+        return { label: (widget.config.label as string | undefined) ?? `Uptime (${periodDays}d)`, value: uptimePct, suffix: '%', metricType: 'uptime', periodDays , fetchedAt: new Date().toISOString()};
       }
 
       case 'monitor-group':
@@ -942,6 +943,7 @@ export class StatusPagesService {
           pass,
           allowedDownMinutes: Math.round(allowedDownMinutes * 10) / 10,
           remainingDownMinutes: Math.round(remainingDownMinutes * 10) / 10,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -982,7 +984,7 @@ export class StatusPagesService {
               })()
             : null;
         const maxMs = withLatency.length > 0 ? Math.max(...withLatency.map((d) => d.ms as number)) : null;
-        return { monitorId, dataPoints, avgMs, p95Ms, maxMs };
+        return { monitorId, dataPoints, avgMs, p95Ms, maxMs , fetchedAt: new Date().toISOString()};
       }
 
       case 'response-time-heatmap': {
@@ -1019,7 +1021,7 @@ export class StatusPagesService {
         const maxMs = allAvgs.length > 0 ? Math.max(...allAvgs) : 0;
         const avgMs = allAvgs.length > 0 ? Math.round(allAvgs.reduce((s, v) => s + v, 0) / allAvgs.length) : 0;
 
-        return { monitorId, grid, minMs, maxMs, avgMs, periodDays };
+        return { monitorId, grid, minMs, maxMs, avgMs, periodDays , fetchedAt: new Date().toISOString()};
       }
 
       case 'component-status-list': {
@@ -1065,7 +1067,7 @@ export class StatusPagesService {
           downCount > 0 ? 'major-outage'
           : degradedCount > 0 ? 'partial-outage'
           : 'operational';
-        return { components, overallStatus, total: components.length, downCount, degradedCount };
+        return { components, overallStatus, total: components.length, downCount, degradedCount , fetchedAt: new Date().toISOString()};
       }
 
       case 'rolling-uptime-cards': {
@@ -1090,7 +1092,7 @@ export class StatusPagesService {
             return { label, days, uptimePct, total };
           }),
         );
-        return { monitorId, cards };
+        return { monitorId, cards , fetchedAt: new Date().toISOString()};
       }
 
       case 'status-history-ribbon': {
@@ -1144,7 +1146,7 @@ export class StatusPagesService {
           });
           return { id: m.id, name: m.name, ribbon };
         });
-        return { days, rows };
+        return { days, rows , fetchedAt: new Date().toISOString()};
       }
 
       case 'uptime-percentage-card': {
@@ -1172,7 +1174,7 @@ export class StatusPagesService {
         const previous = toUptimePct(prevRuns);
         const trend = current > previous ? 'up' : current < previous ? 'down' : 'flat';
         const delta = Math.round((current - previous) * 100) / 100;
-        return { monitorId, periodDays, uptimePct: current, previousPct: previous, trend, delta };
+        return { monitorId, periodDays, uptimePct: current, previousPct: previous, trend, delta , fetchedAt: new Date().toISOString()};
       }
 
       case 'service-health-matrix': {
@@ -1213,7 +1215,7 @@ export class StatusPagesService {
               }],
             };
           });
-          return { mode: 'auto', columns: ['Production'], matrix };
+          return { mode: 'auto', columns: ['Production'], matrix, fetchedAt: new Date().toISOString() };
         }
 
         // Manual mode: explicit rows and columns
@@ -1251,7 +1253,7 @@ export class StatusPagesService {
           }),
         }));
 
-        return { mode: 'manual', columns: columns.map((c) => c.label), matrix };
+        return { mode: 'manual', columns: columns.map((c) => c.label), matrix , fetchedAt: new Date().toISOString()};
       }
 
       case 'aggregate-health-score': {
@@ -1292,7 +1294,7 @@ export class StatusPagesService {
         const degraded = breakdown.filter((b) => b.level === 'yellow').length;
         const status = down > 0 ? (down > monitors.length * 0.5 ? 'critical' : 'degraded') : degraded > 0 ? 'degraded' : 'healthy';
 
-        return { score, total: monitors.length, down, degraded, status, breakdown };
+        return { score, total: monitors.length, down, degraded, status, breakdown , fetchedAt: new Date().toISOString()};
       }
 
       case 'latency-percentiles-card': {
@@ -1331,6 +1333,7 @@ export class StatusPagesService {
           prevP95: calcPercentile(prevRuns, 0.95),
           prevP99: calcPercentile(prevRuns, 0.99),
           sampleCount: currentRuns.length,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1427,6 +1430,7 @@ export class StatusPagesService {
           outages: outages.slice(0, maxEntries),
           total,
           periodDays,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1440,6 +1444,7 @@ export class StatusPagesService {
         return {
           count: incidents.length,
           incidents,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1495,6 +1500,7 @@ export class StatusPagesService {
           recoveryCount: redDurations.length,
           failureCount: greenDurations.filter((_, i) => i < redDurations.length).length,
           periodDays,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1539,7 +1545,7 @@ export class StatusPagesService {
           return a.actual - b.actual;
         });
 
-        return { rows, periodDays, slaTarget: defaultTarget };
+        return { rows, periodDays, slaTarget: defaultTarget , fetchedAt: new Date().toISOString()};
       }
 
       case 'uptime-heatmap': {
@@ -1598,7 +1604,7 @@ export class StatusPagesService {
           return d.toISOString().slice(0, 10);
         });
 
-        return { monitorId, grid, dayLabels, days, hours: 24 };
+        return { monitorId, grid, dayLabels, days, hours: 24 , fetchedAt: new Date().toISOString()};
       }
 
       case 'incident-timeline': {
@@ -1659,7 +1665,7 @@ export class StatusPagesService {
           };
         });
 
-        return { incidents: result, total: result.length, periodDays };
+        return { incidents: result, total: result.length, periodDays , fetchedAt: new Date().toISOString()};
       }
 
       case 'ssl-certificate-status': {
@@ -1733,7 +1739,7 @@ export class StatusPagesService {
           return (order[a.status] ?? 4) - (order[b.status] ?? 4);
         });
 
-        return { certs, total: certs.length };
+        return { certs, total: certs.length , fetchedAt: new Date().toISOString()};
       }
 
       case 'incident-severity-distribution': {
@@ -1767,6 +1773,7 @@ export class StatusPagesService {
           minor,
           total: incidents.length,
           periodDays,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1790,7 +1797,7 @@ export class StatusPagesService {
         });
 
         if (incidents.length === 0) {
-          return { avg: null, longest: null, shortest: null, count: 0, periodDays };
+          return { avg: null, longest: null, shortest: null, count: 0, periodDays, fetchedAt: new Date().toISOString() };
         }
 
         const durations = incidents.map((i) => {
@@ -1802,7 +1809,7 @@ export class StatusPagesService {
         const longest = Math.max(...durations);
         const shortest = Math.min(...durations);
 
-        return { avg, longest, shortest, count: durations.length, periodDays };
+        return { avg, longest, shortest, count: durations.length, periodDays , fetchedAt: new Date().toISOString()};
       }
 
       case 'post-mortem-card': {
@@ -1837,7 +1844,7 @@ export class StatusPagesService {
         });
 
         if (!incident) {
-          return { incident: null };
+          return { incident: null, fetchedAt: new Date().toISOString() };
         }
 
         const durationMs =
@@ -1858,6 +1865,7 @@ export class StatusPagesService {
               createdAt: u.createdAt,
             })),
           },
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -1911,7 +1919,7 @@ export class StatusPagesService {
           else trend = 'down';
         }
 
-        return { thisWeekAvg, lastWeekAvg, changePercent, trend, dataPoints };
+        return { thisWeekAvg, lastWeekAvg, changePercent, trend, dataPoints , fetchedAt: new Date().toISOString()};
       }
 
       case 'apdex-score': {
@@ -1927,7 +1935,7 @@ export class StatusPagesService {
         });
 
         if (runs.length === 0) {
-          return { score: null, satisfied: 0, tolerating: 0, frustrated: 0, total: 0, rating: null };
+          return { score: null, satisfied: 0, tolerating: 0, frustrated: 0, total: 0, rating: null, fetchedAt: new Date().toISOString() };
         }
 
         let satisfied = 0;
@@ -1951,7 +1959,7 @@ export class StatusPagesService {
         else if (score >= 0.50) rating = 'Poor';
         else rating = 'Unacceptable';
 
-        return { score, satisfied, tolerating, frustrated, total, rating };
+        return { score, satisfied, tolerating, frustrated, total, rating , fetchedAt: new Date().toISOString()};
       }
 
       case 'throughput-counter': {
@@ -1992,7 +2000,7 @@ export class StatusPagesService {
         const average = Math.round(counts.reduce((s, v) => s + v, 0) / counts.length);
         const peak = Math.max(...counts);
 
-        return { current, average, peak, dataPoints };
+        return { current, average, peak, dataPoints , fetchedAt: new Date().toISOString()};
       }
 
       case 'response-time-comparison': {
@@ -2047,6 +2055,7 @@ export class StatusPagesService {
           monitors: monitorDataList.map(({ timestamps: _, ...m }) => m),
           labels,
           periodHours: periodHours || Math.round(points / 2),
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2079,7 +2088,7 @@ export class StatusPagesService {
         );
 
         monitorDataList.sort((a, b) => b.uptimePct - a.uptimePct);
-        return { monitors: monitorDataList, periodDays };
+        return { monitors: monitorDataList, periodDays , fetchedAt: new Date().toISOString()};
       }
 
       case 'next-maintenance-countdown': {
@@ -2116,6 +2125,7 @@ export class StatusPagesService {
           endsAt: window.endsAt,
           affectedMonitors: window.monitors.map((m) => ({ name: m.monitor.name })),
           secondsUntil,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2156,7 +2166,7 @@ export class StatusPagesService {
           })),
         }));
 
-        return { windows: result };
+        return { windows: result , fetchedAt: new Date().toISOString()};
       }
 
       case 'version-timeline': {
@@ -2218,6 +2228,7 @@ export class StatusPagesService {
         return {
           events: allEvents.slice(0, limit),
           count: allEvents.length,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2298,7 +2309,7 @@ export class StatusPagesService {
           outdated.push({ monitorId: m.id, name: m.name, currentVersion, latestVersion, severity });
         }
 
-        return { outdated, upToDate, total: versionMonitors.length };
+        return { outdated, upToDate, total: versionMonitors.length , fetchedAt: new Date().toISOString()};
       }
 
       case 'version-comparison-table': {
@@ -2343,7 +2354,7 @@ export class StatusPagesService {
           };
         });
 
-        return { rows };
+        return { rows , fetchedAt: new Date().toISOString()};
       }
 
       case 'dns-resolution-time': {
@@ -2406,7 +2417,7 @@ export class StatusPagesService {
           ? sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)]
           : 0;
 
-        return { avgMs, p95Ms, monitors: monitorStats, periodHours };
+        return { avgMs, p95Ms, monitors: monitorStats, periodHours , fetchedAt: new Date().toISOString()};
       }
 
       case 'gauge': {
@@ -2480,6 +2491,7 @@ export class StatusPagesService {
           metricType,
           label,
           thresholds: { green: thresholdGreen, yellow: thresholdYellow },
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2556,7 +2568,7 @@ export class StatusPagesService {
           { key: 'sla-compliance', label: 'SLA Compliance', value: `${slaCompliance}%`, icon: '📋', trend: slaCompliance >= slaTarget ? 'passing' : 'failing', trendDir: slaCompliance < slaTarget ? 'down' as const : undefined },
         ];
 
-        return { stats };
+        return { stats , fetchedAt: new Date().toISOString()};
       }
 
       case 'metric-comparison-row': {
@@ -2626,6 +2638,7 @@ export class StatusPagesService {
             { key: 'checks-today', label: 'Checks Today', value: String(checksToday), unit: '', color: 'blue' },
             { key: 'active-incidents', label: 'Active Incidents', value: String(incidentCount), unit: '', color: incidentColor },
           ],
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2670,7 +2683,7 @@ export class StatusPagesService {
           }),
         );
 
-        return { monitors };
+        return { monitors , fetchedAt: new Date().toISOString()};
       }
 
       case 'progress-ring': {
@@ -2726,7 +2739,7 @@ export class StatusPagesService {
         }
 
         const color = value >= 99 ? 'green' : value >= 95 ? 'yellow' : 'red';
-        return { value, label, color };
+        return { value, label, color , fetchedAt: new Date().toISOString()};
       }
 
       case 'announcement-bar': {
@@ -2741,22 +2754,23 @@ export class StatusPagesService {
           expiresAt,
           dismissable,
           expired,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
       case 'link-list': {
         const links = (widget.config.links as Array<{ label: string; url: string; icon: string; description?: string }>) ?? [];
-        return { links };
+        return { links , fetchedAt: new Date().toISOString()};
       }
 
       case 'faq-accordion': {
         const items = (widget.config.items as Array<{ question: string; answer: string }>) ?? [];
-        return { items };
+        return { items , fetchedAt: new Date().toISOString()};
       }
 
       case 'social-links': {
         const links = (widget.config.socialLinks as Array<{ platform: string; url: string }>) ?? [];
-        return { links };
+        return { links , fetchedAt: new Date().toISOString()};
       }
 
       case 'embed-iframe': {
@@ -2765,7 +2779,7 @@ export class StatusPagesService {
         const height = (widget.config.height as number) ?? 400;
         const title = widget.config.title as string | undefined;
         const sandbox = (widget.config.sandbox as string) ?? 'allow-scripts allow-same-origin';
-        return { url, height, title, sandbox };
+        return { url, height, title, sandbox , fetchedAt: new Date().toISOString()};
       }
 
       case 'subscriber-form': {
@@ -2774,6 +2788,7 @@ export class StatusPagesService {
           description: (widget.config.description as string) ?? 'Get notified when incidents are created or resolved.',
           buttonText: (widget.config.buttonText as string) ?? 'Subscribe',
           successMessage: (widget.config.successMessage as string) ?? 'You are subscribed!',
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2786,7 +2801,7 @@ export class StatusPagesService {
         }
         const secondsRemaining = Math.max(0, Math.floor((new Date(targetAt).getTime() - Date.now()) / 1000));
         const expired = secondsRemaining === 0;
-        return { label, targetAt, secondsRemaining, expired, hideAfterExpiry };
+        return { label, targetAt, secondsRemaining, expired, hideAfterExpiry , fetchedAt: new Date().toISOString()};
       }
 
       case 'check-history-feed': {
@@ -2808,6 +2823,7 @@ export class StatusPagesService {
             latencyMs: c.latencyMs,
             message: c.message,
           })),
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2842,6 +2858,7 @@ export class StatusPagesService {
           })),
           total: incidents.length,
           periodDays,
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2864,6 +2881,7 @@ export class StatusPagesService {
             endsAt: mw.endsAt.toISOString(),
             monitors: mw.monitors.map((m) => ({ id: m.monitor.id, name: m.monitor.name })),
           })),
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2896,6 +2914,7 @@ export class StatusPagesService {
             message: m.run?.message ?? null,
             lastChecked: m.run?.checkedAt?.toISOString() ?? null,
           })),
+          fetchedAt: new Date().toISOString(),
         };
       }
 
@@ -2927,7 +2946,7 @@ export class StatusPagesService {
           latencyMs: m.runs[0]?.latencyMs ?? null,
         }));
         const edges = (widget.config.edges as Array<{ source: string; target: string; label?: string }> | undefined) ?? [];
-        return { nodes, edges };
+        return { nodes, edges , fetchedAt: new Date().toISOString()};
       }
 
       case 'multi-environment-status': {
@@ -2959,7 +2978,7 @@ export class StatusPagesService {
             down > 0 ? (down === total ? 'outage' : 'degraded') : degraded > 0 ? 'degraded' : 'operational';
           return { env, summary, total, up: total - down, monitors: rows };
         });
-        return { environments: result };
+        return { environments: result , fetchedAt: new Date().toISOString()};
       }
 
       case 'region-status-map': {
@@ -2989,7 +3008,7 @@ export class StatusPagesService {
             downCount > 0 ? (downCount === total ? 'outage' : 'degraded') : degradedCount > 0 ? 'degraded' : 'operational';
           return { region, status, monitorCount: total, upCount: total - downCount };
         });
-        return { regions };
+        return { regions , fetchedAt: new Date().toISOString()};
       }
 
       case 'third-party-dependencies': {
@@ -3062,7 +3081,7 @@ export class StatusPagesService {
 
       case 'table-of-contents':
         // Pure content widget — no server data needed
-        return { items: (widget.config.items as Array<{ label: string; anchor: string }>) ?? [] };
+        return { items: (widget.config.items as Array<{ label: string; anchor: string }>) ?? [] , fetchedAt: new Date().toISOString()};
 
       case 'page-navigation': {
         // Return list of other published status pages for this user
@@ -3072,12 +3091,12 @@ export class StatusPagesService {
           orderBy: { title: 'asc' },
           take: 20,
         });
-        return { pages: otherPages };
+        return { pages: otherPages , fetchedAt: new Date().toISOString()};
       }
 
       case 'column-layout':
         // Pure layout widget — no server data needed
-        return { columns: (widget.config.columns as number) ?? 2 };
+        return { columns: (widget.config.columns as number) ?? 2 , fetchedAt: new Date().toISOString()};
 
       case 'sticky-header': {
         // Show overall system status for the page
@@ -3099,12 +3118,12 @@ export class StatusPagesService {
         const hasDown = latestRuns.some((r) => r.level === 'red');
         const hasDegraded = latestRuns.some((r) => r.level === 'yellow');
         const status = hasDown ? 'outage' : hasDegraded ? 'degraded' : 'operational';
-        return { status, monitorCount: monitorIds.length };
+        return { status, monitorCount: monitorIds.length , fetchedAt: new Date().toISOString()};
       }
 
       case 'offline-banner': {
         // Purely client-side widget — no data fetch needed
-        return { type: 'offline-banner', config: widget.config };
+        return { type: 'offline-banner', config: widget.config , fetchedAt: new Date().toISOString()};
       }
 
       case 'custom-metric-chart': {
@@ -3215,7 +3234,7 @@ export class StatusPagesService {
           return { labels, values, unit: 'checks', chartType };
         }
 
-        return { labels: [], values: [], unit: '', chartType };
+        return { labels: [], values: [], unit: '', chartType , fetchedAt: new Date().toISOString()};
       }
 
       default:

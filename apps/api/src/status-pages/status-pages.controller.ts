@@ -118,6 +118,39 @@ export class StatusPagesController {
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
+  @Get('status-pages/:id/preview')
+  @ApiOperation({ summary: 'Preview data for a status page (auth required)', description: 'Returns the full public-like data (monitors, incidents, maintenance, recent checks) for the owner\'s page regardless of publish state. Used by the editor\'s preview mode.' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiResponse({ status: 200, description: 'Full preview data matching the public endpoint format.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page not found.' })
+  getPreview(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.statusPagesService.findPreview(req.user.id, id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @Get('status-pages/:id/preview/widget/:widgetId')
+  @ApiOperation({ summary: 'Live widget data for preview (auth required)', description: 'Returns live resolved widget data for the owner\'s status page, regardless of publish state. Used by the SSR preview page.' })
+  @ApiParam({ name: 'id', description: 'Status page CUID' })
+  @ApiParam({ name: 'widgetId', description: 'Widget ID within the layout' })
+  @ApiQuery({ name: 'range', required: false, description: 'Time range: 24h | 7d | 30d | 90d' })
+  @ApiResponse({ status: 200, description: 'Widget-specific data object.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  @ApiResponse({ status: 404, description: 'Status page or widget not found.' })
+  getPreviewWidgetData(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Param('widgetId') widgetId: string,
+    @Query('range') range?: string,
+  ) {
+    return this.statusPagesService.getPreviewWidgetData(req.user.id, id, widgetId, range);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @Get('status-pages/:id/history')
   @ApiOperation({ summary: 'Get version history for a status page', description: 'Returns the last 10 saved snapshots (savedAt, label, layout). Use to restore a previous version.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })

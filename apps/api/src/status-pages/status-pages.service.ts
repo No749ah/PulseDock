@@ -75,6 +75,104 @@ export class StatusPagesService {
   }
 
   /**
+   * Returns full preview data for a status page owned by the authenticated user,
+   * regardless of whether the page is published. Uses the same data pipeline as
+   * `findPublic` so the preview matches the real public view exactly.
+   *
+   * @param userId - The authenticated user's ID
+   * @param id - The status page ID
+   * @returns Full public-like page data including monitors, incidents, maintenance, and recent checks
+   * @throws NotFoundException if the page does not exist
+   * @throws ForbiddenException if the page belongs to a different user
+   */
+  async findPreview(userId: string, id: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+
+    // Fetch monitor overview data for the page owner
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId: page.userId, enabled: true },
+      include: {
+        folder: { select: { id: true, name: true } },
+        monitorTags: { include: { tag: { select: { id: true, name: true } } } },
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: { level: true, message: true, latencyMs: true, checkedAt: true },
+        },
+      },
+    });
+
+    const monitorSummary = monitors.map((m) => {
+      const latest = m.runs[0];
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        tags: m.monitorTags.map(t => t.tag.name),
+        level: latest?.level ?? 'green',
+        lastChecked: latest?.checkedAt ?? null,
+        latencyMs: latest?.latencyMs ?? null,
+        message: latest?.message ?? null,
+      };
+    });
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId: page.userId, createdAt: { gte: thirtyDaysAgo } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true, title: true, status: true, severity: true, createdAt: true, resolvedAt: true,
+        updates: { orderBy: { createdAt: 'desc' }, take: 3, select: { id: true, body: true, status: true, createdAt: true } },
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+    });
+
+    const maintenanceWindows = await this.prisma.maintenanceWindow.findMany({
+      where: { userId: page.userId, endsAt: { gte: new Date() } },
+      orderBy: { startsAt: 'asc' },
+      take: 10,
+      select: {
+        id: true, name: true, description: true, startsAt: true, endsAt: true,
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+    });
+
+    const recentChecks = await this.prisma.monitorRun.findMany({
+      where: { monitor: { userId: page.userId, enabled: true } },
+      orderBy: { checkedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true, monitorId: true, checkedAt: true, ok: true, level: true, latencyMs: true, message: true,
+        monitor: { select: { name: true } },
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...safePage } = page;
+    return {
+      ...safePage,
+      layout: page.layout as unknown as PageLayout,
+      monitors: monitorSummary,
+      incidents: incidents.map(i => ({
+        id: i.id, title: i.title, status: i.status, severity: i.severity,
+        createdAt: i.createdAt, resolvedAt: i.resolvedAt,
+        updates: i.updates.map(u => ({ id: u.id, message: u.body, status: u.status, createdAt: u.createdAt })),
+        monitors: i.monitors.map(im => im.monitor),
+      })),
+      maintenance: maintenanceWindows.map(mw => ({ ...mw, monitors: mw.monitors.map(mm => mm.monitor) })),
+      recentChecks: recentChecks.map(c => ({
+        id: c.id, monitorId: c.monitorId, monitorName: c.monitor.name,
+        checkedAt: c.checkedAt, ok: c.ok, level: c.level, latencyMs: c.latencyMs, message: c.message,
+      })),
+    };
+  }
+
+  /**
    * Creates a new status page for the authenticated user.
    * Auto-generates a slug from the title if not provided; appends a timestamp suffix if slug is already taken.
    *
@@ -599,6 +697,19 @@ export class StatusPagesService {
    * @throws NotFoundException if the page, its publication status, or the widget is not found
    * @throws UnauthorizedException if the page is password-protected and the supplied password is wrong/missing
    */
+  /**
+   * Returns live widget data for a preview (owner-only, no publish required).
+   */
+  async getPreviewWidgetData(userId: string, id: string, widgetId: string, range?: string) {
+    const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
+    if (!page) throw new NotFoundException('Status page not found');
+    if (page.userId !== userId) throw new ForbiddenException('Access denied');
+    const layout = page.layout as unknown as PageLayout;
+    const widget = layout.widgets?.find((w: Widget) => w.id === widgetId);
+    if (!widget) throw new NotFoundException('Widget not found');
+    return this.resolveWidgetData(page.userId, widget, range);
+  }
+
   async getWidgetData(slug: string, widgetId: string, password?: string, range?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');

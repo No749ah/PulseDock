@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 02:23 UTC)
+- **Build/Test:** ✅ Clean build, zero TS errors
+- **Deployment:** ✅ Public URL 200
+- **Branch:** heartbeat/2026-03-20-swagger-audit
+- **This session:**
+  - **Lazy-load LiveDemo**: LiveDemo client island now loaded via `next/dynamic` (ssr: false) via a thin `LiveDemoLazy` client wrapper — reduces initial JS bundle on landing page
+  - **Dark mode fixes**: Audited all `bg-white` and `text-black` instances in dashboard/app components — all were intentional toggle switch knobs, no broken dark mode found
+  - **Charts**: Dashboard and monitors already use Recharts-based `MiniSparkline` (from `components/charts`). Status page widgets have purpose-built SVG bar charts (retained). No upgrades needed.
+
 ## Status Summary (2026-03-20 02:18 UTC)
 - **Build/Test:** ✅ Clean build, 1509 tests passing, zero TS errors
 - **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical

@@ -1,3 +1,12 @@
+## Status Summary (2026-03-20 18:15 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1603 API + 10 CLI + 12 Agent), zero TS errors (incl. test specs)
+- **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)
+- **Branch:** heartbeat/2026-03-20-save-fix
+- **This session:**
+  - **Status page "Full Preview" mode (P0 backlog item):** Added `GET /v1/status-pages/:id/preview` (auth-required, returns full public-like data for unpublished pages) + `GET /v1/status-pages/:id/preview/widget/:widgetId` (auth-required widget data endpoint). Created `/status-pages/[id]/preview` SSR Next.js page that renders exact public widget layout with live data via session cookies. Editor toolbar "Full Preview" button always visible (renamed old published-only "Preview" → "Public Page").
+  - **TypeScript test spec fixes:** Added missing `slaTarget/slaPeriodDays/slaBreachAlertedAt: null` to `makeMonitor()` fixtures in 3 spec files; fixed `globalThis.fetch` cast in monitors.service.spec.ts. `tsc` now clean on all tsconfigs.
+  - **Result:** Editors can now preview exactly what the public status page looks like (including real widget data) before publishing.
+
 ## Status Summary (2026-03-20 17:05 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (22 total), zero TS errors
 - **Deployment:** ✅ Web restarted; all 8 routes 200 (local + public URL)

@@ -138,10 +138,7 @@ export class StatusPagesService {
     const updateData: Record<string, unknown> = {};
     if (dto.title !== undefined && dto.title !== null) updateData['title'] = String(dto.title).trim();
     if (dto.description !== undefined && dto.description !== null) updateData['description'] = String(dto.description).trim();
-    // layout is passed through raw (no class-transformer stripping) — log for debug
-    const incomingLayoutWidgets = (dto.layout as Record<string, unknown> | undefined)?.widgets;
-    this.logger.log(`[DEBUG] update(${id}) layout=${dto.layout !== undefined ? `defined,widgets=${Array.isArray(incomingLayoutWidgets) ? incomingLayoutWidgets.length : 'non-array'}` : 'undefined'}`);
-    if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
+    if (dto.layout !== undefined) updateData['layout'] = dto.layout;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
     if (dto.notifyWebhookUrl !== undefined) {
       // Empty string or null = clear the webhook
@@ -338,7 +335,10 @@ export class StatusPagesService {
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');
 
     if (page.passwordHash) {
-      if (!password) throw new UnauthorizedException('This status page is password-protected');
+      if (!password) {
+        // Return a minimal "protected" response — signal the password gate UI
+        throw new ForbiddenException(JSON.stringify({ protected: true, title: page.title }));
+      }
       const valid = await bcrypt.compare(password, page.passwordHash);
       if (!valid) throw new UnauthorizedException('Incorrect password');
     }

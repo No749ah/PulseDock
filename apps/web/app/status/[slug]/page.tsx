@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import PasswordGate from "./PasswordGate";
 import { renderWidget, type Widget, type MonitorSummary } from "./widgets/index";
 import { PrintButton } from "./widgets/PrintButton";
 import { ExportImageButton } from "./widgets/ExportImageButton";
@@ -240,9 +241,24 @@ export default async function PublicStatusSlugPage({
     : resolvedSearchParams.range;
   const range = rawRange && VALID_RANGES.has(rawRange) ? rawRange : "7d";
 
-  const res = await fetch(`${API_BASE}/v1/public/status/${slug}`, {
-    cache: "no-store",
-  });
+  const rawPassword = Array.isArray(resolvedSearchParams.password)
+    ? resolvedSearchParams.password[0]
+    : resolvedSearchParams.password;
+  const password = rawPassword as string | undefined;
+
+  const fetchUrl = password
+    ? `${API_BASE}/v1/public/status/${slug}?password=${encodeURIComponent(password)}`
+    : `${API_BASE}/v1/public/status/${slug}`;
+
+  const res = await fetch(fetchUrl, { cache: "no-store" });
+
+  // Password gate: page is protected
+  if (res.status === 403) {
+    const body = await res.json().catch(() => ({})) as { protected?: boolean; title?: string };
+    if (body.protected) {
+      return <PasswordGate slug={slug} title={body.title ?? 'Status Page'} />;
+    }
+  }
 
   if (res.status === 404 || res.status === 401) notFound();
   if (!res.ok) throw new Error(`Failed to load status page: ${res.status}`);
@@ -264,7 +280,10 @@ export default async function PublicStatusSlugPage({
   const widgetDataEntries = await Promise.all(
     visible.map(async (widget) => {
       try {
-        const rangeParam = range !== "7d" ? `?range=${range}` : "";
+        const qs = new URLSearchParams();
+        if (range !== "7d") qs.set("range", range);
+        if (password) qs.set("password", password);
+        const rangeParam = qs.toString() ? `?${qs.toString()}` : "";
         const widgetRes = await fetch(`${API_BASE}/v1/public/status/${slug}/widget/${widget.id}${rangeParam}`, {
           cache: "no-store",
         });

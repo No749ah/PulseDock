@@ -123,6 +123,7 @@ export class StatusPagesService {
    * @throws ForbiddenException if the page belongs to a different user
    */
   async update(userId: string, id: string, dto: UpdateStatusPageDto) {
+    if (!dto || typeof dto !== 'object') throw new Error('Invalid request body');
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
     if (page.userId !== userId) throw new ForbiddenException('Access denied');
@@ -135,25 +136,25 @@ export class StatusPagesService {
     }
 
     const updateData: Record<string, unknown> = {};
-    if (dto.title !== undefined) updateData['title'] = dto.title.trim();
-    if (dto.description !== undefined) updateData['description'] = dto.description.trim();
+    if (dto.title !== undefined && dto.title !== null) updateData['title'] = String(dto.title).trim();
+    if (dto.description !== undefined && dto.description !== null) updateData['description'] = String(dto.description).trim();
     // layout is passed through raw (no class-transformer stripping) — log for debug
     const incomingLayoutWidgets = (dto.layout as Record<string, unknown> | undefined)?.widgets;
     this.logger.log(`[DEBUG] update(${id}) layout=${dto.layout !== undefined ? `defined,widgets=${Array.isArray(incomingLayoutWidgets) ? incomingLayoutWidgets.length : 'non-array'}` : 'undefined'}`);
     if (dto.layout !== undefined) updateData['layout'] = dto.layout as unknown;
     if (passwordHashUpdate !== undefined) updateData['passwordHash'] = passwordHashUpdate;
     if (dto.notifyWebhookUrl !== undefined) {
-      // Empty string = clear the webhook
-      updateData['notifyWebhookUrl'] = dto.notifyWebhookUrl.trim() || null;
+      // Empty string or null = clear the webhook
+      updateData['notifyWebhookUrl'] = dto.notifyWebhookUrl ? String(dto.notifyWebhookUrl).trim() || null : null;
     }
     if (dto.slackWebhookUrl !== undefined) {
-      updateData['slackWebhookUrl'] = dto.slackWebhookUrl.trim() || null;
+      updateData['slackWebhookUrl'] = dto.slackWebhookUrl ? String(dto.slackWebhookUrl).trim() || null : null;
     }
     if (dto.discordWebhookUrl !== undefined) {
-      updateData['discordWebhookUrl'] = dto.discordWebhookUrl.trim() || null;
+      updateData['discordWebhookUrl'] = dto.discordWebhookUrl ? String(dto.discordWebhookUrl).trim() || null : null;
     }
     if (dto.customCss !== undefined) {
-      updateData['customCss'] = dto.customCss.trim() || null;
+      updateData['customCss'] = dto.customCss ? String(dto.customCss).trim() || null : null;
     }
 
     // Snapshot current layout before overwriting (version history)

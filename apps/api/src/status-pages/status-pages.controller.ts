@@ -13,6 +13,8 @@ import {
   Req,
   Res,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -82,10 +84,11 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  // NOTE: keep body as raw record to avoid ValidationPipe/class-transformer stripping nested
-  // layout JSON payloads used by the drag/drop editor.
-  update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.statusPagesService.update(req.user.id, id, body as UpdateStatusPageDto);
+  // Use a local ValidationPipe with whitelist:false so the nested `layout` JSON
+  // (widgets array, settings object) is never stripped by class-transformer.
+  @UsePipes(new ValidationPipe({ whitelist: false, transform: false }))
+  update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: UpdateStatusPageDto) {
+    return this.statusPagesService.update(req.user.id, id, body);
   }
 
   @UseGuards(AuthGuard)

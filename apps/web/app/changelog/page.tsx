@@ -22,6 +22,27 @@ const TAG_COLORS: Record<string, string> = {
 
 const releases: ChangeEntry[] = [
   {
+    version: "1.0.4",
+    date: "2026-03-20",
+    tags: ["Features", "UX", "Security"],
+    changes: [
+      "OAuth2 SSO: Login with GitHub and Google — OAuthAccount model, nullable passwordHash, callback token exchange, brand buttons on login page",
+      "Per-widget fetchedAt timestamps: all 60+ status page widget data responses now include fetchedAt — shown as 'Updated Xm ago' in widget card meta",
+      "Tool registry expanded to 2900+ entries: new categories (GIS & Mapping, Radio & SDR, Fleet & Asset Management, Digital Signage, VoIP & Telephony, Print & 3D extensions)",
+      "Status page 'Full Preview' mode: editors can preview unpublished pages with real live widget data at /status-pages/:id/preview",
+      "Pre-publish widget validation: warns about unconfigured widgets before publishing a status page",
+      "Widget design overhaul: WidgetCard consistent header system, StatusDot, SeverityBadge, TrendArrow helpers across all major widgets",
+      "Date range picker on public status pages: 24h/7d/30d/90d URL-synced pill buttons, range param forwarded to all time-based widgets",
+      "Slack/Discord webhook notifications on status page status changes",
+      "On-call rotation & escalation policies: round-robin schedules, escalation on non-acknowledgement, calendar view",
+      "SMS alert channel via Twilio — accountSid/authToken/from/to config",
+      "PagerDuty and OpsGenie alert channels with trigger/resolve dedup",
+      "Grafana SimpleJSON datasource: /v1/grafana endpoints for metrics, annotations, search",
+      "HTTP JSONPath assertions for monitor checks: bodyJsonPath + bodyJsonPathExpected config",
+      "Endpoint fallback chains in version monitors: ordered candidate URLs for resilient version detection",
+    ],
+  },
+  {
     version: "1.0.3",
     date: "2026-03-19",
     tags: ["Features", "UX", "Bug Fixes"],

@@ -27,13 +27,15 @@ const VALID_CATEGORIES = new Set([
   "Password Management", "URL Shortener", "Form & Survey",
   "Diagramming", "Terminal & Web Shell", "Print & 3D",
   "Game Servers", "Compliance & Audit",
+  "Finance & Accounting", "Education & Learning",
+  "Legal & Compliance", "HR & People",
 ]);
 
 const VALID_VERSION_SOURCE_TYPES = new Set([
   "github-releases", "github-tags", "gitlab-releases", "docker-hub",
   "npm-registry", "pypi", "cargo", "maven-central", "helm-chart",
   "apt-release", "json-path", "html-scrape", "custom-endpoint",
-  "pulsedock-agent",
+  "pulsedock-agent", "none",
 ]);
 
 interface LintError {

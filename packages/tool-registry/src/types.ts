@@ -12,7 +12,8 @@ export type VersionSourceType =
   | 'json-path'
   | 'html-scrape'
   | 'custom-endpoint'
-  | 'pulsedock-agent';
+  | 'pulsedock-agent'
+  | 'none';
 
 export type ToolCategory =
   | 'Container'
@@ -52,7 +53,11 @@ export type ToolCategory =
   | 'Terminal & Web Shell'
   | 'Print & 3D'
   | 'Game Servers'
-  | 'Compliance & Audit';
+  | 'Compliance & Audit'
+  | 'Finance & Accounting'
+  | 'Education & Learning'
+  | 'Legal & Compliance'
+  | 'HR & People';
 
 export interface VersionSource {
   type: VersionSourceType;

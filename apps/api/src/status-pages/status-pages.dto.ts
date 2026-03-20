@@ -12,7 +12,7 @@ import {
   IsIn,
   IsUrl,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WidgetType } from './status-pages.types';
 
@@ -215,7 +215,7 @@ export class CreateStatusPageDto {
   @ApiPropertyOptional({ description: 'Initial page layout (widgets + settings). Stored as raw JSON.' })
   @IsOptional()
   @IsObject()
-  @Type(() => Object)
+  @Transform(({ value }) => value)
   layout?: Record<string, unknown>;
 }
 
@@ -236,7 +236,7 @@ export class UpdateStatusPageDto {
   @ApiPropertyOptional({ description: 'Page layout (widgets + settings). Stored as raw JSON — no deep validation.' })
   @IsOptional()
   @IsObject()
-  @Type(() => Object)
+  @Transform(({ value }) => value)
   layout?: Record<string, unknown>;
 
   @ApiPropertyOptional()

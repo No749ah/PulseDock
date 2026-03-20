@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Socket } from "socket.io-client";
 
 interface LiveStatusRefreshProps {
@@ -15,12 +16,13 @@ interface LiveStatusRefreshProps {
  * Strategy:
  *  1. Connect WebSocket to /api/socket.io (via Next.js proxy).
  *  2. On connect: join `status-page:{slug}` room.
- *  3. On `status.updated` event: trigger page reload + reset lastUpdated.
- *  4. Fallback: poll every intervalSec seconds when WS is not connected.
+ *  3. On `status.updated` event: trigger Next.js data refresh + reset lastUpdated.
+ *  4. Fallback: refresh every intervalSec seconds when WS is not connected.
  *
  * Shows "🟢 Live" when WebSocket connected, "⟳ Polling" when falling back.
  */
 export function LiveStatusRefresh({ intervalSec, slug }: LiveStatusRefreshProps) {
+  const router = useRouter();
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [wsConnected, setWsConnected] = useState(false);
@@ -32,7 +34,10 @@ export function LiveStatusRefresh({ intervalSec, slug }: LiveStatusRefreshProps)
   function schedulePolling() {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      window.location.reload();
+      router.refresh();
+      setLastUpdated(new Date());
+      setSecondsAgo(0);
+      schedulePolling();
     }, intervalSec * 1000);
   }
 
@@ -88,7 +93,7 @@ export function LiveStatusRefresh({ intervalSec, slug }: LiveStatusRefreshProps)
         socket.on("status.updated", () => {
           setLastUpdated(new Date());
           setSecondsAgo(0);
-          window.location.reload();
+          router.refresh();
         });
       } catch {
         // socket.io-client not available or connection failed — fall back to polling
@@ -107,8 +112,7 @@ export function LiveStatusRefresh({ intervalSec, slug }: LiveStatusRefreshProps)
         socket.disconnect();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intervalSec, slug]);
+  }, [intervalSec, slug, router]);
 
   const formatAgo = (s: number) => {
     if (s < 60) return `${s}s ago`;

@@ -365,6 +365,25 @@ function MonitorsPageInner() {
         if (folderParam) {
           setFolderFilter(folderParam);
         }
+        // Support #edit-{id} anchor from monitor detail page
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
+        const editMatch = hash.match(/^#edit-(.+)$/);
+        if (editMatch) {
+          const editId = editMatch[1];
+          const target = monitorsData.find((m) => m.id === editId);
+          if (target) {
+            setModalMode("edit");
+            setEditingMonitor(target);
+            setFormData(buildEditFormData(target));
+            setSelectedTags(target.tags?.map((t) => t.name) ?? []);
+            setTagInput("");
+            setFormErrors({});
+            setFormTouched({});
+            setShowModal(true);
+            setShowTemplates(false);
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitors");
       } finally {

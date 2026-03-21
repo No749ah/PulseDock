@@ -525,6 +525,32 @@ export default function MonitorDetailPage() {
                     <><Power className="w-3.5 h-3.5" />{toggling ? "Enabling…" : "Enable"}</>
                   )}
                 </Button>
+                <Link
+                  href={`/monitors#edit-${monitor.id}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
+                  title="Edit this monitor"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Edit
+                </Link>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Delete "${monitor.name}"? This will also delete all check history.`)) return;
+                    const user = getUser();
+                    if (!user) return;
+                    try {
+                      await api(`/v1/monitors/${monitor.id}`, user.id, { method: "DELETE" });
+                      router.push("/monitors");
+                    } catch (e) {
+                      setActionError(e instanceof Error ? e.message : "Failed to delete monitor");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-danger/30 bg-danger/5 text-danger/70 hover:text-danger hover:border-danger/60 transition-colors"
+                  title="Delete this monitor"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
               </div>
             </div>
             <p

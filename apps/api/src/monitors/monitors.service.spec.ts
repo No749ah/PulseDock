@@ -91,6 +91,12 @@ function makePrisma(monitorOverride?: ReturnType<typeof makeMonitor> | null) {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn().mockResolvedValue({}),
     },
+    monitorEvent: {
+      create: vi.fn().mockResolvedValue({ id: 'ev-1', monitorId: 'monitor-1', message: 'Deployed', eventType: 'deploy', createdAt: new Date() }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
+      delete: vi.fn().mockResolvedValue({}),
+    },
   };
 }
 

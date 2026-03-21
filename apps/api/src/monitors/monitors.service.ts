@@ -545,6 +545,37 @@ export class MonitorsService {
    * @returns The MonitorRun result from the check
    * @throws NotFoundException if monitor not found or not owned by user
    */
+  /**
+   * Snoozes a monitor by creating a maintenance window for the specified duration.
+   * While the maintenance window is active, alert delivery is suppressed for this monitor.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to snooze
+   * @param hours - Number of hours to snooze (1, 4, 8, 24, or 168 for 7 days)
+   * @returns The created maintenance window
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
+  async snooze(userId: string, monitorId: string, hours: number) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+    const validHours = [1, 4, 8, 24, 168];
+    const snoozeHours = validHours.includes(hours) ? hours : 1;
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + snoozeHours * 60 * 60 * 1000);
+    const label = snoozeHours === 168 ? '7 days' : snoozeHours === 1 ? '1 hour' : `${snoozeHours} hours`;
+    const window = await this.prisma.maintenanceWindow.create({
+      data: {
+        name: `Snoozed — ${monitor.name} (${label})`,
+        startsAt: now,
+        endsAt,
+        userId,
+        monitors: { create: [{ monitorId }] },
+      },
+      include: { monitors: { select: { monitorId: true } } },
+    });
+    await this.audit.log('monitor.snooze', userId, userId, { monitorId, hours: snoozeHours });
+    return { ok: true, windowId: window.id, endsAt: endsAt.toISOString() };
+  }
+
   async runNow(userId: string, monitorId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');

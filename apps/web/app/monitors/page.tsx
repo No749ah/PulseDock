@@ -247,6 +247,7 @@ function MonitorsPageInner() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkTagId, setBulkTagId] = useState<string>("");
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
+  const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
@@ -322,6 +323,14 @@ function MonitorsPageInner() {
 
   // Reset to page 1 when filters/sort change
   useEffect(() => { setCurrentPage(1); }, [debouncedSearchQuery, statusFilter, typeFilter, activeTagFilter, folderFilter, sortBy, sortDir, filterStatuses, filterTypes, filterTags]);
+
+  // Close snooze dropdown on Escape
+  useEffect(() => {
+    if (!snoozeMenuId) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setSnoozeMenuId(null); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [snoozeMenuId]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -751,6 +760,20 @@ function MonitorsPageInner() {
       toastError(e instanceof Error ? e.message : "Failed to trigger check");
     } finally {
       setCheckingNowId(null);
+    }
+  };
+
+  const handleSnooze = async (monitorId: string, hours: number) => {
+    setSnoozeMenuId(null);
+    try {
+      await api<{ ok: boolean; endsAt: string }>(`/v1/monitors/${monitorId}/snooze`, user?.id, {
+        method: "POST",
+        body: JSON.stringify({ hours }),
+      });
+      const label = hours === 168 ? "7 days" : hours === 1 ? "1 hour" : `${hours} hours`;
+      success(`Monitor snoozed for ${label}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to snooze monitor");
     }
   };
 
@@ -1860,6 +1883,20 @@ function MonitorsPageInner() {
                               <Button variant="ghost" size="sm" onClick={() => handleCheckNow(monitor.id)} disabled={checkingNowId === monitor.id || !monitor.enabled} className="text-text-secondary hover:text-accent" aria-label={`Run check now for ${monitor.name}`} title="Run check now">
                                 <PlayCircle className={`w-4 h-4 ${checkingNowId === monitor.id ? "animate-pulse" : ""}`} />
                               </Button>
+                              <div className="relative">
+                                <Button variant="ghost" size="sm" onClick={() => setSnoozeMenuId(snoozeMenuId === monitor.id ? null : monitor.id)} className="text-text-secondary hover:text-warning" aria-label={`Snooze alerts for ${monitor.name}`} title="Snooze alerts">
+                                  <BellOff className="w-4 h-4" />
+                                </Button>
+                                {snoozeMenuId === monitor.id && (
+                                  <div className="absolute right-0 top-full mt-1 z-50 bg-bg-card border border-border rounded-xl shadow-lg min-w-[140px] py-1" role="menu">
+                                    {[1, 4, 8, 24, 168].map((h) => (
+                                      <button key={h} onClick={() => handleSnooze(monitor.id, h)} className="w-full text-left px-3 py-1.5 text-sm text-text-primary hover:bg-bg-surface transition-colors" role="menuitem">
+                                        {h === 168 ? "7 days" : h === 1 ? "1 hour" : `${h} hours`}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                               <Button variant="ghost" size="sm" onClick={() => setBadgeMonitor(monitor)} className="text-text-secondary hover:text-text-primary" aria-label={`Get embed badge for ${monitor.name}`} title="Embed badge">
                                 <Shield className="w-4 h-4" />
                               </Button>

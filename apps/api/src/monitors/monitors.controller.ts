@@ -63,6 +63,16 @@ export class MonitorsController {
     return this.monitorsService.runNow(req.user.id, body.monitorId);
   }
 
+  @Post(':id/snooze')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Snooze monitor alerts', description: 'Create a maintenance window to suppress alerts for this monitor for a specified number of hours (1, 4, 8, 24, or 168).' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Snooze applied.' })
+  snooze(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: { hours: number }) {
+    return this.monitorsService.snooze(req.user.id, id, body.hours ?? 1);
+  }
+
   @Post('bulk')
   @HttpCode(200)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })

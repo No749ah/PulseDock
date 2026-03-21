@@ -21,7 +21,7 @@ import { ProductTour, type TourStep } from "../../components/product-tour";
 import { brand } from "../../lib/brand";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
-const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"]);
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -868,7 +868,7 @@ export default function DashboardPage() {
 
 function computeStats(monitorsData: Monitor[], runsData: MonitorRun[], versionSummaryItems: VersionSummaryItem[] = []): DashboardStats {
   const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
-  const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
+  const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"]);
 
   const uptimeMonitors = monitorsData.filter((m) => UPTIME_TYPES.has(m.type));
   const versionMonitors = monitorsData.filter((m) => VERSION_TYPES.has(m.type));

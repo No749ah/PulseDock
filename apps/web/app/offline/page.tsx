@@ -4,9 +4,10 @@
  */
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { brand } from '../../lib/brand';
 
 export const metadata: Metadata = {
-  title: "Offline — PulseDock",
+  title: `Offline — ${brand.name}`,
 };
 
 export default function OfflinePage() {
@@ -36,7 +37,7 @@ export default function OfflinePage() {
             You&rsquo;re offline
           </h1>
           <p className="text-sm text-text-secondary leading-relaxed">
-            PulseDock couldn&rsquo;t reach the server. Check your connection —
+            {brand.name} couldn&rsquo;t reach the server. Check your connection —
             your monitors are still running in the background.
           </p>
         </div>

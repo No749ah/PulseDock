@@ -18,14 +18,15 @@ import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
 import { MiniSparkline } from "../../components/charts";
 import { ProductTour, type TourStep } from "../../components/product-tour";
+import { brand } from "../../lib/brand";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
 const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT"]);
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
-    title: "Welcome to PulseDock! 👋",
-    content: "PulseDock monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.",
+    title: `Welcome to ${brand.name}! 👋`,
+    content: `${brand.name} monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.`,
   },
   {
     target: "nav[aria-label='Navigation']",
@@ -304,7 +305,7 @@ export default function DashboardPage() {
       const sampleMonitors = [
         { name: "GitHub", type: "HTTP", target: "https://github.com", intervalMs: 60000, timeoutMs: 10000, enabled: true },
         { name: "Cloudflare", type: "HTTP", target: "https://cloudflare.com", intervalMs: 60000, timeoutMs: 10000, enabled: true },
-        { name: "PulseDock API", type: "HTTP", target: "http://localhost:4321/health", intervalMs: 30000, timeoutMs: 5000, enabled: true },
+        { name: `${brand.name} API`, type: "HTTP", target: "http://localhost:4321/health", intervalMs: 30000, timeoutMs: 5000, enabled: true },
       ];
       await Promise.all(sampleMonitors.map((m) => api("/v1/monitors", undefined, { method: "POST", body: JSON.stringify(m) })));
       await loadDashboard();

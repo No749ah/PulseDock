@@ -13,6 +13,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { renderWidget, type Widget, type MonitorSummary } from "../../../status/[slug]/widgets/index";
 import { LazyWidget } from "../../../status/[slug]/widgets/LazyWidget";
+import { brand } from "../../../../lib/brand";
 
 const INTERNAL_API_BASE =
   process.env.INTERNAL_API_URL ??
@@ -408,7 +409,7 @@ export default async function StatusPagePreview({
           <div className="pt-8 flex items-center justify-center gap-3 text-center text-xs text-text-secondary">
             {showBranding && (
               <span>
-                Powered by <span className="font-semibold text-accent">PulseDock</span>
+                Powered by <span className="font-semibold text-accent">{brand.name}</span>
               </span>
             )}
           </div>

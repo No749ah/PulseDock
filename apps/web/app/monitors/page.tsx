@@ -23,6 +23,7 @@ import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
 import { HelpTooltip } from "../../components/help-tooltip";
+import { brand } from "../../lib/brand";
 
 interface MonitorTag {
   id: string;
@@ -1140,7 +1141,7 @@ function MonitorsPageInner() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2"
-                title="Import monitors from PulseDock JSON"
+                title={`Import monitors from ${brand.name} JSON`}
                 disabled={importing}
               >
                 <Upload className="w-4 h-4" />
@@ -2472,7 +2473,7 @@ function MonitorsPageInner() {
                   Test STARTTLS upgrade (port 587 / STARTTLS required)
                 </label>
               </div>
-              <p className="text-xs text-text-secondary -mt-1">When enabled, PulseDock sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
+              <p className="text-xs text-text-secondary -mt-1">When enabled, {brand.name} sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
             </>
           )}
 
@@ -2611,7 +2612,7 @@ function MonitorsPageInner() {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
-              <HelpTooltip content="How often PulseDock checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources." className="ml-1 align-middle" />
+              <HelpTooltip content={`How often ${brand.name} checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources.`} className="ml-1 align-middle" />
             </label>
             <input
               type="number"

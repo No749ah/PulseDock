@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api } from "../../lib/api";
 import { FadeIn } from "../components/FadeIn";
 import { Monitor, Mail, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { brand } from "../../lib/brand";
 
 type PageState = "loading" | "success" | "error" | "check-email" | "resent";
 
@@ -71,7 +72,7 @@ export default function VerifyEmailPage() {
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-10">
             <Monitor className="w-10 h-10 text-accent" />
-            <span className="text-4xl font-bold tracking-tight">PulseDock</span>
+            <span className="text-4xl font-bold tracking-tight">{brand.name}</span>
           </div>
 
           {/* Card */}

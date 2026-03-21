@@ -13,6 +13,7 @@ import { Badge } from "../components/Badge";
 import { FadeIn } from "../components/FadeIn";
 import { Modal } from "../components/Modal";
 import { useToast } from "../../components/ui/toast";
+import { brand } from "../../lib/brand";
 
 interface Me {
   id: string;
@@ -2121,7 +2122,7 @@ function GrafanaIntegrationCard() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-text-primary">Grafana Integration</h2>
-          <p className="text-xs text-text-secondary mt-0.5">Connect PulseDock to Grafana using the SimpleJSON datasource plugin</p>
+          <p className="text-xs text-text-secondary mt-0.5">Connect {brand.name} to Grafana using the SimpleJSON datasource plugin</p>
         </div>
       </div>
 
@@ -2225,7 +2226,7 @@ function SystemInfoCard({ userId }: { userId?: string }) {
 
   const rows: Array<{ label: string; value: string }> = info
     ? [
-        { label: "PulseDock Version", value: info.version },
+        { label: `${brand.name} Version`, value: info.version },
         { label: "Node.js Version", value: info.nodeVersion },
         { label: "Uptime", value: formatUptime(Math.round(info.uptime)) },
         { label: "Database", value: info.database },

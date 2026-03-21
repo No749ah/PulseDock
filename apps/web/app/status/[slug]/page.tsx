@@ -10,6 +10,7 @@ import { LazyWidget } from "./widgets/LazyWidget";
 import { LiveStatusRefresh } from "./widgets/LiveStatusRefresh";
 import { RangePicker } from "./widgets/RangePicker";
 import { Suspense } from "react";
+import { brand } from "../../../lib/brand";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -476,7 +477,7 @@ export default async function PublicStatusSlugPage({
             <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
             {showBranding && (
               <span>
-                {" · "}Powered by <span className="font-semibold text-accent">PulseDock</span>
+                {" · "}Powered by <span className="font-semibold text-accent">{brand.name}</span>
               </span>
             )}
             <span className="hidden sm:inline text-text-muted">·</span>

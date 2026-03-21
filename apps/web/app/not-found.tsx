@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Monitor, ArrowLeft, Home } from "lucide-react";
+import { brand } from "../lib/brand";
 
 export default function NotFound() {
   return (
@@ -13,7 +14,7 @@ export default function NotFound() {
       <div className="relative text-center px-6 max-w-lg">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Monitor className="w-6 h-6 text-accent" />
-          <span className="font-bold text-lg tracking-tight">PulseDock</span>
+          <span className="font-bold text-lg tracking-tight">{brand.name}</span>
         </div>
         <h1 className="text-8xl font-bold tracking-tighter text-accent mb-4">404</h1>
         <h2 className="text-2xl font-semibold mb-3">Page Not Found</h2>

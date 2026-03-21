@@ -50,7 +50,7 @@ interface MonitorItem {
   id: string;
   name: string;
   description?: string | null;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -153,7 +153,7 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
@@ -196,7 +196,7 @@ function MonitorsPageInner() {
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
-    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP";
+    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
     target: string;
     intervalSec: number;
     confirmations: number;
@@ -528,6 +528,15 @@ function MonitorsPageInner() {
         if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
         if (f.checkTls) config.checkTls = f.checkTls;
       }
+      if (formData.type === "BROWSER") {
+        const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
+        if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
+        if (f2.browserSelector?.trim()) config.browserSelector = f2.browserSelector.trim();
+        if (f2.browserStatusCodesRaw?.trim()) {
+          const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+          if (codes.length > 0) config.browserStatusCodes = codes;
+        }
+      }
             if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
@@ -600,6 +609,15 @@ function MonitorsPageInner() {
         const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
         if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
         if (f.checkTls) config.checkTls = f.checkTls;
+      }
+      if (formData.type === "BROWSER") {
+        const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
+        if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
+        if (f2.browserSelector?.trim()) config.browserSelector = f2.browserSelector.trim();
+        if (f2.browserStatusCodesRaw?.trim()) {
+          const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+          if (codes.length > 0) config.browserStatusCodes = codes;
+        }
       }
             if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
@@ -780,8 +798,8 @@ function MonitorsPageInner() {
 
   const handleApplyTemplate = (t: MonitorTemplate) => {
     // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
-    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP"] as string[]).includes(t.type)
-      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP")
+    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"] as string[]).includes(t.type)
+      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER")
       : "HTTP";
     setFormData({
       name: t.name,
@@ -905,7 +923,7 @@ function MonitorsPageInner() {
 
   // Compute active filter count for badge
   const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
-  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]);
   const activeFilterCount =
     (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
     (filterTypes.size < defaultTypes.size ? 1 : 0) +
@@ -948,7 +966,7 @@ function MonitorsPageInner() {
     return true;
   });
 
-  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"] as const;
+  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"] as const;
 
   function saveCurrentPreset() {
     const name = prompt("Save filter preset as:");
@@ -1288,7 +1306,7 @@ function MonitorsPageInner() {
                     <button
                       onClick={() => {
                         setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE"]));
+                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
                         setFilterTags(new Set());
                         setTypeFilter("all");
                         setStatusFilter("all");
@@ -1345,6 +1363,7 @@ function MonitorsPageInner() {
                       { key: "DNS", label: "DNS" },
                       { key: "PING", label: "Ping" },
                       { key: "SMTP", label: "SMTP" },
+                      { key: "BROWSER", label: "Browser" },
                       { key: "GIT_RELEASE", label: "Git Release" },
                       { key: "DOCKER_IMAGE", label: "Docker" },
                     ] as const).map(({ key, label }) => (
@@ -2317,6 +2336,7 @@ function MonitorsPageInner() {
               <option value="DNS">DNS Lookup</option>
               <option value="PING">ICMP Ping</option>
               <option value="SMTP">SMTP Email Server</option>
+              <option value="BROWSER">Browser / Page Check</option>
             </select>
           </div>
 
@@ -2474,6 +2494,56 @@ function MonitorsPageInner() {
                 </label>
               </div>
               <p className="text-xs text-text-secondary -mt-1">When enabled, {brand.name} sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
+            </>
+          )}
+
+          {/* Browser check — expected text + CSS selector assertions */}
+          {formData.type === "BROWSER" && (
+            <>
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  <span className="font-medium text-text-primary">Browser / Page Check</span> — fetches your URL with a browser-like User-Agent and verifies the page loads successfully (2xx/3xx). Optionally assert that a specific text or HTML element is present.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Expected text <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { browserExpectedText?: string }).browserExpectedText ?? ""}
+                  onChange={(e) => setFormData({ ...formData, browserExpectedText: e.target.value } as typeof formData & { browserExpectedText?: string })}
+                  placeholder='e.g. "Welcome" or "Dashboard"'
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Check fails if this text is not found in the page HTML (case-insensitive).</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  CSS selector <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { browserSelector?: string }).browserSelector ?? ""}
+                  onChange={(e) => setFormData({ ...formData, browserSelector: e.target.value } as typeof formData & { browserSelector?: string })}
+                  placeholder='e.g. #app, .nav-bar, [data-testid="login"], main'
+                  className={`${inputClass} font-mono text-xs`}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Check fails if this selector does not match any element. Supports: <code className="bg-surface-2 px-1 rounded">#id</code>, <code className="bg-surface-2 px-1 rounded">.class</code>, <code className="bg-surface-2 px-1 rounded">tag</code>, <code className="bg-surface-2 px-1 rounded">[attr]</code>, <code className="bg-surface-2 px-1 rounded">tag.class</code>, <code className="bg-surface-2 px-1 rounded">tag#id</code></p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Allowed status codes <span className="text-xs text-text-muted">(optional, default: 2xx–3xx)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { browserStatusCodesRaw?: string }).browserStatusCodesRaw ?? ""}
+                  onChange={(e) => setFormData({ ...formData, browserStatusCodesRaw: e.target.value } as typeof formData & { browserStatusCodesRaw?: string })}
+                  placeholder="200, 301, 302"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Comma-separated list. Leave blank to accept any 2xx or 3xx response.</p>
+              </div>
             </>
           )}
 

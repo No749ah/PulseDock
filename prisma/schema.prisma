@@ -21,6 +21,7 @@ enum MonitorType {
   DNS
   PING
   SMTP
+  BROWSER
 }
 
 model User {
@@ -106,6 +107,9 @@ model Monitor {
   timeoutMs     Int         @default(5000)
   confirmations       Int         @default(1)
   enabled             Boolean     @default(true)
+  isFlapping          Boolean     @default(false)
+  flapDetectionEnabled Boolean    @default(true)
+  flapAlertedAt       DateTime?
   configJson          Json?
   slaTarget           Float?
   slaPeriodDays       Int?        @default(30)

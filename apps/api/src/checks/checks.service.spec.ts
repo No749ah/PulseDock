@@ -372,10 +372,10 @@ describe('ChecksService', () => {
         fetchCalls.push(url);
         // First call is the HTTP monitor check
         if (fetchCalls.length === 1) {
-          return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+          return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => '' });
         }
         // Second call is the webhook
-        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => '' });
       });
       await service.runMonitor(makeMonitor({ type: 'HTTP' }));
       // Wait a tick for the async webhook
@@ -389,7 +389,7 @@ describe('ChecksService', () => {
       const prisma = makePrismaWithPage({ notifyWebhookUrl: 'https://example.com/hook', lastNotifiedStatus: 'operational', monitorLevel: 'green' });
       const realtime = makeRealtime();
       const service = makeService({ prisma: prisma as never, realtime });
-      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
       await service.runMonitor(makeMonitor({ type: 'HTTP' }));
       await new Promise(r => setTimeout(r, 10));
       expect(prisma.publicStatusPage.update).not.toHaveBeenCalled();
@@ -402,7 +402,7 @@ describe('ChecksService', () => {
       const fetchCalls: string[] = [];
       globalThis.fetch = vi.fn().mockImplementation((url: string) => {
         fetchCalls.push(url);
-        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => Promise.resolve('') });
+        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
       });
       await service.runMonitor(makeMonitor({ type: 'HTTP' }));
       await new Promise(r => setTimeout(r, 10));
@@ -1304,7 +1304,7 @@ describe('ChecksService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: () => Promise.resolve('Hello World from server'),
+        text: () => 'Hello World from server',
         headers: { get: () => 'text/plain' },
       });
 
@@ -1325,7 +1325,7 @@ describe('ChecksService', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: () => Promise.resolve('Different content'),
+        text: () => 'Different content',
         headers: { get: () => 'text/plain' },
       });
 
@@ -1875,7 +1875,7 @@ describe('ChecksService', () => {
           ok: true,
           status: 200,
           headers: { get: () => 'text/plain' },
-          text: () => Promise.resolve('Running app v3.1.4 on port 3000'),
+          text: () => 'Running app v3.1.4 on port 3000',
           json: () => Promise.resolve(null),
         })
         .mockResolvedValueOnce({
@@ -4563,4 +4563,133 @@ describe('runMonitor() — SMTP type', () => {
       await new Promise<void>((res) => server.close(() => res()));
     }
   }, 8000);
+});
+
+// ── BROWSER monitor type ──────────────────────────────────────────────────────
+
+describe('runBrowserCheck', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns green when page loads successfully (2xx)', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><h1>Welcome</h1></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'BROWSER', target: 'https://example.com' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+    expect(run.level).toBe('green');
+  });
+
+  it('returns red when page returns 500', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 500 },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'BROWSER', target: 'https://example.com' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+
+  it('returns yellow when page returns 404 (client error)', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 404 },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'BROWSER', target: 'https://example.com' });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('yellow');
+  });
+
+  it('returns green when expected text is found in body', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><h1>Dashboard</h1></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserExpectedText: 'Dashboard' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
+
+  it('returns red when expected text is not found in body', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><p>Login</p></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserExpectedText: 'Dashboard' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toMatch(/Expected text not found/);
+  });
+
+  it('returns green when CSS selector (#id) is found', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><div id="app">Content</div></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: '#app' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
+
+  it('returns red when CSS selector is not found', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><p>Hello</p></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: '#missing-element' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toMatch(/Element not found/);
+  });
+
+  it('returns red on timeout', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(Object.assign(new Error('Request aborted'), { name: 'AbortError' })));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      timeoutMs: 100,
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toMatch(/Timeout/);
+  });
+
+  it('respects custom allowed status codes', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 403 },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserStatusCodes: [200, 403] },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
 });

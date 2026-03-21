@@ -14,6 +14,7 @@ import { AlertsController } from './alerts/alerts.controller';
 import { ChecksService } from './checks/checks.service';
 import { ChecksScheduler } from './checks/checks.scheduler';
 import { HeartbeatController } from './checks/heartbeat.controller';
+import { PluginsController } from './checks/plugins.controller';
 import { DashboardController } from './dashboard/dashboard.controller';
 import { PublicDashboardController } from './dashboard/public.controller';
 import { AdminController } from './users/admin.controller';
@@ -73,6 +74,7 @@ import { OnCallService } from './oncall/oncall.service';
     MonitorsController,
     AlertsController,
     HeartbeatController,
+    PluginsController,
     DashboardController,
     PublicDashboardController,
     AdminController,

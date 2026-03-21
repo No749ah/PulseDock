@@ -6,7 +6,7 @@ import {
   Activity, AlertTriangle, BarChart2, Check, ChevronLeft, ChevronRight,
   CheckCircle, ClipboardList, Copy, Database, KeyRound, Link2,
   Mail, Monitor, RefreshCw, Server, Shield, ShieldOff, Trash2, UserCog,
-  Users, X, XCircle, Zap, Lock, RotateCcw, AlertCircle,
+  Users, X, XCircle, Zap, Lock, RotateCcw, AlertCircle, Puzzle,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
@@ -516,6 +516,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [templateReports, setTemplateReports] = useState<{ id: string; toolId: string; endpoint?: string | null; statusCode?: number | null; error?: string | null; note?: string | null; createdAt: string; userId: string }[]>([]);
   const [templateReportsPage, setTemplateReportsPage] = useState(1);
+  const [plugins, setPlugins] = useState<{ id: string; displayName: string; description: string | null; supportedMonitorTypes: string[]; configFields: { key: string; label: string; type: string; required?: boolean; placeholder?: string; helpText?: string }[] }[]>([]);
 
   // invite form
   const [inviteEmail, setInviteEmail] = useState('');
@@ -546,9 +547,13 @@ export default function AdminPage() {
         api<AuditLog[]>('/v1/admin/audit-logs'),
         api<PasswordReset[]>('/v1/admin/password-resets'),
       ]);
-      const fb = await api<{ total: number; reports: typeof templateReports }>('/v1/feedback/template-reports').catch(() => ({ total: 0, reports: [] }));
+      const [fb, pl] = await Promise.all([
+        api<{ total: number; reports: typeof templateReports }>('/v1/feedback/template-reports').catch(() => ({ total: 0, reports: [] })),
+        api<typeof plugins>('/v1/plugins').catch(() => []),
+      ]);
       setUsers(u); setInvites(inv); setAuditLogs(logs); setResets(rst);
       setTemplateReports(fb.reports);
+      setPlugins(pl);
     } catch { router.push('/unauthorized'); }
     finally { setLoading(false); }
   }
@@ -854,6 +859,44 @@ export default function AdminPage() {
               </div>
             ))}
             <Pagination page={templateReportsPage} pages={Math.max(1, Math.ceil(templateReports.length / PAGE_SIZE))} onPage={setTemplateReportsPage} />
+          </Card>
+
+          {/* ── Check Plugins ──────────────────────────────────────────────── */}
+          <Card>
+            <SectionHeader icon={Puzzle} title="Check Plugins" count={plugins.length} />
+            {plugins.length === 0 && (
+              <p className="text-sm text-text-secondary text-center py-6">No plugins loaded.</p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {plugins.map((p) => (
+                <div key={p.id} className="flex flex-col gap-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated hover:border-accent/30 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                      <Puzzle className="w-3.5 h-3.5 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary truncate">{p.displayName}</p>
+                      <p className="text-xs text-text-secondary font-mono truncate">{p.id}</p>
+                    </div>
+                    <Badge variant="success">active</Badge>
+                  </div>
+                  {p.description && (
+                    <p className="text-xs text-text-secondary mt-1">{p.description}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {p.supportedMonitorTypes.map((t) => (
+                      <span key={t} className="text-xs bg-surface border border-border text-text-secondary px-2 py-0.5 rounded-full">{t}</span>
+                    ))}
+                  </div>
+                  {p.configFields.length > 0 && (
+                    <p className="text-xs text-text-secondary mt-1">{p.configFields.length} config field{p.configFields.length !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-text-secondary mt-3 px-1">
+              External plugins load from <code className="text-accent text-xs">PLUGIN_DIR</code> (default: <code className="text-text-secondary text-xs">./plugins</code>). Drop <code className="text-text-secondary text-xs">*.plugin.js</code> files there and restart.
+            </p>
           </Card>
         </div>
       )}

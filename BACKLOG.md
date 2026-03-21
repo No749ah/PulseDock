@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 13:28 UTC)
+- **Build/Test:** ✅ Clean build, 1760 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion:** Added controller specs for `tool-registry` (15 tests: list all/search/category/withVariants, getById happy/404, getVariants happy/empty/404) and `reports` (4 tests: get/upsert/delete). API tests: 1741 → 1760.
+
 ## Status Summary (2026-03-21 13:20 UTC)
 - **Build/Test:** ✅ Clean build, 1736 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy

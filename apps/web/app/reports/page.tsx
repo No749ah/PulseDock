@@ -11,6 +11,9 @@ import {
   XCircle,
   Clock,
   Activity,
+  Gauge,
+  Flame,
+  TrendingDown,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Card } from '../components/Card';
@@ -32,6 +35,33 @@ interface Monitor {
   status: string;
   enabled: boolean;
   target?: string;
+  slaTarget?: number | null;
+}
+
+interface ErrorBudget {
+  monitorId: string;
+  period: string;
+  slaTarget: number;
+  totalMinutes: number;
+  allowedDownMinutes: number;
+  actualDownMinutes: number;
+  remainingDownMinutes: number;
+  budgetConsumedPct: number;
+  budgetRemainingPct: number;
+  actualUptimePct: number;
+  burnRate: number;
+  burnRate1h: number;
+  burnRate6h: number;
+  burnRate24h: number;
+  status: 'healthy' | 'warning' | 'critical' | 'exhausted';
+  projectedExhaustionDate: string | null;
+}
+
+interface ErrorBudgetRow {
+  monitor: Monitor;
+  budget: ErrorBudget | null;
+  loading: boolean;
+  error: boolean;
 }
 
 interface UptimeStats {
@@ -57,6 +87,26 @@ interface MonitorRow {
 }
 
 const UPTIME_TYPES = new Set(['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT']);
+
+function formatMinutes(min: number): string {
+  if (min < 1) return `${Math.round(min * 60)}s`;
+  if (min < 60) return `${min.toFixed(1)}m`;
+  if (min < 1440) return `${(min / 60).toFixed(1)}h`;
+  return `${(min / 1440).toFixed(1)}d`;
+}
+
+function budgetStatusBadgeVariant(status: ErrorBudget['status']): 'success' | 'warning' | 'danger' | 'default' {
+  if (status === 'healthy') return 'success';
+  if (status === 'warning') return 'warning';
+  if (status === 'critical' || status === 'exhausted') return 'danger';
+  return 'default';
+}
+
+function budgetBarColor(status: ErrorBudget['status']): string {
+  if (status === 'healthy') return 'bg-success';
+  if (status === 'warning') return 'bg-warning';
+  return 'bg-danger';
+}
 
 function formatDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
@@ -84,6 +134,7 @@ export default function ReportsPage() {
   const toastCtx = useToast();
   const [period, setPeriod] = useState<Period>('30d');
   const [rows, setRows] = useState<MonitorRow[]>([]);
+  const [errorBudgetRows, setErrorBudgetRows] = useState<ErrorBudgetRow[]>([]);
   const [loadingMonitors, setLoadingMonitors] = useState(true);
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -121,6 +172,27 @@ export default function ReportsPage() {
         })
       );
       setRows(updated);
+
+      // Fetch error budgets for uptime monitors
+      const budgetInitial: ErrorBudgetRow[] = uptimeMonitors.map((m) => ({
+        monitor: m,
+        budget: null,
+        loading: true,
+        error: false,
+      }));
+      setErrorBudgetRows(budgetInitial);
+      const budgetUpdated = await Promise.all(
+        uptimeMonitors.map(async (m) => {
+          const slaTarget = m.slaTarget ?? 99.9;
+          try {
+            const budget = await api<ErrorBudget>(`/v1/monitors/${m.id}/error-budget?slaTarget=${slaTarget}&period=${p}`);
+            return { monitor: m, budget, loading: false, error: false };
+          } catch {
+            return { monitor: m, budget: null, loading: false, error: true };
+          }
+        })
+      );
+      setErrorBudgetRows(budgetUpdated);
     } catch {
       toastCtx.error('Failed to load monitors');
       setLoadingMonitors(false);
@@ -328,6 +400,104 @@ export default function ReportsPage() {
             <div className="text-xs text-text-muted">Downtime events</div>
           </Card>
         </div>
+
+        {/* ── Error Budgets ────────────────────────────────────────────── */}
+        {errorBudgetRows.length > 0 && (
+          <Card className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Gauge className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary">Error Budgets</h2>
+              <span className="text-xs text-text-muted ml-auto">SLO budget consumption {periodLabel[period]}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {errorBudgetRows.map((row) => (
+                <div
+                  key={row.monitor.id}
+                  className="rounded-lg border border-border bg-surface/40 p-4 flex flex-col gap-3"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-text-primary text-sm truncate">{row.monitor.name}</div>
+                      <div className="text-xs text-text-muted mt-0.5">SLA target: {row.budget?.slaTarget ?? (row.monitor.slaTarget ?? 99.9)}%</div>
+                    </div>
+                    {row.loading ? (
+                      <span className="text-xs text-text-muted shrink-0">Loading…</span>
+                    ) : row.error ? (
+                      <Badge variant="default">N/A</Badge>
+                    ) : row.budget ? (
+                      <Badge variant={budgetStatusBadgeVariant(row.budget.status)}>
+                        {row.budget.status}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {/* Progress bar */}
+                  {!row.loading && !row.error && row.budget && (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-text-muted">Budget consumed</span>
+                          <span className="text-xs font-medium text-text-secondary">
+                            {row.budget.budgetConsumedPct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${budgetBarColor(row.budget.status)}`}
+                            style={{ width: `${Math.min(100, row.budget.budgetConsumedPct)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-text-muted">Remaining</span>
+                          <span className="text-text-secondary font-medium">
+                            {formatMinutes(row.budget.remainingDownMinutes)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-text-muted">Actual uptime</span>
+                          <span className="text-text-secondary font-medium">
+                            {row.budget.actualUptimePct.toFixed(3)}%
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-text-muted flex items-center gap-1">
+                            <Flame className="w-3 h-3" /> Burn rate
+                          </span>
+                          <span
+                            className={`font-medium ${
+                              row.budget.burnRate24h > 2
+                                ? 'text-danger'
+                                : row.budget.burnRate24h > 1
+                                ? 'text-warning'
+                                : 'text-success'
+                            }`}
+                          >
+                            {row.budget.burnRate24h.toFixed(2)}×
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-text-muted flex items-center gap-1">
+                            <TrendingDown className="w-3 h-3" /> Exhaustion
+                          </span>
+                          <span className={`font-medium ${row.budget.projectedExhaustionDate ? 'text-warning' : 'text-success'}`}>
+                            {row.budget.projectedExhaustionDate
+                              ? new Date(row.budget.projectedExhaustionDate).toLocaleDateString()
+                              : 'On track'}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* ── Per-monitor table ────────────────────────────────────────── */}
         <div ref={tableRef}>

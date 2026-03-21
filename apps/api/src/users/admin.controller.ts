@@ -1,10 +1,11 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../common/prisma.service';
 import { AuthGuard } from '../common/auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { AuditService } from '../common/audit.service';
+import { PlanService } from '../settings/plan.service';
 import { SetRoleDto, SetStatusDto, UpdateUserDto } from './admin.dto';
 
 @ApiTags('Admin')
@@ -15,6 +16,7 @@ export class AdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly planService: PlanService,
   ) {}
 
   @Roles('admin')
@@ -250,5 +252,28 @@ export class AdminController {
       errorRatePct,
       generatedAt: now.toISOString(),
     };
+  }
+
+  @Roles('admin')
+  @Get('plans')
+  @ApiOperation({ summary: 'List all plans', description: 'Admin only. Returns all billing/license plans with user counts.' })
+  @ApiResponse({ status: 200, description: 'Plan list returned.' })
+  @ApiResponse({ status: 403, description: 'Admin role required.' })
+  async listPlans() {
+    return this.planService.listPlans();
+  }
+
+  @Roles('admin')
+  @Put('users/:id/plan')
+  @ApiOperation({ summary: 'Set user plan', description: 'Admin only. Assigns a billing/license plan to a user.' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({ schema: { type: 'object', properties: { planId: { type: 'string' } }, required: ['planId'] } })
+  @ApiResponse({ status: 200, description: 'Plan updated.' })
+  @ApiResponse({ status: 403, description: 'Admin role required.' })
+  @ApiResponse({ status: 404, description: 'User or plan not found.' })
+  async setUserPlan(@Param('id') id: string, @Body() body: { planId: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('user not found');
+    return this.planService.setUserPlan(id, body.planId);
   }
 }

@@ -3768,3 +3768,165 @@ describe('snooze()', () => {
     expect(audit.log).toHaveBeenCalledWith('monitor.snooze', 'user-1', 'user-1', { monitorId: 'm-1', hours: 8 });
   });
 });
+
+// ─── parseUptimeKuma() — branch coverage ────────────────────────────────────
+
+describe('importExternal — parseUptimeKuma branch coverage', () => {
+  function makePrismaForImport() {
+    const p = makePrisma();
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null); // no duplicates
+    (p.monitor.create as ReturnType<typeof vi.fn>).mockImplementation(({ data }: { data: { name: string; target: string } }) =>
+      Promise.resolve({ ...makeMonitor(), id: `new-${Math.random()}`, name: data.name, target: data.target }),
+    );
+    return p;
+  }
+
+  it('imports HTTP monitors from monitorList format', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'My App', url: 'https://myapp.example.com', type: 1, interval: 60, active: true },
+        { name: 'API', url: 'https://api.example.com', type: 'http', interval: 30, active: true },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(0);
+  });
+
+  it('skips non-HTTP monitor types (port, ping)', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'HTTP', url: 'https://ok.example.com', type: 1, interval: 60, active: true },
+        { name: 'Port', url: '', hostname: 'host.example.com', type: 2, interval: 60, active: true },
+        { name: 'Ping', url: '', hostname: 'ping.example.com', type: 3, interval: 60, active: true },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('handles plain array format (no monitorList wrapper)', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = [
+      { name: 'Service', url: 'https://service.example.com', type: 1, interval: 60, active: true },
+    ];
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('respects active=false as disabled', async () => {
+    const p = makePrisma();
+    const createdMonitor = makeMonitor({ id: 'new-paused' });
+    // First findFirst = null (dup check), second = createdMonitor (for update())
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(null)      // dup check: not a duplicate
+      .mockResolvedValue(createdMonitor); // update() internal lookup
+    (p.monitor.create as ReturnType<typeof vi.fn>).mockResolvedValue(createdMonitor);
+    (p.monitor.update as ReturnType<typeof vi.fn>).mockResolvedValue({ ...createdMonitor, enabled: false });
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'Paused', url: 'https://paused.example.com', type: 1, interval: 60, active: false },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+    // update should have been called to disable the monitor
+    expect(p.monitor.update).toHaveBeenCalled();
+  });
+});
+
+// ─── getErrorBudget() ────────────────────────────────────────────────────────
+
+describe('getErrorBudget', () => {
+  function makePrismaForBudget(runsOverride?: Array<{ ok: boolean }>) {
+    const p = makePrisma();
+    const runs = runsOverride ?? [];
+    (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(runs);
+    return p;
+  }
+
+  it('returns healthy status when budget < 50% consumed', async () => {
+    // 5% failure rate, SLA 99.9% → allowedDown = 0.1%, actual = 5% of period
+    const runs = Array.from({ length: 100 }, (_, i) => ({ ok: i >= 5 })); // 5 failures
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('exhausted'); // 5% >> 0.1% allowed → exhausted
+    expect(result.monitorId).toBe('monitor-1');
+    expect(result.slaTarget).toBe(99.9);
+    expect(result.period).toBe('30d');
+    expect(result.totalMinutes).toBe(43200);
+  });
+
+  it('returns healthy status with no failures', async () => {
+    const runs = Array.from({ length: 100 }, () => ({ ok: true }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('healthy');
+    expect(result.budgetConsumedPct).toBe(0);
+    expect(result.budgetRemainingPct).toBe(100);
+    expect(result.actualUptimePct).toBe(100);
+    expect(result.burnRate).toBe(0);
+  });
+
+  it('returns exhausted status when all checks fail', async () => {
+    const runs = Array.from({ length: 100 }, () => ({ ok: false }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('exhausted');
+    expect(result.budgetConsumedPct).toBeGreaterThan(100);
+    expect(result.remainingDownMinutes).toBe(0);
+    expect(result.actualUptimePct).toBe(0);
+  });
+
+  it('handles zero runs gracefully (no division by zero)', async () => {
+    const p = makePrismaForBudget([]);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('healthy');
+    expect(result.actualUptimePct).toBe(100);
+    expect(result.actualDownMinutes).toBe(0);
+    expect(result.budgetConsumedPct).toBe(0);
+    expect(result.burnRate).toBe(0);
+    expect(result.projectedExhaustionDate).toBeNull();
+  });
+
+  it('throws NotFoundException for unknown monitorId', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.getErrorBudget('no-such-id', 'user-1', { slaTarget: 99.9, period: '30d' }))
+      .rejects.toThrow(NotFoundException);
+  });
+
+  it('calculates warning status (50-80% consumed)', async () => {
+    // SLA 99%, allowedDown = 1% of period. Use 0.6% failure rate → ~60% consumed
+    const total = 1000;
+    const failures = 6; // 0.6% fail rate → 60% of 1% budget consumed
+    const runs = Array.from({ length: total }, (_, i) => ({ ok: i >= failures }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99, period: '30d' });
+    expect(result.status).toBe('warning');
+    expect(result.budgetConsumedPct).toBeGreaterThan(50);
+    expect(result.budgetConsumedPct).toBeLessThanOrEqual(80);
+  });
+
+  it('projects exhaustion date when burning fast', async () => {
+    // ~50% failures against 99.9% SLA → very fast burn, should project exhaustion
+    const runs = Array.from({ length: 100 }, (_, i) => ({ ok: i % 2 === 0 }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    // Already exhausted (50% fail >> 0.1% allowed) so projectedExhaustionDate should be null
+    expect(result.status).toBe('exhausted');
+    expect(result.projectedExhaustionDate).toBeNull();
+  });
+});

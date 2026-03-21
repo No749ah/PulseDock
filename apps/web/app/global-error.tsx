@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { brand } from '../lib/brand';
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -53,7 +54,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           </div>
 
           <p className="text-xs text-text-muted pt-4 border-t border-border">
-            PulseDock — Global Error Recovery
+            {brand.name} — Global Error Recovery
           </p>
         </div>
       </body>

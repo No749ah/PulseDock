@@ -576,7 +576,7 @@ export function UptimeTimeline({ widget, monitors, extra }: WidgetProps) {
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-text-primary">{label}</span>
         <span className="text-xs text-text-secondary" aria-live="polite">
-          {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}
+          {days}-day history{uptimePct !== null ? ` · ${uptimePct}% up` : ""}{(widgetData as Record<string,unknown>)?.fetchedAt ? ` · ${timeAgo((widgetData as Record<string,unknown>).fetchedAt as string)}` : ""}
         </span>
       </div>
       <div className="flex gap-[2px] flex-wrap" role="img" aria-label={`${days}-day uptime history chart: ${squares.filter(s => s.level === "green").length} days up, ${squares.filter(s => s.level === "red").length} days down`}>
@@ -654,15 +654,20 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
       {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-text-primary truncate">{label}</p>
-        <span
-          className={`shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide ${
-            pass
-              ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/30"
-              : "bg-red-500/20 text-red-400 ring-1 ring-red-500/30"
-          }`}
-        >
-          {pass ? "✓ SLA Met" : "✗ SLA Breached"}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {Boolean((widgetData as Record<string, unknown>)?.fetchedAt) && (
+            <span className="text-[10px] text-text-muted">{timeAgo((widgetData as Record<string,unknown>).fetchedAt as string)}</span>
+          )}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide ${
+              pass
+                ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/30"
+                : "bg-red-500/20 text-red-400 ring-1 ring-red-500/30"
+            }`}
+          >
+            {pass ? "✓ SLA Met" : "✗ SLA Breached"}
+          </span>
+        </div>
       </div>
       {/* Big number + target */}
       <div className="flex items-end gap-5 mb-4">
@@ -833,6 +838,9 @@ export function ResponseTimeChart({ widget, monitors, extra }: WidgetProps) {
               p95
             </span>
           )}
+          {Boolean((widgetData as Record<string, unknown>)?.fetchedAt) && (
+            <span className="ml-auto">{timeAgo((widgetData as Record<string,unknown>).fetchedAt as string)}</span>
+          )}
         </div>
       )}
     </div>
@@ -885,6 +893,7 @@ export function ResponseTimeHeatmap({ widget, monitors, extra }: WidgetProps) {
           {avgMs > 0 && <span className="text-xs text-text-secondary">avg <span className="font-semibold text-text-primary">{avgMs}ms</span></span>}
           {maxMs > 0 && <span className="text-xs text-text-secondary">peak <span className="font-semibold text-warning">{maxMs}ms</span></span>}
           {data?.periodDays && <span className="text-xs text-text-secondary">{data.periodDays}d</span>}
+          {Boolean((data as Record<string, unknown>)?.fetchedAt) && <span className="text-[10px] text-text-muted">{timeAgo((data as Record<string, unknown>).fetchedAt as string)}</span>}
         </div>
       </div>
 
@@ -1199,11 +1208,16 @@ function ComponentStatusList({ widget, extra }: WidgetProps) {
     >
       {/* Overall header */}
       <div className="px-4 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <div className={`h-2.5 w-2.5 rounded-full ${dotColor(data.downCount > 0 ? "red" : data.degradedCount > 0 ? "yellow" : "green")}`} aria-hidden="true" />
-          <span className={`text-sm font-bold ${overallColor(data.overallStatus)}`}>
-            {headerLabel}
-          </span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className={`h-2.5 w-2.5 rounded-full ${dotColor(data.downCount > 0 ? "red" : data.degradedCount > 0 ? "yellow" : "green")}`} aria-hidden="true" />
+            <span className={`text-sm font-bold ${overallColor(data.overallStatus)}`}>
+              {headerLabel}
+            </span>
+          </div>
+          {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+            <span className="text-[10px] text-text-muted">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+          )}
         </div>
       </div>
       {/* Component rows */}
@@ -1252,7 +1266,12 @@ function RollingUptimeCards({ widget, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center justify-between mb-3">
+        {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {data.cards.map((c) => (
           <AnimatedUptimeCard key={c.label} card={c} uptimeColor={uptimeColor} uptimeBg={uptimeBg} uptimeBorder={uptimeBorder} />
@@ -1293,7 +1312,12 @@ function StatusHistoryRibbon({ widget, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-      {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+      <div className="flex items-center justify-between">
+        {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       {data.rows.map((row) => {
         const upDays = row.ribbon.filter((d) => d.level === "green").length;
         const pct = row.ribbon.filter((d) => d.level !== "no-data").length > 0
@@ -1365,7 +1389,12 @@ function UptimePercentageCard({ widget, extra }: WidgetProps) {
       role="region"
       aria-label={`${label ?? "Uptime"}: ${data.uptimePct.toFixed(2)}% over last ${data.periodDays} days. Trend: ${trendLabel}`}
     >
-      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">{label}</p>}
+      <div className="flex items-center justify-between mb-3">
+        {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       <div className={`text-5xl font-bold tabular-nums ${uptimeColor}`} aria-label={`${data.uptimePct.toFixed(2)}% uptime`}>
         <AnimatedNumber value={data.uptimePct} decimals={2} duration={1400} suffix="%" />
       </div>
@@ -1435,7 +1464,12 @@ function ServiceHealthMatrix({ widget, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 overflow-x-auto">
-      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center justify-between mb-3">
+        {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       <table className="w-full text-xs border-collapse" aria-label={label ?? "Service health matrix"}>
         <thead>
           <tr>
@@ -1517,7 +1551,12 @@ function AggregateHealthScore({ widget, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 text-center">{label}</p>}
+      <div className="flex items-center justify-between mb-3">
+        {label && <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider text-center flex-1">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       <div className="flex items-center gap-6">
         {/* Gauge */}
         <div className="relative flex-shrink-0">
@@ -1710,7 +1749,12 @@ function DowntimeLog({ widget, extra }: WidgetProps) {
     <div className="rounded-xl border border-border bg-surface overflow-hidden">
       <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
         <p className="text-sm font-semibold text-text-primary">{label ?? "Downtime Log"}</p>
-        <span className="text-xs text-text-secondary">{data.total} event{data.total !== 1 ? "s" : ""} · {data.periodDays}d</span>
+        <div className="flex items-center gap-2">
+          {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+            <span className="text-[10px] text-text-muted">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+          )}
+          <span className="text-xs text-text-secondary">{data.total} event{data.total !== 1 ? "s" : ""} · {data.periodDays}d</span>
+        </div>
       </div>
       {data.outages.length === 0 ? (
         <div className="flex items-center gap-2 px-4 py-6 justify-center">
@@ -1892,9 +1936,14 @@ function SLAComplianceTable({ widget, extra }: WidgetProps) {
         <p className="text-sm font-semibold text-text-primary">
           {label ?? `SLA Compliance — Last ${data.periodDays}d`}
         </p>
-        <span className="text-xs text-text-secondary">
-          {data.rows.filter((r) => r.pass).length}/{data.rows.length} passing
-        </span>
+        <div className="flex items-center gap-2">
+          {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+            <span className="text-[10px] text-text-muted">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+          )}
+          <span className="text-xs text-text-secondary">
+            {data.rows.filter((r) => r.pass).length}/{data.rows.length} passing
+          </span>
+        </div>
       </div>
       {data.rows.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-text-secondary">No monitors configured</div>
@@ -1988,7 +2037,12 @@ function UptimeHeatmap({ widget, extra }: WidgetProps) {
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      {label && <p className="text-sm font-semibold text-text-primary mb-3">{label}</p>}
+      <div className="flex items-center justify-between mb-3">
+        {label && <p className="text-sm font-semibold text-text-primary">{label}</p>}
+        {Boolean((data as Record<string, unknown>)?.fetchedAt) && (
+          <span className="text-[10px] text-text-muted ml-auto">{timeAgo((data as Record<string,unknown>).fetchedAt as string)}</span>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
           {/* Hour labels */}

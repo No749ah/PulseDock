@@ -21,6 +21,7 @@ enum MonitorType {
   DNS
   PING
   SMTP
+  BROWSER
 }
 
 model User {
@@ -67,6 +68,7 @@ model User {
   oauthAccounts           OAuthAccount[]
   activeOrgId             String?
   orgMemberships          OrgMember[]
+  userPlan                UserPlan?
 }
 
 model Session {
@@ -105,6 +107,9 @@ model Monitor {
   timeoutMs     Int         @default(5000)
   confirmations       Int         @default(1)
   enabled             Boolean     @default(true)
+  isFlapping          Boolean     @default(false)
+  flapDetectionEnabled Boolean    @default(true)
+  flapAlertedAt       DateTime?
   configJson          Json?
   slaTarget           Float?
   slaPeriodDays       Int?        @default(30)
@@ -713,4 +718,39 @@ model OrgInvite {
 
   @@index([organizationId])
   @@index([email])
+}
+
+
+/// Pricing/license plan definition. Used for both SaaS billing and self-hosted license tiers.
+/// A limit of -1 means unlimited.
+model Plan {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  maxMonitors       Int      @default(-1)
+  maxChecksPerDay   Int      @default(-1)
+  maxTeamMembers    Int      @default(-1)
+  maxStatusPages    Int      @default(-1)
+  maxAlertChannels  Int      @default(-1)
+  isCustom          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  userPlans         UserPlan[]
+}
+
+/// Links a user to a billing/license plan. One plan per user.
+model UserPlan {
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  planId                  String
+  validUntil              DateTime?
+  overrideMaxMonitors     Int?
+  overrideMaxChecksPerDay Int?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                    Plan      @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
 }

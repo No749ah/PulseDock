@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../common/auth.guard';
@@ -6,6 +6,7 @@ import { RequireScope } from '../common/require-scope.decorator';
 import { ScopeGuard } from '../common/scope.guard';
 import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
+import { PlanService } from '../settings/plan.service';
 import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
@@ -13,7 +14,10 @@ import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto,
 @UseGuards(AuthGuard, ScopeGuard)
 @Controller('v1/monitors')
 export class MonitorsController {
-  constructor(private readonly monitorsService: MonitorsService) {}
+  constructor(
+    private readonly monitorsService: MonitorsService,
+    private readonly planService: PlanService,
+  ) {}
 
   @Get()
   @RequireScope(ApiKeyScope.READ)
@@ -29,10 +33,22 @@ export class MonitorsController {
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Create monitor', description: 'Create a new uptime or version monitor.' })
   @ApiResponse({ status: 201, description: 'Monitor created.' })
-  create(
+  @ApiResponse({ status: 403, description: 'Plan monitor limit reached.' })
+  async create(
     @Req() req: { user: { id: string } },
     @Body() body: CreateMonitorDto,
   ) {
+    const check = await this.planService.checkLimit(req.user.id, 'monitors');
+    if (!check.allowed) {
+      throw new ForbiddenException({
+        message: `Plan limit reached: upgrade to PRO for more monitors`,
+        code: 'PLAN_LIMIT',
+        resource: 'monitors',
+        current: check.current,
+        limit: check.limit,
+        plan: check.plan,
+      });
+    }
     return this.monitorsService.create(req.user.id, body);
   }
 
@@ -123,6 +139,28 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Run history returned.' })
   monitorRuns(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.monitorsService.monitorRuns(req.user.id, id);
+  }
+
+  @Get(':id/error-budget')
+  @ApiOperation({
+    summary: 'SLO error budget',
+    description: 'Returns error budget consumption, burn rates, and projected exhaustion for a monitor against a given SLA target.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'slaTarget', required: false, description: 'SLA target percentage (default: 99.9)' })
+  @ApiQuery({ name: 'period', required: false, description: 'Period string, e.g. 30d (default: 30d)' })
+  @ApiResponse({ status: 200, description: 'Error budget stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  errorBudget(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('slaTarget') slaTarget?: string,
+    @Query('period') period?: string,
+  ) {
+    const target = parseFloat(slaTarget ?? '99.9');
+    const safeSlaTarget = Number.isFinite(target) && target > 0 && target <= 100 ? target : 99.9;
+    const safePeriod = /^\d+d$/.test(period ?? '') ? (period as string) : '30d';
+    return this.monitorsService.getErrorBudget(id, req.user.id, { slaTarget: safeSlaTarget, period: safePeriod });
   }
 
   @Get(':id/uptime')

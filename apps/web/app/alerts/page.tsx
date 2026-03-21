@@ -15,6 +15,7 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
+import { brand } from '../../lib/brand';
 
 type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
 
@@ -449,7 +450,7 @@ export default function AlertsPage() {
                     </label>
                     <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
                     <p className="mt-1.5 text-xs text-text-secondary">
-                      PulseDock adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
+                      {brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
                     </p>
                   </div>
                 )}
@@ -460,7 +461,7 @@ export default function AlertsPage() {
                       <div className="space-y-3">
                         <div>
                           <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot name <span className="font-normal text-text-secondary">(optional)</span></label>
-                          <input className={inputClass} placeholder="PulseDock" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                          <input className={inputClass} placeholder={brand.name} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-text-secondary mb-1.5">Avatar URL <span className="font-normal text-text-secondary">(optional)</span></label>
@@ -569,7 +570,7 @@ export default function AlertsPage() {
                     Signing secret <span className="text-text-secondary font-normal">(optional)</span>
                   </label>
                   <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
-                  <p className="mt-1.5 text-xs text-text-secondary">PulseDock adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
+                  <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
                 </div>
               )}
               {selected?.type === 'discord' && (
@@ -578,7 +579,7 @@ export default function AlertsPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot name <span className="font-normal">(optional)</span></label>
-                      <input className={inputClass} placeholder="PulseDock" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
+                      <input className={inputClass} placeholder={brand.name} value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">Avatar URL <span className="font-normal">(optional)</span></label>

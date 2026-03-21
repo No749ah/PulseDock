@@ -14,6 +14,7 @@ import { VersionDiff, extractVersionsFromMessage } from '../components/VersionDi
 import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { useDebounce } from '../../lib/useDebounce';
+import { brand } from '../../lib/brand';
 
 // Minimal ToolVariant type (mirrors packages/tool-registry/src/types.ts)
 type ToolVariant = {
@@ -1107,7 +1108,7 @@ export default function VersionsPage() {
       AGENT_TOOL_IDS: ${toolSlug}
       AGENT_INTERVAL_SEC: "3600"`;
               const shellScript = `#!/bin/bash
-# PulseDock Agent — one-shot shell check for ${selectedTool?.name ?? 'your tool'}
+# ${brand.name} Agent — one-shot shell check for ${selectedTool?.name ?? 'your tool'}
 PULSEDOCK_URL="${agentPulsedockUrl}"
 PULSEDOCK_API_KEY="${agentApiKeyDisplay}"
 ${selectedTool?.versionSource.agentCommand ? `VERSION=$(${selectedTool.versionSource.agentCommand})` : `VERSION=$(your-tool --version 2>&1 | grep -oP '\\d+\\.\\d+\\.\\d+')`}
@@ -1125,7 +1126,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-text-primary">Agent Required</p>
-                        <p className="text-xs text-text-secondary">This tool requires the PulseDock Agent running locally</p>
+                        <p className="text-xs text-text-secondary">This tool requires the {brand.name} Agent running locally</p>
                       </div>
                       <a href="/account#api-keys" target="_blank" rel="noopener" className="text-xs text-accent hover:underline flex items-center gap-1 shrink-0">
                         Get API key <ExternalLink className="w-3 h-3" />
@@ -1133,7 +1134,7 @@ curl -s -X POST "$PULSEDOCK_URL/v1/agent/report" \\
                     </div>
                     <p className="text-sm text-text-secondary mb-3">
                       <strong className="text-text-primary">{selectedTool?.name}</strong> doesn&apos;t expose an external API.
-                      The PulseDock Agent runs on your server, checks the local version, and reports it back via API key.
+                      The {brand.name} Agent runs on your server, checks the local version, and reports it back via API key.
                     </p>
                     {/* API key selector */}
                     {userApiKeys.length > 0 ? (

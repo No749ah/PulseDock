@@ -76,6 +76,7 @@ import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
 import { useToast } from "../../../../components/ui/toast";
 import { MultiMonitorPicker } from "../../components/MultiMonitorPicker";
+import { brand } from "../../../../lib/brand";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -3151,8 +3152,8 @@ export default function StatusPageEditorPage() {
               {/* Branding toggle */}
               <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
                 <div>
-                  <p className="text-xs font-medium text-text-primary">Show "Powered by PulseDock"</p>
-                  <p className="text-xs text-text-muted mt-0.5">Displays the PulseDock branding in the page footer.</p>
+                  <p className="text-xs font-medium text-text-primary">Show &quot;Powered by {brand.name}&quot;</p>
+                  <p className="text-xs text-text-muted mt-0.5">Displays the {brand.name} branding in the page footer.</p>
                 </div>
                 <button
                   onClick={() => setPageSettings((s) => ({ ...s, showBranding: !(s.showBranding !== false) }))}

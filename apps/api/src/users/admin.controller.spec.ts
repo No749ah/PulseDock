@@ -94,7 +94,7 @@ function makeAudit() {
 function makeController(opts: Parameters<typeof makePrisma>[0] = {}) {
   const prisma = makePrisma(opts);
   const audit = makeAudit();
-  const controller = new AdminController(prisma as never, audit as never);
+  const controller = new AdminController(prisma as never, audit as never, { listPlans: vi.fn().mockResolvedValue([]), setUserPlan: vi.fn().mockResolvedValue({ userId: 'u', planName: 'COMMUNITY' }) } as never);
   return { controller, prisma, audit };
 }
 
@@ -303,7 +303,7 @@ describe('AdminController', () => {
       prisma.monitorRun.count = vi.fn().mockImplementation(() => Promise.resolve(countValues[idx++] ?? 0));
 
       const audit = makeAudit();
-      const controller = new AdminController(prisma as never, audit as never);
+      const controller = new AdminController(prisma as never, audit as never, { listPlans: vi.fn().mockResolvedValue([]), setUserPlan: vi.fn().mockResolvedValue({ userId: 'u', planName: 'COMMUNITY' }) } as never);
       const result = await controller.systemStats();
 
       expect(result).toHaveProperty('users');
@@ -320,7 +320,7 @@ describe('AdminController', () => {
       prisma.monitorRun.count = vi.fn().mockResolvedValue(0);
 
       const audit = makeAudit();
-      const controller = new AdminController(prisma as never, audit as never);
+      const controller = new AdminController(prisma as never, audit as never, { listPlans: vi.fn().mockResolvedValue([]), setUserPlan: vi.fn().mockResolvedValue({ userId: 'u', planName: 'COMMUNITY' }) } as never);
       const result = await controller.systemStats();
       expect(result.errorRatePct).toBe(0);
     });

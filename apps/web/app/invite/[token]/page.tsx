@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "../../../lib/api";
 import { Monitor, Users, CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react";
+import { brand } from "../../../lib/brand";
 
 type InviteInfo = {
   invite: {
@@ -78,7 +79,7 @@ export default function InvitePage() {
         <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center group-hover:bg-accent/25 transition-colors">
           <Monitor className="w-5 h-5 text-accent" />
         </div>
-        <span className="text-lg font-semibold tracking-tight">PulseDock</span>
+        <span className="text-lg font-semibold tracking-tight">{brand.name}</span>
       </Link>
 
       <div className="w-full max-w-md">
@@ -102,7 +103,7 @@ export default function InvitePage() {
                 <p className="text-text-secondary text-sm mt-1">
                   Join <strong className="text-text-primary">
                     {inviteInfo.owner.displayName ?? inviteInfo.owner.email}
-                  </strong>&apos;s workspace on PulseDock
+                  </strong>&apos;s workspace on {brand.name}
                 </p>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, X, Zap } from "lucide-react";
 import { Card } from "./Card";
 import { Button } from "./Button";
+import { brand } from "../../lib/brand";
 
 interface Step {
   id: string;
@@ -125,7 +126,7 @@ export function OnboardingChecklist({
           <Zap className="w-6 h-6 text-accent" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-text-primary">Get started with PulseDock</h2>
+          <h2 className="text-lg font-bold text-text-primary">Get started with {brand.name}</h2>
           <p className="text-text-secondary text-sm mt-1">
             Complete these steps to start monitoring your services
           </p>
@@ -197,7 +198,7 @@ export function OnboardingChecklist({
       {coreAllDone && (
         <div className="mt-4 p-4 rounded-xl bg-success/10 border border-success/20 flex items-center justify-between gap-4">
           <p className="text-sm text-success font-medium">
-            🎉 You&apos;re all set! PulseDock is monitoring your services.
+            🎉 You&apos;re all set! {brand.name} is monitoring your services.
           </p>
           <Button
             size="sm"

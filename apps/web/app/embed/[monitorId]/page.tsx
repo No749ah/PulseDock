@@ -8,6 +8,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
+import { brand } from '../../../lib/brand';
 
 export const metadata: Metadata = {
   robots: 'noindex, nofollow',
@@ -259,8 +260,8 @@ export default async function EmbedPage({ params, searchParams }: Props) {
           )}
         </div>
         <div className="branding">
-          <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer">
-            Powered by PulseDock
+          <a href={brand.githubUrl} target="_blank" rel="noopener noreferrer">
+            Powered by {brand.name}
           </a>
         </div>
       </div>

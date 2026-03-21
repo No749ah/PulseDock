@@ -201,6 +201,24 @@ const mockPrisma = {
     create: vi.fn().mockResolvedValue({ token: 'test-token' }),
     delete: vi.fn().mockResolvedValue({}),
   },
+  plan: {
+    findUnique: vi.fn().mockResolvedValue({ id: 'plan-community', name: 'COMMUNITY', maxMonitors: -1, maxChecksPerDay: -1, maxTeamMembers: -1, maxStatusPages: -1, maxAlertChannels: -1, isCustom: false, createdAt: new Date() }),
+    findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'plan-community', name: 'COMMUNITY', maxMonitors: -1, maxChecksPerDay: -1, maxTeamMembers: -1, maxStatusPages: -1, maxAlertChannels: -1, isCustom: false, createdAt: new Date() }),
+    findMany: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({}),
+  },
+  userPlan: {
+    findUnique: vi.fn().mockResolvedValue({ overrideMaxMonitors: null, overrideMaxChecksPerDay: null, validUntil: null, plan: { id: 'plan-community', name: 'COMMUNITY', maxMonitors: -1, maxChecksPerDay: -1, maxTeamMembers: -1, maxStatusPages: -1, maxAlertChannels: -1 } }),
+    create: vi.fn().mockResolvedValue({}),
+    upsert: vi.fn().mockResolvedValue({}),
+  },
+  teamMember: {
+    count: vi.fn().mockResolvedValue(0),
+    findMany: vi.fn().mockResolvedValue([]),
+    findFirst: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
   $transaction: vi.fn().mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 };
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
@@ -14,30 +14,69 @@ import { RealtimeEvents } from '../realtime/realtime.events';
 import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
+import { ExternalPluginLoader } from './external-plugin-loader';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
 import { regexMatchPlugin } from './plugins/regex-match.plugin';
 import { responseTimePlugin } from './plugins/response-time.plugin';
 import { jsonAssertionPlugin } from './plugins/json-assertion.plugin';
 import { statusCodePlugin } from './plugins/status-code.plugin';
+import { headerAssertionPlugin } from './plugins/header-assertion.plugin';
+import { redirectCheckPlugin } from './plugins/redirect-check.plugin';
+import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
 
 @Injectable()
 export class ChecksService {
+  private readonly logger = new Logger(ChecksService.name);
   private readonly realtime: Pick<RealtimeEvents, 'monitorChecked' | 'statusPageUpdated'>;
   private readonly pluginRegistry = new PluginRegistry();
+  private readonly externalPluginLoader: ExternalPluginLoader;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
     @Optional() private readonly mailer?: MailerService,
     @Optional() realtime?: RealtimeEvents,
+    @Optional() externalPluginLoader?: ExternalPluginLoader,
   ) {
     this.realtime = realtime ?? { monitorChecked: () => undefined, statusPageUpdated: () => undefined };
+    this.externalPluginLoader = externalPluginLoader ?? new ExternalPluginLoader();
     this.pluginRegistry.register(httpResponseMatchPlugin);
     this.pluginRegistry.register(regexMatchPlugin);
     this.pluginRegistry.register(responseTimePlugin);
     this.pluginRegistry.register(jsonAssertionPlugin);
     this.pluginRegistry.register(statusCodePlugin);
+    this.pluginRegistry.register(headerAssertionPlugin);
+    this.pluginRegistry.register(redirectCheckPlugin);
+    this.pluginRegistry.register(certExpiryPlugin);
+
+    // Load external plugins asynchronously — errors are caught inside loadPlugins()
+    void this.initExternalPlugins();
+  }
+
+  private async initExternalPlugins(): Promise<void> {
+    const dir = this.externalPluginLoader.getPluginDir();
+    const plugins = await this.externalPluginLoader.loadPlugins();
+    let loaded = 0;
+
+    for (const plugin of plugins) {
+      if (this.pluginRegistry.list().some((p) => p.id === plugin.id)) {
+        this.logger.warn(`External plugin ${plugin.id} conflicts with a built-in plugin — skipping`);
+        continue;
+      }
+      try {
+        this.pluginRegistry.register(plugin);
+        loaded++;
+      } catch (err) {
+        this.logger.warn(
+          `Failed to register external plugin ${plugin.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (loaded > 0) {
+      this.logger.log(`Loaded ${loaded} external plugin${loaded !== 1 ? 's' : ''} from ${dir}`);
+    }
   }
 
   /**
@@ -1232,6 +1271,173 @@ export class ChecksService {
     });
   }
 
+  /**
+   * Runs a browser simulation check against a URL.
+   * Fetches the page with a browser-like User-Agent, checks the HTTP status,
+   * and optionally asserts that the HTML body contains an expected text string.
+   * Optionally checks for a CSS selector presence by looking for it in the raw HTML.
+   *
+   * @param target - URL to check (must include scheme)
+   * @param config - monitor configJson (browserExpectedText, browserSelector, browserStatusCodes)
+   * @param timeoutMs - request timeout
+   */
+  private async runBrowserCheck(
+    target: string,
+    config: Record<string, unknown>,
+    timeoutMs = 15000,
+  ): Promise<PluginExecutionResult> {
+    const url = target.trim().startsWith('http') ? target.trim() : `https://${target.trim()}`;
+    const expectedText = typeof config.browserExpectedText === 'string' ? config.browserExpectedText.trim() : '';
+    const selector = typeof config.browserSelector === 'string' ? config.browserSelector.trim() : '';
+    // Allowed HTTP status codes — default: 2xx
+    const allowedCodes: number[] =
+      Array.isArray(config.browserStatusCodes) && (config.browserStatusCodes as number[]).every((c) => typeof c === 'number')
+        ? (config.browserStatusCodes as number[])
+        : [];
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const start = Date.now();
+
+    try {
+      const resp = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (compatible; PulseDock/1.0; +https://pulsedock.io) PulseDockBrowserCheck/1.0',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+        redirect: 'follow',
+      });
+
+      const latencyMs = Date.now() - start;
+      clearTimeout(timer);
+
+      const statusOk =
+        allowedCodes.length > 0
+          ? allowedCodes.includes(resp.status)
+          : resp.status >= 200 && resp.status < 400;
+
+      if (!statusOk) {
+        return {
+          ok: false,
+          statusCode: resp.status,
+          latencyMs,
+          message: `HTTP ${resp.status} — expected ${allowedCodes.length > 0 ? allowedCodes.join('/') : '2xx-3xx'}`,
+          level: resp.status >= 500 ? ('red' as const) : ('yellow' as const),
+        };
+      }
+
+      // Only read body when we have assertions to check
+      if (expectedText || selector) {
+        const body = await resp.text();
+
+        if (expectedText && !body.toLowerCase().includes(expectedText.toLowerCase())) {
+          return {
+            ok: false,
+            statusCode: resp.status,
+            latencyMs,
+            message: `Expected text not found: "${expectedText}"`,
+            level: 'red' as const,
+          };
+        }
+
+        if (selector) {
+          // Simple selector presence check via regex — handles id, class, tag, attribute selectors
+          const selectorPresent = this.htmlContainsSelector(body, selector);
+          if (!selectorPresent) {
+            return {
+              ok: false,
+              statusCode: resp.status,
+              latencyMs,
+              message: `Element not found: "${selector}"`,
+              level: 'red' as const,
+            };
+          }
+        }
+      }
+
+      return {
+        ok: true,
+        statusCode: resp.status,
+        latencyMs,
+        message: `${resp.status} OK${latencyMs > 0 ? ` (${latencyMs}ms)` : ''}`,
+        level: 'green' as const,
+      };
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      const latencyMs = Date.now() - start;
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs,
+        message: isTimeout ? `Timeout after ${timeoutMs}ms` : `Error: ${err instanceof Error ? err.message : String(err)}`,
+        level: 'red' as const,
+      };
+    }
+  }
+
+  /**
+   * Lightweight HTML presence check for a CSS selector without a DOM parser.
+   * Handles: tag selectors, #id, .class, [attr], [attr="value"].
+   * Returns true if any matching element is likely present in the raw HTML.
+   */
+  private htmlContainsSelector(html: string, selector: string): boolean {
+    const trimmed = selector.trim();
+
+    // ID selector: #foo → <... id="foo" or id='foo'
+    const idMatch = trimmed.match(/^#([\w-]+)$/);
+    if (idMatch) {
+      const id = idMatch[1];
+      return new RegExp(`id=["']${id}["']`, 'i').test(html);
+    }
+
+    // Class selector: .foo → class="... foo ..."
+    const classMatch = trimmed.match(/^\.([\w-]+)$/);
+    if (classMatch) {
+      const cls = classMatch[1];
+      return new RegExp(`class=["'][^"']*\\b${cls}\\b`, 'i').test(html);
+    }
+
+    // Attribute selector: [data-foo] or [data-foo="bar"]
+    const attrMatch = trimmed.match(/^\[([^\]="]+)(?:=["']?([^"'\]]+)["']?)?\]$/);
+    if (attrMatch) {
+      const attr = attrMatch[1];
+      const val = attrMatch[2];
+      if (val) {
+        return new RegExp(`${attr}=["']${val}["']`, 'i').test(html);
+      }
+      return new RegExp(`\\b${attr}=`, 'i').test(html);
+    }
+
+    // Tag selector: div, h1, main, etc.
+    const tagMatch = trimmed.match(/^([\w-]+)$/);
+    if (tagMatch) {
+      return new RegExp(`<${tagMatch[1]}[\\s>]`, 'i').test(html);
+    }
+
+    // Tag + class: div.foo
+    const tagClassMatch = trimmed.match(/^([\w-]+)\.([\w-]+)$/);
+    if (tagClassMatch) {
+      const tag = tagClassMatch[1];
+      const cls = tagClassMatch[2];
+      return new RegExp(`<${tag}[^>]*class=["'][^"']*\\b${cls}\\b`, 'i').test(html);
+    }
+
+    // Tag + ID: div#foo
+    const tagIdMatch = trimmed.match(/^([\w-]+)#([\w-]+)$/);
+    if (tagIdMatch) {
+      const tag = tagIdMatch[1];
+      const id = tagIdMatch[2];
+      return new RegExp(`<${tag}[^>]*id=["']${id}["']`, 'i').test(html);
+    }
+
+    // Fallback: just check the raw selector string presence in HTML
+    return html.toLowerCase().includes(trimmed.toLowerCase());
+  }
+
   private async dispatchCheck(monitor: Monitor) {
     switch (monitor.type) {
       case 'HTTP':
@@ -1252,6 +1458,8 @@ export class ChecksService {
         return this.runPingCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'SMTP':
         return this.runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'BROWSER':
+        return this.runBrowserCheck(monitor.target, monitor.config, monitor.timeoutMs);
       default:
         return this.runHttpCheck(monitor.target, monitor.timeoutMs);
     }

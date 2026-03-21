@@ -31,6 +31,7 @@ export function formatMonitorType(type: string): string {
     DNS: "DNS Lookup",
     PING: "ICMP Ping",
     SMTP: "SMTP Email",
+    BROWSER: "Browser Check",
   };
   return map[type] ?? type;
 }
@@ -63,6 +64,7 @@ export function targetPlaceholder(type: string): string {
     case "DNS": return "example.com or example.com:A";
     case "PING": return "example.com or 192.168.1.1";
     case "SMTP": return "mail.example.com:25 or smtp.example.com:587";
+    case "BROWSER": return "https://example.com";
     default: return "https://api.example.com/health";
   }
 }
@@ -80,6 +82,7 @@ export function targetHelperText(type: string): string {
     case "DNS": return "Resolves the hostname and optionally checks the record type (A, AAAA, MX, TXT, CNAME).";
     case "PING": return "Sends ICMP echo requests and reports latency and packet loss.";
     case "SMTP": return "Connects to the mail server, reads the 220 banner, and optionally tests STARTTLS.";
+    case "BROWSER": return "Fetches the page with a browser-like User-Agent. Optionally assert expected text or CSS selector presence.";
     default: return "PulseDock will send an HTTP request to this URL and check the response.";
   }
 }

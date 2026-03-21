@@ -13,6 +13,7 @@ import { Badge } from "../components/Badge";
 import { FadeIn } from "../components/FadeIn";
 import { Modal } from "../components/Modal";
 import { useToast } from "../../components/ui/toast";
+import { brand } from "../../lib/brand";
 
 interface Me {
   id: string;
@@ -1621,6 +1622,11 @@ export default function AccountPage() {
           </Card>
         
 
+        {/* Plan & Usage Card */}
+        
+          <PlanUsageCard />
+        
+
         {/* System Info Card */}
         
           <SystemInfoCard userId={user?.id} />
@@ -2121,7 +2127,7 @@ function GrafanaIntegrationCard() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-text-primary">Grafana Integration</h2>
-          <p className="text-xs text-text-secondary mt-0.5">Connect PulseDock to Grafana using the SimpleJSON datasource plugin</p>
+          <p className="text-xs text-text-secondary mt-0.5">Connect {brand.name} to Grafana using the SimpleJSON datasource plugin</p>
         </div>
       </div>
 
@@ -2225,7 +2231,7 @@ function SystemInfoCard({ userId }: { userId?: string }) {
 
   const rows: Array<{ label: string; value: string }> = info
     ? [
-        { label: "PulseDock Version", value: info.version },
+        { label: `${brand.name} Version`, value: info.version },
         { label: "Node.js Version", value: info.nodeVersion },
         { label: "Uptime", value: formatUptime(Math.round(info.uptime)) },
         { label: "Database", value: info.database },
@@ -2652,6 +2658,129 @@ function BackupRestoreCard() {
             </Button>
           </div>
         </div>
+      )}
+    </Card>
+  );
+}
+
+// ─── Plan & Usage Card ────────────────────────────────────────────────────────
+
+interface PlanData {
+  plan: {
+    name: string;
+    validUntil: string | null;
+    limits: {
+      monitors: number;
+      checksPerDay: number;
+      teamMembers: number;
+      statusPages: number;
+      alertChannels: number;
+    };
+  };
+  usage: {
+    monitors: number;
+    checksToday: number;
+    teamMembers: number;
+    statusPages: number;
+    alertChannels: number;
+  };
+}
+
+function UsageBar({ label, current, limit }: { label: string; current: number; limit: number }) {
+  if (limit === -1) {
+    return (
+      <div className="flex items-center justify-between text-sm py-1">
+        <span className="text-text-muted">{label}</span>
+        <span className="text-text-muted font-mono">{current.toLocaleString()} / <span className="text-text-secondary">Unlimited</span></span>
+      </div>
+    );
+  }
+  const pct = limit > 0 ? Math.min(100, (current / limit) * 100) : 0;
+  const color = pct >= 95 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-success";
+  return (
+    <div className="py-1.5">
+      <div className="flex items-center justify-between text-sm mb-1">
+        <span className="text-text-muted">{label}</span>
+        <span className="text-text-muted font-mono">{current.toLocaleString()} / {limit.toLocaleString()}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+        <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function PlanUsageCard() {
+  const [data, setData] = useState<PlanData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<PlanData>("/v1/plan")
+      .then(setData)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const isApproachingLimit =
+    data &&
+    Object.entries({
+      monitors: { cur: data.usage.monitors, lim: data.plan.limits.monitors },
+      checksPerDay: { cur: data.usage.checksToday, lim: data.plan.limits.checksPerDay },
+      teamMembers: { cur: data.usage.teamMembers, lim: data.plan.limits.teamMembers },
+      statusPages: { cur: data.usage.statusPages, lim: data.plan.limits.statusPages },
+      alertChannels: { cur: data.usage.alertChannels, lim: data.plan.limits.alertChannels },
+    }).some(([, v]) => v.lim !== -1 && v.lim > 0 && v.cur / v.lim >= 0.8);
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-heading">Plan &amp; Usage</h3>
+        {data && (
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            data.plan.name === "ENTERPRISE" ? "bg-purple-500/15 text-purple-400" :
+            data.plan.name === "PRO" ? "bg-blue-500/15 text-blue-400" :
+            "bg-surface-2 text-text-muted"
+          }`}>
+            {data.plan.name}
+          </span>
+        )}
+      </div>
+
+      {loading && (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 rounded bg-surface-2 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {!loading && data && (
+        <>
+          <div className="space-y-0.5">
+            <UsageBar label="Monitors" current={data.usage.monitors} limit={data.plan.limits.monitors} />
+            <UsageBar label="Checks today" current={data.usage.checksToday} limit={data.plan.limits.checksPerDay} />
+            <UsageBar label="Team members" current={data.usage.teamMembers} limit={data.plan.limits.teamMembers} />
+            <UsageBar label="Status pages" current={data.usage.statusPages} limit={data.plan.limits.statusPages} />
+            <UsageBar label="Alert channels" current={data.usage.alertChannels} limit={data.plan.limits.alertChannels} />
+          </div>
+
+          {isApproachingLimit && (
+            <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-between gap-3">
+              <span className="text-sm text-warning">⚠️ Approaching plan limits</span>
+              <button
+                disabled
+                title="Coming soon"
+                className="text-xs font-medium px-3 py-1 rounded-md bg-warning/20 text-warning opacity-50 cursor-not-allowed"
+              >
+                Upgrade to PRO
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {!loading && !data && (
+        <p className="text-sm text-text-muted">Could not load plan information.</p>
       )}
     </Card>
   );

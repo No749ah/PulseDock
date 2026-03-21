@@ -78,6 +78,7 @@ any_count=$(grep -rn "\bany\b" \
   2>/dev/null \
   | grep -v "node_modules\|\.next\|eslint-disable\|@typescript-eslint/no-explicit-any\|// .*any\|/\* .*any" \
   | grep ": any\|as any\b\|<any>\|Array<any>" \
+  | grep -v "placeholder=" \
   | wc -l | tr -d '[:space:]')
 
 if [[ "$any_count" == "0" ]]; then

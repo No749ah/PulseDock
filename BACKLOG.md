@@ -1,3 +1,53 @@
+## Status Summary (2026-03-21 10:24 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 9 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **BROWSER monitor type:** Full page check with browser User-Agent, status assertion, expected text search, CSS selector presence check (regex-based: #id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. Prisma BROWSER enum added + db pushed. 9 new unit tests.
+  - **Registry variants:** 8 new tool variant groups added (traefik/docker+k8s, forgejo/standalone+docker, sonarqube/CE+DE+EE+cloud, uptime-kuma/docker+npm, immich/docker+k8s, ghost/self-hosted+pro, plausible/self-hosted+cloud, wordpress/docker+multisite+cloud)
+
+## Status Summary (2026-03-21 08:32 UTC)
+- **Build/Test:** ✅ Clean build, 1704 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ Web restarted; all routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **Billing / License Management:** Plan + UserPlan Prisma models, PlanService (COMMUNITY/PRO/ENTERPRISE plans), GET /v1/plan + check endpoint, limit enforcement on create endpoints, admin plan management, PlanUsageCard on account page, 13 new unit tests
+
+## Status Summary (2026-03-21 07:21 UTC)
+- **Build/Test:** ✅ Clean build, 1691 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **White-label sweep (COMPLETE):** All app shell pages use `brand.name` from `brand.ts`:
+    - 13 layout.tsx files (dashboard, monitors, alerts, versions, status-pages, account, admin, incidents, projects, maintenance, login, embed, monitor-detail) title metadata brand-aware
+    - Dashboard onboarding tour + sample monitor name use `brand.name`
+    - OnboardingChecklist, not-found, global-error, verify-email, offline pages brand-aware
+    - Monitors STARTTLS/interval help, alerts webhook sig description, account Grafana text, versions agent section all use `brand.name`
+    - Status page editor branding toggle, preview footer, public page footer brand-aware
+    - Embed page "Powered by" footer uses `brand.name` + `brand.githubUrl`
+  - **Plugin Management UI (admin panel):**
+    - `GET /v1/plugins` endpoint (JWT-guarded, Swagger documented)
+    - Admin page fetches + renders plugin grid: id, displayName, description, supported types, config field count, 'active' badge
+    - PLUGIN_DIR env var documentation in footer
+    - 3 new PluginsController unit tests → total 1691 API tests
+
+## Status Summary (2026-03-21 05:13 UTC)
+- **Build/Test:** ✅ Clean build, 1676 tests passing (1651 API + 12 Agent + 10 CLI + web), zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **Plugin System v2 — 3 more built-in check plugins** (total plugins: 8):
+    - `http.header-assertion` — verifies response header exists + optional value substring check, warn/fail-on-missing toggle. 7 unit tests.
+    - `http.redirect-check` — follows redirect chain, asserts final URL prefix / HTTPS requirement / max hops. 8 unit tests.
+    - `http.cert-expiry` — TLS cert expiry via Node `tls.connect`, warn/critical day thresholds, handles expired certs. 5 unit tests.
+  - All 3 registered in `ChecksService` plugin registry. TS strict mode clean. Build passing.
+
+## Status Summary (2026-03-21 04:56 UTC)
+- **Build/Test:** ✅ Clean build, all tests passing, zero TS errors
+- **Deployment:** ✅ Web restarted; local 200 + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **Registry:** 5,009 unique tool entries — fixed REGISTRY_PART32 collision from parallel subagent runs, renamed duplicates to PART33-37, wired into export
+
 ## Status Summary (2026-03-21 04:42 UTC)
 - **Build/Test:** ✅ Clean build, 1651+ tests passing (API + CLI + Agent), zero TS errors
 - **Deployment:** ✅ API + Web restarted; all 8 routes 200 local + public `https://oc-dev-test.no749ah.com`
@@ -894,7 +944,7 @@
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [x] **Widget data loading** — router.refresh() replaces hard page reloads for live status updates (WebSocket + polling). Per-widget incremental hydration deferred — full RSC route refresh is acceptable for current scale.
-- [~] **Widget design overhaul** — Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. Remaining: "Preview with data" mode, per-widget last-updated timestamp in all data-fetch cards.
+- [x] **Widget design overhaul** — Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. *(2026-03-21: completed per-widget last-updated timestamp pass across data-fetch cards using `fetchedAt` + relative time metadata; "Preview with data" mode already shipped.)*
 - [x] **"Preview with data" mode** — "Full Preview" button in editor toolbar opens `/status-pages/:id/preview` in a new tab. SSR page with authenticated API (`/v1/status-pages/:id/preview` + `/v1/status-pages/:id/preview/widget/:widgetId`) renders the exact public layout with real live widget data, regardless of publish state. Amber preview banner shown at top.
 - [x] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
 
@@ -1636,7 +1686,7 @@
   **Print & 3D:**
   OctoPrint, Mainsail, Fluidd, Moonraker, Klipper, Repetier Server, Duet Web Control, CUPS
 
-- [ ] **Tool Registry expansion: 1302 → 5000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+- [x] **Tool Registry expansion: 1302 → 5009+** — 5009 unique tools in registry across all categories. Registry lint: 0 errors, 1 warning. Added evidenceUrls to 16 verified tools. Fixed bad ID (p35-privateGPT-server → p35-privategpt-server). Added missing categories E-Commerce/Healthcare/IoT to lint allowlist. *(2026-03-21)*
 
 - [x] **Fix Simple Icons 404s** — Audited all 300 unique icon slugs. All return HTTP 200 — previously fixed in earlier sessions. No broken slugs remain.
 
@@ -1736,15 +1786,15 @@
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
-- [~] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins. *(2026-03-21: shipped first major check-plugin expansion: `http.regex-match`, `http.response-time`, `http.json-assertion`, `http.status-code`; registered in `ChecksService` with dedicated unit tests. Remaining: user-installable plugin loading, plugin versioning/signature model, custom widgets/channels + marketplace UX.)*
-- [~] **White-label** — env-driven instance branding foundation shipped: `NEXT_PUBLIC_APP_NAME/DESCRIPTION/LOGO_URL/FAVICON_URL/ACCENT_COLOR/APP_URL/HIDE_BRANDING/GITHUB_URL`, dynamic metadata + favicon + accent override, login branding, optional "Powered by PulseDock" footer attribution, API email templates now `APP_NAME`/`APP_URL`/`GITHUB_URL` aware. Remaining: full dashboard-wide text/logo sweep, tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
-- [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
+- [~] **Plugin System v2** — 8 built-in check plugins + external filesystem loader + admin plugin management UI. *(2026-03-21: Added `GET /v1/plugins` endpoint, admin panel Plugin Management card showing all loaded plugins with metadata. External loader reads `*.plugin.js` from PLUGIN_DIR. Remaining: custom widget types from plugins, plugin marketplace UX, plugin versioning/signature model.)*
+- [x] **White-label** — complete: `NEXT_PUBLIC_APP_*` env vars, brand.ts central config, all app shell pages + layouts use brand.name, metadata titles, onboarding copy, help text, footer attribution, login branding, API email templates. Remaining deferred: tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
+- [x] **Billing / License Management** — Plan + UserPlan Prisma models. PlanService: getUserPlan (COMMUNITY default), getUsage, checkLimit, isLimitReached. GET /v1/plan + GET /v1/plan/check/:resource. Limit enforcement on monitor/status-page/alert-channel create. Admin: GET /v1/admin/plans + PUT /v1/admin/users/:id/plan. Frontend: PlanUsageCard on account page with usage bars + approaching-limits callout. 13 new tests. *(2026-03-21)*
 - [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
 - [x] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
-- [ ] **Synthetic / Browser checks** — Full browser check type using Playwright/Puppeteer: navigate URL, assert selector present, measure time-to-interactive. Runs in Docker sidecar. New monitor type: BROWSER. Requires additional infra (browser runner).
+- [~] **Synthetic / Browser checks** — BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 — basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
 - [x] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [x] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
 - [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.

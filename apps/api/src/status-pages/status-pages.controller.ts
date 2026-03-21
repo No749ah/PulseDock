@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   HttpCode,
@@ -27,6 +28,7 @@ import {
 import { AuthGuard } from '../common/auth.guard';
 import { CreateStatusPageDto, UpdateStatusPageDto } from './status-pages.dto';
 import { StatusPagesService } from './status-pages.service';
+import { PlanService } from '../settings/plan.service';
 
 interface AuthRequest {
   user: { id: string };
@@ -35,7 +37,10 @@ interface AuthRequest {
 @ApiTags('Status Pages')
 @Controller('v1')
 export class StatusPagesController {
-  constructor(private readonly statusPagesService: StatusPagesService) {}
+  constructor(
+    private readonly statusPagesService: StatusPagesService,
+    private readonly planService: PlanService,
+  ) {}
 
   // ── Authenticated routes ──────────────────────────────────────────────────
 
@@ -56,7 +61,19 @@ export class StatusPagesController {
   @ApiResponse({ status: 201, description: 'Created status page.' })
   @ApiResponse({ status: 400, description: 'Validation error — title is required.' })
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
-  create(@Req() req: AuthRequest, @Body() body: CreateStatusPageDto) {
+  @ApiResponse({ status: 403, description: 'Plan status-pages limit reached.' })
+  async create(@Req() req: AuthRequest, @Body() body: CreateStatusPageDto) {
+    const check = await this.planService.checkLimit(req.user.id, 'status-pages');
+    if (!check.allowed) {
+      throw new ForbiddenException({
+        message: 'Plan limit reached: upgrade to PRO for more status pages',
+        code: 'PLAN_LIMIT',
+        resource: 'status-pages',
+        current: check.current,
+        limit: check.limit,
+        plan: check.plan,
+      });
+    }
     return this.statusPagesService.create(req.user.id, body);
   }
 

@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 16:15 UTC)
+- **Build/Test:** ✅ Clean build, 1899 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 11 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Demo data seeding:** `POST /v1/demo/seed` — idempotent endpoint creates 5 sample monitors (GitHub Status, Docker Hub, Cloudflare DNS, PulseDock API, Grafana version), 1 webhook alert channel, and a status page. Skips if user has 3+ monitors. 5 unit tests. OnboardingChecklist "Load Sample Data" button with success/error toasts. Removes last blocker for onboarding improvements item.
+
 ## Status Summary (2026-03-21 15:55 UTC)
 - **Build/Test:** ✅ Clean build, 1894 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy
@@ -1892,7 +1899,7 @@
 - [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
 - [x] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes, with fuzzy search, recent commands, keyboard navigation (↑↓/Enter/Esc), group labels, shortcut hints. Keyboard shortcuts modal (?). Both wired into root layout.
 - [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
-- [~] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). Remaining: sample data demo option + final empty-state CTA sweep across all pages.
+- [x] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). `POST /v1/demo/seed` endpoint creates 5 sample monitors, 1 alert channel, and a status page for new users. "Load Sample Data" button on OnboardingChecklist. Idempotent — skips if 3+ monitors exist. 5 unit tests. Empty states confirmed on all 11 pages. *(2026-03-21)*
 - [x] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
 - [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
 - [x] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)

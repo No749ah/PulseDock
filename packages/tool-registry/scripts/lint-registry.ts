@@ -31,6 +31,7 @@ const VALID_CATEGORIES = new Set([
   "Legal & Compliance", "HR & People",
   "GIS & Mapping", "Radio & SDR", "Backup & Recovery",
   "VoIP & Telephony", "Digital Signage", "Fleet & Asset Management",
+  "E-Commerce", "Healthcare", "IoT",
 ]);
 
 const VALID_VERSION_SOURCE_TYPES = new Set([

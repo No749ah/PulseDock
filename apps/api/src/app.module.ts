@@ -63,6 +63,8 @@ import { GrafanaService } from './grafana/grafana.service';
 import { OnCallController } from './oncall/oncall.controller';
 import { OnCallService } from './oncall/oncall.service';
 import { RedisCacheService } from './common/redis-cache.service';
+import { DemoController } from './demo/demo.controller';
+import { DemoService } from './demo/demo.service';
 
 @Module({
   imports: [
@@ -103,6 +105,7 @@ import { RedisCacheService } from './common/redis-cache.service';
     GrafanaController,
     OnCallController,
     OrganizationsController,
+    DemoController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -133,6 +136,7 @@ import { RedisCacheService } from './common/redis-cache.service';
     OnCallService,
     OrganizationsService,
     RedisCacheService,
+    DemoService,
   ],
 })
 export class AppModule implements NestModule {

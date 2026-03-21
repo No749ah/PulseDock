@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, X, Zap } from "lucide-react";
+import { CheckCircle2, Circle, X, Zap, Sparkles, Loader2 } from "lucide-react";
 import { Card } from "./Card";
 import { Button } from "./Button";
 import { brand } from "../../lib/brand";
+import { api } from "../../lib/api";
+import { useToast } from "../../components/ui/toast";
 
 interface Step {
   id: string;
@@ -32,8 +34,10 @@ export function OnboardingChecklist({
   hasAlertChannels,
 }: OnboardingChecklistProps) {
   const router = useRouter();
+  const toast = useToast();
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     const perUserKey = DISMISSED_KEY_PREFIX + userId;
@@ -50,6 +54,24 @@ export function OnboardingChecklist({
     localStorage.setItem(perUserKey, "true");
     localStorage.setItem(GLOBAL_DISMISSED_KEY, "true");
     setDismissed(true);
+  };
+
+  const handleSeedDemo = async () => {
+    setSeeding(true);
+    try {
+      const res = await api<{ alreadySeeded: boolean; monitors?: string[] }>('/v1/demo/seed', undefined, { method: 'POST' });
+      if (res.alreadySeeded) {
+        toast.info('Your account already has monitors — no demo data needed.');
+      } else {
+        toast.success(`Demo data loaded! Created ${res.monitors?.length ?? 0} monitors, 1 alert channel, and a status page.`);
+        // Refresh to show new monitors / alert channels in checklist
+        router.refresh();
+      }
+    } catch {
+      toast.error('Failed to load demo data. Please try again.');
+    } finally {
+      setSeeding(false);
+    }
   };
 
   if (!mounted || dismissed) return null;
@@ -125,12 +147,29 @@ export function OnboardingChecklist({
         <div className="p-3 rounded-xl bg-accent/10 shrink-0">
           <Zap className="w-6 h-6 text-accent" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-text-primary">Get started with {brand.name}</h2>
           <p className="text-text-secondary text-sm mt-1">
             Complete these steps to start monitoring your services
           </p>
         </div>
+        {!hasMonitors && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleSeedDemo}
+            disabled={seeding}
+            className="shrink-0 text-xs flex items-center gap-1.5"
+            title="Populate your account with sample monitors and a status page"
+          >
+            {seeding ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            {seeding ? 'Loading…' : 'Load Sample Data'}
+          </Button>
+        )}
       </div>
 
       {/* Progress bar */}

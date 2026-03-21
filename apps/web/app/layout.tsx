@@ -7,6 +7,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { brand } from "../lib/brand";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
@@ -35,34 +36,33 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "PulseDock — Version Intelligence & Uptime Monitoring",
-  description:
-    "Monitor your applications for version updates, security patches, and uptime. Open source, self-hosted, built for developers.",
+  title: `${brand.name} — ${brand.description}`,
+  description: brand.fullDescription,
   keywords: ["monitoring", "uptime", "version tracking", "security", "open source"],
   authors: [{ name: "No749ah", url: "https://github.com/No749ah" }],
   creator: "No749ah",
   alternates: {
-    canonical: "https://oc-dev-test.no749ah.com",
+    canonical: brand.url,
   },
   openGraph: {
-    title: "PulseDock — Version Intelligence & Uptime Monitoring",
-    description: "Monitor your applications for version updates, security patches, and uptime.",
+    title: `${brand.name} — ${brand.description}`,
+    description: brand.fullDescription,
     type: "website",
     locale: "en_US",
-    url: "https://oc-dev-test.no749ah.com",
+    url: brand.url,
     images: [
       {
-        url: "https://oc-dev-test.no749ah.com/og-image.png",
+        url: brand.ogImageUrl,
         width: 1200,
         height: 630,
-        alt: "PulseDock Dashboard",
+        alt: `${brand.name} Dashboard`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PulseDock",
-    description: "Version intelligence & uptime monitoring for your stack.",
+    title: brand.name,
+    description: `${brand.description} for your stack.`,
   },
   robots: "index, follow",
 };
@@ -72,25 +72,25 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "SoftwareApplication",
-      "name": "PulseDock",
+      "name": brand.name,
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any",
-      "description": "Open-source version intelligence and uptime monitoring tool. Track version updates, monitor uptime, manage incidents, and share public status pages.",
-      "url": "https://oc-dev-test.no749ah.com",
+      "description": brand.fullDescription,
+      "url": brand.url,
       "author": {
         "@type": "Person",
         "name": "No749ah",
         "url": "https://github.com/No749ah",
       },
-      "license": "https://github.com/No749ah/PulseDock/blob/main/LICENSE",
-      "codeRepository": "https://github.com/No749ah/PulseDock",
+      "license": `${brand.githubUrl}/blob/main/LICENSE`,
+      "codeRepository": brand.githubUrl,
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD",
       },
       "featureList": [
-        "Version Intelligence — track 1300+ tools",
+        "Version Intelligence — track 3900+ tools",
         "Uptime Monitoring — HTTP, TCP, SSL, Heartbeat",
         "Public Status Pages with drag-and-drop editor",
         "Incident Management with post-mortems",
@@ -102,12 +102,12 @@ const jsonLd = {
     },
     {
       "@type": "WebSite",
-      "name": "PulseDock",
-      "url": "https://oc-dev-test.no749ah.com",
-      "description": "Version intelligence & uptime monitoring for developers.",
+      "name": brand.name,
+      "url": brand.url,
+      "description": `${brand.description} for developers.`,
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://oc-dev-test.no749ah.com/versions?q={search_term_string}",
+        "target": `${brand.url}/versions?q={search_term_string}`,
         "query-input": "required name=search_term_string",
       },
     },
@@ -118,15 +118,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`dark ${inter.variable}`}>
       <head>
-        {/* Favicon */}
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        {/* Favicon — supports white-label override via NEXT_PUBLIC_APP_FAVICON_URL */}
+        {brand.faviconUrl ? (
+          <link rel="icon" href={brand.faviconUrl} />
+        ) : (
+          <>
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+            <link rel="icon" href="/favicon.ico" sizes="32x32" />
+          </>
+        )}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
         <link rel="manifest" href="/site.webmanifest" />
 
         {/* DNS prefetch for tool registry icon CDN */}
         <link rel="dns-prefetch" href="https://cdn.simpleicons.org" />
         <link rel="preconnect" href="https://cdn.simpleicons.org" crossOrigin="anonymous" />
+
+        {/* White-label: override accent color if configured */}
+        {brand.accentColor !== '#58a6ff' && (
+          <style dangerouslySetInnerHTML={{
+            __html: `:root { --color-accent: ${brand.accentColor}; --color-accent-hover: ${brand.accentColor}cc; }`
+          }} />
+        )}
 
         {/* JSON-LD structured data */}
         <script

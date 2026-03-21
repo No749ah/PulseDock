@@ -1,3 +1,47 @@
+## Status Summary (2026-03-21 04:42 UTC)
+- **Build/Test:** ✅ Clean build, 1651+ tests passing (API + CLI + Agent), zero TS errors
+- **Deployment:** ✅ API + Web restarted; all 8 routes 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Plugin System v2 progress:** 4 new built-in HTTP monitor check plugins shipped + full unit test suites:
+    - `http.regex-match` — matches response body against ECMAScript regex, optional exact capture group assertion
+    - `http.response-time` — warns/fails when latency exceeds configurable ms thresholds
+    - `http.json-assertion` — extracts JSON field via dot-path, asserts value with optional warn-on state
+    - `http.status-code` — asserts response code is in an allowed list, supports warn codes for redirects
+  - **Tool Registry expansion: 3961 → 4,569** (+608 entries across PART30/31/32): Containers, CI/CD, Databases (CockroachDB, TiDB, ClickHouse, Neo4j, SurrealDB, DuckDB), Security (Nuclei, Semgrep, Infisical), Networking (ZeroTier, BIRD, FRRouting), AI/ML (Kubeflow, BentoML, Feast, ZenML, Seldon), Messaging (EMQX, Redpanda, Pulsar), API backends (Supabase, Appwrite, PocketBase, NocoDB), Search/Vector (Milvus, Qdrant, Weaviate, Chroma), and more.
+
+## Status Summary (2026-03-21 04:38 UTC)
+- **Build/Test:** ✅ Clean build, all tests passing, zero TS errors
+- **Registry:** 4,569 unique tool entries (REGISTRY_PART32 added ~208 new real/self-hosted tools: containers, CI/CD, databases, security, networking, AI/ML, CMS, messaging, IoT, observability, etc.)
+- **Branch:** heartbeat/2026-03-21-work
+
+## Status Summary (2026-03-21 04:26 UTC)
+- **Build/Test:** ✅ Clean build, 1651 tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Public URL healthy (`https://oc-dev-test.no749ah.com` 200, sampled `_next/static` JS asset 200), web restarted
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Organization/workspace feature validated complete** from subagent handoff: added missing `GET /v1/organizations/slug-check`, account organizations card, full build+tests passing, pushed to heartbeat branch.
+  - **White-label groundwork shipped (instance-level):**
+    - New centralized web brand config: `apps/web/lib/brand.ts`
+    - Layout metadata/JSON-LD/favicons now brand-aware (`NEXT_PUBLIC_APP_*` vars)
+    - Accent color override via CSS custom property injection
+    - Login page branding supports custom logo/name
+    - Sidebar footer supports optional "Powered by PulseDock" attribution toggle (`NEXT_PUBLIC_HIDE_BRANDING`)
+    - API mailer templates now use `APP_NAME`/`APP_URL`/`GITHUB_URL` env-driven branding
+    - Documented new env vars in `apps/web/.env.example` and `apps/api/.env.example`
+  - `BACKLOG.md` white-label item moved to **in progress** with remaining scope captured.
+
+## Status Summary (2026-03-21 04:35 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Build script restarted web server successfully
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Tool Registry expansion: 3961 → 4361 entries** (+400 unique tools)
+  - Added `REGISTRY_PART30` (200 entries) focused on specialized self-hosted areas: GIS/Mapping, Legal/Compliance, HR/Payroll, Helpdesk/Support, Form/Survey, Publishing/RSS, Smart Home, Remote Access
+  - Added `REGISTRY_PART31` (200 entries) focused on knowledge/notes, finance/personal accounting, time tracking, recipes, fitness/health, game servers, and home automation
+  - Updated `TOOL_REGISTRY` export to include `REGISTRY_PART30` + `REGISTRY_PART31`
+  - Duplicate ID check: **0 duplicates** across full registry
+
 ## Status Summary (2026-03-21 03:02 UTC)
 - **Build/Test:** ✅ Clean build, 1651 tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ All routes 200 (local + public https://oc-dev-test.no749ah.com), services restarted
@@ -1685,15 +1729,15 @@
 ### P2 — Enterprise Features (Beyond Monitoring)
 
 - [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
-- [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
+- [x] **Organization / Workspace** — Multiple organizations per account, slug availability check, member management, invite system. Full API + frontend `/account/organizations` page + account card. *(2026-03-21)*
 - [x] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
 - [x] **Single Sign-On (SSO)** — OAuth2/OIDC via GitHub + Google. `OAuthAccount` Prisma model (provider/providerId unique), `passwordHash` nullable for SSO-only users. `GET /v1/auth/oauth/:provider` → redirects to provider. `GET /v1/auth/oauth/:provider/callback` → exchanges code, upserts user, issues refresh token, redirects to web `/login?token=xxx`. Frontend login page handles `?token=` via refresh exchange + shows GitHub/Google buttons (brand SVG icons). CSRF exemption for `/v1/auth/oauth/` prefix. 7 new unit tests. 1610 tests total.
 - [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
-- [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
-- [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
+- [~] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins. *(2026-03-21: shipped first major check-plugin expansion: `http.regex-match`, `http.response-time`, `http.json-assertion`, `http.status-code`; registered in `ChecksService` with dedicated unit tests. Remaining: user-installable plugin loading, plugin versioning/signature model, custom widgets/channels + marketplace UX.)*
+- [~] **White-label** — env-driven instance branding foundation shipped: `NEXT_PUBLIC_APP_NAME/DESCRIPTION/LOGO_URL/FAVICON_URL/ACCENT_COLOR/APP_URL/HIDE_BRANDING/GITHUB_URL`, dynamic metadata + favicon + accent override, login branding, optional "Powered by PulseDock" footer attribution, API email templates now `APP_NAME`/`APP_URL`/`GITHUB_URL` aware. Remaining: full dashboard-wide text/logo sweep, tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
 - [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 

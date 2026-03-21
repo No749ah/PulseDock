@@ -56,6 +56,14 @@ export class OrganizationsController {
     return this.orgsService.createOrganization(req.user.sub, dto)
   }
 
+  @Get('slug-check')
+  @ApiOperation({ summary: 'Check if an organization slug is available' })
+  @ApiQuery({ name: 'slug', required: true, description: 'Slug to check' })
+  @ApiResponse({ status: 200, description: 'Returns { available: boolean }' })
+  async checkSlug(@Query('slug') slug: string) {
+    return this.orgsService.checkSlug(slug)
+  }
+
   @Get('invites/accept')
   @ApiOperation({ summary: 'Accept an organization invite by token' })
   @ApiQuery({ name: 'token', required: true, description: 'Invite token from email' })

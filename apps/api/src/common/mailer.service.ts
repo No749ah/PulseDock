@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import nodemailer from 'nodemailer';
 
+/** App name for email branding — override via APP_NAME environment variable. */
+const APP_NAME = process.env.APP_NAME ?? 'PulseDock';
+/** App URL for email links — override via APP_URL environment variable. */
+const APP_URL = process.env.APP_URL ?? 'https://oc-dev-test.no749ah.com';
+/** App GitHub URL for footer link — override via GITHUB_URL environment variable. */
+const GITHUB_URL = process.env.GITHUB_URL ?? 'https://github.com/No749ah/PulseDock';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared HTML email layout
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,7 +35,7 @@ function htmlLayout(title: string, bodyHtml: string): string {
                   <circle cx="14" cy="14" r="14" fill="#3b82f6"/>
                   <path d="M8 14a6 6 0 1 1 12 0 6 6 0 0 1-12 0zm6-3v3l2 2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                <span style="font-size:20px;font-weight:700;color:#f1f5f9;letter-spacing:-0.3px;">PulseDock</span>
+                <span style="font-size:20px;font-weight:700;color:#f1f5f9;letter-spacing:-0.3px;">${APP_NAME}</span>
               </span>
             </td>
           </tr>
@@ -44,8 +51,8 @@ function htmlLayout(title: string, bodyHtml: string): string {
           <tr>
             <td style="padding-top:20px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#475569;line-height:1.6;">
-                You're receiving this because you have an account on PulseDock.<br/>
-                <a href="https://github.com/No749ah/PulseDock" style="color:#3b82f6;text-decoration:none;">Open source</a> &nbsp;·&nbsp;
+                You're receiving this because you have an account on ${APP_NAME}.<br/>
+                <a href="${GITHUB_URL}" style="color:#3b82f6;text-decoration:none;">Open source</a> &nbsp;·&nbsp;
                 Self-hosted version intelligence &amp; uptime monitoring.
               </p>
             </td>
@@ -146,10 +153,10 @@ export class MailerService {
    * @param inviteUrl - One-time accept URL (includes signed token)
    */
   async sendInviteEmail(to: string, inviteUrl: string) {
-    const subject = "You've been invited to PulseDock";
+    const subject = `You've been invited to ${APP_NAME}`;
 
     const text = [
-      `You've been invited to PulseDock.`,
+      `You've been invited to ${APP_NAME}.`,
       ``,
       `Open this link to accept your invitation:`,
       inviteUrl,
@@ -160,7 +167,7 @@ export class MailerService {
     const html = htmlLayout(subject, `
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">You've been invited</h1>
       <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">
-        You've been invited to join <strong style="color:#e2e8f0;">PulseDock</strong> — version intelligence &amp; uptime monitoring.
+        You've been invited to join <strong style="color:#e2e8f0;">${APP_NAME}</strong> — version intelligence &amp; uptime monitoring.
         Click the button below to set up your account.
       </p>
       ${btnPrimary(inviteUrl, 'Accept Invitation')}
@@ -182,10 +189,10 @@ export class MailerService {
    * @param resetUrl - Signed reset URL (token valid for 15 minutes, invalidated on use)
    */
   async sendPasswordResetEmail(to: string, resetUrl: string) {
-    const subject = 'Reset your PulseDock password';
+    const subject = `Reset your ${APP_NAME} password`;
 
     const text = [
-      `A password reset was requested for your PulseDock account.`,
+      `A password reset was requested for your ${APP_NAME} account.`,
       ``,
       `Reset link (expires in 15 minutes):`,
       resetUrl,
@@ -196,7 +203,7 @@ export class MailerService {
     const html = htmlLayout(subject, `
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">Reset your password</h1>
       <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">
-        We received a request to reset the password for your PulseDock account.
+        We received a request to reset the password for your ${APP_NAME} account.
         Click the button below to choose a new password.
       </p>
       ${btnPrimary(resetUrl, 'Reset Password')}
@@ -219,10 +226,10 @@ export class MailerService {
    * @param verifyUrl - Single-use email verification URL
    */
   async sendEmailVerificationEmail(to: string, verifyUrl: string) {
-    const subject = 'Verify your PulseDock email address';
+    const subject = `Verify your ${APP_NAME} email address`;
 
     const text = [
-      `Thanks for signing up for PulseDock!`,
+      `Thanks for signing up for ${APP_NAME}!`,
       ``,
       `Please verify your email address by opening this link:`,
       verifyUrl,
@@ -233,12 +240,12 @@ export class MailerService {
     const html = htmlLayout(subject, `
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">Verify your email</h1>
       <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">
-        Thanks for signing up for PulseDock! Click the button below to verify your email address and activate your account.
+        Thanks for signing up for ${APP_NAME}! Click the button below to verify your email address and activate your account.
       </p>
       ${btnPrimary(verifyUrl, 'Verify Email Address')}
       ${divider()}
       <p style="margin:0;font-size:12px;color:#475569;">
-        This link expires in <strong style="color:#94a3b8;">24 hours</strong>. If you didn't create a PulseDock account, you can safely ignore this email.
+        This link expires in <strong style="color:#94a3b8;">24 hours</strong>. If you didn't create a ${APP_NAME} account, you can safely ignore this email.
       </p>
     `);
 
@@ -258,12 +265,12 @@ export class MailerService {
     to: string,
     context: { ipAddress: string | null; userAgent: string | null; timestamp: string },
   ) {
-    const subject = 'New login detected on your PulseDock account';
+    const subject = `New login detected on your ${APP_NAME} account`;
     const ip = context.ipAddress ?? 'unknown';
     const ua = context.userAgent ?? 'unknown';
 
     const text = [
-      `A new login was detected on your PulseDock account.`,
+      `A new login was detected on your ${APP_NAME} account.`,
       ``,
       `Time:             ${context.timestamp}`,
       `IP address:       ${ip}`,
@@ -276,7 +283,7 @@ export class MailerService {
     const html = htmlLayout(subject, `
       <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">New login detected</h1>
       <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.6;">
-        A login was detected on your PulseDock account from an unrecognized location or device.
+        A login was detected on your ${APP_NAME} account from an unrecognized location or device.
       </p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:20px;">
         ${metaRow('Time', context.timestamp)}
@@ -306,7 +313,7 @@ export class MailerService {
    * @param extra     - Optional additional metadata to include in the email (JSON-serializable)
    */
   async sendAlertEmail(to: string, alertText: string, extra?: unknown) {
-    const subject = 'PulseDock Alert';
+    const subject = `${APP_NAME} Alert`;
 
     const text = extra
       ? `${alertText}\n\n---\n${JSON.stringify(extra, null, 2)}`
@@ -325,7 +332,7 @@ export class MailerService {
       ? `
         <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#22c55e;">✅ Test notification</h1>
         <p style="margin:0;font-size:15px;color:#94a3b8;line-height:1.6;">
-          This is a test notification from PulseDock. Your alert channel is configured correctly.
+          This is a test notification from ${APP_NAME}. Your alert channel is configured correctly.
         </p>
       `
       : `
@@ -337,7 +344,7 @@ export class MailerService {
         <p style="margin:0;font-size:14px;color:#64748b;">${alertText}</p>
         ${divider()}
         <p style="margin:0;font-size:12px;color:#475569;">
-          Log in to PulseDock to view full monitor history and acknowledge this alert.
+          Log in to ${APP_NAME} to view full monitor history and acknowledge this alert.
         </p>
       `
     );
@@ -370,8 +377,8 @@ export class MailerService {
     const isWeekly = data.frequency === 'weekly';
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const subject = isWeekly
-      ? `PulseDock Weekly Report — Week of ${dateStr}`
-      : `PulseDock Daily Report — ${dateStr}`;
+      ? `${APP_NAME} Weekly Report — Week of ${dateStr}`
+      : `${APP_NAME} Daily Report — ${dateStr}`;
 
     const uptimeColor =
       data.overallUptimePct >= 99 ? '#22c55e'
@@ -538,8 +545,8 @@ export class MailerService {
    * @param ipAddress   - Optional IP address that triggered the lockout (for user awareness)
    */
   async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
-    const subject = 'Your PulseDock account has been temporarily locked';
-    const text = `Your PulseDock account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;
+    const subject = `Your ${APP_NAME} account has been temporarily locked`;
+    const text = `Your ${APP_NAME} account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;
 
     const unlockTime = lockedUntil.toUTCString();
 

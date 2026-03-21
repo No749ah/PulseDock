@@ -37,6 +37,16 @@ export class OrganizationsService {
   }
 
   /**
+   * Checks if a slug is available for a new organization.
+   * @param slug - Slug to check
+   * @returns { available: boolean }
+   */
+  async checkSlug(slug: string): Promise<{ available: boolean }> {
+    const existing = await this.prisma.organization.findUnique({ where: { slug } })
+    return { available: !existing }
+  }
+
+  /**
    * Creates a new organization and sets the creator as OWNER.
    * @param userId - Authenticated user's ID
    * @param dto - Organization creation data

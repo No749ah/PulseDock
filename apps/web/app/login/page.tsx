@@ -10,6 +10,7 @@ import { AlertCircle, Monitor, Loader2, Shield } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { LocaleSwitcher } from "../components/LocaleSwitcher";
 import { useI18n } from "../../components/i18n-provider";
+import { brand } from "../../lib/brand";
 
 type LoginUser = {
   id: string;
@@ -334,15 +335,21 @@ export default function LoginPage() {
           <div className="w-full max-w-lg">
             {/* Logo */}
             <div className="flex items-center justify-center gap-3 mb-8">
-              <Monitor className="w-10 h-10 text-accent" />
-              <span className="text-4xl font-bold tracking-tight">PulseDock</span>
+              {brand.logoUrl ? (
+                <img src={brand.logoUrl} alt={brand.name} className="h-10 max-w-[200px] object-contain" />
+              ) : (
+                <>
+                  <Monitor className="w-10 h-10 text-accent" />
+                  <span className="text-4xl font-bold tracking-tight">{brand.name}</span>
+                </>
+              )}
             </div>
 
             {/* Setup Card */}
             <div className="bg-surface border border-border rounded-2xl p-10 shadow-2xl shadow-black/50">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Shield className="w-5 h-5 text-accent" />
-                <h1 className="text-xl font-semibold text-text-primary">Welcome to PulseDock</h1>
+                <h1 className="text-xl font-semibold text-text-primary">{`Welcome to ${brand.name}`}</h1>
               </div>
               <p className="text-text-secondary text-sm text-center mb-8">
                 Set up your admin account to get started
@@ -449,8 +456,14 @@ export default function LoginPage() {
             <LocaleSwitcher />
           </div>
           <div className="flex items-center justify-center gap-3 mb-10">
-            <Monitor className="w-10 h-10 text-accent" />
-            <span className="text-4xl font-bold tracking-tight">PulseDock</span>
+            {brand.logoUrl ? (
+              <img src={brand.logoUrl} alt={brand.name} className="h-10 max-w-[200px] object-contain" />
+            ) : (
+              <>
+                <Monitor className="w-10 h-10 text-accent" />
+                <span className="text-4xl font-bold tracking-tight">{brand.name}</span>
+              </>
+            )}
           </div>
 
           {/* Card */}

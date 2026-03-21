@@ -1,3 +1,19 @@
+## Status Summary (2026-03-21 04:26 UTC)
+- **Build/Test:** ✅ Clean build, 1651 tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Public URL healthy (`https://oc-dev-test.no749ah.com` 200, sampled `_next/static` JS asset 200), web restarted
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Organization/workspace feature validated complete** from subagent handoff: added missing `GET /v1/organizations/slug-check`, account organizations card, full build+tests passing, pushed to heartbeat branch.
+  - **White-label groundwork shipped (instance-level):**
+    - New centralized web brand config: `apps/web/lib/brand.ts`
+    - Layout metadata/JSON-LD/favicons now brand-aware (`NEXT_PUBLIC_APP_*` vars)
+    - Accent color override via CSS custom property injection
+    - Login page branding supports custom logo/name
+    - Sidebar footer supports optional "Powered by PulseDock" attribution toggle (`NEXT_PUBLIC_HIDE_BRANDING`)
+    - API mailer templates now use `APP_NAME`/`APP_URL`/`GITHUB_URL` env-driven branding
+    - Documented new env vars in `apps/web/.env.example` and `apps/api/.env.example`
+  - `BACKLOG.md` white-label item moved to **in progress** with remaining scope captured.
+
 ## Status Summary (2026-03-21 03:02 UTC)
 - **Build/Test:** ✅ Clean build, 1651 tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ All routes 200 (local + public https://oc-dev-test.no749ah.com), services restarted
@@ -1685,7 +1701,7 @@
 ### P2 — Enterprise Features (Beyond Monitoring)
 
 - [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
-- [ ] **Organization / Workspace** — Multiple organizations per account, switch between workspaces, org-level settings, shared monitors across team
+- [x] **Organization / Workspace** — Multiple organizations per account, slug availability check, member management, invite system. Full API + frontend `/account/organizations` page + account card. *(2026-03-21)*
 - [x] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
 - [x] **Single Sign-On (SSO)** — OAuth2/OIDC via GitHub + Google. `OAuthAccount` Prisma model (provider/providerId unique), `passwordHash` nullable for SSO-only users. `GET /v1/auth/oauth/:provider` → redirects to provider. `GET /v1/auth/oauth/:provider/callback` → exchanges code, upserts user, issues refresh token, redirects to web `/login?token=xxx`. Frontend login page handles `?token=` via refresh exchange + shows GitHub/Google buttons (brand SVG icons). CSRF exemption for `/v1/auth/oauth/` prefix. 7 new unit tests. 1610 tests total.
 - [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
@@ -1693,7 +1709,7 @@
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
 - [ ] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins
-- [ ] **White-label** — Remove all PulseDock branding, custom logo/colors throughout, custom email templates, custom domain for dashboard
+- [~] **White-label** — env-driven instance branding foundation shipped: `NEXT_PUBLIC_APP_NAME/DESCRIPTION/LOGO_URL/FAVICON_URL/ACCENT_COLOR/APP_URL/HIDE_BRANDING/GITHUB_URL`, dynamic metadata + favicon + accent override, login branding, optional "Powered by PulseDock" footer attribution, API email templates now `APP_NAME`/`APP_URL`/`GITHUB_URL` aware. Remaining: full dashboard-wide text/logo sweep, tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
 - [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 

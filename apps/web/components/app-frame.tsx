@@ -33,6 +33,7 @@ import { clearSession, getCachedUser, getUser } from './auth';
 import { useTheme } from './theme-provider';
 import { OrgSwitcher } from '../app/components/OrgSwitcher';
 import { api } from '../lib/api';
+import { brand } from '../lib/brand';
 
 type NavItem = {
   href: string;
@@ -321,10 +322,18 @@ export function AppFrame({
         </nav>
 
         {/* Sidebar footer */}
-        <div className="px-4 py-3 border-t border-border/40 shrink-0">
+        <div className="px-4 py-3 border-t border-border/40 shrink-0 space-y-1">
           <p className="text-[11px] text-text-secondary/50">
             v{process.env.NEXT_PUBLIC_APP_VERSION ?? 'dev'}
           </p>
+          {!brand.hideBranding && brand.name !== 'PulseDock' && (
+            <p className="text-[10px] text-text-secondary/30">
+              Powered by{' '}
+              <a href="https://github.com/No749ah/PulseDock" target="_blank" rel="noopener noreferrer" className="hover:text-text-secondary/60 transition-colors">
+                PulseDock
+              </a>
+            </p>
+          )}
         </div>
       </aside>
 

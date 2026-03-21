@@ -268,7 +268,7 @@ const NEEDS_MONITOR_TYPES = new Set([
   'current-status-badge', 'rolling-uptime-cards', 'uptime-percentage-card', 'ssl-certificate-status',
   'latency-percentiles-card', 'performance-trend', 'apdex-score', 'dns-resolution-time',
   'uptime-heatmap', 'status-history-ribbon', 'gauge', 'progress-ring', 'throughput-counter',
-  'custom-metric-chart', 'changelog-widget',
+  'custom-metric-chart', 'changelog-widget', 'version-check-badge',
 ]);
 
 /** Widget types that require monitorIds (array) to be configured. */

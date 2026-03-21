@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-03-21T12:34:56.523Z",
+  "generatedAt": "2026-03-21T12:49:13.033Z",
   "counts": {
     "widgetTypes": 82,
     "paletteTypes": 84,
     "rendererCases": 83,
-    "resolverCases": 66,
-    "noConfigResolverTypes": 23,
-    "configWarningCoveredTypes": 39
+    "resolverCases": 70,
+    "noConfigResolverTypes": 24,
+    "configWarningCoveredTypes": 40
   },
   "missingFromPalette": [],
   "missingFromRenderer": [],
@@ -19,13 +19,9 @@
     "divider",
     "image-banner",
     "maintenance-calendar",
-    "multi-monitor-status-grid",
-    "multi-status-badges",
     "rss-feed-widget",
     "tab-container",
     "text-block",
-    "update-summary",
-    "version-check-badge",
     "video-embed"
   ],
   "unexpectedResolverMissing": [],
@@ -39,13 +35,9 @@
     "divider",
     "image-banner",
     "maintenance-calendar",
-    "multi-monitor-status-grid",
-    "multi-status-badges",
     "rss-feed-widget",
     "tab-container",
     "text-block",
-    "update-summary",
-    "version-check-badge",
     "video-embed"
   ]
 }

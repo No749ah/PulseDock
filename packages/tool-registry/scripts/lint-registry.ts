@@ -14,6 +14,7 @@
  */
 
 import { TOOL_REGISTRY } from "../src/registry";
+import { TOOL_VARIANTS } from "../src/variants";
 import type { ToolRegistryEntry } from "../src/types";
 
 const VALID_CATEGORIES = new Set([
@@ -162,6 +163,50 @@ function lintRegistry(entries: ToolRegistryEntry[]): LintError[] {
   return errors;
 }
 
+function printStats() {
+  // ID uniqueness
+  const idSet = new Set(TOOL_REGISTRY.map((e) => e.id));
+  console.log(`\n${"─".repeat(50)}`);
+  console.log(`Unique IDs: ${idSet.size} / ${TOOL_REGISTRY.length} total`);
+  if (idSet.size < TOOL_REGISTRY.length) {
+    console.log(`⚠️  ${TOOL_REGISTRY.length - idSet.size} duplicate ID(s) detected!`);
+  }
+
+  // Verification status distribution
+  const verifiedCount = TOOL_REGISTRY.filter((e) => e.verified).length;
+  const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
+  const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
+  const withEvidence = TOOL_REGISTRY.filter((e) => e.evidenceUrl).length;
+
+  // TOOL_VARIANTS coverage (variants stored separately from registry entries)
+  const variantToolIds = new Set(Object.keys(TOOL_VARIANTS));
+  const withVariantsCount = variantToolIds.size;
+  const withInlineVariants = TOOL_REGISTRY.filter((e) => e.variants && e.variants.length > 0).length;
+
+  // requiresInstanceUrl tools without variant definitions
+  const requiresUrlTools = TOOL_REGISTRY.filter((e) => e.requiresInstanceUrl);
+  const requiresUrlWithoutVariants = requiresUrlTools.filter((e) => !variantToolIds.has(e.id));
+
+  console.log(`\nVerification stats:`);
+  console.log(`  verified=true:         ${verifiedCount} / ${TOOL_REGISTRY.length}`);
+  console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
+  console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
+  console.log(`  evidenceUrl:           ${withEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  inline variants:       ${withInlineVariants} / ${TOOL_REGISTRY.length}`);
+
+  console.log(`\nVariant coverage (TOOL_VARIANTS map):`);
+  console.log(`  Tools with variants:   ${withVariantsCount} tool(s) defined in TOOL_VARIANTS`);
+  console.log(`  requiresInstanceUrl:   ${requiresUrlTools.length} tools require instance URL`);
+  console.log(`  ... without variants:  ${requiresUrlWithoutVariants.length} of those have NO variant definition`);
+
+  if (requiresUrlWithoutVariants.length > 0 && requiresUrlWithoutVariants.length <= 20) {
+    console.log(`  IDs missing variants: ${requiresUrlWithoutVariants.map((e) => e.id).join(', ')}`);
+  } else if (requiresUrlWithoutVariants.length > 20) {
+    console.log(`  First 20 missing: ${requiresUrlWithoutVariants.slice(0, 20).map((e) => e.id).join(', ')} ...`);
+  }
+  console.log();
+}
+
 function main() {
   console.log(`\n🔍 PulseDock Registry Lint\n${"─".repeat(50)}`);
   console.log(`Total entries: ${TOOL_REGISTRY.length}`);
@@ -169,11 +214,6 @@ function main() {
   const errors = lintRegistry(TOOL_REGISTRY);
   const hardErrors = errors.filter((e) => e.severity === "error");
   const warnings = errors.filter((e) => e.severity === "warning");
-
-  if (errors.length === 0) {
-    console.log(`\n✅ Registry is clean — no issues found.\n`);
-    process.exit(0);
-  }
 
   // Print errors
   if (hardErrors.length > 0) {
@@ -197,30 +237,14 @@ function main() {
     }
   }
 
-  // Summary
-  console.log(`\n${"─".repeat(50)}`);
-  console.log(`Summary: ${hardErrors.length} error(s), ${warnings.length} warning(s)`);
-
-  // ID uniqueness report
-  const idSet = new Set(TOOL_REGISTRY.map((e) => e.id));
-  console.log(`Unique IDs: ${idSet.size} / ${TOOL_REGISTRY.length} total`);
-  if (idSet.size < TOOL_REGISTRY.length) {
-    console.log(`⚠️  ${TOOL_REGISTRY.length - idSet.size} duplicate ID(s) detected!`);
+  if (errors.length === 0) {
+    console.log(`\n✅ Registry is clean — no issues found.`);
+  } else {
+    console.log(`\nSummary: ${hardErrors.length} error(s), ${warnings.length} warning(s)`);
   }
 
-  // Verification status distribution
-  const verifiedCount = TOOL_REGISTRY.filter((e) => e.verified).length;
-  const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
-  const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
-  const withEvidence = TOOL_REGISTRY.filter((e) => e.evidenceUrl).length;
-  const withVariants = TOOL_REGISTRY.filter((e) => e.variants && e.variants.length > 0).length;
-  console.log(`\nVerification stats:`);
-  console.log(`  verified=true:         ${verifiedCount} / ${TOOL_REGISTRY.length}`);
-  console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
-  console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
-  console.log(`  evidenceUrl:           ${withEvidence} / ${TOOL_REGISTRY.length}`);
-  console.log(`  with variants:         ${withVariants} / ${TOOL_REGISTRY.length}`);
-  console.log();
+  // Always print stats
+  printStats();
 
   // Exit with error code if there are hard errors
   if (hardErrors.length > 0) {

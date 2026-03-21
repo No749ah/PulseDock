@@ -1145,6 +1145,546 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'jenkins': [
+    {
+      id: 'war',
+      label: 'Standalone WAR / Bare-metal',
+      description: 'Jenkins running as a standalone WAR or system service on a server.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jenkins.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/json?tree=version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'jenkinsci/jenkins',
+      },
+      evidenceUrl: 'https://www.jenkins.io/doc/book/using/remote-access-api/',
+    },
+    {
+      id: 'docker',
+      label: 'Docker Container',
+      description: 'Jenkins running in a Docker container (official jenkins/jenkins image).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jenkins.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/json?tree=version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'jenkins/jenkins',
+      },
+      evidenceUrl: 'https://hub.docker.com/r/jenkins/jenkins',
+    },
+  ],
+
+  'elasticsearch': [
+    {
+      id: 'self-hosted',
+      label: 'Self-Hosted (Bare-metal / VM)',
+      description: 'Elasticsearch running on your own server.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://elasticsearch.example.com:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'elastic/elasticsearch',
+      },
+      evidenceUrl: 'https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-api.html',
+    },
+    {
+      id: 'docker',
+      label: 'Docker / Docker Compose',
+      description: 'Elasticsearch running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'elastic/elasticsearch',
+      },
+      evidenceUrl: 'https://hub.docker.com/r/elastic/elasticsearch',
+    },
+  ],
+
+  'vaultwarden': [
+    {
+      id: 'docker',
+      label: 'Docker (vaultwarden/server)',
+      description: 'Vaultwarden (Bitwarden-compatible server) running via Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/alive',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'dani-garcia/vaultwarden',
+      },
+      evidenceUrl: 'https://github.com/dani-garcia/vaultwarden/wiki',
+    },
+    {
+      id: 'docker-compose',
+      label: 'Docker Compose',
+      description: 'Vaultwarden deployed via Docker Compose with optional reverse proxy.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/alive',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'dani-garcia/vaultwarden',
+      },
+      evidenceUrl: 'https://github.com/dani-garcia/vaultwarden/wiki/Using-Docker-Compose',
+    },
+  ],
+
+  'nginx-proxy-manager': [
+    {
+      id: 'docker',
+      label: 'Docker (official image)',
+      description: 'Nginx Proxy Manager running via Docker Compose.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://npm.example.com:81',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'NginxProxyManager/nginx-proxy-manager',
+      },
+      evidenceUrl: 'https://nginxproxymanager.com/setup/',
+    },
+  ],
+
+  'pihole': [
+    {
+      id: 'docker',
+      label: 'Docker (pihole/pihole)',
+      description: 'Pi-hole running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pihole.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/api.php?versions',
+        jsonPath: '$.core_current',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'pihole/pihole',
+      },
+      evidenceUrl: 'https://docs.pi-hole.net/api/',
+    },
+    {
+      id: 'native',
+      label: 'Native (Raspberry Pi / Linux)',
+      description: 'Pi-hole installed natively on Raspberry Pi or Linux.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pi.hole',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/api.php?versions',
+        jsonPath: '$.core_current',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pi-hole/pi-hole',
+      },
+      evidenceUrl: 'https://docs.pi-hole.net/api/',
+    },
+  ],
+
+  'adguard-home': [
+    {
+      id: 'docker',
+      label: 'Docker (adguard/adguardhome)',
+      description: 'AdGuard Home running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://adguard.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/control/status',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'AdguardTeam/AdGuardHome',
+      },
+      evidenceUrl: 'https://adguard-dns.io/kb/adguard-home/api/',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'AdGuard Home installed as a native binary on Linux/macOS.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://192.168.1.1:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/control/status',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'AdguardTeam/AdGuardHome',
+      },
+      evidenceUrl: 'https://github.com/AdguardTeam/AdGuardHome/wiki/Getting-Started',
+    },
+  ],
+
+  'syncthing': [
+    {
+      id: 'docker',
+      label: 'Docker (syncthing/syncthing)',
+      description: 'Syncthing running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://syncthing.example.com:8384',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'syncthing/syncthing',
+      },
+      evidenceUrl: 'https://docs.syncthing.net/dev/rest.html',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'Syncthing installed natively on Linux, macOS, or Windows.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://localhost:8384',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'syncthing/syncthing',
+      },
+      evidenceUrl: 'https://docs.syncthing.net/dev/rest.html#system-endpoints',
+    },
+  ],
+
+  'meilisearch': [
+    {
+      id: 'docker',
+      label: 'Docker (getmeili/meilisearch)',
+      description: 'Meilisearch running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://meilisearch.example.com:7700',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.pkgVersion',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'meilisearch/meilisearch',
+      },
+      evidenceUrl: 'https://www.meilisearch.com/docs/reference/api/version',
+    },
+    {
+      id: 'cloud',
+      label: 'Meilisearch Cloud',
+      description: 'Meilisearch hosted on Meilisearch Cloud (cloud.meilisearch.com).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://your-project.meilisearch.io',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.pkgVersion',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'meilisearch/meilisearch',
+      },
+      evidenceUrl: 'https://www.meilisearch.com/docs/reference/api/version',
+    },
+  ],
+
+  'influxdb': [
+    {
+      id: 'v2-docker',
+      label: 'InfluxDB v2 — Docker',
+      description: 'InfluxDB v2 (Flux query language) running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'influxdb',
+      },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v2/api/',
+    },
+    {
+      id: 'v1-docker',
+      label: 'InfluxDB v1 — Docker',
+      description: 'InfluxDB v1.x (InfluxQL query language) running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ping',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'influxdb',
+      },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v1/tools/api/',
+    },
+  ],
+
+  'plex': [
+    {
+      id: 'docker',
+      label: 'Docker (plexinc/pms-docker)',
+      description: 'Plex Media Server running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://plex.example.com:32400',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/identity',
+        jsonPath: '$.MediaContainer.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'json-path',
+        urlTemplate: 'https://plex.tv/api/downloads/5.json',
+        jsonPath: '$.computer.Linux.version',
+        authRequired: false,
+      },
+      evidenceUrl: 'https://www.plexopedia.com/plex-media-server/api/server/identity/',
+    },
+    {
+      id: 'native',
+      label: 'Native Install (Linux/Windows/macOS)',
+      description: 'Plex Media Server installed natively on the host OS.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:32400',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/identity',
+        jsonPath: '$.MediaContainer.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'json-path',
+        urlTemplate: 'https://plex.tv/api/downloads/5.json',
+        jsonPath: '$.computer.Linux.version',
+        authRequired: false,
+      },
+      evidenceUrl: 'https://www.plexopedia.com/plex-media-server/api/server/identity/',
+    },
+  ],
+
+  'netdata': [
+    {
+      id: 'docker',
+      label: 'Docker (netdata/netdata)',
+      description: 'Netdata real-time monitoring running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netdata.example.com:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'netdata/netdata',
+      },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/agent/web/api',
+    },
+    {
+      id: 'native',
+      label: 'Native (systemd service)',
+      description: 'Netdata installed natively as a system service.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'netdata/netdata',
+      },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/agent/web/api',
+    },
+  ],
+
+  'gogs': [
+    {
+      id: 'docker',
+      label: 'Docker (gogs/gogs)',
+      description: 'Gogs self-hosted Git service running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gogs.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'gogs/gogs',
+      },
+      evidenceUrl: 'https://github.com/gogs/go-gogs-client/wiki/Administration-Miscellaneous',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'Gogs running as a native binary on Linux.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gogs.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'gogs/gogs',
+      },
+      evidenceUrl: 'https://gogs.io/docs/installation',
+    },
+  ],
+
+  'rancher': [
+    {
+      id: 'docker',
+      label: 'Docker (rancher/rancher)',
+      description: 'Rancher multi-cluster Kubernetes management platform running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://rancher.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/settings/server-version',
+        jsonPath: '$.value',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rancher/rancher',
+      },
+      evidenceUrl: 'https://ranchermanager.docs.rancher.com/reference-guides/cluster-configuration/rancher-server-configuration/rke1-cluster-configuration',
+    },
+    {
+      id: 'rke2',
+      label: 'RKE2 / Kubernetes Cluster',
+      description: 'Rancher deployed on RKE2 or a managed Kubernetes cluster.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://rancher.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/settings/server-version',
+        jsonPath: '$.value',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rancher/rancher',
+      },
+      evidenceUrl: 'https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/install-upgrade-on-a-kubernetes-cluster',
+    },
+  ],
+
+  'woodpecker-ci': [
+    {
+      id: 'docker',
+      label: 'Docker Compose (server + agent)',
+      description: 'Woodpecker CI server + agent running via Docker Compose.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://woodpecker.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.source',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'woodpecker-ci/woodpecker',
+      },
+      evidenceUrl: 'https://woodpecker-ci.org/docs/next/api-usage',
+    },
+  ],
+
 };
 
 /**

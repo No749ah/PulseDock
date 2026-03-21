@@ -1,3 +1,12 @@
+## Status Summary (2026-03-21 14:10 UTC)
+- **Build/Test:** ✅ Clean build, 1819 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Redis cache layer for widget data:** Added `RedisCacheService` (ioredis@5.10.1, graceful degradation when Redis unavailable). Wired into `StatusPagesService.resolveWidgetData` — 30s TTL per widget keyed by `widget:{id}:{type}:{monitorId}:{range}`. `_noConfig` responses bypass cache. Layout save invalidates all widget cache entries via SCAN+DEL pattern. 5 new unit tests. Completes architecture review caching-strategy item.
+  - **TS spec fixes:** Fixed `StatusPagesService` spec constructor (3rd arg noCacheService stub); fixed `tool-registry.controller.spec.ts` TS2352 type cast via `unknown` intermediate.
+  - Tests: 1814 → 1819
+
 ## Status Summary (2026-03-21 13:43 UTC)
 - **Build/Test:** ✅ Clean build, 1814 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy
@@ -1869,7 +1878,7 @@
 - [x] **Code quality metrics** — `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
 - [~] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
 - [x] **UX self-review** — Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
-- [~] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-20: Prometheus metrics endpoint enriched with per-monitor gauges; remaining: EXPLAIN ANALYZE hot path review, caching strategy audit)*
+- [x] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-21: Redis cache layer implemented for status-page widget data — RedisCacheService with 30s TTL, graceful degradation, pattern invalidation on layout save. ioredis@5.10.1. 5 unit tests. Completes caching strategy audit.)*
 - [~] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. *(2026-03-20: Identified gaps: on-call rotation, SMS alerts, synthetic/browser checks, Grafana datasource. Prometheus endpoint added for Grafana integration.)*
 - [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
 

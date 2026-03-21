@@ -44,7 +44,7 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
     target: "[data-tour='add-monitor']",
     placement: "bottom",
     title: "Add Your First Monitor",
-    content: "Click here to add a monitor. Choose from HTTP uptime checks, SSL certificate monitoring, TCP port checks, Heartbeat monitors, or version tracking for 1400+ self-hosted tools.",
+    content: "Click here to add a monitor. Choose from HTTP uptime checks, SSL certificate monitoring, TCP port checks, Heartbeat monitors, or version tracking for 5000+ self-hosted tools.",
   },
   {
     target: "[data-tour='time-range']",

@@ -90,7 +90,7 @@ const jsonLd = {
         "priceCurrency": "USD",
       },
       "featureList": [
-        "Version Intelligence — track 3900+ tools",
+        "Version Intelligence — track 5000+ tools",
         "Uptime Monitoring — HTTP, TCP, SSL, Heartbeat",
         "Public Status Pages with drag-and-drop editor",
         "Incident Management with post-mortems",

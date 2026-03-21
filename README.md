@@ -5,7 +5,7 @@
   <p>
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <img src="https://img.shields.io/badge/tests-1519%20passing-brightgreen" alt="Tests: 1519 passing" />
+    <img src="https://img.shields.io/badge/tests-1731%20passing-brightgreen" alt="Tests: 1731 passing" />
     <img src="https://img.shields.io/badge/tools-2500%2B-orange" alt="2500+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
@@ -138,7 +138,7 @@ PulseDock/
 │   ├── api/          # NestJS + TypeScript (port 4321)
 │   └── web/          # Next.js 16 + React 19 + Tailwind (port 1234)
 ├── packages/
-│   ├── tool-registry/ # 1468+ pre-configured tool definitions
+│   ├── tool-registry/ # 5009+ pre-configured tool definitions
 │   ├── agent/         # Local version reporter daemon
 │   ├── cli/           # @pulsedock/cli terminal tool
 │   ├── extension/     # Chrome MV3 browser extension
@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (1519+ tests)
+npm run test              # Run all tests (1731+ tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,11 +223,11 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **1519+ tests** across the full stack:
+PulseDock has **1731+ tests** across the full stack:
 
 ```bash
 npm run test                        # All tests
-npm run test -w @pulsedock/api      # API tests only (1497 tests)
+npm run test -w @pulsedock/api      # API tests only (1720 tests)
 npm run test -w @pulsedock/agent    # Agent tests only
 npm run test -w @pulsedock/cli      # CLI tests only
 ```

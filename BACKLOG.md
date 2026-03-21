@@ -2052,7 +2052,7 @@
 - [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
 - [x] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden. *(Versions page: platform dropdown, applyVariantOverride(), fetches /v1/tool-registry/:id/variants)*
 - [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
-- [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
+- [x] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence. *(2026-03-21: `registry:lint` now enforces strict verified-template gates — `verified=true` requires `verificationStatus='verified'`, instance-based sources require explicit `authRequired`, and verified entries must have docs/evidence (or derivable API evidence for registry sources). Added docs references for Spring/Quarkus/Micronaut/Jackson/Log4j + key Helm charts to close remaining strict-lint gaps.)*
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
 - [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
@@ -2079,3 +2079,13 @@
 - [x] **Password-protected status pages — lock screen UI** — API returns 403+`{protected:true,title}` instead of 401 when no password. New `PasswordGate.tsx` client component shows Apple-style lock screen. Password passed as `?password=` search param — server component handles auth.
 - [x] **Widget design polish** — OverallSystemStatus redesigned (animated pulse, monitor counts), SLASummary (large %, met/breached badge), UptimeBar (status dot, check count), ResponseTimeChart (empty state for version monitors), UptimeTimeline (detailed tooltips).
 - [x] **Tool registry: 1496 → 2175+ tools** — Added home automation, game servers, photo, diagramming, print/3D, finance, education, legal, HR categories (139 new in pass 1). Pass 2 in progress.
+
+## 2026-03-21 23:12 UTC Heartbeat
+
+- [x] **Registry correctness hardening (validation rules)** — Upgraded `packages/tool-registry/scripts/lint-registry.ts` with strict verified-template gates:
+  - `verified=true` now requires `verificationStatus='verified'`
+  - verified entries must include evidence/docs (or derivable API evidence for source types)
+  - instance URL source types must explicitly declare `authRequired`
+- [x] **Evidence/doc coverage fixes for strict lint blockers** — Added `docsUrl` references for: spring-boot, quarkus, micronaut, jackson-databind, log4j, and Helm chart entries (postgresql, redis, ingress-nginx, cert-manager, prometheus, grafana, argocd).
+- [x] **Verification checks** — `npm run registry:lint` clean, `npm run build` clean, `npm run test` clean (1951 API + 10 CLI + 12 Agent), services restarted via `npm run restart`.
+- [x] **Post-deploy audit** — Local + reverse proxy route sweep passed (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all 200). API health 200, `/api` proxy path returns expected 401 unauthenticated.

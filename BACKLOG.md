@@ -1,3 +1,21 @@
+## Status Summary (2026-03-21 07:21 UTC)
+- **Build/Test:** ✅ Clean build, 1691 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **White-label sweep (COMPLETE):** All app shell pages use `brand.name` from `brand.ts`:
+    - 13 layout.tsx files (dashboard, monitors, alerts, versions, status-pages, account, admin, incidents, projects, maintenance, login, embed, monitor-detail) title metadata brand-aware
+    - Dashboard onboarding tour + sample monitor name use `brand.name`
+    - OnboardingChecklist, not-found, global-error, verify-email, offline pages brand-aware
+    - Monitors STARTTLS/interval help, alerts webhook sig description, account Grafana text, versions agent section all use `brand.name`
+    - Status page editor branding toggle, preview footer, public page footer brand-aware
+    - Embed page "Powered by" footer uses `brand.name` + `brand.githubUrl`
+  - **Plugin Management UI (admin panel):**
+    - `GET /v1/plugins` endpoint (JWT-guarded, Swagger documented)
+    - Admin page fetches + renders plugin grid: id, displayName, description, supported types, config field count, 'active' badge
+    - PLUGIN_DIR env var documentation in footer
+    - 3 new PluginsController unit tests → total 1691 API tests
+
 ## Status Summary (2026-03-21 05:13 UTC)
 - **Build/Test:** ✅ Clean build, 1676 tests passing (1651 API + 12 Agent + 10 CLI + web), zero TS errors
 - **Deployment:** ✅ Web restarted; all 8 routes 200 local + public https://oc-dev-test.no749ah.com 200
@@ -1753,8 +1771,8 @@
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
-- [~] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins. *(2026-03-21: 8 built-in check plugins: `http.response-match`, `http.regex-match`, `http.response-time`, `http.json-assertion`, `http.status-code`, `http.header-assertion`, `http.redirect-check`, `http.cert-expiry`. All with unit tests. Remaining: user-installable plugin loading from filesystem/URL, plugin versioning/signature model, custom widget types + alert channel types + marketplace UX.)*
-- [~] **White-label** — env-driven instance branding foundation shipped: `NEXT_PUBLIC_APP_NAME/DESCRIPTION/LOGO_URL/FAVICON_URL/ACCENT_COLOR/APP_URL/HIDE_BRANDING/GITHUB_URL`, dynamic metadata + favicon + accent override, login branding, optional "Powered by PulseDock" footer attribution, API email templates now `APP_NAME`/`APP_URL`/`GITHUB_URL` aware. Remaining: full dashboard-wide text/logo sweep, tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
+- [~] **Plugin System v2** — 8 built-in check plugins + external filesystem loader + admin plugin management UI. *(2026-03-21: Added `GET /v1/plugins` endpoint, admin panel Plugin Management card showing all loaded plugins with metadata. External loader reads `*.plugin.js` from PLUGIN_DIR. Remaining: custom widget types from plugins, plugin marketplace UX, plugin versioning/signature model.)*
+- [x] **White-label** — complete: `NEXT_PUBLIC_APP_*` env vars, brand.ts central config, all app shell pages + layouts use brand.name, metadata titles, onboarding copy, help text, footer attribution, login branding, API email templates. Remaining deferred: tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
 - [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
 

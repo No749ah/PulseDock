@@ -133,6 +133,29 @@ export class MonitorsController {
     return this.monitorsService.getRecentRuns(req.user.id, Number(limit) || 10, sinceDate);
   }
 
+  @Get(':id/health-score')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get monitor health score (0-100)',
+    description: 'Returns a composite health score (0–100) and letter grade (A–F) for a monitor, based on uptime, latency trend, SLA compliance, and incident-free streak.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Health score returned.',
+    schema: {
+      example: {
+        score: 87,
+        grade: 'A',
+        breakdown: { uptime: 40, latency: 18, sla: 20, streak: 9 },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  healthScore(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getHealthScore(req.user.id, id);
+  }
+
   @Get(':id/runs')
   @ApiOperation({ summary: 'Check run history for a monitor' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
@@ -204,6 +227,26 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Version summary returned.' })
   versionSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.versionSummary(req.user.id);
+  }
+
+  @Get('health-summary')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Health score summary for all monitors',
+    description: 'Returns composite health scores (0–100) and grade (A–F) for all monitors, plus an overall aggregate.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Health summary returned.',
+    schema: {
+      example: {
+        scores: [{ monitorId: 'abc', name: 'My API', score: 87, grade: 'A' }],
+        overall: { avg: 82.3, a: 5, b: 3, c: 1, d: 0, f: 0 },
+      },
+    },
+  })
+  healthSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getHealthSummary(req.user.id);
   }
 
   @Get('export')

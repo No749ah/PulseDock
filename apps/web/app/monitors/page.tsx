@@ -144,6 +144,7 @@ function MonitorsPageInner() {
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [allTags, setAllTags] = useState<TagItem[]>([]);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+  const [healthScores, setHealthScores] = useState<Record<string, { score: number; grade: string }>>({});
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,13 +348,14 @@ function MonitorsPageInner() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
           api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
           api<TagItem[]>("/v1/tags", userId),
           api<{ id: string; name: string }[]>("/v1/folders", userId),
+          api<{ scores: Array<{ monitorId: string; name: string; score: number; grade: string }>; overall: { avg: number } }>("/v1/monitors/health-summary", userId).catch(() => null),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
@@ -361,6 +363,13 @@ function MonitorsPageInner() {
         setPlugins(pluginsData);
         setAllTags(tagsData);
         setFolders(foldersData);
+        if (healthSummaryData?.scores) {
+          const scoreMap: Record<string, { score: number; grade: string }> = {};
+          for (const s of healthSummaryData.scores) {
+            scoreMap[s.monitorId] = { score: s.score, grade: s.grade };
+          }
+          setHealthScores(scoreMap);
+        }
         const folderParam = searchParams.get("folder");
         if (folderParam) {
           setFolderFilter(folderParam);
@@ -1922,6 +1931,7 @@ function MonitorsPageInner() {
                       </TableHeader>}
                       {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
                       {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
+                      <TableHeader className="hidden md:table-cell">Health</TableHeader>
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Last Check
@@ -2065,6 +2075,27 @@ function MonitorsPageInner() {
                               <span className="hidden group-hover:inline text-[10px] text-accent ml-0.5">Edit</span>
                             </button>
                           </TableCell>}
+                          {/* Health score badge */}
+                          <TableCell className="hidden md:table-cell">
+                            {(() => {
+                              const hs = healthScores[monitor.id];
+                              if (!hs) return <span className="text-text-muted text-xs">—</span>;
+                              const gradeColor =
+                                hs.grade === "A" ? "bg-success/15 text-success border-success/30" :
+                                hs.grade === "B" ? "bg-success/10 text-success/80 border-success/20" :
+                                hs.grade === "C" ? "bg-warning/15 text-warning border-warning/30" :
+                                hs.grade === "D" ? "bg-orange-500/15 text-orange-400 border-orange-500/30" :
+                                "bg-danger/15 text-danger border-danger/30";
+                              return (
+                                <span
+                                  className={`inline-flex items-center justify-center w-9 h-9 rounded-full border text-xs font-bold tabular-nums ${gradeColor}`}
+                                  title={`Health score: ${hs.score}/100 (${hs.grade})`}
+                                >
+                                  {hs.score}
+                                </span>
+                              );
+                            })()}
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2 group-hover/row:opacity-0 group-hover/row:pointer-events-none transition-opacity">
                               <Button

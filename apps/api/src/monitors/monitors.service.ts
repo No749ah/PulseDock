@@ -1900,4 +1900,221 @@ export class MonitorsService {
 
     return false;
   }
+
+  // ─── Monitor Health Score ──────────────────────────────────────────────────
+
+  /**
+   * Computes a composite health score (0–100) for a monitor.
+   *
+   * Formula breakdown (100 pts total):
+   *   - Uptime       40 pts  — 7-day uptime % (linear from 90%→100%)
+   *   - Latency      20 pts  — P95 latency trend: current 7d vs prior 7d
+   *   - SLA          20 pts  — Error budget consumption against slaTarget
+   *   - Streak       20 pts  — Days since last downtime event
+   *
+   * Grade thresholds: A 85–100, B 70–84, C 50–69, D 25–49, F 0–24
+   *
+   * @param userId    - The authenticated user's ID
+   * @param monitorId - The monitor to score
+   * @returns { score, grade, breakdown }
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
+  async getHealthScore(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    score: number;
+    grade: string;
+    breakdown: {
+      uptime: number;
+      latency: number;
+      sla: number;
+      streak: number;
+    };
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        id: true,
+        type: true,
+        slaTarget: true,
+        slaPeriodDays: true,
+        slaBreachAlertedAt: true,
+      },
+    });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const now = new Date();
+    const window7d = 7 * 86_400_000;
+    const since14d = new Date(now.getTime() - 2 * window7d);
+
+    // Fetch 14d of run data (ok + latencyMs + checkedAt)
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since14d } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, latencyMs: true, checkedAt: true },
+    });
+
+    const boundary7d = new Date(now.getTime() - window7d);
+    const recentRuns = allRuns.filter((r) => r.checkedAt >= boundary7d);
+    const priorRuns = allRuns.filter((r) => r.checkedAt < boundary7d);
+
+    // ── 1. Uptime score (40 pts) ─────────────────────────────────────────────
+    // Linear mapping: 90% → 0 pts, 100% → 40 pts
+    let uptimeScore = 40;
+    if (recentRuns.length > 0) {
+      const uptimePct =
+        (recentRuns.filter((r) => r.ok).length / recentRuns.length) * 100;
+      // Below 90% = 0, 90–100% = linear scale
+      const clamped = Math.max(0, uptimePct - 90);
+      uptimeScore = Math.round((clamped / 10) * 40);
+    }
+
+    // ── 2. Latency trend score (20 pts) ──────────────────────────────────────
+    // Version monitors (GIT_RELEASE, DOCKER_IMAGE) have no latency → full pts
+    const isVersionMonitor =
+      monitor.type === 'GIT_RELEASE' || monitor.type === 'DOCKER_IMAGE';
+
+    let latencyScore = 20;
+    if (!isVersionMonitor) {
+      const p95 = (runs: Array<{ latencyMs: number | null }>): number | null => {
+        const values = runs
+          .map((r) => r.latencyMs)
+          .filter((v): v is number => v !== null)
+          .sort((a, b) => a - b);
+        if (values.length === 0) return null;
+        const idx = Math.ceil(values.length * 0.95) - 1;
+        return values[Math.max(0, idx)];
+      };
+
+      const recentP95 = p95(recentRuns);
+      const priorP95 = p95(priorRuns);
+
+      if (recentP95 !== null && priorP95 !== null && priorP95 > 0) {
+        const changePct = ((recentP95 - priorP95) / priorP95) * 100;
+        if (changePct > 50) {
+          latencyScore = 0; // major degradation
+        } else if (changePct > 10) {
+          latencyScore = 10; // slight degradation
+        } else {
+          latencyScore = 20; // stable / improving
+        }
+      } else if (recentP95 === null) {
+        latencyScore = 20; // no data → full pts
+      }
+    }
+
+    // ── 3. SLA compliance score (20 pts) ─────────────────────────────────────
+    // If no slaTarget configured → full pts
+    let slaScore = 20;
+    if (monitor.slaTarget !== null && monitor.slaTarget !== undefined) {
+      const slaTarget = monitor.slaTarget;
+      const allowedDownPct = (100 - slaTarget) / 100;
+      const totalChecks = recentRuns.length;
+      const failedChecks = recentRuns.filter((r) => !r.ok).length;
+      const actualDownPct =
+        totalChecks === 0 ? 0 : failedChecks / totalChecks;
+
+      if (allowedDownPct <= 0) {
+        // Target is 100% uptime
+        slaScore = failedChecks === 0 ? 20 : 0;
+      } else {
+        const budgetConsumedPct = (actualDownPct / allowedDownPct) * 100;
+        if (budgetConsumedPct >= 100) {
+          slaScore = 0; // breached
+        } else if (budgetConsumedPct >= 50) {
+          slaScore = 10; // 50% consumed
+        } else {
+          slaScore = 20; // within budget
+        }
+      }
+    }
+
+    // ── 4. Incident-free streak score (20 pts) ────────────────────────────────
+    // Find last downtime event (ok=false) in the 14d window; check current status
+    let streakScore = 20;
+    const lastFailRun = [...allRuns]
+      .reverse()
+      .find((r) => !r.ok);
+
+    const lastRun = allRuns[allRuns.length - 1] ?? null;
+    const isCurrentlyDown = lastRun !== null && !lastRun.ok;
+
+    if (isCurrentlyDown) {
+      streakScore = 0;
+    } else if (lastFailRun) {
+      const daysSinceFail =
+        (now.getTime() - lastFailRun.checkedAt.getTime()) / 86_400_000;
+      if (daysSinceFail >= 7) {
+        streakScore = 20;
+      } else if (daysSinceFail >= 3) {
+        streakScore = 10;
+      } else {
+        streakScore = 5;
+      }
+    }
+    // else: no failures found → 20 pts (already set)
+
+    // ── Final score + grade ───────────────────────────────────────────────────
+    const score = uptimeScore + latencyScore + slaScore + streakScore;
+
+    let grade: string;
+    if (score >= 85) grade = 'A';
+    else if (score >= 70) grade = 'B';
+    else if (score >= 50) grade = 'C';
+    else if (score >= 25) grade = 'D';
+    else grade = 'F';
+
+    return {
+      score,
+      grade,
+      breakdown: {
+        uptime: uptimeScore,
+        latency: latencyScore,
+        sla: slaScore,
+        streak: streakScore,
+      },
+    };
+  }
+
+  /**
+   * Returns health scores for all monitors belonging to the user,
+   * plus an aggregate summary (average, count per grade).
+   *
+   * @param userId - The authenticated user's ID
+   * @returns { scores: [...], overall: { avg, a, b, c, d, f } }
+   */
+  async getHealthSummary(userId: string): Promise<{
+    scores: Array<{ monitorId: string; name: string; score: number; grade: string }>;
+    overall: { avg: number; a: number; b: number; c: number; d: number; f: number };
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    const scores = await Promise.all(
+      monitors.map(async (m) => {
+        try {
+          const hs = await this.getHealthScore(userId, m.id);
+          return { monitorId: m.id, name: m.name, score: hs.score, grade: hs.grade };
+        } catch {
+          return { monitorId: m.id, name: m.name, score: 0, grade: 'F' };
+        }
+      }),
+    );
+
+    const gradeCount = { a: 0, b: 0, c: 0, d: 0, f: 0 };
+    for (const s of scores) {
+      const g = s.grade.toLowerCase() as keyof typeof gradeCount;
+      gradeCount[g] = (gradeCount[g] ?? 0) + 1;
+    }
+
+    const avg =
+      scores.length === 0
+        ? 0
+        : Math.round((scores.reduce((sum, s) => sum + s.score, 0) / scores.length) * 10) / 10;
+
+    return { scores, overall: { avg, ...gradeCount } };
+  }
 }

@@ -325,4 +325,101 @@ describe('AdminController', () => {
       expect(result.errorRatePct).toBe(0);
     });
   });
+
+  // ── resetMfa() ────────────────────────────────────────────────────────────
+
+  describe('resetMfa()', () => {
+    it('resets MFA when user has TOTP enabled', async () => {
+      const { controller, prisma, audit } = makeController({
+        user: { ...makeUser(), totpEnabled: true, totpSecret: 'secret', totpRecoveryCodes: '[]' } as never,
+      });
+      const req = { user: { id: 'admin-1' } };
+      const result = await controller.resetMfa(req as never, 'user-1');
+      expect(result.ok).toBe(true);
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+      expect(audit.log).toHaveBeenCalledWith('admin.user.reset_mfa', 'admin-1', 'user-1', expect.any(Object));
+    });
+
+    it('throws ForbiddenException when trying to reset own MFA', async () => {
+      const { controller } = makeController();
+      const req = { user: { id: 'user-1' } };
+      await expect(controller.resetMfa(req as never, 'user-1')).rejects.toThrow('Cannot reset your own MFA via admin panel');
+    });
+
+    it('throws NotFoundException when user not found', async () => {
+      const { controller } = makeController({ user: null });
+      const req = { user: { id: 'admin-1' } };
+      await expect(controller.resetMfa(req as never, 'missing-user')).rejects.toThrow('user not found');
+    });
+
+    it('throws BadRequestException when MFA is not enabled', async () => {
+      const { controller } = makeController({
+        user: { ...makeUser(), totpEnabled: false } as never,
+      });
+      const req = { user: { id: 'admin-1' } };
+      await expect(controller.resetMfa(req as never, 'user-1')).rejects.toThrow('MFA is not enabled');
+    });
+  });
+
+  // ── forcePasswordReset() ──────────────────────────────────────────────────
+
+  describe('forcePasswordReset()', () => {
+    it('creates a reset token and revokes sessions', async () => {
+      const { controller, prisma, audit } = makeController();
+      (prisma as unknown as { passwordResetToken: { create: ReturnType<typeof vi.fn> } }).passwordResetToken['create'] = vi.fn().mockResolvedValue({ id: 'prt-1' });
+      const req = { user: { id: 'admin-1' } };
+      const result = await controller.forcePasswordReset(req as never, 'user-1');
+      expect(result.ok).toBe(true);
+      expect(result.resetUrl).toContain('reset=');
+      expect(result.expiresAt).toBeTruthy();
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+      expect(audit.log).toHaveBeenCalledWith('admin.user.force_password_reset', 'admin-1', 'user-1', expect.any(Object));
+    });
+
+    it('throws NotFoundException when user not found', async () => {
+      const { controller } = makeController({ user: null });
+      const req = { user: { id: 'admin-1' } };
+      await expect(controller.forcePasswordReset(req as never, 'missing-user')).rejects.toThrow('user not found');
+    });
+  });
+
+  // ── deleteUser() ──────────────────────────────────────────────────────────
+
+  describe('deleteUser()', () => {
+    it('deletes a user and logs audit', async () => {
+      const { controller, prisma, audit } = makeController();
+      (prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user['delete'] = vi.fn().mockResolvedValue({});
+      const req = { user: { id: 'admin-1' } };
+      const result = await controller.deleteUser(req as never, 'user-1');
+      expect(result.ok).toBe(true);
+      expect(audit.log).toHaveBeenCalledWith('admin.user.delete', 'admin-1', 'user-1', expect.any(Object));
+    });
+
+    it('throws ForbiddenException when deleting own account', async () => {
+      const { controller } = makeController();
+      const req = { user: { id: 'user-1' } };
+      await expect(controller.deleteUser(req as never, 'user-1')).rejects.toThrow('Cannot delete your own account');
+    });
+
+    it('throws NotFoundException when user not found', async () => {
+      const { controller } = makeController({ user: null });
+      const req = { user: { id: 'admin-1' } };
+      await expect(controller.deleteUser(req as never, 'missing-user')).rejects.toThrow('user not found');
+    });
+  });
+
+  // ── setUserPlan() ─────────────────────────────────────────────────────────
+
+  describe('setUserPlan()', () => {
+    it('sets the plan for a user', async () => {
+      const { controller } = makeController();
+      const result = await controller.setUserPlan('user-1', { planId: 'PRO' });
+      expect(result.planName).toBe('COMMUNITY');
+    });
+
+    it('throws NotFoundException when user not found', async () => {
+      const { controller } = makeController({ user: null });
+      await expect(controller.setUserPlan('missing-user', { planId: 'PRO' })).rejects.toThrow('user not found');
+    });
+  });
 });

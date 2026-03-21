@@ -249,6 +249,13 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
 
+  interface HealthScore {
+    score: number;
+    grade: string;
+    breakdown: { uptime: number; latency: number; sla: number; streak: number };
+  }
+  const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
+
   // Timeline events/annotations
   interface MonitorEvent { id: string; message: string; eventType: string; createdAt: string; userId: string; }
   const [events, setEvents] = useState<MonitorEvent[]>([]);
@@ -292,6 +299,10 @@ export default function MonitorDetailPage() {
             .then((eb) => setErrorBudget(eb))
             .catch(() => null);
         }
+        // Fetch health score (non-fatal)
+        api<HealthScore>(`/v1/monitors/${id}/health-score`, user!.id)
+          .then((hs) => setHealthScore(hs))
+          .catch(() => null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitor");
       } finally {
@@ -643,6 +654,49 @@ export default function MonitorDetailPage() {
                 ))}
               </div>
             </div>
+
+            {/* Health Score card */}
+            {healthScore && (
+              <div className="flex items-center gap-4 p-3 rounded-xl bg-surface border border-border/60 mb-1">
+                <div className="flex flex-col items-center justify-center">
+                  {(() => {
+                    const gradeColor =
+                      healthScore.grade === "A" ? "border-success text-success" :
+                      healthScore.grade === "B" ? "border-success/70 text-success/80" :
+                      healthScore.grade === "C" ? "border-warning text-warning" :
+                      healthScore.grade === "D" ? "border-orange-400 text-orange-400" :
+                      "border-danger text-danger";
+                    return (
+                      <div className={`w-16 h-16 rounded-full border-4 flex flex-col items-center justify-center ${gradeColor}`}>
+                        <span className="text-2xl font-bold tabular-nums leading-none">{healthScore.score}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">/{100}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-text-primary">Health Score</span>
+                    {(() => {
+                      const gradeBg =
+                        healthScore.grade === "A" ? "bg-success/15 text-success" :
+                        healthScore.grade === "B" ? "bg-success/10 text-success/80" :
+                        healthScore.grade === "C" ? "bg-warning/15 text-warning" :
+                        healthScore.grade === "D" ? "bg-orange-500/15 text-orange-400" :
+                        "bg-danger/15 text-danger";
+                      return (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeBg}`}>
+                          {healthScore.grade}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <span className="text-xs text-text-secondary">
+                    Uptime {healthScore.breakdown.uptime}/40 · Latency {healthScore.breakdown.latency}/20 · SLA {healthScore.breakdown.sla}/20 · Streak {healthScore.breakdown.streak}/20
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

@@ -48,6 +48,80 @@ For external/community contributions, use this process:
 - [ ] Unit tests added/updated.
 - [ ] Manual UI test: create monitor with plugin and trigger run.
 
+## External Plugin Loading
+
+PulseDock supports **user-installable external plugins** loaded from the filesystem at API startup.  
+This allows you to add custom monitor check logic without modifying or recompiling the codebase.
+
+### Setup
+
+1. Set the `PLUGIN_DIR` environment variable to the directory containing your plugins:
+
+   ```env
+   PLUGIN_DIR=/opt/pulsedock/plugins
+   ```
+
+   Default: `./plugins` (relative to the API working directory).
+
+2. Drop one or more `.plugin.js` files (CommonJS modules) into that directory.
+
+3. Restart the API. External plugins are loaded once at startup and logged:
+
+   ```
+   [ChecksService] Loaded 2 external plugins from /opt/pulsedock/plugins
+   ```
+
+### Plugin file format
+
+A plugin file must be a **CommonJS `.js` file** that exports a `MonitorCheckPlugin`-shaped object via `module.exports`:
+
+```js
+// my-status-check.plugin.js
+module.exports = {
+  id: 'my-status-check',
+  displayName: 'My Status Check',
+  description: 'Checks a custom JSON health endpoint.',
+  supportedMonitorTypes: ['HTTP'],
+  configFields: [
+    { key: 'expectedField', label: 'Expected JSON field', type: 'text', required: true },
+  ],
+  run: async (ctx) => {
+    const res = await fetch(ctx.monitor.target);
+    if (!res.ok) {
+      return { ok: false, statusCode: res.status, latencyMs: null, message: `HTTP ${res.status}`, level: 'red' };
+    }
+    const body = await res.json();
+    const field = ctx.config.expectedField;
+    if (!body[field]) {
+      return { ok: false, statusCode: res.status, latencyMs: null, message: `Field "${field}" missing`, level: 'yellow' };
+    }
+    return { ok: true, statusCode: res.status, latencyMs: null, message: 'OK', level: 'green' };
+  },
+};
+```
+
+### Required plugin fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | Unique identifier (non-empty). Must not conflict with built-in plugin IDs. |
+| `displayName` | `string` | Human-readable name shown in the UI. |
+| `supportedMonitorTypes` | `string[]` | Non-empty array of monitor type strings (e.g. `['HTTP']`). |
+| `run` | `function` | Async function `(context) => PluginExecutionResult`. |
+
+Optional fields: `description` (string), `configFields` (array of field descriptors).
+
+### Conflict resolution
+
+If an external plugin's `id` matches a built-in plugin, the external plugin is **skipped** with a warning logged.  
+Built-in plugins always take precedence.
+
+### Security note
+
+⚠️ **Only load plugins from trusted sources.**  
+External plugins execute arbitrary JavaScript inside the API process with full Node.js access.  
+Never load plugins from untrusted or user-supplied paths.
+
 ## Security notes
 
 - Do **not** execute untrusted remote code at runtime.

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
@@ -14,6 +14,7 @@ import { RealtimeEvents } from '../realtime/realtime.events';
 import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
+import { ExternalPluginLoader } from './external-plugin-loader';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
 import { regexMatchPlugin } from './plugins/regex-match.plugin';
 import { responseTimePlugin } from './plugins/response-time.plugin';
@@ -26,16 +27,20 @@ import { runExtractorPipeline, normalizeExtractors, extractByPath } from './vers
 
 @Injectable()
 export class ChecksService {
+  private readonly logger = new Logger(ChecksService.name);
   private readonly realtime: Pick<RealtimeEvents, 'monitorChecked' | 'statusPageUpdated'>;
   private readonly pluginRegistry = new PluginRegistry();
+  private readonly externalPluginLoader: ExternalPluginLoader;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
     @Optional() private readonly mailer?: MailerService,
     @Optional() realtime?: RealtimeEvents,
+    @Optional() externalPluginLoader?: ExternalPluginLoader,
   ) {
     this.realtime = realtime ?? { monitorChecked: () => undefined, statusPageUpdated: () => undefined };
+    this.externalPluginLoader = externalPluginLoader ?? new ExternalPluginLoader();
     this.pluginRegistry.register(httpResponseMatchPlugin);
     this.pluginRegistry.register(regexMatchPlugin);
     this.pluginRegistry.register(responseTimePlugin);
@@ -44,6 +49,34 @@ export class ChecksService {
     this.pluginRegistry.register(headerAssertionPlugin);
     this.pluginRegistry.register(redirectCheckPlugin);
     this.pluginRegistry.register(certExpiryPlugin);
+
+    // Load external plugins asynchronously — errors are caught inside loadPlugins()
+    void this.initExternalPlugins();
+  }
+
+  private async initExternalPlugins(): Promise<void> {
+    const dir = this.externalPluginLoader.getPluginDir();
+    const plugins = await this.externalPluginLoader.loadPlugins();
+    let loaded = 0;
+
+    for (const plugin of plugins) {
+      if (this.pluginRegistry.list().some((p) => p.id === plugin.id)) {
+        this.logger.warn(`External plugin ${plugin.id} conflicts with a built-in plugin — skipping`);
+        continue;
+      }
+      try {
+        this.pluginRegistry.register(plugin);
+        loaded++;
+      } catch (err) {
+        this.logger.warn(
+          `Failed to register external plugin ${plugin.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (loaded > 0) {
+      this.logger.log(`Loaded ${loaded} external plugin${loaded !== 1 ? 's' : ''} from ${dir}`);
+    }
   }
 
   /**

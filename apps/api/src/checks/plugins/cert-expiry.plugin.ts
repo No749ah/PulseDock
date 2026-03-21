@@ -27,8 +27,11 @@ async function getCertInfo(target: string, timeoutMs: number): Promise<{ daysRem
         const now = new Date();
         const daysRemaining = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-        const subject = cert.subject?.CN ?? cert.subject?.O ?? 'Unknown';
-        const issuer = cert.issuer?.O ?? cert.issuer?.CN ?? 'Unknown';
+        const subjectCN = Array.isArray(cert.subject?.CN) ? cert.subject.CN[0] : cert.subject?.CN;
+        const issuerO = Array.isArray(cert.issuer?.O) ? cert.issuer.O[0] : cert.issuer?.O;
+        const issuerCN = Array.isArray(cert.issuer?.CN) ? cert.issuer.CN[0] : cert.issuer?.CN;
+        const subject = subjectCN ?? (Array.isArray(cert.subject?.O) ? cert.subject.O[0] : cert.subject?.O) ?? 'Unknown';
+        const issuer = issuerO ?? issuerCN ?? 'Unknown';
 
         resolve({ daysRemaining, subject, issuer, expiresAt: expiresAt.toISOString().split('T')[0] });
       }
@@ -54,7 +57,7 @@ export const certExpiryPlugin: MonitorCheckPlugin = {
   displayName: 'SSL Certificate Expiry',
   description:
     'Checks TLS certificate expiry and warns/fails when within configurable day thresholds.',
-  supportedMonitorTypes: ['HTTP', 'SSL'],
+  supportedMonitorTypes: ['HTTP', 'SSL_CERT'],
   configFields: [
     {
       key: 'warnDays',

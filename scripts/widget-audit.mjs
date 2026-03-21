@@ -73,13 +73,9 @@ const allowedResolverMissing = new Set([
   'divider',
   'image-banner',
   'maintenance-calendar',
-  'multi-monitor-status-grid',
-  'multi-status-badges',
   'rss-feed-widget',
   'tab-container',
   'text-block',
-  'update-summary',
-  'version-check-badge',
   'video-embed',
 ]);
 

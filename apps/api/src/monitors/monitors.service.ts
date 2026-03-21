@@ -1741,6 +1741,63 @@ export class MonitorsService {
     };
   }
 
+  // ─── Monitor Events (Annotations) ────────────────────────────────────────
+
+  /**
+   * List events/annotations for a monitor, newest first (max 100).
+   * @param userId - The requesting user
+   * @param monitorId - The monitor to fetch events for
+   */
+  async listEvents(userId: string, monitorId: string) {
+    // Verify ownership
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    return this.prisma.monitorEvent.findMany({
+      where: { monitorId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, message: true, eventType: true, createdAt: true, userId: true },
+    });
+  }
+
+  /**
+   * Create a new event/annotation on a monitor timeline.
+   * @param userId - The user creating the event
+   * @param monitorId - The monitor to annotate
+   * @param message - Short annotation label
+   * @param eventType - Type of event for color-coding
+   */
+  async createEvent(userId: string, monitorId: string, message: string, eventType = 'note') {
+    // Verify ownership
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    return this.prisma.monitorEvent.create({
+      data: { monitorId, userId, message, eventType },
+      select: { id: true, message: true, eventType: true, createdAt: true, userId: true },
+    });
+  }
+
+  /**
+   * Delete an event/annotation. Only the event creator or monitor owner can delete.
+   * @param userId - The requesting user
+   * @param monitorId - The monitor that owns the event
+   * @param eventId - The event to delete
+   */
+  async deleteEvent(userId: string, monitorId: string, eventId: string) {
+    const event = await this.prisma.monitorEvent.findUnique({
+      where: { id: eventId },
+      select: { id: true, monitorId: true, userId: true },
+    });
+    if (!event || event.monitorId !== monitorId) {
+      throw new NotFoundException('Event not found');
+    }
+    // Verify the user owns the monitor
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    await this.prisma.monitorEvent.delete({ where: { id: eventId } });
+    return { ok: true };
+  }
+
   /**
    * Check if any of the monitor's dependencies are currently down.
    * Used by alert logic to suppress alerts during parent outages.

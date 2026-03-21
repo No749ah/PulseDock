@@ -268,7 +268,7 @@ const NEEDS_MONITOR_TYPES = new Set([
   'current-status-badge', 'rolling-uptime-cards', 'uptime-percentage-card', 'ssl-certificate-status',
   'latency-percentiles-card', 'performance-trend', 'apdex-score', 'dns-resolution-time',
   'uptime-heatmap', 'status-history-ribbon', 'gauge', 'progress-ring', 'throughput-counter',
-  'custom-metric-chart', 'changelog-widget',
+  'custom-metric-chart', 'changelog-widget', 'version-check-badge',
 ]);
 
 /** Widget types that require monitorIds (array) to be configured. */
@@ -1057,9 +1057,11 @@ interface ConfigPanelProps {
   onDuplicate: (id: string) => void;
   onToggleLock: (id: string) => void;
   onZOrder: (id: string, action: "front" | "back" | "forward" | "backward") => void;
+  liveData?: unknown;
+  liveDataMode?: boolean;
 }
 
-function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock, onZOrder }: ConfigPanelProps) {
+function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDelete, onDuplicate, onToggleLock, onZOrder, liveData, liveDataMode }: ConfigPanelProps) {
   if (!widget) {
     return (
       <div className="flex flex-1 items-center justify-center p-4 text-center">
@@ -1085,6 +1087,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   const supportsStyle = w.type !== "divider";
   const supportsResponsive = w.type !== "divider";
   const configWarnings = getConfigWarnings(w, monitorMode);
+  const hasLiveData = liveDataMode && liveData != null;
 
   function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
     if (nextMode === "multiple") {
@@ -1122,6 +1125,19 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         <p className="mb-1 text-xs font-semibold text-text-primary">{paletteItem?.label ?? w.type}</p>
         <p className="text-[10px] text-text-secondary">{paletteItem?.description}</p>
       </div>
+
+      {/* Live data preview when Live mode is on */}
+      {hasLiveData && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-green-400 flex items-center gap-1 mb-2">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+            Live data
+          </p>
+          <div className="pointer-events-none">
+            <WidgetPreview type={w.type} config={w.config} w={w.w} liveData={liveData} />
+          </div>
+        </div>
+      )}
 
       {configWarnings.length > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
@@ -2984,6 +3000,8 @@ export default function StatusPageEditorPage() {
               onDuplicate={duplicateWidget}
               onToggleLock={toggleWidgetLock}
               onZOrder={handleZOrder}
+              liveData={selectedWidget ? liveWidgetData[selectedWidget.id] : undefined}
+              liveDataMode={liveDataMode}
             />
           </aside>
         </div>

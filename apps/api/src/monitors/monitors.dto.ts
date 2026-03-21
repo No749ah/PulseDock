@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHtml } from '../common/sanitize';
 
@@ -347,4 +347,17 @@ export class ImportExternalDto {
 
   /** Raw export payload: JSON object for uptime-robot/better-uptime/uptime-kuma, CSV string for csv. */
   payload!: unknown;
+}
+
+export class CreateMonitorEventDto {
+  /** Short annotation label shown on the timeline */
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  message!: string;
+
+  /** Event type for color-coding: deploy, note, incident, maintenance, config */
+  @IsOptional()
+  @IsIn(['deploy', 'note', 'incident', 'maintenance', 'config'])
+  eventType?: 'deploy' | 'note' | 'incident' | 'maintenance' | 'config';
 }

@@ -15,6 +15,17 @@ interface DataPoint {
   time: string;
   value: number;
   ok?: boolean;
+  /** Optional ISO timestamp — used for event marker alignment */
+  checkedAt?: string;
+}
+
+interface ReferenceMark {
+  /** x-axis key value (the "time" string) to place the line at */
+  xValue: string;
+  /** Color of the vertical line */
+  color: string;
+  /** Short label shown at the top of the line */
+  label: string;
 }
 
 interface AreaChartProps {
@@ -27,6 +38,8 @@ interface AreaChartProps {
   p95Line?: number;
   unit?: string;
   className?: string;
+  /** Optional vertical reference marks (e.g. event/annotation markers) */
+  marks?: ReferenceMark[];
 }
 
 interface TooltipPayloadItem {
@@ -69,6 +82,7 @@ export function ResponseAreaChart({
   p95Line,
   unit = "ms",
   className,
+  marks,
 }: AreaChartProps) {
   const gradientId = `area-gradient-${color.replace("#", "")}`;
 
@@ -147,6 +161,22 @@ export function ResponseAreaChart({
               }}
             />
           )}
+
+          {marks?.map((m, i) => (
+            <ReferenceLine
+              key={i}
+              x={m.xValue}
+              stroke={m.color}
+              strokeWidth={1.5}
+              strokeDasharray="3 2"
+              label={{
+                value: m.label,
+                fill: m.color,
+                fontSize: 8,
+                position: "insideTopLeft",
+              }}
+            />
+          ))}
 
           <Area
             type="monotone"

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge } from "lucide-react";
+import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -246,6 +246,14 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
 
+  // Timeline events/annotations
+  interface MonitorEvent { id: string; message: string; eventType: string; createdAt: string; userId: string; }
+  const [events, setEvents] = useState<MonitorEvent[]>([]);
+  const [newEventMsg, setNewEventMsg] = useState("");
+  const [newEventType, setNewEventType] = useState<"deploy"|"note"|"incident"|"maintenance"|"config">("note");
+  const [addingEvent, setAddingEvent] = useState(false);
+  const [eventError, setEventError] = useState("");
+
   useEffect(() => {
     const user = getUser();
     if (!user) {
@@ -257,11 +265,12 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRuns, alertChs, deps] = await Promise.all([
+        const [monitors, monitorRuns, alertChs, deps, evts] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
           api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
+          api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
         ]);
         const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
@@ -272,6 +281,7 @@ export default function MonitorDetailPage() {
         setRuns(monitorRuns);
         setAlertChannels(alertChs);
         setDependencies(deps);
+        setEvents(evts);
         setAllMonitors(monitors);
         // Fetch error budget if SLA target is set
         if (found.slaTarget) {
@@ -389,6 +399,36 @@ export default function MonitorDetailPage() {
     }
   };
 
+  const handleAddEvent = async () => {
+    const user = getUser();
+    if (!user || !newEventMsg.trim()) return;
+    setAddingEvent(true);
+    setEventError("");
+    try {
+      const ev = await api<MonitorEvent>(`/v1/monitors/${id}/events`, user.id, {
+        method: "POST",
+        body: JSON.stringify({ message: newEventMsg.trim(), eventType: newEventType }),
+      });
+      setEvents((prev) => [ev, ...prev]);
+      setNewEventMsg("");
+    } catch (e) {
+      setEventError(e instanceof Error ? e.message : "Failed to create event");
+    } finally {
+      setAddingEvent(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const user = getUser();
+    if (!user) return;
+    try {
+      await api(`/v1/monitors/${id}/events/${eventId}`, user.id, { method: "DELETE" });
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    } catch (e) {
+      setEventError(e instanceof Error ? e.message : "Failed to delete event");
+    }
+  };
+
   if (loading) {
     return (
       <AppFrame title="Monitor Detail">
@@ -485,6 +525,32 @@ export default function MonitorDetailPage() {
                     <><Power className="w-3.5 h-3.5" />{toggling ? "Enabling…" : "Enable"}</>
                   )}
                 </Button>
+                <Link
+                  href={`/monitors#edit-${monitor.id}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
+                  title="Edit this monitor"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Edit
+                </Link>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Delete "${monitor.name}"? This will also delete all check history.`)) return;
+                    const user = getUser();
+                    if (!user) return;
+                    try {
+                      await api(`/v1/monitors/${monitor.id}`, user.id, { method: "DELETE" });
+                      router.push("/monitors");
+                    } catch (e) {
+                      setActionError(e instanceof Error ? e.message : "Failed to delete monitor");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-danger/30 bg-danger/5 text-danger/70 hover:text-danger hover:border-danger/60 transition-colors"
+                  title="Delete this monitor"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
               </div>
             </div>
             <p
@@ -1025,28 +1091,69 @@ export default function MonitorDetailPage() {
               {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
             </h2>
             {(() => {
-              const chartData = runs
-                .slice(0, 50)
-                .reverse()
-                .filter((r) => r.latencyMs !== null)
-                .map((r) => ({
-                  time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                  value: r.latencyMs as number,
-                  ok: r.ok,
-                }));
+              const chartRuns = runs.slice(0, 50).reverse().filter((r) => r.latencyMs !== null);
+              const chartData = chartRuns.map((r) => ({
+                time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                value: r.latencyMs as number,
+                ok: r.ok,
+                checkedAt: r.checkedAt,
+              }));
               const avg =
                 chartData.length > 0
                   ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length)
                   : undefined;
+              // Map events to vertical markers on the chart where the timestamp falls within the chart range
+              const chartStart = chartRuns.length > 0 ? new Date(chartRuns[0].checkedAt).getTime() : 0;
+              const chartEnd = chartRuns.length > 0 ? new Date(chartRuns[chartRuns.length - 1].checkedAt).getTime() : 0;
+              const EVENT_COLORS: Record<string, string> = {
+                deploy: "#3b82f6",
+                incident: "#ef4444",
+                maintenance: "#f59e0b",
+                config: "#a855f7",
+                note: "#6b7280",
+              };
+              const marks = events
+                .filter((ev) => {
+                  const t = new Date(ev.createdAt).getTime();
+                  return t >= chartStart && t <= chartEnd;
+                })
+                .map((ev) => {
+                  // Find the closest chart data point to the event time
+                  const evTime = new Date(ev.createdAt).getTime();
+                  let closest = chartData[0];
+                  let minDiff = Infinity;
+                  for (const pt of chartData) {
+                    const diff = Math.abs(new Date(pt.checkedAt as string).getTime() - evTime);
+                    if (diff < minDiff) { minDiff = diff; closest = pt; }
+                  }
+                  return {
+                    xValue: closest?.time ?? "",
+                    color: EVENT_COLORS[ev.eventType] ?? EVENT_COLORS.note,
+                    label: ev.eventType.slice(0, 4),
+                  };
+                });
               return (
                 <ResponseAreaChart
                   data={chartData}
                   height={160}
                   avgLine={avg}
                   color="#58a6ff"
+                  marks={marks.length > 0 ? marks : undefined}
                 />
               );
             })()}
+            {events.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-border/40">
+                {[{ key: "deploy", color: "#3b82f6" }, { key: "incident", color: "#ef4444" }, { key: "maintenance", color: "#f59e0b" }, { key: "config", color: "#a855f7" }, { key: "note", color: "#6b7280" }]
+                  .filter(({ key }) => events.some((e) => e.eventType === key))
+                  .map(({ key, color }) => (
+                    <span key={key} className="flex items-center gap-1 text-[10px] text-text-muted">
+                      <span className="inline-block w-2 h-2 rounded-sm" style={{ background: color }} />
+                      {key}
+                    </span>
+                  ))}
+              </div>
+            )}
           </Card>
         
 
@@ -1337,6 +1444,85 @@ export default function MonitorDetailPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Timeline Events / Annotations */}
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Bookmark className="w-4 h-4" />
+              Timeline Annotations
+            </h2>
+            <span className="text-xs text-text-muted">{events.length} event{events.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Add event form */}
+          <div className="flex gap-2 items-start">
+            <select
+              value={newEventType}
+              onChange={(e) => setNewEventType(e.target.value as typeof newEventType)}
+              className="text-xs rounded-lg border border-border bg-surface px-2 py-1.5 text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="note">Note</option>
+              <option value="deploy">Deploy</option>
+              <option value="incident">Incident</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="config">Config</option>
+            </select>
+            <input
+              type="text"
+              value={newEventMsg}
+              onChange={(e) => setNewEventMsg(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddEvent(); } }}
+              placeholder="Add annotation… (e.g. Deployed v2.3.1)"
+              className="flex-1 text-sm rounded-lg border border-border bg-surface px-3 py-1.5 text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => void handleAddEvent()}
+              disabled={addingEvent || !newEventMsg.trim()}
+              className="flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {addingEvent ? "Saving…" : "Add"}
+            </Button>
+          </div>
+          {eventError && <p className="text-xs text-danger">{eventError}</p>}
+
+          {/* Event list */}
+          {events.length === 0 ? (
+            <p className="text-xs text-text-muted text-center py-4">No annotations yet. Mark deploys, config changes, or incidents above.</p>
+          ) : (
+            <div className="space-y-2">
+              {events.map((ev) => {
+                const typeColors: Record<string, string> = {
+                  deploy: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                  note: "bg-surface-elevated text-text-muted border-border",
+                  incident: "bg-red-500/15 text-red-400 border-red-500/30",
+                  maintenance: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+                  config: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+                };
+                const cls = typeColors[ev.eventType] ?? typeColors.note;
+                return (
+                  <div key={ev.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-elevated border border-border group">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider flex-shrink-0 ${cls}`}>
+                      {ev.eventType}
+                    </span>
+                    <span className="flex-1 text-sm text-text-primary truncate">{ev.message}</span>
+                    <span className="text-xs text-text-muted flex-shrink-0">{relativeTime(ev.createdAt)}</span>
+                    <button
+                      onClick={() => void handleDeleteEvent(ev.id)}
+                      className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-danger transition-all flex-shrink-0"
+                      aria-label="Delete event"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>

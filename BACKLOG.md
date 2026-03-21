@@ -1,3 +1,62 @@
+## Status Summary (2026-03-21 13:00 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public; code quality clean
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Scheduler query optimization:** Added explicit `select` to scheduler tick query — avoids pulling unused columns (description, all relations) for monitors that don't end up being due. Reduces row data size and deserialization cost.
+  - **DB covering index:** Added `(monitorId, checkedAt, level)` composite index to `MonitorRun` — enables index-only scans for uptime% calculation queries which scan by monitorId+checkedAt and select only the `level` field. DB pushed.
+  - **Registry variant markers:** Cleaned up BACKLOG — `Varianten als Tags/Profiles` and `Im Setup-Dropdown` are already done (variants.ts + Versions page platform selector). Marked complete.
+
+## Status Summary (2026-03-21 12:53 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public; services restarted
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Widget resolver coverage:** Implemented per-widget API data endpoints for `multi-monitor-status-grid`, `multi-status-badges`, `version-check-badge`, and `update-summary` — these were all returning the generic "not implemented" fallback. Now return live monitor status/version data. Widget audit: 82 types, 0 palette gaps, 0 renderer gaps, 0 noConfig warnings. ✅
+
+## Status Summary (2026-03-21 12:43 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy 200
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Tool registry variants expanded: 37 → 50 tools** with platform variant definitions — added docker-engine, authelia, rabbitmq, nats, node-red, matrix-synapse, rocketchat, discourse, zulip, pocketbase, frigate, appwrite, truenas-scale. Each variant includes verified endpoint, auth requirements, and evidenceUrl.
+
+## Status Summary (2026-03-21 12:37 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy; API 200
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Event markers on response chart:** Timeline annotation events (deploy/incident/maintenance/config/note) now appear as colored vertical reference lines on the response time area chart. `ResponseAreaChart` extended with `marks` prop + `checkedAt` on `DataPoint`. Events within the chart's time window are aligned to the nearest data point.
+
+## Status Summary (2026-03-21 12:35 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **TS fix:** Added `monitorEvent` table mock to `monitors.service.spec.ts` prisma mock (was causing 3 TS2339 errors in strict mode)
+  - **Test coverage:** Added 4 controller tests for `listEvents`, `createEvent` (with and without eventType), `deleteEvent` — covering the Timeline Annotations endpoints added last session. 1727→1731 tests.
+
+## Status Summary (2026-03-21 12:28 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public; services up
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Widget properties panel — live data preview:** When "Live" mode is toggled on in the editor toolbar, the Properties panel now shows a live data mini-preview of the selected widget's real data (using `WidgetPreview` with the fetched API payload). Green "Live data ●" badge + pointer-events-none preview panel. ConfigPanel now accepts `liveData` + `liveDataMode` props.
+
+## Status Summary (2026-03-21 12:26 UTC)
+- **Build/Test:** ✅ Clean build, 1727 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ API/Web restarted; all routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Monitor Timeline Annotations UI:** `MonitorEvent` Prisma schema + DB pushed. `listEvents/createEvent/deleteEvent` API methods wired. Monitor detail page now shows "Timeline Annotations" panel: add/delete events with type selector (deploy/note/incident/maintenance/config), color-coded type badges, relative timestamps, hover-reveal delete button.
+
+## Status Summary (2026-03-21 12:13 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ API/Web restarted; all key routes return 200 locally and via public https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Monitors form parity fix (DNS/PING):** Added missing DNS/PING configuration controls in create/edit modal (DNS record type, expected value, DNS timeout, ping count, packet-loss threshold), wired config serialization in create/update payloads, and unified edit prefill logic so type-specific config is restored consistently.
+
 ## Status Summary (2026-03-21 10:24 UTC)
 - **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 9 routes 200 local + public https://oc-dev-test.no749ah.com 200
@@ -1869,8 +1928,8 @@
 - [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
-- [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
-- [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
+- [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
+- [x] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden. *(Versions page: platform dropdown, applyVariantOverride(), fetches /v1/tool-registry/:id/variants)*
 - [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.

@@ -91,6 +91,12 @@ function makePrisma(monitorOverride?: ReturnType<typeof makeMonitor> | null) {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn().mockResolvedValue({}),
     },
+    monitorEvent: {
+      create: vi.fn().mockResolvedValue({ id: 'ev-1', monitorId: 'monitor-1', message: 'Deployed', eventType: 'deploy', createdAt: new Date() }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
+      delete: vi.fn().mockResolvedValue({}),
+    },
   };
 }
 
@@ -3928,5 +3934,78 @@ describe('getErrorBudget', () => {
     // Already exhausted (50% fail >> 0.1% allowed) so projectedExhaustionDate should be null
     expect(result.status).toBe('exhausted');
     expect(result.projectedExhaustionDate).toBeNull();
+  });
+});
+
+describe('MonitorEvent — listEvents / createEvent / deleteEvent', () => {
+  function makeEventPrisma(monitorExists = true) {
+    const monitor = monitorExists ? makeMonitor() : null;
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(monitor),
+      },
+      monitorEvent: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'evt-1', message: 'Deployed v2.3', eventType: 'deploy', createdAt: new Date(), userId: 'user-1' },
+        ]),
+        create: vi.fn().mockResolvedValue({
+          id: 'evt-new', message: 'Restart', eventType: 'note', createdAt: new Date(), userId: 'user-1',
+        }),
+        findUnique: vi.fn().mockResolvedValue(
+          { id: 'evt-1', monitorId: 'monitor-1', userId: 'user-1' },
+        ),
+        delete: vi.fn().mockResolvedValue({ id: 'evt-1' }),
+      },
+    } as unknown as ReturnType<typeof makePrisma>;
+  }
+
+  it('listEvents returns events for owned monitor', async () => {
+    const svc = makeService(makeEventPrisma());
+    const result = await svc.listEvents('user-1', 'monitor-1');
+    expect(Array.isArray(result)).toBe(true);
+    expect(result[0]).toMatchObject({ id: 'evt-1', message: 'Deployed v2.3' });
+  });
+
+  it('listEvents throws NotFoundException for unknown monitor', async () => {
+    const svc = makeService(makeEventPrisma(false));
+    await expect(svc.listEvents('user-1', 'no-such-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('createEvent creates annotation with default type', async () => {
+    const svc = makeService(makeEventPrisma());
+    const result = await svc.createEvent('user-1', 'monitor-1', 'Restart');
+    expect(result).toMatchObject({ message: 'Restart', eventType: 'note' });
+  });
+
+  it('createEvent creates annotation with deploy type', async () => {
+    const prisma = makeEventPrisma();
+    (prisma.monitorEvent.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'evt-2', message: 'Deployed v3.0', eventType: 'deploy', createdAt: new Date(), userId: 'user-1',
+    });
+    const svc = makeService(prisma);
+    const result = await svc.createEvent('user-1', 'monitor-1', 'Deployed v3.0', 'deploy');
+    expect(result.eventType).toBe('deploy');
+  });
+
+  it('deleteEvent removes event for monitor owner', async () => {
+    const svc = makeService(makeEventPrisma());
+    const result = await svc.deleteEvent('user-1', 'monitor-1', 'evt-1');
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it('deleteEvent throws when event monitorId does not match', async () => {
+    const prisma = makeEventPrisma();
+    (prisma.monitorEvent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      { id: 'evt-1', monitorId: 'other-monitor', userId: 'user-1' },
+    );
+    const svc = makeService(prisma);
+    await expect(svc.deleteEvent('user-1', 'monitor-1', 'evt-1')).rejects.toThrow('Event not found');
+  });
+
+  it('deleteEvent throws when event does not exist', async () => {
+    const prisma = makeEventPrisma();
+    (prisma.monitorEvent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const svc = makeService(prisma);
+    await expect(svc.deleteEvent('user-1', 'monitor-1', 'no-such-event')).rejects.toThrow('Event not found');
   });
 });

@@ -44,13 +44,31 @@ export class ChecksScheduler {
   async tick() {
     const cycleStart = Date.now();
 
-    // Single query: fetch all enabled monitors with their latest run (avoids N+1)
+    // Single query: fetch all enabled monitors with their latest run (avoids N+1).
+    // Explicit select: only pull columns needed for check execution — avoids deserializing
+    // large configJson blobs and description text for monitors that don't end up being due.
     const monitors = await this.prisma.monitor.findMany({
       where: { enabled: true },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        type: true,
+        target: true,
+        intervalSec: true,
+        timeoutMs: true,
+        confirmations: true,
+        configJson: true,
+        folderId: true,
+        enabled: true,
+        createdAt: true,
+        slaTarget: true,
+        slaPeriodDays: true,
+        slaBreachAlertedAt: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
+          select: { checkedAt: true, level: true },
         },
       },
     });

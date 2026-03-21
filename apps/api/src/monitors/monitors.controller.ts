@@ -7,7 +7,7 @@ import { ScopeGuard } from '../common/scope.guard';
 import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
-import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -322,5 +322,52 @@ export class MonitorsController {
     @Param('dependsOnId') dependsOnId: string,
   ) {
     return this.monitorsService.removeDependency(req.user.id, id, dependsOnId);
+  }
+
+  // ─── Monitor Events (Timeline Annotations) ────────────────────────────────
+
+  @Get(':id/events')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'List monitor timeline events',
+    description: 'Returns timestamped annotations pinned to this monitor timeline (deploys, notes, maintenance, etc.). Newest first, max 100.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Events returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  listEvents(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.listEvents(req.user.id, id);
+  }
+
+  @Post(':id/events')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Create a monitor timeline event',
+    description: 'Pin a timestamped annotation to this monitor\'s timeline. Useful for marking deploys, config changes, or incidents.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 201, description: 'Event created.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  createEvent(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: CreateMonitorEventDto,
+  ) {
+    return this.monitorsService.createEvent(req.user.id, id, dto.message, dto.eventType ?? 'note');
+  }
+
+  @Delete(':id/events/:eventId')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Delete a monitor timeline event' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiParam({ name: 'eventId', description: 'Event ID to delete' })
+  @ApiResponse({ status: 200, description: 'Event deleted.' })
+  @ApiResponse({ status: 404, description: 'Event not found.' })
+  deleteEvent(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.monitorsService.deleteEvent(req.user.id, id, eventId);
   }
 }

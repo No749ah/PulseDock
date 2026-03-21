@@ -3239,6 +3239,125 @@ export class StatusPagesService {
         return { labels: [], values: [], unit: '', chartType , fetchedAt: new Date().toISOString()};
       }
 
+      case 'multi-monitor-status-grid':
+      case 'multi-status-badges': {
+        // Returns a snapshot of all (or filtered) monitors' current status for grid/badge widgets
+        const monitorIds = Array.isArray(widget.config.monitorIds) ? (widget.config.monitorIds as string[]) : undefined;
+        const filterType = widget.config.monitorType as string | undefined;
+
+        const dbMonitors = await this.prisma.monitor.findMany({
+          where: {
+            userId,
+            enabled: true,
+            ...(monitorIds?.length ? { id: { in: monitorIds } } : {}),
+            ...(filterType ? { type: filterType as never } : {}),
+          },
+          include: {
+            runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { level: true, latencyMs: true, checkedAt: true } },
+            monitorTags: { include: { tag: true } },
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        const items = dbMonitors.map((m) => ({
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          level: (m.runs[0]?.level ?? 'green') as string,
+          latencyMs: m.runs[0]?.latencyMs ?? null,
+          lastChecked: m.runs[0]?.checkedAt ?? null,
+          tags: m.monitorTags.map((t: { tag: { name: string } }) => t.tag.name),
+        }));
+
+        const down = items.filter((i) => i.level === 'red').length;
+        const degraded = items.filter((i) => i.level === 'yellow').length;
+
+        return {
+          monitors: items,
+          summary: {
+            total: items.length,
+            down,
+            degraded,
+            healthy: items.length - down - degraded,
+          },
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
+      case 'version-check-badge': {
+        // Single monitor version status badge
+        if (!monitorId) return { _noConfig: true };
+        const monitor = await this.prisma.monitor.findFirst({
+          where: { id: monitorId, userId },
+          include: { runs: { orderBy: { checkedAt: 'desc' }, take: 1 } },
+        });
+        if (!monitor) return { _noConfig: true };
+        const latest = monitor.runs[0];
+        const msg = latest?.message ?? '';
+        const m = msg.match(/current\s+([^\s,]+)[,\s]+latest\s+([^\s,]+)/i);
+        const current = m ? m[1] : null;
+        const latestVersion = m ? m[2] : null;
+        let diff: 'up-to-date' | 'patch' | 'minor' | 'major' = 'up-to-date';
+        if (current && latestVersion) {
+          const c = current.replace(/^v/i, '').split('.');
+          const l = latestVersion.replace(/^v/i, '').split('.');
+          if (c[0] !== l[0]) diff = 'major';
+          else if (c[1] !== l[1]) diff = 'minor';
+          else if (c[2] !== l[2]) diff = 'patch';
+        }
+        return {
+          monitorId,
+          name: monitor.name,
+          level: latest?.level ?? 'green',
+          current,
+          latest: latestVersion,
+          diff,
+          lastChecked: latest?.checkedAt ?? null,
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
+      case 'update-summary': {
+        // Aggregate update counts across all version monitors
+        const versionTypes = ['GIT_RELEASE', 'DOCKER_IMAGE'];
+        const versionMonitors = await this.prisma.monitor.findMany({
+          where: { userId, enabled: true, type: { in: versionTypes as never[] } },
+          include: { runs: { orderBy: { checkedAt: 'desc' }, take: 1 } },
+        });
+
+        let upToDate = 0, patch = 0, minor = 0, major = 0;
+        const updates: Array<{ id: string; name: string; current: string | null; latest: string | null; diff: string }> = [];
+
+        for (const m of versionMonitors) {
+          const msg = m.runs[0]?.message ?? '';
+          const match = msg.match(/current\s+([^\s,]+)[,\s]+latest\s+([^\s,]+)/i);
+          const current = match ? match[1] : null;
+          const latestVersion = match ? match[2] : null;
+          if (!current || !latestVersion) { upToDate++; continue; }
+          const c = current.replace(/^v/i, '').split('.');
+          const l = latestVersion.replace(/^v/i, '').split('.');
+          let diff: 'up-to-date' | 'patch' | 'minor' | 'major' = 'up-to-date';
+          if (c[0] !== l[0]) diff = 'major';
+          else if (c[1] !== l[1]) diff = 'minor';
+          else if (c[2] !== l[2]) diff = 'patch';
+          if (diff === 'up-to-date') upToDate++;
+          else if (diff === 'major') major++;
+          else if (diff === 'minor') minor++;
+          else patch++;
+          if (diff !== 'up-to-date') updates.push({ id: m.id, name: m.name, current, latest: latestVersion, diff });
+        }
+
+        return {
+          total: versionMonitors.length,
+          upToDate,
+          patch,
+          minor,
+          major,
+          updates: updates.slice(0, 20),
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

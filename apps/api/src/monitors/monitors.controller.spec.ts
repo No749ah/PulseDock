@@ -26,6 +26,13 @@ function makeMonitorsService() {
     listMonitorAlerts: vi.fn(),
     addMonitorAlert: vi.fn(),
     removeMonitorAlert: vi.fn(),
+    listEvents: vi.fn(),
+    createEvent: vi.fn(),
+    deleteEvent: vi.fn(),
+    snooze: vi.fn(),
+    listDependencies: vi.fn(),
+    addDependency: vi.fn(),
+    removeDependency: vi.fn(),
   };
 }
 
@@ -180,5 +187,37 @@ describe('MonitorsController', () => {
     service.monitorUptime.mockResolvedValue({ uptimePct: 50, totalChecks: 10, failedChecks: 5 });
     await controller.monitorUptime(makeReq(), 'm-1', 'invalid-period');
     expect(service.monitorUptime).toHaveBeenCalledWith('user-1', 'm-1', '30d');
+  });
+
+  // ── Timeline Annotations (MonitorEvents) ──────────────────────────────
+
+  it('listEvents() delegates to service.listEvents', async () => {
+    const events = [{ id: 'ev-1', message: 'Deployed', eventType: 'deploy', createdAt: new Date() }];
+    service.listEvents.mockResolvedValue({ events });
+    const result = await controller.listEvents(makeReq(), 'm-1');
+    expect(service.listEvents).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(result).toEqual({ events });
+  });
+
+  it('createEvent() delegates to service.createEvent with eventType', async () => {
+    const event = { id: 'ev-2', message: 'v2.0 rollout', eventType: 'deploy', createdAt: new Date() };
+    service.createEvent.mockResolvedValue(event);
+    const result = await controller.createEvent(makeReq(), 'm-1', { message: 'v2.0 rollout', eventType: 'deploy' });
+    expect(service.createEvent).toHaveBeenCalledWith('user-1', 'm-1', 'v2.0 rollout', 'deploy');
+    expect(result).toEqual(event);
+  });
+
+  it('createEvent() defaults eventType to "note" when not specified', async () => {
+    const event = { id: 'ev-3', message: 'Restarted', eventType: 'note', createdAt: new Date() };
+    service.createEvent.mockResolvedValue(event);
+    await controller.createEvent(makeReq(), 'm-1', { message: 'Restarted' });
+    expect(service.createEvent).toHaveBeenCalledWith('user-1', 'm-1', 'Restarted', 'note');
+  });
+
+  it('deleteEvent() delegates to service.deleteEvent', async () => {
+    service.deleteEvent.mockResolvedValue({ ok: true });
+    const result = await controller.deleteEvent(makeReq(), 'm-1', 'ev-1');
+    expect(service.deleteEvent).toHaveBeenCalledWith('user-1', 'm-1', 'ev-1');
+    expect(result).toEqual({ ok: true });
   });
 });

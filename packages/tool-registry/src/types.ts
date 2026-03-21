@@ -35,8 +35,10 @@ export type ToolCategory =
   | 'Helm'
   | 'AI/ML'
   | 'ERP/Business'
+  | 'E-Commerce'
   | 'Search/Vector'
   | 'IoT/Edge'
+  | 'IoT'
   | 'Photo/Docs'
   | 'Photo & Documents'
   | 'Project Management'
@@ -63,7 +65,8 @@ export type ToolCategory =
   | 'Backup & Recovery'
   | 'VoIP & Telephony'
   | 'Digital Signage'
-  | 'Fleet & Asset Management';
+  | 'Fleet & Asset Management'
+  | 'Healthcare';
 
 export interface VersionSource {
   type: VersionSourceType;

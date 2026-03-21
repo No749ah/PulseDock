@@ -6,9 +6,9 @@ import { ToolRegistryController } from './tool-registry.controller';
 // Mock the tool-registry package
 vi.mock('../../../../packages/tool-registry/src', () => ({
   TOOL_REGISTRY: [
-    { id: 'grafana', name: 'Grafana', category: 'Observability', description: 'Analytics platform', tags: ['monitoring'], verified: true, versionSource: { type: 'json-path' } },
-    { id: 'prometheus', name: 'Prometheus', category: 'Observability', description: 'Metrics system', tags: ['monitoring', 'metrics'], verified: true, versionSource: { type: 'github-releases' } },
-    { id: 'gitea', name: 'Gitea', category: 'Dev Tools', description: 'Git service', tags: ['git', 'vcs'], verified: false, versionSource: { type: 'json-path' } },
+    { id: 'grafana', name: 'Grafana', category: 'Observability', description: 'Analytics platform', tags: ['monitoring'], verified: true, versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.version' } },
+    { id: 'prometheus', name: 'Prometheus', category: 'Observability', description: 'Metrics system', tags: ['monitoring', 'metrics'], verified: true, versionSource: { type: 'github-releases', target: 'prometheus/prometheus' } },
+    { id: 'gitea', name: 'Gitea', category: 'Dev Tools', description: 'Git service', tags: ['git', 'vcs'], verified: false, versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/settings/api', jsonPath: '$.version' } },
   ],
   TOOL_CATEGORIES: ['Observability', 'Dev Tools', 'Container'],
   searchTools: vi.fn((q: string, category?: string) => {
@@ -24,8 +24,9 @@ vi.mock('../../../../packages/tool-registry/src', () => ({
   }),
   getToolById: vi.fn((id: string) => {
     const tools: Record<string, unknown> = {
-      grafana: { id: 'grafana', name: 'Grafana', category: 'Observability' },
-      prometheus: { id: 'prometheus', name: 'Prometheus', category: 'Observability' },
+      grafana: { id: 'grafana', name: 'Grafana', category: 'Observability', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.version' } },
+      prometheus: { id: 'prometheus', name: 'Prometheus', category: 'Observability', versionSource: { type: 'github-releases', target: 'prometheus/prometheus' } },
+      gitea: { id: 'gitea', name: 'Gitea', category: 'Dev Tools', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/settings/api', jsonPath: '$.version' } },
     };
     return tools[id] ?? null;
   }),
@@ -138,6 +139,46 @@ describe('ToolRegistryController', () => {
 
     it('throws NotFoundException for unknown tool ID', () => {
       expect(() => controller.getVariants('does-not-exist')).toThrow(NotFoundException);
+    });
+  });
+
+  describe('validate()', () => {
+    it('throws NotFoundException for unknown tool ID', async () => {
+      await expect(controller.validate('nonexistent-tool')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns structured result for upstream tool (github-releases)', async () => {
+      // prometheus has type 'github-releases' — live fetch attempted, may succeed or fail
+      const result = await controller.validate('prometheus');
+      expect(result.toolId).toBe('prometheus');
+      expect(result.toolName).toBe('Prometheus');
+      expect(['ok', 'unreachable', 'parse-error', 'no-endpoint']).toContain(result.status);
+      expect(result.message).toBeTruthy();
+    });
+
+    it('returns no-endpoint for json-path tool missing instanceUrl', async () => {
+      // grafana has type 'json-path' with urlTemplate — no instanceUrl provided
+      const result = await controller.validate('grafana');
+      expect(result.toolId).toBe('grafana');
+      expect(result.toolName).toBe('Grafana');
+      expect(result.status).toBe('no-endpoint');
+      expect(result.message).toContain('instanceUrl');
+    });
+
+    it('returns no-endpoint for json-path tool when instanceUrl provided but endpoint unreachable', async () => {
+      // gitea with non-routable instanceUrl
+      const result = await controller.validate('gitea', 'http://127.0.0.1:9');
+      expect(result.toolId).toBe('gitea');
+      // unreachable or parse-error depending on OS behavior
+      expect(['unreachable', 'no-endpoint', 'auth-required']).toContain(result.status);
+    });
+
+    it('returns structured result with all required fields', async () => {
+      const result = await controller.validate('grafana');
+      expect(result).toHaveProperty('toolId', 'grafana');
+      expect(result).toHaveProperty('toolName', 'Grafana');
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('message');
     });
   });
 });

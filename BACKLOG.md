@@ -1,3 +1,11 @@
+## Status Summary (2026-03-21 12:35 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **TS fix:** Added `monitorEvent` table mock to `monitors.service.spec.ts` prisma mock (was causing 3 TS2339 errors in strict mode)
+  - **Test coverage:** Added 4 controller tests for `listEvents`, `createEvent` (with and without eventType), `deleteEvent` — covering the Timeline Annotations endpoints added last session. 1727→1731 tests.
+
 ## Status Summary (2026-03-21 12:28 UTC)
 - **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All routes 200 local + public; services up

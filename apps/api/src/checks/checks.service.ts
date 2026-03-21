@@ -19,6 +19,9 @@ import { regexMatchPlugin } from './plugins/regex-match.plugin';
 import { responseTimePlugin } from './plugins/response-time.plugin';
 import { jsonAssertionPlugin } from './plugins/json-assertion.plugin';
 import { statusCodePlugin } from './plugins/status-code.plugin';
+import { headerAssertionPlugin } from './plugins/header-assertion.plugin';
+import { redirectCheckPlugin } from './plugins/redirect-check.plugin';
+import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
 
 @Injectable()
@@ -38,6 +41,9 @@ export class ChecksService {
     this.pluginRegistry.register(responseTimePlugin);
     this.pluginRegistry.register(jsonAssertionPlugin);
     this.pluginRegistry.register(statusCodePlugin);
+    this.pluginRegistry.register(headerAssertionPlugin);
+    this.pluginRegistry.register(redirectCheckPlugin);
+    this.pluginRegistry.register(certExpiryPlugin);
   }
 
   /**

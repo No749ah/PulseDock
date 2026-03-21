@@ -491,6 +491,59 @@ function getMultiModeHelperText(widgetType: string): string {
   return "This widget will render data for all selected monitors.";
 }
 
+function getWidgetConfigHints(widgetType: string): string[] {
+  switch (widgetType) {
+    case "embed-iframe":
+      return [
+        "Use a full HTTPS URL and a source that allows iFrame embedding.",
+        "If the widget stays blank on public pages, check X-Frame-Options/CSP on the target site.",
+      ];
+    case "security-advisory":
+      return [
+        "Use the real package name from your ecosystem (for example: express, requests, serde).",
+        "Set ecosystem when names overlap across package managers.",
+      ];
+    case "dependency-map":
+      return [
+        "Edges use monitor IDs, not names.",
+        "Format: { source, target, label? }.",
+      ];
+    case "multi-environment-status":
+    case "region-status-map":
+      return [
+        "Use monitor IDs in each group list.",
+        "Groups with empty arrays render as no-data until monitors are added.",
+      ];
+    case "third-party-dependencies":
+      return [
+        "Each service runs a lightweight HEAD request.",
+        "Use stable health/status endpoints for best results.",
+      ];
+    case "table-of-contents":
+      return [
+        "Anchors must match element IDs on your page.",
+        "Use short, lowercase IDs like 'incidents' or 'uptime'.",
+      ];
+    case "tab-container":
+      return [
+        "Use a tabs array with { title, content } items.",
+        "Keep content concise for mobile readability.",
+      ];
+    case "column-layout":
+      return [
+        "Use items as an array of { heading?, body }.",
+        "For readability, keep body text short per column.",
+      ];
+    case "custom-metric-chart":
+      return [
+        "Select a monitor first, then tune metric + chart type.",
+        "Use line/area for trends and bar for discrete comparisons.",
+      ];
+    default:
+      return [];
+  }
+}
+
 function getDefaultMultiMonitorIds(widget: Widget, monitors: Monitor[]): string[] {
   const configured = Array.isArray(widget.config.monitorIds)
     ? widget.config.monitorIds.filter((id): id is string => typeof id === "string" && id.length > 0)
@@ -1087,6 +1140,7 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   const supportsStyle = w.type !== "divider";
   const supportsResponsive = w.type !== "divider";
   const configWarnings = getConfigWarnings(w, monitorMode);
+  const configHints = getWidgetConfigHints(w.type);
   const hasLiveData = liveDataMode && liveData != null;
   const isMissingSingleMonitor = supportsMonitorScope && monitorMode === "single" && !String(w.config.monitorId ?? "").trim();
   const isMissingPackageName = w.type === "security-advisory" && !String(w.config.packageName ?? "").trim();
@@ -1153,6 +1207,17 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
         </div>
       )}
 
+      {configHints.length > 0 && (
+        <div className="rounded-lg border border-border/60 bg-surface-elevated/30 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">Setup tips</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[10px] text-text-muted">
+            {configHints.map((hint) => (
+              <li key={hint}>{hint}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {supportsLabel && (
         <div>
           <label className="mb-1 block text-xs font-medium text-text-secondary">Label override</label>
@@ -1178,6 +1243,13 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
             <option value="multiple">Multiple monitors</option>
             <option value="all">All monitors</option>
           </select>
+          <p className="mt-1 text-[10px] text-text-muted">
+            {monitorMode === "single"
+              ? "Single: one explicit monitor drives this widget."
+              : monitorMode === "multiple"
+                ? "Multiple: choose a monitor set for comparison/aggregation."
+                : "All: automatically includes every monitor that matches filters."}
+          </p>
         </div>
       )}
 

@@ -4034,10 +4034,10 @@ describe('monitorChart()', () => {
   });
 
   it('computes avgLatencyMs correctly per bucket', async () => {
-    const bucketStart = new Date('2026-01-01T00:00:00Z');
+    const ts = new Date();
     const runs = [
-      { ok: true, latencyMs: 100, checkedAt: new Date(bucketStart.getTime() + 60_000), level: 'green' },
-      { ok: true, latencyMs: 200, checkedAt: new Date(bucketStart.getTime() + 120_000), level: 'green' },
+      { ok: true, latencyMs: 100, checkedAt: ts, level: 'green' },
+      { ok: true, latencyMs: 200, checkedAt: ts, level: 'green' },
     ];
     const p = makeChartPrisma(runs);
     const svc = makeService(p);

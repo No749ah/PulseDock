@@ -1088,6 +1088,9 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   const supportsResponsive = w.type !== "divider";
   const configWarnings = getConfigWarnings(w, monitorMode);
   const hasLiveData = liveDataMode && liveData != null;
+  const isMissingSingleMonitor = supportsMonitorScope && monitorMode === "single" && !String(w.config.monitorId ?? "").trim();
+  const isMissingPackageName = w.type === "security-advisory" && !String(w.config.packageName ?? "").trim();
+  const isMissingEmbedUrl = w.type === "embed-iframe" && !String(w.config.url ?? "").trim();
 
   function handleMonitorModeChange(nextMode: "single" | "multiple" | "all") {
     if (nextMode === "multiple") {
@@ -1180,17 +1183,23 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
 
       {supportsMonitorScope && monitorMode === "single" && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-text-secondary">Monitor</label>
+          <label className={`mb-1 block text-xs font-medium ${isMissingSingleMonitor ? "text-danger" : "text-text-secondary"}`}>
+            Monitor <span className="text-danger">*</span>
+          </label>
           <select
             value={(w.config.monitorId as string) ?? ""}
             onChange={(e) => update("monitorId", e.target.value || undefined)}
-            className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:border-accent focus:outline-none"
+            className={`w-full rounded-lg border bg-bg px-2.5 py-1.5 text-xs text-text-primary focus:outline-none ${isMissingSingleMonitor ? "border-danger/60 focus:border-danger" : "border-border focus:border-accent"}`}
+            aria-invalid={isMissingSingleMonitor}
           >
             <option value="">— Select monitor —</option>
             {monitors.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
+          {isMissingSingleMonitor && (
+            <p className="mt-1 text-[10px] text-danger">Required: choose a monitor, or switch scope to Multiple/All.</p>
+          )}
         </div>
       )}
 
@@ -1527,15 +1536,20 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
       {w.type === "security-advisory" && (
         <>
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-secondary">Package Name</label>
+            <label className={`mb-1 block text-xs font-medium ${isMissingPackageName ? "text-danger" : "text-text-secondary"}`}>
+              Package Name <span className="text-danger">*</span>
+            </label>
             <input
               type="text"
               value={(w.config.packageName as string) ?? ""}
               onChange={(e) => update("packageName", e.target.value)}
               placeholder="e.g. express"
-              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              className={`w-full rounded-lg border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${isMissingPackageName ? "border-danger/60 focus:border-danger" : "border-border focus:border-accent"}`}
+              aria-invalid={isMissingPackageName}
             />
-            <p className="mt-1 text-[10px] text-text-muted">Package name to look up in GitHub Security Advisories</p>
+            <p className={`mt-1 text-[10px] ${isMissingPackageName ? "text-danger" : "text-text-muted"}`}>
+              {isMissingPackageName ? "Required for advisory lookup." : "Package name to look up in GitHub Security Advisories"}
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-text-secondary">Ecosystem (optional)</label>
@@ -1893,14 +1907,18 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
       {w.type === "embed-iframe" && (
         <>
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-secondary">URL</label>
+            <label className={`mb-1 block text-xs font-medium ${isMissingEmbedUrl ? "text-danger" : "text-text-secondary"}`}>
+              URL <span className="text-danger">*</span>
+            </label>
             <input
               type="url"
               value={(w.config.url as string) ?? ""}
               onChange={(e) => update("url", e.target.value || undefined)}
               placeholder="https://grafana.example.com/d/…?kiosk=1"
-              className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
+              className={`w-full rounded-lg border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${isMissingEmbedUrl ? "border-danger/60 focus:border-danger" : "border-border focus:border-accent"}`}
+              aria-invalid={isMissingEmbedUrl}
             />
+            {isMissingEmbedUrl && <p className="mt-1 text-[10px] text-danger">Required: add an embeddable URL.</p>}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-text-secondary">Title (accessibility)</label>

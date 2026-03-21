@@ -1,3 +1,33 @@
+## Status Summary (2026-03-21 20:40 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (2 files / 12 tests in current fast suite), no regressions
+- **Deployment:** ✅ API + web restarted successfully, local route audit green, reverse proxy login/dashboard 200
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Status-page editor config UX polish (top remaining config-panel item):** added explicit required indicators and field-level validation states in the right-side Properties panel:
+    - Single-monitor selector now shows required asterisk, inline validation message, and invalid red border when empty
+    - Security Advisory `packageName` now shows required asterisk + invalid-state styling/message
+    - Embed iFrame `url` now shows required asterisk + invalid-state styling/message
+  - Keeps existing global "Configuration needed" warning panel while making the exact offending fields immediately visible/actionable.
+
+## Status Summary (2026-03-21 20:14 UTC)
+- **Build/Test:** ✅ Clean build, health-score test suite passing (17 tests), zero regressions reported
+- **Deployment:** ✅ Health endpoint responding 200
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Monitor Health Score feature shipped:** Added composite 0–100 health scoring with grade A–F for monitors.
+  - **New API endpoints:**
+    - `GET /v1/monitors/health-summary` (aggregated scores for monitor list)
+    - `GET /v1/monitors/:id/health-score` (detailed score + breakdown)
+  - **Scoring model implemented:**
+    - Uptime (40 pts)
+    - Latency trend (20 pts)
+    - SLA/error-budget usage (20 pts)
+    - Stability streak since last downtime (20 pts)
+  - **Frontend integration:**
+    - Monitors table now shows health score/grade badges
+    - Monitor detail page now includes a Health Score card with full breakdown
+  - **Test coverage:** Added dedicated health-score spec suite (17 passing tests), including boundary grades, down-state streak behavior, no-SLA/no-latency defaults, and summary aggregation.
+
 ## Status Summary (2026-03-21 18:14 UTC)
 - **Build/Test:** ✅ Clean build, 1904 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 11 routes 200 local + public proxy (https://oc-dev-test.no749ah.com)
@@ -1090,7 +1120,7 @@
 > Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
 
 - [x] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
-- [~] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. Remaining: real-data preview mode + broader field-level UX polish.)*
+- [~] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. 2026-03-21 20:40 UTC: shipped field-level required UX polish — required asterisks, inline validation text, and red invalid styling for monitor selector, Security Advisory packageName, and Embed URL inputs. Remaining: broader per-widget helper-text polish.)*
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [x] **Widget data loading** — router.refresh() replaces hard page reloads for live status updates (WebSocket + polling). Per-widget incremental hydration deferred — full RSC route refresh is acceptable for current scale.

@@ -14,6 +14,17 @@
     - Documented new env vars in `apps/web/.env.example` and `apps/api/.env.example`
   - `BACKLOG.md` white-label item moved to **in progress** with remaining scope captured.
 
+## Status Summary (2026-03-21 04:35 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
+- **Deployment:** ✅ Build script restarted web server successfully
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Tool Registry expansion: 3961 → 4361 entries** (+400 unique tools)
+  - Added `REGISTRY_PART30` (200 entries) focused on specialized self-hosted areas: GIS/Mapping, Legal/Compliance, HR/Payroll, Helpdesk/Support, Form/Survey, Publishing/RSS, Smart Home, Remote Access
+  - Added `REGISTRY_PART31` (200 entries) focused on knowledge/notes, finance/personal accounting, time tracking, recipes, fitness/health, game servers, and home automation
+  - Updated `TOOL_REGISTRY` export to include `REGISTRY_PART30` + `REGISTRY_PART31`
+  - Duplicate ID check: **0 duplicates** across full registry
+
 ## Status Summary (2026-03-21 03:02 UTC)
 - **Build/Test:** ✅ Clean build, 1651 tests passing (1629 API + 10 CLI + 12 Agent), zero TS errors
 - **Deployment:** ✅ All routes 200 (local + public https://oc-dev-test.no749ah.com), services restarted

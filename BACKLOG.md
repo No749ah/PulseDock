@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 14:50 UTC)
+- **Build/Test:** ✅ Clean build, 1830 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **backup.service spec (new):** 11 tests covering `exportBackup` (version/structure, monitor+tags, folders, settings inclusion) and `restoreBackup` (invalid format rejection, empty backup, folder create/skip, tag create/skip, monitor create/skip, error recording without throw). Settings module coverage: 50% → improved.
+
 ## Status Summary (2026-03-21 14:10 UTC)
 - **Build/Test:** ✅ Clean build, 1819 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy

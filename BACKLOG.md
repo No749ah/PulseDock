@@ -1,3 +1,12 @@
+## Status Summary (2026-03-21 13:00 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public; code quality clean
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Scheduler query optimization:** Added explicit `select` to scheduler tick query — avoids pulling unused columns (description, all relations) for monitors that don't end up being due. Reduces row data size and deserialization cost.
+  - **DB covering index:** Added `(monitorId, checkedAt, level)` composite index to `MonitorRun` — enables index-only scans for uptime% calculation queries which scan by monitorId+checkedAt and select only the `level` field. DB pushed.
+  - **Registry variant markers:** Cleaned up BACKLOG — `Varianten als Tags/Profiles` and `Im Setup-Dropdown` are already done (variants.ts + Versions page platform selector). Marked complete.
+
 ## Status Summary (2026-03-21 12:53 UTC)
 - **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public; services restarted
@@ -1919,8 +1928,8 @@
 - [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
-- [ ] Varianten als Tags/Profiles im Registry-Modell pflegen.
-- [ ] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden.
+- [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
+- [x] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden. *(Versions page: platform dropdown, applyVariantOverride(), fetches /v1/tool-registry/:id/variants)*
 - [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
 - [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.

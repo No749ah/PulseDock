@@ -44,13 +44,23 @@ function makeRun(overrides: Record<string, unknown> = {}) {
 function makePrisma(opts: {
   previousRun?: ReturnType<typeof makeRun> | null;
   recentRuns?: Array<{ level: string }>;
+  dependencies?: Array<{ dependsOnId: string }>;
+  depLatestRuns?: Array<{ monitorId: string; level: string }>;
 } = {}) {
   const previousRun = opts.previousRun !== undefined ? opts.previousRun : null;
   const recentRuns = opts.recentRuns;
+  const dependencies = opts.dependencies ?? [];
+  const depLatestRuns = opts.depLatestRuns ?? [];
   return {
     monitorRun: {
       findFirst: vi.fn().mockResolvedValue(previousRun),
-      findMany: vi.fn().mockResolvedValue(recentRuns ?? (previousRun ? [{ level: String(previousRun.level) }] : [])),
+      findMany: vi.fn().mockImplementation((args: { where?: { monitorId?: unknown; in?: string[] }; distinct?: string[] } = {}) => {
+        // If querying by monitorId array (dependency latest run check), return depLatestRuns
+        if (args.where?.monitorId && typeof args.where.monitorId === 'object' && 'in' in args.where.monitorId) {
+          return Promise.resolve(depLatestRuns);
+        }
+        return Promise.resolve(recentRuns ?? (previousRun ? [{ level: String(previousRun.level) }] : []));
+      }),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({
           id: 'run-new',
@@ -64,6 +74,9 @@ function makePrisma(opts: {
           level: data.level,
         }),
       ),
+    },
+    monitorDependency: {
+      findMany: vi.fn().mockResolvedValue(dependencies),
     },
   };
 }
@@ -330,6 +343,85 @@ describe('ChecksService', () => {
     });
   });
 
+  // ── runMonitor() — Dependency suppression ────────────────────────────────
+
+  describe('runMonitor() — dependency-based alert suppression', () => {
+    it('suppresses failure alert when dependency monitor is down (red)', async () => {
+      const prisma = makePrisma({
+        recentRuns: [],
+        dependencies: [{ dependsOnId: 'dep-mon-1' }],
+        depLatestRuns: [{ monitorId: 'dep-mon-1', level: 'red' }],
+      });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma: prisma as never, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
+    it('suppresses failure alert when dependency monitor is degraded (yellow)', async () => {
+      const prisma = makePrisma({
+        recentRuns: [],
+        dependencies: [{ dependsOnId: 'dep-mon-1' }],
+        depLatestRuns: [{ monitorId: 'dep-mon-1', level: 'yellow' }],
+      });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma: prisma as never, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 503 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).not.toHaveBeenCalled();
+    });
+
+    it('does NOT suppress when dependency is healthy (green)', async () => {
+      const prisma = makePrisma({
+        recentRuns: [{ level: 'green' }],
+        dependencies: [{ dependsOnId: 'dep-mon-1' }],
+        depLatestRuns: [{ monitorId: 'dep-mon-1', level: 'green' }],
+      });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma: prisma as never, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalled();
+    });
+
+    it('always fires recovery alert even when dependency is down', async () => {
+      const prisma = makePrisma({
+        recentRuns: [{ level: 'red' }],
+        dependencies: [{ dependsOnId: 'dep-mon-1' }],
+        depLatestRuns: [{ monitorId: 'dep-mon-1', level: 'red' }],
+      });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma: prisma as never, alerts });
+
+      // Now the check is green (recovery)
+      globalThis.fetch = mockFetch([{ ok: true, status: 200 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalled();
+    });
+
+    it('does NOT suppress when monitor has no dependencies', async () => {
+      const prisma = makePrisma({
+        recentRuns: [{ level: 'green' }],
+        dependencies: [],
+      });
+      const alerts = makeAlerts();
+      const service = makeService({ prisma: prisma as never, alerts });
+
+      globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+      await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+      expect(alerts.notifyMonitorFailure).toHaveBeenCalled();
+    });
+  });
+
   // ── runMonitor() — Status-page webhook notifications ─────────────────────
 
   describe('runMonitor() — status-page webhook on status change', () => {
@@ -348,6 +440,9 @@ describe('ChecksService', () => {
           create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
             Promise.resolve({ id: 'run-new', userId: data.userId, monitorId: data.monitorId, checkedAt: new Date(), ok: data.ok, status: data.status, latencyMs: data.latencyMs, message: data.message, level: data.level }),
           ),
+        },
+        monitorDependency: {
+          findMany: vi.fn().mockResolvedValue([]),
         },
         publicStatusPage: {
           findMany: vi.fn().mockResolvedValue([

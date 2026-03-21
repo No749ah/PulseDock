@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractByPath, runExtractorPipeline, normalizeExtractors } from './version-extractor.util';
+import { extractByPath, runExtractorPipeline, normalizeExtractors, isVersionLike, stripVPrefix, runHeuristicExtraction, extractVersionWithFallback } from './version-extractor.util';
 
 describe('extractByPath', () => {
   it('extracts top-level key', () => {
@@ -112,5 +112,80 @@ describe('normalizeExtractors', () => {
 
   it('handles multiple extractors', () => {
     expect(normalizeExtractors(undefined, ['Version', 'version', 'data.version'])).toEqual(['Version', 'version', 'data.version']);
+  });
+});
+
+describe('isVersionLike', () => {
+  it('returns true for standard semver', () => {
+    expect(isVersionLike('1.2.3')).toBe(true);
+  });
+
+  it('returns true for version with v prefix', () => {
+    expect(isVersionLike('v1.2.3')).toBe(true);
+  });
+
+  it('returns true for two-part version', () => {
+    expect(isVersionLike('10.5')).toBe(true);
+  });
+
+  it('returns false for non-version string', () => {
+    expect(isVersionLike('ok')).toBe(false);
+    expect(isVersionLike('healthy')).toBe(false);
+    expect(isVersionLike('')).toBe(false);
+  });
+});
+
+describe('stripVPrefix', () => {
+  it('strips v prefix from vX.Y.Z', () => {
+    expect(stripVPrefix('v1.2.3')).toBe('1.2.3');
+  });
+
+  it('leaves string unchanged if no v prefix', () => {
+    expect(stripVPrefix('1.2.3')).toBe('1.2.3');
+  });
+
+  it('does not strip v from non-version strings', () => {
+    expect(stripVPrefix('vault')).toBe('vault');
+  });
+});
+
+describe('runHeuristicExtraction', () => {
+  it('detects version from top-level version field', () => {
+    expect(runHeuristicExtraction({ version: '2.5.0' })).toBe('2.5.0');
+  });
+
+  it('detects from Version (capitalized)', () => {
+    expect(runHeuristicExtraction({ Version: '3.0.1' })).toBe('3.0.1');
+  });
+
+  it('detects from tag_name (GitHub releases style)', () => {
+    expect(runHeuristicExtraction({ tag_name: 'v1.9.0' })).toBe('v1.9.0');
+  });
+
+  it('returns null when no version field found', () => {
+    expect(runHeuristicExtraction({ status: 'ok', name: 'myapp' })).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(runHeuristicExtraction(null)).toBeNull();
+    expect(runHeuristicExtraction([])).toBeNull();
+    expect(runHeuristicExtraction('1.0.0')).toBeNull();
+  });
+});
+
+describe('extractVersionWithFallback', () => {
+  it('uses configured extractor when it matches', () => {
+    const body = { app: { ver: '4.1.0' }, version: '2.0.0' };
+    expect(extractVersionWithFallback(body, ['app.ver'])).toBe('4.1.0');
+  });
+
+  it('falls back to heuristic when extractor path misses', () => {
+    const body = { version: '3.2.1' };
+    expect(extractVersionWithFallback(body, ['nonexistent.path'])).toBe('3.2.1');
+  });
+
+  it('returns null when neither configured nor heuristic finds version', () => {
+    const body = { status: 'healthy' };
+    expect(extractVersionWithFallback(body, [])).toBeNull();
   });
 });

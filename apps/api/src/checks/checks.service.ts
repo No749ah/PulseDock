@@ -23,7 +23,7 @@ import { statusCodePlugin } from './plugins/status-code.plugin';
 import { headerAssertionPlugin } from './plugins/header-assertion.plugin';
 import { redirectCheckPlugin } from './plugins/redirect-check.plugin';
 import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
-import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
+import { runExtractorPipeline, normalizeExtractors, extractByPath, extractVersionWithFallback } from './version-extractor.util';
 
 @Injectable()
 export class ChecksService {
@@ -452,9 +452,8 @@ export class ChecksService {
           config.jsonPath as string | undefined,
           Array.isArray(config.jsonPathExtractors) ? (config.jsonPathExtractors as string[]) : undefined,
         );
-        const detected = extractors.length > 0
-          ? (runExtractorPipeline(body, extractors) ?? this.extractVersion(body))
-          : this.extractVersion(body);
+        // Use full fallback pipeline: configured extractors → heuristic field scan → legacy extractVersion
+        const detected = extractVersionWithFallback(body, extractors) ?? this.extractVersion(body);
         if (detected) return detected;
       } catch {
         continue;

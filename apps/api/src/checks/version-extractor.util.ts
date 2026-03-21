@@ -3,6 +3,23 @@
  * Implements a multi-step extractor pipeline for precise version detection.
  */
 
+/** Common version-like field names searched during heuristic extraction */
+const HEURISTIC_VERSION_FIELDS = [
+  'version',
+  'Version',
+  'app_version',
+  'appVersion',
+  'server_version',
+  'serverVersion',
+  'release',
+  'tag_name',
+  'name',
+  'build_version',
+  'buildVersion',
+  'current_version',
+  'currentVersion',
+];
+
 /**
  * Extract a value from a nested JSON object using simple dot-notation path.
  * Supports array index notation: 'items.0.version'
@@ -29,6 +46,28 @@ export function extractByPath(obj: unknown, path: string): unknown {
 }
 
 /**
+ * Determine if a string looks like a version value.
+ * Accepts semver-like strings (e.g. "1.2.3", "v1.2", "10.2.0-beta.1").
+ *
+ * @param raw - String to test
+ * @returns true if the string matches a version pattern
+ */
+export function isVersionLike(raw: string): boolean {
+  return /v?\d+\.\d+/.test(raw);
+}
+
+/**
+ * Strip leading `v` prefix from a version string if present.
+ * Leaves the string unchanged if it does not start with `v`.
+ *
+ * @param version - Raw version string (e.g. 'v1.2.3')
+ * @returns Normalized version without leading `v` (e.g. '1.2.3')
+ */
+export function stripVPrefix(version: string): string {
+  return version.startsWith('v') && /^v\d/.test(version) ? version.slice(1) : version;
+}
+
+/**
  * Run the extractor pipeline against a JSON body.
  * Tries each path extractor in order; returns first non-null semver-like value.
  * Returns null if no extractor matches a version-like value.
@@ -41,12 +80,48 @@ export function runExtractorPipeline(body: unknown, extractors: string[]): strin
   for (const extractor of extractors) {
     const raw = extractByPath(body, extractor);
     if (typeof raw === 'string' && raw.trim()) {
-      // Accept if it looks like a version (contains digit.digit at minimum)
-      const m = raw.match(/v?\d+\.\d+/i);
-      if (m) return raw.trim();
+      const v = raw.trim();
+      if (isVersionLike(v)) return v;
+    }
+    // Also accept numeric values (e.g. "version": 18)
+    if (typeof raw === 'number' && raw > 0) {
+      return String(raw);
     }
   }
   return null;
+}
+
+/**
+ * Run a heuristic extraction pass when no configured extractors match.
+ * Searches top-level keys of the JSON body for common version field names.
+ * Returns the first version-like value found, or null.
+ *
+ * @param body - Parsed JSON body to scan
+ * @returns Version string from a heuristic match, or null
+ */
+export function runHeuristicExtraction(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  const obj = body as Record<string, unknown>;
+
+  for (const field of HEURISTIC_VERSION_FIELDS) {
+    const val = obj[field];
+    if (typeof val === 'string' && val.trim() && isVersionLike(val)) {
+      return val.trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Full extraction strategy: configured pipeline first, heuristic fallback second.
+ * Use this in version-check paths that want maximum coverage.
+ *
+ * @param body - Parsed JSON body
+ * @param extractors - Configured extractor paths to try first
+ * @returns Detected version string, or null if not found
+ */
+export function extractVersionWithFallback(body: unknown, extractors: string[]): string | null {
+  return runExtractorPipeline(body, extractors) ?? runHeuristicExtraction(body);
 }
 
 /**

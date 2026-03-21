@@ -1,3 +1,12 @@
+## Status Summary (2026-03-21 18:14 UTC)
+- **Build/Test:** ✅ Clean build, 1904 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 11 routes 200 local + public proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Tool registry live validation endpoint:** `GET /v1/tool-registry/validate/:id?instanceUrl=...` — tests reachability + version extraction for any registry tool. Supports upstream sources (GitHub, Docker Hub, npm, PyPI, cargo) auto-detected; json-path tools require instanceUrl. Returns structured `{status, versionDetected, httpStatus, latencyMs, endpointUsed, extractorPath, message}`. 5 new unit tests. Total: 1899 → 1904 API tests.
+  - **Registry metadata sweep:** All 646 verified entries now have `verificationStatus` + `lastVerifiedAt: '2026-03-21'`. Added `docsUrl` to 153 key tools (portainer, docker, kubernetes, grafana, prometheus, redis, postgresql, gitea, vault, traefik, minio, nextcloud, jellyfin, home-assistant, n8n, argocd, mattermost, rocketchat, etc.)
+  - **Extractor pipeline enhancement:** Added `isVersionLike()`, `stripVPrefix()`, `runHeuristicExtraction()`, `extractVersionWithFallback()` to `version-extractor.util.ts`. Heuristic pass scans 14 common version field names when configured paths miss. Wired `extractVersionWithFallback` into `checks.service.ts` — tools with no extractor config now benefit from auto-detection. Extractor tests: 17 → 42.
+
 ## Status Summary (2026-03-21 16:15 UTC)
 - **Build/Test:** ✅ Clean build, 1899 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 11 routes 200 local + public proxy
@@ -2006,8 +2015,8 @@
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
 - [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
-- [ ] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool).
-- [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
+- [~] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-21: docsUrl added to 153 key tools; verificationStatus + lastVerifiedAt added to all 646 verified entries. Remaining: 497 verified tools still missing docs URL.)*
+- [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
 - [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
 - [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
@@ -2018,9 +2027,9 @@
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
 - [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
 - [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
-- [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
+- [x] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`. *(2026-03-21: all 646 verified entries updated)*
 - [x] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint. *(Done 2026-03-20: endpointFallbacks in VersionSource type + detectAppVersion/detectDeployedVersion logic + 8 verified tools updated)*
-- [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
+- [x] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren. *(2026-03-21: heuristic fallback + extractVersionWithFallback wired into checks.service.ts)*
 - [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
 
 ## Status Summary (2026-03-19 21:26 UTC)

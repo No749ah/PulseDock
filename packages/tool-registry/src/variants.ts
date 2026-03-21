@@ -763,6 +763,388 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'wordpress': [
+    {
+      id: 'docker',
+      label: 'WordPress (Docker / Self-Hosted)',
+      description: 'Self-hosted WordPress via Docker or LAMP stack. No auth needed for WP REST API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wordpress.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json',
+        jsonPath: '$.namespaces.0',
+        authRequired: false,
+        endpointFallbacks: ['/wp-json', '/?rest_route=/'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://developer.wordpress.org/rest-api/',
+    },
+    {
+      id: 'multisite',
+      label: 'WordPress Multisite',
+      description: 'WordPress Multisite network. Same REST API per site.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wordpress.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json',
+        jsonPath: '$.namespaces.0',
+        authRequired: false,
+        endpointFallbacks: ['/wp-json'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://developer.wordpress.org/rest-api/',
+      tags: ['multisite'],
+    },
+    {
+      id: 'cloud',
+      label: 'WP Engine / WordPress.com (Cloud)',
+      description: 'Managed WordPress hosting — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://github.com/WordPress/WordPress/releases',
+    },
+  ],
+
+  'traefik': [
+    {
+      id: 'docker',
+      label: 'Traefik (Docker / Standalone)',
+      description: 'Traefik running as a Docker container. Version API available unauthenticated.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://traefik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/api/overview'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'traefik/traefik',
+      },
+      evidenceUrl: 'https://doc.traefik.io/traefik/operations/api/#version',
+    },
+    {
+      id: 'kubernetes',
+      label: 'Traefik (Kubernetes Ingress)',
+      description: 'Traefik deployed as Kubernetes ingress controller. API may require auth depending on exposure.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://traefik.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.Version',
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/api/overview'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'traefik/traefik',
+      },
+      evidenceUrl: 'https://doc.traefik.io/traefik/operations/api/#version',
+      tags: ['kubernetes', 'ingress'],
+    },
+  ],
+
+  'forgejo': [
+    {
+      id: 'standalone',
+      label: 'Forgejo (Standalone)',
+      description: 'Self-hosted Forgejo instance. Version endpoint is public (same API as Gitea).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forgejo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'forgejo/forgejo',
+      },
+      evidenceUrl: 'https://codeberg.org/forgejo/forgejo',
+    },
+    {
+      id: 'docker',
+      label: 'Forgejo (Docker)',
+      description: 'Forgejo running via Docker or Docker Compose. Same API as standalone.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forgejo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'forgejo/forgejo',
+      },
+      evidenceUrl: 'https://codeberg.org/forgejo/forgejo',
+      tags: ['docker'],
+    },
+  ],
+
+  'sonarqube': [
+    {
+      id: 'community',
+      label: 'SonarQube Community Edition (CE)',
+      description: 'Free CE edition. /api/server/version returns plain text version string.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/version', '/api/system/status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'developer',
+      label: 'SonarQube Developer Edition (DE)',
+      description: 'Paid Developer Edition — same API endpoint, may require auth token.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'enterprise',
+      label: 'SonarQube Enterprise Edition (EE) / DCE',
+      description: 'Enterprise or Data Center Edition — same version API, auth typically required.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'SonarQube Cloud (SonarCloud)',
+      description: 'Managed cloud offering — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://github.com/SonarSource/sonarqube/releases',
+    },
+  ],
+
+  'uptime-kuma': [
+    {
+      id: 'docker',
+      label: 'Uptime Kuma (Docker)',
+      description: 'Docker deployment. No public unauthenticated version endpoint — tracks via GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://uptime.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      evidenceUrl: 'https://github.com/louislam/uptime-kuma/releases',
+      tags: ['docker'],
+    },
+    {
+      id: 'npm',
+      label: 'Uptime Kuma (npm / Node.js)',
+      description: 'Installed via npm. Tracks upstream release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://uptime.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      evidenceUrl: 'https://github.com/louislam/uptime-kuma/releases',
+    },
+  ],
+
+  'immich': [
+    {
+      id: 'docker',
+      label: 'Immich (Docker Compose)',
+      description: 'Standard Docker Compose deployment. Version at /api/server/about (no auth).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://immich.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/about',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/about', '/api/server-info/about'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'immich-app/immich',
+      },
+      evidenceUrl: 'https://immich.app/docs/api/',
+      tags: ['docker'],
+    },
+    {
+      id: 'kubernetes',
+      label: 'Immich (Kubernetes / Helm)',
+      description: 'Helm chart deployment on Kubernetes. Same API endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://immich.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/about',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/about', '/api/server-info/about'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'immich-app/immich',
+      },
+      evidenceUrl: 'https://immich.app/docs/api/',
+      tags: ['kubernetes', 'helm'],
+    },
+  ],
+
+  'ghost': [
+    {
+      id: 'self-hosted',
+      label: 'Ghost (Self-Hosted)',
+      description: 'Self-hosted Ghost via Ghost CLI or Docker. Tracks release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://ghost.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      evidenceUrl: 'https://ghost.org/docs/api/',
+      tags: ['docker'],
+    },
+    {
+      id: 'ghost-pro',
+      label: 'Ghost Pro (Cloud)',
+      description: 'Managed Ghost Pro hosting — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      evidenceUrl: 'https://github.com/TryGhost/Ghost/releases',
+    },
+  ],
+
+  'plausible': [
+    {
+      id: 'self-hosted',
+      label: 'Plausible (Self-Hosted)',
+      description: 'Self-hosted Plausible Analytics. No public version endpoint — tracks upstream release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://plausible.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      evidenceUrl: 'https://github.com/plausible/analytics/releases',
+    },
+    {
+      id: 'cloud',
+      label: 'Plausible Cloud',
+      description: 'Managed Plausible Cloud — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      evidenceUrl: 'https://github.com/plausible/analytics/releases',
+    },
+  ],
+
 };
 
 /**

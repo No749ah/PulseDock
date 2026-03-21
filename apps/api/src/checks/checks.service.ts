@@ -15,6 +15,10 @@ import { PluginRegistry } from './plugin.registry';
 import type { PluginExecutionResult } from './plugin.contracts';
 import { executePluginSafely } from './plugin.sandbox';
 import { httpResponseMatchPlugin } from './plugins/http-response-match.plugin';
+import { regexMatchPlugin } from './plugins/regex-match.plugin';
+import { responseTimePlugin } from './plugins/response-time.plugin';
+import { jsonAssertionPlugin } from './plugins/json-assertion.plugin';
+import { statusCodePlugin } from './plugins/status-code.plugin';
 import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
 
 @Injectable()
@@ -30,6 +34,10 @@ export class ChecksService {
   ) {
     this.realtime = realtime ?? { monitorChecked: () => undefined, statusPageUpdated: () => undefined };
     this.pluginRegistry.register(httpResponseMatchPlugin);
+    this.pluginRegistry.register(regexMatchPlugin);
+    this.pluginRegistry.register(responseTimePlugin);
+    this.pluginRegistry.register(jsonAssertionPlugin);
+    this.pluginRegistry.register(statusCodePlugin);
   }
 
   /**

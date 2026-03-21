@@ -196,4 +196,167 @@ describe('ReportsService', () => {
       expect(isDue).toBe(true);
     });
   });
+
+  describe('sendDueReports', () => {
+    it('sends a report and updates lastSentAt when report is due', async () => {
+      const userId = 'user-report';
+      const now = new Date('2026-03-16T08:00:00Z'); // Monday 08:00 UTC (getUTCDay=1)
+      vi.setSystemTime(now);
+
+      const report = {
+        id: 'rep-1',
+        userId,
+        enabled: true,
+        frequency: 'weekly',
+        dayOfWeek: 1,
+        hourUtc: 8,
+        lastSentAt: null,
+        user: { id: userId, email: 'user@example.com' },
+      };
+
+      mockPrisma.scheduledReport.findMany.mockResolvedValue([report]);
+      mockPrisma.monitor.findMany.mockResolvedValue([
+        { id: 'mon-1', name: 'API', type: 'HTTP' },
+      ]);
+      mockPrisma.$queryRaw.mockResolvedValue([
+        { monitorId: 'mon-1', ok: true, level: 'green' },
+      ]);
+      mockPrisma.monitorRun.findMany.mockResolvedValue([
+        { ok: true, level: 'green' },
+        { ok: true, level: 'green' },
+      ]);
+      mockPrisma.incident.count.mockResolvedValue(0);
+      mockMailer.sendUptimeReport.mockResolvedValue(undefined);
+      mockPrisma.scheduledReport.update.mockResolvedValue({ ...report, lastSentAt: now });
+
+      await service.sendDueReports();
+
+      expect(mockMailer.sendUptimeReport).toHaveBeenCalledTimes(1);
+      expect(mockMailer.sendUptimeReport).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.objectContaining({ frequency: 'weekly', totalMonitors: 1 }),
+      );
+      expect(mockPrisma.scheduledReport.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'rep-1' } }),
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('skips reports that are not yet due', async () => {
+      const now = new Date('2026-03-17T10:00:00Z'); // wrong hour
+      vi.setSystemTime(now);
+
+      const report = {
+        id: 'rep-2',
+        userId: 'user-2',
+        enabled: true,
+        frequency: 'weekly',
+        dayOfWeek: 1,
+        hourUtc: 8, // configured for 8, current is 10
+        lastSentAt: null,
+        user: { id: 'user-2', email: 'u2@example.com' },
+      };
+      mockPrisma.scheduledReport.findMany.mockResolvedValue([report]);
+
+      await service.sendDueReports();
+
+      expect(mockMailer.sendUptimeReport).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('handles mailer errors gracefully and continues', async () => {
+      const now = new Date('2026-03-17T09:00:00Z'); // Monday 09
+      vi.setSystemTime(now);
+
+      const report = {
+        id: 'rep-3',
+        userId: 'user-3',
+        enabled: true,
+        frequency: 'daily',
+        dayOfWeek: 1,
+        hourUtc: 9,
+        lastSentAt: null,
+        user: { id: 'user-3', email: 'u3@example.com' },
+      };
+      mockPrisma.scheduledReport.findMany.mockResolvedValue([report]);
+      mockPrisma.monitor.findMany.mockResolvedValue([]);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+      mockPrisma.incident.count.mockResolvedValue(0);
+      mockMailer.sendUptimeReport.mockRejectedValue(new Error('SMTP error'));
+
+      // Should not throw
+      await expect(service.sendDueReports()).resolves.toBeUndefined();
+      vi.useRealTimers();
+    });
+
+    it('computes zero uptimeMonitors correctly when no monitors exist', async () => {
+      const now = new Date('2026-03-16T08:00:00Z'); // Sunday 08
+      vi.setSystemTime(now);
+
+      const report = {
+        id: 'rep-4',
+        userId: 'user-4',
+        enabled: true,
+        frequency: 'daily',
+        dayOfWeek: 0,
+        hourUtc: 8,
+        lastSentAt: null,
+        user: { id: 'user-4', email: 'u4@example.com' },
+      };
+      mockPrisma.scheduledReport.findMany.mockResolvedValue([report]);
+      mockPrisma.monitor.findMany.mockResolvedValue([]);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+      mockPrisma.incident.count.mockResolvedValue(2);
+      mockMailer.sendUptimeReport.mockResolvedValue(undefined);
+      mockPrisma.scheduledReport.update.mockResolvedValue({});
+
+      await service.sendDueReports();
+
+      expect(mockMailer.sendUptimeReport).toHaveBeenCalledWith(
+        'u4@example.com',
+        expect.objectContaining({
+          totalMonitors: 0,
+          overallUptimePct: 100,
+          activeIncidents: 2,
+        }),
+      );
+      vi.useRealTimers();
+    });
+
+    it('skips monitors with no runs in computeReportData', async () => {
+      const now = new Date('2026-03-16T08:00:00Z'); // Monday UTC (day=1)
+      vi.setSystemTime(now);
+
+      const report = {
+        id: 'rep-5',
+        userId: 'user-5',
+        enabled: true,
+        frequency: 'weekly',
+        dayOfWeek: 1,
+        hourUtc: 8,
+        lastSentAt: null,
+        user: { id: 'user-5', email: 'u5@example.com' },
+      };
+      mockPrisma.scheduledReport.findMany.mockResolvedValue([report]);
+      mockPrisma.monitor.findMany.mockResolvedValue([
+        { id: 'mon-a', name: 'No-run', type: 'HTTP' },
+      ]);
+      // No latest runs for this monitor
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+      // findMany for period runs also empty
+      mockPrisma.monitorRun.findMany.mockResolvedValue([]);
+      mockPrisma.incident.count.mockResolvedValue(0);
+      mockMailer.sendUptimeReport.mockResolvedValue(undefined);
+      mockPrisma.scheduledReport.update.mockResolvedValue({});
+
+      await service.sendDueReports();
+
+      expect(mockMailer.sendUptimeReport).toHaveBeenCalledWith(
+        'u5@example.com',
+        expect.objectContaining({ overallUptimePct: 100, topMonitors: [] }),
+      );
+      vi.useRealTimers();
+    });
+  });
 });

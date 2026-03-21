@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 12:37 UTC)
+- **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy; API 200
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Event markers on response chart:** Timeline annotation events (deploy/incident/maintenance/config/note) now appear as colored vertical reference lines on the response time area chart. `ResponseAreaChart` extended with `marks` prop + `checkedAt` on `DataPoint`. Events within the chart's time window are aligned to the nearest data point.
+
 ## Status Summary (2026-03-21 12:35 UTC)
 - **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All routes 200 local + public

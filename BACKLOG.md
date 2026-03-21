@@ -2041,7 +2041,7 @@
 - [x] Keep first render lightweight: show ~50 tools initially (already was 50).
 - [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
 - [x] Add debounced search to avoid re-filtering on every keystroke. — `useDebounce` hook (`apps/web/lib/useDebounce.ts`), wired into monitors page search + versions tool picker (replaced manual timer).
-- [ ] Add quick perf check for large registry filtering in browser.
+- [x] Add quick perf check for large registry filtering in browser. *(2026-03-21: memoized tool-query normalization + ranked filtering + close-match derivation in `versions/page.tsx` to avoid recomputation on unrelated renders.)*
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
 - [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).

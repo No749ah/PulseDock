@@ -1,3 +1,14 @@
+## Status Summary (2026-03-21 05:13 UTC)
+- **Build/Test:** ✅ Clean build, 1676 tests passing (1651 API + 12 Agent + 10 CLI + web), zero TS errors
+- **Deployment:** ✅ Web restarted; all 8 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **Plugin System v2 — 3 more built-in check plugins** (total plugins: 8):
+    - `http.header-assertion` — verifies response header exists + optional value substring check, warn/fail-on-missing toggle. 7 unit tests.
+    - `http.redirect-check` — follows redirect chain, asserts final URL prefix / HTTPS requirement / max hops. 8 unit tests.
+    - `http.cert-expiry` — TLS cert expiry via Node `tls.connect`, warn/critical day thresholds, handles expired certs. 5 unit tests.
+  - All 3 registered in `ChecksService` plugin registry. TS strict mode clean. Build passing.
+
 ## Status Summary (2026-03-21 04:56 UTC)
 - **Build/Test:** ✅ Clean build, all tests passing, zero TS errors
 - **Deployment:** ✅ Web restarted; local 200 + public https://oc-dev-test.no749ah.com 200
@@ -1742,7 +1753,7 @@
 - [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
 - [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
 - [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
-- [~] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins. *(2026-03-21: shipped first major check-plugin expansion: `http.regex-match`, `http.response-time`, `http.json-assertion`, `http.status-code`; registered in `ChecksService` with dedicated unit tests. Remaining: user-installable plugin loading, plugin versioning/signature model, custom widgets/channels + marketplace UX.)*
+- [~] **Plugin System v2** — Custom widget types, custom check types, custom alert channels, marketplace for community plugins. *(2026-03-21: 8 built-in check plugins: `http.response-match`, `http.regex-match`, `http.response-time`, `http.json-assertion`, `http.status-code`, `http.header-assertion`, `http.redirect-check`, `http.cert-expiry`. All with unit tests. Remaining: user-installable plugin loading from filesystem/URL, plugin versioning/signature model, custom widget types + alert channel types + marketplace UX.)*
 - [~] **White-label** — env-driven instance branding foundation shipped: `NEXT_PUBLIC_APP_NAME/DESCRIPTION/LOGO_URL/FAVICON_URL/ACCENT_COLOR/APP_URL/HIDE_BRANDING/GITHUB_URL`, dynamic metadata + favicon + accent override, login branding, optional "Powered by PulseDock" footer attribution, API email templates now `APP_NAME`/`APP_URL`/`GITHUB_URL` aware. Remaining: full dashboard-wide text/logo sweep, tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
 - [ ] **Billing / License Management** — For SaaS mode: plan limits (monitors, checks/day, team members, status pages), usage tracking, upgrade prompts
 - [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags

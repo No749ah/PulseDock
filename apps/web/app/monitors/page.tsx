@@ -237,7 +237,7 @@ function MonitorsPageInner() {
   // external import modal
   const externalImportFileRef = useRef<HTMLInputElement>(null);
   const [showExternalImport, setShowExternalImport] = useState(false);
-  const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "csv">("uptime-robot");
+  const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "uptime-kuma" | "csv">("uptime-robot");
   const [externalImporting, setExternalImporting] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [externalImportResult, setExternalImportResult] = useState<{ imported: number; skipped: number; errors: Array<{ index: number; name: string; error: string }>; message: string } | null>(null);
@@ -2962,10 +2962,11 @@ function MonitorsPageInner() {
               {/* Source selector */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-text-primary">Source</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {([
                     { id: "uptime-robot", label: "Uptime Robot", hint: "JSON export" },
                     { id: "better-uptime", label: "BetterUptime", hint: "JSON export" },
+                    { id: "uptime-kuma", label: "Uptime Kuma", hint: "JSON backup" },
                     { id: "csv", label: "Generic CSV", hint: ".csv file" },
                   ] as const).map((s) => (
                     <button
@@ -3000,6 +3001,15 @@ function MonitorsPageInner() {
                     <p>1. Use the BetterUptime API: <code className="font-mono bg-surface px-1 rounded">GET /api/v2/monitors</code></p>
                     <p>2. Save the JSON response and upload it below.</p>
                     <p className="mt-1 text-text-secondary/70">Only status/keyword check types are imported.</p>
+                  </>
+                )}
+                {externalImportSource === "uptime-kuma" && (
+                  <>
+                    <p className="font-medium text-text-primary mb-1">How to export from Uptime Kuma:</p>
+                    <p>1. Open Uptime Kuma → Settings → Backup → Export</p>
+                    <p>2. Save the downloaded <code className="font-mono bg-surface px-1 rounded">backup.json</code> file.</p>
+                    <p>3. Upload the file below — all HTTP monitors will be imported.</p>
+                    <p className="mt-1 text-text-secondary/70">Only HTTP/HTTPS monitors are imported. Port, ping, and DNS monitors are skipped.</p>
                   </>
                 )}
                 {externalImportSource === "csv" && (

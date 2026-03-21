@@ -35,7 +35,8 @@ describe('MonitorsController', () => {
 
   beforeEach(() => {
     service = makeMonitorsService();
-    controller = new MonitorsController(service as never);
+    const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
+    controller = new MonitorsController(service as never, mockPlanService as never);
   });
 
   it('list() delegates to service.list', async () => {

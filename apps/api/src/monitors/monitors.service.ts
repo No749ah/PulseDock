@@ -1356,6 +1356,61 @@ export class MonitorsService {
   }
 
   /**
+   * Parse an Uptime Kuma JSON backup export.
+   * Format: { monitorList: [{ name, url, type, interval, active }] }
+   * @param raw - Raw parsed JSON from Uptime Kuma backup
+   */
+  private parseUptimeKuma(raw: unknown): Array<{
+    name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+    intervalSec?: number; enabled?: boolean;
+  }> {
+    const data = raw as Record<string, unknown>;
+    let items: unknown[] = [];
+
+    // Uptime Kuma backup: { monitorList: [...] } or { monitors: [...] } or plain array
+    if (Array.isArray(data['monitorList'])) {
+      items = data['monitorList'] as unknown[];
+    } else if (Array.isArray(data['monitors'])) {
+      items = data['monitors'] as unknown[];
+    } else if (Array.isArray(raw)) {
+      items = raw as unknown[];
+    }
+
+    const results: Array<{
+      name: string; target: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE';
+      intervalSec?: number; enabled?: boolean;
+    }> = [];
+
+    for (const item of items) {
+      const entry = item as Record<string, unknown>;
+      // Uptime Kuma monitor types: 1=HTTP, 2=Port, 3=Ping, etc.
+      const monType = entry['type'] as string | number | undefined;
+      const url = (entry['url'] ?? '') as string;
+      const hostname = (entry['hostname'] ?? '') as string;
+      const name = (entry['name'] ?? url ?? hostname) as string;
+      const interval = (entry['interval'] ?? 60) as number;
+      const active = entry['active'] !== false && entry['active'] !== 0;
+
+      // Import HTTP monitors (type = 'http' or 1) — skip ping/port/etc.
+      if (monType !== undefined && monType !== 'http' && monType !== 1 && monType !== 'HTTP') {
+        continue;
+      }
+
+      const target = url || (hostname ? `http://${hostname}` : '');
+      if (!target || !/^https?:\/\//i.test(target)) continue;
+
+      results.push({
+        name: String(name).slice(0, 255),
+        target,
+        type: 'HTTP',
+        intervalSec: Math.max(10, Number(interval) || 60),
+        enabled: active,
+      });
+    }
+    return results;
+  }
+
+  /**
    * Parse a generic CSV export where the first row is headers.
    * Looks for columns: name/Name, url/URL/target/Target, interval/Interval
    */
@@ -1407,7 +1462,7 @@ export class MonitorsService {
    */
   async importExternal(
     userId: string,
-    source: 'uptime-robot' | 'better-uptime' | 'csv',
+    source: 'uptime-robot' | 'better-uptime' | 'uptime-kuma' | 'csv',
     payload: unknown,
   ) {
     let items: Array<{
@@ -1421,6 +1476,9 @@ export class MonitorsService {
         break;
       case 'better-uptime':
         items = this.parseBetterUptime(payload);
+        break;
+      case 'uptime-kuma':
+        items = this.parseUptimeKuma(payload);
         break;
       case 'csv':
         items = this.parseCsv(typeof payload === 'string' ? payload : JSON.stringify(payload));

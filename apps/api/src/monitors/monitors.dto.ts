@@ -342,9 +342,9 @@ export class BulkActionDto {
 }
 
 export class ImportExternalDto {
-  @IsIn(['uptime-robot', 'better-uptime', 'csv'])
-  source!: 'uptime-robot' | 'better-uptime' | 'csv';
+  @IsIn(['uptime-robot', 'better-uptime', 'uptime-kuma', 'csv'])
+  source!: 'uptime-robot' | 'better-uptime' | 'uptime-kuma' | 'csv';
 
-  /** Raw export payload: JSON object for uptime-robot/better-uptime, CSV string for csv. */
+  /** Raw export payload: JSON object for uptime-robot/better-uptime/uptime-kuma, CSV string for csv. */
   payload!: unknown;
 }

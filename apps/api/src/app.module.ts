@@ -55,6 +55,8 @@ import { OrganizationsService } from './organizations/organizations.service';
 import { SettingsController } from './settings/settings.controller';
 import { SettingsService } from './settings/settings.service';
 import { BackupService } from './settings/backup.service';
+import { PlanController } from './settings/plan.controller';
+import { PlanService } from './settings/plan.service';
 import { FeedbackController } from './feedback/feedback.controller';
 import { GrafanaController } from './grafana/grafana.controller';
 import { GrafanaService } from './grafana/grafana.service';
@@ -95,6 +97,7 @@ import { OnCallService } from './oncall/oncall.service';
     ReportsController,
     TeamController,
     SettingsController,
+    PlanController,
     FeedbackController,
     GrafanaController,
     OnCallController,
@@ -124,6 +127,7 @@ import { OnCallService } from './oncall/oncall.service';
     TeamService,
     SettingsService,
     BackupService,
+    PlanService,
     GrafanaService,
     OnCallService,
     OrganizationsService,

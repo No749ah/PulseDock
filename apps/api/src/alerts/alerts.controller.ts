@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '../common/auth.guard';
@@ -6,6 +6,7 @@ import { AlertsService } from './alerts.service';
 import type { AlertChannelType } from '../types';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
+import { PlanService } from '../settings/plan.service';
 import { CreateAlertChannelDto, TestAlertChannelDto, UpdateAlertChannelDto } from './alerts.dto';
 
 @ApiTags('Alerts')
@@ -17,6 +18,7 @@ export class AlertsController {
     private readonly prisma: PrismaService,
     private readonly alertsService: AlertsService,
     private readonly audit: AuditService,
+    private readonly planService: PlanService,
   ) {}
 
   @Get()
@@ -37,10 +39,22 @@ export class AlertsController {
   @Post()
   @ApiOperation({ summary: 'Create alert channel', description: 'Create a new notification channel (Discord, Slack, Telegram, webhook, email).' })
   @ApiResponse({ status: 201, description: 'Alert channel created.' })
+  @ApiResponse({ status: 403, description: 'Plan alert-channels limit reached.' })
   async create(
     @Req() req: { user: { id: string } },
     @Body() body: CreateAlertChannelDto,
   ) {
+    const check = await this.planService.checkLimit(req.user.id, 'alert-channels');
+    if (!check.allowed) {
+      throw new ForbiddenException({
+        message: 'Plan limit reached: upgrade to PRO for more alert channels',
+        code: 'PLAN_LIMIT',
+        resource: 'alert-channels',
+        current: check.current,
+        limit: check.limit,
+        plan: check.plan,
+      });
+    }
     const channel = await this.prisma.alertChannel.create({
       data: {
         userId: req.user.id,

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../common/auth.guard';
@@ -6,6 +6,7 @@ import { RequireScope } from '../common/require-scope.decorator';
 import { ScopeGuard } from '../common/scope.guard';
 import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
+import { PlanService } from '../settings/plan.service';
 import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
@@ -13,7 +14,10 @@ import { BulkActionDto, CreateMonitorDto, DiscoverVersionDto, ImportExternalDto,
 @UseGuards(AuthGuard, ScopeGuard)
 @Controller('v1/monitors')
 export class MonitorsController {
-  constructor(private readonly monitorsService: MonitorsService) {}
+  constructor(
+    private readonly monitorsService: MonitorsService,
+    private readonly planService: PlanService,
+  ) {}
 
   @Get()
   @RequireScope(ApiKeyScope.READ)
@@ -29,10 +33,22 @@ export class MonitorsController {
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Create monitor', description: 'Create a new uptime or version monitor.' })
   @ApiResponse({ status: 201, description: 'Monitor created.' })
-  create(
+  @ApiResponse({ status: 403, description: 'Plan monitor limit reached.' })
+  async create(
     @Req() req: { user: { id: string } },
     @Body() body: CreateMonitorDto,
   ) {
+    const check = await this.planService.checkLimit(req.user.id, 'monitors');
+    if (!check.allowed) {
+      throw new ForbiddenException({
+        message: `Plan limit reached: upgrade to PRO for more monitors`,
+        code: 'PLAN_LIMIT',
+        resource: 'monitors',
+        current: check.current,
+        limit: check.limit,
+        plan: check.plan,
+      });
+    }
     return this.monitorsService.create(req.user.id, body);
   }
 

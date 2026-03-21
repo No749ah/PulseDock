@@ -29,7 +29,8 @@ describe('StatusPagesController', () => {
 
   beforeEach(() => {
     service = makeService();
-    controller = new StatusPagesController(service as unknown as StatusPagesService);
+    const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
+    controller = new StatusPagesController(service as unknown as StatusPagesService, mockPlanService as never);
   });
 
   // ── list() ────────────────────────────────────────────────────────────────

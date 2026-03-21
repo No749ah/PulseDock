@@ -3768,3 +3768,75 @@ describe('snooze()', () => {
     expect(audit.log).toHaveBeenCalledWith('monitor.snooze', 'user-1', 'user-1', { monitorId: 'm-1', hours: 8 });
   });
 });
+
+// ─── parseUptimeKuma() — branch coverage ────────────────────────────────────
+
+describe('importExternal — parseUptimeKuma branch coverage', () => {
+  function makePrismaForImport() {
+    const p = makePrisma();
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null); // no duplicates
+    (p.monitor.create as ReturnType<typeof vi.fn>).mockImplementation(({ data }: { data: { name: string; target: string } }) =>
+      Promise.resolve({ ...makeMonitor(), id: `new-${Math.random()}`, name: data.name, target: data.target }),
+    );
+    return p;
+  }
+
+  it('imports HTTP monitors from monitorList format', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'My App', url: 'https://myapp.example.com', type: 1, interval: 60, active: true },
+        { name: 'API', url: 'https://api.example.com', type: 'http', interval: 30, active: true },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toBe(0);
+  });
+
+  it('skips non-HTTP monitor types (port, ping)', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'HTTP', url: 'https://ok.example.com', type: 1, interval: 60, active: true },
+        { name: 'Port', url: '', hostname: 'host.example.com', type: 2, interval: 60, active: true },
+        { name: 'Ping', url: '', hostname: 'ping.example.com', type: 3, interval: 60, active: true },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('handles plain array format (no monitorList wrapper)', async () => {
+    const p = makePrismaForImport();
+    const svc = makeService(p);
+    const payload = [
+      { name: 'Service', url: 'https://service.example.com', type: 1, interval: 60, active: true },
+    ];
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+  });
+
+  it('respects active=false as disabled', async () => {
+    const p = makePrisma();
+    const createdMonitor = makeMonitor({ id: 'new-paused' });
+    // First findFirst = null (dup check), second = createdMonitor (for update())
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(null)      // dup check: not a duplicate
+      .mockResolvedValue(createdMonitor); // update() internal lookup
+    (p.monitor.create as ReturnType<typeof vi.fn>).mockResolvedValue(createdMonitor);
+    (p.monitor.update as ReturnType<typeof vi.fn>).mockResolvedValue({ ...createdMonitor, enabled: false });
+    const svc = makeService(p);
+    const payload = {
+      monitorList: [
+        { name: 'Paused', url: 'https://paused.example.com', type: 1, interval: 60, active: false },
+      ],
+    };
+    const result = await svc.importExternal('user-1', 'uptime-kuma', payload);
+    expect(result.imported).toBe(1);
+    // update should have been called to disable the monitor
+    expect(p.monitor.update).toHaveBeenCalled();
+  });
+});

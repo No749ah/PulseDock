@@ -6,6 +6,9 @@ import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
+import { PlanService } from '../settings/plan.service';
+
+const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +75,7 @@ describe('AlertsController', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: AlertsService, useValue: alertsService },
         { provide: AuditService, useValue: audit },
+        { provide: PlanService, useValue: mockPlanService },
       ],
     })
       .overrideGuard(AuthGuard)
@@ -288,6 +292,7 @@ describe('AlertsController', () => {
           { provide: PrismaService, useValue: customPrisma },
           { provide: AlertsService, useValue: makeAlertsService() },
           { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
         ],
       })
         .overrideGuard(AuthGuard)
@@ -322,6 +327,7 @@ describe('AlertsController', () => {
           { provide: PrismaService, useValue: customPrisma },
           { provide: AlertsService, useValue: makeAlertsService() },
           { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
         ],
       })
         .overrideGuard(AuthGuard)
@@ -350,6 +356,7 @@ describe('AlertsController', () => {
           { provide: PrismaService, useValue: customPrisma },
           { provide: AlertsService, useValue: makeAlertsService() },
           { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
         ],
       })
         .overrideGuard(AuthGuard)

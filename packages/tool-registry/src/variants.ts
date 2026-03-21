@@ -1685,6 +1685,440 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'docker-engine': [
+    {
+      id: 'docker',
+      label: 'Docker Engine (Docker socket / local API)',
+      description: 'Docker Engine running locally — version via Docker API. Requires Docker socket or TCP API to be exposed.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:2375',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'moby/moby',
+      },
+      evidenceUrl: 'https://docs.docker.com/engine/api/v1.43/#tag/System/operation/SystemVersion',
+    },
+  ],
+
+  'authelia': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Authelia running via Docker. No native version endpoint — tracks upstream GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://auth.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      evidenceUrl: 'https://github.com/authelia/authelia/releases',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Binary',
+      description: 'Authelia installed as a binary. No native version endpoint — tracks upstream GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://auth.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      evidenceUrl: 'https://github.com/authelia/authelia/releases',
+    },
+  ],
+
+  'rabbitmq': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'RabbitMQ in Docker. Version via management API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://rabbitmq.example.com:15672',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/overview',
+        jsonPath: '$.rabbitmq_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rabbitmq/rabbitmq-server',
+      },
+      evidenceUrl: 'https://rawcdn.githack.com/rabbitmq/rabbitmq-management/v3.12.0/priv/www/api/index.html',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Debian / RPM',
+      description: 'RabbitMQ installed natively. Management plugin must be enabled for version API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://localhost:15672',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/overview',
+        jsonPath: '$.rabbitmq_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rabbitmq/rabbitmq-server',
+      },
+      evidenceUrl: 'https://rawcdn.githack.com/rabbitmq/rabbitmq-management/v3.12.0/priv/www/api/index.html',
+    },
+  ],
+
+  'nats': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'NATS running via Docker. Version via monitoring endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nats.example.com:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nats-io/nats-server',
+      },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring#general-information',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Binary',
+      description: 'NATS Server binary. Monitoring port 8222 must be enabled.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nats-io/nats-server',
+      },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring#general-information',
+    },
+  ],
+
+  'node-red': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Node-RED in Docker. Version via admin API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://node-red.example.com:1880',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/red/settings',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'node-red',
+      },
+      evidenceUrl: 'https://nodered.org/docs/api/admin/methods/get/settings/',
+    },
+    {
+      id: 'npm',
+      label: 'npm / bare-metal',
+      description: 'Node-RED installed via npm or as a system service.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:1880',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/red/settings',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'node-red',
+      },
+      evidenceUrl: 'https://nodered.org/docs/api/admin/methods/get/settings/',
+    },
+  ],
+
+  'matrix-synapse': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Matrix Synapse in Docker. Version via federation endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matrix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/federation/v1/version',
+        jsonPath: '$.server.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'element-hq/synapse',
+      },
+      evidenceUrl: 'https://spec.matrix.org/v1.8/server-server-api/#get_matrixfederationv1version',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / pip',
+      description: 'Synapse installed via pip or Debian packages.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matrix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/federation/v1/version',
+        jsonPath: '$.server.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'element-hq/synapse',
+      },
+      evidenceUrl: 'https://spec.matrix.org/v1.8/server-server-api/#get_matrixfederationv1version',
+    },
+  ],
+
+  'rocketchat': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Rocket.Chat in Docker. Version via REST API info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chat.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.info.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'RocketChat/Rocket.Chat',
+      },
+      evidenceUrl: 'https://developer.rocket.chat/apidoc/rest-api/endpoints/server-endpoint/rest-info',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / snap',
+      description: 'Rocket.Chat installed via snap or Node.js.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chat.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.info.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'RocketChat/Rocket.Chat',
+      },
+      evidenceUrl: 'https://developer.rocket.chat/apidoc/rest-api/endpoints/server-endpoint/rest-info',
+    },
+  ],
+
+  'discourse': [
+    {
+      id: 'docker',
+      label: 'Docker (official install)',
+      description: 'Discourse via official Docker launcher. Version from admin API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://forum.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/version_check.json',
+        jsonPath: '$.installed_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'discourse/discourse',
+      },
+      evidenceUrl: 'https://docs.discourse.org/#tag/Admin/operation/adminVersionCheck',
+    },
+  ],
+
+  'zulip': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Zulip in Docker. Version via server settings API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zulip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server_settings',
+        jsonPath: '$.zulip_version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'zulip/zulip',
+      },
+      evidenceUrl: 'https://zulip.com/api/get-server-settings',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Ubuntu',
+      description: 'Zulip installed on Ubuntu via official installer.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zulip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server_settings',
+        jsonPath: '$.zulip_version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'zulip/zulip',
+      },
+      evidenceUrl: 'https://zulip.com/api/get-server-settings',
+    },
+  ],
+
+  'pocketbase': [
+    {
+      id: 'binary',
+      label: 'Binary (Linux/Mac)',
+      description: 'PocketBase running as a self-contained binary. Version via API info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.code',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pocketbase/pocketbase',
+      },
+      evidenceUrl: 'https://pocketbase.io/docs/api-health/',
+    },
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'PocketBase in Docker container. Version via health endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.code',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pocketbase/pocketbase',
+      },
+      evidenceUrl: 'https://pocketbase.io/docs/api-health/',
+    },
+  ],
+
+  'frigate': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Frigate NVR via Docker. Version via API endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://frigate.local:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'blakeblackshear/frigate',
+      },
+      evidenceUrl: 'https://docs.frigate.video/integrations/api/#get-apiver',
+    },
+  ],
+
+  'appwrite': [
+    {
+      id: 'docker',
+      label: 'Docker (self-hosted)',
+      description: 'Appwrite self-hosted via Docker. Version via health endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://appwrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'appwrite/appwrite',
+      },
+      evidenceUrl: 'https://appwrite.io/docs/references/1.4.x/server-rest/health#getVersion',
+    },
+  ],
+
+  'truenas-scale': [
+    {
+      id: 'bare-metal',
+      label: 'TrueNAS SCALE (bare-metal)',
+      description: 'TrueNAS SCALE system. Version via REST API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://truenas.local',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/system/version',
+        jsonPath: '$',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'truenas/scale-build',
+      },
+      evidenceUrl: 'https://www.truenas.com/docs/scale/api/',
+    },
+  ],
+
 };
 
 /**

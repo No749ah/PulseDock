@@ -963,10 +963,11 @@ export default function MonitorDetailPage() {
         {/* Run history table */}
         
           <Card className="p-0">
-            <div className="px-4 py-3 border-b border-border">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                Last 20 Checks
+                Check History
               </h2>
+              <span className="text-xs text-text-muted">{Math.min(runs.length, 50)} of {runs.length} shown</span>
             </div>
             <div>
               {runs.length === 0 ? (
@@ -985,7 +986,7 @@ export default function MonitorDetailPage() {
                     </tr>
                   </TableHead>
                   <TableBody>
-                    {runs.slice(0, 20).map((run) => (
+                    {runs.slice(0, 50).map((run) => (
                       <TableRow key={run.id}>
                         <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                           {relativeTime(run.checkedAt)}

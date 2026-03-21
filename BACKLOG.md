@@ -1,3 +1,17 @@
+## Status Summary (2026-03-21 15:15 UTC)
+- **Build/Test:** ✅ Clean build, 1879 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion (controllers + services):** Added 5 new spec files:
+    - `team.controller.spec.ts` (10 tests): getInviteByToken, acceptInvite, getMembers, getInvites, inviteMember (2 paths), updateMemberRole, removeMember, cancelInvite
+    - `grafana.controller.spec.ts` (10 tests): health, search (2), query (2), annotations (2), tagKeys, tagValues (2)
+    - `plan.controller.spec.ts` (8 tests): getPlan (3 — limits/usage fields), checkLimit (5 — valid resources, invalid, status-pages, alert-channels, team)
+    - `oncall.service.spec.ts` extended (+9 tests): updateSchedule, addParticipant, removeParticipant (3), getScheduleWithCurrentOnCall, updatePolicy, deletePolicy, createPolicy with steps
+    - `organizations.service.spec.ts` extended (+12 tests): checkSlug (2), getOrganization (2), getMembers (2), updateMemberRole (3), removeMember (3)
+  - Coverage delta: team.controller 20%→~90%, grafana.controller 25%→~90%, plan.controller 37.5%→~90%, oncall.service 57%→~85%, organizations.service 55%→~80%
+  - API tests: 1830 → 1879 (+49)
+
 ## Status Summary (2026-03-21 14:50 UTC)
 - **Build/Test:** ✅ Clean build, 1830 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy

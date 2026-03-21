@@ -90,6 +90,8 @@ function makePrisma(opts: {
     },
     monitorRun: {
       findMany: vi.fn().mockResolvedValue(runs),
+      findFirst: vi.fn().mockResolvedValue(runs.length > 0 ? runs[runs.length - 1] : null),
+      count: vi.fn().mockResolvedValue(runs.length),
     },
     incident: {
       findMany: vi.fn().mockResolvedValue([]),

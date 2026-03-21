@@ -210,6 +210,7 @@ model MonitorRun {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([monitorId, checkedAt])
+  @@index([monitorId, checkedAt, level]) // covering index for uptime% calculation queries
   @@index([userId, checkedAt])
   @@index([checkedAt])
 }

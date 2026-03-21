@@ -116,8 +116,11 @@ function makePrisma(opts: {
   };
 }
 
+/** Minimal no-op RedisCacheService stub for tests (cache always misses, writes are no-ops). */
+const noCacheService = { get: async () => null, set: async () => {}, invalidatePattern: async () => {}, del: async () => {}, isConnected: () => false } as never;
+
 function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
-  return new StatusPagesService((prismaOverride ?? makePrisma()) as never, {} as never);
+  return new StatusPagesService((prismaOverride ?? makePrisma()) as never, {} as never, noCacheService);
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────

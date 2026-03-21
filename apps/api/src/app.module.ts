@@ -62,6 +62,7 @@ import { GrafanaController } from './grafana/grafana.controller';
 import { GrafanaService } from './grafana/grafana.service';
 import { OnCallController } from './oncall/oncall.controller';
 import { OnCallService } from './oncall/oncall.service';
+import { RedisCacheService } from './common/redis-cache.service';
 
 @Module({
   imports: [
@@ -131,6 +132,7 @@ import { OnCallService } from './oncall/oncall.service';
     GrafanaService,
     OnCallService,
     OrganizationsService,
+    RedisCacheService,
   ],
 })
 export class AppModule implements NestModule {

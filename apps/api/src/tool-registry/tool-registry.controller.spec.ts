@@ -72,20 +72,20 @@ describe('ToolRegistryController', () => {
 
     it('includes variants when withVariants=true', () => {
       const result = controller.list(undefined, undefined, 'true');
-      const grafana = result.tools.find((t) => t.id === 'grafana') as Record<string, unknown>;
+      const grafana = result.tools.find((t) => t.id === 'grafana') as unknown as Record<string, unknown>;
       expect(Array.isArray(grafana?.variants)).toBe(true);
       expect((grafana.variants as unknown[]).length).toBe(2);
     });
 
     it('includes variants when withVariants=1', () => {
       const result = controller.list(undefined, undefined, '1');
-      const grafana = result.tools.find((t) => t.id === 'grafana') as Record<string, unknown>;
+      const grafana = result.tools.find((t) => t.id === 'grafana') as unknown as Record<string, unknown>;
       expect(Array.isArray(grafana?.variants)).toBe(true);
     });
 
     it('does not include variants by default', () => {
       const result = controller.list();
-      const tool = result.tools[0] as Record<string, unknown>;
+      const tool = result.tools[0] as unknown as Record<string, unknown>;
       expect(tool.variants).toBeUndefined();
     });
 

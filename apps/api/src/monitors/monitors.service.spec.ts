@@ -84,6 +84,13 @@ function makePrisma(monitorOverride?: ReturnType<typeof makeMonitor> | null) {
         createdAt: new Date('2026-01-01'),
       }),
     },
+    maintenanceWindow: {
+      create: vi.fn().mockResolvedValue({ id: 'mw-1', monitors: [{ monitorId: 'm-1' }] }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    },
   };
 }
 
@@ -3694,5 +3701,70 @@ describe('listDependencies / addDependency / removeDependency', () => {
     (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
     const result = await svc.hasDependencyDown('m1');
     expect(result).toBe(false);
+  });
+});
+
+// ── snooze() ──────────────────────────────────────────────────────────────────
+
+describe('snooze()', () => {
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.snooze('user-1', 'no-such', 1)).rejects.toThrow(NotFoundException);
+  });
+
+  it('creates a maintenance window with correct duration', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm-1', name: 'My Monitor' });
+    (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'mw-1',
+      monitors: [{ monitorId: 'm-1' }],
+    });
+    const result = await svc.snooze('user-1', 'm-1', 4);
+    expect(result.ok).toBe(true);
+    expect(result.windowId).toBe('mw-1');
+    const createCall = (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(createCall.data.name).toContain('4 hours');
+  });
+
+  it('clamps invalid hours to 1', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm-1', name: 'Test' });
+    (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'mw-2',
+      monitors: [{ monitorId: 'm-1' }],
+    });
+    const result = await svc.snooze('user-1', 'm-1', 99); // invalid
+    expect(result.ok).toBe(true);
+    const createCall = (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(createCall.data.name).toContain('1 hour');
+  });
+
+  it('uses "7 days" label for 168-hour snooze', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm-1', name: 'Test' });
+    (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'mw-3',
+      monitors: [{ monitorId: 'm-1' }],
+    });
+    await svc.snooze('user-1', 'm-1', 168);
+    const createCall = (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(createCall.data.name).toContain('7 days');
+  });
+
+  it('logs audit event on snooze', async () => {
+    const p = makePrisma();
+    const audit = makeAudit();
+    const svc = new MonitorsService(p as never, makeChecksService() as never, audit as never, makeRealtime() as never);
+    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm-1', name: 'Test' });
+    (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'mw-4',
+      monitors: [{ monitorId: 'm-1' }],
+    });
+    await svc.snooze('user-1', 'm-1', 8);
+    expect(audit.log).toHaveBeenCalledWith('monitor.snooze', 'user-1', 'user-1', { monitorId: 'm-1', hours: 8 });
   });
 });

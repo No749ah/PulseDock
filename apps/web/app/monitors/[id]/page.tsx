@@ -233,6 +233,9 @@ export default function MonitorDetailPage() {
   const [uptimePeriod, setUptimePeriod] = useState<UptimePeriod>("30d");
   const [uptimeLoading, setUptimeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [chartPeriod, setChartPeriod] = useState<UptimePeriod>("7d");
+  const [chartData, setChartData] = useState<Array<{ ts: string; avgLatencyMs: number | null; p95LatencyMs: number | null; uptimePct: number; checkCount: number }>>([]);
+  const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [running, setRunning] = useState(false);
@@ -316,11 +319,34 @@ export default function MonitorDetailPage() {
     [id],
   );
 
+  const loadChartData = useCallback(
+    async (period: UptimePeriod) => {
+      const user = getUser();
+      if (!user || !id) return;
+      setChartLoading(true);
+      try {
+        const data = await api<{ points: Array<{ ts: string; avgLatencyMs: number | null; p95LatencyMs: number | null; uptimePct: number; checkCount: number }> }>(`/v1/monitors/${id}/chart?period=${period}`, user.id);
+        setChartData(data.points);
+      } catch {
+        // Non-fatal
+      } finally {
+        setChartLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     if (!loading && monitor) {
       loadUptime(uptimePeriod);
     }
   }, [loading, monitor, uptimePeriod, loadUptime]);
+
+  useEffect(() => {
+    if (!loading && monitor) {
+      loadChartData(chartPeriod);
+    }
+  }, [loading, monitor, chartPeriod, loadChartData]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -1087,61 +1113,78 @@ export default function MonitorDetailPage() {
         {/* Response time area chart */}
         
           <Card className="p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-              {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
-            </h2>
-            {(() => {
-              const chartRuns = runs.slice(0, 50).reverse().filter((r) => r.latencyMs !== null);
-              const chartData = chartRuns.map((r) => ({
-                time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                value: r.latencyMs as number,
-                ok: r.ok,
-                checkedAt: r.checkedAt,
-              }));
-              const avg =
-                chartData.length > 0
-                  ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length)
-                  : undefined;
-              // Map events to vertical markers on the chart where the timestamp falls within the chart range
-              const chartStart = chartRuns.length > 0 ? new Date(chartRuns[0].checkedAt).getTime() : 0;
-              const chartEnd = chartRuns.length > 0 ? new Date(chartRuns[chartRuns.length - 1].checkedAt).getTime() : 0;
-              const EVENT_COLORS: Record<string, string> = {
-                deploy: "#3b82f6",
-                incident: "#ef4444",
-                maintenance: "#f59e0b",
-                config: "#a855f7",
-                note: "#6b7280",
-              };
-              const marks = events
-                .filter((ev) => {
-                  const t = new Date(ev.createdAt).getTime();
-                  return t >= chartStart && t <= chartEnd;
-                })
-                .map((ev) => {
-                  // Find the closest chart data point to the event time
-                  const evTime = new Date(ev.createdAt).getTime();
-                  let closest = chartData[0];
-                  let minDiff = Infinity;
-                  for (const pt of chartData) {
-                    const diff = Math.abs(new Date(pt.checkedAt as string).getTime() - evTime);
-                    if (diff < minDiff) { minDiff = diff; closest = pt; }
-                  }
-                  return {
-                    xValue: closest?.time ?? "",
-                    color: EVENT_COLORS[ev.eventType] ?? EVENT_COLORS.note,
-                    label: ev.eventType.slice(0, 4),
-                  };
-                });
-              return (
-                <ResponseAreaChart
-                  data={chartData}
-                  height={160}
-                  avgLine={avg}
-                  color="#58a6ff"
-                  marks={marks.length > 0 ? marks : undefined}
-                />
-              );
-            })()}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
+              </h2>
+              <div className="flex gap-1">
+                {(["1d", "7d", "30d", "90d"] as UptimePeriod[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setChartPeriod(p)}
+                    className={`text-xs px-2 py-0.5 rounded transition-colors ${chartPeriod === p ? "bg-accent text-white" : "text-text-muted hover:text-text"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {chartLoading ? (
+              <div className="h-40 flex items-center justify-center text-text-muted text-sm">Loading chart…</div>
+            ) : chartData.length > 0 ? (
+              (() => {
+                const mappedData = chartData.map((pt) => ({
+                  time: new Date(pt.ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+                  value: pt.avgLatencyMs ?? 0,
+                  ok: pt.uptimePct === 100,
+                  checkedAt: pt.ts,
+                }));
+                const avg = chartData.filter((pt) => pt.avgLatencyMs !== null).reduce((s, pt, _, a) => s + (pt.avgLatencyMs ?? 0) / a.length, 0);
+                const roundedAvg = avg > 0 ? Math.round(avg) : undefined;
+                // Map events to nearest bucket
+                const chartStart = mappedData.length > 0 ? new Date(mappedData[0].checkedAt as string).getTime() : 0;
+                const chartEnd = mappedData.length > 0 ? new Date(mappedData[mappedData.length - 1].checkedAt as string).getTime() : 0;
+                const EVENT_COLORS: Record<string, string> = { deploy: "#3b82f6", incident: "#ef4444", maintenance: "#f59e0b", config: "#a855f7", note: "#6b7280" };
+                const marks = events
+                  .filter((ev) => { const t = new Date(ev.createdAt).getTime(); return t >= chartStart && t <= chartEnd; })
+                  .map((ev) => {
+                    const evTime = new Date(ev.createdAt).getTime();
+                    let closest = mappedData[0];
+                    let minDiff = Infinity;
+                    for (const pt of mappedData) {
+                      const diff = Math.abs(new Date(pt.checkedAt as string).getTime() - evTime);
+                      if (diff < minDiff) { minDiff = diff; closest = pt; }
+                    }
+                    return { xValue: closest?.time ?? "", color: EVENT_COLORS[ev.eventType] ?? EVENT_COLORS.note, label: ev.eventType.slice(0, 4) };
+                  });
+                return (
+                  <ResponseAreaChart
+                    data={mappedData}
+                    height={160}
+                    avgLine={roundedAvg}
+                    color="#58a6ff"
+                    marks={marks.length > 0 ? marks : undefined}
+                  />
+                );
+              })()
+            ) : (
+              (() => {
+                // Fall back to last 50 raw runs if chart data unavailable
+                const chartRuns = runs.slice(0, 50).reverse().filter((r) => r.latencyMs !== null);
+                const fallbackData = chartRuns.map((r) => ({
+                  time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  value: r.latencyMs as number,
+                  ok: r.ok,
+                  checkedAt: r.checkedAt,
+                }));
+                const avg = fallbackData.length > 0 ? Math.round(fallbackData.reduce((s, d) => s + d.value, 0) / fallbackData.length) : undefined;
+                return fallbackData.length > 0 ? (
+                  <ResponseAreaChart data={fallbackData} height={160} avgLine={avg} color="#58a6ff" />
+                ) : (
+                  <div className="h-40 flex items-center justify-center text-text-muted text-sm">No data yet</div>
+                );
+              })()
+            )}
             {events.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1 border-t border-border/40">
                 {[{ key: "deploy", color: "#3b82f6" }, { key: "incident", color: "#ef4444" }, { key: "maintenance", color: "#f59e0b" }, { key: "config", color: "#a855f7" }, { key: "note", color: "#6b7280" }]

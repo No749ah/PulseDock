@@ -179,6 +179,26 @@ export class MonitorsController {
     return this.monitorsService.monitorUptime(req.user.id, id, safePeriod);
   }
 
+  @Get(':id/chart')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Chart data for a monitor',
+    description: 'Returns time-bucketed latency and uptime data for charting. Granularity auto-scales: 1d=5min, 7d=1h, 30d=6h, 90d=1d buckets.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', required: false, enum: ['1d', '7d', '30d', '90d'], description: 'Time window (default: 7d)' })
+  @ApiResponse({ status: 200, description: 'Chart buckets returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  monitorChart(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period', new DefaultValuePipe('7d')) period: string,
+  ) {
+    const validPeriods = ['1d', '7d', '30d', '90d'] as const;
+    const safePeriod = validPeriods.includes(period as '1d' | '7d' | '30d' | '90d') ? (period as '1d' | '7d' | '30d' | '90d') : '7d';
+    return this.monitorsService.monitorChart(req.user.id, id, safePeriod);
+  }
+
   @Get('version-summary')
   @ApiOperation({ summary: 'Version check summary', description: 'Returns aggregate stats and per-monitor version status (green/yellow/red).' })
   @ApiResponse({ status: 200, description: 'Version summary returned.' })

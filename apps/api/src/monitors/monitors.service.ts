@@ -790,6 +790,81 @@ export class MonitorsService {
     };
   }
 
+  /**
+   * Returns time-bucketed chart data for a monitor over a given period.
+   * Each bucket contains: timestamp (bucket start), avgLatencyMs, p95LatencyMs, uptimePct, checkCount.
+   * Granularity auto-scales based on period: 1d=5min, 7d=1h, 30d=6h, 90d=1d.
+   *
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to chart
+   * @param period - Time window: '1d' | '7d' | '30d' | '90d' (default: '30d')
+   * @returns Array of chart buckets
+   * @throws NotFoundException if monitor not found
+   */
+  async monitorChart(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '7d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+    const days = periodDays[period] ?? 7;
+    const from = new Date(Date.now() - days * 86400_000);
+    const to = new Date();
+
+    // Bucket sizes in minutes: 1d=5min, 7d=60min, 30d=360min, 90d=1440min
+    const bucketMinutes: Record<string, number> = { '1d': 5, '7d': 60, '30d': 360, '90d': 1440 };
+    const bucketMs = (bucketMinutes[period] ?? 60) * 60_000;
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId, checkedAt: { gte: from } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true, level: true },
+    });
+
+    // Build bucket map
+    const buckets = new Map<number, { latencies: number[]; total: number; ok: number }>();
+    const fromMs = from.getTime();
+    for (const run of runs) {
+      const runMs = run.checkedAt.getTime();
+      const bucketTs = Math.floor((runMs - fromMs) / bucketMs) * bucketMs + fromMs;
+      let bucket = buckets.get(bucketTs);
+      if (!bucket) {
+        bucket = { latencies: [], total: 0, ok: 0 };
+        buckets.set(bucketTs, bucket);
+      }
+      bucket.total++;
+      if (run.ok) bucket.ok++;
+      if (run.latencyMs !== null) bucket.latencies.push(run.latencyMs);
+    }
+
+    // Build result sorted by time
+    const result = Array.from(buckets.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([ts, b]) => {
+        const sorted = [...b.latencies].sort((a, c) => a - c);
+        const avgLatency = b.latencies.length > 0
+          ? Math.round(b.latencies.reduce((s, v) => s + v, 0) / b.latencies.length)
+          : null;
+        const p95Idx = Math.max(0, Math.ceil(sorted.length * 0.95) - 1);
+        const p95Latency = sorted.length > 0 ? sorted[p95Idx] : null;
+        return {
+          ts: new Date(ts).toISOString(),
+          uptimePct: b.total === 0 ? 100 : Math.round((b.ok / b.total) * 10000) / 100,
+          checkCount: b.total,
+          avgLatencyMs: avgLatency,
+          p95LatencyMs: p95Latency,
+        };
+      });
+
+    return {
+      monitorId,
+      period,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      bucketMinutes: bucketMinutes[period] ?? 60,
+      points: result,
+    };
+  }
+
   private parseGithubRepo(input: string) {
     const cleaned = input.replace(/^https?:\/\/github.com\//i, '').replace(/\.git$/, '');
     const [owner, repo] = cleaned.split('/');

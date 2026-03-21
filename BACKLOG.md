@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 13:20 UTC)
+- **Build/Test:** ✅ Clean build, 1736 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **v1.1.0 release:** Bumped all package versions (root 1.0.2→1.1.0, api/web 1.0.4→1.1.0, agent/cli 1.0.2→1.1.0, tool-registry 1.0.0→1.1.0). Wrote comprehensive CHANGELOG entry covering BROWSER monitor, DNS/PING config UI, monitor timeline annotations, tool registry variants, billing, white-label, plugin system v2, on-call, PagerDuty/OpsGenie, SMS, widget audit completion, and DB performance improvements.
+
 ## Status Summary (2026-03-21 13:15 UTC)
 - **Build/Test:** ✅ Clean build, 1736 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy; services restarted

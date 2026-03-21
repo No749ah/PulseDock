@@ -3358,6 +3358,99 @@ export class StatusPagesService {
         };
       }
 
+      case 'active-incident-banner': {
+        // Returns active incidents and any currently-down monitors watched by this widget
+        const watchedIds = Array.isArray(widget.config.monitorIds) ? (widget.config.monitorIds as string[]) : undefined;
+        const now2 = new Date();
+        const [activeIncidents, downMonitors] = await Promise.all([
+          this.prisma.incident.findMany({
+            where: { userId, status: { not: 'RESOLVED' } },
+            include: {
+              updates: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
+              monitors: { include: { monitor: { select: { id: true, name: true } } } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          }),
+          this.prisma.monitor.findMany({
+            where: {
+              userId,
+              enabled: true,
+              ...(watchedIds?.length ? { id: { in: watchedIds } } : {}),
+            },
+            include: { runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { ok: true, level: true, message: true } } },
+          }),
+        ]);
+
+        const down = downMonitors.filter((m) => m.runs[0]?.level === 'red').map((m) => ({
+          id: m.id,
+          name: m.name,
+          message: m.runs[0]?.message ?? null,
+        }));
+
+        const isAllClear = activeIncidents.length === 0 && down.length === 0;
+
+        return {
+          isAllClear,
+          activeIncidents: activeIncidents.map((i) => ({
+            id: i.id,
+            title: i.title,
+            severity: i.severity,
+            status: i.status,
+            createdAt: i.createdAt,
+            latestUpdate: i.updates[0]?.body ?? null,
+            affectedMonitors: i.monitors.map((im: { monitor: { id: string; name: string } }) => ({ id: im.monitor.id, name: im.monitor.name })),
+          })),
+          downMonitors: down,
+          checkedAt: now2.toISOString(),
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
+      case 'maintenance-calendar': {
+        // Returns upcoming and active maintenance windows for calendar display
+        const now3 = new Date();
+        const futureLimit = new Date(now3.getTime() + 90 * 24 * 60 * 60 * 1000);
+        const windows = await this.prisma.maintenanceWindow.findMany({
+          where: {
+            userId,
+            endsAt: { gte: now3 },
+            startsAt: { lte: futureLimit },
+          },
+          include: {
+            monitors: { include: { monitor: { select: { id: true, name: true } } } },
+          },
+          orderBy: { startsAt: 'asc' },
+          take: 20,
+        });
+
+        return {
+          windows: windows.map((w) => ({
+            id: w.id,
+            name: w.name,
+            description: w.description,
+            startsAt: w.startsAt,
+            endsAt: w.endsAt,
+            isActive: w.startsAt <= now3 && w.endsAt >= now3,
+            affectedMonitors: w.monitors.map((wm) => ({ id: wm.monitor.id, name: wm.monitor.name })),
+          })),
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
+      // Content-only widgets — return config echo so the public renderer has what it needs
+      case 'text-block':
+      case 'code-block':
+      case 'image-banner':
+      case 'video-embed':
+      case 'divider':
+      case 'tab-container':
+      case 'collapsible-section':
+      case 'data-table':
+      case 'rss-feed-widget':
+      case 'changelog-widget':
+        return { widgetType: widget.type, config: widget.config, fetchedAt: new Date().toISOString() };
+
       default:
         return { widgetType: widget.type, message: 'Widget data not yet implemented for this type' };
     }

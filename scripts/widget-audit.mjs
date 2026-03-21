@@ -64,20 +64,7 @@ const resolverCases = new Set(
   ),
 );
 
-const allowedResolverMissing = new Set([
-  'active-incident-banner',
-  'changelog-widget',
-  'code-block',
-  'collapsible-section',
-  'data-table',
-  'divider',
-  'image-banner',
-  'maintenance-calendar',
-  'rss-feed-widget',
-  'tab-container',
-  'text-block',
-  'video-embed',
-]);
+const allowedResolverMissing = new Set([]);
 
 const noConfigResolverTypes = extractNoConfigResolverTypes(resolverContent);
 const configWarningCoveredTypes = new Set([

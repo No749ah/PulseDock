@@ -22475,9 +22475,18 @@ const REGISTRY_PART37: ToolRegistryEntry[] = [
 
 export const TOOL_REGISTRY: ToolRegistryEntry[] = [...REGISTRY_PART1, ...REGISTRY_PART2, ...REGISTRY_PART3, ...REGISTRY_PART4, ...REGISTRY_PART5, ...REGISTRY_PART6, ...REGISTRY_PART7, ...REGISTRY_PART8, ...REGISTRY_PART9, ...REGISTRY_PART10, ...REGISTRY_PART11, ...REGISTRY_PART12, ...REGISTRY_PART13, ...REGISTRY_PART14, ...REGISTRY_PART15, ...REGISTRY_PART16, ...REGISTRY_PART17, ...REGISTRY_PART18, ...REGISTRY_PART19, ...REGISTRY_PART20, ...REGISTRY_PART21, ...REGISTRY_PART22, ...REGISTRY_PART23, ...REGISTRY_PART24, ...REGISTRY_PART25, ...REGISTRY_PART26, ...REGISTRY_PART27, ...REGISTRY_PART28, ...REGISTRY_PART29, ...REGISTRY_PART30, ...REGISTRY_PART31, ...REGISTRY_PART32, ...REGISTRY_PART33, ...REGISTRY_PART34, ...REGISTRY_PART35, ...REGISTRY_PART36, ...REGISTRY_PART37];
 
+/** O(1) lookup map — built once at module init */
+const REGISTRY_BY_ID: Map<string, ToolRegistryEntry> = new Map(
+  TOOL_REGISTRY.map((t) => [t.id, t]),
+);
+
 export function getToolById(id: string): ToolRegistryEntry | undefined {
-  return TOOL_REGISTRY.find((t) => t.id === id);
+  return REGISTRY_BY_ID.get(id);
 }
+
+/** Simple LRU-style cache for search results (max 128 entries) */
+const SEARCH_CACHE = new Map<string, ToolRegistryEntry[]>();
+const SEARCH_CACHE_MAX = 128;
 
 /**
  * Search the tool registry with ranked results.
@@ -22493,8 +22502,12 @@ export function getToolById(id: string): ToolRegistryEntry | undefined {
  *
  * Within the same tier, verified tools sort before unverified, then alphabetical.
  * Normalises the query: strips leading/trailing whitespace, collapses internal spaces.
+ * Results are cached in memory (LRU, max 128 entries) for fast repeated lookups.
  */
 export function searchTools(query: string, category?: string): ToolRegistryEntry[] {
+  const cacheKey = `${query.trim().toLowerCase()}|${category ?? ''}`;
+  const cached = SEARCH_CACHE.get(cacheKey);
+  if (cached) return cached;
   const q = query.toLowerCase().trim().replace(/\s+/g, ' ');
 
   const filtered = TOOL_REGISTRY.filter((t) => {
@@ -22517,31 +22530,44 @@ export function searchTools(query: string, category?: string): ToolRegistryEntry
     );
   });
 
-  if (!q) return filtered;
+  let result: ToolRegistryEntry[];
 
-  return filtered.sort((a, b) => {
-    const score = (t: ToolRegistryEntry): number => {
-      const name = t.name.toLowerCase();
-      const id = t.id.toLowerCase();
-      const aliasExact = t.aliases?.some((a) => a.toLowerCase() === q);
-      const aliasPartial = t.aliases?.some((a) => a.toLowerCase().includes(q));
-      if (name === q) return 10;
-      if (name.startsWith(q)) return 20;
-      if (name.includes(q)) return 30;
-      if (id === q || id.startsWith(q)) return 35;
-      if (aliasExact) return 38;
-      if (aliasPartial) return 42;
-      if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
-      if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
-      return 70; // description match
-    };
-    const sa = score(a);
-    const sb = score(b);
-    if (sa !== sb) return sa - sb;
-    // Within same tier: verified first, then alphabetical
-    if (a.verified !== b.verified) return a.verified ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  if (!q) {
+    result = filtered;
+  } else {
+    result = filtered.sort((a, b) => {
+      const score = (t: ToolRegistryEntry): number => {
+        const name = t.name.toLowerCase();
+        const id = t.id.toLowerCase();
+        const aliasExact = t.aliases?.some((a) => a.toLowerCase() === q);
+        const aliasPartial = t.aliases?.some((a) => a.toLowerCase().includes(q));
+        if (name === q) return 10;
+        if (name.startsWith(q)) return 20;
+        if (name.includes(q)) return 30;
+        if (id === q || id.startsWith(q)) return 35;
+        if (aliasExact) return 38;
+        if (aliasPartial) return 42;
+        if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
+        if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
+        return 70; // description match
+      };
+      const sa = score(a);
+      const sb = score(b);
+      if (sa !== sb) return sa - sb;
+      // Within same tier: verified first, then alphabetical
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // Store in cache (evict oldest entry when at capacity)
+  if (SEARCH_CACHE.size >= SEARCH_CACHE_MAX) {
+    const firstKey = SEARCH_CACHE.keys().next().value;
+    if (firstKey !== undefined) SEARCH_CACHE.delete(firstKey);
+  }
+  SEARCH_CACHE.set(cacheKey, result);
+
+  return result;
 }
 
 export const TOOL_CATEGORIES = [...new Set(TOOL_REGISTRY.map((t) => t.category))].sort();

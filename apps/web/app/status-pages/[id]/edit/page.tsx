@@ -288,6 +288,9 @@ const NO_MONITOR_NEEDED_TYPES = new Set([
   'column-layout', 'collapsible-section', 'tab-container', 'sticky-header',
   'subscriber-form', 'subscriber-form-widget', 'rss-feed-widget', 'offline-banner',
   'offline-banner-widget',
+  // These widgets aggregate all monitors or have their own scope — no per-monitor config needed
+  'overall-system-status', 'scheduled-maintenance', 'incident-history',
+  'check-history-feed', 'third-party-dependencies', 'security-advisory',
 ]);
 
 /** Returns true if a canvas widget is missing required monitor config and should show the "⚠️ Configure" badge. */

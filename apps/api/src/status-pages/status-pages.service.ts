@@ -769,7 +769,12 @@ export class StatusPagesService {
         const total = runs.length;
         const up = runs.filter((r: { level: string }) => r.level === 'green').length;
         const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-        return { monitorId, uptimePct, periodDays, total , fetchedAt: new Date().toISOString()};
+        const latest = await this.prisma.monitorRun.findFirst({
+          where: { monitorId },
+          orderBy: { checkedAt: 'desc' },
+          select: { checkedAt: true },
+        });
+        return { monitorId, uptimePct, periodDays, total, fetchedAt: new Date().toISOString(), lastChecked: latest?.checkedAt ?? null };
       }
 
       case 'uptime-timeline': {

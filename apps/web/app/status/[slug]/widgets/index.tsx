@@ -294,6 +294,9 @@ export function OverallSystemStatus({ monitors }: WidgetProps) {
         {config.subLabel && (
           <span className={`text-sm font-medium ${config.subText}`}>{config.subLabel}</span>
         )}
+        <span className="text-[10px] text-text-secondary/50 mt-0.5">
+          as of {new Date().toISOString().slice(11, 16)} UTC
+        </span>
       </div>
       <span className="ml-auto shrink-0 text-sm font-semibold text-text-secondary" aria-label={`${operationalCount} of ${monitors.length} services operational`}>
         {operationalCount}<span className="text-text-muted">/{monitors.length}</span>
@@ -440,6 +443,7 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
     uptimePct?: number;
     periodDays?: number;
     total?: number;
+    lastChecked?: string | null;
   } | undefined;
 
   const periodDays = widgetData?.periodDays ?? (widget.config.periodDays as number) ?? 30;
@@ -508,9 +512,14 @@ export function UptimeBar({ widget, monitors, extra }: WidgetProps) {
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <p className="text-xs text-text-secondary">Last {periodDays} days</p>
-        {typeof widgetData?.total === "number" && (
-          <p className="text-xs text-text-secondary tabular-nums">Based on {widgetData.total.toLocaleString()} checks</p>
-        )}
+        <div className="flex items-center gap-2">
+          {widgetData?.lastChecked && (
+            <p className="text-[10px] text-text-secondary/50 tabular-nums">Updated {formatRelative(widgetData.lastChecked)}</p>
+          )}
+          {typeof widgetData?.total === "number" && (
+            <p className="text-xs text-text-secondary tabular-nums">Based on {widgetData.total.toLocaleString()} checks</p>
+          )}
+        </div>
       </div>
     </div>
   );

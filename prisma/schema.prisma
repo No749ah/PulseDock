@@ -69,6 +69,7 @@ model User {
   activeOrgId             String?
   orgMemberships          OrgMember[]
   userPlan                UserPlan?
+  monitorEvents           MonitorEvent[]
 }
 
 model Session {
@@ -128,6 +129,7 @@ model Monitor {
   dependencies  MonitorDependency[] @relation("DependentMonitor")
   // Monitors that depend on this monitor
   dependents    MonitorDependency[] @relation("DependencyMonitor")
+  events        MonitorEvent[]
 
   @@index([userId])
   @@index([enabled])
@@ -173,6 +175,24 @@ model MonitorTag {
   tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([monitorId, tagId])
+}
+
+/// Timestamped annotations / events on a monitor timeline (deploys, notes, incidents, etc.)
+model MonitorEvent {
+  id        String   @id @default(cuid())
+  monitorId String
+  userId    String
+  /// Short label shown on the timeline (e.g. "Deployed v2.3")
+  message   String
+  /// Free-form event type tag for color-coding (deploy, note, incident, maintenance, config)
+  eventType String   @default("note")
+  createdAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, createdAt])
+  @@index([userId])
 }
 
 model MonitorRun {

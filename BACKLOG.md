@@ -5,6 +5,13 @@
 - **This session:**
   - **Widget properties panel — live data preview:** When "Live" mode is toggled on in the editor toolbar, the Properties panel now shows a live data mini-preview of the selected widget's real data (using `WidgetPreview` with the fetched API payload). Green "Live data ●" badge + pointer-events-none preview panel. ConfigPanel now accepts `liveData` + `liveDataMode` props.
 
+## Status Summary (2026-03-21 12:26 UTC)
+- **Build/Test:** ✅ Clean build, 1727 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ API/Web restarted; all routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Monitor Timeline Annotations UI:** `MonitorEvent` Prisma schema + DB pushed. `listEvents/createEvent/deleteEvent` API methods wired. Monitor detail page now shows "Timeline Annotations" panel: add/delete events with type selector (deploy/note/incident/maintenance/config), color-coded type badges, relative timestamps, hover-reveal delete button.
+
 ## Status Summary (2026-03-21 12:13 UTC)
 - **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ API/Web restarted; all key routes return 200 locally and via public https://oc-dev-test.no749ah.com

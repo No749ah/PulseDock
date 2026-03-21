@@ -1399,6 +1399,27 @@ export default function AccountPage() {
           </Card>
         
 
+        {/* Organizations Section */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-accent/10">
+                <Building2 className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-text-primary">Organizations</h2>
+                <p className="text-xs text-text-secondary mt-0.5">Manage workspaces and team members</p>
+              </div>
+            </div>
+            <a
+              href="/account/organizations"
+              className="px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 active:scale-95 transition-all"
+            >
+              Manage Organizations
+            </a>
+          </div>
+        </Card>
+
         {/* Workspace Settings Section */}
         
           <Card>

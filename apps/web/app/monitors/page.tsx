@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -160,7 +160,7 @@ function MonitorsPageInner() {
   });
   const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewMode, setViewMode] = useState<"table" | "grid" | "grouped">("table");
   // Column visibility (persisted to localStorage)
   const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
     try {
@@ -1214,6 +1214,13 @@ function MonitorsPageInner() {
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
+                <button
+                  onClick={() => setViewMode("grouped")}
+                  className={`p-1.5 transition-colors ${viewMode === "grouped" ? "bg-accent/20 text-accent" : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+                  title="Group by tag"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                </button>
               </div>
               {/* Column visibility toggle (table view only) */}
               {viewMode === "table" && (
@@ -1753,6 +1760,88 @@ function MonitorsPageInner() {
                   );
                 })}
               </div>
+            ) : viewMode === "grouped" ? (
+              (() => {
+                // Group monitors by first tag (or "Untagged" if no tags)
+                const groups = new Map<string, typeof paginatedMonitors>();
+                for (const m of filteredMonitors) {
+                  const groupKey = m.tags && m.tags.length > 0 ? m.tags[0].name : "Untagged";
+                  const existing = groups.get(groupKey) ?? [];
+                  existing.push(m);
+                  groups.set(groupKey, existing);
+                }
+                // Sort: tagged groups alphabetically, Untagged last
+                const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+                  if (a === "Untagged") return 1;
+                  if (b === "Untagged") return -1;
+                  return a.localeCompare(b);
+                });
+
+                if (sortedGroups.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-16 text-text-muted">
+                      <Tag className="w-8 h-8 mb-3 opacity-40" />
+                      <p className="text-sm">No monitors match your filters.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-6">
+                    {sortedGroups.map(([groupName, groupMonitors]) => {
+                      const allGreen = groupMonitors.every((m) => {
+                        const lastRun = runs.find((r) => r.monitorId === m.id);
+                        return m.enabled && (lastRun?.level === "green" || !lastRun);
+                      });
+                      const anyRed = groupMonitors.some((m) => {
+                        const lastRun = runs.find((r) => r.monitorId === m.id);
+                        return m.enabled && lastRun?.level === "red";
+                      });
+                      const groupStatus = !allGreen && anyRed ? "red" : !allGreen ? "yellow" : "green";
+                      const statusDot = groupStatus === "green" ? "bg-success" : groupStatus === "yellow" ? "bg-warning" : "bg-danger";
+                      return (
+                        <div key={groupName}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+                            <h3 className="text-sm font-semibold text-text-primary">{groupName}</h3>
+                            <span className="text-xs text-text-muted">({groupMonitors.length})</span>
+                            <div className="h-px flex-1 bg-border" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {groupMonitors.map((monitor) => {
+                              const lastRun = runs.find((r) => r.monitorId === monitor.id);
+                              const level = !monitor.enabled ? "paused" : (lastRun?.level ?? "green");
+                              const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-text-muted/60" : "bg-danger";
+                              const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
+                              const lastCheckText = lastRun ? relativeTime(lastRun.checkedAt) : null;
+                              return (
+                                <div key={monitor.id} className="rounded-xl border border-border bg-surface p-4 hover:border-border-hover transition-colors group">
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${dotCls}`} />
+                                      <p className="font-medium text-text-primary truncate text-sm">{monitor.name}</p>
+                                    </div>
+                                    <span className="text-xs text-text-muted shrink-0 font-mono">{intervalLabel}</span>
+                                  </div>
+                                  <p className="text-xs text-text-muted truncate mb-2 pl-4">{monitor.target}</p>
+                                  <div className="flex items-center justify-between pl-4">
+                                    {lastRun?.latencyMs != null && (
+                                      <span className="text-xs text-text-secondary">{lastRun.latencyMs}ms</span>
+                                    )}
+                                    {lastCheckText && (
+                                      <span className="text-xs text-text-muted ml-auto">{lastCheckText}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
             ) : (
             <Card className="p-0">
               {/* Table top bar: row count + page size */}

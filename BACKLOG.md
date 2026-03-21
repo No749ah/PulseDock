@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 12:28 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All routes 200 local + public; services up
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Widget properties panel — live data preview:** When "Live" mode is toggled on in the editor toolbar, the Properties panel now shows a live data mini-preview of the selected widget's real data (using `WidgetPreview` with the fetched API payload). Green "Live data ●" badge + pointer-events-none preview panel. ConfigPanel now accepts `liveData` + `liveDataMode` props.
+
 ## Status Summary (2026-03-21 12:13 UTC)
 - **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ API/Web restarted; all key routes return 200 locally and via public https://oc-dev-test.no749ah.com

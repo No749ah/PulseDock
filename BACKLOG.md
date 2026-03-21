@@ -1,3 +1,15 @@
+## Status Summary (2026-03-21 04:42 UTC)
+- **Build/Test:** ✅ Clean build, 1651+ tests passing (API + CLI + Agent), zero TS errors
+- **Deployment:** ✅ API + Web restarted; all 8 routes 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-03-21-work
+- **This session:**
+  - **Plugin System v2 progress:** 4 new built-in HTTP monitor check plugins shipped + full unit test suites:
+    - `http.regex-match` — matches response body against ECMAScript regex, optional exact capture group assertion
+    - `http.response-time` — warns/fails when latency exceeds configurable ms thresholds
+    - `http.json-assertion` — extracts JSON field via dot-path, asserts value with optional warn-on state
+    - `http.status-code` — asserts response code is in an allowed list, supports warn codes for redirects
+  - **Tool Registry expansion: 3961 → 4,569** (+608 entries across PART30/31/32): Containers, CI/CD, Databases (CockroachDB, TiDB, ClickHouse, Neo4j, SurrealDB, DuckDB), Security (Nuclei, Semgrep, Infisical), Networking (ZeroTier, BIRD, FRRouting), AI/ML (Kubeflow, BentoML, Feast, ZenML, Seldon), Messaging (EMQX, Redpanda, Pulsar), API backends (Supabase, Appwrite, PocketBase, NocoDB), Search/Vector (Milvus, Qdrant, Weaviate, Chroma), and more.
+
 ## Status Summary (2026-03-21 04:38 UTC)
 - **Build/Test:** ✅ Clean build, all tests passing, zero TS errors
 - **Registry:** 4,569 unique tool entries (REGISTRY_PART32 added ~208 new real/self-hosted tools: containers, CI/CD, databases, security, networking, AI/ML, CMS, messaging, IoT, observability, etc.)

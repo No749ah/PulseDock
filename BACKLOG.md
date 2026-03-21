@@ -1,3 +1,11 @@
+## Status Summary (2026-03-21 10:24 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 9 routes 200 local + public https://oc-dev-test.no749ah.com 200
+- **Branch:** heartbeat/2026-03-21-registry
+- **This session:**
+  - **BROWSER monitor type:** Full page check with browser User-Agent, status assertion, expected text search, CSS selector presence check (regex-based: #id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. Prisma BROWSER enum added + db pushed. 9 new unit tests.
+  - **Registry variants:** 8 new tool variant groups added (traefik/docker+k8s, forgejo/standalone+docker, sonarqube/CE+DE+EE+cloud, uptime-kuma/docker+npm, immich/docker+k8s, ghost/self-hosted+pro, plausible/self-hosted+cloud, wordpress/docker+multisite+cloud)
+
 ## Status Summary (2026-03-21 08:32 UTC)
 - **Build/Test:** ✅ Clean build, 1704 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ Web restarted; all routes 200 local + public https://oc-dev-test.no749ah.com 200
@@ -1786,7 +1794,7 @@
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
 - [x] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
-- [ ] **Synthetic / Browser checks** — Full browser check type using Playwright/Puppeteer: navigate URL, assert selector present, measure time-to-interactive. Runs in Docker sidecar. New monitor type: BROWSER. Requires additional infra (browser runner).
+- [~] **Synthetic / Browser checks** — BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 — basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
 - [x] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [x] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
 - [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.

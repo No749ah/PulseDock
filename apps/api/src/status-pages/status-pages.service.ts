@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { IncidentStatus, IncidentSeverity, MonitorType } from '@prisma/client';
+import { IncidentStatus, IncidentSeverity, MonitorType, Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
 import { CreateStatusPageDto, UpdateStatusPageDto } from './status-pages.dto';
@@ -257,8 +257,7 @@ export class StatusPagesService {
       await this.prisma.statusPageHistory.create({
         data: {
           statusPageId: id,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          layout: page.layout as any,
+          layout: page.layout as Prisma.InputJsonValue,
           label: null,
         },
       });
@@ -333,16 +332,14 @@ export class StatusPagesService {
     await this.prisma.statusPageHistory.create({
       data: {
         statusPageId: pageId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        layout: page.layout as any,
+        layout: page.layout as Prisma.InputJsonValue,
         label: 'Before restore',
       },
     });
 
     const updated = await this.prisma.publicStatusPage.update({
       where: { id: pageId },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data: { layout: snapshot.layout as any },
+      data: { layout: snapshot.layout as Prisma.InputJsonValue },
     });
 
     this.logger.log(`Status page ${pageId} restored to history ${historyId} by user ${userId}`);

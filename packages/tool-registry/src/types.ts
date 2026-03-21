@@ -65,7 +65,8 @@ export type ToolCategory =
   | 'Backup & Recovery'
   | 'VoIP & Telephony'
   | 'Digital Signage'
-  | 'Fleet & Asset Management';
+  | 'Fleet & Asset Management'
+  | 'Healthcare';
 
 export interface VersionSource {
   type: VersionSourceType;

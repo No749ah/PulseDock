@@ -27,6 +27,8 @@ interface MonitorItem {
   config?: Record<string, unknown>;
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
+  tags?: Array<{ id: string; name: string; color?: string | null }>;
+  description?: string | null;
 }
 
 interface AlertChannelInfo {
@@ -381,6 +383,23 @@ export default function MonitorDetailPage() {
             >
               {monitor.target}
             </p>
+            {monitor.description && (
+              <p className="text-sm text-text-secondary">{monitor.description}</p>
+            )}
+            {monitor.tags && monitor.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {monitor.tags.map((tag) => (
+                  <a
+                    key={tag.id}
+                    href={`/monitors?tag=${encodeURIComponent(tag.name)}`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-border hover:border-accent/40 transition-colors"
+                    style={tag.color ? { backgroundColor: `${tag.color}22`, color: tag.color, borderColor: `${tag.color}44` } : {}}
+                  >
+                    {tag.name}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         
 

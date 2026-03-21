@@ -1065,28 +1065,69 @@ export default function MonitorDetailPage() {
               {monitor.type === "HEARTBEAT" ? "Heartbeat History" : "Response Time"}
             </h2>
             {(() => {
-              const chartData = runs
-                .slice(0, 50)
-                .reverse()
-                .filter((r) => r.latencyMs !== null)
-                .map((r) => ({
-                  time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                  value: r.latencyMs as number,
-                  ok: r.ok,
-                }));
+              const chartRuns = runs.slice(0, 50).reverse().filter((r) => r.latencyMs !== null);
+              const chartData = chartRuns.map((r) => ({
+                time: new Date(r.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                value: r.latencyMs as number,
+                ok: r.ok,
+                checkedAt: r.checkedAt,
+              }));
               const avg =
                 chartData.length > 0
                   ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length)
                   : undefined;
+              // Map events to vertical markers on the chart where the timestamp falls within the chart range
+              const chartStart = chartRuns.length > 0 ? new Date(chartRuns[0].checkedAt).getTime() : 0;
+              const chartEnd = chartRuns.length > 0 ? new Date(chartRuns[chartRuns.length - 1].checkedAt).getTime() : 0;
+              const EVENT_COLORS: Record<string, string> = {
+                deploy: "#3b82f6",
+                incident: "#ef4444",
+                maintenance: "#f59e0b",
+                config: "#a855f7",
+                note: "#6b7280",
+              };
+              const marks = events
+                .filter((ev) => {
+                  const t = new Date(ev.createdAt).getTime();
+                  return t >= chartStart && t <= chartEnd;
+                })
+                .map((ev) => {
+                  // Find the closest chart data point to the event time
+                  const evTime = new Date(ev.createdAt).getTime();
+                  let closest = chartData[0];
+                  let minDiff = Infinity;
+                  for (const pt of chartData) {
+                    const diff = Math.abs(new Date(pt.checkedAt as string).getTime() - evTime);
+                    if (diff < minDiff) { minDiff = diff; closest = pt; }
+                  }
+                  return {
+                    xValue: closest?.time ?? "",
+                    color: EVENT_COLORS[ev.eventType] ?? EVENT_COLORS.note,
+                    label: ev.eventType.slice(0, 4),
+                  };
+                });
               return (
                 <ResponseAreaChart
                   data={chartData}
                   height={160}
                   avgLine={avg}
                   color="#58a6ff"
+                  marks={marks.length > 0 ? marks : undefined}
                 />
               );
             })()}
+            {events.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-border/40">
+                {[{ key: "deploy", color: "#3b82f6" }, { key: "incident", color: "#ef4444" }, { key: "maintenance", color: "#f59e0b" }, { key: "config", color: "#a855f7" }, { key: "note", color: "#6b7280" }]
+                  .filter(({ key }) => events.some((e) => e.eventType === key))
+                  .map(({ key, color }) => (
+                    <span key={key} className="flex items-center gap-1 text-[10px] text-text-muted">
+                      <span className="inline-block w-2 h-2 rounded-sm" style={{ background: color }} />
+                      {key}
+                    </span>
+                  ))}
+              </div>
+            )}
           </Card>
         
 

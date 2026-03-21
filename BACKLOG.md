@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 13:43 UTC)
+- **Build/Test:** ✅ Clean build, 1814 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion (reports + dashboard):** Added `sendDueReports` + `computeReportData` tests to reports.service.spec (5 new cases: sends when due, skips wrong hour, handles mailer error gracefully, zero-monitor scenario, no-runs scenario). Added `embedData` + `statusPageBadge` tests to public.controller.spec (13 new cases: 404 handling, up/down/degraded/paused status, CORS headers, operational/outage/degraded badge status, custom label, cache headers). Total: 1801 → 1814.
+
 ## Status Summary (2026-03-21 13:35 UTC)
 - **Build/Test:** ✅ Clean build, 1796 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 8 routes 200 local + public proxy

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -19,7 +19,7 @@ import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -83,6 +83,18 @@ interface UptimeStats {
   avgLatencyMs: number | null;
 }
 
+interface ErrorBudget {
+  monitorId: string;
+  period: string;
+  slaTarget: number;
+  totalMinutes: number;
+  allowedDownMinutes: number;
+  actualDownMinutes: number;
+  remainingDownMinutes: number;
+  budgetConsumedPct: number;
+  budgetRemainingPct: number;
+}
+
 const PERIOD_LABELS: Record<UptimePeriod, string> = {
   "1d": "24h",
   "7d": "7d",
@@ -120,6 +132,7 @@ export default function MonitorDetailPage() {
   const [showAddDep, setShowAddDep] = useState(false);
   const [addingDepId, setAddingDepId] = useState("");
   const [depLoading, setDepLoading] = useState(false);
+  const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -148,6 +161,12 @@ export default function MonitorDetailPage() {
         setAlertChannels(alertChs);
         setDependencies(deps);
         setAllMonitors(monitors);
+        // Fetch error budget if SLA target is set
+        if (found.slaTarget) {
+          api<ErrorBudget>(`/v1/monitors/${id}/error-budget?period=30d`, user!.id)
+            .then((eb) => setErrorBudget(eb))
+            .catch(() => null);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load monitor");
       } finally {
@@ -703,8 +722,158 @@ export default function MonitorDetailPage() {
           
         )}
 
-        {/* Response time trend (LineSparkline) */}
-        {monitor.type !== "HEARTBEAT" && (
+        {/* DNS config */}
+        {monitor.type === "DNS" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              DNS Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Hostname</span>
+                <span className="font-mono text-text-primary">{monitor.target}</span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Record Type</span>
+                <span className="font-mono text-accent uppercase">
+                  {String(monitor.config?.recordType ?? "A")}
+                </span>
+              </div>
+              {Boolean(monitor.config?.expectedValue) && (
+                <div className="col-span-2">
+                  <span className="text-xs text-text-secondary block mb-0.5">Expected Value</span>
+                  <span className="font-mono text-text-primary text-xs bg-surface-elevated px-2 py-1 rounded break-all">
+                    {String(monitor.config?.expectedValue ?? "")}
+                  </span>
+                </div>
+              )}
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Timeout</span>
+                <span className="font-medium text-text-primary">
+                  {String(monitor.config?.timeoutMs ? `${Math.round(Number(monitor.config.timeoutMs) / 1000)}s` : "10s")}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* PING config */}
+        {monitor.type === "PING" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              ICMP Ping Configuration
+            </h2>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">{monitor.target}</span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Ping Count</span>
+                <span className="font-medium text-text-primary">{String(monitor.config?.pingCount ?? 3)} packets</span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Loss Threshold</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.maxPacketLossPct !== undefined
+                    ? `>${String(monitor.config.maxPacketLossPct)}% = fail`
+                    : "Any loss = warn"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* SMTP config */}
+        {monitor.type === "SMTP" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              SMTP Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "25"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">STARTTLS</span>
+                <span className={`font-medium ${monitor.config?.requireStarttls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.requireStarttls ? "Required" : "Optional"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Timeout</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.timeoutMs ? `${Math.round(Number(monitor.config.timeoutMs) / 1000)}s` : "10s"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Browser / Page Check config */}
+        {monitor.type === "BROWSER" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Browser Check Configuration
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Target URL</span>
+                <span className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1 rounded break-all">
+                  {monitor.target}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Allowed Status Codes</span>
+                  <span className="font-mono text-text-primary">
+                    {monitor.config?.allowedStatusCodes
+                      ? (monitor.config.allowedStatusCodes as number[]).join(", ")
+                      : "200–299, 301, 302"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Timeout</span>
+                  <span className="font-medium text-text-primary">
+                    {monitor.config?.timeoutMs ? `${Math.round(Number(monitor.config.timeoutMs) / 1000)}s` : "10s"}
+                  </span>
+                </div>
+              </div>
+              {Boolean(monitor.config?.expectedText) && (
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Expected Text</span>
+                  <span className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1 rounded break-all">
+                    {String(monitor.config?.expectedText ?? "")}
+                  </span>
+                </div>
+              )}
+              {Boolean(monitor.config?.expectedSelector) && (
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">CSS Selector</span>
+                  <span className="font-mono text-xs text-accent bg-surface-elevated px-2 py-1 rounded">
+                    {String(monitor.config?.expectedSelector ?? "")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Response time trend (LineSparkline) — only for monitors that produce latency */}
+        {!["HEARTBEAT", "GIT_RELEASE", "DOCKER_IMAGE"].includes(monitor.type) && (
           
             <Card className="p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -831,6 +1000,70 @@ export default function MonitorDetailPage() {
             </div>
           </Card>
         
+        {/* SLO Error Budget — only shown when slaTarget is set */}
+        {monitor.slaTarget != null && errorBudget && (
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Gauge className="w-4 h-4" />
+                SLO Error Budget (30d)
+              </h2>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                errorBudget.budgetRemainingPct > 30
+                  ? "bg-green-500/15 text-green-400"
+                  : errorBudget.budgetRemainingPct > 10
+                  ? "bg-yellow-500/15 text-yellow-400"
+                  : "bg-red-500/15 text-red-400"
+              }`}>
+                {errorBudget.budgetRemainingPct.toFixed(1)}% remaining
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">SLA Target</span>
+                <span className="font-mono text-text-primary">{errorBudget.slaTarget}%</span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Allowed Down</span>
+                <span className="font-mono text-text-primary">
+                  {errorBudget.allowedDownMinutes < 60
+                    ? `${Math.round(errorBudget.allowedDownMinutes)}m`
+                    : `${(errorBudget.allowedDownMinutes / 60).toFixed(1)}h`}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Remaining</span>
+                <span className={`font-mono font-semibold ${errorBudget.remainingDownMinutes <= 0 ? "text-danger" : "text-success"}`}>
+                  {errorBudget.remainingDownMinutes <= 0
+                    ? "Budget exhausted"
+                    : errorBudget.remainingDownMinutes < 60
+                    ? `${Math.round(errorBudget.remainingDownMinutes)}m`
+                    : `${(errorBudget.remainingDownMinutes / 60).toFixed(1)}h`}
+                </span>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div>
+              <div className="flex justify-between text-xs text-text-muted mb-1">
+                <span>Budget consumed: {errorBudget.budgetConsumedPct.toFixed(1)}%</span>
+                <span>{errorBudget.actualDownMinutes < 60
+                  ? `${Math.round(errorBudget.actualDownMinutes)}m down`
+                  : `${(errorBudget.actualDownMinutes / 60).toFixed(1)}h down`}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-surface-elevated rounded-full overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    errorBudget.budgetConsumedPct > 90 ? "bg-danger" :
+                    errorBudget.budgetConsumedPct > 60 ? "bg-warning" : "bg-success"
+                  }`}
+                  style={{ width: `${Math.min(errorBudget.budgetConsumedPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Alert Channels */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">

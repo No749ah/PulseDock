@@ -177,6 +177,8 @@ function printStats() {
   const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
   const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
   const withEvidence = TOOL_REGISTRY.filter((e) => e.evidenceUrl).length;
+  const withDocsOrEvidence = TOOL_REGISTRY.filter((e) => e.docsUrl ?? e.evidenceUrl).length;
+  const verifiedWithoutDocs = TOOL_REGISTRY.filter((e) => e.verified && !e.docsUrl && !e.evidenceUrl).length;
 
   // TOOL_VARIANTS coverage (variants stored separately from registry entries)
   const variantToolIds = new Set(Object.keys(TOOL_VARIANTS));
@@ -192,6 +194,8 @@ function printStats() {
   console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
   console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
   console.log(`  evidenceUrl:           ${withEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  docsUrl or evidenceUrl:${withDocsOrEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  verified without docs: ${verifiedWithoutDocs} (target: 0 — add docsUrl or evidenceUrl)`);
   console.log(`  inline variants:       ${withInlineVariants} / ${TOOL_REGISTRY.length}`);
 
   console.log(`\nVariant coverage (TOOL_VARIANTS map):`);

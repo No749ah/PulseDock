@@ -3840,3 +3840,93 @@ describe('importExternal — parseUptimeKuma branch coverage', () => {
     expect(p.monitor.update).toHaveBeenCalled();
   });
 });
+
+// ─── getErrorBudget() ────────────────────────────────────────────────────────
+
+describe('getErrorBudget', () => {
+  function makePrismaForBudget(runsOverride?: Array<{ ok: boolean }>) {
+    const p = makePrisma();
+    const runs = runsOverride ?? [];
+    (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(runs);
+    return p;
+  }
+
+  it('returns healthy status when budget < 50% consumed', async () => {
+    // 5% failure rate, SLA 99.9% → allowedDown = 0.1%, actual = 5% of period
+    const runs = Array.from({ length: 100 }, (_, i) => ({ ok: i >= 5 })); // 5 failures
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('exhausted'); // 5% >> 0.1% allowed → exhausted
+    expect(result.monitorId).toBe('monitor-1');
+    expect(result.slaTarget).toBe(99.9);
+    expect(result.period).toBe('30d');
+    expect(result.totalMinutes).toBe(43200);
+  });
+
+  it('returns healthy status with no failures', async () => {
+    const runs = Array.from({ length: 100 }, () => ({ ok: true }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('healthy');
+    expect(result.budgetConsumedPct).toBe(0);
+    expect(result.budgetRemainingPct).toBe(100);
+    expect(result.actualUptimePct).toBe(100);
+    expect(result.burnRate).toBe(0);
+  });
+
+  it('returns exhausted status when all checks fail', async () => {
+    const runs = Array.from({ length: 100 }, () => ({ ok: false }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('exhausted');
+    expect(result.budgetConsumedPct).toBeGreaterThan(100);
+    expect(result.remainingDownMinutes).toBe(0);
+    expect(result.actualUptimePct).toBe(0);
+  });
+
+  it('handles zero runs gracefully (no division by zero)', async () => {
+    const p = makePrismaForBudget([]);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    expect(result.status).toBe('healthy');
+    expect(result.actualUptimePct).toBe(100);
+    expect(result.actualDownMinutes).toBe(0);
+    expect(result.budgetConsumedPct).toBe(0);
+    expect(result.burnRate).toBe(0);
+    expect(result.projectedExhaustionDate).toBeNull();
+  });
+
+  it('throws NotFoundException for unknown monitorId', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.getErrorBudget('no-such-id', 'user-1', { slaTarget: 99.9, period: '30d' }))
+      .rejects.toThrow(NotFoundException);
+  });
+
+  it('calculates warning status (50-80% consumed)', async () => {
+    // SLA 99%, allowedDown = 1% of period. Use 0.6% failure rate → ~60% consumed
+    const total = 1000;
+    const failures = 6; // 0.6% fail rate → 60% of 1% budget consumed
+    const runs = Array.from({ length: total }, (_, i) => ({ ok: i >= failures }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99, period: '30d' });
+    expect(result.status).toBe('warning');
+    expect(result.budgetConsumedPct).toBeGreaterThan(50);
+    expect(result.budgetConsumedPct).toBeLessThanOrEqual(80);
+  });
+
+  it('projects exhaustion date when burning fast', async () => {
+    // ~50% failures against 99.9% SLA → very fast burn, should project exhaustion
+    const runs = Array.from({ length: 100 }, (_, i) => ({ ok: i % 2 === 0 }));
+    const p = makePrismaForBudget(runs);
+    const svc = makeService(p);
+    const result = await svc.getErrorBudget('monitor-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+    // Already exhausted (50% fail >> 0.1% allowed) so projectedExhaustionDate should be null
+    expect(result.status).toBe('exhausted');
+    expect(result.projectedExhaustionDate).toBeNull();
+  });
+});

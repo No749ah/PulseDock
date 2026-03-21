@@ -141,6 +141,28 @@ export class MonitorsController {
     return this.monitorsService.monitorRuns(req.user.id, id);
   }
 
+  @Get(':id/error-budget')
+  @ApiOperation({
+    summary: 'SLO error budget',
+    description: 'Returns error budget consumption, burn rates, and projected exhaustion for a monitor against a given SLA target.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'slaTarget', required: false, description: 'SLA target percentage (default: 99.9)' })
+  @ApiQuery({ name: 'period', required: false, description: 'Period string, e.g. 30d (default: 30d)' })
+  @ApiResponse({ status: 200, description: 'Error budget stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  errorBudget(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('slaTarget') slaTarget?: string,
+    @Query('period') period?: string,
+  ) {
+    const target = parseFloat(slaTarget ?? '99.9');
+    const safeSlaTarget = Number.isFinite(target) && target > 0 && target <= 100 ? target : 99.9;
+    const safePeriod = /^\d+d$/.test(period ?? '') ? (period as string) : '30d';
+    return this.monitorsService.getErrorBudget(id, req.user.id, { slaTarget: safeSlaTarget, period: safePeriod });
+  }
+
   @Get(':id/uptime')
   @ApiOperation({ summary: 'Uptime & SLA stats for a monitor', description: 'Returns time-window uptime %, incident count, MTTR, MTBF, and downtime for a configurable period.' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })

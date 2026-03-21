@@ -1621,6 +1621,127 @@ export class MonitorsService {
   }
 
   /**
+   * Calculates SLO error budget consumption for a monitor.
+   * Shows how much of the allowed downtime budget has been used, burn rates, and projected exhaustion.
+   * @param monitorId - The monitor to calculate error budget for
+   * @param userId - The authenticated user's ID
+   * @param opts - { slaTarget: number (0–100), period: string (e.g. '30d') }
+   * @returns Error budget stats including consumed %, burn rates, and projected exhaustion date
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
+  async getErrorBudget(
+    monitorId: string,
+    userId: string,
+    opts: { slaTarget: number; period: string },
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    // Parse period string (e.g. '30d' → 30 days)
+    const periodMatch = opts.period.match(/^(\d+)d$/);
+    const periodDays = periodMatch ? parseInt(periodMatch[1], 10) : 30;
+    const totalMinutes = periodDays * 24 * 60;
+
+    const slaTarget = Math.min(100, Math.max(0, opts.slaTarget));
+    const allowedDownPct = (100 - slaTarget) / 100; // e.g. 0.001 for 99.9%
+    const allowedDownMinutes = totalMinutes * allowedDownPct;
+
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - periodDays * 86_400_000);
+
+    // Query runs for full period (same pattern as monitorUptime)
+    const periodRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: periodStart } },
+      select: { ok: true },
+    });
+
+    const totalChecks = periodRuns.length;
+    const failedChecks = periodRuns.filter((r) => !r.ok).length;
+
+    // Proportion-based downtime (consistent with monitorUptime uptimePct calculation)
+    const actualDownMinutes =
+      totalChecks === 0 ? 0 : (failedChecks / totalChecks) * totalMinutes;
+    const remainingDownMinutes = Math.max(0, allowedDownMinutes - actualDownMinutes);
+    const budgetConsumedPct =
+      allowedDownMinutes > 0 ? (actualDownMinutes / allowedDownMinutes) * 100 : 0;
+    const budgetRemainingPct = Math.max(0, 100 - budgetConsumedPct);
+    const actualUptimePct =
+      totalChecks === 0
+        ? 100
+        : ((totalChecks - failedChecks) / totalChecks) * 100;
+
+    // Burn rate: actual failure fraction / expected failure fraction
+    // 1.0 = on track; >1 = burning faster than expected
+    const calcBurnRate = (windowRuns: Array<{ ok: boolean }>): number => {
+      if (windowRuns.length === 0) return 0;
+      const failFrac = windowRuns.filter((r) => !r.ok).length / windowRuns.length;
+      if (allowedDownPct === 0) return failFrac === 0 ? 0 : 999;
+      return failFrac / allowedDownPct;
+    };
+
+    // Query windowed burn rates in parallel
+    const [runs1h, runs6h, runs24h] = await Promise.all([
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 3_600_000) } },
+        select: { ok: true },
+      }),
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 6 * 3_600_000) } },
+        select: { ok: true },
+      }),
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 24 * 3_600_000) } },
+        select: { ok: true },
+      }),
+    ]);
+
+    const burnRate = calcBurnRate(periodRuns);
+    const burnRate1h = calcBurnRate(runs1h);
+    const burnRate6h = calcBurnRate(runs6h);
+    const burnRate24h = calcBurnRate(runs24h);
+
+    // Status thresholds
+    let status: 'healthy' | 'warning' | 'critical' | 'exhausted';
+    if (budgetConsumedPct >= 100) status = 'exhausted';
+    else if (budgetConsumedPct > 80) status = 'critical';
+    else if (budgetConsumedPct >= 50) status = 'warning';
+    else status = 'healthy';
+
+    // Projected exhaustion date (uses 24h burn rate as the most recent signal)
+    let projectedExhaustionDate: string | null = null;
+    const activeBurnRate = burnRate24h > 0 ? burnRate24h : burnRate;
+    if (budgetConsumedPct < 100 && activeBurnRate > 1 && allowedDownMinutes > 0) {
+      const remainingBudgetFraction = budgetRemainingPct / 100;
+      const minutesToExhaust = (remainingBudgetFraction * totalMinutes) / activeBurnRate;
+      projectedExhaustionDate = new Date(
+        now.getTime() + minutesToExhaust * 60_000,
+      ).toISOString();
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+    return {
+      monitorId,
+      period: opts.period,
+      slaTarget,
+      totalMinutes,
+      allowedDownMinutes: round2(allowedDownMinutes),
+      actualDownMinutes: round2(actualDownMinutes),
+      remainingDownMinutes: round2(remainingDownMinutes),
+      budgetConsumedPct: round2(budgetConsumedPct),
+      budgetRemainingPct: round2(budgetRemainingPct),
+      actualUptimePct: round3(actualUptimePct),
+      burnRate: round2(burnRate),
+      burnRate1h: round2(burnRate1h),
+      burnRate6h: round2(burnRate6h),
+      burnRate24h: round2(burnRate24h),
+      status,
+      projectedExhaustionDate,
+    };
+  }
+
+  /**
    * Check if any of the monitor's dependencies are currently down.
    * Used by alert logic to suppress alerts during parent outages.
    * @param monitorId - The monitor to check

@@ -1678,7 +1678,7 @@
   **Print & 3D:**
   OctoPrint, Mainsail, Fluidd, Moonraker, Klipper, Repetier Server, Duet Web Control, CUPS
 
-- [ ] **Tool Registry expansion: 1302 → 5000+** — Add all tools from templates above to the registry with: correct latestSource (github-releases/gitlab-releases/docker-hub/npm/pypi), correct versionSource (json-path with urlTemplate + jsonPath + authRequired), correct icon (Simple Icons CDN, verify slug exists), proper category/tags. Deduplicate existing entries. Fix any broken Simple Icons slugs (the 80+ 404s from earlier).
+- [x] **Tool Registry expansion: 1302 → 5009+** — 5009 unique tools in registry across all categories. Registry lint: 0 errors, 1 warning. Added evidenceUrls to 16 verified tools. Fixed bad ID (p35-privateGPT-server → p35-privategpt-server). Added missing categories E-Commerce/Healthcare/IoT to lint allowlist. *(2026-03-21)*
 
 - [x] **Fix Simple Icons 404s** — Audited all 300 unique icon slugs. All return HTTP 200 — previously fixed in earlier sessions. No broken slugs remain.
 

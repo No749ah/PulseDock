@@ -528,6 +528,17 @@ function MonitorsPageInner() {
         if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
         if (f.checkTls) config.checkTls = f.checkTls;
       }
+      if (formData.type === "DNS") {
+        const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
+        config.recordType = f.dnsRecordType ?? "A";
+        if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
+        if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
+      }
+      if (formData.type === "PING") {
+        const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
+        config.pingCount = f.pingCount ?? 3;
+        if (f.pingMaxLossPct !== undefined) config.maxPacketLossPct = f.pingMaxLossPct;
+      }
       if (formData.type === "BROWSER") {
         const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
         if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
@@ -537,7 +548,7 @@ function MonitorsPageInner() {
           if (codes.length > 0) config.browserStatusCodes = codes;
         }
       }
-            if (formData.type === "HTTP") {
+      if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
@@ -610,6 +621,17 @@ function MonitorsPageInner() {
         if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
         if (f.checkTls) config.checkTls = f.checkTls;
       }
+      if (formData.type === "DNS") {
+        const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
+        config.recordType = f.dnsRecordType ?? "A";
+        if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
+        if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
+      }
+      if (formData.type === "PING") {
+        const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
+        config.pingCount = f.pingCount ?? 3;
+        if (f.pingMaxLossPct !== undefined) config.maxPacketLossPct = f.pingMaxLossPct;
+      }
       if (formData.type === "BROWSER") {
         const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
         if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
@@ -619,7 +641,7 @@ function MonitorsPageInner() {
           if (codes.length > 0) config.browserStatusCodes = codes;
         }
       }
-            if (formData.type === "HTTP") {
+      if (formData.type === "HTTP") {
         const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
         if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
         if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
@@ -796,11 +818,70 @@ function MonitorsPageInner() {
     }
   };
 
+  const buildEditFormData = (monitor: MonitorItem) => ({
+    name: monitor.name,
+    description: monitor.description ?? "",
+    type: monitor.type,
+    target: monitor.target,
+    intervalSec: monitor.intervalSec,
+    confirmations: monitor.confirmations ?? 1,
+    enabled: monitor.enabled,
+    pluginId: String(monitor.config?.pluginId ?? ""),
+    expectedText: String(monitor.config?.expectedText ?? ""),
+    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
+    heartbeatToken: String(monitor.config?.token ?? ""),
+    folderId: monitor.folderId ?? "",
+    slaTarget: monitor.slaTarget ?? "",
+    slaPeriodDays: monitor.slaPeriodDays ?? 30,
+    expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
+    bodyContains: String(monitor.config?.bodyContains ?? ""),
+    httpMethod: String(monitor.config?.httpMethod ?? "GET"),
+    requestHeaders: monitor.config?.requestHeaders
+      ? Object.entries(monitor.config.requestHeaders as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("\n")
+      : "",
+    requestBody: String(monitor.config?.requestBody ?? ""),
+    responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
+    bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
+    bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
+    ehlo: String(monitor.config?.ehlo ?? "pulsedock.monitor"),
+    checkTls: Boolean(monitor.config?.checkTls),
+    dnsRecordType: String(monitor.config?.recordType ?? "A"),
+    dnsExpectedValue: String(monitor.config?.expectedValue ?? ""),
+    dnsTimeoutMs: Number(monitor.config?.timeoutMs ?? 10000),
+    pingCount: Number(monitor.config?.pingCount ?? 3),
+    pingMaxLossPct: monitor.config?.maxPacketLossPct !== undefined ? Number(monitor.config.maxPacketLossPct) : undefined,
+    browserExpectedText: String(monitor.config?.browserExpectedText ?? ""),
+    browserSelector: String(monitor.config?.browserSelector ?? ""),
+    browserStatusCodesRaw: Array.isArray(monitor.config?.browserStatusCodes)
+      ? (monitor.config.browserStatusCodes as number[]).join(", ")
+      : "",
+  }) as typeof formData & {
+    expectedStatus?: number;
+    bodyContains?: string;
+    bodyJsonPath?: string;
+    bodyJsonPathExpected?: string;
+    httpMethod?: string;
+    requestHeaders?: string;
+    requestBody?: string;
+    responseTimeThresholdMs?: number;
+    ehlo?: string;
+    checkTls?: boolean;
+    dnsRecordType?: string;
+    dnsExpectedValue?: string;
+    dnsTimeoutMs?: number;
+    pingCount?: number;
+    pingMaxLossPct?: number;
+    browserExpectedText?: string;
+    browserSelector?: string;
+    browserStatusCodesRaw?: string;
+  };
+
   const handleApplyTemplate = (t: MonitorTemplate) => {
     // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
     const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"] as string[]).includes(t.type)
       ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER")
       : "HTTP";
+    const cfg = (t.config ?? {}) as Record<string, unknown>;
     setFormData({
       name: t.name,
       type: safeType,
@@ -815,10 +896,29 @@ function MonitorsPageInner() {
       folderId: "",
       slaTarget: "",
       slaPeriodDays: 30,
-      // Carry through SMTP-specific config from template
-      ...(t.config?.checkTls !== undefined ? { checkTls: t.config.checkTls } : {}),
-      ...(t.config?.ehlo ? { ehlo: t.config.ehlo } : {}),
-    } as typeof formData & { checkTls?: boolean; ehlo?: string });
+      // Carry through monitor-type-specific config from template
+      ...(cfg.checkTls !== undefined ? { checkTls: Boolean(cfg.checkTls) } : {}),
+      ...(typeof cfg.ehlo === "string" ? { ehlo: cfg.ehlo } : {}),
+      ...(typeof cfg.recordType === "string" ? { dnsRecordType: cfg.recordType } : {}),
+      ...(typeof cfg.expectedValue === "string" ? { dnsExpectedValue: cfg.expectedValue } : {}),
+      ...(typeof cfg.timeoutMs === "number" ? { dnsTimeoutMs: cfg.timeoutMs } : {}),
+      ...(typeof cfg.pingCount === "number" ? { pingCount: cfg.pingCount } : {}),
+      ...(typeof cfg.maxPacketLossPct === "number" ? { pingMaxLossPct: cfg.maxPacketLossPct } : {}),
+      ...(typeof cfg.browserExpectedText === "string" ? { browserExpectedText: cfg.browserExpectedText } : {}),
+      ...(typeof cfg.browserSelector === "string" ? { browserSelector: cfg.browserSelector } : {}),
+      ...(Array.isArray(cfg.browserStatusCodes) ? { browserStatusCodesRaw: (cfg.browserStatusCodes as number[]).join(", ") } : {}),
+    } as typeof formData & {
+      checkTls?: boolean;
+      ehlo?: string;
+      dnsRecordType?: string;
+      dnsExpectedValue?: string;
+      dnsTimeoutMs?: number;
+      pingCount?: number;
+      pingMaxLossPct?: number;
+      browserExpectedText?: string;
+      browserSelector?: string;
+      browserStatusCodesRaw?: string;
+    });
     setShowTemplates(false);
   };
 
@@ -1617,7 +1717,7 @@ function MonitorsPageInner() {
                         <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border/60 text-text-muted">{intervalLabel}</span>
                         <div className="flex items-center gap-1 ml-auto">
                           <button
-                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData({ name: monitor.name, description: monitor.description ?? "", type: monitor.type, target: monitor.target, intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1, enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""), expectedText: String(monitor.config?.expectedText ?? ""), heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5), heartbeatToken: String(monitor.config?.token ?? ""), folderId: monitor.folderId ?? "", slaTarget: monitor.slaTarget ?? "", slaPeriodDays: monitor.slaPeriodDays ?? 30 } as typeof formData); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
+                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData(buildEditFormData(monitor)); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
                             className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border/60 text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
                           >
                             <Pencil className="w-3 h-3" /> Edit
@@ -1865,29 +1965,7 @@ function MonitorsPageInner() {
                                 onClick={() => {
                                   setModalMode("edit");
                                   setEditingMonitor(monitor);
-                                  setFormData({
-                                    name: monitor.name,
-                                    type: monitor.type,
-                                    target: monitor.target,
-                                    intervalSec: monitor.intervalSec,
-                                    confirmations: monitor.confirmations ?? 1,
-                                    enabled: monitor.enabled,
-                                    pluginId: String(monitor.config?.pluginId ?? ""),
-                                    expectedText: String(monitor.config?.expectedText ?? ""),
-                                    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
-                                    heartbeatToken: String(monitor.config?.token ?? ""),
-                                    folderId: monitor.folderId ?? "",
-                                    expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
-                                    bodyContains: String(monitor.config?.bodyContains ?? ""),
-                                    httpMethod: String(monitor.config?.httpMethod ?? "GET"),
-                                    requestHeaders: monitor.config?.requestHeaders
-                                      ? Object.entries(monitor.config.requestHeaders as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("\n")
-                                      : "",
-                                    requestBody: String(monitor.config?.requestBody ?? ""),
-                                    responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
-                                    bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
-                                    bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
-                                  } as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number });
+                                  setFormData(buildEditFormData(monitor));
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput("");
                                   setFormErrors({});
@@ -1932,15 +2010,7 @@ function MonitorsPageInner() {
                                 onClick={() => {
                                   setModalMode("edit");
                                   setEditingMonitor(monitor);
-                                  setFormData({
-                                    name: monitor.name, type: monitor.type, target: monitor.target,
-                                    intervalSec: monitor.intervalSec, confirmations: monitor.confirmations ?? 1,
-                                    enabled: monitor.enabled, pluginId: String(monitor.config?.pluginId ?? ""),
-                                    expectedText: String(monitor.config?.expectedText ?? ""),
-                                    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
-                                    heartbeatToken: String(monitor.config?.token ?? ""),
-                                    folderId: monitor.folderId ?? "",
-                                  } as typeof formData);
+                                  setFormData(buildEditFormData(monitor));
                                   setSelectedTags(monitor.tags?.map((t) => t.name) ?? []);
                                   setTagInput(""); setFormErrors({}); setFormTouched({});
                                   setShowModal(true); setShowTemplates(true);
@@ -2494,6 +2564,94 @@ function MonitorsPageInner() {
                 </label>
               </div>
               <p className="text-xs text-text-secondary -mt-1">When enabled, {brand.name} sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
+            </>
+          )}
+
+          {/* DNS-specific config */}
+          {formData.type === "DNS" && (
+            <>
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  <span className="font-medium text-text-primary">DNS Lookup</span> — resolves the target hostname via DNS and measures lookup latency. Optionally assert a specific value in the result.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Record Type</label>
+                <select
+                  value={(formData as unknown as { dnsRecordType?: string }).dnsRecordType ?? "A"}
+                  onChange={(e) => setFormData({ ...formData, dnsRecordType: e.target.value } as typeof formData & { dnsRecordType?: string })}
+                  className={inputClass}
+                >
+                  {["A", "AAAA", "MX", "TXT", "CNAME", "NS"].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-text-secondary">DNS record type to look up. Default: A (IPv4).</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Expected value <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { dnsExpectedValue?: string }).dnsExpectedValue ?? ""}
+                  onChange={(e) => setFormData({ ...formData, dnsExpectedValue: e.target.value } as typeof formData & { dnsExpectedValue?: string })}
+                  placeholder="e.g. 1.2.3.4 or mail.example.com."
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Check warns if the DNS result does not contain this value. Leave blank to only verify the lookup succeeds.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Timeout <span className="text-xs text-text-muted">(ms, optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="500"
+                  max="30000"
+                  value={(formData as unknown as { dnsTimeoutMs?: number }).dnsTimeoutMs ?? 10000}
+                  onChange={(e) => setFormData({ ...formData, dnsTimeoutMs: Number(e.target.value) } as typeof formData & { dnsTimeoutMs?: number })}
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
+
+          {/* PING-specific config */}
+          {formData.type === "PING" && (
+            <>
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  <span className="font-medium text-text-primary">ICMP Ping</span> — sends ping packets to the target host and measures round-trip latency and packet loss.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Ping Count</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={(formData as unknown as { pingCount?: number }).pingCount ?? 3}
+                  onChange={(e) => setFormData({ ...formData, pingCount: Math.min(10, Math.max(1, Number(e.target.value))) } as typeof formData & { pingCount?: number })}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Number of ICMP packets to send (1–10). Default: 3.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Max packet loss % before warning <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={(formData as unknown as { pingMaxLossPct?: number }).pingMaxLossPct ?? ""}
+                  onChange={(e) => setFormData({ ...formData, pingMaxLossPct: e.target.value === "" ? undefined : Number(e.target.value) } as typeof formData & { pingMaxLossPct?: number })}
+                  placeholder="e.g. 20 (any loss = warn by default)"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Any packet loss triggers a warning by default. Set a threshold (0–100%) to allow some loss before alerting.</p>
+              </div>
             </>
           )}
 

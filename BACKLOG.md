@@ -1,3 +1,10 @@
+## Status Summary (2026-03-21 12:13 UTC)
+- **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ API/Web restarted; all key routes return 200 locally and via public https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-03-21-noon
+- **This session:**
+  - **Monitors form parity fix (DNS/PING):** Added missing DNS/PING configuration controls in create/edit modal (DNS record type, expected value, DNS timeout, ping count, packet-loss threshold), wired config serialization in create/update payloads, and unified edit prefill logic so type-specific config is restored consistently.
+
 ## Status Summary (2026-03-21 10:24 UTC)
 - **Build/Test:** ✅ Clean build, 1720 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All 9 routes 200 local + public https://oc-dev-test.no749ah.com 200

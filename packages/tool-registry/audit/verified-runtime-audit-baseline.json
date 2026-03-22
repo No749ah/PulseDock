@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-03-22T02:02:00.000Z",
+  "policy": "verified_runtime_audit_thresholds_no_regressions",
+  "thresholds": {
+    "maxMissingEvidenceForVerified": 485,
+    "maxMissingLastVerifiedAtForVerified": 0,
+    "maxMissingVerifiedOnVersionForVerified": 646,
+    "maxMissingAuthMetadataForInstanceVersionSource": 0
+  }
+}

@@ -52,6 +52,9 @@ jobs:
       - name: TypeScript type-check (API)
         run: npm run test:typecheck -w @pulsedock/api
 
+      - name: Registry verified-runtime regression check
+        run: npm run registry:audit:verified:check
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

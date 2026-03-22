@@ -1,3 +1,15 @@
+## Status Summary (2026-03-22 02:08 UTC)
+- **Build/Test:** ✅ Clean build + full test suite passing (1951 API + 10 CLI + 12 Agent), verified-runtime regression check passing
+- **Security/Audit:** ⚠️ `npm audit` still reports 11 vulns (5 moderate, 6 high), all transitive under Prisma dev dependency chain; no direct app dependency hotfix available without breaking upgrade
+- **Deployment:** ✅ Restarted web service after changes (`npm run restart:web`)
+- **Branch:** heartbeat/2026-03-22-midnight
+- **This session:**
+  - Added CI guardrail for registry debt regression: new script `packages/tool-registry/scripts/verified-runtime-regression.ts`.
+  - Added baseline thresholds file `packages/tool-registry/audit/verified-runtime-audit-baseline.json`.
+  - Added root script `npm run registry:audit:verified:check` (generate audit + enforce thresholds).
+  - Wired the regression check into `.github/workflows/ci.yml`.
+  - Updated P0 registry-overhaul backlog notes to reflect CI threshold enforcement completion.
+
 ## Status Summary (2026-03-22 01:12 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (2 files / 12 tests in fast suite), registry lint + variant regression check passing
 - **Security/Audit:** ⚠️ `npm audit` still reports 11 vulns (5 moderate, 6 high) via `@mrleebo/prisma-ast`/`chevrotain` transitive chain (unchanged)
@@ -2055,7 +2067,7 @@
 - [x] Add quick perf check for large registry filtering in browser. *(2026-03-21: memoized tool-query normalization + ranked filtering + close-match derivation in `versions/page.tsx` to avoid recomputation on unrelated renders.)*
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
-- [~] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling). *(2026-03-22: added `npm run registry:audit:verified` + `packages/tool-registry/audit/verified-runtime-audit.json` as full-registry baseline report: 5009 entries scanned, 646 verified entries tracked, 485 verified entries still missing docs/evidence, 646 missing verifiedOnVersion metadata. Next: close gaps category-by-category and enforce report thresholds in CI.)*
+- [~] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling). *(2026-03-22: added `npm run registry:audit:verified` + `packages/tool-registry/audit/verified-runtime-audit.json` as full-registry baseline report: 5009 entries scanned, 646 verified entries tracked, 485 verified entries still missing docs/evidence, 646 missing verifiedOnVersion metadata. Follow-up done: CI regression gate added via `npm run registry:audit:verified:check` + `verified-runtime-audit-baseline.json` so verified-runtime debt cannot silently regress. Next: close gaps category-by-category.)*
 - [~] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-21: docsUrl added to 153 key tools; verificationStatus + lastVerifiedAt added to all 646 verified entries. Remaining: 497 verified tools still missing docs URL.)*
 - [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.

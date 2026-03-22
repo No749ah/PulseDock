@@ -5,7 +5,8 @@
   "description": "PulseDock tool registry — versioned tool templates for version monitoring",
   "main": "src/index.ts",
   "scripts": {
-    "lint": "npx ts-node --project tsconfig.json scripts/lint-registry.ts"
+    "lint": "npx ts-node --project tsconfig.json scripts/lint-registry.ts",
+    "audit:variants": "npx ts-node --project tsconfig.json scripts/variant-audit.ts"
   },
   "license": "Apache-2.0"
 }

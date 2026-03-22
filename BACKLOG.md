@@ -2079,11 +2079,22 @@
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
 - [~] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar. *(In progress: strict `registry:lint` + new `registry:audit:variants` regression checks.)*
-- [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
+- [~] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen. *(2026-03-22: added `npm run registry:verify:runtime:mocks` + `packages/tool-registry/scripts/verified-runtime-mock-check.ts` + CI step in `.github/workflows/ci.yml`. Current suite validates runtime extraction/fallback behavior for verified templates (Portainer, Grafana, Prometheus, Elasticsearch) and writes machine-readable report to `packages/tool-registry/audit/verified-runtime-mock-check.json`. Next: expand case matrix category-by-category and add real-instance smoke lane.)*
 - [x] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`. *(2026-03-21: all 646 verified entries updated)*
 - [x] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint. *(Done 2026-03-20: endpointFallbacks in VersionSource type + detectAppVersion/detectDeployedVersion logic + 8 verified tools updated)*
 - [x] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren. *(2026-03-21: heuristic fallback + extractVersionWithFallback wired into checks.service.ts)*
 - [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
+
+## Status Summary (2026-03-22 03:20 UTC)
+- **Build/Test:** ⚠️ `npm run build` currently gets killed in web TypeScript phase on this host (exit 137 / OOM); `npm run test` passes (1951 API + 10 CLI + 12 Agent)
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ `npm run restart:web` successful; public URL and API health return 200
+- **Frontend audit:** ✅ route sweep complete; expected auth/dynamic routes include `/settings` (404) and `/status`/`/invite` (404)
+- **This session (2026-03-22 03:20 UTC):**
+  - Added runtime mock verification script for verified registry templates (`registry:verify:runtime:mocks`)
+  - Added CI gate step: “Registry runtime mock verification check”
+  - Generated audit artifact: `packages/tool-registry/audit/verified-runtime-mock-check.json`
+  - Updated P0 backlog item 2082 from TODO to in-progress with implementation notes
 
 ## Status Summary (2026-03-19 21:26 UTC)
 - **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors

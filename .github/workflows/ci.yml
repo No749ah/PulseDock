@@ -55,6 +55,9 @@ jobs:
       - name: Registry verified-runtime regression check
         run: npm run registry:audit:verified:check
 
+      - name: Registry runtime mock verification check
+        run: npm run registry:verify:runtime:mocks
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

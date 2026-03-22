@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-03-22T03:12:04.990Z",
+  "total": 4,
+  "passed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "id": "portainer-primary-endpoint",
+      "toolId": "portainer",
+      "ok": true,
+      "expectedVersion": "2.20.3",
+      "detectedVersion": "2.20.3",
+      "requestedPaths": [
+        "/api/status"
+      ]
+    },
+    {
+      "id": "grafana-fallback-endpoint",
+      "toolId": "grafana",
+      "ok": true,
+      "expectedVersion": "10.4.1",
+      "detectedVersion": "10.4.1",
+      "requestedPaths": [
+        "/api/health",
+        "/api/v1/health"
+      ]
+    },
+    {
+      "id": "prometheus-nested-jsonpath",
+      "toolId": "prometheus",
+      "ok": true,
+      "expectedVersion": "2.51.0",
+      "detectedVersion": "2.51.0",
+      "requestedPaths": [
+        "/api/v1/status/buildinfo"
+      ]
+    },
+    {
+      "id": "elasticsearch-root-endpoint",
+      "toolId": "elasticsearch",
+      "ok": true,
+      "expectedVersion": "8.13.2",
+      "detectedVersion": "8.13.2",
+      "requestedPaths": [
+        "/"
+      ]
+    }
+  ]
+}

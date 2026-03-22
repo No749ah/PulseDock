@@ -2044,7 +2044,7 @@
 - [x] Add quick perf check for large registry filtering in browser. *(2026-03-21: memoized tool-query normalization + ranked filtering + close-match derivation in `versions/page.tsx` to avoid recomputation on unrelated renders.)*
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
-- [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
+- [~] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling). *(2026-03-22: added `npm run registry:audit:verified` + `packages/tool-registry/audit/verified-runtime-audit.json` as full-registry baseline report: 5009 entries scanned, 646 verified entries tracked, 485 verified entries still missing docs/evidence, 646 missing verifiedOnVersion metadata. Next: close gaps category-by-category and enforce report thresholds in CI.)*
 - [~] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-21: docsUrl added to 153 key tools; verificationStatus + lastVerifiedAt added to all 646 verified entries. Remaining: 497 verified tools still missing docs URL.)*
 - [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.

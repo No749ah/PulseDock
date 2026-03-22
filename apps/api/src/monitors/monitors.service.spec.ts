@@ -4009,3 +4009,67 @@ describe('MonitorEvent — listEvents / createEvent / deleteEvent', () => {
     await expect(svc.deleteEvent('user-1', 'monitor-1', 'no-such-event')).rejects.toThrow('Event not found');
   });
 });
+
+describe('monitorChart()', () => {
+  function makeChartPrisma(runs: Array<{ ok: boolean; latencyMs: number | null; checkedAt: Date; level: string }>) {
+    const prisma = makePrisma(makeMonitor());
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(runs);
+    return prisma;
+  }
+
+  it('returns bucketed chart data with correct structure', async () => {
+    const now = Date.now();
+    const runs = [
+      { ok: true, latencyMs: 100, checkedAt: new Date(now - 3600_000), level: 'green' },
+      { ok: true, latencyMs: 200, checkedAt: new Date(now - 1800_000), level: 'green' },
+      { ok: false, latencyMs: null, checkedAt: new Date(now - 900_000), level: 'red' },
+    ];
+    const p = makeChartPrisma(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorChart('user-1', 'monitor-1', '1d');
+    expect(result.monitorId).toBe('monitor-1');
+    expect(result.period).toBe('1d');
+    expect(result.bucketMinutes).toBe(5);
+    expect(Array.isArray(result.points)).toBe(true);
+  });
+
+  it('computes avgLatencyMs correctly per bucket', async () => {
+    const ts = new Date();
+    const runs = [
+      { ok: true, latencyMs: 100, checkedAt: ts, level: 'green' },
+      { ok: true, latencyMs: 200, checkedAt: ts, level: 'green' },
+    ];
+    const p = makeChartPrisma(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorChart('user-1', 'monitor-1', '1d');
+    expect(result.points.length).toBeGreaterThan(0);
+    const pt = result.points[0];
+    expect(pt.avgLatencyMs).toBe(150); // (100+200)/2
+  });
+
+  it('returns 100% uptimePct bucket when all checks pass', async () => {
+    const now = Date.now();
+    const runs = [
+      { ok: true, latencyMs: 50, checkedAt: new Date(now - 300_000), level: 'green' },
+      { ok: true, latencyMs: 60, checkedAt: new Date(now - 200_000), level: 'green' },
+    ];
+    const p = makeChartPrisma(runs);
+    const svc = makeService(p);
+    const result = await svc.monitorChart('user-1', 'monitor-1', '1d');
+    const allGreen = result.points.every((pt) => pt.uptimePct === 100);
+    expect(allGreen).toBe(true);
+  });
+
+  it('throws NotFoundException for unknown monitor', async () => {
+    const p = makePrisma(null);
+    const svc = makeService(p);
+    await expect(svc.monitorChart('user-1', 'unknown-monitor', '7d')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns empty points array when no runs exist', async () => {
+    const p = makeChartPrisma([]);
+    const svc = makeService(p);
+    const result = await svc.monitorChart('user-1', 'monitor-1', '7d');
+    expect(result.points).toHaveLength(0);
+  });
+});

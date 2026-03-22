@@ -1,7 +1,7 @@
 {
   "name": "pulsedock",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "PulseDock - Version intelligence dashboard",
   "workspaces": [
     "apps/*",
@@ -33,7 +33,8 @@
     "test:e2e": "npm run test -w @pulsedock/e2e",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "registry:lint": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/lint-registry.ts"
+    "registry:lint": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/lint-registry.ts",
+    "registry:audit:variants": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/variant-audit.ts"
   },
   "license": "Apache-2.0",
   "dependencies": {

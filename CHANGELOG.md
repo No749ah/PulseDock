@@ -7,6 +7,34 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.1.0] — 2026-03-21
+
+### Added
+- **Widget resolver coverage complete** — All 82 status-page widget types now have per-widget API data endpoints. Added resolvers for `active-incident-banner` (returns active incidents + down monitors with all-clear flag), `maintenance-calendar` (upcoming/active windows for 90-day window), `multi-monitor-status-grid`, `multi-status-badges`, `version-check-badge`, `update-summary`, and 10 content-only widgets. Widget audit: ✅ 82/82 types, zero palette/renderer/resolver gaps.
+- **BROWSER monitor type** — Full page check with browser User-Agent, 2xx/3xx status assertion, expected text search (case-insensitive), CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 new unit tests.
+- **DNS/PING monitor config UI** — Create/edit modal now shows type-specific fields for DNS (record type, expected value, timeout) and PING (ping count, max packet-loss %) monitors. Config correctly serialized to API and pre-filled when editing.
+- **Monitor Timeline Annotations** — `MonitorEvent` Prisma model + API. Monitor detail page shows Timeline Annotations panel: add/delete events with type (deploy/note/incident/maintenance/config), color-coded badges, relative timestamps, hover-reveal delete. Events appear as vertical reference lines on the response-time area chart.
+- **Monitor detail page enhancements** — Edit/Delete buttons in header; auto-open edit modal via `#edit-{id}` anchor; 7×24 uptime heatmap (GitHub contributions style); expanded check history to 50 rows with total run count.
+- **Tool registry variants system** — `TOOL_VARIANTS` map with 50 tools having platform/edition variant definitions (e.g. GitLab CE/EE, Traefik Docker/k8s, SonarQube CE/DE/EE, Immich Docker/k8s). Each variant includes verified endpoint, auth requirements, and evidenceUrl. Exposed via `GET /v1/tool-registry/:id/variants`. Platform selector in versions setup UI.
+- **Billing / License Management** — `Plan` + `UserPlan` Prisma models. `PlanService` with COMMUNITY/PRO/ENTERPRISE tiers, limit enforcement on monitor/status-page/alert-channel creation. `GET /v1/plan` + `/v1/plan/check/:resource` endpoints. Admin plan management. `PlanUsageCard` on account page.
+- **White-label support** — All 13 app shell layouts, 20+ pages, login branding, and API mailer templates use `brand.name` from centralized `apps/web/lib/brand.ts` driven by `NEXT_PUBLIC_APP_*` env vars.
+- **Organization / Workspace** — Multiple organizations per account, slug availability check, member management, invite system. Full API + frontend `/account/organizations` page.
+- **Plugin System v2** — 8 built-in check plugins (http.response-match, http.response-time, http.json-assertion, http.status-code, http.regex-match, http.header-assertion, http.redirect-check, http.cert-expiry). External plugin loader from filesystem. Admin panel Plugin Management UI. `GET /v1/plugins` endpoint.
+- **On-call rotation** — `OnCallSchedule`/`OnCallRotation`/`EscalationPolicy` Prisma models. Round-robin schedule API. Calendar view in account page.
+- **SMS alert channel** — Twilio integration. Config: accountSid, authToken, from, to.
+- **PagerDuty / OpsGenie alert channels** — Full POST trigger/resolve + dedup (PagerDuty Events API v2, OpsGenie Alerts API with EU region support).
+- **HTTP JSONPath assertions** — `bodyJsonPath` + `bodyJsonPathExpected` config fields for HTTP monitors. Dot-notation path traversal. 7 new tests.
+- **Scheduler performance** — Covering index `(monitorId, checkedAt, level)` on `MonitorRun` for index-only uptime scans. Explicit column `select` in scheduler tick to avoid pulling unused fields.
+- **DB index** — `(monitorId, checkedAt)` covering index on `MonitorRun` for latency percentile queries.
+- **Widget live data preview** — Status-page editor toolbar "Live" toggle shows real API widget data in the Properties panel.
+
+### Changed
+- **Tool registry** — 5,009 unique tool entries across all categories. 50 tools have verified platform variant definitions.
+- **Widget audit** — Automated `npm run widget:audit` passes with zero gaps across all 82 widget types.
+- **Test suite** — 1,736 API tests passing (up from 1,346 at v1.0.2). Zero TypeScript strict mode errors.
+
+---
+
 ## [Unreleased] — 2026-03-20 (ongoing)
 
 ### Added

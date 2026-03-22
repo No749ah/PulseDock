@@ -215,4 +215,116 @@ describe('OrganizationsService', () => {
       await expect(service.acceptInvite('bad-token', 'user-1')).rejects.toBeInstanceOf(BadRequestException)
     })
   })
+
+  describe('checkSlug', () => {
+    it('returns available:true when slug is free', async () => {
+      prisma.organization.findUnique.mockResolvedValue(null)
+      const result = await service.checkSlug('free-slug')
+      expect(result).toEqual({ available: true })
+    })
+
+    it('returns available:false when slug is taken', async () => {
+      prisma.organization.findUnique.mockResolvedValue(makeOrg())
+      const result = await service.checkSlug('acme-corp')
+      expect(result).toEqual({ available: false })
+    })
+  })
+
+  describe('getOrganization', () => {
+    it('returns org with members for a valid member', async () => {
+      const ownerMember = makeMember({ role: OrgRole.OWNER })
+      prisma.orgMember.findUnique.mockResolvedValue(ownerMember)
+      const org = { ...makeOrg(), members: [ownerMember] }
+      prisma.organization.findUnique.mockResolvedValue(org)
+      const result = await service.getOrganization('org-1', 'user-1')
+      expect(result.id).toBe('org-1')
+    })
+
+    it('throws NotFoundException for non-member', async () => {
+      prisma.orgMember.findUnique.mockResolvedValue(null)
+      await expect(service.getOrganization('org-1', 'user-1')).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  describe('getMembers', () => {
+    it('returns members for a valid member', async () => {
+      const ownerMember = makeMember({ role: OrgRole.OWNER })
+      prisma.orgMember.findUnique.mockResolvedValue(ownerMember) // requireMembership
+      const members = [ownerMember]
+      prisma.orgMember.findMany.mockResolvedValue(members)
+      const result = await service.getMembers('org-1', 'user-1')
+      expect(result).toHaveLength(1)
+    })
+
+    it('throws NotFoundException for non-member', async () => {
+      prisma.orgMember.findUnique.mockResolvedValue(null)
+      await expect(service.getMembers('org-1', 'user-3')).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  describe('updateMemberRole', () => {
+    it('updates role for OWNER requester', async () => {
+      const ownerMember = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      const targetMember = makeMember({ userId: 'user-2', role: OrgRole.MEMBER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerMember) // requireRole
+        .mockResolvedValueOnce(targetMember) // target member lookup
+      const updated = { ...targetMember, role: OrgRole.ADMIN }
+      prisma.orgMember.update.mockResolvedValue(updated)
+      const result = await service.updateMemberRole('org-1', 'user-2', 'user-1', { role: OrgRole.ADMIN })
+      expect(result.role).toBe(OrgRole.ADMIN)
+    })
+
+    it('throws ForbiddenException when trying to change OWNER role', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      const ownerTarget = makeMember({ userId: 'user-2', role: OrgRole.OWNER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester)
+        .mockResolvedValueOnce(ownerTarget)
+      await expect(
+        service.updateMemberRole('org-1', 'user-2', 'user-1', { role: OrgRole.MEMBER }),
+      ).rejects.toBeInstanceOf(ForbiddenException)
+    })
+
+    it('throws ForbiddenException when trying to assign OWNER role', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      const memberTarget = makeMember({ userId: 'user-2', role: OrgRole.MEMBER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester)
+        .mockResolvedValueOnce(memberTarget)
+      await expect(
+        service.updateMemberRole('org-1', 'user-2', 'user-1', { role: OrgRole.OWNER }),
+      ).rejects.toBeInstanceOf(ForbiddenException)
+    })
+  })
+
+  describe('removeMember', () => {
+    it('removes a member (OWNER removing MEMBER)', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      const memberTarget = makeMember({ userId: 'user-2', role: OrgRole.MEMBER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester) // requireRole
+        .mockResolvedValueOnce(memberTarget) // target lookup
+      prisma.orgMember.delete.mockResolvedValue(memberTarget)
+      await service.removeMember('org-1', 'user-2', 'user-1')
+      expect(prisma.orgMember.delete).toHaveBeenCalled()
+    })
+
+    it('throws ForbiddenException when trying to remove the OWNER', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      const ownerTarget = makeMember({ userId: 'user-2', role: OrgRole.OWNER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester)
+        .mockResolvedValueOnce(ownerTarget)
+      await expect(service.removeMember('org-1', 'user-2', 'user-1')).rejects.toBeInstanceOf(ForbiddenException)
+    })
+
+    it('throws NotFoundException when member does not exist', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester)
+        .mockResolvedValueOnce(null) // target not found
+      await expect(service.removeMember('org-1', 'user-99', 'user-1')).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
 })

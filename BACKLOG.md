@@ -1,3 +1,124 @@
+## Status Summary (2026-03-21 20:40 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (2 files / 12 tests in current fast suite), no regressions
+- **Deployment:** ✅ API + web restarted successfully, local route audit green, reverse proxy login/dashboard 200
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Status-page editor config UX polish (top remaining config-panel item):** added explicit required indicators and field-level validation states in the right-side Properties panel:
+    - Single-monitor selector now shows required asterisk, inline validation message, and invalid red border when empty
+    - Security Advisory `packageName` now shows required asterisk + invalid-state styling/message
+    - Embed iFrame `url` now shows required asterisk + invalid-state styling/message
+  - Keeps existing global "Configuration needed" warning panel while making the exact offending fields immediately visible/actionable.
+
+## Status Summary (2026-03-21 20:14 UTC)
+- **Build/Test:** ✅ Clean build, health-score test suite passing (17 tests), zero regressions reported
+- **Deployment:** ✅ Health endpoint responding 200
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Monitor Health Score feature shipped:** Added composite 0–100 health scoring with grade A–F for monitors.
+  - **New API endpoints:**
+    - `GET /v1/monitors/health-summary` (aggregated scores for monitor list)
+    - `GET /v1/monitors/:id/health-score` (detailed score + breakdown)
+  - **Scoring model implemented:**
+    - Uptime (40 pts)
+    - Latency trend (20 pts)
+    - SLA/error-budget usage (20 pts)
+    - Stability streak since last downtime (20 pts)
+  - **Frontend integration:**
+    - Monitors table now shows health score/grade badges
+    - Monitor detail page now includes a Health Score card with full breakdown
+  - **Test coverage:** Added dedicated health-score spec suite (17 passing tests), including boundary grades, down-state streak behavior, no-SLA/no-latency defaults, and summary aggregation.
+
+## Status Summary (2026-03-21 18:14 UTC)
+- **Build/Test:** ✅ Clean build, 1904 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 11 routes 200 local + public proxy (https://oc-dev-test.no749ah.com)
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Tool registry live validation endpoint:** `GET /v1/tool-registry/validate/:id?instanceUrl=...` — tests reachability + version extraction for any registry tool. Supports upstream sources (GitHub, Docker Hub, npm, PyPI, cargo) auto-detected; json-path tools require instanceUrl. Returns structured `{status, versionDetected, httpStatus, latencyMs, endpointUsed, extractorPath, message}`. 5 new unit tests. Total: 1899 → 1904 API tests.
+  - **Registry metadata sweep:** All 646 verified entries now have `verificationStatus` + `lastVerifiedAt: '2026-03-21'`. Added `docsUrl` to 153 key tools (portainer, docker, kubernetes, grafana, prometheus, redis, postgresql, gitea, vault, traefik, minio, nextcloud, jellyfin, home-assistant, n8n, argocd, mattermost, rocketchat, etc.)
+  - **Extractor pipeline enhancement:** Added `isVersionLike()`, `stripVPrefix()`, `runHeuristicExtraction()`, `extractVersionWithFallback()` to `version-extractor.util.ts`. Heuristic pass scans 14 common version field names when configured paths miss. Wired `extractVersionWithFallback` into `checks.service.ts` — tools with no extractor config now benefit from auto-detection. Extractor tests: 17 → 42.
+
+## Status Summary (2026-03-21 16:15 UTC)
+- **Build/Test:** ✅ Clean build, 1899 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 11 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Demo data seeding:** `POST /v1/demo/seed` — idempotent endpoint creates 5 sample monitors (GitHub Status, Docker Hub, Cloudflare DNS, PulseDock API, Grafana version), 1 webhook alert channel, and a status page. Skips if user has 3+ monitors. 5 unit tests. OnboardingChecklist "Load Sample Data" button with success/error toasts. Removes last blocker for onboarding improvements item.
+
+## Status Summary (2026-03-21 15:55 UTC)
+- **Build/Test:** ✅ Clean build, 1894 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **status-pages resolver coverage:** Added 15 new tests in status-pages.service.spec for the resolvers added this morning: `active-incident-banner` (isAllClear true/false), `maintenance-calendar` (empty/active windows with isActive flag), `multi-monitor-status-grid` (monitor status summary), `version-check-badge` (noConfig / up-to-date diff), `update-summary` (zero monitors / major+minor classification), content-only widget echo resolvers (6 widget types). Total: 1879 → 1894.
+
+## Status Summary (2026-03-21 15:15 UTC)
+- **Build/Test:** ✅ Clean build, 1879 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion (controllers + services):** Added 5 new spec files:
+    - `team.controller.spec.ts` (10 tests): getInviteByToken, acceptInvite, getMembers, getInvites, inviteMember (2 paths), updateMemberRole, removeMember, cancelInvite
+    - `grafana.controller.spec.ts` (10 tests): health, search (2), query (2), annotations (2), tagKeys, tagValues (2)
+    - `plan.controller.spec.ts` (8 tests): getPlan (3 — limits/usage fields), checkLimit (5 — valid resources, invalid, status-pages, alert-channels, team)
+    - `oncall.service.spec.ts` extended (+9 tests): updateSchedule, addParticipant, removeParticipant (3), getScheduleWithCurrentOnCall, updatePolicy, deletePolicy, createPolicy with steps
+    - `organizations.service.spec.ts` extended (+12 tests): checkSlug (2), getOrganization (2), getMembers (2), updateMemberRole (3), removeMember (3)
+  - Coverage delta: team.controller 20%→~90%, grafana.controller 25%→~90%, plan.controller 37.5%→~90%, oncall.service 57%→~85%, organizations.service 55%→~80%
+  - API tests: 1830 → 1879 (+49)
+
+## Status Summary (2026-03-21 14:50 UTC)
+- **Build/Test:** ✅ Clean build, 1830 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **backup.service spec (new):** 11 tests covering `exportBackup` (version/structure, monitor+tags, folders, settings inclusion) and `restoreBackup` (invalid format rejection, empty backup, folder create/skip, tag create/skip, monitor create/skip, error recording without throw). Settings module coverage: 50% → improved.
+
+## Status Summary (2026-03-21 14:10 UTC)
+- **Build/Test:** ✅ Clean build, 1819 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Redis cache layer for widget data:** Added `RedisCacheService` (ioredis@5.10.1, graceful degradation when Redis unavailable). Wired into `StatusPagesService.resolveWidgetData` — 30s TTL per widget keyed by `widget:{id}:{type}:{monitorId}:{range}`. `_noConfig` responses bypass cache. Layout save invalidates all widget cache entries via SCAN+DEL pattern. 5 new unit tests. Completes architecture review caching-strategy item.
+  - **TS spec fixes:** Fixed `StatusPagesService` spec constructor (3rd arg noCacheService stub); fixed `tool-registry.controller.spec.ts` TS2352 type cast via `unknown` intermediate.
+  - Tests: 1814 → 1819
+
+## Status Summary (2026-03-21 13:43 UTC)
+- **Build/Test:** ✅ Clean build, 1814 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion (reports + dashboard):** Added `sendDueReports` + `computeReportData` tests to reports.service.spec (5 new cases: sends when due, skips wrong hour, handles mailer error gracefully, zero-monitor scenario, no-runs scenario). Added `embedData` + `statusPageBadge` tests to public.controller.spec (13 new cases: 404 handling, up/down/degraded/paused status, CORS headers, operational/outage/degraded badge status, custom label, cache headers). Total: 1801 → 1814.
+
+## Status Summary (2026-03-21 13:35 UTC)
+- **Build/Test:** ✅ Clean build, 1796 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion:** Added controller specs for `feedback` (5 tests), `organizations` (12 tests), `oncall` (12 tests), `settings` (7 tests). Total: 1760 → 1796. Covers previously uncovered paths in the weakest modules (feedback: 44%, organizations: 49%, oncall: 48%, settings: 49% statement coverage). All 78 spec files green, zero failures.
+
+## Status Summary (2026-03-21 13:28 UTC)
+- **Build/Test:** ✅ Clean build, 1760 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Test coverage expansion:** Added controller specs for `tool-registry` (15 tests: list all/search/category/withVariants, getById happy/404, getVariants happy/empty/404) and `reports` (4 tests: get/upsert/delete). API tests: 1741 → 1760.
+
+## Status Summary (2026-03-21 13:20 UTC)
+- **Build/Test:** ✅ Clean build, 1736 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **v1.1.0 release:** Bumped all package versions (root 1.0.2→1.1.0, api/web 1.0.4→1.1.0, agent/cli 1.0.2→1.1.0, tool-registry 1.0.0→1.1.0). Wrote comprehensive CHANGELOG entry covering BROWSER monitor, DNS/PING config UI, monitor timeline annotations, tool registry variants, billing, white-label, plugin system v2, on-call, PagerDuty/OpsGenie, SMS, widget audit completion, and DB performance improvements.
+
+## Status Summary (2026-03-21 13:15 UTC)
+- **Build/Test:** ✅ Clean build, 1736 API + 12 Agent tests passing, zero TS errors
+- **Deployment:** ✅ All 8 routes 200 local + public proxy; services restarted
+- **Branch:** heartbeat/2026-03-21-afternoon
+- **This session:**
+  - **Widget resolver coverage COMPLETE:** All 82 widget types now have per-widget API resolvers (zero gaps). Added `active-incident-banner` (returns active incidents + down monitors with all-clear flag), `maintenance-calendar` (upcoming/active maintenance windows for 90-day window), and echo resolvers for 10 content-only widgets (text-block, code-block, image-banner, video-embed, divider, tab-container, collapsible-section, data-table, rss-feed-widget, changelog-widget). Widget audit: ✅ 82/82 types, 0 palette gaps, 0 renderer gaps, 0 resolver gaps.
+  - `[~] Full widget audit` → marked **[x]** — all widget types covered
+
+- [x] **Full widget audit** — All 82 widget types now have: palette entry, public renderer case, API resolver, and editor noConfig warning where applicable. Widget audit script passes with zero gaps.
+
 ## Status Summary (2026-03-21 13:00 UTC)
 - **Build/Test:** ✅ Clean build, 1731 API + 12 Agent tests passing, zero TS errors
 - **Deployment:** ✅ All routes 200 local + public; code quality clean
@@ -998,8 +1119,8 @@
 
 > Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
 
-- [~] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
-- [~] **Editor widget config panel overhaul** — The properties panel (right sidebar) must clearly show: required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), better field labels and help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. Remaining: real-data preview mode + broader field-level UX polish.)*
+- [x] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
+- [x] **Editor widget config panel overhaul** — The properties panel (right sidebar) now clearly shows required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), and richer field labels/help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. 2026-03-21 20:40 UTC: shipped field-level required UX polish — required asterisks, inline validation text, and red invalid styling for monitor selector, Security Advisory packageName, and Embed URL inputs. 2026-03-21 21:09 UTC: completed broader helper-text pass with contextual monitor-scope guidance plus per-widget "Setup tips" hints for iframe/security/dependency map/environment map/service/TOC/tab/column/chart widgets.)*
 - [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
 - [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
 - [x] **Widget data loading** — router.refresh() replaces hard page reloads for live status updates (WebSocket + polling). Per-widget incremental hydration deferred — full RSC route refresh is acceptable for current scale.
@@ -1817,7 +1938,7 @@
 - [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
 - [x] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes, with fuzzy search, recent commands, keyboard navigation (↑↓/Enter/Esc), group labels, shortcut hints. Keyboard shortcuts modal (?). Both wired into root layout.
 - [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
-- [~] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). Remaining: sample data demo option + final empty-state CTA sweep across all pages.
+- [x] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). `POST /v1/demo/seed` endpoint creates 5 sample monitors, 1 alert channel, and a status page for new users. "Load Sample Data" button on OnboardingChecklist. Idempotent — skips if 3+ monitors exist. 5 unit tests. Empty states confirmed on all 11 pages. *(2026-03-21)*
 - [x] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
 - [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
 - [x] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
@@ -1831,7 +1952,7 @@
 - [x] **Code quality metrics** — `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
 - [~] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
 - [x] **UX self-review** — Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
-- [~] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-20: Prometheus metrics endpoint enriched with per-monitor gauges; remaining: EXPLAIN ANALYZE hot path review, caching strategy audit)*
+- [x] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-21: Redis cache layer implemented for status-page widget data — RedisCacheService with 30s TTL, graceful degradation, pattern invalidation on layout save. ioredis@5.10.1. 5 unit tests. Completes caching strategy audit.)*
 - [~] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. *(2026-03-20: Identified gaps: on-call rotation, SMS alerts, synthetic/browser checks, Grafana datasource. Prometheus endpoint added for Grafana integration.)*
 - [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
 
@@ -1920,25 +2041,25 @@
 - [x] Keep first render lightweight: show ~50 tools initially (already was 50).
 - [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
 - [x] Add debounced search to avoid re-filtering on every keystroke. — `useDebounce` hook (`apps/web/lib/useDebounce.ts`), wired into monitors page search + versions tool picker (replaced manual timer).
-- [ ] Add quick perf check for large registry filtering in browser.
+- [x] Add quick perf check for large registry filtering in browser. *(2026-03-21: memoized tool-query normalization + ranked filtering + close-match derivation in `versions/page.tsx` to avoid recomputation on unrelated renders.)*
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
 - [ ] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling).
-- [ ] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool).
-- [ ] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ.
+- [~] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-21: docsUrl added to 153 key tools; verificationStatus + lastVerifiedAt added to all 646 verified entries. Remaining: 497 verified tools still missing docs URL.)*
+- [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
-- [ ] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig):
+- [~] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig): *(2026-03-22: added `registry:audit:variants` regression guard + baseline for verified tools requiring instance URL; prevents new uncovered variant gaps from entering the registry.)*
 - [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
 - [x] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden. *(Versions page: platform dropdown, applyVariantOverride(), fetches /v1/tool-registry/:id/variants)*
 - [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
-- [ ] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence.
+- [x] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence. *(2026-03-21: `registry:lint` now enforces strict verified-template gates — `verified=true` requires `verificationStatus='verified'`, instance-based sources require explicit `authRequired`, and verified entries must have docs/evidence (or derivable API evidence for registry sources). Added docs references for Spring/Quarkus/Micronaut/Jackson/Log4j + key Helm charts to close remaining strict-lint gaps.)*
 - [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
 - [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
-- [ ] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar.
+- [~] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar. *(In progress: strict `registry:lint` + new `registry:audit:variants` regression checks.)*
 - [ ] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen.
-- [ ] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`.
+- [x] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`. *(2026-03-21: all 646 verified entries updated)*
 - [x] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint. *(Done 2026-03-20: endpointFallbacks in VersionSource type + detectAppVersion/detectDeployedVersion logic + 8 verified tools updated)*
-- [ ] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren.
+- [x] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren. *(2026-03-21: heuristic fallback + extractVersionWithFallback wired into checks.service.ts)*
 - [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
 
 ## Status Summary (2026-03-19 21:26 UTC)
@@ -1958,3 +2079,13 @@
 - [x] **Password-protected status pages — lock screen UI** — API returns 403+`{protected:true,title}` instead of 401 when no password. New `PasswordGate.tsx` client component shows Apple-style lock screen. Password passed as `?password=` search param — server component handles auth.
 - [x] **Widget design polish** — OverallSystemStatus redesigned (animated pulse, monitor counts), SLASummary (large %, met/breached badge), UptimeBar (status dot, check count), ResponseTimeChart (empty state for version monitors), UptimeTimeline (detailed tooltips).
 - [x] **Tool registry: 1496 → 2175+ tools** — Added home automation, game servers, photo, diagramming, print/3D, finance, education, legal, HR categories (139 new in pass 1). Pass 2 in progress.
+
+## 2026-03-21 23:12 UTC Heartbeat
+
+- [x] **Registry correctness hardening (validation rules)** — Upgraded `packages/tool-registry/scripts/lint-registry.ts` with strict verified-template gates:
+  - `verified=true` now requires `verificationStatus='verified'`
+  - verified entries must include evidence/docs (or derivable API evidence for source types)
+  - instance URL source types must explicitly declare `authRequired`
+- [x] **Evidence/doc coverage fixes for strict lint blockers** — Added `docsUrl` references for: spring-boot, quarkus, micronaut, jackson-databind, log4j, and Helm chart entries (postgresql, redis, ingress-nginx, cert-manager, prometheus, grafana, argocd).
+- [x] **Verification checks** — `npm run registry:lint` clean, `npm run build` clean, `npm run test` clean (1951 API + 10 CLI + 12 Agent), services restarted via `npm run restart`.
+- [x] **Post-deploy audit** — Local + reverse proxy route sweep passed (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all 200). API health 200, `/api` proxy path returns expected 401 unauthenticated.

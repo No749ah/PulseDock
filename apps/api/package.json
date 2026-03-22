@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/api",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development node --env-file=../../.env -e \"require('ts-node/register/transpile-only'); require('./src/main.ts');\"",
@@ -28,6 +28,7 @@
     "class-validator": "0.14.4",
     "cookie-parser": "^1.4.7",
     "helmet": "^8.1.0",
+    "ioredis": "^5.10.1",
     "nodemailer": "^8.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

@@ -162,4 +162,90 @@ describe('OnCallService', () => {
       expect.objectContaining({ where: { userId: OWNER_ID } }),
     );
   });
+
+  // ─── updateSchedule ───────────────────────────────────────────────────────
+
+  it('should update a schedule', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const updated = { ...mockSchedule, name: 'New Name' };
+    mockPrisma.onCallSchedule.update.mockResolvedValue(updated);
+    const result = await service.updateSchedule(OWNER_ID, 'sched-1', { name: 'New Name' });
+    expect(result.name).toBe('New Name');
+    expect(mockPrisma.onCallSchedule.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'sched-1' } }),
+    );
+  });
+
+  // ─── addParticipant / removeParticipant ───────────────────────────────────
+
+  it('should add a participant to a schedule', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const participant = { id: 'p-3', scheduleId: 'sched-1', userId: 'carol', order: 2, createdAt: new Date() };
+    mockPrisma.onCallParticipant.upsert.mockResolvedValue(participant);
+    const result = await service.addParticipant(OWNER_ID, 'sched-1', { userId: 'carol', order: 2 });
+    expect(result).toEqual(participant);
+    expect(mockPrisma.onCallParticipant.upsert).toHaveBeenCalled();
+  });
+
+  it('should remove a participant from a schedule', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const participant = { id: 'p-1', scheduleId: 'sched-1', userId: 'alice', order: 0, createdAt: new Date() };
+    mockPrisma.onCallParticipant.findUnique.mockResolvedValue(participant);
+    mockPrisma.onCallParticipant.delete.mockResolvedValue(participant);
+    await service.removeParticipant(OWNER_ID, 'sched-1', 'p-1');
+    expect(mockPrisma.onCallParticipant.delete).toHaveBeenCalledWith({ where: { id: 'p-1' } });
+  });
+
+  it('should throw NotFoundException when removing non-existent participant', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    mockPrisma.onCallParticipant.findUnique.mockResolvedValue(null);
+    await expect(service.removeParticipant(OWNER_ID, 'sched-1', 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('should throw NotFoundException when participant belongs to different schedule', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const participant = { id: 'p-9', scheduleId: 'other-sched', userId: 'alice', order: 0, createdAt: new Date() };
+    mockPrisma.onCallParticipant.findUnique.mockResolvedValue(participant);
+    await expect(service.removeParticipant(OWNER_ID, 'sched-1', 'p-9')).rejects.toThrow(NotFoundException);
+  });
+
+  // ─── getScheduleWithCurrentOnCall ─────────────────────────────────────────
+
+  it('should return schedule with current on-call participant', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const result = await service.getScheduleWithCurrentOnCall(OWNER_ID, 'sched-1');
+    expect(result).toHaveProperty('currentOnCall');
+    expect(result.id).toBe('sched-1');
+  });
+
+  // ─── updatePolicy / deletePolicy ─────────────────────────────────────────
+
+  it('should update an escalation policy', async () => {
+    mockPrisma.escalationPolicy.findUnique.mockResolvedValue(mockPolicy);
+    const updated = { ...mockPolicy, name: 'Updated Policy', escalateAfterMin: 30 };
+    mockPrisma.escalationPolicy.update.mockResolvedValue(updated);
+    const result = await service.updatePolicy(OWNER_ID, 'policy-1', { name: 'Updated Policy', escalateAfterMin: 30 });
+    expect(result.name).toBe('Updated Policy');
+    expect(result.escalateAfterMin).toBe(30);
+    expect(mockPrisma.escalationPolicy.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'policy-1' } }),
+    );
+  });
+
+  it('should delete an escalation policy', async () => {
+    mockPrisma.escalationPolicy.findUnique.mockResolvedValue(mockPolicy);
+    mockPrisma.escalationPolicy.delete.mockResolvedValue(mockPolicy);
+    await service.deletePolicy(OWNER_ID, 'policy-1');
+    expect(mockPrisma.escalationPolicy.delete).toHaveBeenCalledWith({ where: { id: 'policy-1' } });
+  });
+
+  it('should create policy with steps', async () => {
+    const policyWithSteps = { ...mockPolicy, steps: [{ id: 's-1', stepOrder: 1, waitMinutes: 5, notifyEmail: 'admin@test.com' }] };
+    mockPrisma.escalationPolicy.create.mockResolvedValue(policyWithSteps);
+    const result = await service.createPolicy(OWNER_ID, {
+      name: 'Policy With Steps',
+      steps: [{ stepOrder: 1, waitMinutes: 5, notifyEmail: 'admin@test.com' }],
+    });
+    expect(result.steps).toHaveLength(1);
+  });
 });

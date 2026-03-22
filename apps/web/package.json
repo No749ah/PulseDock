@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/web",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development next dev -H 0.0.0.0 -p ${WEB_PORT:-1234}",

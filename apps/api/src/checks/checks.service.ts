@@ -23,7 +23,7 @@ import { statusCodePlugin } from './plugins/status-code.plugin';
 import { headerAssertionPlugin } from './plugins/header-assertion.plugin';
 import { redirectCheckPlugin } from './plugins/redirect-check.plugin';
 import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
-import { runExtractorPipeline, normalizeExtractors, extractByPath } from './version-extractor.util';
+import { runExtractorPipeline, normalizeExtractors, extractByPath, extractVersionWithFallback } from './version-extractor.util';
 
 @Injectable()
 export class ChecksService {
@@ -452,9 +452,8 @@ export class ChecksService {
           config.jsonPath as string | undefined,
           Array.isArray(config.jsonPathExtractors) ? (config.jsonPathExtractors as string[]) : undefined,
         );
-        const detected = extractors.length > 0
-          ? (runExtractorPipeline(body, extractors) ?? this.extractVersion(body))
-          : this.extractVersion(body);
+        // Use full fallback pipeline: configured extractors → heuristic field scan → legacy extractVersion
+        const detected = extractVersionWithFallback(body, extractors) ?? this.extractVersion(body);
         if (detected) return detected;
       } catch {
         continue;
@@ -1620,10 +1619,42 @@ export class ChecksService {
       failureStreak: consecutiveFailures,
     };
 
+    // Dependency suppression: if any monitor this monitor depends on is currently down,
+    // suppress failure alerts to avoid noise cascade (e.g. app alerts suppressed when DB is down).
+    // Recoveries are always sent regardless of dependencies.
+    let dependencySuppressed = false;
+    if (isCurrentUnhealthy && (shouldAlertFailure || consecutiveFailures >= confirmations)) {
+      try {
+        const deps = await this.prisma.monitorDependency.findMany({
+          where: { monitorId: monitor.id },
+          select: { dependsOnId: true },
+        });
+        if (deps.length > 0) {
+          const depIds = deps.map((d) => d.dependsOnId);
+          const latestRuns = await this.prisma.monitorRun.findMany({
+            where: { monitorId: { in: depIds } },
+            orderBy: { checkedAt: 'desc' },
+            distinct: ['monitorId'],
+            select: { monitorId: true, level: true },
+          });
+          const anyDepDown = latestRuns.some((r) => r.level === 'red' || r.level === 'yellow');
+          if (anyDepDown) {
+            dependencySuppressed = true;
+            this.logger.warn(
+              `[ChecksService] Suppressed alerts for monitor ${monitor.id} — dependency is down (dep IDs: ${depIds.join(', ')})`,
+            );
+          }
+        }
+      } catch (err) {
+        // Non-fatal: if dependency check fails, proceed with alerting normally
+        this.logger.warn(`[ChecksService] Dependency suppression check failed for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     // Call notifyMonitorFailure for every unhealthy run (after confirmation threshold)
     // AND for recoveries. The alerts service's notifyOn filter decides per-channel
     // whether to actually dispatch (ON_CHANGE, ALWAYS, FIRST_ONLY, DAILY_DIGEST, etc.)
-    if (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations)) {
+    if (!dependencySuppressed && (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations))) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     } else if (isRecovery) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);

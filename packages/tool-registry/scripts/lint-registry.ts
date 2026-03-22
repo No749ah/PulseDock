@@ -49,6 +49,47 @@ interface LintError {
   severity: "error" | "warning";
 }
 
+function deriveEvidenceUrl(source: ToolRegistryEntry['versionSource'] | ToolRegistryEntry['latestSource'] | undefined): string | null {
+  if (!source) return null;
+
+  switch (source.type) {
+    case 'github-releases': {
+      return source.target ? `https://api.github.com/repos/${source.target}/releases/latest` : null;
+    }
+    case 'github-tags': {
+      return source.target ? `https://api.github.com/repos/${source.target}/tags` : null;
+    }
+    case 'gitlab-releases': {
+      if (!source.target) return null;
+      const host = source.host ?? 'gitlab.com';
+      return `https://${host}/api/v4/projects/${encodeURIComponent(source.target)}/releases`;
+    }
+    case 'docker-hub': {
+      return source.target ? `https://hub.docker.com/v2/repositories/${source.target}/tags?page_size=1&page=1` : null;
+    }
+    case 'npm-registry': {
+      return source.target ? `https://registry.npmjs.org/${source.target}/latest` : null;
+    }
+    case 'pypi': {
+      return source.target ? `https://pypi.org/pypi/${source.target}/json` : null;
+    }
+    case 'cargo': {
+      return source.target ? `https://crates.io/api/v1/crates/${source.target}` : null;
+    }
+    default:
+      return null;
+  }
+}
+
+function hasEvidenceReference(entry: ToolRegistryEntry): boolean {
+  return Boolean(
+    entry.docsUrl ||
+    entry.evidenceUrl ||
+    deriveEvidenceUrl(entry.versionSource) ||
+    deriveEvidenceUrl(entry.latestSource),
+  );
+}
+
 function lintRegistry(entries: ToolRegistryEntry[]): LintError[] {
   const errors: LintError[] = [];
   const seenIds = new Map<string, number>();
@@ -137,9 +178,36 @@ function lintRegistry(entries: ToolRegistryEntry[]): LintError[] {
       errors.push({ id, field: "id", severity: "warning", message: `ID "${entry.id}" is not kebab-case` });
     }
 
-    // Evidence URL check for verified entries
-    if (entry.verified && entry.verificationStatus === 'verified' && !entry.evidenceUrl && !entry.docsUrl) {
-      errors.push({ id, field: "evidenceUrl", severity: "warning", message: "Verified entry missing evidenceUrl or docsUrl — add reference to endpoint documentation" });
+    // Strict validation for verified templates
+    if (entry.verified && entry.verificationStatus !== 'verified') {
+      errors.push({
+        id,
+        field: 'verificationStatus',
+        severity: 'error',
+        message: 'verified=true requires verificationStatus="verified"',
+      });
+    }
+
+    if (entry.verificationStatus === 'verified' && !hasEvidenceReference(entry)) {
+      errors.push({
+        id,
+        field: 'evidenceUrl',
+        severity: 'error',
+        message: 'Verified entry missing evidence reference (docsUrl/evidenceUrl/derivable API endpoint)',
+      });
+    }
+
+    const sourceNeedsAuthFlag =
+      entry.requiresInstanceUrl &&
+      ['json-path', 'html-scrape', 'custom-endpoint'].includes(entry.versionSource?.type ?? '');
+
+    if (sourceNeedsAuthFlag && typeof entry.versionSource?.authRequired !== 'boolean') {
+      errors.push({
+        id,
+        field: 'versionSource.authRequired',
+        severity: 'error',
+        message: 'Instance-based versionSource requires explicit authRequired boolean',
+      });
     }
 
     // Variant validation
@@ -177,6 +245,9 @@ function printStats() {
   const withStatus = TOOL_REGISTRY.filter((e) => e.verificationStatus).length;
   const withLastVerified = TOOL_REGISTRY.filter((e) => e.lastVerifiedAt).length;
   const withEvidence = TOOL_REGISTRY.filter((e) => e.evidenceUrl).length;
+  const withDocsOrEvidence = TOOL_REGISTRY.filter((e) => e.docsUrl ?? e.evidenceUrl).length;
+  const withEvidenceRef = TOOL_REGISTRY.filter((e) => hasEvidenceReference(e)).length;
+  const verifiedWithoutEvidenceRef = TOOL_REGISTRY.filter((e) => e.verified && !hasEvidenceReference(e)).length;
 
   // TOOL_VARIANTS coverage (variants stored separately from registry entries)
   const variantToolIds = new Set(Object.keys(TOOL_VARIANTS));
@@ -192,6 +263,9 @@ function printStats() {
   console.log(`  verificationStatus:    ${withStatus} / ${TOOL_REGISTRY.length}`);
   console.log(`  lastVerifiedAt:        ${withLastVerified} / ${TOOL_REGISTRY.length}`);
   console.log(`  evidenceUrl:           ${withEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  docsUrl or evidenceUrl:${withDocsOrEvidence} / ${TOOL_REGISTRY.length}`);
+  console.log(`  evidence refs (effective): ${withEvidenceRef} / ${TOOL_REGISTRY.length}`);
+  console.log(`  verified without evidence ref: ${verifiedWithoutEvidenceRef} (target: 0)`);
   console.log(`  inline variants:       ${withInlineVariants} / ${TOOL_REGISTRY.length}`);
 
   console.log(`\nVariant coverage (TOOL_VARIANTS map):`);

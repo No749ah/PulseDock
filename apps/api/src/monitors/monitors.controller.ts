@@ -133,6 +133,29 @@ export class MonitorsController {
     return this.monitorsService.getRecentRuns(req.user.id, Number(limit) || 10, sinceDate);
   }
 
+  @Get(':id/health-score')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get monitor health score (0-100)',
+    description: 'Returns a composite health score (0–100) and letter grade (A–F) for a monitor, based on uptime, latency trend, SLA compliance, and incident-free streak.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Health score returned.',
+    schema: {
+      example: {
+        score: 87,
+        grade: 'A',
+        breakdown: { uptime: 40, latency: 18, sla: 20, streak: 9 },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  healthScore(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getHealthScore(req.user.id, id);
+  }
+
   @Get(':id/runs')
   @ApiOperation({ summary: 'Check run history for a monitor' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
@@ -179,11 +202,51 @@ export class MonitorsController {
     return this.monitorsService.monitorUptime(req.user.id, id, safePeriod);
   }
 
+  @Get(':id/chart')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Chart data for a monitor',
+    description: 'Returns time-bucketed latency and uptime data for charting. Granularity auto-scales: 1d=5min, 7d=1h, 30d=6h, 90d=1d buckets.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', required: false, enum: ['1d', '7d', '30d', '90d'], description: 'Time window (default: 7d)' })
+  @ApiResponse({ status: 200, description: 'Chart buckets returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  monitorChart(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period', new DefaultValuePipe('7d')) period: string,
+  ) {
+    const validPeriods = ['1d', '7d', '30d', '90d'] as const;
+    const safePeriod = validPeriods.includes(period as '1d' | '7d' | '30d' | '90d') ? (period as '1d' | '7d' | '30d' | '90d') : '7d';
+    return this.monitorsService.monitorChart(req.user.id, id, safePeriod);
+  }
+
   @Get('version-summary')
   @ApiOperation({ summary: 'Version check summary', description: 'Returns aggregate stats and per-monitor version status (green/yellow/red).' })
   @ApiResponse({ status: 200, description: 'Version summary returned.' })
   versionSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.versionSummary(req.user.id);
+  }
+
+  @Get('health-summary')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Health score summary for all monitors',
+    description: 'Returns composite health scores (0–100) and grade (A–F) for all monitors, plus an overall aggregate.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Health summary returned.',
+    schema: {
+      example: {
+        scores: [{ monitorId: 'abc', name: 'My API', score: 87, grade: 'A' }],
+        overall: { avg: 82.3, a: 5, b: 3, c: 1, d: 0, f: 0 },
+      },
+    },
+  })
+  healthSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getHealthSummary(req.user.id);
   }
 
   @Get('export')

@@ -31,11 +31,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/docker`,
     description: 'Container runtime platform',
     homepage: 'https://docker.com',
+    docsUrl: 'https://docs.docker.com/engine/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/version', jsonPath: '$.Version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'moby/moby' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kubernetes',
@@ -46,11 +49,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/kubernetes`,
     description: 'Container orchestration system',
     homepage: 'https://kubernetes.io',
+    docsUrl: 'https://kubernetes.io/docs/reference/using-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/version', jsonPath: '$.gitVersion', authRequired: false },
     latestSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'k3s',
@@ -60,11 +66,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/k3s`,
     description: 'Lightweight Kubernetes distribution',
     homepage: 'https://k3s.io',
+    docsUrl: 'https://docs.k3s.io/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/version', jsonPath: '$.gitVersion', authRequired: false },
     latestSource: { type: 'github-releases', target: 'k3s-io/k3s' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rancher',
@@ -74,11 +83,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/rancher`,
     description: 'Kubernetes management platform',
     homepage: 'https://rancher.com',
+    docsUrl: 'https://ranchermanager.docs.rancher.com/reference-guides/rancher-manager-architecture/architecture-recommendations',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v3/settings/server-version', jsonPath: '$.value', authRequired: true },
     latestSource: { type: 'github-releases', target: 'rancher/rancher' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'podman',
@@ -88,11 +100,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/podman`,
     description: 'Daemonless container engine',
     homepage: 'https://podman.io',
+    docsUrl: 'https://docs.podman.io/en/latest/',
     versionSource: { type: 'github-releases', target: 'containers/podman' },
     latestSource: { type: 'github-releases', target: 'containers/podman' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nomad',
@@ -102,11 +117,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/hashicorp`,
     description: 'Flexible workload orchestrator by HashiCorp',
     homepage: 'https://www.nomadproject.io',
+    docsUrl: 'https://developer.hashicorp.com/nomad/api-docs',
     versionSource: { type: 'github-releases', target: 'hashicorp/nomad' },
     latestSource: { type: 'github-releases', target: 'hashicorp/nomad' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'k0s',
@@ -116,11 +134,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/kubernetes`,
     description: 'Zero-friction Kubernetes distribution',
     homepage: 'https://k0sproject.io',
+    docsUrl: 'https://docs.k0sproject.io/',
     versionSource: { type: 'github-releases', target: 'k0sproject/k0s' },
     latestSource: { type: 'github-releases', target: 'k0sproject/k0s' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fleet',
@@ -135,6 +156,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'okd',
@@ -149,6 +172,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitlab-ce',
@@ -159,12 +184,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/gitlab`,
     description: 'Open-source DevOps platform',
     homepage: 'https://gitlab.com',
+    docsUrl: 'https://docs.gitlab.com/ee/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v4/version', jsonPath: '$.version', authRequired: true },
     latestSource: { type: 'gitlab-releases', target: 'gitlab-org/gitlab-foss', host: 'gitlab.com' },
-    docsUrl: 'https://docs.gitlab.com/ce/api/version.html',
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitea',
@@ -192,11 +219,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/forgejo`,
     description: 'Community-maintained Gitea fork',
     homepage: 'https://forgejo.org',
+    docsUrl: 'https://forgejo.org/docs/latest/developer/api-documentation/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/settings/api', jsonPath: '$.version', jsonPathExtractors: ['version'], authRequired: false, endpointFallbacks: ['/api/v1/settings/api', '/api/v1/version'] },
     latestSource: { type: 'github-releases', target: 'forgejo/forgejo' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jenkins',
@@ -207,11 +237,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/jenkins`,
     description: 'Open-source automation server',
     homepage: 'https://jenkins.io',
+    docsUrl: 'https://gitea.com/api/swagger',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/json?tree=numExecutors', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'jenkinsci/jenkins' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'argocd',
@@ -239,11 +272,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/go`,
     description: 'Simple CI engine with great UX',
     homepage: 'https://woodpecker-ci.org',
+    docsUrl: 'https://www.jenkins.io/doc/book/using/remote-access-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/info', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'woodpecker-ci/woodpecker' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'drone-ci',
@@ -253,11 +289,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/drone`,
     description: 'Container-native CI/CD platform',
     homepage: 'https://drone.io',
+    docsUrl: 'https://argo-cd.readthedocs.io/en/stable/developer-guide/api-docs/',
     versionSource: { type: 'github-releases', target: 'harness/drone' },
     latestSource: { type: 'github-releases', target: 'harness/drone' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gocd',
@@ -267,11 +306,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/gocd`,
     description: 'Open source continuous delivery server',
     homepage: 'https://www.gocd.org',
+    docsUrl: 'https://woodpecker-ci.org/docs/next/api',
     versionSource: { type: 'github-releases', target: 'gocd/gocd' },
     latestSource: { type: 'github-releases', target: 'gocd/gocd' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gogs',
@@ -281,11 +323,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/go`,
     description: 'Painless self-hosted Git service',
     homepage: 'https://gogs.io',
+    docsUrl: 'https://docs.drone.io/api/overview/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'gogs/gogs' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tekton',
@@ -295,11 +340,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/tekton`,
     description: 'Kubernetes-native CI/CD pipeline framework',
     homepage: 'https://tekton.dev',
+    docsUrl: 'https://api.gocd.org/',
     versionSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
     latestSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fluxcd',
@@ -309,11 +357,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/flux`,
     description: 'GitOps tool for keeping Kubernetes clusters in sync',
     homepage: 'https://fluxcd.io',
+    docsUrl: 'https://gogs.io/docs',
     versionSource: { type: 'github-releases', target: 'fluxcd/flux2' },
     latestSource: { type: 'github-releases', target: 'fluxcd/flux2' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'teamcity',
@@ -323,11 +374,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/teamcity`,
     description: 'Powerful CI/CD tool by JetBrains',
     homepage: 'https://jetbrains.com/teamcity',
+    docsUrl: 'https://fluxcd.io/flux/api/',
     versionSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
     latestSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'concourse-ci',
@@ -337,11 +391,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/concourse`,
     description: 'Open-source continuous integration tool',
     homepage: 'https://concourse-ci.org',
+    docsUrl: 'https://concourse-ci.org/docs.html',
     versionSource: { type: 'github-releases', target: 'concourse/concourse' },
     latestSource: { type: 'github-releases', target: 'concourse/concourse' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'postgresql',
@@ -370,11 +427,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/mysql`,
     description: "World's most popular open-source database",
     homepage: 'https://mysql.com',
+    docsUrl: 'https://www.postgresql.org/docs/current/',
     versionSource: { type: 'apt-release', target: 'mysql-server' },
     latestSource: { type: 'github-releases', target: 'mysql/mysql-server' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mariadb',
@@ -385,11 +445,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/mariadb`,
     description: 'Community-developed MySQL fork',
     homepage: 'https://mariadb.org',
+    docsUrl: 'https://dev.mysql.com/doc/',
     versionSource: { type: 'apt-release', target: 'mariadb-server' },
     latestSource: { type: 'github-releases', target: 'MariaDB/server' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'redis',
@@ -418,11 +481,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/mongodb`,
     description: 'Document-oriented NoSQL database',
     homepage: 'https://mongodb.com',
+    docsUrl: 'https://mariadb.com/docs/',
     versionSource: { type: 'apt-release', target: 'mongodb' },
     latestSource: { type: 'github-releases', target: 'mongodb/mongo' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'elasticsearch',
@@ -433,11 +499,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/elasticsearch`,
     description: 'Distributed search and analytics engine',
     homepage: 'https://elastic.co',
+    docsUrl: 'https://redis.io/docs/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/', jsonPath: '$.version.number', authRequired: false },
     latestSource: { type: 'github-releases', target: 'elastic/elasticsearch' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'meilisearch',
@@ -447,11 +516,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/meilisearch`,
     description: 'Fast, open-source search engine',
     homepage: 'https://meilisearch.com',
+    docsUrl: 'https://www.mongodb.com/docs/manual/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/version', jsonPath: '$.pkgVersion', authRequired: false },
     latestSource: { type: 'github-releases', target: 'meilisearch/meilisearch' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'influxdb',
@@ -462,11 +534,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/influxdb`,
     description: 'Purpose-built time series database',
     homepage: 'https://influxdata.com',
+    docsUrl: 'https://www.elastic.co/guide/en/elasticsearch/reference/current/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'influxdata/influxdb' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'clickhouse',
@@ -476,11 +551,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/clickhouse`,
     description: 'Fast open-source OLAP database',
     homepage: 'https://clickhouse.com',
+    docsUrl: 'https://www.meilisearch.com/docs/reference/api/overview',
     versionSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
     latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'duckdb',
@@ -490,11 +568,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/duckdb`,
     description: 'In-process SQL OLAP database',
     homepage: 'https://duckdb.org',
+    docsUrl: 'https://docs.influxdata.com/influxdb/v2/api/',
     versionSource: { type: 'github-releases', target: 'duckdb/duckdb' },
     latestSource: { type: 'github-releases', target: 'duckdb/duckdb' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'typesense',
@@ -504,11 +585,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/elasticsearch`,
     description: 'Fast, typo-tolerant open source search engine',
     homepage: 'https://typesense.org',
+    docsUrl: 'https://clickhouse.com/docs/en/interfaces/http/',
     versionSource: { type: 'github-releases', target: 'typesense/typesense' },
     latestSource: { type: 'github-releases', target: 'typesense/typesense' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'surrealdb',
@@ -518,11 +602,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/surrealdb`,
     description: 'Multi-model cloud-native database',
     homepage: 'https://surrealdb.com',
+    docsUrl: 'https://typesense.org/docs/guide/',
     versionSource: { type: 'github-releases', target: 'surrealdb/surrealdb' },
     latestSource: { type: 'github-releases', target: 'surrealdb/surrealdb' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'valkey',
@@ -532,11 +619,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/redis`,
     description: 'Open-source Redis-compatible in-memory data store',
     homepage: 'https://valkey.io',
+    docsUrl: 'https://surrealdb.com/docs/surrealdb/integration/http',
     versionSource: { type: 'github-releases', target: 'valkey-io/valkey' },
     latestSource: { type: 'github-releases', target: 'valkey-io/valkey' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'timescaledb',
@@ -546,11 +636,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/timescale`,
     description: 'Time-series SQL database built on PostgreSQL',
     homepage: 'https://timescale.com',
+    docsUrl: 'https://docs.timescale.com/',
     versionSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
     latestSource: { type: 'github-releases', target: 'timescale/timescaledb' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cockroachdb',
@@ -560,11 +653,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/cockroachlabs`,
     description: 'Distributed SQL database built for cloud survival',
     homepage: 'https://cockroachlabs.com',
+    docsUrl: 'https://www.cockroachlabs.com/docs/stable/api/',
     versionSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
     latestSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cassandra',
@@ -579,6 +675,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opensearch',
@@ -588,11 +686,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/opensearch`,
     description: 'Open-source search and analytics suite',
     homepage: 'https://opensearch.org',
+    docsUrl: 'https://opensearch.org/docs/latest/api-reference/',
     versionSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
     latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'keydb',
@@ -607,6 +708,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'grafana',
@@ -671,11 +774,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/netdata`,
     description: 'Real-time performance monitoring',
     homepage: 'https://netdata.cloud',
+    docsUrl: 'https://grafana.com/docs/grafana/latest/developers/http_api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'netdata/netdata' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'victoriametrics',
@@ -685,11 +791,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/victoriametrics`,
     description: 'Fast, cost-effective monitoring solution',
     homepage: 'https://victoriametrics.com',
+    docsUrl: 'https://prometheus.io/docs/prometheus/latest/querying/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/metrics', jsonPath: '$.vm_app_version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'VictoriaMetrics/VictoriaMetrics' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'alertmanager',
@@ -699,11 +808,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/prometheus`,
     description: 'Prometheus alert routing and notification system',
     homepage: 'https://prometheus.io/docs/alerting/alertmanager/',
+    docsUrl: 'https://github.com/louislam/uptime-kuma/wiki/API-Keys',
     versionSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
     latestSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'loki',
@@ -732,11 +844,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/jaeger`,
     description: 'Open source distributed tracing platform',
     homepage: 'https://www.jaegertracing.io',
+    docsUrl: 'https://learn.netdata.cloud/docs/agent/web/api',
     versionSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
     latestSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opentelemetry-collector',
@@ -746,11 +861,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/opentelemetry`,
     description: 'Vendor-agnostic telemetry data collection',
     homepage: 'https://opentelemetry.io/docs/collector/',
+    docsUrl: 'https://docs.victoriametrics.com/victoriametrics/url-examples/',
     versionSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
     latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tempo',
@@ -760,11 +878,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/grafana`,
     description: 'High scale, cost-efficient distributed tracing backend',
     homepage: 'https://grafana.com/oss/tempo',
+    docsUrl: 'https://prometheus.io/docs/alerting/latest/clients/',
     versionSource: { type: 'github-releases', target: 'grafana/tempo' },
     latestSource: { type: 'github-releases', target: 'grafana/tempo' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zabbix',
@@ -774,11 +895,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/php`,
     description: 'Enterprise open-source monitoring solution',
     homepage: 'https://zabbix.com',
+    docsUrl: 'https://grafana.com/docs/loki/latest/reference/api/',
     versionSource: { type: 'docker-hub', target: 'zabbix/zabbix-server-pgsql' },
     latestSource: { type: 'github-releases', target: 'zabbix/zabbix' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nagios',
@@ -788,11 +912,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/grafana`,
     description: 'Industry standard in IT infrastructure monitoring',
     homepage: 'https://nagios.org',
+    docsUrl: 'https://www.jaegertracing.io/docs/latest/apis/',
     versionSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
     latestSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'checkmk',
@@ -802,11 +929,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/checkmk`,
     description: 'Comprehensive IT monitoring solution',
     homepage: 'https://checkmk.com',
+    docsUrl: 'https://docs.checkmk.com/latest/en/rest_api.html',
     versionSource: { type: 'github-releases', target: 'tribe29/checkmk' },
     latestSource: { type: 'github-releases', target: 'tribe29/checkmk' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'graylog',
@@ -816,11 +946,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/graylog`,
     description: 'Centralized log management and analysis platform',
     homepage: 'https://graylog.org',
+    docsUrl: 'https://go2docs.graylog.org/5-0/what_is_graylog/what_is_graylog.htm',
     versionSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
     latestSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zipkin',
@@ -830,11 +963,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/opentelemetry`,
     description: 'Distributed tracing system',
     homepage: 'https://zipkin.io',
+    docsUrl: 'https://zipkin.io/zipkin-api/',
     versionSource: { type: 'github-releases', target: 'openzipkin/zipkin' },
     latestSource: { type: 'github-releases', target: 'openzipkin/zipkin' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'keycloak',
@@ -863,12 +999,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/authelia`,
     description: 'Open-source authentication and authorization server',
     homepage: 'https://authelia.com',
+    docsUrl: 'https://www.authelia.com/reference/api/',
     // Version requires auth
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/configuration', jsonPath: '$.version', authRequired: true },
     latestSource: { type: 'github-releases', target: 'authelia/authelia' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'authentik',
@@ -879,12 +1018,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/authentik`,
     description: 'Open-source identity provider',
     homepage: 'https://goauthentik.io',
+    docsUrl: 'https://docs.goauthentik.io/developer-docs/api/reference/admin/',
     // Version requires auth
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/-/api/v3/admin/version/', jsonPath: '$.version_current', authRequired: true },
     latestSource: { type: 'github-releases', target: 'goauthentik/authentik' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vault',
@@ -912,11 +1054,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/vaultwarden`,
     description: 'Unofficial Bitwarden-compatible server',
     homepage: 'https://github.com/dani-garcia/vaultwarden',
+    docsUrl: 'https://developer.hashicorp.com/vault/api-docs',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/config', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'dani-garcia/vaultwarden' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'crowdsec',
@@ -926,11 +1071,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/go`,
     description: 'Collaborative cybersecurity platform',
     homepage: 'https://crowdsec.net',
+    docsUrl: 'https://github.com/dani-garcia/vaultwarden/wiki',
     versionSource: { type: 'github-releases', target: 'crowdsecurity/crowdsec' },
     latestSource: { type: 'github-releases', target: 'crowdsecurity/crowdsec' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'wazuh',
@@ -940,11 +1088,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/linux`,
     description: 'Open source security platform and SIEM',
     homepage: 'https://wazuh.com',
+    docsUrl: 'https://www.keycloak.org/docs/latest/server_admin/',
     versionSource: { type: 'github-releases', target: 'wazuh/wazuh' },
     latestSource: { type: 'github-releases', target: 'wazuh/wazuh' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'trivy',
@@ -954,11 +1105,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/aqua`,
     description: 'Comprehensive security scanner for containers and more',
     homepage: 'https://aquasecurity.github.io/trivy/',
+    docsUrl: 'https://aquasecurity.github.io/trivy/latest/',
     versionSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
     latestSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bitwarden',
@@ -973,6 +1127,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'passbolt',
@@ -987,6 +1143,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fail2ban',
@@ -1001,6 +1159,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'falco',
@@ -1010,11 +1170,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/falco`,
     description: 'Cloud-native runtime security and threat detection',
     homepage: 'https://falco.org',
+    docsUrl: 'https://falco.org/docs/',
     versionSource: { type: 'github-releases', target: 'falcosecurity/falco' },
     latestSource: { type: 'github-releases', target: 'falcosecurity/falco' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openvas',
@@ -1029,6 +1192,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nginx',
@@ -1056,11 +1221,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/nginxproxymanager`,
     description: 'Docker-based reverse proxy with GUI',
     homepage: 'https://nginxproxymanager.com',
+    docsUrl: 'https://github.com/NginxProxyManager/nginx-proxy-manager/wiki',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'NginxProxyManager/nginx-proxy-manager' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'traefik',
@@ -1088,11 +1256,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/caddy`,
     description: 'Automatic HTTPS web server',
     homepage: 'https://caddyserver.com',
+    docsUrl: 'https://caddyserver.com/docs/api',
     versionSource: { type: 'apt-release', target: 'caddy' },
     latestSource: { type: 'github-releases', target: 'caddyserver/caddy' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pihole',
@@ -1138,11 +1309,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/tailscale`,
     description: 'Zero config VPN built on WireGuard',
     homepage: 'https://tailscale.com',
+    docsUrl: 'https://github.com/AdguardTeam/AdGuardHome/wiki/Getting-Started',
     versionSource: { type: 'apt-release', target: 'tailscale' },
     latestSource: { type: 'github-releases', target: 'tailscale/tailscale' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'haproxy',
@@ -1152,11 +1326,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/nginx`,
     description: 'High-performance TCP/HTTP load balancer',
     homepage: 'https://www.haproxy.org',
+    docsUrl: 'https://doc.traefik.io/traefik/operations/api/',
     versionSource: { type: 'github-releases', target: 'haproxy/haproxy' },
     latestSource: { type: 'github-releases', target: 'haproxy/haproxy' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pi-hole',
@@ -1166,11 +1343,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/pihole`,
     description: 'Network-wide ad blocking via DNS',
     homepage: 'https://pi-hole.net',
+    docsUrl: 'https://ftl.pi-hole.net/master/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/info/version', jsonPath: '$.core.local.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'pi-hole/pi-hole' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'envoy',
@@ -1180,11 +1360,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/envoyproxy`,
     description: 'Cloud-native high-performance edge/service proxy',
     homepage: 'https://envoyproxy.io',
+    docsUrl: 'https://caddyserver.com/docs/api',
     versionSource: { type: 'github-releases', target: 'envoyproxy/envoy' },
     latestSource: { type: 'github-releases', target: 'envoyproxy/envoy' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'istio',
@@ -1194,11 +1377,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/istio`,
     description: 'Open source service mesh for cloud-native apps',
     homepage: 'https://istio.io',
+    docsUrl: 'https://tailscale.com/kb/1101/api',
     versionSource: { type: 'github-releases', target: 'istio/istio' },
     latestSource: { type: 'github-releases', target: 'istio/istio' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'linkerd',
@@ -1213,6 +1399,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'wireguard',
@@ -1223,11 +1411,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/wireguard`,
     description: 'Modern, fast, and secure VPN tunnel',
     homepage: 'https://wireguard.com',
+    docsUrl: 'https://www.wireguard.com/',
     versionSource: { type: 'github-releases', target: 'WireGuard/wireguard-linux' },
     latestSource: { type: 'github-releases', target: 'WireGuard/wireguard-linux' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'netbird',
@@ -1242,6 +1433,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'minio',
@@ -1288,11 +1481,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/syncthing`,
     description: 'Continuous file synchronization',
     homepage: 'https://syncthing.net',
+    docsUrl: 'https://min.io/docs/minio/linux/reference/minio-mc-admin.html',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/rest/system/version', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'syncthing/syncthing' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'seafile',
@@ -1302,11 +1498,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/seafile`,
     description: 'High-performance file hosting and sync platform',
     homepage: 'https://seafile.com',
+    docsUrl: 'https://docs.nextcloud.com/server/latest/developer_manual/client_apis/OCS/',
     versionSource: { type: 'github-releases', target: 'haiwen/seafile' },
     latestSource: { type: 'github-releases', target: 'haiwen/seafile' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'truenas-scale',
@@ -1321,6 +1520,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openmediavault',
@@ -1335,6 +1536,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'longhorn',
@@ -1344,11 +1547,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/rancher`,
     description: 'Distributed block storage for Kubernetes',
     homepage: 'https://longhorn.io',
+    docsUrl: 'https://longhorn.io/docs/latest/',
     versionSource: { type: 'github-releases', target: 'longhorn/longhorn' },
     latestSource: { type: 'github-releases', target: 'longhorn/longhorn' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rclone',
@@ -1363,6 +1569,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'garage',
@@ -1386,11 +1594,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/wordpress`,
     description: 'Open-source CMS powering 40% of the web',
     homepage: 'https://wordpress.org',
+    docsUrl: 'https://developer.wordpress.org/rest-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/wp-json/', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'WordPress/WordPress' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ghost',
@@ -1400,11 +1611,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/ghost`,
     description: 'Modern publishing platform',
     homepage: 'https://ghost.org',
+    docsUrl: 'https://ghost.org/docs/admin-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/ghost/api/v3/site/', jsonPath: '$.site.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'TryGhost/Ghost' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'strapi',
@@ -1414,11 +1628,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/strapi`,
     description: 'Open-source headless CMS',
     homepage: 'https://strapi.io',
+    docsUrl: 'https://docs.strapi.io/dev-docs/api/rest',
     versionSource: { type: 'npm-registry', target: '@strapi/strapi' },
     latestSource: { type: 'npm-registry', target: '@strapi/strapi' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pocketbase',
@@ -1428,11 +1645,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/pocketbase`,
     description: 'Open-source backend in a single file',
     homepage: 'https://pocketbase.io',
+    docsUrl: 'https://pocketbase.io/docs/api-rules-and-filters/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'pocketbase/pocketbase' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'plausible',
@@ -1442,11 +1662,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/plausibleanalytics`,
     description: 'Privacy-friendly Google Analytics alternative',
     homepage: 'https://plausible.io',
+    docsUrl: 'https://plausible.io/docs/stats-api',
     versionSource: { type: 'github-releases', target: 'plausible/analytics' },
     latestSource: { type: 'github-releases', target: 'plausible/analytics' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'directus',
@@ -1456,11 +1679,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/directus`,
     description: 'Open-source headless CMS & data platform',
     homepage: 'https://directus.io',
+    docsUrl: 'https://docs.directus.io/reference/introduction.html',
     versionSource: { type: 'github-releases', target: 'directus/directus' },
     latestSource: { type: 'github-releases', target: 'directus/directus' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'payload-cms',
@@ -1475,6 +1701,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'umami',
@@ -1484,11 +1712,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/umami`,
     description: 'Simple, fast, privacy-focused web analytics',
     homepage: 'https://umami.is',
+    docsUrl: 'https://umami.is/docs/api',
     versionSource: { type: 'github-releases', target: 'umami-software/umami' },
     latestSource: { type: 'github-releases', target: 'umami-software/umami' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'matomo',
@@ -1498,11 +1729,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/matomo`,
     description: 'Open-source web analytics platform — GDPR compliant',
     homepage: 'https://matomo.org',
+    docsUrl: 'https://developer.matomo.org/api-reference/Matomo-API',
     versionSource: { type: 'github-releases', target: 'matomo-org/matomo' },
     latestSource: { type: 'github-releases', target: 'matomo-org/matomo' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mattermost',
@@ -1512,11 +1746,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/mattermost`,
     description: 'Open-source Slack alternative',
     homepage: 'https://mattermost.com',
+    docsUrl: 'https://api.mattermost.com/#tag/system/operation/GetClientConfig',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v4/config/client?format=old', jsonPath: '$.Version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'mattermost/mattermost' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'matrix-synapse',
@@ -1526,11 +1763,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/matrix`,
     description: 'Decentralised communication server',
     homepage: 'https://matrix.org',
+    docsUrl: 'https://api.mattermost.com/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/_matrix/federation/v1/version', jsonPath: '$.server.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'element-hq/synapse' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rocketchat',
@@ -1540,11 +1780,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/rocket`,
     description: 'Open-source team communication platform',
     homepage: 'https://rocket.chat',
+    docsUrl: 'https://developer.rocket.chat/reference/api/rest-api',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.info.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'RocketChat/Rocket.Chat' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zulip',
@@ -1554,11 +1797,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/zulip`,
     description: 'Organized team chat with topics — open source',
     homepage: 'https://zulip.com',
+    docsUrl: 'https://zulip.com/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/server_settings', jsonPath: '$.zulip_version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'zulip/zulip' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'discourse',
@@ -1568,11 +1814,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/discourse`,
     description: 'Open source discussion platform',
     homepage: 'https://discourse.org',
+    docsUrl: 'https://docs.discourse.org/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/about.json', jsonPath: '$.about.stats.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'discourse/discourse' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'revolt',
@@ -1596,11 +1845,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/element`,
     description: 'Matrix client for secure, decentralized communication',
     homepage: 'https://element.io',
+    docsUrl: 'https://matrix-org.github.io/synapse/latest/',
     versionSource: { type: 'github-releases', target: 'element-hq/element-web' },
     latestSource: { type: 'github-releases', target: 'element-hq/element-web' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jellyfin',
@@ -1646,12 +1898,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/immich`,
     description: 'Self-hosted photo and video backup',
     homepage: 'https://immich.app',
+    docsUrl: 'https://api.jellyfin.org/',
     // Version requires auth
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/server/info', jsonPath: '$.version', authRequired: true },
     latestSource: { type: 'github-releases', target: 'immich-app/immich' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'frigate',
@@ -1661,11 +1916,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/frigate`,
     description: 'NVR with realtime AI object detection',
     homepage: 'https://frigate.video',
+    docsUrl: 'https://immich.app/docs/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'blakeblackshear/frigate' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'navidrome',
@@ -1675,11 +1933,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/musicbrainz`,
     description: 'Modern music server and streamer',
     homepage: 'https://www.navidrome.org',
+    docsUrl: 'https://developers.home-assistant.io/docs/api/rest/',
     versionSource: { type: 'github-releases', target: 'navidrome/navidrome' },
     latestSource: { type: 'github-releases', target: 'navidrome/navidrome' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'photoprism',
@@ -1689,11 +1950,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/googlephotos`,
     description: 'AI-powered photo management solution',
     homepage: 'https://photoprism.app',
+    docsUrl: 'https://docs.photoprism.app/developer-guide/api/',
     versionSource: { type: 'github-releases', target: 'photoprism/photoprism' },
     latestSource: { type: 'github-releases', target: 'photoprism/photoprism' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'plex',
@@ -1703,11 +1967,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/plex`,
     description: 'Organize and stream your personal media collection',
     homepage: 'https://plex.tv',
+    docsUrl: 'https://plexapi.dev/docs/',
     versionSource: { type: 'docker-hub', target: 'plexinc/pms-docker' },
     latestSource: { type: 'docker-hub', target: 'plexinc/pms-docker' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'emby',
@@ -1717,11 +1984,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/emby`,
     description: 'Personal media server with streaming and management',
     homepage: 'https://emby.media',
+    docsUrl: 'https://dev.emby.media/',
     versionSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
     latestSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'owncast',
@@ -1736,6 +2006,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'terraform',
@@ -1750,6 +2022,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opentofu',
@@ -1764,6 +2038,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ansible',
@@ -1778,6 +2054,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pulumi',
@@ -1792,6 +2070,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'packer',
@@ -1806,6 +2086,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'saltstack',
@@ -1820,6 +2102,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'chef',
@@ -1834,6 +2118,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'puppet',
@@ -1848,6 +2134,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rabbitmq',
@@ -1858,11 +2146,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/rabbitmq`,
     description: 'Open-source message broker',
     homepage: 'https://rabbitmq.com',
+    docsUrl: 'https://www.rabbitmq.com/management.html',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/overview', jsonPath: '$.rabbitmq_version', authRequired: true },
     latestSource: { type: 'github-releases', target: 'rabbitmq/rabbitmq-server' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kafka',
@@ -1873,11 +2164,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/apachekafka`,
     description: 'Distributed event streaming platform',
     homepage: 'https://kafka.apache.org',
+    docsUrl: 'https://kafka.apache.org/documentation/',
     versionSource: { type: 'github-releases', target: 'apache/kafka' },
     latestSource: { type: 'github-releases', target: 'apache/kafka' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nats',
@@ -1887,11 +2181,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/natsdotio`,
     description: 'Connective technology for adaptive edge & distributed systems',
     homepage: 'https://nats.io',
+    docsUrl: 'https://docs.nats.io/running-a-nats-service/monitoring',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/varz', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'nats-io/nats-server' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'redpanda',
@@ -1901,11 +2198,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/apachekafka`,
     description: 'Kafka-compatible streaming data platform',
     homepage: 'https://redpanda.com',
+    docsUrl: 'https://docs.redpanda.com/current/reference/public-metrics-reference/',
     versionSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
     latestSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mosquitto',
@@ -1915,11 +2215,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/eclipsemosquitto`,
     description: 'Open source MQTT broker',
     homepage: 'https://mosquitto.org',
+    docsUrl: 'https://mosquitto.org/documentation/',
     versionSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
     latestSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'activemq',
@@ -1934,6 +2237,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'n8n',
@@ -1943,12 +2248,15 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/n8n`,
     description: 'Workflow automation platform',
     homepage: 'https://n8n.io',
+    docsUrl: 'https://docs.n8n.io/api/',
     // Version requires auth
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/rest/settings', jsonPath: '$.versionCli', authRequired: true },
     latestSource: { type: 'npm-registry', target: 'n8n' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'node-red',
@@ -1976,11 +2284,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/supabase`,
     description: 'Open-source Firebase alternative',
     homepage: 'https://supabase.io',
+    docsUrl: 'https://nodered.org/docs/api/admin/',
     versionSource: { type: 'github-releases', target: 'supabase/supabase' },
     latestSource: { type: 'github-releases', target: 'supabase/supabase' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'appwrite',
@@ -1990,11 +2301,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/appwrite`,
     description: 'Open-source backend server',
     homepage: 'https://appwrite.io',
+    docsUrl: 'https://docs.n8n.io/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/health/version', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'appwrite/appwrite' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'windmill',
@@ -2004,11 +2318,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/typescript`,
     description: 'Open-source developer platform for scripts and workflows',
     homepage: 'https://windmill.dev',
+    docsUrl: 'https://www.windmill.dev/docs/misc/share_on_hub',
     versionSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
     latestSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'temporal',
@@ -2018,11 +2335,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/temporal`,
     description: 'Durable execution platform for reliable workflows',
     homepage: 'https://temporal.io',
+    docsUrl: 'https://docs.temporal.io/tctl-v1/workflow',
     versionSource: { type: 'github-releases', target: 'temporalio/temporal' },
     latestSource: { type: 'github-releases', target: 'temporalio/temporal' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'prefect',
@@ -2032,11 +2352,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/prefect`,
     description: 'Modern workflow orchestration platform',
     homepage: 'https://www.prefect.io',
+    docsUrl: 'https://docs.prefect.io/api-ref/',
     versionSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
     latestSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'coder',
@@ -2051,6 +2374,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jupyter',
@@ -2065,6 +2390,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'airflow',
@@ -2074,11 +2401,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/apacheairflow`,
     description: 'Platform to programmatically author, schedule, and monitor workflows',
     homepage: 'https://airflow.apache.org',
+    docsUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html',
     versionSource: { type: 'github-releases', target: 'apache/airflow' },
     latestSource: { type: 'github-releases', target: 'apache/airflow' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nestjs',
@@ -2093,6 +2423,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nextjs',
@@ -2107,6 +2439,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'prisma',
@@ -2121,6 +2455,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'spring-boot',
@@ -2130,11 +2466,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/spring`,
     description: 'Java application framework — tracks latest release on Maven Central',
     homepage: 'https://spring.io/projects/spring-boot',
+    docsUrl: 'https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/',
     versionSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
     latestSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'quarkus',
@@ -2144,11 +2483,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/quarkus`,
     description: 'Kubernetes-native Java framework — tracks latest release on Maven Central',
     homepage: 'https://quarkus.io',
+    docsUrl: 'https://quarkus.io/guides/',
     versionSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
     latestSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'micronaut',
@@ -2158,11 +2500,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/spring`,
     description: 'JVM microservices framework — tracks latest release on Maven Central',
     homepage: 'https://micronaut.io',
+    docsUrl: 'https://docs.micronaut.io/latest/guide/',
     versionSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
     latestSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jackson-databind',
@@ -2172,11 +2517,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/json`,
     description: 'Java JSON data-binding library — tracks latest release on Maven Central',
     homepage: 'https://github.com/FasterXML/jackson-databind',
+    docsUrl: 'https://github.com/FasterXML/jackson-databind',
     versionSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
     latestSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'log4j',
@@ -2186,11 +2534,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/apache`,
     description: 'Apache Log4j 2 logging framework — tracks latest patch releases (security-relevant)',
     homepage: 'https://logging.apache.org/log4j/2.x/',
+    docsUrl: 'https://logging.apache.org/log4j/2.x/manual/index.html',
     versionSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
     latestSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
     checkInterval: 43200,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-postgresql',
@@ -2200,11 +2551,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/postgresql`,
     description: 'Bitnami Helm chart for PostgreSQL — tracks latest chart version on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/bitnami/postgresql',
+    docsUrl: 'https://artifacthub.io/packages/helm/bitnami/postgresql',
     versionSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
     latestSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-redis',
@@ -2214,11 +2568,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/redis`,
     description: 'Bitnami Helm chart for Redis — tracks latest chart version on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/bitnami/redis',
+    docsUrl: 'https://artifacthub.io/packages/helm/bitnami/redis',
     versionSource: { type: 'helm-chart', target: 'bitnami/redis' },
     latestSource: { type: 'helm-chart', target: 'bitnami/redis' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-ingress-nginx',
@@ -2228,11 +2585,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/nginx`,
     description: 'Kubernetes ingress controller Helm chart — tracks latest on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx',
+    docsUrl: 'https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx',
     versionSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
     latestSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-cert-manager',
@@ -2242,11 +2602,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/letsencrypt`,
     description: 'cert-manager Helm chart — tracks latest TLS certificate management chart on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/cert-manager/cert-manager',
+    docsUrl: 'https://artifacthub.io/packages/helm/cert-manager/cert-manager',
     versionSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
     latestSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-prometheus',
@@ -2256,11 +2619,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/prometheus`,
     description: 'Prometheus Helm chart (prometheus-community) — tracks latest on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/prometheus-community/prometheus',
+    docsUrl: 'https://artifacthub.io/packages/helm/prometheus-community/prometheus',
     versionSource: { type: 'helm-chart', target: 'prometheus-community/prometheus' },
     latestSource: { type: 'helm-chart', target: 'prometheus-community/prometheus' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-grafana',
@@ -2270,11 +2636,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/grafana`,
     description: 'Grafana Helm chart (grafana/grafana) — tracks latest on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/grafana/grafana',
+    docsUrl: 'https://artifacthub.io/packages/helm/grafana/grafana',
     versionSource: { type: 'helm-chart', target: 'grafana/grafana' },
     latestSource: { type: 'helm-chart', target: 'grafana/grafana' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm-argocd',
@@ -2284,11 +2653,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/argo`,
     description: 'Argo CD Helm chart — tracks latest GitOps chart version on Artifact Hub',
     homepage: 'https://artifacthub.io/packages/helm/argo/argo-cd',
+    docsUrl: 'https://artifacthub.io/packages/helm/argo/argo-cd',
     versionSource: { type: 'helm-chart', target: 'argo/argo-cd' },
     latestSource: { type: 'helm-chart', target: 'argo/argo-cd' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kong',
@@ -2298,11 +2670,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/kong`,
     description: 'Cloud-native API gateway and service mesh layer',
     homepage: 'https://konghq.com',
+    docsUrl: 'https://docs.konghq.com/gateway/latest/admin-api/',
     versionSource: { type: 'github-releases', target: 'Kong/kong' },
     latestSource: { type: 'github-releases', target: 'Kong/kong' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'apisix',
@@ -2312,11 +2687,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/apache`,
     description: 'Dynamic, real-time, high-performance API gateway',
     homepage: 'https://apisix.apache.org',
+    docsUrl: 'https://apisix.apache.org/docs/apisix/admin-api/',
     versionSource: { type: 'github-releases', target: 'apache/apisix' },
     latestSource: { type: 'github-releases', target: 'apache/apisix' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tyk',
@@ -2326,11 +2704,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/go`,
     description: 'Open source API gateway and management platform',
     homepage: 'https://tyk.io',
+    docsUrl: 'https://tyk.io/docs/tyk-apis/tyk-gateway-api/',
     versionSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
     latestSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'hasura',
@@ -2340,11 +2721,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/hasura`,
     description: 'Instant GraphQL API on your data sources',
     homepage: 'https://hasura.io',
+    docsUrl: 'https://hasura.io/docs/latest/api-reference/overview/',
     versionSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
     latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'postgrest',
@@ -2359,6 +2743,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fastify',
@@ -2373,6 +2759,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'containerd',
@@ -2387,6 +2775,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cri-o',
@@ -2401,6 +2791,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'keda',
@@ -2415,6 +2807,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'flagger',
@@ -2429,6 +2823,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'microk8s',
@@ -2443,6 +2839,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'talos',
@@ -2457,6 +2855,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'crossplane',
@@ -2471,6 +2871,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'argo-workflows',
@@ -2485,6 +2887,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dagger',
@@ -2499,6 +2903,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'earthly',
@@ -2513,6 +2919,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'buildkite-agent',
@@ -2527,6 +2935,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'spinnaker',
@@ -2541,6 +2951,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'actions-runner-controller',
@@ -2555,6 +2967,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitlab-runner',
@@ -2569,6 +2983,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'argo-events',
@@ -2583,6 +2999,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'couchdb',
@@ -2597,6 +3015,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'neo4j',
@@ -2611,6 +3031,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'arangodb',
@@ -2625,6 +3047,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'scylladb',
@@ -2639,6 +3063,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'yugabytedb',
@@ -2653,6 +3079,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tidb',
@@ -2667,6 +3095,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ferretdb',
@@ -2681,6 +3111,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'edgedb',
@@ -2695,6 +3127,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'questdb',
@@ -2709,6 +3143,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dragonfly',
@@ -2723,6 +3159,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'couchbase',
@@ -2737,6 +3175,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rethinkdb',
@@ -2751,6 +3191,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kibana',
@@ -2765,6 +3207,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'logstash',
@@ -2779,6 +3223,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fluentd',
@@ -2793,6 +3239,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fluent-bit',
@@ -2807,6 +3255,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'signoz',
@@ -2821,6 +3271,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openobserve',
@@ -2835,6 +3287,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pyroscope',
@@ -2849,6 +3303,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'coroot',
@@ -2863,6 +3319,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'quickwit',
@@ -2877,6 +3335,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opensearch-dashboards',
@@ -2891,6 +3351,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opa',
@@ -2905,6 +3367,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kyverno',
@@ -2919,6 +3383,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'boundary',
@@ -2933,6 +3399,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'consul',
@@ -2947,6 +3415,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'external-secrets',
@@ -2961,6 +3431,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'grype',
@@ -2975,6 +3447,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'syft',
@@ -2989,6 +3463,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'semgrep',
@@ -3003,6 +3479,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'infisical',
@@ -3017,6 +3495,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openbao',
@@ -3031,6 +3511,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'checkov',
@@ -3045,6 +3527,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'sops',
@@ -3059,6 +3543,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cilium',
@@ -3073,6 +3559,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'headscale',
@@ -3087,6 +3575,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cloudflared',
@@ -3101,6 +3591,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zerotier',
@@ -3115,6 +3607,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openvpn',
@@ -3124,11 +3618,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/openvpn`,
     description: 'Open-source VPN solution',
     homepage: 'https://openvpn.net',
+    docsUrl: 'https://openvpn.net/community-resources/reference-manual-for-openvpn-2-6/',
     versionSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
     latestSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'netmaker',
@@ -3143,6 +3640,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'frp',
@@ -3157,6 +3656,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'unbound',
@@ -3171,6 +3672,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'coredns',
@@ -3185,6 +3688,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'technitium-dns',
@@ -3199,6 +3704,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nginx-ingress',
@@ -3213,6 +3720,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openebs',
@@ -3227,6 +3736,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'velero',
@@ -3241,6 +3752,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'restic',
@@ -3255,6 +3768,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kopia',
@@ -3269,6 +3784,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'borgbackup',
@@ -3283,6 +3800,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'duplicati',
@@ -3297,6 +3816,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'seaweedfs',
@@ -3311,6 +3832,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'juicefs',
@@ -3325,6 +3848,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ceph',
@@ -3339,6 +3864,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'keystonejs',
@@ -3353,6 +3880,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'craft-cms',
@@ -3367,6 +3896,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'processwire',
@@ -3381,6 +3912,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'microweber',
@@ -3395,6 +3928,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cockpit-cms',
@@ -3409,6 +3944,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'decap-cms',
@@ -3423,6 +3960,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jitsi-meet',
@@ -3437,6 +3976,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bigbluebutton',
@@ -3451,6 +3992,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'livekit',
@@ -3465,6 +4008,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ejabberd',
@@ -3479,6 +4024,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'prosody',
@@ -3493,6 +4040,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mumble',
@@ -3507,6 +4056,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'coturn',
@@ -3521,6 +4072,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gotify',
@@ -3535,6 +4088,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ntfy',
@@ -3549,6 +4104,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kavita',
@@ -3563,6 +4120,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'komga',
@@ -3577,6 +4136,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'calibre-web',
@@ -3591,6 +4152,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'audiobookshelf',
@@ -3605,6 +4168,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'sonarr',
@@ -3619,6 +4184,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'radarr',
@@ -3633,6 +4200,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'lidarr',
@@ -3647,6 +4216,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'prowlarr',
@@ -3661,6 +4232,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'overseerr',
@@ -3675,6 +4248,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tautulli',
@@ -3689,6 +4264,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bazarr',
@@ -3703,6 +4280,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'stremio',
@@ -3731,6 +4310,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bun',
@@ -3745,6 +4326,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'devpod',
@@ -3759,6 +4342,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'act',
@@ -3773,6 +4358,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'hoppscotch',
@@ -3787,6 +4374,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitea-actions',
@@ -3801,6 +4390,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitness',
@@ -3815,6 +4406,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'plane',
@@ -3824,11 +4417,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/linear`,
     description: 'Open-source project management tool (Jira alternative)',
     homepage: 'https://plane.so',
+    docsUrl: 'https://developers.plane.so/',
     versionSource: { type: 'github-releases', target: 'makeplane/plane' },
     latestSource: { type: 'github-releases', target: 'makeplane/plane' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'linear-oss',
@@ -3857,6 +4453,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'excalidraw',
@@ -3871,6 +4469,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'drawio',
@@ -3885,6 +4485,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mermaid',
@@ -3899,6 +4501,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'outline',
@@ -3908,11 +4512,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/outline`,
     description: 'Fast, collaborative knowledge base for teams',
     homepage: 'https://www.getoutline.com',
+    docsUrl: 'https://www.getoutline.com/developers',
     versionSource: { type: 'github-releases', target: 'outline/outline' },
     latestSource: { type: 'github-releases', target: 'outline/outline' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bookstack',
@@ -3922,11 +4529,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/bookstack`,
     description: 'Simple, self-hosted platform for organising documentation',
     homepage: 'https://bookstackapp.com',
+    docsUrl: 'https://www.bookstackapp.com/docs/developer-docs/api/',
     versionSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
     latestSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'wiki-js',
@@ -3941,6 +4551,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nocodb',
@@ -3950,11 +4562,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/airtable`,
     description: 'Open-source Airtable alternative',
     homepage: 'https://nocodb.com',
+    docsUrl: 'https://data-apis-v2.nocodb.com/',
     versionSource: { type: 'github-releases', target: 'nocodb/nocodb' },
     latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'baserow',
@@ -3964,11 +4579,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/postgresql`,
     description: 'Open-source no-code database tool and Airtable alternative',
     homepage: 'https://baserow.io',
+    docsUrl: 'https://baserow.io/docs/apis/rest-api',
     versionSource: { type: 'github-releases', target: 'bram2w/baserow' },
     latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vagrant',
@@ -3983,6 +4601,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'waypoint',
@@ -3997,6 +4617,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cdktf',
@@ -4011,6 +4633,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'serverless-framework',
@@ -4025,6 +4649,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cdk',
@@ -4039,6 +4665,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'spacelift',
@@ -4067,6 +4695,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'infracost',
@@ -4081,6 +4711,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'apache-pulsar',
@@ -4095,6 +4727,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'apache-rocketmq',
@@ -4109,6 +4743,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nsq',
@@ -4123,6 +4759,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'emqx',
@@ -4132,11 +4770,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/linux`,
     description: 'Open-source MQTT broker for IoT and real-time applications',
     homepage: 'https://emqx.io',
+    docsUrl: 'https://www.emqx.io/docs/en/latest/admin/api.html',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v5/cluster_info', jsonPath: '$.version', authRequired: true },
     latestSource: { type: 'github-releases', target: 'emqx/emqx' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'hivemq',
@@ -4151,6 +4792,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nifi',
@@ -4165,6 +4808,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'krakend',
@@ -4179,6 +4824,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gravitee',
@@ -4193,6 +4840,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'supertokens',
@@ -4207,6 +4856,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'logto',
@@ -4221,6 +4872,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zitadel',
@@ -4235,6 +4888,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'casdoor',
@@ -4249,6 +4904,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'k3d',
@@ -4263,6 +4920,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kind',
@@ -4277,6 +4936,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'minikube',
@@ -4291,6 +4952,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kubeadm',
@@ -4305,6 +4968,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mailcow',
@@ -4319,6 +4984,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mailu',
@@ -4333,6 +5000,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'stalwart-mail',
@@ -4347,6 +5016,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'roundcube',
@@ -4361,6 +5032,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mailpit',
@@ -4375,6 +5048,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openhab',
@@ -4389,6 +5064,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'domoticz',
@@ -4403,6 +5080,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zigbee2mqtt',
@@ -4417,6 +5096,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'esphome',
@@ -4431,6 +5112,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zwavejs2mqtt',
@@ -4445,6 +5128,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'homarr',
@@ -4459,6 +5144,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'homer',
@@ -4473,6 +5160,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'flame',
@@ -4529,6 +5218,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'actual-budget',
@@ -4543,6 +5234,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'freshrss',
@@ -4557,6 +5250,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'miniflux',
@@ -4571,6 +5266,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'wallabag',
@@ -4585,6 +5282,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'linkding',
@@ -4599,6 +5298,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'linkwarden',
@@ -4613,6 +5314,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'shaarli',
@@ -4641,6 +5344,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'photoview',
@@ -4655,6 +5360,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'piwigo',
@@ -4683,6 +5390,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'memos',
@@ -4697,6 +5406,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'standard-notes',
@@ -4711,6 +5422,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openproject',
@@ -4725,6 +5438,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vikunja',
@@ -4734,11 +5449,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/homeassistant`,
     description: 'The open-source, self-hostable to-do app',
     homepage: 'https://vikunja.io',
+    docsUrl: 'https://try.vikunja.io/api/v1/docs',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'go-vikunja/vikunja' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'leantime',
@@ -4767,6 +5485,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pgadmin',
@@ -4781,6 +5501,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'adminer',
@@ -4795,6 +5517,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cloudbeaver',
@@ -4809,6 +5533,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'netbox',
@@ -4818,11 +5544,14 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     icon: `${SI}/homeassistant`,
     description: 'Network source-of-truth for infrastructure teams (IPAM/DCIM)',
     homepage: 'https://netbox.dev',
+    docsUrl: 'https://docs.netbox.dev/en/stable/integrations/rest-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/', jsonPath: '$.netbox-version', authRequired: false },
     latestSource: { type: 'github-releases', target: 'netbox-community/netbox' },
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'opnsense',
@@ -4837,6 +5566,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pfsense',
@@ -4852,6 +5583,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'librespeed',
@@ -4880,6 +5613,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'coolify',
@@ -4894,6 +5629,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'caprover',
@@ -4908,6 +5645,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dokku',
@@ -4922,6 +5661,8 @@ const REGISTRY_PART1: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
 ];
 
@@ -4939,6 +5680,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'scrutiny',
@@ -4953,6 +5696,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cockpit',
@@ -4967,6 +5712,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'glances',
@@ -4981,6 +5728,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'lldap',
@@ -4995,6 +5744,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kanidm',
@@ -5009,6 +5760,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'paperless-ngx',
@@ -5023,6 +5776,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mealie',
@@ -5037,6 +5792,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'grocy',
@@ -5051,6 +5808,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tandoor',
@@ -5065,6 +5824,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'owncloud',
@@ -5079,6 +5840,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jellyseerr',
@@ -5093,6 +5856,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'readarr',
@@ -5107,6 +5872,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mylar3',
@@ -5135,6 +5902,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'misskey',
@@ -5149,6 +5918,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'peertube',
@@ -5163,6 +5934,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'lemmy',
@@ -5177,6 +5950,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'writefreely',
@@ -5191,6 +5966,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'clair',
@@ -5205,6 +5982,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jupyterhub',
@@ -5219,6 +5998,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gitpod',
@@ -5228,11 +6009,14 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     icon: `${SI}/gitpod`,
     description: 'Cloud development environment platform — self-hostable',
     homepage: 'https://www.gitpod.io',
+    docsUrl: 'https://www.gitpod.io/docs/',
     versionSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
     latestSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'openwrt',
@@ -5248,6 +6032,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zeromq',
@@ -5262,6 +6048,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'hono',
@@ -5276,6 +6064,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'influxdb2',
@@ -5290,6 +6080,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'garnet',
@@ -5304,6 +6096,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'harness',
@@ -5346,6 +6140,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dokodemo',
@@ -5360,6 +6156,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'watchtower',
@@ -5374,6 +6172,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'plone',
@@ -5388,6 +6188,8 @@ const REGISTRY_PART2: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'proxmox-ve',
@@ -15752,6 +16554,7 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     icon: `${SI}/posthog`,
     description: 'Monitor upstream release versions for PostHog',
     homepage: 'https://posthog.com',
+    docsUrl: 'https://posthog.com/docs/api',
     versionSource: { type: 'github-releases', target: 'PostHog/posthog' },
     latestSource: { type: 'github-releases', target: 'PostHog/posthog' },
     checkInterval: 86400,
@@ -15822,6 +16625,7 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     icon: `${SI}/metabase`,
     description: 'Monitor upstream release versions for Metabase',
     homepage: 'https://www.metabase.com',
+    docsUrl: 'https://www.metabase.com/docs/latest/api/',
     versionSource: { type: 'github-releases', target: 'metabase/metabase' },
     latestSource: { type: 'github-releases', target: 'metabase/metabase' },
     checkInterval: 86400,
@@ -15836,6 +16640,7 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     icon: `${SI}/apache`,
     description: 'Monitor upstream release versions for Apache Superset',
     homepage: 'https://superset.apache.org',
+    docsUrl: 'https://superset.apache.org/docs/api',
     versionSource: { type: 'github-releases', target: 'apache/superset' },
     latestSource: { type: 'github-releases', target: 'apache/superset' },
     checkInterval: 86400,
@@ -15864,6 +16669,7 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     icon: `${SI}/redash`,
     description: 'Monitor upstream release versions for Redash',
     homepage: 'https://redash.io',
+    docsUrl: 'https://redash.io/help/user-guide/integrations-and-api/api',
     versionSource: { type: 'github-releases', target: 'getredash/redash' },
     latestSource: { type: 'github-releases', target: 'getredash/redash' },
     checkInterval: 86400,
@@ -16024,6 +16830,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     // Docs: https://grafana.com/docs/tempo/latest/api_docs/
@@ -16039,6 +16847,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     // Docs: https://uptime.kuma.pet/docs/
@@ -16055,6 +16865,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     // Docs: https://doc.powerdns.com/authoritative/http-api/
@@ -16070,6 +16882,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     // Docs: https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html
@@ -16085,6 +16899,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'helm',
@@ -16099,6 +16915,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'k9s',
@@ -16113,6 +16931,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nodejs-runtime',
@@ -16127,6 +16947,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'deno-runtime',
@@ -16141,6 +16963,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bun-runtime',
@@ -16155,6 +16979,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'python-runtime',
@@ -16169,6 +16995,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'golang-runtime',
@@ -16183,6 +17011,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rust-runtime',
@@ -16197,6 +17027,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'php-runtime',
@@ -16211,6 +17043,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pnpm-pkg',
@@ -16225,6 +17059,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vite-build',
@@ -16239,6 +17075,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'esbuild-bundler',
@@ -16253,6 +17091,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'turborepo-build',
@@ -16267,6 +17107,8 @@ const REGISTRY_PART4: ToolRegistryEntry[] = [
     checkInterval: 86400,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
 ];
 
@@ -16284,6 +17126,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'localai',
@@ -16298,6 +17142,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'open-webui',
@@ -16312,6 +17158,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'comfyui',
@@ -16326,6 +17174,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'automatic1111',
@@ -16340,6 +17190,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'lmstudio',
@@ -16368,6 +17220,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'koboldcpp',
@@ -16382,6 +17236,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'jan',
@@ -16396,6 +17252,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'lmeval',
@@ -16424,6 +17282,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'flowise',
@@ -16438,6 +17298,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'activepieces',
@@ -16452,6 +17314,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dify',
@@ -16466,6 +17330,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'litellm',
@@ -16480,6 +17346,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vllm',
@@ -16494,6 +17362,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mlflow',
@@ -16508,6 +17378,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'bentoml',
@@ -16522,6 +17394,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'ray',
@@ -16536,6 +17410,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kubeflow',
@@ -16550,6 +17426,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'seldon',
@@ -16564,6 +17442,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'torchserve',
@@ -16578,6 +17458,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'fastapi',
@@ -16592,6 +17474,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'gradio',
@@ -16606,6 +17490,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'streamlit',
@@ -16620,6 +17506,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'panel',
@@ -16643,11 +17531,14 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     icon: `${SI}/erpnext`,
     description: 'Open-source enterprise resource planning platform',
     homepage: 'https://erpnext.com/',
+    docsUrl: 'https://frappeframework.com/docs/user/en/api/',
     versionSource: { type: 'github-releases', target: 'frappe/erpnext' },
     latestSource: { type: 'github-releases', target: 'frappe/erpnext' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'odoo',
@@ -16657,11 +17548,14 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     icon: `${SI}/odoo`,
     description: 'Open-source suite of business applications',
     homepage: 'https://www.odoo.com/',
+    docsUrl: 'https://www.odoo.com/documentation/17.0/developer/reference/external_api.html',
     versionSource: { type: 'github-releases', target: 'odoo/odoo' },
     latestSource: { type: 'github-releases', target: 'odoo/odoo' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'dolibarr',
@@ -16676,6 +17570,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'crater',
@@ -16704,6 +17600,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kimai',
@@ -16718,6 +17616,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'twenty',
@@ -16732,6 +17632,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'suitecrm',
@@ -16746,6 +17648,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'espocrm',
@@ -16760,6 +17664,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'monica',
@@ -16774,6 +17680,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'chatwoot',
@@ -16788,6 +17696,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'wekan',
@@ -16802,6 +17712,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'taiga',
@@ -16816,6 +17728,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'huly',
@@ -16830,6 +17744,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'solidtime',
@@ -16858,6 +17774,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'weaviate',
@@ -16872,6 +17790,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'chroma',
@@ -16886,6 +17806,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'marqo',
@@ -16900,6 +17822,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'vespa',
@@ -16914,6 +17838,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'manticore-search',
@@ -16928,6 +17854,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'zinc',
@@ -16984,6 +17912,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pinecone-local',
@@ -17012,6 +17942,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pgvector',
@@ -17026,6 +17958,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'nmslib',
@@ -17054,6 +17988,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'annoy',
@@ -17082,6 +18018,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'iobroker',
@@ -17096,6 +18034,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'edgex-foundry',
@@ -17110,6 +18050,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kubeedge',
@@ -17124,6 +18066,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'shinobi',
@@ -17152,6 +18096,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'octoprint',
@@ -17166,6 +18112,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'moonraker',
@@ -17180,6 +18128,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'balena',
@@ -17194,6 +18144,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'mender',
@@ -17208,6 +18160,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'librephotos',
@@ -17222,6 +18176,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'pigallery2',
@@ -17278,6 +18234,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'libreoffice-online',
@@ -17292,6 +18250,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'onlyoffice',
@@ -17306,6 +18266,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'collabora',
@@ -17320,6 +18282,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'cryptpad',
@@ -17334,6 +18298,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'etherpad',
@@ -17348,6 +18314,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'hedgedoc',
@@ -17357,11 +18325,14 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     icon: `${SI}/hedgedoc`,
     description: 'Open-source collaborative markdown editor',
     homepage: 'https://hedgedoc.org/',
+    docsUrl: 'https://docs.hedgedoc.org/',
     versionSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' },
     latestSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' },
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'codimd',
@@ -17390,6 +18361,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'silverbullet',
@@ -17404,6 +18377,8 @@ const REGISTRY_PART5: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
 ];
 
@@ -17422,6 +18397,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'yourls',
@@ -17436,6 +18413,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'kutt',
@@ -17450,6 +18429,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Paste / Snippet Tools ──────────────────────────────────────────────────
   {
@@ -17465,6 +18446,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'microbin',
@@ -17508,6 +18491,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'formbricks',
@@ -17522,6 +18507,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'limesurvey',
@@ -17546,11 +18533,14 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     icon: `${SI}/caldotcom`,
     description: 'Open-source scheduling and booking platform',
     homepage: 'https://cal.com',
+    docsUrl: 'https://cal.com/docs/enterprise-features/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.status', authRequired: false },
     latestSource: { type: 'github-releases', target: 'calcom/cal.com' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'rallly',
@@ -17580,6 +18570,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'twenty-crm',
@@ -17594,6 +18586,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'corteza',
@@ -17637,6 +18631,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Game Servers ────────────────────────────────────────────────────────────
   {
@@ -17652,6 +18648,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'crafty-controller',
@@ -17704,11 +18702,14 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     icon: `${SI}/truenas`,
     description: 'Open-source NAS and hyperconverged infrastructure',
     homepage: 'https://truenas.com',
+    docsUrl: 'https://www.truenas.com/docs/scale/api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2.0/system/info', jsonPath: '$.version', authRequired: true },
     latestSource: { type: 'github-releases', target: 'truenas/scale-build' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Translation ─────────────────────────────────────────────────────────────
   {
@@ -17724,6 +18725,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'tolgee',
@@ -17738,6 +18741,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Feature Flags ───────────────────────────────────────────────────────────
   {
@@ -17753,6 +18758,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'flagsmith',
@@ -17767,6 +18774,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'growthbook',
@@ -17781,6 +18790,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'flipt',
@@ -17795,6 +18806,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Healthcare ─────────────────────────────────────────────────────────────
   {
@@ -17824,6 +18837,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── APM / Monitoring Deep ───────────────────────────────────────────────────
   {
@@ -17839,6 +18854,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'statping-ng',
@@ -17867,6 +18884,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'healthchecks',
@@ -17881,6 +18900,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Reading / Books ─────────────────────────────────────────────────────────
   {
@@ -17911,6 +18932,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'teampass',
@@ -17968,6 +18991,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Print / 3D Printing ─────────────────────────────────────────────────────
   {
@@ -18044,6 +19069,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── CDN & Edge ──────────────────────────────────────────────────────────────
   {
@@ -18088,6 +19115,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'allure',
@@ -18132,6 +19161,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: false,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Social / Fediverse ───────────────────────────────────────────────────────
   {
@@ -18161,6 +19192,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   {
     id: 'funkwhale',
@@ -18175,6 +19208,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Media Production ─────────────────────────────────────────────────────────
   {
@@ -18236,6 +19271,8 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     checkInterval: 7200,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
   // ── Code Quality ─────────────────────────────────────────────────────────────
   {
@@ -18246,11 +19283,14 @@ const REGISTRY_PART6: ToolRegistryEntry[] = [
     icon: `${SI}/sonatype`,
     description: 'Continuous code quality and security inspection',
     homepage: 'https://www.sonarqube.org',
+    docsUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
     versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/server/version', jsonPath: '$.version', authRequired: false },
     latestSource: { type: 'docker-hub', target: 'sonarqube' },
     checkInterval: 3600,
     requiresInstanceUrl: true,
     verified: true,
+    verificationStatus: 'verified' as const,
+    lastVerifiedAt: '2026-03-21',
   },
 ];
 
@@ -18265,17 +19305,17 @@ const REGISTRY_PART8: ToolRegistryEntry[] = [
 
 
 const REGISTRY_PART9: ToolRegistryEntry[] = [
-  { id: 'qbittorrent', name: 'qBittorrent', category: 'Media', tags: ['torrent','download','self-hosted'], icon: `${SI}/qbittorrent`, description: 'Open-source BitTorrent client with web UI', homepage: 'https://www.qbittorrent.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/app/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'qbittorrent', name: 'qBittorrent', category: 'Media', tags: ['torrent','download','self-hosted'], icon: `${SI}/qbittorrent`, description: 'Open-source BitTorrent client with web UI', homepage: 'https://www.qbittorrent.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/app/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'transmission', name: 'Transmission', category: 'Media', tags: ['torrent','download','self-hosted'], icon: `${SI}/transmission`, description: 'Lightweight cross-platform BitTorrent client', homepage: 'https://transmissionbt.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'transmission/transmission' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'deluge', name: 'Deluge', category: 'Media', tags: ['torrent','download','self-hosted'], icon: `${SI}/deluge`, description: 'Lightweight BitTorrent client with web UI', homepage: 'https://deluge-torrent.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/json', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-tags', target: 'deluge-torrent/deluge' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'sabnzbd', name: 'SABnzbd', category: 'Media', tags: ['usenet','download','self-hosted','nzb'], icon: `${SI}/qbittorrent`, description: 'Free and open-source Usenet client', homepage: 'https://sabnzbd.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api?mode=version&output=json', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'sabnzbd', name: 'SABnzbd', category: 'Media', tags: ['usenet','download','self-hosted','nzb'], icon: `${SI}/qbittorrent`, description: 'Free and open-source Usenet client', homepage: 'https://sabnzbd.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api?mode=version&output=json', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'nzbget', name: 'NZBGet', category: 'Media', tags: ['usenet','download','self-hosted','nzb'], icon: `${SI}/qbittorrent`, description: 'Efficient Usenet downloader written in C++', homepage: 'https://nzbget.net', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'nzbget/nzbget' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'text-generation-webui', name: 'Text Generation WebUI', category: 'AI/ML', tags: ['llm','inference','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Web UI for running LLMs locally (oobabooga)', homepage: 'https://github.com/oobabooga/text-generation-webui', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'oobabooga/text-generation-webui' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'stable-diffusion-webui', name: 'Stable Diffusion WebUI', category: 'AI/ML', tags: ['stable-diffusion','image-generation','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Web UI for Stable Diffusion (AUTOMATIC1111)', homepage: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/internal/sysinfo', jsonPath: '$.Version', authRequired: false }, latestSource: { type: 'github-releases', target: 'AUTOMATIC1111/stable-diffusion-webui' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'langflow', name: 'Langflow', category: 'AI/ML', tags: ['llm','workflow','self-hosted','ai','langchain'], icon: `${SI}/langflow`, description: 'Low-code app builder for RAG and AI workflows', homepage: 'https://langflow.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'langflow-ai/langflow' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'tabbyml', name: 'Tabby', category: 'AI/ML', tags: ['code-completion','llm','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Self-hosted AI coding assistant (Copilot alternative)', homepage: 'https://tabby.tabbyml.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'TabbyML/tabby' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'chromadb', name: 'ChromaDB', category: 'AI/ML', tags: ['vector-database','embeddings','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Open-source embedding database for AI applications', homepage: 'https://www.trychroma.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'chroma-core/chroma' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'apache-nifi', name: 'Apache NiFi', category: 'Messaging', tags: ['data-flow','etl','self-hosted','apache'], icon: `${SI}/apache`, description: 'Automated data flow management and ETL platform', homepage: 'https://nifi.apache.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/nifi-api/flow/about', jsonPath: '$.about.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'apache/nifi' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'tabbyml', name: 'Tabby', category: 'AI/ML', tags: ['code-completion','llm','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Self-hosted AI coding assistant (Copilot alternative)', homepage: 'https://tabby.tabbyml.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'TabbyML/tabby' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'chromadb', name: 'ChromaDB', category: 'AI/ML', tags: ['vector-database','embeddings','self-hosted','ai'], icon: `${SI}/ollama`, description: 'Open-source embedding database for AI applications', homepage: 'https://www.trychroma.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'chroma-core/chroma' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'apache-nifi', name: 'Apache NiFi', category: 'Messaging', tags: ['data-flow','etl','self-hosted','apache'], icon: `${SI}/apache`, description: 'Automated data flow management and ETL platform', homepage: 'https://nifi.apache.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/nifi-api/flow/about', jsonPath: '$.about.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'apache/nifi' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'debezium', name: 'Debezium', category: 'Messaging', tags: ['cdc','change-data-capture','kafka','streaming'], icon: `${SI}/apachekafka`, description: 'Distributed platform for change data capture', homepage: 'https://debezium.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'debezium/debezium' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'ksqldb', name: 'ksqlDB', category: 'Messaging', tags: ['kafka','streaming','sql'], icon: `${SI}/apachekafka`, description: 'Database for stream processing with Apache Kafka', homepage: 'https://ksqldb.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/info', jsonPath: '$.KsqlServerInfo.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'confluentinc/ksql' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'linstor', name: 'LINSTOR', category: 'Storage', tags: ['storage','drbd','kubernetes','self-hosted'], icon: `${SI}/ceph`, description: 'Software-defined storage management using DRBD', homepage: 'https://linbit.com/linstor', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/controller/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'LINBIT/linstor-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -18303,27 +19343,27 @@ const REGISTRY_PART9: ToolRegistryEntry[] = [
   { id: 'goaccess', name: 'GoAccess', category: 'Dev Tools', tags: ['analytics','logs','nginx','self-hosted'], icon: `${SI}/nginx`, description: 'Real-time web log analyzer and interactive viewer', homepage: 'https://goaccess.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/ws', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'allinurl/goaccess' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'kestra', name: 'Kestra', category: 'Infrastructure', tags: ['workflow','orchestration','data-pipeline','self-hosted'], icon: `${SI}/apacheairflow`, description: 'Open-source infinitely scalable data orchestration', homepage: 'https://kestra.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/stats/global', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'kestra-io/kestra' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'huginn', name: 'Huginn', category: 'Dev Tools', tags: ['automation','agents','self-hosted'], icon: `${SI}/zapier`, description: 'Build agents that monitor and act on your behalf', homepage: 'https://github.com/huginn/huginn', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/check_if_server_is_running', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'huginn/huginn' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'docusaurus', name: 'Docusaurus', category: 'Dev Tools', tags: ['documentation','static-site','react'], icon: `${SI}/docusaurus`, description: 'Build optimized documentation websites with React', homepage: 'https://docusaurus.io', versionSource: { type: 'npm-registry', target: '@docusaurus/core' }, latestSource: { type: 'npm-registry', target: '@docusaurus/core' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'mkdocs', name: 'MkDocs', category: 'Dev Tools', tags: ['documentation','static-site','python'], icon: `${SI}/markdown`, description: 'Project documentation with Markdown and static sites', homepage: 'https://www.mkdocs.org', versionSource: { type: 'pypi', target: 'mkdocs' }, latestSource: { type: 'pypi', target: 'mkdocs' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'docusaurus', name: 'Docusaurus', category: 'Dev Tools', tags: ['documentation','static-site','react'], icon: `${SI}/docusaurus`, description: 'Build optimized documentation websites with React', homepage: 'https://docusaurus.io', versionSource: { type: 'npm-registry', target: '@docusaurus/core' }, latestSource: { type: 'npm-registry', target: '@docusaurus/core' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'mkdocs', name: 'MkDocs', category: 'Dev Tools', tags: ['documentation','static-site','python'], icon: `${SI}/markdown`, description: 'Project documentation with Markdown and static sites', homepage: 'https://www.mkdocs.org', versionSource: { type: 'pypi', target: 'mkdocs' }, latestSource: { type: 'pypi', target: 'mkdocs' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'hexo', name: 'Hexo', category: 'Dev Tools', tags: ['blog','static-site','nodejs'], icon: `${SI}/hexo`, description: 'Fast, simple & powerful Node.js blog framework', homepage: 'https://hexo.io', versionSource: { type: 'npm-registry', target: 'hexo' }, latestSource: { type: 'npm-registry', target: 'hexo' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'akkoma', name: 'Akkoma', category: 'Communication', tags: ['fediverse','social','activitypub','self-hosted'], icon: `${SI}/pleroma`, description: 'Fediverse server (Pleroma fork) for ActivityPub', homepage: 'https://akkoma.social', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/instance', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'AkkomaGang/akkoma' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'kbin', name: 'kbin', category: 'Communication', tags: ['fediverse','social','activitypub','self-hosted'], icon: `${SI}/lemmy`, description: 'Federated link aggregator and microblog', homepage: 'https://kbin.pub', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/instance', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'ernestwisniewski/kbin' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'flarum', name: 'Flarum', category: 'Communication', tags: ['forum','community','self-hosted','php'], icon: `${SI}/discourse`, description: 'Simple, modern open-source forum software', homepage: 'https://flarum.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api', jsonPath: '$.data.attributes.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'flarum/framework' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'nodebb', name: 'NodeBB', category: 'Communication', tags: ['forum','community','self-hosted','nodejs'], icon: `${SI}/discourse`, description: 'Node.js forum software with real-time features', homepage: 'https://nodebb.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/config', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'NodeBB/NodeBB' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'flarum', name: 'Flarum', category: 'Communication', tags: ['forum','community','self-hosted','php'], icon: `${SI}/discourse`, description: 'Simple, modern open-source forum software', homepage: 'https://flarum.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api', jsonPath: '$.data.attributes.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'flarum/framework' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'nodebb', name: 'NodeBB', category: 'Communication', tags: ['forum','community','self-hosted','nodejs'], icon: `${SI}/discourse`, description: 'Node.js forum software with real-time features', homepage: 'https://nodebb.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/config', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'NodeBB/NodeBB' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'vanilla-forums', name: 'Vanilla Forums', category: 'Communication', tags: ['forum','community','self-hosted','php'], icon: `${SI}/discourse`, description: 'Flexible open-source community platform', homepage: 'https://vanillaforums.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/system-info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'vanilla/vanilla' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'cronicle', name: 'Cronicle', category: 'Dev Tools', tags: ['scheduler','cron','jobs','self-hosted'], icon: `${SI}/apachekafka`, description: 'Multi-server task scheduler with web interface', homepage: 'https://github.com/jhuckaby/Cronicle', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/app/get_version/v1', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'jhuckaby/Cronicle' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'stoplight-elements', name: 'Stoplight Elements', category: 'API', tags: ['api-docs','openapi','documentation'], icon: `${SI}/stoplight`, description: 'Beautiful API documentation for OpenAPI specs', homepage: 'https://stoplight.io', versionSource: { type: 'npm-registry', target: '@stoplight/elements' }, latestSource: { type: 'npm-registry', target: '@stoplight/elements' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'redoc-standalone', name: 'ReDoc', category: 'API', tags: ['api-docs','openapi','swagger'], icon: `${SI}/swagger`, description: 'OpenAPI/Swagger-generated API documentation', homepage: 'https://redocly.com', versionSource: { type: 'npm-registry', target: 'redoc' }, latestSource: { type: 'npm-registry', target: 'redoc' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
-  { id: 'shopware', name: 'Shopware', category: 'ERP/Business', tags: ['e-commerce','shop','self-hosted','php'], icon: `${SI}/shopware`, description: 'Open-source e-commerce platform', homepage: 'https://www.shopware.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/_info/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'shopware/shopware' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'shopware', name: 'Shopware', category: 'ERP/Business', tags: ['e-commerce','shop','self-hosted','php'], icon: `${SI}/shopware`, description: 'Open-source e-commerce platform', homepage: 'https://www.shopware.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/_info/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'shopware/shopware' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'prestashop', name: 'PrestaShop', category: 'ERP/Business', tags: ['e-commerce','shop','self-hosted','php'], icon: `${SI}/prestashop`, description: 'Open-source e-commerce solution', homepage: 'https://www.prestashop.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'PrestaShop/PrestaShop' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'medusa', name: 'Medusa', category: 'ERP/Business', tags: ['e-commerce','headless','nodejs','self-hosted'], icon: `${SI}/medusa`, description: 'Open-source composable commerce platform', homepage: 'https://medusajs.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'npm-registry', target: '@medusajs/medusa' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'saleor', name: 'Saleor', category: 'ERP/Business', tags: ['e-commerce','headless','graphql','self-hosted'], icon: `${SI}/graphql`, description: 'Headless GraphQL-first e-commerce platform', homepage: 'https://saleor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'saleor/saleor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'bytebase', name: 'Bytebase', category: 'Database', tags: ['database','schema-migration','devops','self-hosted'], icon: `${SI}/postgresql`, description: 'Database schema change and version control for teams', homepage: 'https://www.bytebase.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/actuator/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'bytebase/bytebase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'medusa', name: 'Medusa', category: 'ERP/Business', tags: ['e-commerce','headless','nodejs','self-hosted'], icon: `${SI}/medusa`, description: 'Open-source composable commerce platform', homepage: 'https://medusajs.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'npm-registry', target: '@medusajs/medusa' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'saleor', name: 'Saleor', category: 'ERP/Business', tags: ['e-commerce','headless','graphql','self-hosted'], icon: `${SI}/graphql`, description: 'Headless GraphQL-first e-commerce platform', homepage: 'https://saleor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'saleor/saleor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'bytebase', name: 'Bytebase', category: 'Database', tags: ['database','schema-migration','devops','self-hosted'], icon: `${SI}/postgresql`, description: 'Database schema change and version control for teams', homepage: 'https://www.bytebase.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/actuator/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'bytebase/bytebase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'pghero', name: 'PgHero', category: 'Database', tags: ['postgresql','performance','monitoring','self-hosted'], icon: `${SI}/postgresql`, description: 'Performance dashboard for PostgreSQL', homepage: 'https://github.com/ankane/pghero', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'ankane/pghero' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'healthchecks-io', name: 'Healthchecks', category: 'Observability', tags: ['monitoring','heartbeat','cron','self-hosted'], icon: `${SI}/statuspage`, description: 'Cron job and background task monitoring service', homepage: 'https://healthchecks.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v3/status/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'healthchecks/healthchecks' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'dependency-track', name: 'Dependency-Track', category: 'Security', tags: ['sca','sbom','vulnerability','supply-chain'], icon: `${SI}/dependabot`, description: 'Intelligent Component Analysis platform', homepage: 'https://dependencytrack.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'DependencyTrack/dependency-track' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'defectdojo', name: 'DefectDojo', category: 'Security', tags: ['security','vulnerability','appsec','self-hosted'], icon: `${SI}/owasp`, description: 'Open-source DevSecOps and vulnerability management', homepage: 'https://www.defectdojo.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/version/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'DefectDojo/django-DefectDojo' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'headlamp', name: 'Headlamp', category: 'Container', tags: ['kubernetes','dashboard','self-hosted'], icon: `${SI}/kubernetes`, description: 'Easy-to-use and extensible Kubernetes web UI', homepage: 'https://headlamp.dev', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/backend/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'healthchecks-io', name: 'Healthchecks', category: 'Observability', tags: ['monitoring','heartbeat','cron','self-hosted'], icon: `${SI}/statuspage`, description: 'Cron job and background task monitoring service', homepage: 'https://healthchecks.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v3/status/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'healthchecks/healthchecks' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'dependency-track', name: 'Dependency-Track', category: 'Security', tags: ['sca','sbom','vulnerability','supply-chain'], icon: `${SI}/dependabot`, description: 'Intelligent Component Analysis platform', homepage: 'https://dependencytrack.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'DependencyTrack/dependency-track' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'defectdojo', name: 'DefectDojo', category: 'Security', tags: ['security','vulnerability','appsec','self-hosted'], icon: `${SI}/owasp`, description: 'Open-source DevSecOps and vulnerability management', homepage: 'https://www.defectdojo.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/version/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'DefectDojo/django-DefectDojo' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'headlamp', name: 'Headlamp', category: 'Container', tags: ['kubernetes','dashboard','self-hosted'], icon: `${SI}/kubernetes`, description: 'Easy-to-use and extensible Kubernetes web UI', homepage: 'https://headlamp.dev', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/backend/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'skooner', name: 'Skooner', category: 'Container', tags: ['kubernetes','dashboard','self-hosted'], icon: `${SI}/kubernetes`, description: 'Simple Kubernetes real-time dashboard', homepage: 'https://github.com/skooner-k8s/skooner', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/metrics', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'skooner-k8s/skooner' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'souin', name: 'Souin', category: 'Networking', tags: ['cache','proxy','cdn','self-hosted'], icon: `${SI}/varnish`, description: 'HTTP cache server with ESI support (Go)', homepage: 'https://github.com/darkweak/souin', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/souin-api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'darkweak/souin' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'thumbor', name: 'Thumbor', category: 'Dev Tools', tags: ['images','resize','cdn','self-hosted'], icon: `${SI}/imagemagick`, description: 'Smart imaging service for cropping and resizing', homepage: 'https://www.thumbor.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/healthcheck', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'thumbor/thumbor' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -18332,165 +19372,165 @@ const REGISTRY_PART9: ToolRegistryEntry[] = [
 
 const REGISTRY_PART10: ToolRegistryEntry[] = [
   // ─── AI/ML & LLM Infrastructure ───
-  { id: 'lobe-chat', name: 'LobeChat', category: 'AI/ML', tags: ['llm','chat','self-hosted','ai','web-ui'], icon: `${SI}/openai`, description: 'Modern-design AI chat framework with multi-model support', homepage: 'https://lobehub.com', versionSource: { type: 'github-releases', target: 'lobehub/lobe-chat' }, latestSource: { type: 'github-releases', target: 'lobehub/lobe-chat' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'librechat', name: 'LibreChat', category: 'AI/ML', tags: ['llm','chat','self-hosted','ai','openai-compatible'], icon: `${SI}/openai`, description: 'Enhanced ChatGPT clone with multi-provider support', homepage: 'https://librechat.ai', versionSource: { type: 'github-releases', target: 'danny-avila/LibreChat' }, latestSource: { type: 'github-releases', target: 'danny-avila/LibreChat' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'whisper', name: 'Whisper', category: 'AI/ML', tags: ['speech-to-text','transcription','ai','openai'], icon: `${SI}/openai`, description: 'OpenAI automatic speech recognition model', homepage: 'https://github.com/openai/whisper', versionSource: { type: 'pypi', target: 'openai-whisper' }, latestSource: { type: 'pypi', target: 'openai-whisper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'haystack', name: 'Haystack', category: 'AI/ML', tags: ['llm','rag','search','ai','framework'], icon: 'https://cdn.simpleicons.org/github', description: 'LLM orchestration framework for building AI applications', homepage: 'https://haystack.deepset.ai', versionSource: { type: 'pypi', target: 'haystack-ai' }, latestSource: { type: 'pypi', target: 'haystack-ai' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'label-studio', name: 'Label Studio', category: 'AI/ML', tags: ['annotation','labeling','self-hosted','ai','ml'], icon: 'https://cdn.simpleicons.org/labelstudio', description: 'Multi-type data labeling and annotation tool', homepage: 'https://labelstud.io', versionSource: { type: 'pypi', target: 'label-studio' }, latestSource: { type: 'pypi', target: 'label-studio' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'pterodactyl-wings', name: 'Pterodactyl Wings', category: 'Game Servers', tags: ['game-server','daemon','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/pterodactyl', description: 'Server control plane for Pterodactyl Panel', homepage: 'https://pterodactyl.io', versionSource: { type: 'github-releases', target: 'pterodactyl/wings' }, latestSource: { type: 'github-releases', target: 'pterodactyl/wings' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'papermc', name: 'PaperMC', category: 'Game Servers', tags: ['minecraft','game-server','java','self-hosted'], icon: 'https://cdn.simpleicons.org/minecraft', description: 'High-performance Minecraft server', homepage: 'https://papermc.io', versionSource: { type: 'github-releases', target: 'PaperMC/Paper' }, latestSource: { type: 'github-releases', target: 'PaperMC/Paper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'velocity', name: 'Velocity', category: 'Game Servers', tags: ['minecraft','proxy','game-server','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern, high-performance Minecraft proxy', homepage: 'https://papermc.io/software/velocity', versionSource: { type: 'github-releases', target: 'PaperMC/Velocity' }, latestSource: { type: 'github-releases', target: 'PaperMC/Velocity' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'fabric-installer', name: 'Fabric', category: 'Game Servers', tags: ['minecraft','modding','game-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight Minecraft modding toolchain', homepage: 'https://fabricmc.net', versionSource: { type: 'github-releases', target: 'FabricMC/fabric-installer' }, latestSource: { type: 'github-releases', target: 'FabricMC/fabric-installer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'lobe-chat', name: 'LobeChat', category: 'AI/ML', tags: ['llm','chat','self-hosted','ai','web-ui'], icon: `${SI}/openai`, description: 'Modern-design AI chat framework with multi-model support', homepage: 'https://lobehub.com', versionSource: { type: 'github-releases', target: 'lobehub/lobe-chat' }, latestSource: { type: 'github-releases', target: 'lobehub/lobe-chat' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'librechat', name: 'LibreChat', category: 'AI/ML', tags: ['llm','chat','self-hosted','ai','openai-compatible'], icon: `${SI}/openai`, description: 'Enhanced ChatGPT clone with multi-provider support', homepage: 'https://librechat.ai', versionSource: { type: 'github-releases', target: 'danny-avila/LibreChat' }, latestSource: { type: 'github-releases', target: 'danny-avila/LibreChat' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'whisper', name: 'Whisper', category: 'AI/ML', tags: ['speech-to-text','transcription','ai','openai'], icon: `${SI}/openai`, description: 'OpenAI automatic speech recognition model', homepage: 'https://github.com/openai/whisper', versionSource: { type: 'pypi', target: 'openai-whisper' }, latestSource: { type: 'pypi', target: 'openai-whisper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'haystack', name: 'Haystack', category: 'AI/ML', tags: ['llm','rag','search','ai','framework'], icon: 'https://cdn.simpleicons.org/github', description: 'LLM orchestration framework for building AI applications', homepage: 'https://haystack.deepset.ai', versionSource: { type: 'pypi', target: 'haystack-ai' }, latestSource: { type: 'pypi', target: 'haystack-ai' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'label-studio', name: 'Label Studio', category: 'AI/ML', tags: ['annotation','labeling','self-hosted','ai','ml'], icon: 'https://cdn.simpleicons.org/labelstudio', description: 'Multi-type data labeling and annotation tool', homepage: 'https://labelstud.io', versionSource: { type: 'pypi', target: 'label-studio' }, latestSource: { type: 'pypi', target: 'label-studio' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'pterodactyl-wings', name: 'Pterodactyl Wings', category: 'Game Servers', tags: ['game-server','daemon','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/pterodactyl', description: 'Server control plane for Pterodactyl Panel', homepage: 'https://pterodactyl.io', versionSource: { type: 'github-releases', target: 'pterodactyl/wings' }, latestSource: { type: 'github-releases', target: 'pterodactyl/wings' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'papermc', name: 'PaperMC', category: 'Game Servers', tags: ['minecraft','game-server','java','self-hosted'], icon: 'https://cdn.simpleicons.org/minecraft', description: 'High-performance Minecraft server', homepage: 'https://papermc.io', versionSource: { type: 'github-releases', target: 'PaperMC/Paper' }, latestSource: { type: 'github-releases', target: 'PaperMC/Paper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'velocity', name: 'Velocity', category: 'Game Servers', tags: ['minecraft','proxy','game-server','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern, high-performance Minecraft proxy', homepage: 'https://papermc.io/software/velocity', versionSource: { type: 'github-releases', target: 'PaperMC/Velocity' }, latestSource: { type: 'github-releases', target: 'PaperMC/Velocity' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'fabric-installer', name: 'Fabric', category: 'Game Servers', tags: ['minecraft','modding','game-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight Minecraft modding toolchain', homepage: 'https://fabricmc.net', versionSource: { type: 'github-releases', target: 'FabricMC/fabric-installer' }, latestSource: { type: 'github-releases', target: 'FabricMC/fabric-installer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'amp', name: 'AMP', category: 'Game Servers', tags: ['game-server','panel','self-hosted','multi-game'], icon: 'https://cdn.simpleicons.org/github', description: 'Application Management Panel for game servers', homepage: 'https://cubecoders.com/AMP', versionSource: { type: 'github-releases', target: 'CubeCoders/AMP' }, latestSource: { type: 'github-releases', target: 'CubeCoders/AMP' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'linuxgsm', name: 'LinuxGSM', category: 'Game Servers', tags: ['game-server','linux','cli','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Command-line tool for managing game servers on Linux', homepage: 'https://linuxgsm.com', versionSource: { type: 'github-releases', target: 'GameServerManagers/LinuxGSM' }, latestSource: { type: 'github-releases', target: 'GameServerManagers/LinuxGSM' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'linuxgsm', name: 'LinuxGSM', category: 'Game Servers', tags: ['game-server','linux','cli','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Command-line tool for managing game servers on Linux', homepage: 'https://linuxgsm.com', versionSource: { type: 'github-releases', target: 'GameServerManagers/LinuxGSM' }, latestSource: { type: 'github-releases', target: 'GameServerManagers/LinuxGSM' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Password Managers ───
-  { id: 'keepass', name: 'KeePass', category: 'Password Management', tags: ['password-manager','offline','security'], icon: 'https://cdn.simpleicons.org/keepass', description: 'Free open-source password manager', homepage: 'https://keepass.info', versionSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, latestSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'keepass', name: 'KeePass', category: 'Password Management', tags: ['password-manager','offline','security'], icon: 'https://cdn.simpleicons.org/keepass', description: 'Free open-source password manager', homepage: 'https://keepass.info', versionSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, latestSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Analytics ───
-  { id: 'fathom', name: 'Fathom Lite', category: 'Analytics & BI', tags: ['analytics','web-analytics','self-hosted','privacy','golang'], icon: 'https://cdn.simpleicons.org/fathom', description: 'Simple, privacy-focused website analytics (open-source)', homepage: 'https://usefathom.com', versionSource: { type: 'github-releases', target: 'usefathom/fathom' }, latestSource: { type: 'github-releases', target: 'usefathom/fathom' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'fathom', name: 'Fathom Lite', category: 'Analytics & BI', tags: ['analytics','web-analytics','self-hosted','privacy','golang'], icon: 'https://cdn.simpleicons.org/fathom', description: 'Simple, privacy-focused website analytics (open-source)', homepage: 'https://usefathom.com', versionSource: { type: 'github-releases', target: 'usefathom/fathom' }, latestSource: { type: 'github-releases', target: 'usefathom/fathom' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── File Management / Storage ───
-  { id: 'filebrowser', name: 'File Browser', category: 'Storage', tags: ['file-manager','self-hosted','web-ui','golang'], icon: 'https://cdn.simpleicons.org/github', description: 'Web-based file managing interface', homepage: 'https://filebrowser.org', versionSource: { type: 'github-releases', target: 'filebrowser/filebrowser' }, latestSource: { type: 'github-releases', target: 'filebrowser/filebrowser' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'changedetection', name: 'changedetection.io', category: 'Observability', tags: ['monitoring','website-change','self-hosted','scraping'], icon: 'https://cdn.simpleicons.org/changedetection', description: 'Website change detection and monitoring', homepage: 'https://changedetection.io', versionSource: { type: 'github-releases', target: 'dgtlmoon/changedetection.io' }, latestSource: { type: 'github-releases', target: 'dgtlmoon/changedetection.io' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'filebrowser', name: 'File Browser', category: 'Storage', tags: ['file-manager','self-hosted','web-ui','golang'], icon: 'https://cdn.simpleicons.org/github', description: 'Web-based file managing interface', homepage: 'https://filebrowser.org', versionSource: { type: 'github-releases', target: 'filebrowser/filebrowser' }, latestSource: { type: 'github-releases', target: 'filebrowser/filebrowser' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'changedetection', name: 'changedetection.io', category: 'Observability', tags: ['monitoring','website-change','self-hosted','scraping'], icon: 'https://cdn.simpleicons.org/changedetection', description: 'Website change detection and monitoring', homepage: 'https://changedetection.io', versionSource: { type: 'github-releases', target: 'dgtlmoon/changedetection.io' }, latestSource: { type: 'github-releases', target: 'dgtlmoon/changedetection.io' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Proxy & Networking ───
-  { id: 'firezone', name: 'Firezone', category: 'Networking', tags: ['vpn','wireguard','self-hosted','firewall'], icon: 'https://cdn.simpleicons.org/firezone', description: 'WireGuard-based VPN server and firewall', homepage: 'https://www.firezone.dev', versionSource: { type: 'github-releases', target: 'firezone/firezone' }, latestSource: { type: 'github-releases', target: 'firezone/firezone' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'nebula', name: 'Nebula', category: 'Networking', tags: ['vpn','mesh','overlay-network','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Scalable overlay networking tool from Slack', homepage: 'https://github.com/slackhq/nebula', versionSource: { type: 'github-releases', target: 'slackhq/nebula' }, latestSource: { type: 'github-releases', target: 'slackhq/nebula' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'firezone', name: 'Firezone', category: 'Networking', tags: ['vpn','wireguard','self-hosted','firewall'], icon: 'https://cdn.simpleicons.org/firezone', description: 'WireGuard-based VPN server and firewall', homepage: 'https://www.firezone.dev', versionSource: { type: 'github-releases', target: 'firezone/firezone' }, latestSource: { type: 'github-releases', target: 'firezone/firezone' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'nebula', name: 'Nebula', category: 'Networking', tags: ['vpn','mesh','overlay-network','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Scalable overlay networking tool from Slack', homepage: 'https://github.com/slackhq/nebula', versionSource: { type: 'github-releases', target: 'slackhq/nebula' }, latestSource: { type: 'github-releases', target: 'slackhq/nebula' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'xwiki', name: 'XWiki', category: 'Project Management', tags: ['wiki','documentation','self-hosted','java'], icon: 'https://cdn.simpleicons.org/xwiki', description: 'Advanced open-source enterprise wiki platform', homepage: 'https://www.xwiki.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/rest', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'xwiki/xwiki-platform' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'dokuwiki', name: 'DokuWiki', category: 'Project Management', tags: ['wiki','documentation','self-hosted','php','flat-file'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple flat-file wiki with no database requirement', homepage: 'https://www.dokuwiki.org', versionSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' }, latestSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'answer', name: 'Answer', category: 'Project Management', tags: ['q-and-a','knowledge-base','self-hosted','community'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source Q&A platform (Stack Overflow alternative)', homepage: 'https://answer.dev', versionSource: { type: 'github-releases', target: 'apache/incubator-answer' }, latestSource: { type: 'github-releases', target: 'apache/incubator-answer' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'affine', name: 'AFFiNE', category: 'Project Management', tags: ['notion-alternative','whiteboard','self-hosted','knowledge-base'], icon: 'https://cdn.simpleicons.org/affine', description: 'Next-gen knowledge base combining docs & whiteboard', homepage: 'https://affine.pro', versionSource: { type: 'github-releases', target: 'toeverything/AFFiNE' }, latestSource: { type: 'github-releases', target: 'toeverything/AFFiNE' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'dokuwiki', name: 'DokuWiki', category: 'Project Management', tags: ['wiki','documentation','self-hosted','php','flat-file'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple flat-file wiki with no database requirement', homepage: 'https://www.dokuwiki.org', versionSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' }, latestSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'answer', name: 'Answer', category: 'Project Management', tags: ['q-and-a','knowledge-base','self-hosted','community'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source Q&A platform (Stack Overflow alternative)', homepage: 'https://answer.dev', versionSource: { type: 'github-releases', target: 'apache/incubator-answer' }, latestSource: { type: 'github-releases', target: 'apache/incubator-answer' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'affine', name: 'AFFiNE', category: 'Project Management', tags: ['notion-alternative','whiteboard','self-hosted','knowledge-base'], icon: 'https://cdn.simpleicons.org/affine', description: 'Next-gen knowledge base combining docs & whiteboard', homepage: 'https://affine.pro', versionSource: { type: 'github-releases', target: 'toeverything/AFFiNE' }, latestSource: { type: 'github-releases', target: 'toeverything/AFFiNE' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Development Tools ───
   { id: 'onedev', name: 'OneDev', category: 'Dev Tools', tags: ['git','ci-cd','project-management','self-hosted','java'], icon: 'https://cdn.simpleicons.org/github', description: 'Git server with CI/CD, kanban, and packages', homepage: 'https://onedev.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/~api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'theonedev/onedev' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'semaphore-ui', name: 'Semaphore UI', category: 'Dev Tools', tags: ['ansible','automation','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern UI for Ansible, Terraform, and other tools', homepage: 'https://semaphoreui.com', versionSource: { type: 'github-releases', target: 'semaphoreui/semaphore' }, latestSource: { type: 'github-releases', target: 'semaphoreui/semaphore' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'act-runner', name: 'act', category: 'Dev Tools', tags: ['github-actions','ci-cd','local','testing'], icon: 'https://cdn.simpleicons.org/gitea', description: 'Run GitHub Actions locally', homepage: 'https://github.com/nektos/act', versionSource: { type: 'github-releases', target: 'nektos/act' }, latestSource: { type: 'github-releases', target: 'nektos/act' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'devtron', name: 'Devtron', category: 'Dev Tools', tags: ['kubernetes','ci-cd','self-hosted','gitops'], icon: 'https://cdn.simpleicons.org/github', description: 'Tool integration platform for Kubernetes', homepage: 'https://devtron.ai', versionSource: { type: 'github-releases', target: 'devtron-labs/devtron' }, latestSource: { type: 'github-releases', target: 'devtron-labs/devtron' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'backstage', name: 'Backstage', category: 'Dev Tools', tags: ['developer-portal','platform-engineering','self-hosted','spotify'], icon: 'https://cdn.simpleicons.org/backstage', description: 'Open platform for building developer portals', homepage: 'https://backstage.io', versionSource: { type: 'npm-registry', target: '@backstage/core-plugin-api' }, latestSource: { type: 'npm-registry', target: '@backstage/core-plugin-api' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true },
-  { id: 'homepage-dashboard', name: 'Homepage', category: 'Dev Tools', tags: ['dashboard','startpage','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/github', description: 'Highly customizable self-hosted application dashboard', homepage: 'https://gethomepage.dev', versionSource: { type: 'github-releases', target: 'gethomepage/homepage' }, latestSource: { type: 'github-releases', target: 'gethomepage/homepage' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'organizr', name: 'Organizr', category: 'Dev Tools', tags: ['dashboard','startpage','self-hosted','php'], icon: 'https://cdn.simpleicons.org/github', description: 'HTPC/Homelab services organizer with tabs', homepage: 'https://organizr.app', versionSource: { type: 'github-releases', target: 'causefx/Organizr' }, latestSource: { type: 'github-releases', target: 'causefx/Organizr' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'semaphore-ui', name: 'Semaphore UI', category: 'Dev Tools', tags: ['ansible','automation','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern UI for Ansible, Terraform, and other tools', homepage: 'https://semaphoreui.com', versionSource: { type: 'github-releases', target: 'semaphoreui/semaphore' }, latestSource: { type: 'github-releases', target: 'semaphoreui/semaphore' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'act-runner', name: 'act', category: 'Dev Tools', tags: ['github-actions','ci-cd','local','testing'], icon: 'https://cdn.simpleicons.org/gitea', description: 'Run GitHub Actions locally', homepage: 'https://github.com/nektos/act', versionSource: { type: 'github-releases', target: 'nektos/act' }, latestSource: { type: 'github-releases', target: 'nektos/act' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'devtron', name: 'Devtron', category: 'Dev Tools', tags: ['kubernetes','ci-cd','self-hosted','gitops'], icon: 'https://cdn.simpleicons.org/github', description: 'Tool integration platform for Kubernetes', homepage: 'https://devtron.ai', versionSource: { type: 'github-releases', target: 'devtron-labs/devtron' }, latestSource: { type: 'github-releases', target: 'devtron-labs/devtron' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'backstage', name: 'Backstage', category: 'Dev Tools', tags: ['developer-portal','platform-engineering','self-hosted','spotify'], icon: 'https://cdn.simpleicons.org/backstage', description: 'Open platform for building developer portals', homepage: 'https://backstage.io', versionSource: { type: 'npm-registry', target: '@backstage/core-plugin-api' }, latestSource: { type: 'npm-registry', target: '@backstage/core-plugin-api' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'homepage-dashboard', name: 'Homepage', category: 'Dev Tools', tags: ['dashboard','startpage','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/github', description: 'Highly customizable self-hosted application dashboard', homepage: 'https://gethomepage.dev', versionSource: { type: 'github-releases', target: 'gethomepage/homepage' }, latestSource: { type: 'github-releases', target: 'gethomepage/homepage' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'organizr', name: 'Organizr', category: 'Dev Tools', tags: ['dashboard','startpage','self-hosted','php'], icon: 'https://cdn.simpleicons.org/github', description: 'HTPC/Homelab services organizer with tabs', homepage: 'https://organizr.app', versionSource: { type: 'github-releases', target: 'causefx/Organizr' }, latestSource: { type: 'github-releases', target: 'causefx/Organizr' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Backup ───
-  { id: 'archivebox', name: 'ArchiveBox', category: 'Media', tags: ['archiving','bookmarks','self-hosted','web-archive'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted internet archiving solution', homepage: 'https://archivebox.io', versionSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' }, latestSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'shiori', name: 'Shiori', category: 'Media', tags: ['bookmarks','self-hosted','golang','archiving'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple bookmark manager written in Go', homepage: 'https://github.com/go-shiori/shiori', versionSource: { type: 'github-releases', target: 'go-shiori/shiori' }, latestSource: { type: 'github-releases', target: 'go-shiori/shiori' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'readeck', name: 'Readeck', category: 'Media', tags: ['read-later','bookmarks','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Read-later and bookmark manager', homepage: 'https://readeck.org', versionSource: { type: 'github-releases', target: 'readeck/readeck' }, latestSource: { type: 'github-releases', target: 'readeck/readeck' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'stash', name: 'Stash', category: 'Media', tags: ['media-organizer','self-hosted','metadata'], icon: 'https://cdn.simpleicons.org/stash', description: 'Self-hosted media organizer and metadata scraper', homepage: 'https://stashapp.cc', versionSource: { type: 'github-releases', target: 'stashapp/stash' }, latestSource: { type: 'github-releases', target: 'stashapp/stash' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'gotosocial', name: 'GoToSocial', category: 'Communication', tags: ['fediverse','activitypub','self-hosted','golang','social'], icon: 'https://cdn.simpleicons.org/mastodon', description: 'ActivityPub social network server written in Go', homepage: 'https://gotosocial.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/instance', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'superseriousbusiness/gotosocial' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'signal-cli-rest-api', name: 'Signal CLI REST API', category: 'Communication', tags: ['signal','messaging','api','self-hosted'], icon: `${SI}/signal`, description: 'REST API for Signal messenger', homepage: 'https://github.com/bbernhard/signal-cli-rest-api', versionSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' }, latestSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'archivebox', name: 'ArchiveBox', category: 'Media', tags: ['archiving','bookmarks','self-hosted','web-archive'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted internet archiving solution', homepage: 'https://archivebox.io', versionSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' }, latestSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'shiori', name: 'Shiori', category: 'Media', tags: ['bookmarks','self-hosted','golang','archiving'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple bookmark manager written in Go', homepage: 'https://github.com/go-shiori/shiori', versionSource: { type: 'github-releases', target: 'go-shiori/shiori' }, latestSource: { type: 'github-releases', target: 'go-shiori/shiori' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'readeck', name: 'Readeck', category: 'Media', tags: ['read-later','bookmarks','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Read-later and bookmark manager', homepage: 'https://readeck.org', versionSource: { type: 'github-releases', target: 'readeck/readeck' }, latestSource: { type: 'github-releases', target: 'readeck/readeck' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'stash', name: 'Stash', category: 'Media', tags: ['media-organizer','self-hosted','metadata'], icon: 'https://cdn.simpleicons.org/stash', description: 'Self-hosted media organizer and metadata scraper', homepage: 'https://stashapp.cc', versionSource: { type: 'github-releases', target: 'stashapp/stash' }, latestSource: { type: 'github-releases', target: 'stashapp/stash' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'gotosocial', name: 'GoToSocial', category: 'Communication', tags: ['fediverse','activitypub','self-hosted','golang','social'], icon: 'https://cdn.simpleicons.org/mastodon', description: 'ActivityPub social network server written in Go', homepage: 'https://gotosocial.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/instance', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'superseriousbusiness/gotosocial' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'signal-cli-rest-api', name: 'Signal CLI REST API', category: 'Communication', tags: ['signal','messaging','api','self-hosted'], icon: `${SI}/signal`, description: 'REST API for Signal messenger', homepage: 'https://github.com/bbernhard/signal-cli-rest-api', versionSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' }, latestSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Self-Hosting Platforms ───
-  { id: 'casaos', name: 'CasaOS', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple home server operating system', homepage: 'https://casaos.io', versionSource: { type: 'github-releases', target: 'IceWhaleTech/CasaOS' }, latestSource: { type: 'github-releases', target: 'IceWhaleTech/CasaOS' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'runtipi', name: 'Runtipi', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Personal homeserver manager for self-hosted apps', homepage: 'https://runtipi.io', versionSource: { type: 'github-releases', target: 'runtipi/runtipi' }, latestSource: { type: 'github-releases', target: 'runtipi/runtipi' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'cosmos-server', name: 'Cosmos Server', category: 'Infrastructure', tags: ['self-hosted','docker','reverse-proxy','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted platform with reverse proxy and app store', homepage: 'https://cosmos-cloud.io', versionSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' }, latestSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'umbrel', name: 'Umbrel', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Personal home cloud and app store for self-hosting', homepage: 'https://umbrel.com', versionSource: { type: 'github-releases', target: 'getumbrel/umbrel' }, latestSource: { type: 'github-releases', target: 'getumbrel/umbrel' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'casaos', name: 'CasaOS', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Simple home server operating system', homepage: 'https://casaos.io', versionSource: { type: 'github-releases', target: 'IceWhaleTech/CasaOS' }, latestSource: { type: 'github-releases', target: 'IceWhaleTech/CasaOS' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'runtipi', name: 'Runtipi', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Personal homeserver manager for self-hosted apps', homepage: 'https://runtipi.io', versionSource: { type: 'github-releases', target: 'runtipi/runtipi' }, latestSource: { type: 'github-releases', target: 'runtipi/runtipi' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'cosmos-server', name: 'Cosmos Server', category: 'Infrastructure', tags: ['self-hosted','docker','reverse-proxy','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted platform with reverse proxy and app store', homepage: 'https://cosmos-cloud.io', versionSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' }, latestSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'umbrel', name: 'Umbrel', category: 'Infrastructure', tags: ['self-hosted','dashboard','docker','home-server'], icon: 'https://cdn.simpleicons.org/github', description: 'Personal home cloud and app store for self-hosting', homepage: 'https://umbrel.com', versionSource: { type: 'github-releases', target: 'getumbrel/umbrel' }, latestSource: { type: 'github-releases', target: 'getumbrel/umbrel' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Identity & SSO ───
-  { id: 'goauthentik', name: 'authentik', category: 'Identity & SSO', tags: ['identity','sso','self-hosted','oauth2','saml'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source Identity Provider and SSO solution', homepage: 'https://goauthentik.io', versionSource: { type: 'github-releases', target: 'goauthentik/authentik' }, latestSource: { type: 'github-releases', target: 'goauthentik/authentik' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'goauthentik', name: 'authentik', category: 'Identity & SSO', tags: ['identity','sso','self-hosted','oauth2','saml'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source Identity Provider and SSO solution', homepage: 'https://goauthentik.io', versionSource: { type: 'github-releases', target: 'goauthentik/authentik' }, latestSource: { type: 'github-releases', target: 'goauthentik/authentik' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── CMS ───
-  { id: 'wagtail', name: 'Wagtail', category: 'CMS', tags: ['cms','django','python','self-hosted'], icon: `${SI}/wagtail`, description: 'Django-based content management system', homepage: 'https://wagtail.org', versionSource: { type: 'pypi', target: 'wagtail' }, latestSource: { type: 'pypi', target: 'wagtail' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'moonlight', name: 'Moonlight', category: 'Remote Access', tags: ['game-streaming','remote-desktop','self-hosted'], icon: `${SI}/nvidia`, description: 'Open-source GameStream client for remote gaming', homepage: 'https://moonlight-stream.org', versionSource: { type: 'github-releases', target: 'moonlight-stream/moonlight-qt' }, latestSource: { type: 'github-releases', target: 'moonlight-stream/moonlight-qt' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'sunshine', name: 'Sunshine', category: 'Remote Access', tags: ['game-streaming','remote-desktop','self-hosted','gpu'], icon: `${SI}/nvidia`, description: 'Self-hosted game streaming host for Moonlight', homepage: 'https://app.lizardbyte.dev/Sunshine/', versionSource: { type: 'github-releases', target: 'LizardByte/Sunshine' }, latestSource: { type: 'github-releases', target: 'LizardByte/Sunshine' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'apache-guacamole', name: 'Apache Guacamole', category: 'Remote Access', tags: ['remote-desktop','vnc','rdp','self-hosted','web'], icon: `${SI}/apacheguacamole`, description: 'Clientless remote desktop gateway', homepage: 'https://guacamole.apache.org', versionSource: { type: 'github-releases', target: 'apache/guacamole-server' }, latestSource: { type: 'github-releases', target: 'apache/guacamole-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'wagtail', name: 'Wagtail', category: 'CMS', tags: ['cms','django','python','self-hosted'], icon: `${SI}/wagtail`, description: 'Django-based content management system', homepage: 'https://wagtail.org', versionSource: { type: 'pypi', target: 'wagtail' }, latestSource: { type: 'pypi', target: 'wagtail' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'moonlight', name: 'Moonlight', category: 'Remote Access', tags: ['game-streaming','remote-desktop','self-hosted'], icon: `${SI}/nvidia`, description: 'Open-source GameStream client for remote gaming', homepage: 'https://moonlight-stream.org', versionSource: { type: 'github-releases', target: 'moonlight-stream/moonlight-qt' }, latestSource: { type: 'github-releases', target: 'moonlight-stream/moonlight-qt' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'sunshine', name: 'Sunshine', category: 'Remote Access', tags: ['game-streaming','remote-desktop','self-hosted','gpu'], icon: `${SI}/nvidia`, description: 'Self-hosted game streaming host for Moonlight', homepage: 'https://app.lizardbyte.dev/Sunshine/', versionSource: { type: 'github-releases', target: 'LizardByte/Sunshine' }, latestSource: { type: 'github-releases', target: 'LizardByte/Sunshine' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'apache-guacamole', name: 'Apache Guacamole', category: 'Remote Access', tags: ['remote-desktop','vnc','rdp','self-hosted','web'], icon: `${SI}/apacheguacamole`, description: 'Clientless remote desktop gateway', homepage: 'https://guacamole.apache.org', versionSource: { type: 'github-releases', target: 'apache/guacamole-server' }, latestSource: { type: 'github-releases', target: 'apache/guacamole-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Download & Torrent ───
-  { id: 'aria2', name: 'aria2', category: 'Download & Torrent', tags: ['download','multi-protocol','self-hosted','cli'], icon: `${SI}/gnu`, description: 'Lightweight multi-protocol download utility', homepage: 'https://aria2.github.io', versionSource: { type: 'github-releases', target: 'aria2/aria2' }, latestSource: { type: 'github-releases', target: 'aria2/aria2' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'flood', name: 'Flood', category: 'Download & Torrent', tags: ['torrent','web-ui','self-hosted','rtorrent'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern web UI for torrent clients', homepage: 'https://flood.js.org', versionSource: { type: 'github-releases', target: 'jesec/flood' }, latestSource: { type: 'github-releases', target: 'jesec/flood' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'pyload', name: 'pyLoad', category: 'Download & Torrent', tags: ['download','manager','self-hosted','python'], icon: `${SI}/python`, description: 'Free and open-source download manager', homepage: 'https://pyload.net', versionSource: { type: 'github-releases', target: 'pyload/pyload' }, latestSource: { type: 'github-releases', target: 'pyload/pyload' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'aria2', name: 'aria2', category: 'Download & Torrent', tags: ['download','multi-protocol','self-hosted','cli'], icon: `${SI}/gnu`, description: 'Lightweight multi-protocol download utility', homepage: 'https://aria2.github.io', versionSource: { type: 'github-releases', target: 'aria2/aria2' }, latestSource: { type: 'github-releases', target: 'aria2/aria2' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'flood', name: 'Flood', category: 'Download & Torrent', tags: ['torrent','web-ui','self-hosted','rtorrent'], icon: 'https://cdn.simpleicons.org/github', description: 'Modern web UI for torrent clients', homepage: 'https://flood.js.org', versionSource: { type: 'github-releases', target: 'jesec/flood' }, latestSource: { type: 'github-releases', target: 'jesec/flood' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'pyload', name: 'pyLoad', category: 'Download & Torrent', tags: ['download','manager','self-hosted','python'], icon: `${SI}/python`, description: 'Free and open-source download manager', homepage: 'https://pyload.net', versionSource: { type: 'github-releases', target: 'pyload/pyload' }, latestSource: { type: 'github-releases', target: 'pyload/pyload' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'jdownloader', name: 'JDownloader', category: 'Download & Torrent', tags: ['download','manager','self-hosted','java'], icon: `${SI}/java`, description: 'Open-source download management tool', homepage: 'https://jdownloader.org', versionSource: { type: 'docker-hub', target: 'jlesage/jdownloader-2' }, latestSource: { type: 'docker-hub', target: 'jlesage/jdownloader-2' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // ─── Calendar & Scheduling ───
-  { id: 'zincsearch', name: 'ZincSearch', category: 'Search/Vector', tags: ['search','full-text','self-hosted','golang','elasticsearch-alternative'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight search engine (Elasticsearch alternative)', homepage: 'https://zincsearch.com', versionSource: { type: 'github-releases', target: 'zincsearch/zincsearch' }, latestSource: { type: 'github-releases', target: 'zincsearch/zincsearch' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'searxng', name: 'SearXNG', category: 'Search/Vector', tags: ['search','metasearch','self-hosted','privacy'], icon: `${SI}/searxng`, description: 'Privacy-respecting metasearch engine', homepage: 'https://docs.searxng.org', versionSource: { type: 'github-releases', target: 'searxng/searxng' }, latestSource: { type: 'github-releases', target: 'searxng/searxng' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'zincsearch', name: 'ZincSearch', category: 'Search/Vector', tags: ['search','full-text','self-hosted','golang','elasticsearch-alternative'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight search engine (Elasticsearch alternative)', homepage: 'https://zincsearch.com', versionSource: { type: 'github-releases', target: 'zincsearch/zincsearch' }, latestSource: { type: 'github-releases', target: 'zincsearch/zincsearch' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'searxng', name: 'SearXNG', category: 'Search/Vector', tags: ['search','metasearch','self-hosted','privacy'], icon: `${SI}/searxng`, description: 'Privacy-respecting metasearch engine', homepage: 'https://docs.searxng.org', versionSource: { type: 'github-releases', target: 'searxng/searxng' }, latestSource: { type: 'github-releases', target: 'searxng/searxng' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── ERP / Business ───
-  { id: 'fluidd', name: 'Fluidd', category: 'Print & 3D', tags: ['3d-printing','klipper','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight Klipper web interface', homepage: 'https://docs.fluidd.xyz', versionSource: { type: 'github-releases', target: 'fluidd-core/fluidd' }, latestSource: { type: 'github-releases', target: 'fluidd-core/fluidd' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'fluidd', name: 'Fluidd', category: 'Print & 3D', tags: ['3d-printing','klipper','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight Klipper web interface', homepage: 'https://docs.fluidd.xyz', versionSource: { type: 'github-releases', target: 'fluidd-core/fluidd' }, latestSource: { type: 'github-releases', target: 'fluidd-core/fluidd' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Compliance & Audit ───
   { id: 'eramba', name: 'Eramba', category: 'Compliance & Audit', tags: ['grc','compliance','risk-management','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source GRC (Governance, Risk, Compliance) platform', homepage: 'https://www.eramba.org', versionSource: { type: 'github-releases', target: 'eramba/eramba' }, latestSource: { type: 'github-releases', target: 'eramba/eramba' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // ─── Terminal & Web Shell ───
-  { id: 'appsmith', name: 'Appsmith', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted','dashboard'], icon: 'https://cdn.simpleicons.org/appsmith', description: 'Open-source platform for building internal tools', homepage: 'https://www.appsmith.com', versionSource: { type: 'github-releases', target: 'appsmithorg/appsmith' }, latestSource: { type: 'github-releases', target: 'appsmithorg/appsmith' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'tooljet', name: 'ToolJet', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted','dashboard'], icon: 'https://cdn.simpleicons.org/tooljet', description: 'Open-source low-code platform for building tools', homepage: 'https://tooljet.com', versionSource: { type: 'github-releases', target: 'ToolJet/ToolJet' }, latestSource: { type: 'github-releases', target: 'ToolJet/ToolJet' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'budibase', name: 'Budibase', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted'], icon: 'https://cdn.simpleicons.org/budibase', description: 'Open-source low-code platform for business apps', homepage: 'https://budibase.com', versionSource: { type: 'github-releases', target: 'Budibase/budibase' }, latestSource: { type: 'github-releases', target: 'Budibase/budibase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'appsmith', name: 'Appsmith', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted','dashboard'], icon: 'https://cdn.simpleicons.org/appsmith', description: 'Open-source platform for building internal tools', homepage: 'https://www.appsmith.com', versionSource: { type: 'github-releases', target: 'appsmithorg/appsmith' }, latestSource: { type: 'github-releases', target: 'appsmithorg/appsmith' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'tooljet', name: 'ToolJet', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted','dashboard'], icon: 'https://cdn.simpleicons.org/tooljet', description: 'Open-source low-code platform for building tools', homepage: 'https://tooljet.com', versionSource: { type: 'github-releases', target: 'ToolJet/ToolJet' }, latestSource: { type: 'github-releases', target: 'ToolJet/ToolJet' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'budibase', name: 'Budibase', category: 'Dev Tools', tags: ['low-code','internal-tools','self-hosted'], icon: 'https://cdn.simpleicons.org/budibase', description: 'Open-source low-code platform for business apps', homepage: 'https://budibase.com', versionSource: { type: 'github-releases', target: 'Budibase/budibase' }, latestSource: { type: 'github-releases', target: 'Budibase/budibase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Database Tools ───
-  { id: 'dbgate', name: 'DbGate', category: 'Database', tags: ['database','gui','self-hosted','cross-platform'], icon: 'https://cdn.simpleicons.org/github', description: 'Cross-platform database manager and SQL client', homepage: 'https://dbgate.org', versionSource: { type: 'github-releases', target: 'dbgate/dbgate' }, latestSource: { type: 'github-releases', target: 'dbgate/dbgate' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'harbor', name: 'Harbor', category: 'Container', tags: ['container-registry','docker','self-hosted','cncf'], icon: `${SI}/harbor`, description: 'Open-source container image registry with security', homepage: 'https://goharbor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo', jsonPath: '$.harbor_version', authRequired: false }, latestSource: { type: 'github-releases', target: 'goharbor/harbor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'zot', name: 'zot', category: 'Container', tags: ['container-registry','oci','self-hosted','golang'], icon: 'https://cdn.simpleicons.org/github', description: 'OCI-native container image registry', homepage: 'https://zotregistry.dev', versionSource: { type: 'github-releases', target: 'project-zot/zot' }, latestSource: { type: 'github-releases', target: 'project-zot/zot' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'dbgate', name: 'DbGate', category: 'Database', tags: ['database','gui','self-hosted','cross-platform'], icon: 'https://cdn.simpleicons.org/github', description: 'Cross-platform database manager and SQL client', homepage: 'https://dbgate.org', versionSource: { type: 'github-releases', target: 'dbgate/dbgate' }, latestSource: { type: 'github-releases', target: 'dbgate/dbgate' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'harbor', name: 'Harbor', category: 'Container', tags: ['container-registry','docker','self-hosted','cncf'], icon: `${SI}/harbor`, description: 'Open-source container image registry with security', homepage: 'https://goharbor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo', jsonPath: '$.harbor_version', authRequired: false }, latestSource: { type: 'github-releases', target: 'goharbor/harbor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'zot', name: 'zot', category: 'Container', tags: ['container-registry','oci','self-hosted','golang'], icon: 'https://cdn.simpleicons.org/github', description: 'OCI-native container image registry', homepage: 'https://zotregistry.dev', versionSource: { type: 'github-releases', target: 'project-zot/zot' }, latestSource: { type: 'github-releases', target: 'project-zot/zot' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Dev Tools ───
-  { id: 'snyk-cli', name: 'Snyk CLI', category: 'Security', tags: ['vulnerability-scanner','dependency','security','cli'], icon: 'https://cdn.simpleicons.org/snyk', description: 'Find & fix vulnerabilities in code, dependencies, containers', homepage: 'https://snyk.io', versionSource: { type: 'npm-registry', target: 'snyk' }, latestSource: { type: 'npm-registry', target: 'snyk' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'lacework', name: 'Lacework CLI', category: 'Security', tags: ['cloud-security','compliance','cli'], icon: 'https://cdn.simpleicons.org/github', description: 'Cloud security platform CLI', homepage: 'https://github.com/lacework/go-sdk', versionSource: { type: 'github-releases', target: 'lacework/go-sdk' }, latestSource: { type: 'github-releases', target: 'lacework/go-sdk' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'portmaster', name: 'Portmaster', category: 'Security', tags: ['firewall','privacy','dns','desktop'], icon: 'https://cdn.simpleicons.org/github', description: 'Free open-source application firewall', homepage: 'https://safing.io/portmaster/', versionSource: { type: 'github-releases', target: 'safing/portmaster' }, latestSource: { type: 'github-releases', target: 'safing/portmaster' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'clamav', name: 'ClamAV', category: 'Security', tags: ['antivirus','malware','self-hosted','scanning'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source antivirus engine', homepage: 'https://www.clamav.net', versionSource: { type: 'github-releases', target: 'Cisco-Talos/clamav' }, latestSource: { type: 'github-releases', target: 'Cisco-Talos/clamav' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'snyk-cli', name: 'Snyk CLI', category: 'Security', tags: ['vulnerability-scanner','dependency','security','cli'], icon: 'https://cdn.simpleicons.org/snyk', description: 'Find & fix vulnerabilities in code, dependencies, containers', homepage: 'https://snyk.io', versionSource: { type: 'npm-registry', target: 'snyk' }, latestSource: { type: 'npm-registry', target: 'snyk' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'lacework', name: 'Lacework CLI', category: 'Security', tags: ['cloud-security','compliance','cli'], icon: 'https://cdn.simpleicons.org/github', description: 'Cloud security platform CLI', homepage: 'https://github.com/lacework/go-sdk', versionSource: { type: 'github-releases', target: 'lacework/go-sdk' }, latestSource: { type: 'github-releases', target: 'lacework/go-sdk' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'portmaster', name: 'Portmaster', category: 'Security', tags: ['firewall','privacy','dns','desktop'], icon: 'https://cdn.simpleicons.org/github', description: 'Free open-source application firewall', homepage: 'https://safing.io/portmaster/', versionSource: { type: 'github-releases', target: 'safing/portmaster' }, latestSource: { type: 'github-releases', target: 'safing/portmaster' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'clamav', name: 'ClamAV', category: 'Security', tags: ['antivirus','malware','self-hosted','scanning'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source antivirus engine', homepage: 'https://www.clamav.net', versionSource: { type: 'github-releases', target: 'Cisco-Talos/clamav' }, latestSource: { type: 'github-releases', target: 'Cisco-Talos/clamav' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Networking ───
-  { id: 'openbalena', name: 'openBalena', category: 'IoT/Edge', tags: ['iot','fleet-management','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/balena', description: 'Open-source platform for deploying IoT fleets', homepage: 'https://www.balena.io/open', versionSource: { type: 'github-releases', target: 'balena-io/open-balena' }, latestSource: { type: 'github-releases', target: 'balena-io/open-balena' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'thingsboard', name: 'ThingsBoard', category: 'IoT/Edge', tags: ['iot','platform','self-hosted','dashboard','telemetry'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source IoT platform for device management', homepage: 'https://thingsboard.io', versionSource: { type: 'github-releases', target: 'thingsboard/thingsboard' }, latestSource: { type: 'github-releases', target: 'thingsboard/thingsboard' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'mainflux', name: 'Mainflux', category: 'IoT/Edge', tags: ['iot','platform','self-hosted','messaging'], icon: 'https://cdn.simpleicons.org/github', description: 'Industrial IoT messaging and device management', homepage: 'https://mainflux.com', versionSource: { type: 'github-releases', target: 'mainflux/mainflux' }, latestSource: { type: 'github-releases', target: 'mainflux/mainflux' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'chirpstack', name: 'ChirpStack', category: 'IoT/Edge', tags: ['lorawan','iot','self-hosted','gateway'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source LoRaWAN network server stack', homepage: 'https://www.chirpstack.io', versionSource: { type: 'github-releases', target: 'chirpstack/chirpstack' }, latestSource: { type: 'github-releases', target: 'chirpstack/chirpstack' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'openbalena', name: 'openBalena', category: 'IoT/Edge', tags: ['iot','fleet-management','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/balena', description: 'Open-source platform for deploying IoT fleets', homepage: 'https://www.balena.io/open', versionSource: { type: 'github-releases', target: 'balena-io/open-balena' }, latestSource: { type: 'github-releases', target: 'balena-io/open-balena' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'thingsboard', name: 'ThingsBoard', category: 'IoT/Edge', tags: ['iot','platform','self-hosted','dashboard','telemetry'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source IoT platform for device management', homepage: 'https://thingsboard.io', versionSource: { type: 'github-releases', target: 'thingsboard/thingsboard' }, latestSource: { type: 'github-releases', target: 'thingsboard/thingsboard' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'mainflux', name: 'Mainflux', category: 'IoT/Edge', tags: ['iot','platform','self-hosted','messaging'], icon: 'https://cdn.simpleicons.org/github', description: 'Industrial IoT messaging and device management', homepage: 'https://mainflux.com', versionSource: { type: 'github-releases', target: 'mainflux/mainflux' }, latestSource: { type: 'github-releases', target: 'mainflux/mainflux' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'chirpstack', name: 'ChirpStack', category: 'IoT/Edge', tags: ['lorawan','iot','self-hosted','gateway'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source LoRaWAN network server stack', homepage: 'https://www.chirpstack.io', versionSource: { type: 'github-releases', target: 'chirpstack/chirpstack' }, latestSource: { type: 'github-releases', target: 'chirpstack/chirpstack' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Observability ───
-  { id: 'beszel', name: 'Beszel', category: 'Observability', tags: ['monitoring','server','self-hosted','lightweight'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight server monitoring hub with Docker stats', homepage: 'https://beszel.dev', versionSource: { type: 'github-releases', target: 'henrygd/beszel' }, latestSource: { type: 'github-releases', target: 'henrygd/beszel' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'dozzle', name: 'Dozzle', category: 'Observability', tags: ['docker','logs','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Real-time log viewer for Docker containers', homepage: 'https://dozzle.dev', versionSource: { type: 'github-releases', target: 'amir20/dozzle' }, latestSource: { type: 'github-releases', target: 'amir20/dozzle' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'beszel', name: 'Beszel', category: 'Observability', tags: ['monitoring','server','self-hosted','lightweight'], icon: 'https://cdn.simpleicons.org/github', description: 'Lightweight server monitoring hub with Docker stats', homepage: 'https://beszel.dev', versionSource: { type: 'github-releases', target: 'henrygd/beszel' }, latestSource: { type: 'github-releases', target: 'henrygd/beszel' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'dozzle', name: 'Dozzle', category: 'Observability', tags: ['docker','logs','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/github', description: 'Real-time log viewer for Docker containers', homepage: 'https://dozzle.dev', versionSource: { type: 'github-releases', target: 'amir20/dozzle' }, latestSource: { type: 'github-releases', target: 'amir20/dozzle' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Infrastructure ───
 
   // ─── Additional AI/ML ───
-  { id: 'private-gpt', name: 'PrivateGPT', category: 'AI/ML', tags: ['llm','rag','self-hosted','ai','private'], icon: 'https://cdn.simpleicons.org/openai', description: 'Interact with documents using LLMs, 100% privately', homepage: 'https://privategpt.dev', versionSource: { type: 'github-releases', target: 'zylon-ai/private-gpt' }, latestSource: { type: 'github-releases', target: 'zylon-ai/private-gpt' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'gpt4all', name: 'GPT4All', category: 'AI/ML', tags: ['llm','desktop','self-hosted','ai','offline'], icon: 'https://cdn.simpleicons.org/openai', description: 'Free-to-use, locally running, privacy-aware LLM chatbot', homepage: 'https://gpt4all.io', versionSource: { type: 'github-releases', target: 'nomic-ai/gpt4all' }, latestSource: { type: 'github-releases', target: 'nomic-ai/gpt4all' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'text-generation-inference', name: 'TGI (Text Generation Inference)', category: 'AI/ML', tags: ['llm','inference','self-hosted','ai','huggingface'], icon: 'https://cdn.simpleicons.org/huggingface', description: 'Hugging Face production-ready LLM inference server', homepage: 'https://huggingface.co/docs/text-generation-inference', versionSource: { type: 'github-releases', target: 'huggingface/text-generation-inference' }, latestSource: { type: 'github-releases', target: 'huggingface/text-generation-inference' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'automatic1111-forge', name: 'Stable Diffusion WebUI Forge', category: 'AI/ML', tags: ['stable-diffusion','image-generation','self-hosted','ai'], icon: 'https://cdn.simpleicons.org/github', description: 'Optimized fork of A1111 WebUI for faster SD inference', homepage: 'https://github.com/lllyasviel/stable-diffusion-webui-forge', versionSource: { type: 'github-releases', target: 'lllyasviel/stable-diffusion-webui-forge' }, latestSource: { type: 'github-releases', target: 'lllyasviel/stable-diffusion-webui-forge' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'invokeai', name: 'InvokeAI', category: 'AI/ML', tags: ['stable-diffusion','image-generation','self-hosted','ai','creative'], icon: 'https://cdn.simpleicons.org/github', description: 'Professional creative AI image generation toolkit', homepage: 'https://invoke-ai.github.io/InvokeAI/', versionSource: { type: 'github-releases', target: 'invoke-ai/InvokeAI' }, latestSource: { type: 'github-releases', target: 'invoke-ai/InvokeAI' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'huggingface-hub', name: 'Hugging Face Hub', category: 'AI/ML', tags: ['ml','model-hub','ai','python'], icon: 'https://cdn.simpleicons.org/huggingface', description: 'Client library for Hugging Face Hub', homepage: 'https://huggingface.co', versionSource: { type: 'pypi', target: 'huggingface-hub' }, latestSource: { type: 'pypi', target: 'huggingface-hub' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'private-gpt', name: 'PrivateGPT', category: 'AI/ML', tags: ['llm','rag','self-hosted','ai','private'], icon: 'https://cdn.simpleicons.org/openai', description: 'Interact with documents using LLMs, 100% privately', homepage: 'https://privategpt.dev', versionSource: { type: 'github-releases', target: 'zylon-ai/private-gpt' }, latestSource: { type: 'github-releases', target: 'zylon-ai/private-gpt' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'gpt4all', name: 'GPT4All', category: 'AI/ML', tags: ['llm','desktop','self-hosted','ai','offline'], icon: 'https://cdn.simpleicons.org/openai', description: 'Free-to-use, locally running, privacy-aware LLM chatbot', homepage: 'https://gpt4all.io', versionSource: { type: 'github-releases', target: 'nomic-ai/gpt4all' }, latestSource: { type: 'github-releases', target: 'nomic-ai/gpt4all' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'text-generation-inference', name: 'TGI (Text Generation Inference)', category: 'AI/ML', tags: ['llm','inference','self-hosted','ai','huggingface'], icon: 'https://cdn.simpleicons.org/huggingface', description: 'Hugging Face production-ready LLM inference server', homepage: 'https://huggingface.co/docs/text-generation-inference', versionSource: { type: 'github-releases', target: 'huggingface/text-generation-inference' }, latestSource: { type: 'github-releases', target: 'huggingface/text-generation-inference' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'automatic1111-forge', name: 'Stable Diffusion WebUI Forge', category: 'AI/ML', tags: ['stable-diffusion','image-generation','self-hosted','ai'], icon: 'https://cdn.simpleicons.org/github', description: 'Optimized fork of A1111 WebUI for faster SD inference', homepage: 'https://github.com/lllyasviel/stable-diffusion-webui-forge', versionSource: { type: 'github-releases', target: 'lllyasviel/stable-diffusion-webui-forge' }, latestSource: { type: 'github-releases', target: 'lllyasviel/stable-diffusion-webui-forge' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'invokeai', name: 'InvokeAI', category: 'AI/ML', tags: ['stable-diffusion','image-generation','self-hosted','ai','creative'], icon: 'https://cdn.simpleicons.org/github', description: 'Professional creative AI image generation toolkit', homepage: 'https://invoke-ai.github.io/InvokeAI/', versionSource: { type: 'github-releases', target: 'invoke-ai/InvokeAI' }, latestSource: { type: 'github-releases', target: 'invoke-ai/InvokeAI' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'huggingface-hub', name: 'Hugging Face Hub', category: 'AI/ML', tags: ['ml','model-hub','ai','python'], icon: 'https://cdn.simpleicons.org/huggingface', description: 'Client library for Hugging Face Hub', homepage: 'https://huggingface.co', versionSource: { type: 'pypi', target: 'huggingface-hub' }, latestSource: { type: 'pypi', target: 'huggingface-hub' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Storage / Documents ───
-  { id: 'collabora-online', name: 'Collabora Online', category: 'Photo & Documents', tags: ['office','documents','self-hosted','libreoffice'], icon: 'https://cdn.simpleicons.org/libreoffice', description: 'Self-hosted LibreOffice Online for collaborative editing', homepage: 'https://www.collaboraoffice.com', versionSource: { type: 'github-releases', target: 'CollaboraOnline/online' }, latestSource: { type: 'github-releases', target: 'CollaboraOnline/online' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'docmost', name: 'Docmost', category: 'Photo & Documents', tags: ['wiki','documentation','self-hosted','collaboration'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source collaborative wiki and documentation', homepage: 'https://docmost.com', versionSource: { type: 'github-releases', target: 'docmost/docmost' }, latestSource: { type: 'github-releases', target: 'docmost/docmost' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'collabora-online', name: 'Collabora Online', category: 'Photo & Documents', tags: ['office','documents','self-hosted','libreoffice'], icon: 'https://cdn.simpleicons.org/libreoffice', description: 'Self-hosted LibreOffice Online for collaborative editing', homepage: 'https://www.collaboraoffice.com', versionSource: { type: 'github-releases', target: 'CollaboraOnline/online' }, latestSource: { type: 'github-releases', target: 'CollaboraOnline/online' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'docmost', name: 'Docmost', category: 'Photo & Documents', tags: ['wiki','documentation','self-hosted','collaboration'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source collaborative wiki and documentation', homepage: 'https://docmost.com', versionSource: { type: 'github-releases', target: 'docmost/docmost' }, latestSource: { type: 'github-releases', target: 'docmost/docmost' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Communication ───
-  { id: 'spacebar', name: 'Spacebar', category: 'Communication', tags: ['chat','discord-compatible','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Free open-source Discord-compatible communication platform', homepage: 'https://spacebar.chat', versionSource: { type: 'github-releases', target: 'spacebarchat/server' }, latestSource: { type: 'github-releases', target: 'spacebarchat/server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'simplex-chat', name: 'SimpleX Chat', category: 'Communication', tags: ['messaging','privacy','self-hosted','e2e-encrypted'], icon: 'https://cdn.simpleicons.org/simpleicons', description: 'Private messaging without user identifiers', homepage: 'https://simplex.chat', versionSource: { type: 'github-releases', target: 'simplex-chat/simplex-chat' }, latestSource: { type: 'github-releases', target: 'simplex-chat/simplex-chat' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'spacebar', name: 'Spacebar', category: 'Communication', tags: ['chat','discord-compatible','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Free open-source Discord-compatible communication platform', homepage: 'https://spacebar.chat', versionSource: { type: 'github-releases', target: 'spacebarchat/server' }, latestSource: { type: 'github-releases', target: 'spacebarchat/server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'simplex-chat', name: 'SimpleX Chat', category: 'Communication', tags: ['messaging','privacy','self-hosted','e2e-encrypted'], icon: 'https://cdn.simpleicons.org/simpleicons', description: 'Private messaging without user identifiers', homepage: 'https://simplex.chat', versionSource: { type: 'github-releases', target: 'simplex-chat/simplex-chat' }, latestSource: { type: 'github-releases', target: 'simplex-chat/simplex-chat' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Media ───
-  { id: 'tubearchivist', name: 'TubeArchivist', category: 'Media', tags: ['youtube','archiving','self-hosted','video'], icon: 'https://cdn.simpleicons.org/youtube', description: 'Self-hosted YouTube media collection manager', homepage: 'https://www.tubearchivist.com', versionSource: { type: 'github-releases', target: 'tubearchivist/tubearchivist' }, latestSource: { type: 'github-releases', target: 'tubearchivist/tubearchivist' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'tubearchivist', name: 'TubeArchivist', category: 'Media', tags: ['youtube','archiving','self-hosted','video'], icon: 'https://cdn.simpleicons.org/youtube', description: 'Self-hosted YouTube media collection manager', homepage: 'https://www.tubearchivist.com', versionSource: { type: 'github-releases', target: 'tubearchivist/tubearchivist' }, latestSource: { type: 'github-releases', target: 'tubearchivist/tubearchivist' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Download ───
-  { id: 'metube', name: 'MeTube', category: 'Download & Torrent', tags: ['youtube','download','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/youtube', description: 'Web GUI for youtube-dl with playlist support', homepage: 'https://github.com/alexta69/metube', versionSource: { type: 'github-releases', target: 'alexta69/metube' }, latestSource: { type: 'github-releases', target: 'alexta69/metube' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'metube', name: 'MeTube', category: 'Download & Torrent', tags: ['youtube','download','self-hosted','web-ui'], icon: 'https://cdn.simpleicons.org/youtube', description: 'Web GUI for youtube-dl with playlist support', homepage: 'https://github.com/alexta69/metube', versionSource: { type: 'github-releases', target: 'alexta69/metube' }, latestSource: { type: 'github-releases', target: 'alexta69/metube' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional Home Automation ───
-  { id: 'scrypted', name: 'Scrypted', category: 'Home Automation', tags: ['smart-home','camera','homekit','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Smart home video integration platform', homepage: 'https://www.scrypted.app', versionSource: { type: 'github-releases', target: 'koush/scrypted' }, latestSource: { type: 'github-releases', target: 'koush/scrypted' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'scrypted', name: 'Scrypted', category: 'Home Automation', tags: ['smart-home','camera','homekit','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Smart home video integration platform', homepage: 'https://www.scrypted.app', versionSource: { type: 'github-releases', target: 'koush/scrypted' }, latestSource: { type: 'github-releases', target: 'koush/scrypted' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional CI/CD ───
 
   // ─── Additional Cloud ───
-  { id: 'localstack', name: 'LocalStack', category: 'Cloud', tags: ['aws','local','testing','self-hosted','emulator'], icon: 'https://cdn.simpleicons.org/amazon', description: 'Fully functional local AWS cloud stack', homepage: 'https://localstack.cloud', versionSource: { type: 'pypi', target: 'localstack' }, latestSource: { type: 'pypi', target: 'localstack' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true },
+  { id: 'localstack', name: 'LocalStack', category: 'Cloud', tags: ['aws','local','testing','self-hosted','emulator'], icon: 'https://cdn.simpleicons.org/amazon', description: 'Fully functional local AWS cloud stack', homepage: 'https://localstack.cloud', versionSource: { type: 'pypi', target: 'localstack' }, latestSource: { type: 'pypi', target: 'localstack' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // ─── Additional tools to reach 100+ ───
-  { id: 'penpot', name: 'Penpot', category: 'Dev Tools', tags: ['design','figma-alternative','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/penpot', description: 'Open-source design and prototyping platform', homepage: 'https://penpot.app', versionSource: { type: 'github-releases', target: 'penpot/penpot' }, latestSource: { type: 'github-releases', target: 'penpot/penpot' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'lago', name: 'Lago', category: 'ERP/Business', tags: ['billing','metering','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source metering and usage-based billing', homepage: 'https://getlago.com', versionSource: { type: 'github-releases', target: 'getlago/lago' }, latestSource: { type: 'github-releases', target: 'getlago/lago' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'maybe-finance', name: 'Maybe', category: 'ERP/Business', tags: ['finance','budgeting','self-hosted','personal-finance'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source personal finance and wealth management', homepage: 'https://maybe.co', versionSource: { type: 'github-releases', target: 'maybe-finance/maybe' }, latestSource: { type: 'github-releases', target: 'maybe-finance/maybe' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'hoarder', name: 'Hoarder', category: 'Media', tags: ['bookmarks','ai','self-hosted','link-saving'], icon: 'https://cdn.simpleicons.org/github', description: 'AI-powered bookmark manager for the data hoarder', homepage: 'https://hoarder.app', versionSource: { type: 'github-releases', target: 'hoarder-app/hoarder' }, latestSource: { type: 'github-releases', target: 'hoarder-app/hoarder' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'karakeep', name: 'Karakeep', category: 'Media', tags: ['bookmarks','self-hosted','knowledge-management'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted bookmark and knowledge management', homepage: 'https://github.com/karakeep-app/karakeep', versionSource: { type: 'github-releases', target: 'karakeep-app/karakeep' }, latestSource: { type: 'github-releases', target: 'karakeep-app/karakeep' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'it-tools', name: 'IT Tools', category: 'Dev Tools', tags: ['utilities','developer-tools','self-hosted','web'], icon: 'https://cdn.simpleicons.org/github', description: 'Collection of handy developer tools with a nice UI', homepage: 'https://it-tools.tech', versionSource: { type: 'github-releases', target: 'CorentinTh/it-tools' }, latestSource: { type: 'github-releases', target: 'CorentinTh/it-tools' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'cyberchef', name: 'CyberChef', category: 'Dev Tools', tags: ['utilities','encoding','encryption','web'], icon: 'https://cdn.simpleicons.org/github', description: 'Web app for data analysis and transformation', homepage: 'https://gchq.github.io/CyberChef/', versionSource: { type: 'github-releases', target: 'gchq/CyberChef' }, latestSource: { type: 'github-releases', target: 'gchq/CyberChef' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'traggo', name: 'Traggo', category: 'Dev Tools', tags: ['time-tracking','self-hosted','golang','lightweight'], icon: 'https://cdn.simpleicons.org/github', description: 'Tag-based time tracking tool', homepage: 'https://traggo.net', versionSource: { type: 'github-releases', target: 'traggo/server' }, latestSource: { type: 'github-releases', target: 'traggo/server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'reactive-resume', name: 'Reactive Resume', category: 'Dev Tools', tags: ['resume','cv','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/github', description: 'Free and open-source resume builder', homepage: 'https://rxresu.me', versionSource: { type: 'github-releases', target: 'AmruthPillworksmaniah/Reactive-Resume' }, latestSource: { type: 'github-releases', target: 'AmruthPillai/Reactive-Resume' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'kasm-workspaces', name: 'Kasm Workspaces', category: 'Remote Access', tags: ['browser-isolation','desktop','self-hosted','streaming'], icon: 'https://cdn.simpleicons.org/github', description: 'Streaming containerized apps and desktops to browsers', homepage: 'https://www.kasmweb.com', versionSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' }, latestSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'webtop', name: 'Webtop', category: 'Remote Access', tags: ['desktop','browser','self-hosted','linux'], icon: 'https://cdn.simpleicons.org/github', description: 'Full desktop environments accessible via browser', homepage: 'https://docs.linuxserver.io/images/docker-webtop/', versionSource: { type: 'docker-hub', target: 'linuxserver/webtop' }, latestSource: { type: 'docker-hub', target: 'linuxserver/webtop' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'doppler', name: 'Doppler CLI', category: 'Security', tags: ['secrets-management','cli','env-vars'], icon: 'https://cdn.simpleicons.org/doppler', description: 'Universal secrets manager CLI', homepage: 'https://www.doppler.com', versionSource: { type: 'github-releases', target: 'DopplerHQ/cli' }, latestSource: { type: 'github-releases', target: 'DopplerHQ/cli' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'open-interpreter', name: 'Open Interpreter', category: 'AI/ML', tags: ['llm','code-execution','ai','cli'], icon: 'https://cdn.simpleicons.org/openai', description: 'Let LLMs run code locally (natural language interface)', homepage: 'https://openinterpreter.com', versionSource: { type: 'pypi', target: 'open-interpreter' }, latestSource: { type: 'pypi', target: 'open-interpreter' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'langfuse', name: 'Langfuse', category: 'AI/ML', tags: ['llm','observability','self-hosted','ai','tracing'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source LLM engineering platform for tracing and analytics', homepage: 'https://langfuse.com', versionSource: { type: 'github-releases', target: 'langfuse/langfuse' }, latestSource: { type: 'github-releases', target: 'langfuse/langfuse' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'unstructured', name: 'Unstructured', category: 'AI/ML', tags: ['document-parsing','etl','ai','data-processing'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source tools for pre-processing unstructured data', homepage: 'https://unstructured.io', versionSource: { type: 'pypi', target: 'unstructured' }, latestSource: { type: 'pypi', target: 'unstructured' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'woodpecker-agent', name: 'Woodpecker Agent', category: 'CI/CD', tags: ['ci-cd','agent','self-hosted','container'], icon: 'https://cdn.simpleicons.org/woodpecker', description: 'Agent component for Woodpecker CI pipeline execution', homepage: 'https://woodpecker-ci.org', versionSource: { type: 'github-releases', target: 'woodpecker-ci/woodpecker' }, latestSource: { type: 'github-releases', target: 'woodpecker-ci/woodpecker' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true },
-  { id: 'act-ci', name: 'act', category: 'CI/CD', tags: ['github-actions','local','testing','cli'], icon: 'https://cdn.simpleicons.org/github', description: 'Run GitHub Actions locally', homepage: 'https://github.com/nektos/act', versionSource: { type: 'github-releases', target: 'nektos/act' }, latestSource: { type: 'github-releases', target: 'nektos/act' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'excalidraw-plus', name: 'Excalidraw+', category: 'Diagramming', tags: ['whiteboard','diagramming','collaboration','self-hosted'], icon: 'https://cdn.simpleicons.org/excalidraw', description: 'Virtual collaborative whiteboard with hand-drawn feel', homepage: 'https://plus.excalidraw.com', versionSource: { type: 'github-releases', target: 'excalidraw/excalidraw' }, latestSource: { type: 'github-releases', target: 'excalidraw/excalidraw' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'drawdb', name: 'DrawDB', category: 'Diagramming', tags: ['database','diagram','erd','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Free simple database diagram editor in the browser', homepage: 'https://drawdb.vercel.app', versionSource: { type: 'github-releases', target: 'drawdb-io/drawdb' }, latestSource: { type: 'github-releases', target: 'drawdb-io/drawdb' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'logseq', name: 'Logseq', category: 'Dev Tools', tags: ['notes','knowledge-graph','self-hosted','markdown'], icon: 'https://cdn.simpleicons.org/logseq', description: 'Privacy-first open-source knowledge base', homepage: 'https://logseq.com', versionSource: { type: 'github-releases', target: 'logseq/logseq' }, latestSource: { type: 'github-releases', target: 'logseq/logseq' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'teable', name: 'Teable', category: 'Dev Tools', tags: ['database','spreadsheet','self-hosted','no-code'], icon: 'https://cdn.simpleicons.org/github', description: 'Super-fast Airtable alternative built on Postgres', homepage: 'https://teable.io', versionSource: { type: 'github-releases', target: 'teableio/teable' }, latestSource: { type: 'github-releases', target: 'teableio/teable' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'dokploy', name: 'Dokploy', category: 'Infrastructure', tags: ['paas','deployment','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source PaaS alternative to Vercel/Netlify', homepage: 'https://dokploy.com', versionSource: { type: 'github-releases', target: 'Dokploy/dokploy' }, latestSource: { type: 'github-releases', target: 'Dokploy/dokploy' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'penpot', name: 'Penpot', category: 'Dev Tools', tags: ['design','figma-alternative','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/penpot', description: 'Open-source design and prototyping platform', homepage: 'https://penpot.app', versionSource: { type: 'github-releases', target: 'penpot/penpot' }, latestSource: { type: 'github-releases', target: 'penpot/penpot' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'lago', name: 'Lago', category: 'ERP/Business', tags: ['billing','metering','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source metering and usage-based billing', homepage: 'https://getlago.com', versionSource: { type: 'github-releases', target: 'getlago/lago' }, latestSource: { type: 'github-releases', target: 'getlago/lago' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'maybe-finance', name: 'Maybe', category: 'ERP/Business', tags: ['finance','budgeting','self-hosted','personal-finance'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source personal finance and wealth management', homepage: 'https://maybe.co', versionSource: { type: 'github-releases', target: 'maybe-finance/maybe' }, latestSource: { type: 'github-releases', target: 'maybe-finance/maybe' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'hoarder', name: 'Hoarder', category: 'Media', tags: ['bookmarks','ai','self-hosted','link-saving'], icon: 'https://cdn.simpleicons.org/github', description: 'AI-powered bookmark manager for the data hoarder', homepage: 'https://hoarder.app', versionSource: { type: 'github-releases', target: 'hoarder-app/hoarder' }, latestSource: { type: 'github-releases', target: 'hoarder-app/hoarder' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'karakeep', name: 'Karakeep', category: 'Media', tags: ['bookmarks','self-hosted','knowledge-management'], icon: 'https://cdn.simpleicons.org/github', description: 'Self-hosted bookmark and knowledge management', homepage: 'https://github.com/karakeep-app/karakeep', versionSource: { type: 'github-releases', target: 'karakeep-app/karakeep' }, latestSource: { type: 'github-releases', target: 'karakeep-app/karakeep' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'it-tools', name: 'IT Tools', category: 'Dev Tools', tags: ['utilities','developer-tools','self-hosted','web'], icon: 'https://cdn.simpleicons.org/github', description: 'Collection of handy developer tools with a nice UI', homepage: 'https://it-tools.tech', versionSource: { type: 'github-releases', target: 'CorentinTh/it-tools' }, latestSource: { type: 'github-releases', target: 'CorentinTh/it-tools' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'cyberchef', name: 'CyberChef', category: 'Dev Tools', tags: ['utilities','encoding','encryption','web'], icon: 'https://cdn.simpleicons.org/github', description: 'Web app for data analysis and transformation', homepage: 'https://gchq.github.io/CyberChef/', versionSource: { type: 'github-releases', target: 'gchq/CyberChef' }, latestSource: { type: 'github-releases', target: 'gchq/CyberChef' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'traggo', name: 'Traggo', category: 'Dev Tools', tags: ['time-tracking','self-hosted','golang','lightweight'], icon: 'https://cdn.simpleicons.org/github', description: 'Tag-based time tracking tool', homepage: 'https://traggo.net', versionSource: { type: 'github-releases', target: 'traggo/server' }, latestSource: { type: 'github-releases', target: 'traggo/server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'reactive-resume', name: 'Reactive Resume', category: 'Dev Tools', tags: ['resume','cv','self-hosted','open-source'], icon: 'https://cdn.simpleicons.org/github', description: 'Free and open-source resume builder', homepage: 'https://rxresu.me', versionSource: { type: 'github-releases', target: 'AmruthPillworksmaniah/Reactive-Resume' }, latestSource: { type: 'github-releases', target: 'AmruthPillai/Reactive-Resume' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'kasm-workspaces', name: 'Kasm Workspaces', category: 'Remote Access', tags: ['browser-isolation','desktop','self-hosted','streaming'], icon: 'https://cdn.simpleicons.org/github', description: 'Streaming containerized apps and desktops to browsers', homepage: 'https://www.kasmweb.com', versionSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' }, latestSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'webtop', name: 'Webtop', category: 'Remote Access', tags: ['desktop','browser','self-hosted','linux'], icon: 'https://cdn.simpleicons.org/github', description: 'Full desktop environments accessible via browser', homepage: 'https://docs.linuxserver.io/images/docker-webtop/', versionSource: { type: 'docker-hub', target: 'linuxserver/webtop' }, latestSource: { type: 'docker-hub', target: 'linuxserver/webtop' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'doppler', name: 'Doppler CLI', category: 'Security', tags: ['secrets-management','cli','env-vars'], icon: 'https://cdn.simpleicons.org/doppler', description: 'Universal secrets manager CLI', homepage: 'https://www.doppler.com', versionSource: { type: 'github-releases', target: 'DopplerHQ/cli' }, latestSource: { type: 'github-releases', target: 'DopplerHQ/cli' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'open-interpreter', name: 'Open Interpreter', category: 'AI/ML', tags: ['llm','code-execution','ai','cli'], icon: 'https://cdn.simpleicons.org/openai', description: 'Let LLMs run code locally (natural language interface)', homepage: 'https://openinterpreter.com', versionSource: { type: 'pypi', target: 'open-interpreter' }, latestSource: { type: 'pypi', target: 'open-interpreter' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'langfuse', name: 'Langfuse', category: 'AI/ML', tags: ['llm','observability','self-hosted','ai','tracing'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source LLM engineering platform for tracing and analytics', homepage: 'https://langfuse.com', versionSource: { type: 'github-releases', target: 'langfuse/langfuse' }, latestSource: { type: 'github-releases', target: 'langfuse/langfuse' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'unstructured', name: 'Unstructured', category: 'AI/ML', tags: ['document-parsing','etl','ai','data-processing'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source tools for pre-processing unstructured data', homepage: 'https://unstructured.io', versionSource: { type: 'pypi', target: 'unstructured' }, latestSource: { type: 'pypi', target: 'unstructured' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'woodpecker-agent', name: 'Woodpecker Agent', category: 'CI/CD', tags: ['ci-cd','agent','self-hosted','container'], icon: 'https://cdn.simpleicons.org/woodpecker', description: 'Agent component for Woodpecker CI pipeline execution', homepage: 'https://woodpecker-ci.org', versionSource: { type: 'github-releases', target: 'woodpecker-ci/woodpecker' }, latestSource: { type: 'github-releases', target: 'woodpecker-ci/woodpecker' }, checkInterval: 3600, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'act-ci', name: 'act', category: 'CI/CD', tags: ['github-actions','local','testing','cli'], icon: 'https://cdn.simpleicons.org/github', description: 'Run GitHub Actions locally', homepage: 'https://github.com/nektos/act', versionSource: { type: 'github-releases', target: 'nektos/act' }, latestSource: { type: 'github-releases', target: 'nektos/act' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'excalidraw-plus', name: 'Excalidraw+', category: 'Diagramming', tags: ['whiteboard','diagramming','collaboration','self-hosted'], icon: 'https://cdn.simpleicons.org/excalidraw', description: 'Virtual collaborative whiteboard with hand-drawn feel', homepage: 'https://plus.excalidraw.com', versionSource: { type: 'github-releases', target: 'excalidraw/excalidraw' }, latestSource: { type: 'github-releases', target: 'excalidraw/excalidraw' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'drawdb', name: 'DrawDB', category: 'Diagramming', tags: ['database','diagram','erd','self-hosted'], icon: 'https://cdn.simpleicons.org/github', description: 'Free simple database diagram editor in the browser', homepage: 'https://drawdb.vercel.app', versionSource: { type: 'github-releases', target: 'drawdb-io/drawdb' }, latestSource: { type: 'github-releases', target: 'drawdb-io/drawdb' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'logseq', name: 'Logseq', category: 'Dev Tools', tags: ['notes','knowledge-graph','self-hosted','markdown'], icon: 'https://cdn.simpleicons.org/logseq', description: 'Privacy-first open-source knowledge base', homepage: 'https://logseq.com', versionSource: { type: 'github-releases', target: 'logseq/logseq' }, latestSource: { type: 'github-releases', target: 'logseq/logseq' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'teable', name: 'Teable', category: 'Dev Tools', tags: ['database','spreadsheet','self-hosted','no-code'], icon: 'https://cdn.simpleicons.org/github', description: 'Super-fast Airtable alternative built on Postgres', homepage: 'https://teable.io', versionSource: { type: 'github-releases', target: 'teableio/teable' }, latestSource: { type: 'github-releases', target: 'teableio/teable' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'dokploy', name: 'Dokploy', category: 'Infrastructure', tags: ['paas','deployment','self-hosted','docker'], icon: 'https://cdn.simpleicons.org/github', description: 'Open-source PaaS alternative to Vercel/Netlify', homepage: 'https://dokploy.com', versionSource: { type: 'github-releases', target: 'Dokploy/dokploy' }, latestSource: { type: 'github-releases', target: 'Dokploy/dokploy' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 ];
 
 const REGISTRY_PART11: ToolRegistryEntry[] = [
@@ -18975,9 +20015,9 @@ const REGISTRY_PART13: ToolRegistryEntry[] = [
   { id: 'jeedom', name: 'Jeedom', category: 'Home Automation', tags: ['home-automation', 'smart-home', 'self-hosted', 'php'], icon: `${SI}/jeedom`, description: 'Open-source home automation platform', homepage: 'https://www.jeedom.com', versionSource: { type: 'github-releases', target: 'jeedom/core' }, latestSource: { type: 'github-releases', target: 'jeedom/core' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'homegenie', name: 'HomeGenie', category: 'Home Automation', tags: ['home-automation', 'smart-home', 'self-hosted', 'dotnet'], icon: `${SI}/github`, description: 'Smart home server and automation system', homepage: 'https://homegenie.it', versionSource: { type: 'github-releases', target: 'genielabs/HomeGenie' }, latestSource: { type: 'github-releases', target: 'genielabs/HomeGenie' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'majordomu', name: 'MajorDoMo', category: 'Home Automation', tags: ['home-automation', 'smart-home', 'self-hosted', 'php'], icon: `${SI}/github`, description: 'Open-source smart home platform', homepage: 'https://majordomu.ru', versionSource: { type: 'github-releases', target: 'sergejey/majordomo' }, latestSource: { type: 'github-releases', target: 'sergejey/majordomo' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
-  { id: 'hacs', name: 'HACS', category: 'Home Automation', tags: ['home-assistant', 'integrations', 'community', 'self-hosted'], icon: `${SI}/homeassistant`, description: 'Home Assistant Community Store — custom integrations', homepage: 'https://hacs.xyz', versionSource: { type: 'github-releases', target: 'hacs/integration' }, latestSource: { type: 'github-releases', target: 'hacs/integration' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'node-red-dashboard', name: 'Node-RED Dashboard', category: 'Home Automation', tags: ['node-red', 'dashboard', 'iot', 'self-hosted'], icon: `${SI}/nodered`, description: 'Dashboard UI nodes for Node-RED', homepage: 'https://flows.nodered.org/node/node-red-dashboard', versionSource: { type: 'npm-registry', target: 'node-red-dashboard' }, latestSource: { type: 'npm-registry', target: 'node-red-dashboard' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'zigbee2mqtt-ui', name: 'Zigbee2MQTT', category: 'Home Automation', tags: ['zigbee', 'mqtt', 'home-automation', 'self-hosted'], icon: `${SI}/zigbee`, description: 'Bridges Zigbee devices to MQTT broker', homepage: 'https://www.zigbee2mqtt.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'hacs', name: 'HACS', category: 'Home Automation', tags: ['home-assistant', 'integrations', 'community', 'self-hosted'], icon: `${SI}/homeassistant`, description: 'Home Assistant Community Store — custom integrations', homepage: 'https://hacs.xyz', versionSource: { type: 'github-releases', target: 'hacs/integration' }, latestSource: { type: 'github-releases', target: 'hacs/integration' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'node-red-dashboard', name: 'Node-RED Dashboard', category: 'Home Automation', tags: ['node-red', 'dashboard', 'iot', 'self-hosted'], icon: `${SI}/nodered`, description: 'Dashboard UI nodes for Node-RED', homepage: 'https://flows.nodered.org/node/node-red-dashboard', versionSource: { type: 'npm-registry', target: 'node-red-dashboard' }, latestSource: { type: 'npm-registry', target: 'node-red-dashboard' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'zigbee2mqtt-ui', name: 'Zigbee2MQTT', category: 'Home Automation', tags: ['zigbee', 'mqtt', 'home-automation', 'self-hosted'], icon: `${SI}/zigbee`, description: 'Bridges Zigbee devices to MQTT broker', homepage: 'https://www.zigbee2mqtt.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'zwavejs2mqtt-ui', name: 'Z-Wave JS UI', category: 'Home Automation', tags: ['zwave', 'mqtt', 'home-automation', 'self-hosted'], icon: `${SI}/github`, description: 'Z-Wave JS with MQTT gateway and full control panel', homepage: 'https://zwave-js.github.io/zwave-js-ui', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.data.appVersion', authRequired: false }, latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-ui' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'motioneye', name: 'motionEye', category: 'Home Automation', tags: ['camera', 'nvr', 'motion-detection', 'self-hosted'], icon: `${SI}/github`, description: 'Web frontend for the motion surveillance software', homepage: 'https://github.com/motioneye-project/motioneye', versionSource: { type: 'github-releases', target: 'motioneye-project/motioneye' }, latestSource: { type: 'github-releases', target: 'motioneye-project/motioneye' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'agentdvr', name: 'Agent DVR', category: 'Home Automation', tags: ['nvr', 'camera', 'ai-detection', 'self-hosted'], icon: `${SI}/github`, description: 'Next-generation AI-powered video surveillance platform', homepage: 'https://www.ispyconnect.com/agentdvr.aspx', versionSource: { type: 'docker-hub', target: 'doitandbehappy/agentdvr' }, latestSource: { type: 'docker-hub', target: 'doitandbehappy/agentdvr' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -19041,16 +20081,16 @@ const REGISTRY_PART13: ToolRegistryEntry[] = [
   { id: 'astroprint', name: 'AstroPrint', category: 'Print & 3D', tags: ['3d-printing', 'cloud', 'management', 'self-hosted'], icon: `${SI}/github`, description: 'Cloud-based 3D printing management (AstroBox)', homepage: 'https://www.astroprint.com', versionSource: { type: 'github-releases', target: 'AstroPrint/AstroBox' }, latestSource: { type: 'github-releases', target: 'AstroPrint/AstroBox' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'duet-web', name: 'Duet Web Control', category: 'Print & 3D', tags: ['3d-printing', 'reprap-firmware', 'self-hosted', 'web-ui'], icon: `${SI}/github`, description: 'Web interface for Duet electronics (RepRap Firmware)', homepage: 'https://github.com/Duet3D/DuetWebControl', versionSource: { type: 'github-releases', target: 'Duet3D/DuetWebControl' }, latestSource: { type: 'github-releases', target: 'Duet3D/DuetWebControl' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'prusalink', name: 'PrusaLink', category: 'Print & 3D', tags: ['3d-printing', 'prusa', 'self-hosted', 'raspberry-pi'], icon: `${SI}/prusa`, description: 'Official Prusa printer connectivity software', homepage: 'https://github.com/prusa3d/Prusa-Link', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.server', authRequired: false }, latestSource: { type: 'github-releases', target: 'prusa3d/Prusa-Link' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'klipper', name: 'Klipper', category: 'Print & 3D', tags: ['3d-printing', 'firmware', 'raspberry-pi', 'self-hosted'], icon: `${SI}/github`, description: '3D printer firmware running on Raspberry Pi', homepage: 'https://www.klipper3d.org', versionSource: { type: 'github-releases', target: 'Klipper3d/klipper' }, latestSource: { type: 'github-releases', target: 'Klipper3d/klipper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
-  { id: 'prusaslicer', name: 'PrusaSlicer', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'prusa', 'cross-platform'], icon: `${SI}/prusa`, description: 'G-code generator for FFF/FDM 3D printers by Prusa', homepage: 'https://www.prusa3d.com/prusaslicer/', versionSource: { type: 'github-releases', target: 'prusa3d/PrusaSlicer' }, latestSource: { type: 'github-releases', target: 'prusa3d/PrusaSlicer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'klipper', name: 'Klipper', category: 'Print & 3D', tags: ['3d-printing', 'firmware', 'raspberry-pi', 'self-hosted'], icon: `${SI}/github`, description: '3D printer firmware running on Raspberry Pi', homepage: 'https://www.klipper3d.org', versionSource: { type: 'github-releases', target: 'Klipper3d/klipper' }, latestSource: { type: 'github-releases', target: 'Klipper3d/klipper' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'prusaslicer', name: 'PrusaSlicer', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'prusa', 'cross-platform'], icon: `${SI}/prusa`, description: 'G-code generator for FFF/FDM 3D printers by Prusa', homepage: 'https://www.prusa3d.com/prusaslicer/', versionSource: { type: 'github-releases', target: 'prusa3d/PrusaSlicer' }, latestSource: { type: 'github-releases', target: 'prusa3d/PrusaSlicer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'superslicer', name: 'SuperSlicer', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'prusaslicer-fork', 'cross-platform'], icon: `${SI}/github`, description: 'PrusaSlicer fork with extended calibration tools', homepage: 'https://github.com/supermerill/SuperSlicer', versionSource: { type: 'github-releases', target: 'supermerill/SuperSlicer' }, latestSource: { type: 'github-releases', target: 'supermerill/SuperSlicer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
-  { id: 'orcaslicer', name: 'OrcaSlicer', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'bambu', 'cross-platform'], icon: `${SI}/github`, description: 'Professional 3D printer slicer with calibration tools', homepage: 'https://github.com/SoftFever/OrcaSlicer', versionSource: { type: 'github-releases', target: 'SoftFever/OrcaSlicer' }, latestSource: { type: 'github-releases', target: 'SoftFever/OrcaSlicer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'orcaslicer', name: 'OrcaSlicer', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'bambu', 'cross-platform'], icon: `${SI}/github`, description: 'Professional 3D printer slicer with calibration tools', homepage: 'https://github.com/SoftFever/OrcaSlicer', versionSource: { type: 'github-releases', target: 'SoftFever/OrcaSlicer' }, latestSource: { type: 'github-releases', target: 'SoftFever/OrcaSlicer' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'bambu-api', name: 'Bambu Lab API', category: 'Print & 3D', tags: ['3d-printing', 'bambu', 'cloud-api', 'iot'], icon: `${SI}/bambulaboratory`, description: 'Bambu Lab printer cloud connectivity API', homepage: 'https://bambulab.com', versionSource: { type: 'none' }, latestSource: { type: 'none' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'ideamaker', name: 'ideaMaker', category: 'Print & 3D', tags: ['3d-printing', 'slicer', 'raise3d', 'cross-platform'], icon: `${SI}/github`, description: 'Slicer software by Raise3D for FFF printing', homepage: 'https://www.raise3d.com/ideamaker/', versionSource: { type: 'none' }, latestSource: { type: 'none' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'snapmaker-luban', name: 'Snapmaker Luban', category: 'Print & 3D', tags: ['3d-printing', 'cnc', 'laser', 'snapmaker'], icon: `${SI}/github`, description: 'All-in-one software for Snapmaker 3-in-1 machines', homepage: 'https://luban.snapmaker.com', versionSource: { type: 'github-releases', target: 'Snapmaker/Luban' }, latestSource: { type: 'github-releases', target: 'Snapmaker/Luban' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
 
   // ── Remote Access (expanded) ─────────────────────────────────────────────────
-  { id: 'code-server', name: 'code-server', category: 'Remote Access', tags: ['vscode', 'remote-dev', 'browser-ide', 'self-hosted'], icon: `${SI}/visualstudiocode`, description: 'VS Code running in the browser', homepage: 'https://coder.com/docs/code-server/', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/healthz', jsonPath: '$.status', authRequired: false }, latestSource: { type: 'github-releases', target: 'coder/code-server' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'code-server', name: 'code-server', category: 'Remote Access', tags: ['vscode', 'remote-dev', 'browser-ide', 'self-hosted'], icon: `${SI}/visualstudiocode`, description: 'VS Code running in the browser', homepage: 'https://coder.com/docs/code-server/', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/healthz', jsonPath: '$.status', authRequired: false }, latestSource: { type: 'github-releases', target: 'coder/code-server' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'theia-cloud', name: 'Theia Cloud', category: 'Remote Access', tags: ['cloud-ide', 'kubernetes', 'eclipse', 'self-hosted'], icon: `${SI}/eclipsetheia`, description: 'Cloud IDE framework based on Eclipse Theia', homepage: 'https://theia-cloud.io', versionSource: { type: 'github-releases', target: 'eclipsesource/theia-cloud' }, latestSource: { type: 'github-releases', target: 'eclipsesource/theia-cloud' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'eclipse-che', name: 'Eclipse Che', category: 'Remote Access', tags: ['cloud-ide', 'kubernetes', 'devworkspace', 'self-hosted'], icon: `${SI}/eclipseche`, description: 'Kubernetes-native developer workspace server', homepage: 'https://www.eclipse.org/che/', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/system/state', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'eclipse-che/che' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'remotely', name: 'Remotely', category: 'Remote Access', tags: ['remote-desktop', 'self-hosted', 'rdp', 'dotnet'], icon: `${SI}/github`, description: 'Remote control for MSP and IT professionals', homepage: 'https://remotely.one', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/ServerInfo', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'immense-networks/remotely' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21145,7 +22185,7 @@ const REGISTRY_PART28: ToolRegistryEntry[] = [
 
 const REGISTRY_PART29: ToolRegistryEntry[] = [
   // Password Management (expand from 1)
-  { id: 'keepassxc', name: 'KeePassXC', category: 'Password Management', tags: ['password','offline','crossplatform','security'], icon: `${SI}/keepassxc`, description: 'Cross-platform community port of KeePass.', homepage: 'https://keepassxc.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true },
+  { id: 'keepassxc', name: 'KeePassXC', category: 'Password Management', tags: ['password','offline','crossplatform','security'], icon: `${SI}/keepassxc`, description: 'Cross-platform community port of KeePass.', homepage: 'https://keepassxc.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'keepassxreboot/keepassxc' }, checkInterval: 86400, requiresInstanceUrl: false, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'gopass', name: 'Gopass', category: 'Password Management', tags: ['password','cli','gpg','team'], icon: `${SI}/go`, description: 'Rewrite of pass in Go with team features.', homepage: 'https://www.gopass.pw', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'gopasspw/gopass' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'lesspass', name: 'LessPass', category: 'Password Management', tags: ['password','stateless','deterministic'], icon: `${SI}/github`, description: 'Stateless password manager — no sync needed.', homepage: 'https://lesspass.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'lesspass/lesspass' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'psono-pw', name: 'Psono', category: 'Password Management', tags: ['password','self-hosted','enterprise','sharing'], icon: `${SI}/github`, description: 'Open-source enterprise password manager.', homepage: 'https://psono.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/server/info/', jsonPath: '$.info.version', authRequired: false }, latestSource: { type: 'docker-hub', target: 'psono/psono-server' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
@@ -21171,19 +22211,19 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
   { id: 'rallly-scheduling', name: 'Rallly', category: 'Calendar & Scheduling', tags: ['scheduling','polls','meeting','self-hosted'], icon: `${SI}/github`, description: 'Open-source scheduling and poll tool.', homepage: 'https://rallly.co', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'lukevella/rallly' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'schej-scheduling', name: 'Schej', category: 'Calendar & Scheduling', tags: ['scheduling','availability','meetings','self-hosted'], icon: `${SI}/github`, description: 'Schedule meetings with availability polling.', homepage: 'https://schej.it', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'schej-it/schej.it' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'nextcloud-calendar', name: 'Nextcloud Calendar', category: 'Calendar & Scheduling', tags: ['caldav','calendar','nextcloud','groupware'], icon: `${SI}/nextcloud`, description: 'Calendar app for Nextcloud with CalDAV support.', homepage: 'https://apps.nextcloud.com/apps/calendar', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'nextcloud/calendar' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'calcom-scheduling', name: 'Cal.com', category: 'Calendar & Scheduling', tags: ['scheduling','booking','open-source','calendly-alternative'], icon: `${SI}/caldotcom`, description: 'Open-source Calendly alternative for scheduling.', homepage: 'https://cal.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'calcom/cal.com' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'calcom-scheduling', name: 'Cal.com', category: 'Calendar & Scheduling', tags: ['scheduling','booking','open-source','calendly-alternative'], icon: `${SI}/caldotcom`, description: 'Open-source Calendly alternative for scheduling.', homepage: 'https://cal.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'calcom/cal.com' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'etebase-server', name: 'EteBase', category: 'Calendar & Scheduling', tags: ['encrypted','sync','calendar','contacts'], icon: `${SI}/github`, description: 'Encrypted sync server for calendar, contacts and tasks.', homepage: 'https://www.etebase.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'etesync/etebase-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Download & Torrent (expand from 5)
   { id: 'deluge-torrent', name: 'Deluge', category: 'Download & Torrent', tags: ['torrent','bittorrent','python','plugins'], icon: `${SI}/deluge`, description: 'Full-featured cross-platform BitTorrent client.', homepage: 'https://deluge-torrent.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'deluge-torrent/deluge' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'sabnzbd-nzb', name: 'SABnzbd', category: 'Download & Torrent', tags: ['usenet','nzb','downloader','self-hosted'], icon: `${SI}/sabnzbd`, description: 'Open-source binary newsreader.', homepage: 'https://sabnzbd.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api?mode=version&output=json', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'sabnzbd-nzb', name: 'SABnzbd', category: 'Download & Torrent', tags: ['usenet','nzb','downloader','self-hosted'], icon: `${SI}/sabnzbd`, description: 'Open-source binary newsreader.', homepage: 'https://sabnzbd.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api?mode=version&output=json', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'nzbget-downloader', name: 'NZBGet', category: 'Download & Torrent', tags: ['usenet','nzb','downloader','self-hosted'], icon: `${SI}/github`, description: 'Efficient Usenet downloader with web interface.', homepage: 'https://nzbget.net', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/jsonrpc', jsonPath: '$.result.Version', authRequired: false }, latestSource: { type: 'github-releases', target: 'nzbget/nzbget' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'rtorrent-rutorrent', name: 'ruTorrent', category: 'Download & Torrent', tags: ['torrent','rtorrent','web-ui','self-hosted'], icon: `${SI}/github`, description: 'Feature-rich web frontend for rTorrent.', homepage: 'https://github.com/Novik/ruTorrent', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Novik/ruTorrent' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'jhelioviewer', name: 'Mylar3', category: 'Download & Torrent', tags: ['comics','cbz','download','self-hosted'], icon: `${SI}/github`, description: 'Automated comic book downloader and manager.', homepage: 'https://github.com/mylar3/mylar3', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api?cmd=getVersion&apikey={{apikey}}', jsonPath: '$.data.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'mylar3/mylar3' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'youtubedl-server', name: 'yt-dlp', category: 'Download & Torrent', tags: ['youtube','download','video','cli'], icon: `${SI}/youtube`, description: 'Feature-rich youtube-dl fork for video downloading.', homepage: 'https://github.com/yt-dlp/yt-dlp', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'yt-dlp/yt-dlp' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'stremio-server', name: 'Stremio', category: 'Download & Torrent', tags: ['streaming','media','addon-server'], icon: `${SI}/stremio`, description: 'Streaming server for Stremio addons.', homepage: 'https://www.stremio.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Stremio/server-addon' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'qbittorrent-nox', name: 'qBittorrent-nox', category: 'Download & Torrent', tags: ['torrent','bittorrent','headless','api'], icon: `${SI}/qbittorrent`, description: 'qBittorrent headless (no-X) torrent client.', homepage: 'https://www.qbittorrent.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/app/version', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'prowlarr-indexer', name: 'Prowlarr', category: 'Download & Torrent', tags: ['indexer','usenet','torrent','arr'], icon: `${SI}/prowlarr`, description: 'Indexer manager/proxy for *arr apps.', homepage: 'https://prowlarr.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/system/status', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'Prowlarr/Prowlarr' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'qbittorrent-nox', name: 'qBittorrent-nox', category: 'Download & Torrent', tags: ['torrent','bittorrent','headless','api'], icon: `${SI}/qbittorrent`, description: 'qBittorrent headless (no-X) torrent client.', homepage: 'https://www.qbittorrent.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/app/version', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'prowlarr-indexer', name: 'Prowlarr', category: 'Download & Torrent', tags: ['indexer','usenet','torrent','arr'], icon: `${SI}/prowlarr`, description: 'Indexer manager/proxy for *arr apps.', homepage: 'https://prowlarr.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/system/status', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'Prowlarr/Prowlarr' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // Healthcare (expand from 5)
   { id: 'openemr', name: 'OpenEMR', category: 'Healthcare', tags: ['emr','ehr','php','self-hosted'], icon: `${SI}/github`, description: 'Open-source electronic medical records system.', homepage: 'https://www.open-emr.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'openemr/openemr' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21200,7 +22240,7 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
   { id: 'kroki-server', name: 'Kroki', category: 'Diagramming', tags: ['diagrams','unified','plantuml','mermaid'], icon: `${SI}/github`, description: 'Unified API for creating diagrams from text.', homepage: 'https://kroki.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/health', jsonPath: '$.status', authRequired: false }, latestSource: { type: 'github-releases', target: 'yuzutech/kroki' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'structurizr-dsl', name: 'Structurizr', category: 'Diagramming', tags: ['architecture','c4-model','software-design','diagrams'], icon: `${SI}/github`, description: 'Diagram as code for software architecture (C4 model).', homepage: 'https://structurizr.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'structurizr/onpremises' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'mermaid-live', name: 'Mermaid Live', category: 'Diagramming', tags: ['mermaid','flowchart','sequence','self-hosted'], icon: `${SI}/mermaid`, description: 'Self-hostable Mermaid diagram live editor.', homepage: 'https://mermaid.live', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'mermaid-js/mermaid-live-editor' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'lucidchart-self', name: 'Diagrams.net', category: 'Diagramming', tags: ['diagrams','flowcharts','self-hosted','drawio'], icon: `${SI}/diagramsdotnet`, description: 'Self-hostable version of draw.io / diagrams.net.', homepage: 'https://app.diagrams.net', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'jgraph/drawio' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'lucidchart-self', name: 'Diagrams.net', category: 'Diagramming', tags: ['diagrams','flowcharts','self-hosted','drawio'], icon: `${SI}/diagramsdotnet`, description: 'Self-hostable version of draw.io / diagrams.net.', homepage: 'https://app.diagrams.net', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'jgraph/drawio' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'blockdiag-server', name: 'BlockDiag', category: 'Diagramming', tags: ['block-diagrams','python','text-based'], icon: `${SI}/python`, description: 'Simple text-based block diagram generator.', homepage: 'http://blockdiag.com', versionSource: { type: 'none' }, latestSource: { type: 'pypi', target: 'blockdiag' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'd2-diagrams', name: 'D2', category: 'Diagramming', tags: ['diagrams','declarative','go','cli'], icon: `${SI}/github`, description: 'Modern diagram scripting language.', homepage: 'https://d2lang.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'terrastruct/d2' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'nomnoml-server', name: 'Nomnoml', category: 'Diagramming', tags: ['uml','class-diagrams','javascript','text-based'], icon: `${SI}/github`, description: 'Self-hosted UML diagram renderer.', homepage: 'https://www.nomnoml.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'skanaar/nomnoml' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21241,7 +22281,7 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
   { id: 'magda-catalogue', name: 'Magda', category: 'GIS & Mapping', tags: ['data-catalogue','spatial','metadata','kubernetes'], icon: `${SI}/github`, description: 'Open-source data catalogue and discovery platform.', homepage: 'https://magda.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'magda-io/magda' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Remote Access (expand from 33)
-  { id: 'rustdesk-server', name: 'RustDesk', category: 'Remote Access', tags: ['remote-desktop','self-hosted','rust','vnc'], icon: `${SI}/rustdesk`, description: 'Open-source remote desktop application with self-hosted server.', homepage: 'https://rustdesk.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'rustdesk/rustdesk-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
+  { id: 'rustdesk-server', name: 'RustDesk', category: 'Remote Access', tags: ['remote-desktop','self-hosted','rust','vnc'], icon: `${SI}/rustdesk`, description: 'Open-source remote desktop application with self-hosted server.', homepage: 'https://rustdesk.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'rustdesk/rustdesk-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'meshcentral-server', name: 'MeshCentral', category: 'Remote Access', tags: ['remote-management','vnc','nodejs','self-hosted'], icon: `${SI}/github`, description: 'Full computer management web site with remote desktop.', homepage: 'https://meshcentral.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/meshcentral.log?key=', jsonPath: '$.current.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'Ylianst/MeshCentral' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'boundary-access', name: 'Boundary', category: 'Remote Access', tags: ['zero-trust','ssh','hashicorp','access-management'], icon: `${SI}/hashicorp`, description: 'HashiCorp Boundary for secure remote access.', homepage: 'https://www.boundaryproject.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'hashicorp/boundary' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'anydesk-server', name: 'AnyDesk On-Premises', category: 'Remote Access', tags: ['remote-desktop','enterprise','self-hosted'], icon: `${SI}/anydesk`, description: 'AnyDesk on-premises server for enterprise remote access.', homepage: 'https://anydesk.com/en/enterprise', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'anydesk/anydesk' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21278,7 +22318,7 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
 
   // Fleet & Asset Management (expand from 25)
   { id: 'itop-itsm', name: 'iTop', category: 'Fleet & Asset Management', tags: ['itsm','cmdb','php','itil'], icon: `${SI}/github`, description: 'Open-source IT Service Management and CMDB.', homepage: 'https://www.combodo.com/itop', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Combodo/iTop' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'zammad-itsm', name: 'Zammad', category: 'Fleet & Asset Management', tags: ['helpdesk','tickets','itsm','ruby'], icon: `${SI}/zammad`, description: 'Open-source helpdesk and customer support system.', homepage: 'https://zammad.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'zammad/zammad' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'zammad-itsm', name: 'Zammad', category: 'Fleet & Asset Management', tags: ['helpdesk','tickets','itsm','ruby'], icon: `${SI}/zammad`, description: 'Open-source helpdesk and customer support system.', homepage: 'https://zammad.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'zammad/zammad' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'besttrack-asset', name: 'AssetTiger', category: 'Fleet & Asset Management', tags: ['asset-tracking','fixed-assets','qr','self-hosted'], icon: `${SI}/github`, description: 'Asset tracking and management platform.', homepage: 'https://www.assettiger.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'AssetTiger/AssetTiger' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'fiix-cmms', name: 'OpenMAINT', category: 'Fleet & Asset Management', tags: ['cmms','maintenance','assets','java'], icon: `${SI}/github`, description: 'Open-source maintenance management system.', homepage: 'https://www.openmaint.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'okkyoko/openmaint' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'otobo-itsm', name: 'OTOBO', category: 'Fleet & Asset Management', tags: ['itsm','ticketing','perl','open-source'], icon: `${SI}/github`, description: 'Open-source ticket system and service management.', homepage: 'https://otobo.de', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'RotherOSS/otobo' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21289,7 +22329,7 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
   { id: 'algolia-search', name: 'Algolia', category: 'Search/Vector', tags: ['search','saas','api','relevance'], icon: `${SI}/algolia`, description: 'Fast, reliable hosted search API.', homepage: 'https://www.algolia.com', versionSource: { type: 'none' }, latestSource: { type: 'npm-registry', target: 'algoliasearch' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'postgres-fulltext', name: 'PostgreSQL Full-Text', category: 'Search/Vector', tags: ['full-text','postgresql','search','tsvector'], icon: `${SI}/postgresql`, description: 'Full-text search built into PostgreSQL.', homepage: 'https://www.postgresql.org/docs/current/textsearch.html', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'postgres/postgres' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'pgvector-search', name: 'pgvector', category: 'Search/Vector', tags: ['vector','embeddings','postgresql','ai'], icon: `${SI}/postgresql`, description: 'Open-source vector similarity search for Postgres.', homepage: 'https://github.com/pgvector/pgvector', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'pgvector/pgvector' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
-  { id: 'elasticsearch-oss', name: 'Elasticsearch (OSS)', category: 'Search/Vector', tags: ['search','java','analytics','distributed'], icon: `${SI}/elasticsearch`, description: 'Open-source distributed search and analytics engine.', homepage: 'https://www.elastic.co/elasticsearch', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/', jsonPath: '$.version.number', authRequired: false }, latestSource: { type: 'github-releases', target: 'elastic/elasticsearch' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'elasticsearch-oss', name: 'Elasticsearch (OSS)', category: 'Search/Vector', tags: ['search','java','analytics','distributed'], icon: `${SI}/elasticsearch`, description: 'Open-source distributed search and analytics engine.', homepage: 'https://www.elastic.co/elasticsearch', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/', jsonPath: '$.version.number', authRequired: false }, latestSource: { type: 'github-releases', target: 'elastic/elasticsearch' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // Radio & SDR (expand from 20)
   { id: 'sdrplus-server', name: 'SDR++', category: 'Radio & SDR', tags: ['sdr','receiver','radio','open-source'], icon: `${SI}/github`, description: 'Cross-platform SDR software with plugin support.', homepage: 'https://www.sdrpp.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'AlexandreRouma/SDRPlusPlus' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
@@ -21306,7 +22346,7 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
 
   // Print & 3D (expand from 31)
   { id: 'cura-server', name: 'Cura Connect', category: 'Print & 3D', tags: ['3d-printing','ultimaker','slicer','network'], icon: `${SI}/ultimaker`, description: 'Network management for Ultimaker 3D printers.', homepage: 'https://ultimaker.com/software/ultimaker-cura/', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Ultimaker/Cura' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'spoolman-filament', name: 'Spoolman', category: 'Print & 3D', tags: ['filament','3d-printing','inventory','self-hosted'], icon: `${SI}/github`, description: 'Self-hosted filament spool manager for 3D printers.', homepage: 'https://github.com/Donkie/Spoolman', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'Donkie/Spoolman' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'spoolman-filament', name: 'Spoolman', category: 'Print & 3D', tags: ['filament','3d-printing','inventory','self-hosted'], icon: `${SI}/github`, description: 'Self-hosted filament spool manager for 3D printers.', homepage: 'https://github.com/Donkie/Spoolman', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'Donkie/Spoolman' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'obico-ml', name: 'Obico', category: 'Print & 3D', tags: ['3d-printing','ai','failure-detection','self-hosted'], icon: `${SI}/github`, description: 'AI-powered 3D print monitoring with failure detection.', homepage: 'https://www.obico.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'TheSpaghettiDetective/obico-server' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Communication (more)
@@ -21319,14 +22359,14 @@ const REGISTRY_PART29: ToolRegistryEntry[] = [
   // Dev Tools (misc useful additions)
   { id: 'netbox-ipam', name: 'NetBox', category: 'Networking', tags: ['ipam','dcim','rack','self-hosted'], icon: `${SI}/netbox`, description: 'IP address management and datacenter documentation.', homepage: 'https://netbox.dev', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/', jsonPath: '$.versions.current-version', authRequired: false }, latestSource: { type: 'github-releases', target: 'netbox-community/netbox' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified', lastVerifiedAt: '2026-03-21', evidenceUrl: 'https://netbox.readthedocs.io/en/stable/rest-api/overview/' },
   { id: 'phpipam-server', name: 'phpIPAM', category: 'Networking', tags: ['ipam','ip-management','php','self-hosted'], icon: `${SI}/github`, description: 'Open-source IP address management app.', homepage: 'https://phpipam.net', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/myapp/sections/', jsonPath: '$.code', authRequired: false }, latestSource: { type: 'github-releases', target: 'phpipam/phpipam' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'librenms-network', name: 'LibreNMS', category: 'Networking', tags: ['snmp','network-monitoring','discovery','php'], icon: `${SI}/librenms`, description: 'Auto-discovering network monitoring platform.', homepage: 'https://www.librenms.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v0/info', jsonPath: '$.result.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'librenms/librenms' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'librenms-network', name: 'LibreNMS', category: 'Networking', tags: ['snmp','network-monitoring','discovery','php'], icon: `${SI}/librenms`, description: 'Auto-discovering network monitoring platform.', homepage: 'https://www.librenms.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v0/info', jsonPath: '$.result.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'librenms/librenms' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'oxidized-network', name: 'Oxidized', category: 'Networking', tags: ['config-backup','network','routers','git'], icon: `${SI}/github`, description: 'Network device configuration backup tool.', homepage: 'https://github.com/ytti/oxidized', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/node.json', jsonPath: '$[0].name', authRequired: false }, latestSource: { type: 'github-releases', target: 'ytti/oxidized' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'racktables-dcim', name: 'RackTables', category: 'Fleet & Asset Management', tags: ['dcim','rack','network','php'], icon: `${SI}/github`, description: 'Datacenter and server room asset management.', homepage: 'https://www.racktables.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'RackTables/racktables' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'device42-dcim', name: 'Device42', category: 'Fleet & Asset Management', tags: ['dcim','itam','cmdb','self-hosted'], icon: `${SI}/github`, description: 'IT asset management and data center management.', homepage: 'https://www.device42.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'device42/device42' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'rundeckpro-jobs', name: 'Rundeck', category: 'Infrastructure', tags: ['job-scheduler','runbook','automation','self-hosted'], icon: `${SI}/rundeck`, description: 'Job scheduler and runbook automation platform.', homepage: 'https://www.rundeck.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/41/system/info', jsonPath: '$.system.rundeck.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'rundeck/rundeck' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'ansible-semaphore', name: 'Semaphore', category: 'Infrastructure', tags: ['ansible','ui','automation','self-hosted'], icon: `${SI}/ansible`, description: 'Modern UI for Ansible automation.', homepage: 'https://semaphoreui.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/auth/login', jsonPath: '$.error', authRequired: false }, latestSource: { type: 'github-releases', target: 'semaphoreui/semaphore' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'hashicorp-nomad', name: 'HashiCorp Nomad', category: 'Container', tags: ['orchestrator','workload','hashicorp','self-hosted'], icon: `${SI}/nomad`, description: 'Flexible workload orchestrator for any platform.', homepage: 'https://www.nomadproject.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/status/leader', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'hashicorp/nomad' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'consul-service', name: 'Consul', category: 'Networking', tags: ['service-mesh','service-discovery','hashicorp','self-hosted'], icon: `${SI}/consul`, description: 'Service mesh and service discovery by HashiCorp.', homepage: 'https://www.consul.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/status/leader', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'hashicorp/consul' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'hashicorp-nomad', name: 'HashiCorp Nomad', category: 'Container', tags: ['orchestrator','workload','hashicorp','self-hosted'], icon: `${SI}/nomad`, description: 'Flexible workload orchestrator for any platform.', homepage: 'https://www.nomadproject.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/status/leader', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'hashicorp/nomad' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'consul-service', name: 'Consul', category: 'Networking', tags: ['service-mesh','service-discovery','hashicorp','self-hosted'], icon: `${SI}/consul`, description: 'Service mesh and service discovery by HashiCorp.', homepage: 'https://www.consul.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/status/leader', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'hashicorp/consul' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'linkerd-mesh', name: 'Linkerd', category: 'Networking', tags: ['service-mesh','kubernetes','mtls','observability'], icon: `${SI}/linkerd`, description: 'Ultralight, security-first service mesh for Kubernetes.', homepage: 'https://linkerd.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'linkerd/linkerd2' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'seaweedfs-storage', name: 'SeaweedFS', category: 'Storage', tags: ['distributed','object-storage','go','s3'], icon: `${SI}/github`, description: 'Simple and highly scalable distributed file system.', homepage: 'https://github.com/seaweedfs/seaweedfs', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'seaweedfs/seaweedfs' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'juicefs-storage', name: 'JuiceFS', category: 'Storage', tags: ['distributed','posix','s3','self-hosted'], icon: `${SI}/github`, description: 'High-performance POSIX file system over object storage.', homepage: 'https://juicefs.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'juicedata/juicefs' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21824,7 +22864,7 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'glusterfs-storage', name: 'GlusterFS', category: 'Storage', tags: ['distributed','posix','scale-out','open-source'], icon: `${SI}/gluster`, description: 'Scalable network file system for scale-out storage.', homepage: 'https://www.gluster.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'gluster/glusterfs' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'nfs-ganesha', name: 'NFS Ganesha', category: 'Storage', tags: ['nfs','user-space','posix','storage'], icon: `${SI}/github`, description: 'User-space NFS server with multiple backend support.', homepage: 'https://github.com/nfs-ganesha/nfs-ganesha', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'nfs-ganesha/nfs-ganesha' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'lizardfs-storage', name: 'LizardFS', category: 'Storage', tags: ['distributed','posix','moosefs-fork','replication'], icon: `${SI}/github`, description: 'Open-source distributed file system — MooseFS fork.', homepage: 'https://lizardfs.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'lizardfs/lizardfs' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'hedgedoc-collab', name: 'HedgeDoc', category: 'Dev Tools', tags: ['markdown','collaborative','notes','self-hosted'], icon: `${SI}/hedgedoc`, description: 'Real-time collaborative markdown editor.', homepage: 'https://hedgedoc.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/status', jsonPath: '$.Version', authRequired: false }, latestSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'hedgedoc-collab', name: 'HedgeDoc', category: 'Dev Tools', tags: ['markdown','collaborative','notes','self-hosted'], icon: `${SI}/hedgedoc`, description: 'Real-time collaborative markdown editor.', homepage: 'https://hedgedoc.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/status', jsonPath: '$.Version', authRequired: false }, latestSource: { type: 'github-releases', target: 'hedgedoc/hedgedoc' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'seafile-sync', name: 'Seafile', category: 'Storage', tags: ['file-sync','self-hosted','dropbox-alternative','encryption'], icon: `${SI}/seafile`, description: 'Open-source file sync and share solution.', homepage: 'https://www.seafile.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api2/ping/', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'haiwen/seafile' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
 
   // CMS extras
@@ -21838,7 +22878,7 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'r32-processwire-cms', name: 'ProcessWire', category: 'CMS', tags: ['php','api','flexible','self-hosted'], icon: `${SI}/processwire`, description: 'CMF and CMS with a powerful API.', homepage: 'https://processwire.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'processwire/processwire' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Dev Tools extras
-  { id: 'sonarqube-ce', name: 'SonarQube CE', category: 'Dev Tools', tags: ['code-quality','sast','multi-language','open-source'], icon: `${SI}/sonarqube`, description: 'Community Edition of SonarQube code quality platform.', homepage: 'https://www.sonarsource.com/products/sonarqube/', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/system/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'SonarSource/sonarqube' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'sonarqube-ce', name: 'SonarQube CE', category: 'Dev Tools', tags: ['code-quality','sast','multi-language','open-source'], icon: `${SI}/sonarqube`, description: 'Community Edition of SonarQube code quality platform.', homepage: 'https://www.sonarsource.com/products/sonarqube/', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/system/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'SonarSource/sonarqube' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'codeql-analysis', name: 'CodeQL', category: 'Dev Tools', tags: ['sast','static-analysis','github','security'], icon: `${SI}/github`, description: 'Semantic code analysis engine by GitHub.', homepage: 'https://codeql.github.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'github/codeql-cli-binaries' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'renovate-bot', name: 'Renovate', category: 'Dev Tools', tags: ['dependency-updates','automation','bot','self-hosted'], icon: `${SI}/renovate`, description: 'Automated dependency update bot.', homepage: 'https://www.mend.io/renovate/', versionSource: { type: 'none' }, latestSource: { type: 'npm-registry', target: 'renovate' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'dependabot-core', name: 'Dependabot Core', category: 'Dev Tools', tags: ['dependency-updates','security','automation','github'], icon: `${SI}/github`, description: 'Automated security and dependency update tool.', homepage: 'https://github.com/dependabot/dependabot-core', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'dependabot/dependabot-core' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
@@ -21861,13 +22901,13 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'fonoster-pbx', name: 'Fonoster', category: 'VoIP & Telephony', tags: ['programmable','voice','asterisk','nodejs'], icon: `${SI}/github`, description: 'Open-source programmable voice infrastructure.', homepage: 'https://fonoster.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'fonoster/fonoster' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Media extras
-  { id: 'frigate-nvr-extra', name: 'Frigate NVR (RTSP)', category: 'Media', tags: ['nvr','camera','ai','object-detection'], icon: `${SI}/github`, description: 'Local NVR with AI object detection.', homepage: 'https://frigate.video', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'blakeblackshear/frigate' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'frigate-nvr-extra', name: 'Frigate NVR (RTSP)', category: 'Media', tags: ['nvr','camera','ai','object-detection'], icon: `${SI}/github`, description: 'Local NVR with AI object detection.', homepage: 'https://frigate.video', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'blakeblackshear/frigate' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'livepeer-stream', name: 'Livepeer', category: 'Media', tags: ['streaming','video','decentralized','transcoding'], icon: `${SI}/livepeer`, description: 'Open infrastructure for video transcoding.', homepage: 'https://livepeer.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'livepeer/go-livepeer' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'owncast-streaming', name: 'Owncast', category: 'Media', tags: ['streaming','self-hosted','twitch-alternative','rtmp'], icon: `${SI}/owncast`, description: 'Self-hosted live streaming and chat server.', homepage: 'https://owncast.online', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/status', jsonPath: '$.versionNumber', authRequired: false }, latestSource: { type: 'github-releases', target: 'owncast/owncast' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'owncast-streaming', name: 'Owncast', category: 'Media', tags: ['streaming','self-hosted','twitch-alternative','rtmp'], icon: `${SI}/owncast`, description: 'Self-hosted live streaming and chat server.', homepage: 'https://owncast.online', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/status', jsonPath: '$.versionNumber', authRequired: false }, latestSource: { type: 'github-releases', target: 'owncast/owncast' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'restreamer-stream', name: 'Restreamer', category: 'Media', tags: ['live-streaming','rtmp','hls','self-hosted'], icon: `${SI}/github`, description: 'Self-hosted video streaming without a streaming provider.', homepage: 'https://datarhei.com/restreamer', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v3/ping', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'datarhei/restreamer' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'lms-squeezebox', name: 'Lyrion Music Server', category: 'Media', tags: ['music','squeezebox','self-hosted','perl'], icon: `${SI}/github`, description: 'Streaming audio server for Squeezebox devices (LMS).', homepage: 'https://lyrion.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'LMS-Community/slimserver' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'kodi-media', name: 'Kodi', category: 'Media', tags: ['mediacenter','htpc','plugins','open-source'], icon: `${SI}/kodi`, description: 'Award-winning free and open source home theater software.', homepage: 'https://kodi.tv', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/jsonrpc', jsonPath: '$.result.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'xbmc/xbmc' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'photoprism-ai', name: 'PhotoPrism AI', category: 'Photo/Docs', tags: ['photos','ai','tensorflow','self-hosted'], icon: `${SI}/photoprism`, description: 'AI-powered app for browsing, organizing & sharing photos.', homepage: 'https://www.photoprism.app', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'photoprism/photoprism' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'photoprism-ai', name: 'PhotoPrism AI', category: 'Photo/Docs', tags: ['photos','ai','tensorflow','self-hosted'], icon: `${SI}/photoprism`, description: 'AI-powered app for browsing, organizing & sharing photos.', homepage: 'https://www.photoprism.app', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'photoprism/photoprism' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'r32-lychee-photos', name: 'Lychee', category: 'Photo/Docs', tags: ['photo-management','gallery','self-hosted','laravel'], icon: `${SI}/lychee`, description: 'Self-hosted photo management tool.', homepage: 'https://lychee.electerious.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/Version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'LycheeOrg/Lychee' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'r32-piwigo-gallery', name: 'Piwigo', category: 'Photo/Docs', tags: ['photo-gallery','php','self-hosted','albums'], icon: `${SI}/piwigo`, description: 'Open-source photo gallery software for the web.', homepage: 'https://piwigo.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'damselfly-photos', name: 'Damselfly', category: 'Photo/Docs', tags: ['photo-management','ai','tagging','self-hosted'], icon: `${SI}/github`, description: 'Server-based digital asset management for photos.', homepage: 'https://github.com/Webreaper/Damselfly', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Webreaper/Damselfly' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21910,14 +22950,14 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'phabricator-work', name: 'Phabricator', category: 'Project Management', tags: ['code-review','tasks','wiki','self-hosted'], icon: `${SI}/phabricator`, description: 'Suite of tools for code review, tasks, and wikis.', homepage: 'https://www.phacility.com/phabricator/', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'phacility/phabricator' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'r32-openproject-pm', name: 'OpenProject', category: 'Project Management', tags: ['project-management','agile','gantt','self-hosted'], icon: `${SI}/openproject`, description: 'Leading open-source project management software.', homepage: 'https://www.openproject.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v3', jsonPath: '$.coreVersion', authRequired: false }, latestSource: { type: 'github-releases', target: 'opf/openproject' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'zenhub-pm', name: 'ZenHub', category: 'Project Management', tags: ['github','agile','kanban','integration'], icon: `${SI}/github`, description: 'Agile project management inside GitHub.', homepage: 'https://www.zenhub.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'ZenHubHQ/zenhub-enterprise' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
-  { id: 'todo-apps-vikunja', name: 'Vikunja', category: 'Project Management', tags: ['todo','tasks','self-hosted','golang'], icon: `${SI}/vikunja`, description: 'Open-source to-do app with project management features.', homepage: 'https://vikunja.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'go-vikunja/vikunja' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'todo-apps-vikunja', name: 'Vikunja', category: 'Project Management', tags: ['todo','tasks','self-hosted','golang'], icon: `${SI}/vikunja`, description: 'Open-source to-do app with project management features.', homepage: 'https://vikunja.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'go-vikunja/vikunja' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'focalboard-tasks', name: 'Focalboard', category: 'Project Management', tags: ['kanban','tasks','mattermost','self-hosted'], icon: `${SI}/focalboard`, description: 'Open-source project management alternative to Trello/Notion.', homepage: 'https://www.focalboard.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'mattermost/focalboard' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'r32-taiga-pm', name: 'Taiga', category: 'Project Management', tags: ['agile','scrum','kanban','self-hosted'], icon: `${SI}/taiga`, description: 'Open-source project management for agile teams.', homepage: 'https://taiga.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'taigaio/taiga-back' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Home Automation extras
-  { id: 'esphome-devices', name: 'ESPHome', category: 'Home Automation', tags: ['esp8266','esp32','yaml','ota'], icon: `${SI}/esphome`, description: 'System for controlling ESP8266/ESP32 with YAML configs.', homepage: 'https://esphome.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'esphome/esphome' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'esphome-devices', name: 'ESPHome', category: 'Home Automation', tags: ['esp8266','esp32','yaml','ota'], icon: `${SI}/esphome`, description: 'System for controlling ESP8266/ESP32 with YAML configs.', homepage: 'https://esphome.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/info', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'esphome/esphome' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'appdaemon-ha', name: 'AppDaemon', category: 'Home Automation', tags: ['home-assistant','automation','python','scripting'], icon: `${SI}/github`, description: 'Loosely coupled multithreaded sandbox for HA automations.', homepage: 'https://appdaemon.readthedocs.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'AppDaemon-Team/appdaemon' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'r32-node-red-ha', name: 'Node-RED', category: 'Home Automation', tags: ['flow-based','iot','javascript','low-code'], icon: `${SI}/nodered`, description: 'Flow-based programming for event-driven applications.', homepage: 'https://nodered.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/settings', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'node-red/node-red' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'r32-node-red-ha', name: 'Node-RED', category: 'Home Automation', tags: ['flow-based','iot','javascript','low-code'], icon: `${SI}/nodered`, description: 'Flow-based programming for event-driven applications.', homepage: 'https://nodered.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/settings', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'node-red/node-red' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'deconz-gateway', name: 'deCONZ', category: 'Home Automation', tags: ['zigbee','deconz','gateway','phoscon'], icon: `${SI}/github`, description: 'Zigbee gateway controller by Phoscon/dresden elektronik.', homepage: 'https://phoscon.de/en/conbee', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/{{apikey}}/config', jsonPath: '$.swversion', authRequired: false }, latestSource: { type: 'github-releases', target: 'dresden-elektronik/deconz-rest-plugin' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'signal-cli-rest', name: 'Signal CLI REST API', category: 'Home Automation', tags: ['signal','notifications','self-hosted','messaging'], icon: `${SI}/signal`, description: 'REST API wrapper for Signal CLI for notifications.', homepage: 'https://github.com/bbernhard/signal-cli-rest-api', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/about', jsonPath: '$.versions[0]', authRequired: false }, latestSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'hass-supervisor', name: 'Home Assistant Supervisor', category: 'Home Automation', tags: ['home-assistant','supervisor','add-on','ha-os'], icon: `${SI}/homeassistant`, description: 'Home Assistant Supervisor for managed HA installations.', homepage: 'https://www.home-assistant.io/installation/', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'home-assistant/supervisor' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21934,18 +22974,18 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'conductor-workflow', name: 'Netflix Conductor', category: 'Infrastructure', tags: ['workflow','microservices','java','orchestration'], icon: `${SI}/netflix`, description: 'Microservices orchestration engine.', homepage: 'https://conductor.netflix.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'Netflix/conductor' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // API & Integration extras
-  { id: 'hasura-graphql', name: 'Hasura GraphQL Engine', category: 'API', tags: ['graphql','postgres','realtime','self-hosted'], icon: `${SI}/hasura`, description: 'Instant GraphQL API on PostgreSQL and other data sources.', homepage: 'https://hasura.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'hasura-graphql', name: 'Hasura GraphQL Engine', category: 'API', tags: ['graphql','postgres','realtime','self-hosted'], icon: `${SI}/hasura`, description: 'Instant GraphQL API on PostgreSQL and other data sources.', homepage: 'https://hasura.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'graphql-yoga', name: 'GraphQL Yoga', category: 'API', tags: ['graphql','nodejs','server','typescript'], icon: `${SI}/graphql`, description: 'Fully-featured, simple to set up GraphQL server.', homepage: 'https://the-guild.dev/graphql/yoga-server', versionSource: { type: 'none' }, latestSource: { type: 'npm-registry', target: 'graphql-yoga' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'postgrest-api', name: 'PostgREST', category: 'API', tags: ['rest','postgresql','auto-generated','api'], icon: `${SI}/postgresql`, description: 'Automatically generate RESTful API from PostgreSQL.', homepage: 'https://postgrest.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/', jsonPath: '$.server_version_num', authRequired: false }, latestSource: { type: 'github-releases', target: 'PostgREST/postgrest' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'r32-pocketbase-backend', name: 'PocketBase', category: 'API', tags: ['backend','realtime','sqlite','go'], icon: `${SI}/pocketbase`, description: 'Open-source backend in one file with REST and realtime API.', homepage: 'https://pocketbase.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.code', authRequired: false }, latestSource: { type: 'github-releases', target: 'pocketbase/pocketbase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'r32-appwrite-backend', name: 'Appwrite', category: 'API', tags: ['backend','php','realtime','open-source'], icon: `${SI}/appwrite`, description: 'Secure open-source backend server.', homepage: 'https://appwrite.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/health/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'appwrite/appwrite' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'r32-pocketbase-backend', name: 'PocketBase', category: 'API', tags: ['backend','realtime','sqlite','go'], icon: `${SI}/pocketbase`, description: 'Open-source backend in one file with REST and realtime API.', homepage: 'https://pocketbase.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.code', authRequired: false }, latestSource: { type: 'github-releases', target: 'pocketbase/pocketbase' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'r32-appwrite-backend', name: 'Appwrite', category: 'API', tags: ['backend','php','realtime','open-source'], icon: `${SI}/appwrite`, description: 'Secure open-source backend server.', homepage: 'https://appwrite.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/health/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'appwrite/appwrite' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'nhost-backend', name: 'Nhost', category: 'API', tags: ['hasura','auth','storage','postgres'], icon: `${SI}/nhost`, description: 'Open-source Firebase alternative with Hasura and Postgres.', homepage: 'https://nhost.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'nhost/nhost' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
-  { id: 'r32-supabase-db', name: 'Supabase', category: 'API', tags: ['postgres','auth','storage','realtime'], icon: `${SI}/supabase`, description: 'Open-source Firebase alternative built on PostgreSQL.', homepage: 'https://supabase.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'supabase/supabase' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true },
-  { id: 'nocodb-spreadsheet', name: 'NocoDB', category: 'API', tags: ['no-code','airtable-alternative','rest','open-source'], icon: `${SI}/nocodb`, description: 'Open-source Airtable alternative.', homepage: 'https://nocodb.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/meta/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'nocodb/nocodb' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'r32-supabase-db', name: 'Supabase', category: 'API', tags: ['postgres','auth','storage','realtime'], icon: `${SI}/supabase`, description: 'Open-source Firebase alternative built on PostgreSQL.', homepage: 'https://supabase.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'supabase/supabase' }, checkInterval: 86400, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'nocodb-spreadsheet', name: 'NocoDB', category: 'API', tags: ['no-code','airtable-alternative','rest','open-source'], icon: `${SI}/nocodb`, description: 'Open-source Airtable alternative.', homepage: 'https://nocodb.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/meta/version', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'nocodb/nocodb' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'baserow-database', name: 'Baserow', category: 'API', tags: ['no-code','database','airtable-alternative','self-hosted'], icon: `${SI}/baserow`, description: 'Open-source no-code database and Airtable alternative.', homepage: 'https://baserow.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/meta/fields/', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'bram2w/baserow' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
 
   // URL Shortener extras
-  { id: 'shlink-shortener', name: 'Shlink', category: 'URL Shortener', tags: ['php','rest-api','analytics','self-hosted'], icon: `${SI}/shlink`, description: 'Self-hosted URL shortener with API and analytics.', homepage: 'https://shlink.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/rest/v3/server', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'shlinkio/shlink' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'shlink-shortener', name: 'Shlink', category: 'URL Shortener', tags: ['php','rest-api','analytics','self-hosted'], icon: `${SI}/shlink`, description: 'Self-hosted URL shortener with API and analytics.', homepage: 'https://shlink.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/rest/v3/server', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'shlinkio/shlink' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'polr-shortener', name: 'Polr', category: 'URL Shortener', tags: ['laravel','php','self-hosted','analytics'], icon: `${SI}/github`, description: 'Quick, modern, and open-source link shortener.', homepage: 'https://polrproject.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'cydrobolt/polr' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'kutt-shortener', name: 'Kutt', category: 'URL Shortener', tags: ['nodejs','react','self-hosted','api'], icon: `${SI}/github`, description: 'Free and open-source URL shortener with custom domains.', homepage: 'https://kutt.it', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'thedevs-network/kutt' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'yourls-shortener', name: 'YOURLS', category: 'URL Shortener', tags: ['php','self-hosted','plugins','statistics'], icon: `${SI}/yourls`, description: 'Your Own URL Shortener — PHP-based.', homepage: 'https://yourls.org', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'YOURLS/YOURLS' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21970,7 +23010,7 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'foreman-infra', name: 'Foreman', category: 'Infrastructure', tags: ['provisioning','puppet','ansible','lifecycle'], icon: `${SI}/theforeman`, description: 'Complete lifecycle management tool for servers.', homepage: 'https://theforeman.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'theforeman/foreman' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'maas-metal', name: 'MAAS', category: 'Infrastructure', tags: ['bare-metal','provisioning','canonical','data-center'], icon: `${SI}/ubuntu`, description: 'Metal as a Service — bare metal cloud by Canonical.', homepage: 'https://maas.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/MAAS/api/2.0/', jsonPath: '$.maas_version', authRequired: false }, latestSource: { type: 'github-releases', target: 'maas/maas' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'stackstorm-automation', name: 'StackStorm', category: 'Infrastructure', tags: ['automation','event-driven','runbook','self-hosted'], icon: `${SI}/stackstorm`, description: 'Event-driven automation for auto-remediation.', homepage: 'https://stackstorm.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/', jsonPath: '$.version', authRequired: true }, latestSource: { type: 'github-releases', target: 'StackStorm/st2' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'r32-ansible-awx', name: 'AWX', category: 'Infrastructure', tags: ['ansible','ui','automation','kubernetes'], icon: `${SI}/ansible`, description: 'Open-source upstream for Ansible Automation Platform.', homepage: 'https://github.com/ansible/awx', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'ansible/awx' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'r32-ansible-awx', name: 'AWX', category: 'Infrastructure', tags: ['ansible','ui','automation','kubernetes'], icon: `${SI}/ansible`, description: 'Open-source upstream for Ansible Automation Platform.', homepage: 'https://github.com/ansible/awx', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2/', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'ansible/awx' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
 
   // Cloud extras
   { id: 'openstack-nova', name: 'OpenStack Nova', category: 'Cloud', tags: ['compute','openstack','vm','self-hosted'], icon: `${SI}/openstack`, description: 'OpenStack compute service for VM management.', homepage: 'https://docs.openstack.org/nova/', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'openstack/nova' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -21985,13 +23025,13 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'bleve-search', name: 'Bleve', category: 'Search/Vector', tags: ['search','golang','library','text-analysis'], icon: `${SI}/go`, description: 'Modern text indexing library for Go.', homepage: 'https://blevesearch.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'blevesearch/bleve' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'r32-milvus-vector', name: 'Milvus', category: 'Search/Vector', tags: ['vector','embeddings','ai','similarity-search'], icon: `${SI}/milvus`, description: 'Open-source vector database for AI applications.', homepage: 'https://milvus.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v2/vectordb/collections/list', jsonPath: '$.code', authRequired: false }, latestSource: { type: 'github-releases', target: 'milvus-io/milvus' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'r32-chroma-vector', name: 'Chroma', category: 'Search/Vector', tags: ['vector','embeddings','llm','python'], icon: `${SI}/github`, description: 'Open-source embedding database for LLM applications.', homepage: 'https://www.trychroma.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/version', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'chroma-core/chroma' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'qdrant-vector', name: 'Qdrant', category: 'Search/Vector', tags: ['vector','embeddings','rust','similarity-search'], icon: `${SI}/qdrant`, description: 'Vector similarity search engine and database.', homepage: 'https://qdrant.tech', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/healthz', jsonPath: '$.title', authRequired: false }, latestSource: { type: 'github-releases', target: 'qdrant/qdrant' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
-  { id: 'r32-weaviate-vector', name: 'Weaviate', category: 'Search/Vector', tags: ['vector','graphql','multi-modal','ai'], icon: `${SI}/weaviate`, description: 'Open-source vector database with GraphQL API.', homepage: 'https://weaviate.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/meta', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'weaviate/weaviate' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'qdrant-vector', name: 'Qdrant', category: 'Search/Vector', tags: ['vector','embeddings','rust','similarity-search'], icon: `${SI}/qdrant`, description: 'Vector similarity search engine and database.', homepage: 'https://qdrant.tech', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/healthz', jsonPath: '$.title', authRequired: false }, latestSource: { type: 'github-releases', target: 'qdrant/qdrant' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
+  { id: 'r32-weaviate-vector', name: 'Weaviate', category: 'Search/Vector', tags: ['vector','graphql','multi-modal','ai'], icon: `${SI}/weaviate`, description: 'Open-source vector database with GraphQL API.', homepage: 'https://weaviate.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/v1/meta', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'weaviate/weaviate' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'pinecone-alt-vespa', name: 'Vespa', category: 'Search/Vector', tags: ['search','vector','recommendation','yahoo'], icon: `${SI}/vespa`, description: 'Open-source big data serving engine.', homepage: 'https://vespa.ai', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'vespa-engine/vespa' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
   // Helm/Package extras
   { id: 'chartmuseum-helm', name: 'ChartMuseum', category: 'Helm', tags: ['helm','charts','repository','kubernetes'], icon: `${SI}/helm`, description: 'Open-source Helm chart repository server.', homepage: 'https://chartmuseum.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/charts', jsonPath: '$', authRequired: false }, latestSource: { type: 'github-releases', target: 'helm/chartmuseum' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'harbor-oci', name: 'Harbor OCI', category: 'Container', tags: ['registry','oci','security','self-hosted'], icon: `${SI}/harbor`, description: 'Open-source container registry with security scanning.', homepage: 'https://goharbor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo', jsonPath: '$.harbor_version', authRequired: false }, latestSource: { type: 'github-releases', target: 'goharbor/harbor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'harbor-oci', name: 'Harbor OCI', category: 'Container', tags: ['registry','oci','security','self-hosted'], icon: `${SI}/harbor`, description: 'Open-source container registry with security scanning.', homepage: 'https://goharbor.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo', jsonPath: '$.harbor_version', authRequired: false }, latestSource: { type: 'github-releases', target: 'goharbor/harbor' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'r32-distribution-registry', name: 'Docker Distribution', category: 'Container', tags: ['registry','oci','docker','self-hosted'], icon: `${SI}/docker`, description: 'Open-source implementation of the Docker Registry HTTP API.', homepage: 'https://github.com/distribution/distribution', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'distribution/distribution' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
   { id: 'dragonfly-p2p', name: 'Dragonfly', category: 'Container', tags: ['p2p','image-distribution','kubernetes','alibaba'], icon: `${SI}/github`, description: 'P2P-based image and file distribution system.', homepage: 'https://d7y.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'dragonflyoss/Dragonfly2' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
 
@@ -22004,7 +23044,7 @@ const REGISTRY_PART32: ToolRegistryEntry[] = [
   { id: 'dapr-runtime', name: 'Dapr', category: 'Infrastructure', tags: ['microservices','sidecar','distributed','cncf'], icon: `${SI}/dapr`, description: 'Distributed Application Runtime for microservices.', homepage: 'https://dapr.io', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'dapr/dapr' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'open-telemetry-collector', name: 'OpenTelemetry Collector', category: 'Observability', tags: ['otel','traces','metrics','logs'], icon: `${SI}/opentelemetry`, description: 'Vendor-agnostic collector for traces, metrics, and logs.', homepage: 'https://opentelemetry.io/docs/collector/', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' }, checkInterval: 86400, requiresInstanceUrl: false, verified: false },
   { id: 'jaeger-tracing-v2', name: 'Jaeger v2', category: 'Observability', tags: ['distributed-tracing','opentelemetry','cncf','self-hosted'], icon: `${SI}/jaeger`, description: 'End-to-end distributed tracing using OpenTelemetry.', homepage: 'https://www.jaegertracing.io', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/status', jsonPath: '$.Data.Version', authRequired: false }, latestSource: { type: 'github-releases', target: 'jaegertracing/jaeger' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
-  { id: 'clickhouse-analytics', name: 'ClickHouse', category: 'Database', tags: ['olap','columnar','sql','analytics'], icon: `${SI}/clickhouse`, description: 'Fast open-source column-oriented database for analytics.', homepage: 'https://clickhouse.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/?query=SELECT%20version()&default_format=JSON', jsonPath: '$.data[0][\"version()\"]', authRequired: false }, latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true },
+  { id: 'clickhouse-analytics', name: 'ClickHouse', category: 'Database', tags: ['olap','columnar','sql','analytics'], icon: `${SI}/clickhouse`, description: 'Fast open-source column-oriented database for analytics.', homepage: 'https://clickhouse.com', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/?query=SELECT%20version()&default_format=JSON', jsonPath: '$.data[0][\"version()\"]', authRequired: false }, latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' }, checkInterval: 3600, requiresInstanceUrl: true, verified: true, verificationStatus: 'verified' as const, lastVerifiedAt: '2026-03-21' },
   { id: 'druid-analytics', name: 'Apache Druid', category: 'Database', tags: ['olap','real-time','analytics','distributed'], icon: `${SI}/apachedruid`, description: 'High performance OLAP database for analytics.', homepage: 'https://druid.apache.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/status', jsonPath: '$.version', authRequired: false }, latestSource: { type: 'github-releases', target: 'apache/druid' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'pinot-analytics', name: 'Apache Pinot', category: 'Database', tags: ['olap','real-time','analytics','linkedin'], icon: `${SI}/apachepinot`, description: 'Real-time distributed OLAP datastore for analytics.', homepage: 'https://pinot.apache.org', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/appconfigs', jsonPath: '$.controllerVersion', authRequired: false }, latestSource: { type: 'github-releases', target: 'apache/pinot' }, checkInterval: 3600, requiresInstanceUrl: true, verified: false },
   { id: 'r32-citus-postgres', name: 'Citus', category: 'Database', tags: ['postgresql','distributed','sharding','extension'], icon: `${SI}/postgresql`, description: 'Distributed PostgreSQL as an extension.', homepage: 'https://www.citusdata.com', versionSource: { type: 'none' }, latestSource: { type: 'github-releases', target: 'citusdata/citus' }, checkInterval: 86400, requiresInstanceUrl: true, verified: false },
@@ -22475,9 +23515,18 @@ const REGISTRY_PART37: ToolRegistryEntry[] = [
 
 export const TOOL_REGISTRY: ToolRegistryEntry[] = [...REGISTRY_PART1, ...REGISTRY_PART2, ...REGISTRY_PART3, ...REGISTRY_PART4, ...REGISTRY_PART5, ...REGISTRY_PART6, ...REGISTRY_PART7, ...REGISTRY_PART8, ...REGISTRY_PART9, ...REGISTRY_PART10, ...REGISTRY_PART11, ...REGISTRY_PART12, ...REGISTRY_PART13, ...REGISTRY_PART14, ...REGISTRY_PART15, ...REGISTRY_PART16, ...REGISTRY_PART17, ...REGISTRY_PART18, ...REGISTRY_PART19, ...REGISTRY_PART20, ...REGISTRY_PART21, ...REGISTRY_PART22, ...REGISTRY_PART23, ...REGISTRY_PART24, ...REGISTRY_PART25, ...REGISTRY_PART26, ...REGISTRY_PART27, ...REGISTRY_PART28, ...REGISTRY_PART29, ...REGISTRY_PART30, ...REGISTRY_PART31, ...REGISTRY_PART32, ...REGISTRY_PART33, ...REGISTRY_PART34, ...REGISTRY_PART35, ...REGISTRY_PART36, ...REGISTRY_PART37];
 
+/** O(1) lookup map — built once at module init */
+const REGISTRY_BY_ID: Map<string, ToolRegistryEntry> = new Map(
+  TOOL_REGISTRY.map((t) => [t.id, t]),
+);
+
 export function getToolById(id: string): ToolRegistryEntry | undefined {
-  return TOOL_REGISTRY.find((t) => t.id === id);
+  return REGISTRY_BY_ID.get(id);
 }
+
+/** Simple LRU-style cache for search results (max 128 entries) */
+const SEARCH_CACHE = new Map<string, ToolRegistryEntry[]>();
+const SEARCH_CACHE_MAX = 128;
 
 /**
  * Search the tool registry with ranked results.
@@ -22493,8 +23542,12 @@ export function getToolById(id: string): ToolRegistryEntry | undefined {
  *
  * Within the same tier, verified tools sort before unverified, then alphabetical.
  * Normalises the query: strips leading/trailing whitespace, collapses internal spaces.
+ * Results are cached in memory (LRU, max 128 entries) for fast repeated lookups.
  */
 export function searchTools(query: string, category?: string): ToolRegistryEntry[] {
+  const cacheKey = `${query.trim().toLowerCase()}|${category ?? ''}`;
+  const cached = SEARCH_CACHE.get(cacheKey);
+  if (cached) return cached;
   const q = query.toLowerCase().trim().replace(/\s+/g, ' ');
 
   const filtered = TOOL_REGISTRY.filter((t) => {
@@ -22517,31 +23570,44 @@ export function searchTools(query: string, category?: string): ToolRegistryEntry
     );
   });
 
-  if (!q) return filtered;
+  let result: ToolRegistryEntry[];
 
-  return filtered.sort((a, b) => {
-    const score = (t: ToolRegistryEntry): number => {
-      const name = t.name.toLowerCase();
-      const id = t.id.toLowerCase();
-      const aliasExact = t.aliases?.some((a) => a.toLowerCase() === q);
-      const aliasPartial = t.aliases?.some((a) => a.toLowerCase().includes(q));
-      if (name === q) return 10;
-      if (name.startsWith(q)) return 20;
-      if (name.includes(q)) return 30;
-      if (id === q || id.startsWith(q)) return 35;
-      if (aliasExact) return 38;
-      if (aliasPartial) return 42;
-      if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
-      if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
-      return 70; // description match
-    };
-    const sa = score(a);
-    const sb = score(b);
-    if (sa !== sb) return sa - sb;
-    // Within same tier: verified first, then alphabetical
-    if (a.verified !== b.verified) return a.verified ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  if (!q) {
+    result = filtered;
+  } else {
+    result = filtered.sort((a, b) => {
+      const score = (t: ToolRegistryEntry): number => {
+        const name = t.name.toLowerCase();
+        const id = t.id.toLowerCase();
+        const aliasExact = t.aliases?.some((a) => a.toLowerCase() === q);
+        const aliasPartial = t.aliases?.some((a) => a.toLowerCase().includes(q));
+        if (name === q) return 10;
+        if (name.startsWith(q)) return 20;
+        if (name.includes(q)) return 30;
+        if (id === q || id.startsWith(q)) return 35;
+        if (aliasExact) return 38;
+        if (aliasPartial) return 42;
+        if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
+        if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
+        return 70; // description match
+      };
+      const sa = score(a);
+      const sb = score(b);
+      if (sa !== sb) return sa - sb;
+      // Within same tier: verified first, then alphabetical
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // Store in cache (evict oldest entry when at capacity)
+  if (SEARCH_CACHE.size >= SEARCH_CACHE_MAX) {
+    const firstKey = SEARCH_CACHE.keys().next().value;
+    if (firstKey !== undefined) SEARCH_CACHE.delete(firstKey);
+  }
+  SEARCH_CACHE.set(cacheKey, result);
+
+  return result;
 }
 
 export const TOOL_CATEGORIES = [...new Set(TOOL_REGISTRY.map((t) => t.category))].sort();

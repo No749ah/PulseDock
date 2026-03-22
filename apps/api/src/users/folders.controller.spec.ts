@@ -73,6 +73,70 @@ describe('FoldersController', () => {
       const result = await controller.list(req);
       expect(result).toEqual([]);
     });
+
+    it('counts down monitors (red) in stats', async () => {
+      const { controller, prisma } = makeController();
+      const folder = makeFolder();
+      (prisma.folder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([folder]);
+      // Monitor with a failed latest run → down
+      (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 'mon-1', folderId: folder.id, enabled: true,
+          runs: [{ ok: false }],
+        },
+      ]);
+      const result = await controller.list(req);
+      const stats = (result[0] as { stats: { down: number; overallStatus: string } }).stats;
+      expect(stats.down).toBe(1);
+      expect(stats.overallStatus).toBe('outage');
+    });
+
+    it('counts degraded monitors (2+ recent failures while last run ok)', async () => {
+      const { controller, prisma } = makeController();
+      const folder = makeFolder();
+      (prisma.folder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([folder]);
+      (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 'mon-1', folderId: folder.id, enabled: true,
+          runs: [
+            { ok: true }, // latest OK
+            { ok: false }, { ok: false }, // 2 recent failures → degraded
+          ],
+        },
+      ]);
+      const result = await controller.list(req);
+      const stats = (result[0] as { stats: { degraded: number; overallStatus: string } }).stats;
+      expect(stats.degraded).toBe(1);
+      expect(stats.overallStatus).toBe('degraded');
+    });
+
+    it('counts healthy monitors (ok, < 2 recent failures)', async () => {
+      const { controller, prisma } = makeController();
+      const folder = makeFolder();
+      (prisma.folder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([folder]);
+      (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 'mon-1', folderId: folder.id, enabled: true,
+          runs: [{ ok: true }, { ok: true }],
+        },
+      ]);
+      const result = await controller.list(req);
+      const stats = (result[0] as { stats: { healthy: number; overallStatus: string } }).stats;
+      expect(stats.healthy).toBe(1);
+      expect(stats.overallStatus).toBe('operational');
+    });
+
+    it('counts degraded when monitor has no runs', async () => {
+      const { controller, prisma } = makeController();
+      const folder = makeFolder();
+      (prisma.folder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([folder]);
+      (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'mon-1', folderId: folder.id, enabled: true, runs: [] },
+      ]);
+      const result = await controller.list(req);
+      const stats = (result[0] as { stats: { degraded: number } }).stats;
+      expect(stats.degraded).toBe(1);
+    });
   });
 
   // ── create() ───────────────────────────────────────────────────────────────

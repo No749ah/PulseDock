@@ -814,6 +814,74 @@ export default function VersionsPage() {
   const size = Number(pageSize);
 
   const modalProgress = createStep < 0 ? 0 : ((createStep + 1) / 4) * 100;
+
+  const normalizedToolQuery = useMemo(
+    () => toolSearchDebounced.toLowerCase().trim().replace(/\s+/g, ' '),
+    [toolSearchDebounced],
+  );
+
+  const filteredTools = useMemo(() => {
+    if (!toolRegistry) return [] as ToolEntry[];
+
+    const all = toolRegistry.tools.filter((t) => {
+      const cat = !toolCategory || t.category === toolCategory;
+      if (!normalizedToolQuery) return cat;
+      if (!cat) return false;
+
+      const name = t.name.toLowerCase();
+      const desc = t.description.toLowerCase();
+      const id = t.id.toLowerCase();
+
+      return (
+        name === normalizedToolQuery ||
+        name.startsWith(normalizedToolQuery) ||
+        name.includes(normalizedToolQuery) ||
+        id === normalizedToolQuery ||
+        id.startsWith(normalizedToolQuery) ||
+        t.tags.some((tag) => tag.toLowerCase() === normalizedToolQuery || tag.toLowerCase().includes(normalizedToolQuery)) ||
+        desc.includes(normalizedToolQuery)
+      );
+    });
+
+    if (!normalizedToolQuery) return all;
+
+    const score = (t: ToolEntry) => {
+      const name = t.name.toLowerCase();
+      const id = t.id.toLowerCase();
+      if (name === normalizedToolQuery) return 10;
+      if (name.startsWith(normalizedToolQuery)) return 20;
+      if (name.includes(normalizedToolQuery)) return 30;
+      if (id === normalizedToolQuery || id.startsWith(normalizedToolQuery)) return 40;
+      if (t.tags.some((tag) => tag.toLowerCase() === normalizedToolQuery)) return 50;
+      if (t.tags.some((tag) => tag.toLowerCase().includes(normalizedToolQuery))) return 60;
+      return 70;
+    };
+
+    return all.sort((a, b) => {
+      const sa = score(a);
+      const sb = score(b);
+      if (sa !== sb) return sa - sb;
+      if (a.verified !== b.verified) return a.verified ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [toolRegistry, toolCategory, normalizedToolQuery]);
+
+  const visibleFilteredTools = useMemo(
+    () => filteredTools.slice(0, toolVisibleCount),
+    [filteredTools, toolVisibleCount],
+  );
+
+  const closeMatchTools = useMemo(() => {
+    if (!toolRegistry || filteredTools.length > 0 || !normalizedToolQuery) return [] as ToolEntry[];
+    return toolRegistry.tools
+      .filter((t) => {
+        const name = t.name.toLowerCase();
+        const id = t.id.toLowerCase();
+        return name.includes(normalizedToolQuery) || id.includes(normalizedToolQuery) || t.tags.some((tag) => tag.toLowerCase().includes(normalizedToolQuery));
+      })
+      .slice(0, 4);
+  }, [toolRegistry, filteredTools.length, normalizedToolQuery]);
+
   const missing: string[] = [];
   if (createStep === 0) {
     if (!name.trim()) missing.push('Name is required.');
@@ -980,110 +1048,63 @@ export default function VersionsPage() {
                 >
                   {toolRegistry === null ? (
                     <p className="text-sm text-text-secondary text-center py-8">Loading registry…</p>
-                  ) : (() => {
-                    const q = toolSearchDebounced.toLowerCase().trim().replace(/\s+/g, ' ');
-                    // Ranked filter: exact name > name starts-with > name contains > tag exact > tag contains > description
-                    const filtered = (() => {
-                      const all = toolRegistry.tools.filter((t) => {
-                        const cat = !toolCategory || t.category === toolCategory;
-                        if (!q) return cat;
-                        if (!cat) return false;
-                        const name = t.name.toLowerCase();
-                        const desc = t.description.toLowerCase();
-                        const id = t.id.toLowerCase();
-                        return (
-                          name === q || name.startsWith(q) || name.includes(q) ||
-                          id === q || id.startsWith(q) ||
-                          t.tags.some((tag) => tag.toLowerCase() === q || tag.toLowerCase().includes(q)) ||
-                          desc.includes(q)
-                        );
-                      });
-                      if (!q) return all;
-                      return all.sort((a, b) => {
-                        const score = (t: typeof a) => {
-                          const name = t.name.toLowerCase();
-                          const id = t.id.toLowerCase();
-                          if (name === q) return 10;
-                          if (name.startsWith(q)) return 20;
-                          if (name.includes(q)) return 30;
-                          if (id === q || id.startsWith(q)) return 40;
-                          if (t.tags.some((tag) => tag.toLowerCase() === q)) return 50;
-                          if (t.tags.some((tag) => tag.toLowerCase().includes(q))) return 60;
-                          return 70;
-                        };
-                        const sa = score(a), sb = score(b);
-                        if (sa !== sb) return sa - sb;
-                        if (a.verified !== b.verified) return a.verified ? -1 : 1;
-                        return a.name.localeCompare(b.name);
-                      });
-                    })();
-                    const visible = filtered.slice(0, toolVisibleCount);
-                    // For empty results, find close matches (cross-category if category filter is active)
-                    const closeMatches = filtered.length === 0 && q
-                      ? toolRegistry.tools.filter((t) => {
-                          const name = t.name.toLowerCase();
-                          const id = t.id.toLowerCase();
-                          return name.includes(q) || id.includes(q) || t.tags.some((tag) => tag.toLowerCase().includes(q));
-                        }).slice(0, 4)
-                      : [];
-                    return filtered.length === 0 ? (
-                      <div className="py-8 text-center space-y-3">
-                        <p className="text-sm text-text-secondary">
-                          No tools found for &ldquo;{toolSearch}&rdquo;{toolCategory ? ` in ${toolCategory}` : ''}.
-                        </p>
-                        {closeMatches.length > 0 && (
-                          <div>
-                            <p className="text-xs text-text-secondary mb-2">Did you mean:</p>
-                            <div className="flex flex-wrap gap-2 justify-center">
-                              {closeMatches.map((t) => (
-                                <button
-                                  key={t.id}
-                                  onClick={() => { setToolCategory(''); applyToolToForm(t); }}
-                                  className="text-xs px-3 py-1 rounded-full border border-border bg-surface-elevated text-text-primary hover:border-accent/50 transition-colors"
-                                >
-                                  {t.name}
-                                  {toolCategory && <span className="ml-1 text-text-secondary">({t.category})</span>}
-                                </button>
-                              ))}
-                            </div>
+                  ) : filteredTools.length === 0 ? (
+                    <div className="py-8 text-center space-y-3">
+                      <p className="text-sm text-text-secondary">
+                        No tools found for &ldquo;{toolSearch}&rdquo;{toolCategory ? ` in ${toolCategory}` : ''}.
+                      </p>
+                      {closeMatchTools.length > 0 && (
+                        <div>
+                          <p className="text-xs text-text-secondary mb-2">Did you mean:</p>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {closeMatchTools.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => { setToolCategory(''); applyToolToForm(t); }}
+                                className="text-xs px-3 py-1 rounded-full border border-border bg-surface-elevated text-text-primary hover:border-accent/50 transition-colors"
+                              >
+                                {t.name}
+                                {toolCategory && <span className="ml-1 text-text-secondary">({t.category})</span>}
+                              </button>
+                            ))}
                           </div>
-                        )}
-                        <p className="text-xs text-text-secondary">
-                          Not in the registry?{' '}
-                          <button
-                            className="text-accent hover:underline"
-                            onClick={() => { setToolSearch(''); setSelectedTool(null); setToolVariants([]); setSelectedVariantId(''); }}
-                          >
-                            Use manual config
-                          </button>
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-xs text-text-secondary mb-2">Showing {visible.length} of {filtered.length} tools</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {visible.map((tool) => (
-                            <button
-                              key={tool.id}
-                              onClick={() => applyToolToForm(tool)}
-                              className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
-                            >
-                              <div className="flex items-center gap-2 w-full min-w-0">
-                                <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
-                                {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
-                              </div>
-                              <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
-                            </button>
-                          ))}
                         </div>
-                        {visible.length < filtered.length && (
-                          <p className="text-xs text-text-secondary text-center mt-3">Scroll to load more…</p>
-                        )}
-                      </>
-                    );
-                  })()}
+                      )}
+                      <p className="text-xs text-text-secondary">
+                        Not in the registry?{' '}
+                        <button
+                          className="text-accent hover:underline"
+                          onClick={() => { setToolSearch(''); setSelectedTool(null); setToolVariants([]); setSelectedVariantId(''); }}
+                        >
+                          Use manual config
+                        </button>
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs text-text-secondary mb-2">Showing {visibleFilteredTools.length} of {filteredTools.length} tools</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {visibleFilteredTools.map((tool) => (
+                          <button
+                            key={tool.id}
+                            onClick={() => applyToolToForm(tool)}
+                            className="flex flex-col items-start gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-left hover:border-accent/50 hover:bg-accent/5 transition-all"
+                          >
+                            <div className="flex items-center gap-2 w-full min-w-0">
+                              <img src={tool.icon} alt={tool.name} className="w-6 h-6 shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              <span className="text-sm font-medium text-text-primary truncate">{tool.name}</span>
+                              {tool.verified && <Check className="w-3 h-3 text-success shrink-0 ml-auto" aria-label="Verified" />}
+                            </div>
+                            <span className="text-xs text-text-secondary leading-snug line-clamp-2">{tool.description}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface border border-border text-text-secondary">{tool.category}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {visibleFilteredTools.length < filteredTools.length && (
+                        <p className="text-xs text-text-secondary text-center mt-3">Scroll to load more…</p>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}

@@ -1,3 +1,14 @@
+## Status Summary (2026-03-22 01:12 UTC)
+- **Build/Test:** ✅ Clean build, tests passing (2 files / 12 tests in fast suite), registry lint + variant regression check passing
+- **Security/Audit:** ⚠️ `npm audit` still reports 11 vulns (5 moderate, 6 high) via `@mrleebo/prisma-ast`/`chevrotain` transitive chain (unchanged)
+- **Deployment:** ✅ API + web restarted via `npm run restart`; local + reverse proxy route checks all 200; `/api/v1/monitors` correctly returns 401 without auth
+- **Branch:** heartbeat/2026-03-22-midnight
+- **This session:**
+  - **Registry full-audit baseline tooling:** Added `packages/tool-registry/scripts/verified-runtime-audit.ts` + npm script `registry:audit:verified`.
+  - **Generated canonical report:** `packages/tool-registry/audit/verified-runtime-audit.json` now tracks verification debt across all 5009 templates (including verified metadata/evidence gaps).
+  - **Audit findings baseline:** 646 verified templates tracked, 485 verified entries still missing docs/evidence, 646 missing `verifiedOnVersion`, 0 missing auth metadata on instance-url sources.
+  - **Backlog sync:** Promoted `Alle bestehenden Templates vollständig erneut prüfen` to in-progress `[~]` with explicit next steps based on the new report.
+
 ## Status Summary (2026-03-21 20:40 UTC)
 - **Build/Test:** ✅ Clean build, tests passing (2 files / 12 tests in current fast suite), no regressions
 - **Deployment:** ✅ API + web restarted successfully, local route audit green, reverse proxy login/dashboard 200

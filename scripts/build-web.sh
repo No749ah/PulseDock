@@ -28,8 +28,12 @@ if [ -d ".next/static" ]; then
 fi
 
 # 3. Build
-echo "==> Building web…"
-NEXT_TELEMETRY_DISABLED=1 TURBOPACK=0 npx next build
+#    Prevent stale lock collisions from interrupted prior builds and keep memory bounded
+#    in constrained environments.
+rm -f .next/lock
+: "${NODE_OPTIONS:=--max-old-space-size=768}"
+echo "==> Building web… (NODE_OPTIONS=$NODE_OPTIONS)"
+NEXT_TELEMETRY_DISABLED=1 TURBOPACK=0 NODE_OPTIONS="$NODE_OPTIONS" npx next build
 
 # 4. Merge old chunks back — old hashes coexist with new ones.
 #    Browsers or CDNs that cached old HTML still get their chunks served.

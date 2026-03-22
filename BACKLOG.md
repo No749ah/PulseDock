@@ -1085,6 +1085,8 @@
 
 ## Recently Completed
 
+- [x] **Security dependency hardening (Prisma advisory chain)** — Pinned `prisma`, `@prisma/client`, and `@prisma/adapter-pg` to `6.12.0` in API workspace to eliminate GHSA-38f7-945m-qr2g exposure via `@prisma/config`/`effect`. Lockfile refreshed; `npm audit --audit-level=high` now reports `0 vulnerabilities`.
+
 - [x] **Landing page P0 rework** — Hero dashboard mockup (glassmorphic browser chrome, stat cards, monitors table, sparklines), improved How-It-Works (3 cards with inline visual elements), Screenshot Gallery (2×2 mock UIs with hover-lift), Pricing section (self-hosted free + cloud coming soon). Build clean, all routes 200.
 
 - [x] **SLA Summary with real data** — API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.

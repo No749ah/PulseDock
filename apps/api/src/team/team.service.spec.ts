@@ -153,4 +153,105 @@ describe('TeamService', () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'different@b.com' })
     await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(BadRequestException)
   })
+
+  // ── Additional coverage for edge cases ──────────────────────────────────
+
+  it('inviteMember throws BadRequest when inviting self', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'self@b.com' })
+    await expect(service.inviteMember('u1', { email: 'self@b.com', role: TeamRole.EDITOR })).rejects.toThrow(BadRequestException)
+  })
+
+  it('inviteMember throws BadRequest when user is already a member', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'existing@b.com' })
+    mockPrisma.teamMember.findUnique.mockResolvedValue({ id: 'm1', ownerId: 'u1', userId: 'u2' })
+    await expect(service.inviteMember('u1', { email: 'existing@b.com', role: TeamRole.EDITOR })).rejects.toThrow(BadRequestException)
+  })
+
+  it('updateMemberRole throws BadRequest when assigning OWNER role', async () => {
+    await expect(service.updateMemberRole('u1', 'm1', { role: TeamRole.OWNER })).rejects.toThrow(BadRequestException)
+  })
+
+  it('updateMemberRole throws NotFoundException when member not found', async () => {
+    mockPrisma.teamMember.findFirst.mockResolvedValue(null)
+    await expect(service.updateMemberRole('u1', 'nonexistent', { role: TeamRole.ADMIN })).rejects.toThrow(NotFoundException)
+  })
+
+  it('updateMemberRole throws BadRequest when changing OWNER role', async () => {
+    mockPrisma.teamMember.findFirst.mockResolvedValue({ id: 'm1', ownerId: 'u1', role: TeamRole.OWNER })
+    await expect(service.updateMemberRole('u1', 'm1', { role: TeamRole.ADMIN })).rejects.toThrow(BadRequestException)
+  })
+
+  it('removeMember throws BadRequest when removing OWNER', async () => {
+    mockPrisma.teamMember.findFirst.mockResolvedValue({ id: 'm1', ownerId: 'u1', role: TeamRole.OWNER })
+    await expect(service.removeMember('u1', 'm1')).rejects.toThrow(BadRequestException)
+  })
+
+  it('removeMember succeeds for non-OWNER member', async () => {
+    mockPrisma.teamMember.findFirst.mockResolvedValue({ id: 'm1', ownerId: 'u1', role: TeamRole.EDITOR })
+    mockPrisma.teamMember.delete.mockResolvedValue({ id: 'm1' })
+    const result = await service.removeMember('u1', 'm1')
+    expect(result.message).toBe('Member removed')
+  })
+
+  it('cancelInvite throws NotFoundException when invite not found', async () => {
+    mockPrisma.teamInvite.findFirst.mockResolvedValue(null)
+    await expect(service.cancelInvite('u1', 'nonexistent')).rejects.toThrow(NotFoundException)
+  })
+
+  it('getInviteByToken throws BadRequest for already-accepted invite', async () => {
+    const future = new Date(Date.now() + 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', token: 'tok', expiresAt: future, acceptedAt: new Date(), email: 'a@b.com', owner: {},
+    })
+    await expect(service.getInviteByToken('tok')).rejects.toThrow(BadRequestException)
+  })
+
+  it('acceptInvite throws NotFoundException for unknown token', async () => {
+    mockPrisma.teamInvite.findUnique.mockResolvedValue(null)
+    await expect(service.acceptInvite('bad-token', 'u2')).rejects.toThrow(NotFoundException)
+  })
+
+  it('acceptInvite throws BadRequest for expired invite', async () => {
+    const past = new Date(Date.now() - 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', ownerId: 'u1', email: 'b@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: past, acceptedAt: null,
+    })
+    await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(BadRequestException)
+  })
+
+  it('acceptInvite throws BadRequest for already-accepted invite', async () => {
+    const future = new Date(Date.now() + 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', ownerId: 'u1', email: 'b@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: new Date(),
+    })
+    await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(BadRequestException)
+  })
+
+  it('acceptInvite throws NotFoundException when user not found', async () => {
+    const future = new Date(Date.now() + 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', ownerId: 'u1', email: 'b@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: null,
+    })
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+    await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(NotFoundException)
+  })
+
+  it('acceptInvite throws BadRequest when accepting own invitation', async () => {
+    const future = new Date(Date.now() + 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', ownerId: 'u1', email: 'owner@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: null,
+    })
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'owner@b.com' })
+    await expect(service.acceptInvite('tok', 'u1')).rejects.toThrow(BadRequestException)
+  })
+
+  it('acceptInvite throws BadRequest when already a member', async () => {
+    const future = new Date(Date.now() + 86400000)
+    mockPrisma.teamInvite.findUnique.mockResolvedValue({
+      id: 'i1', ownerId: 'u1', email: 'b@b.com', role: TeamRole.VIEWER, token: 'tok', expiresAt: future, acceptedAt: null,
+    })
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'b@b.com' })
+    mockPrisma.teamMember.findUnique.mockResolvedValue({ id: 'm1', ownerId: 'u1', userId: 'u2' })
+    await expect(service.acceptInvite('tok', 'u2')).rejects.toThrow(BadRequestException)
+  })
 })

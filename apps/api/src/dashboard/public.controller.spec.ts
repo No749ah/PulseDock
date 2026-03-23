@@ -634,3 +634,257 @@ describe('statusPageBadge()', () => {
     expect(getHeaders()['Cache-Control']).toContain('public');
   });
 });
+
+// ── embedMonitorScript() tests ────────────────────────────────────────────────
+
+describe('embedMonitorScript()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: PublicDashboardController;
+
+  function makeMockEndRes() {
+    const headers: Record<string, string> = {};
+    let body: string | undefined;
+    const res = {
+      setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+      end: vi.fn((data: string) => { body = data; }),
+    } as unknown as Response;
+    return { res, getBody: () => body, getHeaders: () => headers };
+  }
+
+  beforeEach(() => {
+    prisma = {
+      user: { findUnique: vi.fn() },
+      monitor: { findUnique: vi.fn(), findMany: vi.fn() },
+      monitorRun: { findFirst: vi.fn(), findMany: vi.fn() },
+      publicStatusPage: { findUnique: vi.fn() },
+    } as unknown as PrismaService;
+    controller = new PublicDashboardController(prisma);
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res } = makeMockEndRes();
+    await expect(controller.embedMonitorScript('no-mon', undefined, undefined, undefined, res)).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns JS script for up monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: 42, checkedAt: new Date() });
+    const { res, getBody, getHeaders } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('(function()');
+    expect(body).toContain('_pd_embed_badge');
+    expect(body).toContain('#2da44e'); // green color
+    expect(body).toContain('42ms'); // latency
+    expect(getHeaders()['Access-Control-Allow-Origin']).toBe('*');
+  });
+
+  it('returns degraded status for yellow monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'Cache', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, level: 'yellow', latencyMs: 800, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('#d1a317'); // yellow
+    expect(getBody()).toContain('degraded');
+  });
+
+  it('returns down status for red monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'DB', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, level: 'red', latencyMs: null, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('#cf222e'); // red
+    expect(getBody()).toContain('down');
+  });
+
+  it('returns unknown when no runs exist', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'New', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('#6e7681'); // gray/unknown
+    expect(getBody()).toContain('unknown');
+  });
+
+  it('uses custom label', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: 10, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, 'Custom Label', undefined, res);
+
+    expect(getBody()).toContain('Custom Label');
+  });
+
+  it('respects position parameter', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: 10, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', 'top-left', undefined, undefined, res);
+
+    expect(getBody()).toContain('top:16px;left:16px');
+  });
+
+  it('defaults position to bottom-right', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: 10, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('bottom:16px;right:16px');
+  });
+
+  it('respects light theme', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: 10, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, 'light', res);
+
+    expect(getBody()).toContain('#fff'); // light background
+  });
+
+  it('omits latency text when latencyMs is null', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API', enabled: true });
+    (prisma.monitorRun.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, level: 'green', latencyMs: null, checkedAt: new Date() });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedMonitorScript('m1', undefined, undefined, undefined, res);
+
+    // Should not contain "ms" in latency display  
+    expect(getBody()).not.toContain('nullms');
+  });
+});
+
+// ── embedStatusPageScript() tests ─────────────────────────────────────────────
+
+describe('embedStatusPageScript()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: PublicDashboardController;
+
+  function makeMockEndRes() {
+    const headers: Record<string, string> = {};
+    let body: string | undefined;
+    const res = {
+      setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+      end: vi.fn((data: string) => { body = data; }),
+    } as unknown as Response;
+    return { res, getBody: () => body, getHeaders: () => headers };
+  }
+
+  beforeEach(() => {
+    prisma = {
+      user: { findUnique: vi.fn() },
+      monitor: { findUnique: vi.fn(), findMany: vi.fn() },
+      monitorRun: { findFirst: vi.fn(), findMany: vi.fn() },
+      publicStatusPage: { findUnique: vi.fn() },
+    } as unknown as PrismaService;
+    controller = new PublicDashboardController(prisma);
+  });
+
+  it('throws NotFoundException when page not found', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res } = makeMockEndRes();
+    await expect(controller.embedStatusPageScript('bad-slug', undefined, undefined, undefined, res)).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when page not published', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Draft', isPublished: false, layout: {},
+    });
+    const { res } = makeMockEndRes();
+    await expect(controller.embedStatusPageScript('draft', undefined, undefined, undefined, res)).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns operational script when no monitors in layout', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true, layout: { widgets: [] },
+    });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', undefined, undefined, undefined, res);
+
+    const body = getBody()!;
+    expect(body).toContain('(function()');
+    expect(body).toContain('#2da44e'); // green/operational
+  });
+
+  it('returns outage script when monitor is red', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true,
+      layout: { widgets: [{ config: { monitorId: 'mon-1' } }] },
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { level: 'red' },
+    ]);
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('#cf222e'); // red/outage
+    expect(getBody()).toContain('outage');
+  });
+
+  it('returns degraded script when monitor is yellow', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true,
+      layout: { widgets: [{ config: { monitorId: 'mon-2' } }] },
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { level: 'yellow' },
+    ]);
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', undefined, undefined, undefined, res);
+
+    expect(getBody()).toContain('#d1a317'); // yellow/degraded
+    expect(getBody()).toContain('degraded');
+  });
+
+  it('uses custom label', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true, layout: {},
+    });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', undefined, 'Acme Corp', undefined, res);
+
+    expect(getBody()).toContain('Acme Corp');
+  });
+
+  it('respects position and theme parameters', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true, layout: {},
+    });
+    const { res, getBody } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', 'bottom-left', undefined, 'light', res);
+
+    const body = getBody()!;
+    expect(body).toContain('bottom:16px;left:16px');
+    expect(body).toContain('#fff'); // light theme bg
+  });
+
+  it('sets CORS and cache headers', async () => {
+    (prisma.publicStatusPage.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'p1', title: 'Status', isPublished: true, layout: {},
+    });
+    const { res, getHeaders } = makeMockEndRes();
+
+    await controller.embedStatusPageScript('my-status', undefined, undefined, undefined, res);
+
+    expect(getHeaders()['Access-Control-Allow-Origin']).toBe('*');
+    expect(getHeaders()['Cache-Control']).toContain('public');
+  });
+});

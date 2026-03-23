@@ -171,6 +171,89 @@ describe('DashboardController', () => {
       expect(result.stats.green).toBe(1);
       expect(result.stats.red).toBe(0);
     });
+
+    it('separates uptime monitors from version monitors', async () => {
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-http', type: 'HTTP', runs: [makeRun({ level: 'green' })] }),
+        makeMonitor({ id: 'm-tcp', type: 'TCP', runs: [makeRun({ level: 'yellow' })] }),
+        makeMonitor({ id: 'm-git', type: 'GIT_RELEASE', runs: [makeRun({ level: 'green' })] }),
+        makeMonitor({ id: 'm-docker', type: 'DOCKER_IMAGE', runs: [makeRun({ level: 'yellow' })] }),
+      ]);
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.stats.uptimeMonitors).toBe(2);
+      expect(result.stats.uptimeGreen).toBe(1);
+      expect(result.stats.uptimeYellow).toBe(1);
+      expect(result.stats.uptimeRed).toBe(0);
+      expect(result.stats.versionMonitors).toBe(2);
+      expect(result.stats.versionUpToDate).toBe(1);
+      expect(result.stats.versionUpdateAvailable).toBe(1);
+      expect(result.stats.versionMajorBehind).toBe(0);
+    });
+
+    it('counts version red (major behind) monitors', async () => {
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-git', type: 'GIT_RELEASE', runs: [makeRun({ level: 'red' })] }),
+      ]);
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.stats.versionMajorBehind).toBe(1);
+      expect(result.stats.versionUpToDate).toBe(0);
+    });
+
+    it('counts SSL_CERT and HEARTBEAT as uptime monitors', async () => {
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-ssl', type: 'SSL_CERT', runs: [makeRun({ level: 'green' })] }),
+        makeMonitor({ id: 'm-hb', type: 'HEARTBEAT', runs: [makeRun({ level: 'red' })] }),
+      ]);
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.stats.uptimeMonitors).toBe(2);
+      expect(result.stats.uptimeGreen).toBe(1);
+      expect(result.stats.uptimeRed).toBe(1);
+      expect(result.stats.uptimePct).toBe(50);
+    });
+
+    it('version monitors with no runs are counted as up-to-date', async () => {
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-git', type: 'GIT_RELEASE', runs: [] }),
+      ]);
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.stats.versionUpToDate).toBe(1);
+    });
+
+    it('includes monitorType from run.monitor in latestRuns', async () => {
+      prisma.monitor.findMany.mockResolvedValue([
+        makeMonitor({ id: 'm-1', type: 'HTTP', runs: [makeRun({ level: 'green' })] }),
+      ]);
+      prisma.monitorRun.findMany.mockResolvedValue([
+        { ...makeRun({ id: 'r-1' }), monitor: { type: 'HTTP' } },
+      ]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.latestRuns[0].monitorType).toBe('HTTP');
+    });
+
+    it('handles null monitor in latestRuns gracefully', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.monitorRun.findMany.mockResolvedValue([
+        { ...makeRun({ id: 'r-1' }), monitor: null },
+      ]);
+
+      const result = await controller.overview({ user: { id: 'user-1' } });
+
+      expect(result.latestRuns[0].monitorType).toBeNull();
+    });
   });
 });
 

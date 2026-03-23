@@ -1,13 +1,13 @@
-## Status Summary (2026-03-23 19:15 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (2059 API + 10 CLI + 12 Agent = 2081 total)
+## Status Summary (2026-03-23 19:32 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (2164 API + 10 CLI + 12 Agent = 2186 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
 - **Branch:** heartbeat/2026-03-23-evening
 - **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
-- **Coverage:** 82.99% stmts / 73.93% branches (API). Dashboard 73→improved, realtime 77→improved, team 79→improved. Opus expanding status-pages (66%→85%+ target).
-- **Last sweep:** Coverage expansion heartbeat — added 48 tests for dashboard (embed scripts, version/uptime monitor separation), realtime (status page join/leave), team (all edge cases). Opus subagent running on status-pages service coverage (biggest gap).
+- **Coverage:** 88.99% stmts / 79.69% branches / 90.7% lines (API). Status-pages 85.77%/70.49% (was 64.5%/51.86%). Opus expanding grafana/backup/plan/checker/alerts coverage.
+- **Last sweep:** Status-pages coverage +105 tests (280 total). Added loading skeletons + error boundaries for incidents/maintenance/status-pages/reports/changelog. Added metadata layouts for folders/reports/changelog. Subagent running on remaining low-coverage modules (grafana 66%, backup 69%, plan 75%, checker 77%, alerts 79%).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

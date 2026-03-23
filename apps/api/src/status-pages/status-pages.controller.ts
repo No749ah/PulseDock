@@ -3,7 +3,7 @@ import {
   ConflictException,
   Controller,
   Delete,
-  ValidationPipe,
+
   ForbiddenException,
   Get,
   Header,
@@ -15,7 +15,7 @@ import {
   Req,
   Res,
   UseGuards,
-  UsePipes,
+
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -101,15 +101,17 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  // Override the global ValidationPipe: disable whitelist+transform so the
-  // deeply-nested `layout` JSON is never stripped by class-transformer.
-  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false }))
+  // Read raw req.body — bypass NestJS pipes entirely.
+  // The global ValidationPipe(whitelist:true, transform:true) strips the deeply
+  // nested layout JSON via class-transformer. No @Body() decorator means no pipe runs.
   update(
-    @Req() req: AuthRequest,
+    @Req() req: AuthRequest & { body?: Record<string, unknown> },
     @Param('id') id: string,
-    @Body() body: UpdateStatusPageDto,
   ) {
-    return this.statusPagesService.update(req.user.id, id, body);
+    // Express json body-parser populates req.body before NestJS pipes run
+    const raw = req.body;
+    const body = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+    return this.statusPagesService.update(req.user.id, id, body as any);
   }
 
   @UseGuards(AuthGuard)

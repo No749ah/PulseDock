@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, Bell, Building2, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Calendar, CheckCircle2, Clock, Copy, Database, Download, Info, Key, LogOut, Plus, QrCode, RefreshCw, Save, Server, Shield, Smartphone, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStrength";
 import { api } from "../../lib/api";
 import { clearSession, getUser } from "../../components/auth";
@@ -161,11 +161,7 @@ export default function AccountPage() {
   const [inviteSending, setInviteSending] = useState(false);
 
   // Workspace settings state
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [workspaceSlug, setWorkspaceSlug] = useState("");
-  const [workspaceLogo, setWorkspaceLogo] = useState("");
-  const [workspaceWebsite, setWorkspaceWebsite] = useState("");
-  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+
 
   // API key revoke confirm state (key id → "confirm" or undefined)
   const [revokeConfirm, setRevokeConfirm] = useState<string | null>(null);
@@ -213,18 +209,6 @@ export default function AccountPage() {
         const dn = (profile as unknown as { displayName?: string }).displayName ?? "";
         setDisplayName(dn);
         setTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
-        // Load workspace settings from API (fallback to derived defaults)
-        api<{ workspaceName: string | null; workspaceSlug: string | null; workspaceLogo: string | null; workspaceWebsite: string | null }>("/v1/settings/workspace", userId)
-          .then((ws) => {
-            setWorkspaceName(ws.workspaceName ?? (dn ? `${dn}'s Workspace` : "My Workspace"));
-            setWorkspaceSlug(ws.workspaceSlug ?? ((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace"));
-            setWorkspaceLogo(ws.workspaceLogo ?? "");
-            setWorkspaceWebsite(ws.workspaceWebsite ?? "");
-          })
-          .catch(() => {
-            setWorkspaceName(dn ? `${dn}'s Workspace` : "My Workspace");
-            setWorkspaceSlug((dn ? dn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-workspace") + "-workspace");
-          });
         // Load audit log + notification preferences + team data lazily (don't block main load)
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
         api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
@@ -1400,128 +1384,7 @@ export default function AccountPage() {
           </Card>
         
 
-        {/* Organizations Section */}
-        <Card>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-accent/10">
-                <Building2 className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-text-primary">Organizations</h2>
-                <p className="text-xs text-text-secondary mt-0.5">Manage workspaces and team members</p>
-              </div>
-            </div>
-            <a
-              href="/account/organizations"
-              className="px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 active:scale-95 transition-all"
-            >
-              Manage Organizations
-            </a>
-          </div>
-        </Card>
 
-        {/* Workspace Settings Section */}
-        
-          <Card>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 rounded-xl bg-accent/10">
-                <Building2 className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-text-primary">Workspace Settings</h2>
-                <p className="text-xs text-text-secondary mt-0.5">Configure your workspace identity</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Workspace Name
-                </label>
-                <input
-                  type="text"
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
-                  placeholder="My Workspace"
-                  maxLength={64}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Workspace Slug
-                </label>
-                <input
-                  type="text"
-                  value={workspaceSlug}
-                  onChange={(e) => setWorkspaceSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
-                  placeholder="my-workspace"
-                  maxLength={60}
-                />
-                <p className="mt-1 text-xs text-text-secondary/60">Used as a URL-safe identifier for your workspace.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Logo URL <span className="font-normal text-text-secondary/60">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={workspaceLogo}
-                  onChange={(e) => setWorkspaceLogo(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
-                  placeholder="https://example.com/logo.png"
-                  maxLength={512}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Website <span className="font-normal text-text-secondary/60">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={workspaceWebsite}
-                  onChange={(e) => setWorkspaceWebsite(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors text-sm"
-                  placeholder="https://example.com"
-                  maxLength={512}
-                />
-              </div>
-
-              <Button
-                onClick={async () => {
-                  try {
-                    setWorkspaceSaving(true);
-                    const userId = getUser()?.id;
-                    await api("/v1/settings/workspace", userId, {
-                      method: "PUT",
-                      body: JSON.stringify({
-                        workspaceName: workspaceName.trim() || undefined,
-                        workspaceSlug: workspaceSlug.trim() || undefined,
-                        workspaceLogo: workspaceLogo.trim() || undefined,
-                        workspaceWebsite: workspaceWebsite.trim() || undefined,
-                      }),
-                    });
-                    toastSuccess("Workspace settings saved");
-                  } catch (e) {
-                    toastError(e instanceof Error ? e.message : "Failed to save workspace settings");
-                  } finally {
-                    setWorkspaceSaving(false);
-                  }
-                }}
-                disabled={workspaceSaving}
-                size="lg"
-                className="w-full"
-              >
-                {workspaceSaving ? "Saving…" : "Save Workspace Settings"}
-              </Button>
-            </div>
-          </Card>
-        
 
         {/* Team Members Section */}
         
@@ -1620,11 +1483,6 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
-        
-
-        {/* Plan & Usage Card */}
-        
-          <PlanUsageCard />
         
 
         {/* System Info Card */}
@@ -2663,125 +2521,3 @@ function BackupRestoreCard() {
   );
 }
 
-// ─── Plan & Usage Card ────────────────────────────────────────────────────────
-
-interface PlanData {
-  plan: {
-    name: string;
-    validUntil: string | null;
-    limits: {
-      monitors: number;
-      checksPerDay: number;
-      teamMembers: number;
-      statusPages: number;
-      alertChannels: number;
-    };
-  };
-  usage: {
-    monitors: number;
-    checksToday: number;
-    teamMembers: number;
-    statusPages: number;
-    alertChannels: number;
-  };
-}
-
-function UsageBar({ label, current, limit }: { label: string; current: number; limit: number }) {
-  if (limit === -1) {
-    return (
-      <div className="flex items-center justify-between text-sm py-1">
-        <span className="text-text-muted">{label}</span>
-        <span className="text-text-muted font-mono">{current.toLocaleString()} / <span className="text-text-secondary">Unlimited</span></span>
-      </div>
-    );
-  }
-  const pct = limit > 0 ? Math.min(100, (current / limit) * 100) : 0;
-  const color = pct >= 95 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-success";
-  return (
-    <div className="py-1.5">
-      <div className="flex items-center justify-between text-sm mb-1">
-        <span className="text-text-muted">{label}</span>
-        <span className="text-text-muted font-mono">{current.toLocaleString()} / {limit.toLocaleString()}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-        <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function PlanUsageCard() {
-  const [data, setData] = useState<PlanData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api<PlanData>("/v1/plan")
-      .then(setData)
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const isApproachingLimit =
-    data &&
-    Object.entries({
-      monitors: { cur: data.usage.monitors, lim: data.plan.limits.monitors },
-      checksPerDay: { cur: data.usage.checksToday, lim: data.plan.limits.checksPerDay },
-      teamMembers: { cur: data.usage.teamMembers, lim: data.plan.limits.teamMembers },
-      statusPages: { cur: data.usage.statusPages, lim: data.plan.limits.statusPages },
-      alertChannels: { cur: data.usage.alertChannels, lim: data.plan.limits.alertChannels },
-    }).some(([, v]) => v.lim !== -1 && v.lim > 0 && v.cur / v.lim >= 0.8);
-
-  return (
-    <Card>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-heading">Plan &amp; Usage</h3>
-        {data && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-            data.plan.name === "ENTERPRISE" ? "bg-purple-500/15 text-purple-400" :
-            data.plan.name === "PRO" ? "bg-blue-500/15 text-blue-400" :
-            "bg-surface-2 text-text-muted"
-          }`}>
-            {data.plan.name}
-          </span>
-        )}
-      </div>
-
-      {loading && (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-8 rounded bg-surface-2 animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {!loading && data && (
-        <>
-          <div className="space-y-0.5">
-            <UsageBar label="Monitors" current={data.usage.monitors} limit={data.plan.limits.monitors} />
-            <UsageBar label="Checks today" current={data.usage.checksToday} limit={data.plan.limits.checksPerDay} />
-            <UsageBar label="Team members" current={data.usage.teamMembers} limit={data.plan.limits.teamMembers} />
-            <UsageBar label="Status pages" current={data.usage.statusPages} limit={data.plan.limits.statusPages} />
-            <UsageBar label="Alert channels" current={data.usage.alertChannels} limit={data.plan.limits.alertChannels} />
-          </div>
-
-          {isApproachingLimit && (
-            <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-between gap-3">
-              <span className="text-sm text-warning">⚠️ Approaching plan limits</span>
-              <button
-                disabled
-                title="Coming soon"
-                className="text-xs font-medium px-3 py-1 rounded-md bg-warning/20 text-warning opacity-50 cursor-not-allowed"
-              >
-                Upgrade to PRO
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {!loading && !data && (
-        <p className="text-sm text-text-muted">Could not load plan information.</p>
-      )}
-    </Card>
-  );
-}

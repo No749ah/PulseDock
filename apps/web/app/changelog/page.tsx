@@ -34,7 +34,6 @@ const releases: ChangeEntry[] = [
       "Widget design overhaul: WidgetCard consistent header system, StatusDot, SeverityBadge, TrendArrow helpers across all major widgets",
       "Date range picker on public status pages: 24h/7d/30d/90d URL-synced pill buttons, range param forwarded to all time-based widgets",
       "Slack/Discord webhook notifications on status page status changes",
-      "On-call rotation & escalation policies: round-robin schedules, escalation on non-acknowledgement, calendar view",
       "SMS alert channel via Twilio — accountSid/authToken/from/to config",
       "PagerDuty and OpsGenie alert channels with trigger/resolve dedup",
       "Grafana SimpleJSON datasource: /v1/grafana endpoints for metrics, annotations, search",

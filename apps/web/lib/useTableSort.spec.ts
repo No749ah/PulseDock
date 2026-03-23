@@ -95,8 +95,8 @@ describe('exportCSV', () => {
     createObjectURL = vi.fn(() => 'blob:test');
     revokeObjectURL = vi.fn();
     clickSpy = vi.fn();
-    global.URL.createObjectURL = createObjectURL;
-    global.URL.revokeObjectURL = revokeObjectURL;
+    global.URL.createObjectURL = createObjectURL as unknown as typeof URL.createObjectURL;
+    global.URL.revokeObjectURL = revokeObjectURL as unknown as typeof URL.revokeObjectURL;
     vi.spyOn(document, 'createElement').mockReturnValue({
       href: '',
       download: '',
@@ -144,8 +144,8 @@ describe('exportJSON', () => {
   beforeEach(() => {
     createObjectURL = vi.fn(() => 'blob:test');
     revokeObjectURL = vi.fn();
-    global.URL.createObjectURL = createObjectURL;
-    global.URL.revokeObjectURL = revokeObjectURL;
+    global.URL.createObjectURL = createObjectURL as unknown as typeof URL.createObjectURL;
+    global.URL.revokeObjectURL = revokeObjectURL as unknown as typeof URL.revokeObjectURL;
     vi.spyOn(document, 'createElement').mockReturnValue({
       href: '',
       download: '',

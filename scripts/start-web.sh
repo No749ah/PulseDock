@@ -20,7 +20,8 @@ mkdir -p "$LOG_DIR"
 echo "Starting PulseDock web (next start) on port $WEB_PORT"
 
 cd "$WEB_DIR"
-NODE_ENV=production PORT="$WEB_PORT" npx next start -H 0.0.0.0 -p "$WEB_PORT" >> "$LOG_DIR/pulsedock_web_prod.log" 2>&1 &
+# Cap heap to 512MB to reduce OOM-kill risk during heavy build/test phases
+NODE_ENV=production NODE_OPTIONS="--max-old-space-size=512" PORT="$WEB_PORT" npx next start -H 0.0.0.0 -p "$WEB_PORT" >> "$LOG_DIR/pulsedock_web_prod.log" 2>&1 &
 WEB_PID=$!
 echo $WEB_PID > "$PID_FILE"
 echo "Started with PID $WEB_PID"

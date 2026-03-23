@@ -1,3 +1,17 @@
+## Status Summary (2026-03-23 09:36 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (1967 API + 10 CLI + 12 Agent = 1989 total)
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 11 routes 200
+- **Branch:** heartbeat/2026-03-23-morning
+- **Smoke test:** 27/27 checks pass; perf: 22/22 pass; code quality: 7/7 pass
+- **This session:**
+  - **Registry docsUrl coverage: 159 → 634** — added docsUrl to all 475 verified entries that were missing evidence. Verified-runtime-audit now reports 0 missing evidence for verified entries.
+  - Removed stale `as any` debug log from status-pages service
+  - Updated README widget count to 82+
+  - Weekly dependency health check: 0 vulns, outdated deps are all major bumps (Prisma 6→7, React 18→19) — not worth the risk
+  - Web server auto-restarted (was down on heartbeat start)
+  - Full health check: build ✅, tests ✅ (1989), audit ✅ (0 vulns), smoke 27/27, perf 22/22
+
 ## Status Summary (2026-03-23 09:19 UTC)
 - **Build/Test:** ✅ Clean build + full tests passing (1967 API + 10 CLI + 12 Agent = 1989 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -2104,7 +2118,7 @@
 
 ### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
 - [~] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling). *(2026-03-22: added `npm run registry:audit:verified` + `packages/tool-registry/audit/verified-runtime-audit.json` as full-registry baseline report: 5009 entries scanned, 646 verified entries tracked, 485 verified entries still missing docs/evidence, 646 missing verifiedOnVersion metadata. Follow-up done: CI regression gate added via `npm run registry:audit:verified:check` + `verified-runtime-audit-baseline.json` so verified-runtime debt cannot silently regress. Next: close gaps category-by-category.)*
-- [~] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-22: docsUrl added for fleet, okd, cassandra, keydb, bitwarden, passbolt, fail2ban, openvas, linkerd, netbird. Total docsUrl coverage now 163 tools; remaining: 491 verified tools still missing docs URL. 2026-03-21: verificationStatus + lastVerifiedAt added to all 646 verified entries.)*
+- [x] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-23: docsUrl coverage complete — 634 total, 0 missing evidence for verified entries. All 646 verified entries have verificationStatus + lastVerifiedAt.)*
 - [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
 - [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
 - [~] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig): *(2026-03-22: added `registry:audit:variants` regression guard + baseline for verified tools requiring instance URL; prevents new uncovered variant gaps from entering the registry.)*

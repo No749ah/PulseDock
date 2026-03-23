@@ -2460,6 +2460,7 @@ export default function StatusPageEditorPage() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const autoSaveFailCountRef = useRef(0); // pause auto-save after repeated failures
   const [isDirty, setIsDirty] = useState(false);
   const savedWidgetsRef = useRef<string>('[]'); // JSON snapshot of last saved state
   const [activeCategory, setActiveCategory] = useState("Status");
@@ -2607,6 +2608,7 @@ export default function StatusPageEditorPage() {
       // Mark as clean after successful save
       savedWidgetsRef.current = JSON.stringify(widgets);
       setIsDirty(false);
+      autoSaveFailCountRef.current = 0; // reset failure counter on success
 
       // Record version history (localStorage, keep last 10)
       if (!opts?.silent) {
@@ -2622,6 +2624,7 @@ export default function StatusPageEditorPage() {
       if (!opts?.silent) toastCtx.success("Saved");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      autoSaveFailCountRef.current += 1;
       // Always show error — even for auto-saves, so the user knows saves are failing
       toastCtx.error(`Save failed: ${msg}`);
     } finally {
@@ -2637,10 +2640,12 @@ export default function StatusPageEditorPage() {
     setIsDirty(current !== savedWidgetsRef.current);
   }, [widgets]);
 
-  // Auto-save 2 seconds after widget changes (silent — no toast)
+  // Auto-save 2 seconds after widget changes (silent — no toast).
+  // Pauses after 3 consecutive failures to avoid hammering the API.
   useEffect(() => {
     if (!autoSaveEnabled) return;
     if (!isDirty || !page) return;
+    if (autoSaveFailCountRef.current >= 3) return; // stop retrying after repeated failures
     const timer = setTimeout(() => { handleSave({ silent: true }); }, 2000);
     return () => clearTimeout(timer);
   }, [isDirty, widgets, page, handleSave, autoSaveEnabled]);

@@ -14,7 +14,6 @@ import {
   Req,
   Res,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -100,10 +99,10 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  // Bypass the global ValidationPipe entirely so the deeply-nested `layout` JSON
-  // is never stripped or mangled by class-transformer/whitelist.
-  @UsePipes()
-  update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+  // Read body directly from request to bypass the global ValidationPipe which
+  // strips unknown/nested fields from the deeply-nested `layout` JSON.
+  update(@Req() req: AuthRequest & { body?: unknown }, @Param('id') id: string) {
+    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
     return this.statusPagesService.update(req.user.id, id, body as unknown as UpdateStatusPageDto);
   }
 

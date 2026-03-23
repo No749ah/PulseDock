@@ -1,12 +1,13 @@
-## Status Summary (2026-03-23 18:10 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (2021 API + 10 CLI + 12 Agent = 2043 total)
+## Status Summary (2026-03-23 19:15 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (2059 API + 10 CLI + 12 Agent = 2081 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
 - **Branch:** heartbeat/2026-03-23-evening
 - **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
-- **Last sweep:** Full heartbeat — health check, build, test, audit, frontend audit, smoke + perf all green. No actionable items remaining. Project is feature-complete.
+- **Coverage:** 82.99% stmts / 73.93% branches (API). Dashboard 73→improved, realtime 77→improved, team 79→improved. Opus expanding status-pages (66%→85%+ target).
+- **Last sweep:** Coverage expansion heartbeat — added 48 tests for dashboard (embed scripts, version/uptime monitor separation), realtime (status page join/leave), team (all edge cases). Opus subagent running on status-pages service coverage (biggest gap).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

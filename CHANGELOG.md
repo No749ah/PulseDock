@@ -7,6 +7,38 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.2.0] — 2026-03-23
+
+### Added
+- **Monitor Health Score** — Composite 0–100 health scoring with grade A–F for monitors. New API endpoints: `GET /v1/monitors/health-summary` (aggregated) and `GET /v1/monitors/:id/health-score` (detailed breakdown). Scoring: uptime 40pts, latency trend 20pts, SLA budget 20pts, stability streak 20pts. Health score badges on monitors table and detail page. 17 new tests.
+- **Demo Data Seeding** — `POST /v1/demo/seed` creates 5 sample monitors, 1 webhook alert channel, and a status page for new users. Idempotent (skips if 3+ monitors exist). OnboardingChecklist "Load Sample Data" button with success/error toasts. 5 new tests.
+- **Tool Registry Live Validation** — `GET /v1/tool-registry/validate/:id?instanceUrl=...` tests reachability + version extraction for any registry tool. Auto-detects upstream sources (GitHub, Docker Hub, npm, PyPI, Cargo).
+- **Extractor Pipeline Enhancement** — Added `isVersionLike()`, `stripVPrefix()`, `runHeuristicExtraction()`, `extractVersionWithFallback()`. Heuristic pass scans 14 common version field names when configured paths miss. 42 extractor tests (was 17).
+- **Widget Config Property Editors** — Added dedicated property editors for 15 widget types (announcement-bar, image-banner, code-block, video-embed, embed-iframe, countdown, FAQ accordion, link-list, social-links, SLA summary, response-time-chart, uptime-heatmap, response-time-heatmap, aggregate-health-score, subscriber-form).
+- **Widget Config UX Polish** — Required field asterisks, inline validation, red invalid styling for monitor selector, Security Advisory packageName, and Embed URL. Contextual monitor-scope guidance. Per-widget "Setup tips" hints.
+- **Registry Runtime Mock Verification** — `npm run registry:verify:runtime:mocks` validates verified template extraction behavior. CI gate step added. Machine-readable audit report output.
+- **Registry Correctness CI Gates** — Strict verified-template lint gates, variant audit regression guard, runtime audit baseline + regression thresholds in CI.
+- **Verification Metadata** — `verificationStatus` + `lastVerifiedAt` on all 646 verified entries. `docsUrl` added to 163+ key tools.
+
+### Changed
+- **Next.js** upgraded 16.2.0 → 16.2.1
+- **React** upgraded 19.2.0 → 19.2.4
+- **Prisma config** — switched to `process.env.DATABASE_URL` and enabled `driverAdapters` preview feature
+- **Web build** — `scripts/build-web.sh` hardened against flaky heartbeat builds (stale `.next/lock` cleanup, bounded `NODE_OPTIONS` heap)
+- **Version tool picker** — Memoized normalization + ranked filtering to avoid recomputation on unrelated renders
+
+### Fixed
+- **Security audit** — Pinned `prisma`, `@prisma/client`, `@prisma/adapter-pg` to 6.12.0 eliminating GHSA-38f7-945m-qr2g. `npm audit --audit-level=high` now reports 0 vulnerabilities.
+- **Registry lint** — Strict verified-template gates: `verified=true` requires `verificationStatus='verified'`, instance-based sources require explicit `authRequired`, verified entries must have docs/evidence.
+
+### Tests
+- API tests: 1951 (up from 1736 in v1.1.0)
+- CLI tests: 10
+- Agent tests: 12
+- Total: 1973
+
+---
+
 ## [1.1.0] — 2026-03-21
 
 ### Added

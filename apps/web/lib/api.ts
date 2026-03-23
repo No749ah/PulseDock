@@ -133,6 +133,13 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
         localStorage.setItem('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
       }
       response = await run();
+
+      // If STILL 401 after refresh, session is broken — redirect to login
+      if (response.status === 401) {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('pulsedock_user');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
     } else {
       // Refresh failed — session is fully expired.
       // Clear local state and hard-redirect to /login.

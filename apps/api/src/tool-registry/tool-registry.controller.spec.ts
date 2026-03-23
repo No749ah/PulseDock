@@ -27,6 +27,18 @@ vi.mock('../../../../packages/tool-registry/src', () => ({
       grafana: { id: 'grafana', name: 'Grafana', category: 'Observability', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/health', jsonPath: '$.version' } },
       prometheus: { id: 'prometheus', name: 'Prometheus', category: 'Observability', versionSource: { type: 'github-releases', target: 'prometheus/prometheus' } },
       gitea: { id: 'gitea', name: 'Gitea', category: 'Dev Tools', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/settings/api', jsonPath: '$.version' } },
+      'npm-tool': { id: 'npm-tool', name: 'NPM Tool', category: 'Dev Tools', versionSource: { type: 'npm-registry', target: 'express' } },
+      'pypi-tool': { id: 'pypi-tool', name: 'PyPI Tool', category: 'Dev Tools', versionSource: { type: 'pypi', target: 'flask' } },
+      'cargo-tool': { id: 'cargo-tool', name: 'Cargo Tool', category: 'Dev Tools', versionSource: { type: 'cargo', target: 'serde' } },
+      'docker-tool': { id: 'docker-tool', name: 'Docker Tool', category: 'Container', versionSource: { type: 'docker-hub', target: 'library/nginx' } },
+      'docker-ns': { id: 'docker-ns', name: 'Docker NS', category: 'Container', versionSource: { type: 'docker-hub', target: 'grafana/grafana' } },
+      'docker-no-ns': { id: 'docker-no-ns', name: 'Docker NoNS', category: 'Container', versionSource: { type: 'docker-hub', target: 'nginx' } },
+      'github-tags-tool': { id: 'github-tags-tool', name: 'GH Tags', category: 'Dev Tools', versionSource: { type: 'github-tags', target: 'node/node' } },
+      'no-target': { id: 'no-target', name: 'No Target', category: 'Dev Tools', versionSource: { type: 'github-releases', target: '' } },
+      'maven-tool': { id: 'maven-tool', name: 'Maven Tool', category: 'Dev Tools', versionSource: { type: 'maven', target: 'org.apache:commons' } },
+      'custom-ep': { id: 'custom-ep', name: 'Custom EP', category: 'Dev Tools', versionSource: { type: 'custom-endpoint', urlTemplate: '{{instanceUrl}}/version', jsonPath: '$.ver' } },
+      'no-template': { id: 'no-template', name: 'No Template', category: 'Dev Tools', versionSource: { type: 'json-path', urlTemplate: '/fixed/path', jsonPath: '$.v' } },
+      'with-fallbacks': { id: 'with-fallbacks', name: 'With Fallbacks', category: 'Dev Tools', versionSource: { type: 'json-path', urlTemplate: '{{instanceUrl}}/api/v1/health', jsonPath: '$.version', endpointFallbacks: ['/api/health', '/health'] } },
     };
     return tools[id] ?? null;
   }),
@@ -316,6 +328,146 @@ describe('ToolRegistryController', () => {
       });
       const result = await controller.validate('grafana', 'https://grafana.example.com///');
       expect(result.endpointUsed).toBe('https://grafana.example.com/api/health');
+    });
+
+    it('returns ok for npm-registry upstream tool', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ version: '4.21.0' })),
+      });
+      const result = await controller.validate('npm-tool');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('4.21.0');
+      expect(result.endpointUsed).toContain('registry.npmjs.org');
+    });
+
+    it('returns ok for pypi upstream tool', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ info: { version: '3.1.0' } })),
+      });
+      const result = await controller.validate('pypi-tool');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('3.1.0');
+      expect(result.endpointUsed).toContain('pypi.org');
+    });
+
+    it('returns ok for cargo upstream tool', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ crate: { newest_version: '1.0.215' } })),
+      });
+      const result = await controller.validate('cargo-tool');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('1.0.215');
+      expect(result.endpointUsed).toContain('crates.io');
+    });
+
+    it('returns ok for docker-hub tool with namespace/image', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ results: [{ name: '11.4.0' }] })),
+      });
+      const result = await controller.validate('docker-ns');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('11.4.0');
+      expect(result.endpointUsed).toContain('grafana/grafana');
+    });
+
+    it('returns ok for docker-hub tool without namespace (defaults to library)', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ results: [{ name: '1.27.0' }] })),
+      });
+      const result = await controller.validate('docker-no-ns');
+      expect(result.status).toBe('ok');
+      expect(result.endpointUsed).toContain('library/nginx');
+    });
+
+    it('returns ok for github-tags upstream tool', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify([{ name: 'v22.0.0' }])),
+      });
+      const result = await controller.validate('github-tags-tool');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('v22.0.0');
+    });
+
+    it('returns no-endpoint for upstream tool with empty target', async () => {
+      const result = await controller.validate('no-target');
+      expect(result.status).toBe('no-endpoint');
+      expect(result.message).toContain('no public test URL');
+    });
+
+    it('returns no-endpoint for unsupported source type', async () => {
+      const result = await controller.validate('maven-tool');
+      expect(result.status).toBe('no-endpoint');
+      expect(result.message).toContain('does not support live validation');
+    });
+
+    it('returns ok for custom-endpoint tool with instanceUrl', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ ver: '2.0.0' })),
+      });
+      const result = await controller.validate('custom-ep', 'https://myapp.example.com');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('2.0.0');
+    });
+
+    it('returns no-endpoint for json-path tool without {{instanceUrl}} in template', async () => {
+      const result = await controller.validate('no-template');
+      expect(result.status).toBe('no-endpoint');
+      expect(result.message).toContain('no urlTemplate');
+    });
+
+    it('tries fallback endpoints on non-200 primary', async () => {
+      let callCount = 0;
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({ status: 404, text: () => Promise.resolve('Not Found') });
+        }
+        return Promise.resolve({
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify({ version: '3.0.0' })),
+        });
+      });
+      const result = await controller.validate('with-fallbacks', 'https://app.example.com');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('3.0.0');
+      expect(callCount).toBe(2);
+    });
+
+    it('returns unreachable when all fallback endpoints return non-200', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 503,
+        text: () => Promise.resolve('Service Unavailable'),
+      });
+      const result = await controller.validate('with-fallbacks', 'https://app.example.com');
+      expect(result.status).toBe('unreachable');
+      expect(result.message).toContain('All endpoint candidates failed');
+    });
+
+    it('returns unreachable for json-path tool with network error on non-last fallback', async () => {
+      let callCount = 0;
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount < 3) {
+          return Promise.reject(new Error('ECONNREFUSED'));
+        }
+        return Promise.reject(new Error('ECONNREFUSED'));
+      });
+      const result = await controller.validate('with-fallbacks', 'https://app.example.com');
+      expect(result.status).toBe('unreachable');
+      expect(result.message).toContain('Network error');
+    });
+
+    it('returns no-endpoint for custom-endpoint without instanceUrl', async () => {
+      const result = await controller.validate('custom-ep');
+      expect(result.status).toBe('no-endpoint');
+      expect(result.message).toContain('instanceUrl');
     });
   });
 });

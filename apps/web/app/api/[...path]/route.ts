@@ -24,10 +24,20 @@ async function proxyHandler(request: Request, { params }: { params: Promise<{ pa
     body = await request.arrayBuffer();
   }
 
-  // Copy request headers (except host)
+  // Copy request headers (except host).
+  // Use .set() not .append() to avoid duplicating headers like Content-Type
+  // (the browser + api helper both set it, resulting in "application/json, application/json"
+  // which Express body-parser doesn't recognize).
   const reqHeaders = new Headers();
   request.headers.forEach((v, k) => {
-    if (k.toLowerCase() !== 'host') reqHeaders.set(k, v);
+    const lk = k.toLowerCase();
+    if (lk === 'host') return;
+    // Deduplicate content-type: always use just "application/json"
+    if (lk === 'content-type') {
+      reqHeaders.set(k, v.split(',')[0].trim());
+    } else {
+      reqHeaders.set(k, v);
+    }
   });
 
   const upstream = await fetch(`${API_URL}${target}${qs}`, {
@@ -46,7 +56,7 @@ async function proxyHandler(request: Request, { params }: { params: Promise<{ pa
   });
 
   // Append each Set-Cookie individually so the browser receives all of them
-  const cookies = (upstream.headers as any).getSetCookie?.() ?? [];
+  const cookies = (upstream.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
   for (const cookie of cookies) {
     resHeaders.append('set-cookie', cookie);
   }

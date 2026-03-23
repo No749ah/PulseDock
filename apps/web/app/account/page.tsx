@@ -2325,7 +2325,7 @@ function DataRetentionCard({ onSave }: { onSave: () => void }) {
     try {
       await api<{ retentionDays: number }>("/v1/settings/retention", undefined, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+
         body: JSON.stringify({ retentionDays: selected, rollupEnabled }),
       });
       setCurrentDays(selected);
@@ -2508,7 +2508,7 @@ function BackupRestoreCard() {
       const doc = JSON.parse(text);
       const result = await api<typeof restoreResult>("/v1/settings/backup/restore", undefined, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+
         body: JSON.stringify(doc),
       });
       setRestoreResult(result);

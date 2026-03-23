@@ -2602,7 +2602,6 @@ export default function StatusPageEditorPage() {
       }
       await api(`/v1/status-pages/${id}`, undefined, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patchBody),
       });
       // Mark as clean after successful save

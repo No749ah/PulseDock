@@ -111,7 +111,7 @@ export class StatusPagesController {
     // Express json body-parser populates req.body before NestJS pipes run
     const raw = req.body;
     const body = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
-    return this.statusPagesService.update(req.user.id, id, body as any);
+    return this.statusPagesService.update(req.user.id, id, body as UpdateStatusPageDto);
   }
 
   @UseGuards(AuthGuard)

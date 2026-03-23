@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ToolRegistryController } from './tool-registry.controller';
 
 // Mock the tool-registry package
@@ -147,30 +147,12 @@ describe('ToolRegistryController', () => {
       await expect(controller.validate('nonexistent-tool')).rejects.toThrow(NotFoundException);
     });
 
-    it('returns structured result for upstream tool (github-releases)', async () => {
-      // prometheus has type 'github-releases' — live fetch attempted, may succeed or fail
-      const result = await controller.validate('prometheus');
-      expect(result.toolId).toBe('prometheus');
-      expect(result.toolName).toBe('Prometheus');
-      expect(['ok', 'unreachable', 'parse-error', 'no-endpoint']).toContain(result.status);
-      expect(result.message).toBeTruthy();
-    });
-
     it('returns no-endpoint for json-path tool missing instanceUrl', async () => {
-      // grafana has type 'json-path' with urlTemplate — no instanceUrl provided
       const result = await controller.validate('grafana');
       expect(result.toolId).toBe('grafana');
       expect(result.toolName).toBe('Grafana');
       expect(result.status).toBe('no-endpoint');
       expect(result.message).toContain('instanceUrl');
-    });
-
-    it('returns no-endpoint for json-path tool when instanceUrl provided but endpoint unreachable', async () => {
-      // gitea with non-routable instanceUrl
-      const result = await controller.validate('gitea', 'http://127.0.0.1:9');
-      expect(result.toolId).toBe('gitea');
-      // unreachable or parse-error depending on OS behavior
-      expect(['unreachable', 'no-endpoint', 'auth-required']).toContain(result.status);
     });
 
     it('returns structured result with all required fields', async () => {
@@ -179,6 +161,161 @@ describe('ToolRegistryController', () => {
       expect(result).toHaveProperty('toolName', 'Grafana');
       expect(result).toHaveProperty('status');
       expect(result).toHaveProperty('message');
+    });
+  });
+
+  describe('validate() with mocked fetch', () => {
+    let originalFetch: typeof globalThis.fetch;
+
+    beforeEach(() => {
+      originalFetch = globalThis.fetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it('returns ok with versionDetected for upstream github-releases tool', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ tag_name: 'v2.53.0', name: 'Release 2.53.0' })),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('v2.53.0');
+      expect(result.endpointUsed).toContain('github.com');
+      expect(result.latencyMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('returns auth-required for 401 upstream response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 401,
+        text: () => Promise.resolve('Unauthorized'),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('auth-required');
+      expect(result.httpStatus).toBe(401);
+    });
+
+    it('returns auth-required for 403 upstream response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('auth-required');
+      expect(result.httpStatus).toBe(403);
+    });
+
+    it('returns unreachable for 500 upstream response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 500,
+        text: () => Promise.resolve('Server Error'),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('unreachable');
+      expect(result.httpStatus).toBe(500);
+    });
+
+    it('returns parse-error for non-JSON upstream response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve('<html>Not JSON</html>'),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('parse-error');
+      expect(result.message).toContain('not valid JSON');
+    });
+
+    it('returns parse-error when version not found in JSON response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ unrelated: 'data' })),
+      });
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('parse-error');
+      expect(result.message).toContain('not found in response');
+    });
+
+    it('returns unreachable for AbortError (timeout)', async () => {
+      const abortErr = new DOMException('The operation was aborted', 'AbortError');
+      globalThis.fetch = vi.fn().mockRejectedValue(abortErr);
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('unreachable');
+      expect(result.message).toContain('timed out');
+    });
+
+    it('returns unreachable for network error', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+      const result = await controller.validate('prometheus');
+      expect(result.status).toBe('unreachable');
+      expect(result.message).toContain('Network error');
+    });
+
+    it('returns ok for json-path tool with valid instanceUrl', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ version: '10.4.1' })),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('ok');
+      expect(result.versionDetected).toBe('10.4.1');
+      expect(result.endpointUsed).toContain('grafana.example.com');
+    });
+
+    it('returns auth-required for json-path tool with 401', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 401,
+        text: () => Promise.resolve('Unauthorized'),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('auth-required');
+      expect(result.httpStatus).toBe(401);
+    });
+
+    it('returns parse-error for json-path tool with non-JSON response', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve('<!DOCTYPE html>'),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('parse-error');
+    });
+
+    it('returns parse-error for json-path tool when version key missing', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ status: 'ok' })),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('parse-error');
+      expect(result.message).toContain('not found in response');
+    });
+
+    it('returns unreachable when all json-path endpoints fail', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 502,
+        text: () => Promise.resolve('Bad Gateway'),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('unreachable');
+    });
+
+    it('returns unreachable for json-path tool on timeout', async () => {
+      const abortErr = new DOMException('The operation was aborted', 'AbortError');
+      globalThis.fetch = vi.fn().mockRejectedValue(abortErr);
+      const result = await controller.validate('grafana', 'https://grafana.example.com');
+      expect(result.status).toBe('unreachable');
+      expect(result.message).toContain('timed out');
+    });
+
+    it('strips trailing slashes from instanceUrl', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ version: '10.4.1' })),
+      });
+      const result = await controller.validate('grafana', 'https://grafana.example.com///');
+      expect(result.endpointUsed).toBe('https://grafana.example.com/api/health');
     });
   });
 });

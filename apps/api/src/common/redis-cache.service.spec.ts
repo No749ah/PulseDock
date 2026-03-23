@@ -77,4 +77,46 @@ describe('RedisCacheService', () => {
   it('isConnected returns true after successful connect', async () => {
     expect(service.isConnected()).toBe(true);
   });
+
+  it('get returns null when not connected', async () => {
+    // Create a fresh service but don't connect it
+    const disconnected = new RedisCacheService();
+    // Don't call onModuleInit — not connected
+    expect(await disconnected.get('key')).toBeNull();
+  });
+
+  it('set is a no-op when not connected', async () => {
+    const disconnected = new RedisCacheService();
+    // Should not throw
+    await disconnected.set('key', 'value', 60);
+    expect(await disconnected.get('key')).toBeNull();
+  });
+
+  it('del is a no-op when not connected', async () => {
+    const disconnected = new RedisCacheService();
+    await disconnected.del('key');
+    // No throw
+  });
+
+  it('invalidatePattern is a no-op when not connected', async () => {
+    const disconnected = new RedisCacheService();
+    await disconnected.invalidatePattern('*');
+    // No throw
+  });
+
+  it('isConnected returns false before connect', () => {
+    const disconnected = new RedisCacheService();
+    expect(disconnected.isConnected()).toBe(false);
+  });
+
+  it('uses default TTL when not specified', async () => {
+    await service.set('default-ttl-key', { data: 'test' });
+    const result = await service.get<{ data: string }>('default-ttl-key');
+    expect(result).toEqual({ data: 'test' });
+  });
+
+  it('onModuleDestroy cleans up without throwing', async () => {
+    await service.onModuleDestroy();
+    // Should not throw
+  });
 });

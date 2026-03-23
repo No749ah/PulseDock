@@ -174,6 +174,104 @@ describe('PlanService', () => {
     })
   })
 
+  describe('onModuleInit', () => {
+    it('seeds default plans when they do not exist', async () => {
+      prisma.plan.findUnique.mockResolvedValue(null)
+      prisma.plan.create.mockResolvedValue({})
+      await service.onModuleInit()
+      // 3 plans: COMMUNITY, PRO, ENTERPRISE
+      expect(prisma.plan.findUnique).toHaveBeenCalledTimes(3)
+      expect(prisma.plan.create).toHaveBeenCalledTimes(3)
+    })
+
+    it('skips seeding when plans already exist', async () => {
+      prisma.plan.findUnique.mockResolvedValue({ id: 'existing' })
+      await service.onModuleInit()
+      expect(prisma.plan.findUnique).toHaveBeenCalledTimes(3)
+      expect(prisma.plan.create).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('listPlans', () => {
+    it('returns all plans with user counts', async () => {
+      prisma.plan.findMany.mockResolvedValue([
+        { ...communityPlan, _count: { userPlans: 10 } },
+        { ...proPlan, _count: { userPlans: 5 } },
+      ])
+      const result = await service.listPlans()
+      expect(result).toHaveLength(2)
+      expect(result[0].name).toBe('COMMUNITY')
+      expect(result[0].userCount).toBe(10)
+      expect(result[1].name).toBe('PRO')
+      expect(result[1].userCount).toBe(5)
+    })
+  })
+
+  describe('setUserPlan', () => {
+    it('upserts user plan and returns userId + planName', async () => {
+      prisma.plan.findUniqueOrThrow.mockResolvedValue(proPlan)
+      prisma.userPlan.upsert.mockResolvedValue({})
+      const result = await service.setUserPlan('user-1', 'plan-pro')
+      expect(prisma.plan.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'plan-pro' } })
+      expect(prisma.userPlan.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+          create: expect.objectContaining({ userId: 'user-1', planId: 'plan-pro' }),
+          update: expect.objectContaining({ planId: 'plan-pro' }),
+        }),
+      )
+      expect(result).toEqual({ userId: 'user-1', planName: 'PRO' })
+    })
+  })
+
+  describe('checkLimit — all resource types', () => {
+    beforeEach(() => {
+      prisma.userPlan.findUnique.mockResolvedValue({
+        overrideMaxMonitors: null,
+        overrideMaxChecksPerDay: null,
+        validUntil: null,
+        plan: proPlan,
+      })
+      prisma.monitor.count.mockResolvedValue(0)
+      prisma.monitorRun.count.mockResolvedValue(0)
+      prisma.teamMember.count.mockResolvedValue(0)
+      prisma.publicStatusPage.count.mockResolvedValue(0)
+      prisma.alertChannel.count.mockResolvedValue(0)
+    })
+
+    it('checks "checks" resource correctly', async () => {
+      prisma.monitorRun.count.mockResolvedValue(9999)
+      const result = await service.checkLimit('user-1', 'checks')
+      expect(result.current).toBe(9999)
+      expect(result.limit).toBe(10_000)
+      expect(result.allowed).toBe(true)
+    })
+
+    it('checks "team" resource correctly', async () => {
+      prisma.teamMember.count.mockResolvedValue(10)
+      const result = await service.checkLimit('user-1', 'team')
+      expect(result.current).toBe(10)
+      expect(result.limit).toBe(10)
+      expect(result.allowed).toBe(false)
+    })
+
+    it('checks "status-pages" resource correctly', async () => {
+      prisma.publicStatusPage.count.mockResolvedValue(5)
+      const result = await service.checkLimit('user-1', 'status-pages')
+      expect(result.current).toBe(5)
+      expect(result.limit).toBe(20)
+      expect(result.allowed).toBe(true)
+    })
+
+    it('checks "alert-channels" resource correctly', async () => {
+      prisma.alertChannel.count.mockResolvedValue(20)
+      const result = await service.checkLimit('user-1', 'alert-channels')
+      expect(result.current).toBe(20)
+      expect(result.limit).toBe(20)
+      expect(result.allowed).toBe(false)
+    })
+  })
+
   describe('isLimitReached', () => {
     it('returns false for unlimited plan', async () => {
       prisma.userPlan.findUnique.mockResolvedValue({

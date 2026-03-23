@@ -684,6 +684,170 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── notifyOn filtering ──────────────────────────────────────────────────────
+
+  describe('notifyMonitorFailure() — notifyOn filtering', () => {
+    function makePrismaWithNotifyOn(notifyOn: string, opts: { lastNotifiedAt?: Date | null; isVersionMonitor?: boolean } = {}) {
+      const channel = makeChannel({ userId: 'user-1' });
+      return {
+        monitorAlert: {
+          findMany: vi.fn().mockResolvedValue([{
+            alertChannel: {
+              id: channel.id,
+              userId: channel.userId,
+              name: channel.name,
+              type: channel.type,
+              configJson: channel.config,
+              createdAt: new Date(channel.createdAt),
+            },
+            notifyOn,
+            alertChannelId: channel.id,
+            lastNotifiedAt: opts.lastNotifiedAt ?? null,
+          }]),
+          updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+        maintenanceWindow: { findFirst: vi.fn().mockResolvedValue(null) },
+        monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
+        monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
+        alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
+      };
+    }
+
+    it('ALWAYS: sends for every non-green run', async () => {
+      const prisma = makePrismaWithNotifyOn('ALWAYS');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: false, previousLevel: 'red' });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('ALWAYS: does NOT send for green runs', async () => {
+      const prisma = makePrismaWithNotifyOn('ALWAYS');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true, previousLevel: 'red' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('FIRST_ONLY: sends when failureStreak is 1', async () => {
+      const prisma = makePrismaWithNotifyOn('FIRST_ONLY');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true, previousLevel: 'green', failureStreak: 1 });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('FIRST_ONLY: does NOT send when failureStreak > 1', async () => {
+      const prisma = makePrismaWithNotifyOn('FIRST_ONLY');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: false, previousLevel: 'red', failureStreak: 5 });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('DAILY_DIGEST: sends when no previous notification', async () => {
+      const prisma = makePrismaWithNotifyOn('DAILY_DIGEST', { lastNotifiedAt: null });
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+      // Should update lastNotifiedAt
+      expect(prisma.monitorAlert.updateMany).toHaveBeenCalled();
+    });
+
+    it('DAILY_DIGEST: does NOT send when notified less than 24h ago', async () => {
+      const recent = new Date(Date.now() - 1 * 3600000); // 1h ago
+      const prisma = makePrismaWithNotifyOn('DAILY_DIGEST', { lastNotifiedAt: recent });
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('VERSION_ANY: sends for version monitor with non-green level', async () => {
+      const prisma = makePrismaWithNotifyOn('VERSION_ANY');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor({ type: 'GIT_RELEASE' });
+      const run = makeRun({ level: 'yellow' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('VERSION_ANY: does NOT send for non-version monitor', async () => {
+      const prisma = makePrismaWithNotifyOn('VERSION_ANY');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor({ type: 'HTTP' });
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('VERSION_MAJOR: sends for version monitor with red level only', async () => {
+      const prisma = makePrismaWithNotifyOn('VERSION_MAJOR');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor({ type: 'DOCKER_IMAGE' });
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('VERSION_MAJOR: does NOT send for version monitor with yellow level', async () => {
+      const prisma = makePrismaWithNotifyOn('VERSION_MAJOR');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor({ type: 'GIT_RELEASE' });
+      const run = makeRun({ level: 'yellow' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('ON_CHANGE: does NOT send when level has not changed', async () => {
+      const prisma = makePrismaWithNotifyOn('ON_CHANGE');
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red' });
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: false, previousLevel: 'red' });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── SLA notifications ─────────────────────────────────────────────────────
+
+  describe('notifySlaBreached()', () => {
+    it('sends SLA breach notification to all linked channels', async () => {
+      const channel = makeChannel({ userId: 'user-1' });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaBreached('mon-1', 'API', 'user-1', 98.5, 99.9, 30);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as { text: string };
+      expect(body.text).toContain('SLA Breach');
+      expect(body.text).toContain('98.5%');
+    });
+  });
+
+  describe('notifySlaRecovered()', () => {
+    it('sends SLA recovered notification to all linked channels', async () => {
+      const channel = makeChannel({ userId: 'user-1' });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaRecovered('mon-1', 'API', 'user-1', 99.95, 99.9, 30);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as { text: string };
+      expect(body.text).toContain('SLA Recovered');
+      expect(body.text).toContain('99.95%');
+    });
+  });
+
   // ── PagerDuty channel ───────────────────────────────────────────────────────
 
   describe('pagerduty channel', () => {

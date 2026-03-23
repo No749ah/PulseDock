@@ -241,6 +241,234 @@ describe('BackupService', () => {
       expect(result.monitors.created).toBe(1);
     });
 
+    it('creates alert channels and skips existing by type:name key', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([
+        { name: 'Slack', type: 'slack' },
+      ]);
+      prisma.alertChannel.create.mockResolvedValue({ id: 'ac-new' });
+      prisma.publicStatusPage.findMany.mockResolvedValue([]);
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [
+          { name: 'Slack', type: 'slack', config: {} },
+          { name: 'Discord', type: 'discord', config: { webhookUrl: 'https://discord.com/hook' } },
+        ],
+        statusPages: [],
+      } as never);
+
+      expect(result.alertChannels.skipped).toBe(1); // Slack exists
+      expect(result.alertChannels.created).toBe(1); // Discord new
+    });
+
+    it('creates status pages and skips existing by slug or title', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findFirst
+        .mockResolvedValueOnce({ id: 'sp-existing' }) // first page exists by slug
+        .mockResolvedValueOnce(null)  // second page not found by slug/title
+        .mockResolvedValueOnce(null); // slug not taken either
+      prisma.publicStatusPage.create.mockResolvedValue({ id: 'sp-new' });
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [],
+        statusPages: [
+          { title: 'Existing Page', slug: 'existing', isPublished: true, layout: {} },
+          { title: 'New Page', slug: 'new-page', isPublished: true, layout: { widgets: [] } },
+        ],
+      } as never);
+
+      expect(result.statusPages.skipped).toBe(1);
+      expect(result.statusPages.created).toBe(1);
+    });
+
+    it('suffixes slug with -restored when slug is taken by another user', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findFirst
+        .mockResolvedValueOnce(null)  // not found by slug OR title for this user
+        .mockResolvedValueOnce({ id: 'sp-conflict' }); // slug taken by someone else
+      prisma.publicStatusPage.create.mockResolvedValue({ id: 'sp-restored' });
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [],
+        statusPages: [
+          { title: 'My Status', slug: 'taken-slug', isPublished: true, layout: {} },
+        ],
+      } as never);
+
+      expect(result.statusPages.created).toBe(1);
+      expect(prisma.publicStatusPage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: 'taken-slug-restored' }),
+        }),
+      );
+    });
+
+    it('restores settings with valid retentionDays', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findMany.mockResolvedValue([]);
+      prisma.userSettings.upsert.mockResolvedValue({});
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [],
+        statusPages: [],
+        settings: { retentionDays: 30 },
+      } as never);
+
+      expect(result.settings.updated).toBe(true);
+      expect(prisma.userSettings.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ retentionDays: 30 }),
+          update: expect.objectContaining({ retentionDays: 30 }),
+        }),
+      );
+    });
+
+    it('falls back to 90 days when retentionDays is not a valid value', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findMany.mockResolvedValue([]);
+      prisma.userSettings.upsert.mockResolvedValue({});
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [],
+        statusPages: [],
+        settings: { retentionDays: 42 }, // not in validValues
+      } as never);
+
+      expect(result.settings.updated).toBe(true);
+      expect(prisma.userSettings.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({ retentionDays: 90 }),
+        }),
+      );
+    });
+
+    it('does not update settings when retentionDays is falsy', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findMany.mockResolvedValue([]);
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [],
+        folders: [],
+        tags: [],
+        alertChannels: [],
+        statusPages: [],
+        settings: { retentionDays: 0 },
+      } as never);
+
+      expect(result.settings.updated).toBe(false);
+      expect(prisma.userSettings.upsert).not.toHaveBeenCalled();
+    });
+
+    it('creates monitors with folder and tag associations', async () => {
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.folder.create.mockResolvedValue({ id: 'folder-1', name: 'Prod' });
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.tag.create.mockResolvedValue({ id: 'tag-1', name: 'critical' });
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.monitor.create.mockResolvedValue({ id: 'mon-1' });
+      prisma.monitorTag.create.mockResolvedValue({});
+      prisma.alertChannel.findMany.mockResolvedValue([]);
+      prisma.publicStatusPage.findMany.mockResolvedValue([]);
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+
+      const result = await service.restoreBackup('user-1', {
+        version: '2',
+        exportedAt: '2026-01-01T00:00:00Z',
+        monitors: [{
+          name: 'API',
+          type: 'HTTP',
+          target: 'https://api.example.com',
+          intervalSec: 60,
+          timeoutMs: 5000,
+          confirmations: 1,
+          enabled: true,
+          config: {},
+          folderName: 'Prod',
+          tagNames: ['critical'],
+        }],
+        folders: [{ name: 'Prod' }],
+        tags: [{ name: 'critical' }],
+        alertChannels: [],
+        statusPages: [],
+      } as never);
+
+      expect(result.folders.created).toBe(1);
+      expect(result.tags.created).toBe(1);
+      expect(result.monitors.created).toBe(1);
+      expect(prisma.monitorTag.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ monitorId: 'mon-1', tagId: 'tag-1' }),
+        }),
+      );
+    });
+
+    it('includes alert channel and status page data in export', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      prisma.folder.findMany.mockResolvedValue([]);
+      prisma.tag.findMany.mockResolvedValue([]);
+      prisma.alertChannel.findMany.mockResolvedValue([
+        { id: 'ac-1', name: 'Slack', type: 'slack', configJson: { webhookUrl: 'https://hook' }, userId: 'u1', createdAt: new Date() },
+      ]);
+      prisma.publicStatusPage.findMany.mockResolvedValue([
+        { title: 'Status', slug: 'status', description: 'desc', isPublished: true, layout: { widgets: [] } },
+      ]);
+      prisma.userSettings.findUnique.mockResolvedValue(null);
+
+      const doc = await service.exportBackup('user-1');
+
+      expect(doc.alertChannels).toHaveLength(1);
+      expect(doc.alertChannels[0].name).toBe('Slack');
+      expect(doc.statusPages).toHaveLength(1);
+      expect(doc.statusPages[0].slug).toBe('status');
+    });
+
     it('records monitor errors without throwing', async () => {
       prisma.folder.findMany.mockResolvedValue([]);
       prisma.tag.findMany.mockResolvedValue([]);

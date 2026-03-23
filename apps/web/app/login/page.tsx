@@ -480,7 +480,7 @@ export default function LoginPage() {
                     {useRecoveryCode ? t("login.recoveryCode") : t("login.authenticatorCode")}
                   </label>
                   <input
-                    type={useRecoveryCode ? "text" : "text"}
+                    type={useRecoveryCode ? "text" : "tel"}
                     inputMode={useRecoveryCode ? "text" : "numeric"}
                     value={totpCode}
                     onChange={(e) => {

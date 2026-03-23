@@ -39,7 +39,7 @@ export function ExportPDFButton({ slug }: { slug: string }) {
       const pdfWidth = 210;
       const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
 
-      const orientation = pdfHeight > 297 ? "portrait" : "portrait";
+      const orientation = pdfHeight > 297 ? "portrait" : "landscape";
       const pdf = new jsPDF({
         orientation,
         unit: "mm",

@@ -59,7 +59,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 - **Body keyword** and **expected status code** assertions for HTTP monitors
 
 ### 📊 Public Status Pages
-- Drag-and-drop status page **editor** with 70+ widget types
+- Drag-and-drop status page **editor** with 82+ widget types
 - Widgets: uptime bars, response time heatmaps, incident timelines, SLA summaries, and more
 - Real CSS grid layout (12-column, responsive)
 - Password protection, custom slugs, subscriber email forms

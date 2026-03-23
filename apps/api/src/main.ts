@@ -48,9 +48,21 @@ async function bootstrap() {
     }
   }
   const webOrigin = process.env.WEB_URL || 'http://localhost:1234';
+  // Build CORS origins from env vars. CORS_ORIGINS accepts comma-separated additional origins.
+  // APP_BASE_URL is auto-included if set. No hardcoded deployment-specific URLs.
+  const corsOrigins: string[] = [webOrigin];
+  if (process.env.APP_BASE_URL && process.env.APP_BASE_URL !== webOrigin) {
+    corsOrigins.push(process.env.APP_BASE_URL.replace(/\/$/, ''));
+  }
+  if (process.env.CORS_ORIGINS) {
+    for (const origin of process.env.CORS_ORIGINS.split(',')) {
+      const trimmed = origin.trim();
+      if (trimmed && !corsOrigins.includes(trimmed)) corsOrigins.push(trimmed);
+    }
+  }
   const app = await NestFactory.create(AppModule, {
     cors: {
-      origin: [webOrigin, 'https://oc-dev-test.no749ah.com'],
+      origin: corsOrigins,
       credentials: true,
     },
   });

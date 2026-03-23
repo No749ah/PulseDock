@@ -19,12 +19,14 @@ function makeMonitorsService() {
     getRecentRuns: vi.fn(),
     monitorRuns: vi.fn(),
     monitorUptime: vi.fn(),
+    monitorChart: vi.fn(),
     versionSummary: vi.fn(),
     exportMonitors: vi.fn(),
     importMonitors: vi.fn(),
     importExternal: vi.fn(),
     listMonitorAlerts: vi.fn(),
     addMonitorAlert: vi.fn(),
+    updateMonitorAlertNotifyOn: vi.fn(),
     removeMonitorAlert: vi.fn(),
     listEvents: vi.fn(),
     createEvent: vi.fn(),
@@ -33,6 +35,9 @@ function makeMonitorsService() {
     listDependencies: vi.fn(),
     addDependency: vi.fn(),
     removeDependency: vi.fn(),
+    getHealthScore: vi.fn(),
+    getHealthSummary: vi.fn(),
+    getErrorBudget: vi.fn(),
   };
 }
 
@@ -219,5 +224,125 @@ describe('MonitorsController', () => {
     const result = await controller.deleteEvent(makeReq(), 'm-1', 'ev-1');
     expect(service.deleteEvent).toHaveBeenCalledWith('user-1', 'm-1', 'ev-1');
     expect(result).toEqual({ ok: true });
+  });
+
+  // ── create() plan limit ────────────────────────────────────────────────
+
+  it('create() throws ForbiddenException when plan limit is reached', async () => {
+    const { ForbiddenException } = await import('@nestjs/common');
+    const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 50, limit: 50, plan: 'PRO' }) };
+    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const dto = { name: 'Monitor', target: 'https://example.com', type: 'HTTP' as const, intervalSec: 60 };
+    await expect(ctrl.create(makeReq(), dto as never)).rejects.toThrow(ForbiddenException);
+  });
+
+  // ── snooze() ──────────────────────────────────────────────────────────
+
+  it('snooze() delegates to service.snooze with hours', async () => {
+    service.snooze.mockResolvedValue({ ok: true });
+    await controller.snooze(makeReq(), 'm-1', { hours: 4 });
+    expect(service.snooze).toHaveBeenCalledWith('user-1', 'm-1', 4);
+  });
+
+  it('snooze() defaults hours to 1 when not provided', async () => {
+    service.snooze.mockResolvedValue({ ok: true });
+    await controller.snooze(makeReq(), 'm-1', {} as never);
+    expect(service.snooze).toHaveBeenCalledWith('user-1', 'm-1', 1);
+  });
+
+  // ── monitorChart() ────────────────────────────────────────────────────
+
+  it('monitorChart() passes valid period to service', async () => {
+    service.monitorChart.mockResolvedValue({ buckets: [] });
+    const result = await controller.monitorChart(makeReq(), 'm-1', '7d');
+    expect(service.monitorChart).toHaveBeenCalledWith('user-1', 'm-1', '7d');
+  });
+
+  it('monitorChart() falls back to 7d for invalid period', async () => {
+    service.monitorChart.mockResolvedValue({ buckets: [] });
+    await controller.monitorChart(makeReq(), 'm-1', 'invalid');
+    expect(service.monitorChart).toHaveBeenCalledWith('user-1', 'm-1', '7d');
+  });
+
+  // ── healthScore() ─────────────────────────────────────────────────────
+
+  it('healthScore() delegates to service.getHealthScore', async () => {
+    service.getHealthScore.mockResolvedValue({ score: 87, grade: 'A' });
+    const result = await controller.healthScore(makeReq(), 'm-1');
+    expect(service.getHealthScore).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(result).toEqual({ score: 87, grade: 'A' });
+  });
+
+  // ── healthSummary() ───────────────────────────────────────────────────
+
+  it('healthSummary() delegates to service.getHealthSummary', async () => {
+    service.getHealthSummary.mockResolvedValue({ scores: [], overall: { avg: 0 } });
+    const result = await controller.healthSummary(makeReq());
+    expect(service.getHealthSummary).toHaveBeenCalledWith('user-1');
+  });
+
+  // ── errorBudget() ─────────────────────────────────────────────────────
+
+  it('errorBudget() parses slaTarget and period correctly', async () => {
+    service.getErrorBudget.mockResolvedValue({ remaining: 0.1 });
+    await controller.errorBudget(makeReq(), 'm-1', '99.5', '7d');
+    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.5, period: '7d' });
+  });
+
+  it('errorBudget() defaults slaTarget to 99.9 and period to 30d when invalid', async () => {
+    service.getErrorBudget.mockResolvedValue({ remaining: 0 });
+    await controller.errorBudget(makeReq(), 'm-1', 'not-a-number', 'bad-period');
+    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+  });
+
+  it('errorBudget() defaults to 99.9 when slaTarget is out of range', async () => {
+    service.getErrorBudget.mockResolvedValue({ remaining: 0 });
+    await controller.errorBudget(makeReq(), 'm-1', '0', '30d');
+    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+  });
+
+  // ── updateAlert() ─────────────────────────────────────────────────────
+
+  it('updateAlert() delegates to service.updateMonitorAlertNotifyOn', async () => {
+    service.updateMonitorAlertNotifyOn.mockResolvedValue({ ok: true });
+    await controller.updateAlert(makeReq(), 'm-1', 'ch-1', { notifyOn: 'ALWAYS' });
+    expect(service.updateMonitorAlertNotifyOn).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', 'ALWAYS');
+  });
+
+  // ── addAlert with notifyOn ────────────────────────────────────────────
+
+  it('addAlert() passes notifyOn from body', async () => {
+    service.addMonitorAlert.mockResolvedValue({ ok: true });
+    await controller.addAlert(makeReq(), 'm-1', 'ch-1', { notifyOn: 'FIRST_ONLY' });
+    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', 'FIRST_ONLY');
+  });
+
+  // ── listDependencies / addDependency / removeDependency ───────────────
+
+  it('listDependencies() delegates to service.listDependencies', async () => {
+    service.listDependencies.mockResolvedValue([]);
+    await controller.listDependencies(makeReq(), 'm-1');
+    expect(service.listDependencies).toHaveBeenCalledWith('user-1', 'm-1');
+  });
+
+  it('addDependency() delegates to service.addDependency', async () => {
+    service.addDependency.mockResolvedValue({ ok: true });
+    await controller.addDependency(makeReq(), 'm-1', 'dep-1');
+    expect(service.addDependency).toHaveBeenCalledWith('user-1', 'm-1', 'dep-1');
+  });
+
+  it('removeDependency() delegates to service.removeDependency', async () => {
+    service.removeDependency.mockResolvedValue({ ok: true });
+    await controller.removeDependency(makeReq(), 'm-1', 'dep-1');
+    expect(service.removeDependency).toHaveBeenCalledWith('user-1', 'm-1', 'dep-1');
+  });
+
+  // ── getRecentRuns with since param ────────────────────────────────────
+
+  it('getRecentRuns() parses since parameter', async () => {
+    service.getRecentRuns.mockResolvedValue([]);
+    const since = '2026-01-01T00:00:00Z';
+    await controller.getRecentRuns(makeReq(), '5', since);
+    expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 5, new Date(since));
   });
 });

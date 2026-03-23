@@ -5,7 +5,7 @@
   <p>
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <img src="https://img.shields.io/badge/tests-1979%20passing-brightgreen" alt="Tests: 1979 passing" />
+    <img src="https://img.shields.io/badge/tests-2250%2B%20passing-brightgreen" alt="Tests: 2250+ passing" />
     <img src="https://img.shields.io/badge/tools-5000%2B-orange" alt="5000+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (1979+ tests)
+npm run test              # Run all tests (2250+ tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,16 +223,16 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **1979+ tests** across the full stack:
+PulseDock has **2250+ tests** across the full stack:
 
 ```bash
 npm run test                        # All tests
-npm run test -w @pulsedock/api      # API tests only (1957 tests)
+npm run test -w @pulsedock/api      # API tests only (2246 tests)
 npm run test -w @pulsedock/agent    # Agent tests only
 npm run test -w @pulsedock/cli      # CLI tests only
 ```
 
-Coverage: ~90% line coverage on the API (strict mode throughout).
+Coverage: ~94% line coverage on the API (strict mode throughout).
 
 ---
 

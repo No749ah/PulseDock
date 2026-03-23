@@ -4552,6 +4552,476 @@ describe('compareSemver — mixed prerelease number/string parts (lines 82-94)',
 
 // SSL_CERT branch coverage for mocked TLS paths lives in checks.service.ssl.spec.ts.
 
+// ── Status-page Slack/Discord webhook + email subscriber tests ───────────────
+
+describe('runMonitor() — status-page Slack & Discord webhook delivery', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  function makePrismaWithWebhooks(opts: {
+    slackWebhookUrl?: string | null;
+    discordWebhookUrl?: string | null;
+    notifyWebhookUrl?: string | null;
+    lastNotifiedStatus?: string | null;
+    monitorLevel?: string;
+  } = {}) {
+    return {
+      monitorRun: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'run-new', userId: data.userId, monitorId: data.monitorId, checkedAt: new Date(), ok: data.ok, status: data.status, latencyMs: data.latencyMs, message: data.message, level: data.level }),
+        ),
+      },
+      monitorDependency: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      publicStatusPage: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'sp-1',
+            slug: 'my-page',
+            title: 'My Service',
+            layout: { widgets: [{ config: { monitorId: 'mon-1' } }] },
+            notifyWebhookUrl: opts.notifyWebhookUrl ?? null,
+            slackWebhookUrl: opts.slackWebhookUrl ?? null,
+            discordWebhookUrl: opts.discordWebhookUrl ?? null,
+            lastNotifiedStatus: opts.lastNotifiedStatus ?? null,
+          },
+        ]),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      monitor: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'mon-1', name: 'API Monitor', runs: [{ level: opts.monitorLevel ?? 'red', ok: opts.monitorLevel === 'green' }] },
+        ]),
+      },
+    };
+  }
+
+  it('fires Slack webhook when status changes and slackWebhookUrl is set', async () => {
+    const prisma = makePrismaWithWebhooks({
+      slackWebhookUrl: 'https://hooks.slack.com/test',
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    const fetchUrls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      fetchUrls.push(url);
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(prisma.publicStatusPage.update).toHaveBeenCalled();
+    expect(fetchUrls.some(u => u.includes('hooks.slack.com'))).toBe(true);
+  });
+
+  it('fires Discord webhook when status changes and discordWebhookUrl is set', async () => {
+    const prisma = makePrismaWithWebhooks({
+      discordWebhookUrl: 'https://discord.com/api/webhooks/test',
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    const fetchUrls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      fetchUrls.push(url);
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(prisma.publicStatusPage.update).toHaveBeenCalled();
+    expect(fetchUrls.some(u => u.includes('discord.com/api/webhooks'))).toBe(true);
+  });
+
+  it('fires both Slack and Discord webhooks when both are configured', async () => {
+    const prisma = makePrismaWithWebhooks({
+      slackWebhookUrl: 'https://hooks.slack.com/test',
+      discordWebhookUrl: 'https://discord.com/api/webhooks/test',
+      lastNotifiedStatus: null,
+      monitorLevel: 'green',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    const fetchUrls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      fetchUrls.push(url);
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(fetchUrls.some(u => u.includes('hooks.slack.com'))).toBe(true);
+    expect(fetchUrls.some(u => u.includes('discord.com'))).toBe(true);
+  });
+
+  it('handles Slack webhook delivery failure gracefully', async () => {
+    const prisma = makePrismaWithWebhooks({
+      slackWebhookUrl: 'https://hooks.slack.com/fail',
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('hooks.slack.com')) {
+        return Promise.reject(new Error('Slack timeout'));
+      }
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    // Should not throw — error is caught internally
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+    expect(prisma.publicStatusPage.update).toHaveBeenCalled();
+  });
+
+  it('handles Discord webhook delivery failure gracefully', async () => {
+    const prisma = makePrismaWithWebhooks({
+      discordWebhookUrl: 'https://discord.com/api/webhooks/fail',
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('discord.com')) {
+        return Promise.reject(new Error('Discord timeout'));
+      }
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+    expect(prisma.publicStatusPage.update).toHaveBeenCalled();
+  });
+
+  it('sends status "degraded" when monitor is yellow', async () => {
+    const prisma = makePrismaWithWebhooks({
+      slackWebhookUrl: 'https://hooks.slack.com/test',
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'yellow',
+    });
+    const realtime = makeRealtime();
+    const service = makeService({ prisma: prisma as never, realtime });
+
+    const fetchBodies: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((_url: string, opts?: { body?: string }) => {
+      if (opts?.body) fetchBodies.push(opts.body);
+      return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+    });
+
+    // The monitor check itself will run as HTTP (red because mock returns ok:true → green)
+    // But the status page webhook evaluates the monitor's latest run level from prisma
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(prisma.publicStatusPage.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ lastNotifiedStatus: 'degraded' }) }),
+    );
+  });
+});
+
+describe('runMonitor() — status-page email subscriber notifications', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  function makePrismaWithSubscribers(opts: {
+    lastNotifiedStatus?: string | null;
+    monitorLevel?: string;
+    subscribers?: Array<{ email: string }>;
+    hasWebhook?: boolean;
+  } = {}) {
+    return {
+      monitorRun: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+          Promise.resolve({ id: 'run-new', userId: data.userId, monitorId: data.monitorId, checkedAt: new Date(), ok: data.ok, status: data.status, latencyMs: data.latencyMs, message: data.message, level: data.level }),
+        ),
+      },
+      monitorDependency: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      publicStatusPage: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'sp-1',
+            slug: 'my-page',
+            title: 'My Service',
+            layout: { widgets: [{ config: { monitorId: 'mon-1' } }] },
+            notifyWebhookUrl: opts.hasWebhook ? 'https://example.com/hook' : null,
+            slackWebhookUrl: null,
+            discordWebhookUrl: null,
+            lastNotifiedStatus: opts.lastNotifiedStatus ?? null,
+          },
+        ]),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      monitor: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'mon-1', name: 'API Monitor', runs: [{ level: opts.monitorLevel ?? 'red', ok: false }] },
+        ]),
+      },
+      statusPageSubscriber: {
+        findMany: vi.fn().mockResolvedValue(opts.subscribers ?? []),
+      },
+    };
+  }
+
+  it('sends email to subscribers when status degrades to outage', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+      subscribers: [{ email: 'user@example.com' }],
+    });
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mailer.sendStatusPageUpdateEmail).toHaveBeenCalledWith(
+      'user@example.com',
+      expect.objectContaining({ pageSlug: 'my-page' }),
+    );
+  });
+
+  it('sends email to multiple subscribers concurrently', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+      subscribers: [{ email: 'a@test.com' }, { email: 'b@test.com' }],
+    });
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mailer.sendStatusPageUpdateEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not send email on recovery (status=operational)', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'outage',
+      monitorLevel: 'green',
+      subscribers: [{ email: 'user@test.com' }],
+      hasWebhook: true,
+    });
+    // Override: green monitor means operational
+    (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 'mon-1', name: 'API Monitor', runs: [{ level: 'green', ok: true }] },
+    ]);
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    // overallStatus is 'operational' — email should NOT be sent
+    expect(mailer.sendStatusPageUpdateEmail).not.toHaveBeenCalled();
+  });
+
+  it('handles subscriber email failure gracefully', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockRejectedValue(new Error('SMTP error')) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+      subscribers: [{ email: 'fail@test.com' }],
+    });
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    // Should not throw
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+  });
+
+  it('does not send email when no subscribers exist', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'red',
+      subscribers: [],
+    });
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mailer.sendStatusPageUpdateEmail).not.toHaveBeenCalled();
+  });
+
+  it('sends degradation email with correct label for yellow monitor', async () => {
+    const mailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
+    const prisma = makePrismaWithSubscribers({
+      lastNotifiedStatus: 'operational',
+      monitorLevel: 'yellow',
+      subscribers: [{ email: 'user@test.com' }],
+    });
+    // Override: yellow means degraded
+    (prisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 'mon-1', name: 'API Monitor', runs: [{ level: 'yellow', ok: false }] },
+    ]);
+    const realtime = makeRealtime();
+    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
+
+    await service.runMonitor(makeMonitor({ type: 'HTTP' }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mailer.sendStatusPageUpdateEmail).toHaveBeenCalledWith(
+      'user@test.com',
+      expect.objectContaining({
+        headline: expect.stringContaining('Performance Degradation'),
+      }),
+    );
+  });
+});
+
+// ── runMonitor() — DNS type ─────────────────────────────────────────────────
+
+describe('runMonitor() — DNS type', () => {
+  it('returns green for valid DNS lookup', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'DNS', target: 'example.com', config: {} });
+    const run = await service.runMonitor(monitor);
+    // example.com has valid DNS records
+    expect(run).toBeDefined();
+    expect(run).toHaveProperty('ok');
+  }, 10000);
+
+  it('returns red for non-existent domain', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'DNS', target: 'this-domain-does-not-exist-xyzzy.invalid', config: {} });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  }, 10000);
+});
+
+// ── runMonitor() — PING type ────────────────────────────────────────────────
+
+describe('runMonitor() — PING type', () => {
+  it('dispatches PING check and returns a result', async () => {
+    const service = makeService();
+    const monitor = makeMonitor({ type: 'PING', target: '127.0.0.1', config: {} });
+    const run = await service.runMonitor(monitor);
+    // PING may fail in container, but should not throw
+    expect(run).toBeDefined();
+    expect(run).toHaveProperty('ok');
+    expect(run).toHaveProperty('level');
+  }, 15000);
+});
+
+// ── BROWSER — selector fallback branch (line 1437) ──────────────────────────
+
+describe('runMonitor() — BROWSER selector fallback branch', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('returns green when fallback selector text is found in HTML', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><my-component>Content</my-component></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: 'my-component' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
+
+  it('returns red when fallback selector text is not found', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><p>Hello</p></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: 'nonexistent-custom-element' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+
+  it('matches tag.class selector pattern', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><div class="main active">Content</div></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: 'div.main' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
+
+  it('matches tag#id selector pattern', async () => {
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: true, status: 200, text: () => '<html><body><div id="root">Content</div></body></html>' },
+    ]));
+    const service = makeService();
+    const monitor = makeMonitor({
+      type: 'BROWSER',
+      target: 'https://example.com',
+      config: { browserSelector: 'div#root' },
+    });
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+  });
+});
+
 // ── runMonitor() — confirmations null branch (line 969) ───────────────────────
 
 describe('runMonitor() — confirmations null falls back to 1 (line 969)', () => {

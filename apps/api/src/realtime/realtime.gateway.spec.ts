@@ -183,4 +183,90 @@ describe('RealtimeGateway', () => {
       expect(server._emit).toHaveBeenCalledWith('alert.triggered', { alertId: 'a1' });
     });
   });
+
+  // ── joinStatusPage() ──────────────────────────────────────────────────────
+
+  describe('joinStatusPage()', () => {
+    it('joins status page room and returns ok', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      const result = await gateway.joinStatusPage(socket as never, { slug: 'my-status' });
+      expect(socket.join).toHaveBeenCalledWith('status-page:my-status');
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('returns error when slug is missing', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      const result = await gateway.joinStatusPage(socket as never, {});
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: 'slug required' });
+    });
+
+    it('returns error when body is undefined', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      const result = await gateway.joinStatusPage(socket as never, undefined);
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: 'slug required' });
+    });
+
+    it('returns error when slug is not a string', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      const result = await gateway.joinStatusPage(socket as never, { slug: 123 as never });
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: false, error: 'slug required' });
+    });
+
+    it('does not require authentication', async () => {
+      const { gateway } = makeGateway(null); // unauthenticated
+      const socket = makeSocket();
+      const result = await gateway.joinStatusPage(socket as never, { slug: 'public-page' });
+      expect(socket.join).toHaveBeenCalledWith('status-page:public-page');
+      expect(result).toEqual({ ok: true });
+    });
+  });
+
+  // ── leaveStatusPage() ─────────────────────────────────────────────────────
+
+  describe('leaveStatusPage()', () => {
+    it('leaves status page room', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      (socket as unknown as Record<string, unknown>).leave = vi.fn().mockResolvedValue(undefined);
+      const result = await gateway.leaveStatusPage(socket as never, { slug: 'my-status' });
+      expect((socket as unknown as Record<string, ReturnType<typeof vi.fn>>).leave).toHaveBeenCalledWith('status-page:my-status');
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('returns ok even when slug is missing (no-op)', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      (socket as unknown as Record<string, unknown>).leave = vi.fn();
+      const result = await gateway.leaveStatusPage(socket as never, {});
+      expect((socket as unknown as Record<string, ReturnType<typeof vi.fn>>).leave).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: true });
+    });
+
+    it('returns ok when body is undefined', async () => {
+      const { gateway } = makeGateway();
+      const socket = makeSocket();
+      (socket as unknown as Record<string, unknown>).leave = vi.fn();
+      const result = await gateway.leaveStatusPage(socket as never, undefined);
+      expect((socket as unknown as Record<string, ReturnType<typeof vi.fn>>).leave).not.toHaveBeenCalled();
+      expect(result).toEqual({ ok: true });
+    });
+  });
+
+  // ── emitToStatusPage() ────────────────────────────────────────────────────
+
+  describe('emitToStatusPage()', () => {
+    it('emits to correct status page room', () => {
+      const { gateway, server } = makeGateway();
+      gateway.emitToStatusPage('my-page', 'status.updated', { level: 'degraded' });
+      expect(server.to).toHaveBeenCalledWith('status-page:my-page');
+      expect(server._emit).toHaveBeenCalledWith('status.updated', { level: 'degraded' });
+    });
+  });
 });

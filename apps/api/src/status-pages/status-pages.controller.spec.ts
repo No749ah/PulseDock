@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ForbiddenException, ConflictException } from '@nestjs/common';
 import { StatusPagesController } from './status-pages.controller';
 import { StatusPagesService } from './status-pages.service';
 
@@ -14,6 +15,15 @@ function makeService() {
     remove: vi.fn().mockResolvedValue({ deleted: true }),
     findPublic: vi.fn().mockResolvedValue({ id: 'page-1', title: 'Public Page', monitors: [] }),
     getWidgetData: vi.fn().mockResolvedValue({ widgetType: 'uptime-bar', uptimePct: 99.5 }),
+    findPreview: vi.fn().mockResolvedValue({ id: 'page-1', title: 'Preview', monitors: [] }),
+    getPreviewWidgetData: vi.fn().mockResolvedValue({ widgetType: 'uptime-bar', uptimePct: 99.9 }),
+    getHistory: vi.fn().mockResolvedValue([{ id: 'h1', savedAt: '2026-01-01' }]),
+    restoreHistory: vi.fn().mockResolvedValue({ id: 'page-1', title: 'Restored' }),
+    checkSlugAvailability: vi.fn().mockResolvedValue({ available: true, valid: true, slug: 'test' }),
+    unsubscribe: vi.fn().mockResolvedValue(undefined),
+    subscribeToStatusPage: vi.fn().mockResolvedValue({ alreadySubscribed: false }),
+    getRssFeed: vi.fn().mockResolvedValue('<rss>...</rss>'),
+    getPublicJson: vi.fn().mockResolvedValue({ status: 'operational', monitors: [] }),
   } as unknown as StatusPagesService;
 }
 
@@ -203,6 +213,216 @@ describe('StatusPagesController', () => {
       const result = await controller.getWidgetData('locked-page', 'timeline-w', 'secret', '90d');
       expect(service.getWidgetData).toHaveBeenCalledWith('locked-page', 'timeline-w', 'secret', '90d');
       expect(result).toEqual(widgetData);
+    });
+  });
+
+  // ── create() plan limit ───────────────────────────────────────────────────
+
+  describe('create() — plan limit enforcement', () => {
+    it('throws ForbiddenException when plan limit reached', async () => {
+      const mockPlanService = {
+        checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 5, limit: 5, plan: 'COMMUNITY' }),
+      };
+      const ctrl = new StatusPagesController(service as unknown as StatusPagesService, mockPlanService as never);
+      await expect(ctrl.create(makeReq(), { title: 'Overflow' })).rejects.toThrow(ForbiddenException);
+      expect(service.create).not.toHaveBeenCalled();
+    });
+
+    it('includes plan details in error body', async () => {
+      const mockPlanService = {
+        checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 3, limit: 3, plan: 'STARTER' }),
+      };
+      const ctrl = new StatusPagesController(service as unknown as StatusPagesService, mockPlanService as never);
+      try {
+        await ctrl.create(makeReq(), { title: 'Over' });
+        expect.unreachable('should have thrown');
+      } catch (e: unknown) {
+        const err = e as ForbiddenException;
+        const body = err.getResponse() as Record<string, unknown>;
+        expect(body.code).toBe('PLAN_LIMIT');
+        expect(body.resource).toBe('status-pages');
+        expect(body.current).toBe(3);
+        expect(body.limit).toBe(3);
+      }
+    });
+  });
+
+  // ── update() edge cases ───────────────────────────────────────────────────
+
+  describe('update() — edge cases', () => {
+    it('defaults to empty object when body is null', async () => {
+      const req = { user: { id: 'u1' }, body: null } as never;
+      await controller.update(req, 'page-1');
+      expect(service.update).toHaveBeenCalledWith('u1', 'page-1', {});
+    });
+
+    it('defaults to empty object when body is undefined', async () => {
+      const req = { user: { id: 'u1' }, body: undefined } as never;
+      await controller.update(req, 'page-1');
+      expect(service.update).toHaveBeenCalledWith('u1', 'page-1', {});
+    });
+
+    it('defaults to empty object when body is an array', async () => {
+      const req = { user: { id: 'u1' }, body: [1, 2, 3] } as never;
+      await controller.update(req, 'page-1');
+      expect(service.update).toHaveBeenCalledWith('u1', 'page-1', {});
+    });
+  });
+
+  // ── getPreview() ──────────────────────────────────────────────────────────
+
+  describe('getPreview()', () => {
+    it('calls findPreview with userId and id', async () => {
+      await controller.getPreview(makeReq('u1'), 'page-10');
+      expect(service.findPreview).toHaveBeenCalledWith('u1', 'page-10');
+    });
+
+    it('returns the preview data', async () => {
+      const preview = { id: 'page-10', monitors: [{ id: 'm1', level: 'green' }] };
+      (service.findPreview as ReturnType<typeof vi.fn>).mockResolvedValue(preview);
+      const result = await controller.getPreview(makeReq(), 'page-10');
+      expect(result).toEqual(preview);
+    });
+  });
+
+  // ── getPreviewWidgetData() ────────────────────────────────────────────────
+
+  describe('getPreviewWidgetData()', () => {
+    it('calls service with all params', async () => {
+      await controller.getPreviewWidgetData(makeReq('u1'), 'page-5', 'w-1', '30d');
+      expect(service.getPreviewWidgetData).toHaveBeenCalledWith('u1', 'page-5', 'w-1', '30d');
+    });
+
+    it('passes undefined range when not provided', async () => {
+      await controller.getPreviewWidgetData(makeReq('u2'), 'page-6', 'w-2');
+      expect(service.getPreviewWidgetData).toHaveBeenCalledWith('u2', 'page-6', 'w-2', undefined);
+    });
+
+    it('returns widget data', async () => {
+      const data = { widgetType: 'sla-summary', actual: 99.95 };
+      (service.getPreviewWidgetData as ReturnType<typeof vi.fn>).mockResolvedValue(data);
+      const result = await controller.getPreviewWidgetData(makeReq(), 'p1', 'w1');
+      expect(result).toEqual(data);
+    });
+  });
+
+  // ── getHistory() ──────────────────────────────────────────────────────────
+
+  describe('getHistory()', () => {
+    it('calls getHistory with userId and id', async () => {
+      await controller.getHistory(makeReq('u1'), 'page-3');
+      expect(service.getHistory).toHaveBeenCalledWith('u1', 'page-3');
+    });
+
+    it('returns history entries', async () => {
+      const history = [{ id: 'h1', savedAt: '2026-01-01' }, { id: 'h2', savedAt: '2026-01-02' }];
+      (service.getHistory as ReturnType<typeof vi.fn>).mockResolvedValue(history);
+      const result = await controller.getHistory(makeReq(), 'page-3');
+      expect(result).toEqual(history);
+    });
+  });
+
+  // ── restoreHistory() ──────────────────────────────────────────────────────
+
+  describe('restoreHistory()', () => {
+    it('calls restoreHistory with userId, pageId, historyId', async () => {
+      await controller.restoreHistory(makeReq('u1'), 'page-3', 'h5');
+      expect(service.restoreHistory).toHaveBeenCalledWith('u1', 'page-3', 'h5');
+    });
+
+    it('returns the restored page', async () => {
+      const restored = { id: 'page-3', title: 'Restored', layout: { widgets: [] } };
+      (service.restoreHistory as ReturnType<typeof vi.fn>).mockResolvedValue(restored);
+      const result = await controller.restoreHistory(makeReq(), 'page-3', 'h5');
+      expect(result).toEqual(restored);
+    });
+  });
+
+  // ── checkSlug() ───────────────────────────────────────────────────────────
+
+  describe('checkSlug()', () => {
+    it('calls checkSlugAvailability with slug and no excludeId', async () => {
+      await controller.checkSlug(makeReq('u1'), 'my-slug');
+      expect(service.checkSlugAvailability).toHaveBeenCalledWith('u1', 'my-slug', undefined);
+    });
+
+    it('passes excludeId when provided', async () => {
+      await controller.checkSlug(makeReq('u1'), 'my-slug', 'page-99');
+      expect(service.checkSlugAvailability).toHaveBeenCalledWith('u1', 'my-slug', 'page-99');
+    });
+
+    it('returns availability result', async () => {
+      const check = { available: false, valid: true, slug: 'taken-slug' };
+      (service.checkSlugAvailability as ReturnType<typeof vi.fn>).mockResolvedValue(check);
+      const result = await controller.checkSlug(makeReq(), 'taken-slug');
+      expect(result).toEqual(check);
+    });
+  });
+
+  // ── unsubscribe() ─────────────────────────────────────────────────────────
+
+  describe('unsubscribe()', () => {
+    it('calls service unsubscribe with token', async () => {
+      await controller.unsubscribe('abc-token');
+      expect(service.unsubscribe).toHaveBeenCalledWith('abc-token');
+    });
+
+    it('returns success message', async () => {
+      const result = await controller.unsubscribe('abc-token');
+      expect(result).toEqual({ message: 'Successfully unsubscribed' });
+    });
+  });
+
+  // ── subscribe() ───────────────────────────────────────────────────────────
+
+  describe('subscribe()', () => {
+    it('calls subscribeToStatusPage with slug and email', async () => {
+      await controller.subscribe('my-page', { email: 'test@example.com' });
+      expect(service.subscribeToStatusPage).toHaveBeenCalledWith('my-page', 'test@example.com');
+    });
+
+    it('returns { subscribed: true } on success', async () => {
+      const result = await controller.subscribe('my-page', { email: 'test@example.com' });
+      expect(result).toEqual({ subscribed: true });
+    });
+
+    it('throws ConflictException when already subscribed', async () => {
+      (service.subscribeToStatusPage as ReturnType<typeof vi.fn>).mockResolvedValue({ alreadySubscribed: true });
+      await expect(controller.subscribe('my-page', { email: 'dup@example.com' })).rejects.toThrow(ConflictException);
+    });
+  });
+
+  // ── getRssFeed() ──────────────────────────────────────────────────────────
+
+  describe('getRssFeed()', () => {
+    it('calls getRssFeed with slug and sends XML via response', async () => {
+      const xml = '<?xml version="1.0"?><rss><channel></channel></rss>';
+      (service.getRssFeed as ReturnType<typeof vi.fn>).mockResolvedValue(xml);
+      const res = { send: vi.fn() } as never;
+      await controller.getRssFeed('my-page', res);
+      expect(service.getRssFeed).toHaveBeenCalledWith('my-page');
+      expect((res as { send: ReturnType<typeof vi.fn> }).send).toHaveBeenCalledWith(xml);
+    });
+  });
+
+  // ── getPublicJson() ───────────────────────────────────────────────────────
+
+  describe('getPublicJson()', () => {
+    it('calls getPublicJson with slug and no password', async () => {
+      await controller.getPublicJson('my-page');
+      expect(service.getPublicJson).toHaveBeenCalledWith('my-page', undefined);
+    });
+
+    it('calls getPublicJson with slug and password', async () => {
+      await controller.getPublicJson('locked-page', 'secret');
+      expect(service.getPublicJson).toHaveBeenCalledWith('locked-page', 'secret');
+    });
+
+    it('returns structured JSON data', async () => {
+      const data = { status: 'degraded', monitors: [{ id: 'm1', level: 'yellow' }] };
+      (service.getPublicJson as ReturnType<typeof vi.fn>).mockResolvedValue(data);
+      const result = await controller.getPublicJson('my-page');
+      expect(result).toEqual(data);
     });
   });
 });

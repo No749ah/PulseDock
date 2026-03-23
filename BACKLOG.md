@@ -1,21 +1,19 @@
-## Status Summary (2026-03-23 11:29 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (1957 API + 10 CLI + 12 Agent = 1979 total)
+## Status Summary (2026-03-23 22:09 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (2260 API + 56 Web + 10 CLI + 12 Agent = 2338 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.2.0 + web running; public URL + all routes 200
-- **Branch:** heartbeat/2026-03-23-afternoon
-- **Smoke test:** 27/27 checks pass; code quality: 7/7 pass + 1 warning
-- **This session:**
-  - Branch rotation: merged heartbeat/2026-03-23-morning → dev, deleted old branch, created heartbeat/2026-03-23-afternoon
-  - Replaced 2 console.error calls with structured logger in webhook delivery
-  - Full health check: build ✅, tests ✅ (1979), audit ✅ (0 vulns), smoke 27/27, quality 7/7
-  - Dependency health: same major bumps pending (Prisma 6→7, React 18→19) — no action needed
-  - All routes 200 local + public proxy
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
+- **Branch:** heartbeat/2026-03-23-evening
+- **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
+- **Registry:** 5009 tools, lint clean, 646 verified entries
+- **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
+- **Coverage:** tool-registry controller 47 tests (was 30), all major modules 85%+. Overall: 91.8% stmts / 82.4% branch.
+- **Last change:** Expanded tool-registry controller test coverage (+17 tests): npm/pypi/cargo/docker-hub/github-tags upstream paths, namespace handling, fallback chains, edge cases.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
 **The project is NOT done. Not even close.**
-**Work on this until EVERYTHING is perfect — every enterprise tool in the registry, every widget type implemented, every UI pixel polished.**
+**Work on this until EVERYTHING is perfect - every enterprise tool in the registry, every widget type implemented, every UI pixel polished.**
 **Self-optimize: after every task, critically review your own work. Would a Fortune 500 pay for this? If not, improve.**
 **Keep adding to this backlog when you discover gaps. Never stop improving.**
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
@@ -24,75 +22,75 @@
 
 ## In Progress
 
-- [x] **Response Time Heatmap widget** — Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
+- [x] **Response Time Heatmap widget** - Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
 
-- [x] **Dependency Map widget** — SVG graph showing monitors as nodes with colored edges based on live status. Green=ok, yellow=degraded, red=outage (pulsing). Edges defined via JSON config `{source, target, label?}`. Simple auto-layout grid, shows latency in node. API resolver loads monitor statuses. Editor palette under Status category.
+- [x] **Dependency Map widget** - SVG graph showing monitors as nodes with colored edges based on live status. Green=ok, yellow=degraded, red=outage (pulsing). Edges defined via JSON config `{source, target, label?}`. Simple auto-layout grid, shows latency in node. API resolver loads monitor statuses. Editor palette under Status category.
 
-- [x] **Multi-Environment Status widget** — Side-by-side status cards for prod/staging/dev environments. `envMonitors` JSON config maps env names to monitor ID arrays. Shows operational/degraded/outage summary per env, up/total count, optional per-monitor breakdown list. API resolver computes status from MonitorRun data.
+- [x] **Multi-Environment Status widget** - Side-by-side status cards for prod/staging/dev environments. `envMonitors` JSON config maps env names to monitor ID arrays. Shows operational/degraded/outage summary per env, up/total count, optional per-monitor breakdown list. API resolver computes status from MonitorRun data.
 
-- [x] **Tab Container widget** — Multiple tabs with configurable title/content pairs. Client-side tab switching with animated underline indicator. JSON config `[{title, content}]`. Clean tab bar with active accent indicator.
+- [x] **Tab Container widget** - Multiple tabs with configurable title/content pairs. Client-side tab switching with animated underline indicator. JSON config `[{title, content}]`. Clean tab bar with active accent indicator.
 
-*(next: continue status-page widgets — Region Status Map, Third-Party Dependencies, Security Advisory, Page-Level config items)*
-
-## Recently Completed
-
-- [x] **Security dependency hardening (Prisma advisory chain)** — Pinned `prisma`, `@prisma/client`, and `@prisma/adapter-pg` to `6.12.0` in API workspace to eliminate GHSA-38f7-945m-qr2g exposure via `@prisma/config`/`effect`. Lockfile refreshed; `npm audit --audit-level=high` now reports `0 vulnerabilities`.
-
-- [x] **Landing page P0 rework** — Hero dashboard mockup (glassmorphic browser chrome, stat cards, monitors table, sparklines), improved How-It-Works (3 cards with inline visual elements), Screenshot Gallery (2×2 mock UIs with hover-lift), Pricing section (self-hosted free + cloud coming soon). Build clean, all routes 200.
-
-- [x] **SLA Summary with real data** — API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.
+*(next: continue status-page widgets - Region Status Map, Third-Party Dependencies, Security Advisory, Page-Level config items)*
 
 ## Recently Completed
 
-- [x] **Response Time Chart with real data** — SVG sparkline from actual latencyMs values in MonitorRun. Bar chart: green=ok, red=failed. Dashed avg line + dotted p95 line. Header shows avg/p95 stats. API returns up to 60 (configurable) data points with avgMs/p95Ms/maxMs. 5 new tests. Total: 1341 passing.
+- [x] **Security dependency hardening (Prisma advisory chain)** - Pinned `prisma`, `@prisma/client`, and `@prisma/adapter-pg` to `6.12.0` in API workspace to eliminate GHSA-38f7-945m-qr2g exposure via `@prisma/config`/`effect`. Lockfile refreshed; `npm audit --audit-level=high` now reports `0 vulnerabilities`.
 
-- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown per UTC date bucket. Legend shows Up/Degraded/Down/No-data. Widget shows overall uptime% computed from real check data.
+- [x] **Landing page P0 rework** - Hero dashboard mockup (glassmorphic browser chrome, stat cards, monitors table, sparklines), improved How-It-Works (3 cards with inline visual elements), Screenshot Gallery (2×2 mock UIs with hover-lift), Pricing section (self-hosted free + cloud coming soon). Build clean, all routes 200.
+
+- [x] **SLA Summary with real data** - API computes uptimePct/pass/allowedDownMinutes/remainingDownMinutes from MonitorRun records. Widget shows actual% vs target, downtime budget progress bar (green→yellow→red), remaining budget formatted as Xs/Xm/Xh. 5 new tests. Total: 1346 passing.
 
 ## Recently Completed
 
-- [x] **Monitor-scope UX polish for status widgets** — Added widget-specific multi-monitor helper text, sensible default monitor preselection on mode switch, and clean monitor-scope mode transitions (`single`/`multiple`/`all`) so config stays coherent.
+- [x] **Response Time Chart with real data** - SVG sparkline from actual latencyMs values in MonitorRun. Bar chart: green=ok, red=failed. Dashed avg line + dotted p95 line. Header shows avg/p95 stats. API returns up to 60 (configurable) data points with avgMs/p95Ms/maxMs. 5 new tests. Total: 1341 passing.
 
-- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
+- [x] **Uptime Timeline with real data** - Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown per UTC date bucket. Legend shows Up/Degraded/Down/No-data. Widget shows overall uptime% computed from real check data.
 
-- [x] **Uptime Bar with real data** — public status-page uptime widget now consumes live per-widget API data (`/v1/public/status/:slug/widget/:widgetId`) and renders real `uptimePct` + period + check count instead of status-derived placeholders.
+## Recently Completed
 
-- [x] **Public status page layout parity with editor grid** — public renderer now uses true responsive grid layout with editor coordinates (`x/y/w/h`): 12-col desktop, 6-col tablet with collision-safe placement, and 1-col mobile flow. Visibility/hide-no-data rules are applied before layout so only renderable widgets occupy grid slots.
+- [x] **Monitor-scope UX polish for status widgets** - Added widget-specific multi-monitor helper text, sensible default monitor preselection on mode switch, and clean monitor-scope mode transitions (`single`/`multiple`/`all`) so config stays coherent.
 
-- [x] **Universal Config Panel for ALL widget types** — completed end-to-end: shared monitor scope selector + filters + visibility/click/style/responsive controls in editor, runtime wiring in public renderer (visibility filtering, hide-when-no-data, click actions, mobile behavior), and per-widget conditional control visibility in config panel.
+- [x] **Multi-Monitor Picker component** - Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
 
-- [x] **Auth controller spec stabilization (request context)** — Updated `auth.controller.spec.ts` invite/reset test calls to pass `req` alongside `res` after controller method signature changes. Test suite is green again.
+- [x] **Uptime Bar with real data** - public status-page uptime widget now consumes live per-widget API data (`/v1/public/status/:slug/widget/:widgetId`) and renders real `uptimePct` + period + check count instead of status-derived placeholders.
 
-- [x] **Next.js build warning cleanup (`allowedHosts`)** — Removed unsupported `allowedHosts` key from `apps/web/next.config.mjs` (Next.js 16 no longer recognizes this option). Build is now clean without config warnings.
+- [x] **Public status page layout parity with editor grid** - public renderer now uses true responsive grid layout with editor coordinates (`x/y/w/h`): 12-col desktop, 6-col tablet with collision-safe placement, and 1-col mobile flow. Visibility/hide-no-data rules are applied before layout so only renderable widgets occupy grid slots.
 
-- [x] **Coverage sweep: auth/checks/monitors edge branches** — Added focused unit tests for `AuthService` token/session/profile/verify edge paths, semver prerelease mixed-part comparison in `ChecksService`, and CSV/import parser edge cases in `MonitorsService`. API tests: 1308 → 1327 (total suite: 1349 incl. CLI+Agent), all green.
+- [x] **Universal Config Panel for ALL widget types** - completed end-to-end: shared monitor scope selector + filters + visibility/click/style/responsive controls in editor, runtime wiring in public renderer (visibility filtering, hide-when-no-data, click actions, mobile behavior), and per-widget conditional control visibility in config panel.
 
-- [x] **HTTP body keyword + expected status assertions** — `runHttpCheck()` now accepts `config.bodyContains` (response body must contain string, case-insensitive) and `config.expectedStatus` (exact status code or array of codes). Monitor create/edit UI shows both fields for HTTP monitors. 8 new tests (total: 1264). This enables monitoring JSON API health payloads without the plugin system.
+- [x] **Auth controller spec stabilization (request context)** - Updated `auth.controller.spec.ts` invite/reset test calls to pass `req` alongside `res` after controller method signature changes. Test suite is green again.
 
-- [x] **Monitor failure confirmations (debounce alert noise)** — Added per-monitor `confirmations` setting (1–5) across API DTOs, service layer, Prisma schema + migration, scheduler/check runtime type mapping, and Monitors UI create/edit flow. Alerting logic now triggers only when unhealthy streak crosses the configured threshold (and avoids repeated alerts after threshold is already crossed). Added focused tests covering first-failure suppression, threshold crossing, default immediate mode, and no-repeat behavior.
+- [x] **Next.js build warning cleanup (`allowedHosts`)** - Removed unsupported `allowedHosts` key from `apps/web/next.config.mjs` (Next.js 16 no longer recognizes this option). Build is now clean without config warnings.
 
-- [x] **Incident management + SVG status badges** — Full incident tracking: Prisma schema (Incident, IncidentUpdate, IncidentMonitor + enums), migration, backend CRUD API (`/v1/incidents`), incidents service with timeline updates and monitor linking. Public SVG badge endpoint (`GET /v1/public/badge/:monitorId.svg`) — shields.io-style flat/flat-square/for-the-badge styles, live up/degraded/down/paused status with colour coding, 60s cache. Frontend `/incidents` page: create/edit/delete/post-update modals, status/severity badges, expandable rows with timeline + affected monitors, active/resolved sections. Monitors page: embed badge button (Shield icon) per row with Markdown/HTML/URL copy snippets. Nav updated with AlertOctagon icon.
+- [x] **Coverage sweep: auth/checks/monitors edge branches** - Added focused unit tests for `AuthService` token/session/profile/verify edge paths, semver prerelease mixed-part comparison in `ChecksService`, and CSV/import parser edge cases in `MonitorsService`. API tests: 1308 → 1327 (total suite: 1349 incl. CLI+Agent), all green.
 
-- [x] **Tool registry expansion: 302 → 382 tools** — Added 80 additional pre-configured tools across existing categories with broad self-hosting coverage: Email/Comms (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), Infra & networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), data/admin (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), home/self-hosted apps (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud), and additional media/dev ecosystem tools (Jellyseerr, Readarr, Mylar3, Stremio Server, JupyterHub, Gitpod, Hono, Clair). Registry now has 382 unique tools with no duplicate IDs.
+- [x] **HTTP body keyword + expected status assertions** - `runHttpCheck()` now accepts `config.bodyContains` (response body must contain string, case-insensitive) and `config.expectedStatus` (exact status code or array of codes). Monitor create/edit UI shows both fields for HTTP monitors. 8 new tests (total: 1264). This enables monitoring JSON API health payloads without the plugin system.
 
-- [x] **Test suite stabilization (scoping regressions)** — Fixed two broken spec blocks introduced outside their parent `describe` scopes: `auth.controller.spec.ts` (undefined `authService`) and `dashboard/public.controller.spec.ts` (undefined `prisma`). Added local test setup inside each standalone block so tests no longer rely on outer-scope variables. Result: API tests back to green (49/49 files, 1192/1192 tests).
+- [x] **Monitor failure confirmations (debounce alert noise)** - Added per-monitor `confirmations` setting (1-5) across API DTOs, service layer, Prisma schema + migration, scheduler/check runtime type mapping, and Monitors UI create/edit flow. Alerting logic now triggers only when unhealthy streak crosses the configured threshold (and avoids repeated alerts after threshold is already crossed). Added focused tests covering first-failure suppression, threshold crossing, default immediate mode, and no-repeat behavior.
 
-- [x] **Tool registry expansion: 164 → 302 tools** — Added 138 new tools across all 17 categories: Container (containerd, CRI-O, KEDA, Flagger, MicroK8s, Talos, Crossplane, Cluster API), CI/CD (Argo Workflows, Dagger, Earthly, Buildkite Agent, Spinnaker, ARC, GitLab Runner, Argo Events), Database (CouchDB, Neo4j, ArangoDB, ScyllaDB, YugabyteDB, TiDB, FerretDB, EdgeDB, QuestDB, Dragonfly, Couchbase, RethinkDB), Observability (Kibana, Logstash, Fluentd, Fluent Bit, SigNoz, OpenObserve, Pyroscope, Coroot, Quickwit, OpenSearch Dashboards), Security (OPA, Kyverno, Boundary, Consul, External Secrets, Grype, Syft, Semgrep, Infisical, OpenBao, Checkov, SOPS), Networking (Cilium, Headscale, cloudflared, ZeroTier, OpenVPN, Netmaker, FRP, Unbound, CoreDNS, Technitium DNS, ingress-nginx), Storage (OpenEBS, Velero, Restic, Kopia, BorgBackup, Duplicati, SeaweedFS, JuiceFS, Ceph), CMS (KeystoneJS, Craft CMS, ProcessWire, Microweber, Cockpit CMS, Decap CMS), Communication (Jitsi Meet, BigBlueButton, LiveKit, ejabberd, Prosody, Mumble, Coturn, Gotify, ntfy), Media (Kavita, Komga, Calibre-Web, Audiobookshelf, Sonarr, Radarr, Lidarr, Prowlarr, Overseerr, Tautulli, Bazarr), Dev Tools (Deno, Bun, DevPod, Act, Hoppscotch, Gitness, Plane, AppFlowy, Excalidraw, draw.io, Mermaid, Outline, BookStack, Wiki.js, NocoDB, Baserow), Infrastructure (Vagrant, Waypoint, CDKTF, Serverless Framework, AWS CDK, Atlantis, Infracost), Messaging (Apache Pulsar, RocketMQ, NSQ, EMQX, HiveMQ, Apache NiFi), API (KrakenD, Gravitee, SuperTokens, Logto, Zitadel, Casdoor), Cloud (k3d, kind, Minikube, kubeadm).
+- [x] **Incident management + SVG status badges** - Full incident tracking: Prisma schema (Incident, IncidentUpdate, IncidentMonitor + enums), migration, backend CRUD API (`/v1/incidents`), incidents service with timeline updates and monitor linking. Public SVG badge endpoint (`GET /v1/public/badge/:monitorId.svg`) - shields.io-style flat/flat-square/for-the-badge styles, live up/degraded/down/paused status with colour coding, 60s cache. Frontend `/incidents` page: create/edit/delete/post-update modals, status/severity badges, expandable rows with timeline + affected monitors, active/resolved sections. Monitors page: embed badge button (Shield icon) per row with Markdown/HTML/URL copy snippets. Nav updated with AlertOctagon icon.
 
-- [x] **Fix maven/helm testVersionConnection handlers** — Added explicit maven (Maven Central solrsearch API) and helm (Artifact Hub API) branches in `testVersionConnection()` — previously both providers silently fell through to Docker Hub, returning wrong data. Replaced 2 stale `as never` test hacks with 8 proper tests covering happy paths, empty-result, API errors, and invalid target formats. Tests: 953 → 963.
+- [x] **Tool registry expansion: 302 → 382 tools** - Added 80 additional pre-configured tools across existing categories with broad self-hosting coverage: Email/Comms (Mailcow, Mailu, Stalwart Mail, Roundcube, Mailpit, Mastodon, Misskey, PeerTube, Lemmy), Infra & networking (NetBox, OPNsense, pfSense, OpenWrt, LibreSpeed, Speedtest Tracker, Coolify, CapRover, Dokku), data/admin (pgAdmin, Adminer, CloudBeaver, InfluxDB 2.x, Garnet), home/self-hosted apps (Paperless-ngx, Mealie, Grocy, Tandoor, ownCloud), and additional media/dev ecosystem tools (Jellyseerr, Readarr, Mylar3, Stremio Server, JupyterHub, Gitpod, Hono, Clair). Registry now has 382 unique tools with no duplicate IDs.
 
-- [x] **Status Pages build stabilization** — Fixed failing web build by removing obsolete conflicting route `app/status/[userId]` (conflicted with new slug route `app/status/[slug]`) and repairing corrupted JSX references in status page editor (`widget.type`, `widget.config.label`, size display string). Build now passes and all tests green.
+- [x] **Test suite stabilization (scoping regressions)** - Fixed two broken spec blocks introduced outside their parent `describe` scopes: `auth.controller.spec.ts` (undefined `authService`) and `dashboard/public.controller.spec.ts` (undefined `prisma`). Added local test setup inside each standalone block so tests no longer rely on outer-scope variables. Result: API tests back to green (49/49 files, 1192/1192 tests).
 
-- [x] **Scheduler perf: eliminate N+1 queries + concurrent monitor checks** — Refactored `ChecksScheduler.tick()` to load all enabled monitors with their latest run in a single `findMany` (one DB round-trip instead of N+1). Due monitors now dispatched concurrently via `Promise.allSettled` rather than sequentially. Added structured logger for failed-tick warnings.
+- [x] **Tool registry expansion: 164 → 302 tools** - Added 138 new tools across all 17 categories: Container (containerd, CRI-O, KEDA, Flagger, MicroK8s, Talos, Crossplane, Cluster API), CI/CD (Argo Workflows, Dagger, Earthly, Buildkite Agent, Spinnaker, ARC, GitLab Runner, Argo Events), Database (CouchDB, Neo4j, ArangoDB, ScyllaDB, YugabyteDB, TiDB, FerretDB, EdgeDB, QuestDB, Dragonfly, Couchbase, RethinkDB), Observability (Kibana, Logstash, Fluentd, Fluent Bit, SigNoz, OpenObserve, Pyroscope, Coroot, Quickwit, OpenSearch Dashboards), Security (OPA, Kyverno, Boundary, Consul, External Secrets, Grype, Syft, Semgrep, Infisical, OpenBao, Checkov, SOPS), Networking (Cilium, Headscale, cloudflared, ZeroTier, OpenVPN, Netmaker, FRP, Unbound, CoreDNS, Technitium DNS, ingress-nginx), Storage (OpenEBS, Velero, Restic, Kopia, BorgBackup, Duplicati, SeaweedFS, JuiceFS, Ceph), CMS (KeystoneJS, Craft CMS, ProcessWire, Microweber, Cockpit CMS, Decap CMS), Communication (Jitsi Meet, BigBlueButton, LiveKit, ejabberd, Prosody, Mumble, Coturn, Gotify, ntfy), Media (Kavita, Komga, Calibre-Web, Audiobookshelf, Sonarr, Radarr, Lidarr, Prowlarr, Overseerr, Tautulli, Bazarr), Dev Tools (Deno, Bun, DevPod, Act, Hoppscotch, Gitness, Plane, AppFlowy, Excalidraw, draw.io, Mermaid, Outline, BookStack, Wiki.js, NocoDB, Baserow), Infrastructure (Vagrant, Waypoint, CDKTF, Serverless Framework, AWS CDK, Atlantis, Infracost), Messaging (Apache Pulsar, RocketMQ, NSQ, EMQX, HiveMQ, Apache NiFi), API (KrakenD, Gravitee, SuperTokens, Logto, Zitadel, Casdoor), Cloud (k3d, kind, Minikube, kubeadm).
 
-- [x] **Fix FadeIn animation component** — Replaced no-op placeholder (caused by framer-motion v12 / React 19 typing incompatibility) with CSS keyframe + Intersection Observer implementation. All scroll-triggered entrance animations on landing, login, dashboard, and monitors pages now work correctly. Dependency-free, performant, React 19 compatible.
+- [x] **Fix maven/helm testVersionConnection handlers** - Added explicit maven (Maven Central solrsearch API) and helm (Artifact Hub API) branches in `testVersionConnection()` - previously both providers silently fell through to Docker Hub, returning wrong data. Replaced 2 stale `as never` test hacks with 8 proper tests covering happy paths, empty-result, API errors, and invalid target formats. Tests: 953 → 963.
 
-- [x] **Browser extension** — Chrome MV3 extension (`@pulsedock/extension`) with one-click monitor creation, context menu integration, dark theme popup, API key auth, settings panel, and dashboard shortcut. Documented in `docs/EXTENSION.md`.
-- [x] **CLI tool** — `pulsedock check <url>` one-shot HTTP checker + `monitors list/check` + `config` commands. New package `@pulsedock/cli` with 10 unit tests, fully wired into root build/test, documented in `docs/CLI.md`.
-- [x] **Mobile-responsive PWA improvements** — Added contextual loading skeletons for Monitors/Dashboard/Alerts, installability banner (`beforeinstallprompt` + iOS hint), service worker registration, and offline fallback route (`/offline`) with cached offline support.
-- [x] **Add proper API versioning strategy** — Implemented v2 API surface: `GET /v2/monitors` (paginated + filtering + sorting), `GET /v2/alert-channels` (paginated + usedByCount + secret redaction), `GET /v2/checks` (paginated check history + date-range + level filters), `GET /v2/system/info`, `GET /v2/system/versions`. v1 unchanged. 89 integration tests passing.
-- [x] **Plugin system for custom monitor types** — Delivered plugin contracts/registry/sandbox + plugin execution path, added starter plugin (`http.response-match`), exposed plugin metadata + config UX in Monitors UI, and documented packaging/verification flow (`docs/PLUGINS.md`).
-- [x] **Docker Compose / Kubernetes manifests for production** — Added production deployment docs, fixed compose prod env keys, and shipped baseline Kubernetes manifests (`k8s/base` + `k8s/overlays/prod`) with ingress/service/deployment/statefulset resources.
-- [x] **WebSocket support for real-time monitor updates** — Added server push for check + alert activity (`monitor.checked`, `alert.triggered`) and frontend live subscriptions on Dashboard/Monitors with immediate UI updates.
+- [x] **Status Pages build stabilization** - Fixed failing web build by removing obsolete conflicting route `app/status/[userId]` (conflicted with new slug route `app/status/[slug]`) and repairing corrupted JSX references in status page editor (`widget.type`, `widget.config.label`, size display string). Build now passes and all tests green.
+
+- [x] **Scheduler perf: eliminate N+1 queries + concurrent monitor checks** - Refactored `ChecksScheduler.tick()` to load all enabled monitors with their latest run in a single `findMany` (one DB round-trip instead of N+1). Due monitors now dispatched concurrently via `Promise.allSettled` rather than sequentially. Added structured logger for failed-tick warnings.
+
+- [x] **Fix FadeIn animation component** - Replaced no-op placeholder (caused by framer-motion v12 / React 19 typing incompatibility) with CSS keyframe + Intersection Observer implementation. All scroll-triggered entrance animations on landing, login, dashboard, and monitors pages now work correctly. Dependency-free, performant, React 19 compatible.
+
+- [x] **Browser extension** - Chrome MV3 extension (`@pulsedock/extension`) with one-click monitor creation, context menu integration, dark theme popup, API key auth, settings panel, and dashboard shortcut. Documented in `docs/EXTENSION.md`.
+- [x] **CLI tool** - `pulsedock check <url>` one-shot HTTP checker + `monitors list/check` + `config` commands. New package `@pulsedock/cli` with 10 unit tests, fully wired into root build/test, documented in `docs/CLI.md`.
+- [x] **Mobile-responsive PWA improvements** - Added contextual loading skeletons for Monitors/Dashboard/Alerts, installability banner (`beforeinstallprompt` + iOS hint), service worker registration, and offline fallback route (`/offline`) with cached offline support.
+- [x] **Add proper API versioning strategy** - Implemented v2 API surface: `GET /v2/monitors` (paginated + filtering + sorting), `GET /v2/alert-channels` (paginated + usedByCount + secret redaction), `GET /v2/checks` (paginated check history + date-range + level filters), `GET /v2/system/info`, `GET /v2/system/versions`. v1 unchanged. 89 integration tests passing.
+- [x] **Plugin system for custom monitor types** - Delivered plugin contracts/registry/sandbox + plugin execution path, added starter plugin (`http.response-match`), exposed plugin metadata + config UX in Monitors UI, and documented packaging/verification flow (`docs/PLUGINS.md`).
+- [x] **Docker Compose / Kubernetes manifests for production** - Added production deployment docs, fixed compose prod env keys, and shipped baseline Kubernetes manifests (`k8s/base` + `k8s/overlays/prod`) with ingress/service/deployment/statefulset resources.
+- [x] **WebSocket support for real-time monitor updates** - Added server push for check + alert activity (`monitor.checked`, `alert.triggered`) and frontend live subscriptions on Dashboard/Monitors with immediate UI updates.
 
 ## Next Up (Priority Order)
 
@@ -100,75 +98,75 @@
 
 ---
 
-### 🔴 STATUS PAGE — Widget System Refactor (HIGH PRIORITY)
+### 🔴 STATUS PAGE - Widget System Refactor (HIGH PRIORITY)
 
 > Current state: Widgets exist but show empty/meaningless content when monitors aren't configured. The editor gives no feedback when a widget is broken. The public page silently shows nothing. This is a complete UX failure for the core feature.
 
-- [x] **Full widget audit** — Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
-- [x] **Editor widget config panel overhaul** — The properties panel (right sidebar) now clearly shows required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), and richer field labels/help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. 2026-03-21 20:40 UTC: shipped field-level required UX polish — required asterisks, inline validation text, and red invalid styling for monitor selector, Security Advisory packageName, and Embed URL inputs. 2026-03-21 21:09 UTC: completed broader helper-text pass with contextual monitor-scope guidance plus per-widget "Setup tips" hints for iframe/security/dependency map/environment map/service/TOC/tab/column/chart widgets.)*
-- [x] **Canvas unconfigured widget indicator** — In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
-- [x] **Widget empty states on public page** — Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
-- [x] **Widget data loading** — router.refresh() replaces hard page reloads for live status updates (WebSocket + polling). Per-widget incremental hydration deferred — full RSC route refresh is acceptable for current scale.
-- [x] **Widget design overhaul** — Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. *(2026-03-21: completed per-widget last-updated timestamp pass across data-fetch cards using `fetchedAt` + relative time metadata; "Preview with data" mode already shipped.)*
-- [x] **"Preview with data" mode** — "Full Preview" button in editor toolbar opens `/status-pages/:id/preview` in a new tab. SSR page with authenticated API (`/v1/status-pages/:id/preview` + `/v1/status-pages/:id/preview/widget/:widgetId`) renders the exact public layout with real live widget data, regardless of publish state. Amber preview banner shown at top.
-- [x] **Widget validation before publish** — When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
+- [x] **Full widget audit** - Go through all 70+ widget types. For each: does it render correct data? Does it fail gracefully? Does the editor show a clear configuration UI? Test every widget end-to-end with real monitor data. *(2026-03-20: added automated `npm run widget:audit` coverage check for widget type parity across type union, editor palette, public renderer, and API resolver allowlist; fixed missing runtime render paths for `metric-counter`, `last-updated-footer`, and `monitor-group-status` aliases. Remaining: visual/UX/manual per-widget E2E with real monitor datasets.)*
+- [x] **Editor widget config panel overhaul** - The properties panel (right sidebar) now clearly shows required fields with validation, "⚠️ No monitor selected" warning on unconfigured widgets (orange badge on canvas), live preview of widget with real data (not placeholder), and richer field labels/help text. *(2026-03-20: added in-panel "Configuration needed" warnings with per-widget required-field checks; fixed JSON config editors for `column-layout` and `table-of-contents` to persist parsed arrays instead of invalid string/boolean casts. 2026-03-21 20:40 UTC: shipped field-level required UX polish - required asterisks, inline validation text, and red invalid styling for monitor selector, Security Advisory packageName, and Embed URL inputs. 2026-03-21 21:09 UTC: completed broader helper-text pass with contextual monitor-scope guidance plus per-widget "Setup tips" hints for iframe/security/dependency map/environment map/service/TOC/tab/column/chart widgets.)*
+- [x] **Canvas unconfigured widget indicator** - In the editor canvas, widgets missing required config should show an orange "⚠️ Configure required" overlay badge so the user knows at a glance which widgets need setup.
+- [x] **Widget empty states on public page** - Instead of invisible empty boxes, show a subtle "Waiting for data" or "Not configured" state that's invisible to public viewers but helpful in preview mode.
+- [x] **Widget data loading** - router.refresh() replaces hard page reloads for live status updates (WebSocket + polling). Per-widget incremental hydration deferred - full RSC route refresh is acceptable for current scale.
+- [x] **Widget design overhaul** - Added `WidgetCard` consistent header system, `StatusDot`, `SeverityBadge`, `TrendArrow` helpers. Redesigned CheckHistoryFeed, IncidentHistory, MttrMttfCards, LatencyPercentilesCard, MultiMonitorStatusGrid. *(2026-03-21: completed per-widget last-updated timestamp pass across data-fetch cards using `fetchedAt` + relative time metadata; "Preview with data" mode already shipped.)*
+- [x] **"Preview with data" mode** - "Full Preview" button in editor toolbar opens `/status-pages/:id/preview` in a new tab. SSR page with authenticated API (`/v1/status-pages/:id/preview` + `/v1/status-pages/:id/preview/widget/:widgetId`) renders the exact public layout with real live widget data, regardless of publish state. Amber preview banner shown at top.
+- [x] **Widget validation before publish** - When clicking Publish, check if any widgets are unconfigured and warn the user. *(Implemented: pre-publish guard lists unconfigured widget names/count and requires explicit confirmation to continue.)*
 
 ---
 
-### 🔴 SECURITY — Critical Gaps
+### 🔴 SECURITY - Critical Gaps
 
-- [x] **2FA / TOTP (Two-Factor Authentication)** — Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
-- [x] **CSRF Protection** — Double-submit cookie pattern implemented. `GET /v1/auth/csrf` issues non-httpOnly cookie + returns token. `CsrfMiddleware` validates `X-CSRF-Token` header against cookie on all mutating routes (timingSafeEqual). Web `api.ts` auto-injects token. API key / Bearer callers exempt.
-- [x] **Account lockout after failed login attempts** — After 5 consecutive failed logins, lock account for 15 minutes. Log lockout events to audit log. Notify user via email.
-- [x] **Email verification on registration** — New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
-- [x] **Password strength enforcement** — Enforce minimum 12 chars, complexity rules (upper/lower/digit/special). Show strength indicator in UI. Reject weak passwords at API level.
-- [x] **Stricter rate limiting on auth endpoints** — Auth routes (`/auth/login`, `/auth/register`, `/auth/forgot-password`) need much tighter limits (e.g. 5 req/min per IP), separate from the global 120/min limit.
-- [x] **Audit log export (CSV/JSON)** — Users/admins can export their audit log. Useful for compliance. Add export button on audit log page.
-- [x] **Session activity & anomaly detection** — Log IP + user agent per session. Warn user if new login from unknown IP/device. Show in active sessions list.
-- [x] **Secure password reset flow review** — Ensure reset tokens are: single-use, short-lived (15min), invalidated after use, and not exposed in URLs (use POST body instead).
-- [x] **Security headers review** — Audit helmet config: ensure `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` all set correctly.
-- [x] **Input sanitization for stored content** — Sanitize all user-provided text that gets rendered in UI (monitor names, descriptions, etc.) to prevent stored XSS.
-
----
-
-### 🟠 FRONTEND / UX — Major Gaps
-
-- [x] **Accessibility (a11y) audit and fixes** — Added skip-to-content link, global focus-visible ring (CSS), `role="dialog"` + `aria-modal` + `aria-labelledby` + focus-trap (Tab/Shift+Tab) to both Modal components, `aria-label` on all icon-only buttons (Edit/Delete in alerts/projects tables, pagination prev/next), `aria-live="polite"` on pagination counters, `aria-label` on navigation + user menu button, `id="main-content"` + `role="main"` on main layout area.
-- [x] **Empty states for all pages** — Every list page (Monitors, Alerts, Projects, etc.) needs a proper empty state with illustration, message, and CTA ("Create your first monitor →"). Currently likely just blank.
-- [x] **Error boundaries and user-friendly error pages** — Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
-- [x] **Form validation UX** — All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
-- [x] **Onboarding flow for new users** — 3-step "Get Started" checklist on dashboard: create monitor → set up alert channel → explore dashboard. Progress bar, per-user localStorage dismiss, all-done celebration banner. Auto-marks steps complete from real API data.
-- [x] **Loading states consistency** — Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
-- [x] **Toast / notification system** — Ensure all success/error actions show consistent toasts. No silent failures.
-- [x] **Mobile UX audit** — Audited all 9 pages at 375px. Fixed: monitors/versions table columns progressively hidden at sm/md/lg breakpoints (Name+Status+Action always visible), versions page header buttons responsive text (New vs Create version check), admin metrics grid-cols-1 sm:grid-cols-3. All 8 pages return 200, no horizontal overflow.
-- [x] **Keyboard navigation** — Modals (both Modal.tsx and modal-framework.tsx) now trap focus with Tab/Shift+Tab cycle and close on Escape. Skip-to-content link visible on first Tab press. Global focus-visible ring ensures all interactive elements show keyboard focus indicator.
-- [x] **Dark mode consistency audit** — Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
+- [x] **2FA / TOTP (Two-Factor Authentication)** - Implement TOTP-based 2FA (e.g. via `otplib`). Add setup flow (QR code + secret), verify endpoint, enforce on login if enabled. Store encrypted TOTP secret per user. Add recovery codes. UI: Account settings page.
+- [x] **CSRF Protection** - Double-submit cookie pattern implemented. `GET /v1/auth/csrf` issues non-httpOnly cookie + returns token. `CsrfMiddleware` validates `X-CSRF-Token` header against cookie on all mutating routes (timingSafeEqual). Web `api.ts` auto-injects token. API key / Bearer callers exempt.
+- [x] **Account lockout after failed login attempts** - After 5 consecutive failed logins, lock account for 15 minutes. Log lockout events to audit log. Notify user via email.
+- [x] **Email verification on registration** - New users must verify their email before accessing the app. Send verification link via email. Block login until verified.
+- [x] **Password strength enforcement** - Enforce minimum 12 chars, complexity rules (upper/lower/digit/special). Show strength indicator in UI. Reject weak passwords at API level.
+- [x] **Stricter rate limiting on auth endpoints** - Auth routes (`/auth/login`, `/auth/register`, `/auth/forgot-password`) need much tighter limits (e.g. 5 req/min per IP), separate from the global 120/min limit.
+- [x] **Audit log export (CSV/JSON)** - Users/admins can export their audit log. Useful for compliance. Add export button on audit log page.
+- [x] **Session activity & anomaly detection** - Log IP + user agent per session. Warn user if new login from unknown IP/device. Show in active sessions list.
+- [x] **Secure password reset flow review** - Ensure reset tokens are: single-use, short-lived (15min), invalidated after use, and not exposed in URLs (use POST body instead).
+- [x] **Security headers review** - Audit helmet config: ensure `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` all set correctly.
+- [x] **Input sanitization for stored content** - Sanitize all user-provided text that gets rendered in UI (monitor names, descriptions, etc.) to prevent stored XSS.
 
 ---
 
-### 🟡 FEATURES — Missing / Incomplete
+### 🟠 FRONTEND / UX - Major Gaps
 
-- [x] **More version providers** — Added npm (registry.npmjs.org), PyPI (pypi.org/pypi/{pkg}/json), Cargo (crates.io). Maven Central + Helm TBD.
-- [x] **Webhook alert channel** — Webhook URL config + HTTP POST with JSON payload implemented in `alerts.service.ts`. UI supports create/edit/test flow.
-- [x] **Slack alert channel** — Slack incoming webhook URL config implemented. UI + backend complete.
-- [x] **Discord alert channel** — Discord webhook URL config + embed payload implemented. UI + backend complete.
-- [x] **Telegram alert channel** — Bot token + chat ID implemented via Telegram Bot API. UI + backend complete.
-- [x] **Public status page polish** — Added latency sparklines (inline SVG per monitor), structured incident history (active + resolved with durations), per-monitor uptime%, active incidents banner. Custom domain support deferred (infra work).
-- [x] **Monitor groups / tags** — Prisma Tag + MonitorTag models, migration applied. API: GET/POST/PATCH/DELETE /v1/tags, monitors list/create/update accept tags[]. UI: tag filter bar on monitors page, tag chips in rows, tag input (Enter/comma) in create+edit modal.
-- [x] **Bulk actions** — Select multiple monitors → bulk enable/disable/delete/run now. Checkbox per row + select-all header, bulk action bar, POST /v1/monitors/bulk API endpoint.
-- [x] **Monitor templates** — Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
-- [x] **Response time tracking** — Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
-- [x] **Check history charts** — Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
-- [x] **Public Status Page Builder (Drag & Drop)** — Delivered: Prisma schema + migration, full CRUD API (create/update/publish/delete/public endpoint), drag-and-drop editor (`dnd-kit`, 20 widget types, resizable/repositionable), public view at `/status/[slug]` (SSR, auto-refresh), publish flow + slug management, password protection (bcrypt), status-pages list+create UI. 7 integration tests added.
+- [x] **Accessibility (a11y) audit and fixes** - Added skip-to-content link, global focus-visible ring (CSS), `role="dialog"` + `aria-modal` + `aria-labelledby` + focus-trap (Tab/Shift+Tab) to both Modal components, `aria-label` on all icon-only buttons (Edit/Delete in alerts/projects tables, pagination prev/next), `aria-live="polite"` on pagination counters, `aria-label` on navigation + user menu button, `id="main-content"` + `role="main"` on main layout area.
+- [x] **Empty states for all pages** - Every list page (Monitors, Alerts, Projects, etc.) needs a proper empty state with illustration, message, and CTA ("Create your first monitor →"). Currently likely just blank.
+- [x] **Error boundaries and user-friendly error pages** - Ensure all pages have error.tsx with helpful messages. API errors should show toast with actionable info, not just "Something went wrong".
+- [x] **Form validation UX** - All forms should show inline validation errors, not just top-level. Required field indicators. Disable submit until valid.
+- [x] **Onboarding flow for new users** - 3-step "Get Started" checklist on dashboard: create monitor → set up alert channel → explore dashboard. Progress bar, per-user localStorage dismiss, all-done celebration banner. Auto-marks steps complete from real API data.
+- [x] **Loading states consistency** - Audit every data-fetching component. Ensure all have proper loading skeletons, not just spinners or blank screens.
+- [x] **Toast / notification system** - Ensure all success/error actions show consistent toasts. No silent failures.
+- [x] **Mobile UX audit** - Audited all 9 pages at 375px. Fixed: monitors/versions table columns progressively hidden at sm/md/lg breakpoints (Name+Status+Action always visible), versions page header buttons responsive text (New vs Create version check), admin metrics grid-cols-1 sm:grid-cols-3. All 8 pages return 200, no horizontal overflow.
+- [x] **Keyboard navigation** - Modals (both Modal.tsx and modal-framework.tsx) now trap focus with Tab/Shift+Tab cycle and close on Escape. Skip-to-content link visible on first Tab press. Global focus-visible ring ensures all interactive elements show keyboard focus indicator.
+- [x] **Dark mode consistency audit** - Check all pages/components for hardcoded colors that don't respect dark mode. Fix any white-on-white or invisible elements.
+
+---
+
+### 🟡 FEATURES - Missing / Incomplete
+
+- [x] **More version providers** - Added npm (registry.npmjs.org), PyPI (pypi.org/pypi/{pkg}/json), Cargo (crates.io). Maven Central + Helm TBD.
+- [x] **Webhook alert channel** - Webhook URL config + HTTP POST with JSON payload implemented in `alerts.service.ts`. UI supports create/edit/test flow.
+- [x] **Slack alert channel** - Slack incoming webhook URL config implemented. UI + backend complete.
+- [x] **Discord alert channel** - Discord webhook URL config + embed payload implemented. UI + backend complete.
+- [x] **Telegram alert channel** - Bot token + chat ID implemented via Telegram Bot API. UI + backend complete.
+- [x] **Public status page polish** - Added latency sparklines (inline SVG per monitor), structured incident history (active + resolved with durations), per-monitor uptime%, active incidents banner. Custom domain support deferred (infra work).
+- [x] **Monitor groups / tags** - Prisma Tag + MonitorTag models, migration applied. API: GET/POST/PATCH/DELETE /v1/tags, monitors list/create/update accept tags[]. UI: tag filter bar on monitors page, tag chips in rows, tag input (Enter/comma) in create+edit modal.
+- [x] **Bulk actions** - Select multiple monitors → bulk enable/disable/delete/run now. Checkbox per row + select-all header, bulk action bar, POST /v1/monitors/bulk API endpoint.
+- [x] **Monitor templates** - Pre-built templates for common checks (GitHub latest release, Docker Hub, npm package). One-click setup.
+- [x] **Response time tracking** - Record and display HTTP response time per check. Show trend chart. Alert if response time exceeds threshold.
+- [x] **Check history charts** - Visual timeline of check results per monitor. Show success/fail over time as a sparkline or bar chart.
+- [x] **Public Status Page Builder (Drag & Drop)** - Delivered: Prisma schema + migration, full CRUD API (create/update/publish/delete/public endpoint), drag-and-drop editor (`dnd-kit`, 20 widget types, resizable/repositionable), public view at `/status/[slug]` (SSR, auto-refresh), publish flow + slug management, password protection (bcrypt), status-pages list+create UI. 7 integration tests added.
 
   <details>
   <summary>Full Feature Spec</summary>
 
-  **Goal:** Allow admins to build a fully customizable public status page from a set of widgets. The page can be published and shared with a public URL — no login required for viewers.
+  **Goal:** Allow admins to build a fully customizable public status page from a set of widgets. The page can be published and shared with a public URL - no login required for viewers.
 
-  **Editor (Admin only — `/status/[id]/edit`):**
+  **Editor (Admin only - `/status/[id]/edit`):**
   - Drag-and-drop canvas using a grid-based layout (e.g. `react-grid-layout` or `dnd-kit` + custom grid)
-  - Widget palette on the left sidebar — drag widgets onto the canvas
+  - Widget palette on the left sidebar - drag widgets onto the canvas
   - Each widget is resizable and repositionable
   - Click any widget to open its config panel (right sidebar)
   - Toolbar: Save draft, Preview, Publish/Unpublish, Share link, Duplicate page, Delete page
@@ -210,11 +208,11 @@
   - Widget lock (prevent accidental moves), widget duplicate
   - Page-level settings panel: background color, font, accent color, favicon, custom CSS (advanced)
   - Responsive preview toggle: Desktop / Tablet / Mobile view in editor
-  - Real-time collaboration placeholder (future: OT/CRDT — note in spec for later)
+  - Real-time collaboration placeholder (future: OT/CRDT - note in spec for later)
   - Template gallery: start from pre-built layouts (Minimal, Full Dashboard, Incident Page, SLA Report)
 
   **Public View (`/status/[slug]`):**
-  - Renders the published layout — read-only, no auth required
+  - Renders the published layout - read-only, no auth required
   - Auto-refreshes data every 60s (SSE or polling)
   - Mobile-responsive: single column on small screens
   - Shows "Last updated: X seconds ago" footer
@@ -227,18 +225,18 @@
   - `layout` stores: `{ widgets: [{ id, type, x, y, w, h, config: {} }] }`
 
   **API endpoints:**
-  - `GET /v1/status-pages` — list my pages
-  - `POST /v1/status-pages` — create page
-  - `PATCH /v1/status-pages/:id` — update layout/config
-  - `POST /v1/status-pages/:id/publish` — publish/unpublish
+  - `GET /v1/status-pages` - list my pages
+  - `POST /v1/status-pages` - create page
+  - `PATCH /v1/status-pages/:id` - update layout/config
+  - `POST /v1/status-pages/:id/publish` - publish/unpublish
   - `DELETE /v1/status-pages/:id`
-  - `GET /v1/public/status/:slug` — public data endpoint (no auth)
-  - `GET /v1/public/status/:slug/widget/:widgetId` — individual widget data
+  - `GET /v1/public/status/:slug` - public data endpoint (no auth)
+  - `GET /v1/public/status/:slug/widget/:widgetId` - individual widget data
 
   **Implementation order:**
   1. DB schema + migrations
   2. API endpoints + widget data resolvers
-  3. Drag-and-drop editor (dnd-kit recommended — already tree-shakeable)
+  3. Drag-and-drop editor (dnd-kit recommended - already tree-shakeable)
   4. Widget components (public view)
   5. Public route + SSR/ISR rendering
   6. Publish flow + slug management
@@ -247,7 +245,7 @@
 
   </details>
 
-- [x] **Tool Registry — Pre-configured Version Check Library** — Delivered: 126 tools across 14 categories (Container, CI/CD, Database, Observability, Security, Networking, Storage, Dev Tools, Media, Infrastructure, Messaging, CMS, Communication, Cloud). Searchable `GET /v1/tool-registry` API (filter by q + category). ToolPicker UI integrated in Versions page. Simple Icons CDN for icons. 5 integration tests. Notable tools: Prometheus, Loki, Vault, Keycloak, Gitea, ArgoCD, Jellyfin, Immich, n8n, MinIO, Nextcloud, AdGuard, Pi-hole, Caddy, RabbitMQ, NATS, Terraform, OpenTofu, and more.
+- [x] **Tool Registry - Pre-configured Version Check Library** - Delivered: 126 tools across 14 categories (Container, CI/CD, Database, Observability, Security, Networking, Storage, Dev Tools, Media, Infrastructure, Messaging, CMS, Communication, Cloud). Searchable `GET /v1/tool-registry` API (filter by q + category). ToolPicker UI integrated in Versions page. Simple Icons CDN for icons. 5 integration tests. Notable tools: Prometheus, Loki, Vault, Keycloak, Gitea, ArgoCD, Jellyfin, Immich, n8n, MinIO, Nextcloud, AdGuard, Pi-hole, Caddy, RabbitMQ, NATS, Terraform, OpenTofu, and more.
 
   <details>
   <summary>Full Feature Spec</summary>
@@ -353,9 +351,9 @@
   Kong, APISIX, Tyk, Hasura, PostgREST, PocketBase, Hono, Fastify, NestJS
 
   **Implementation plan:**
-  1. Create `/packages/tool-registry/` — JSON files organized by category, loader, TypeScript types
+  1. Create `/packages/tool-registry/` - JSON files organized by category, loader, TypeScript types
   2. Bundle icon sprites or use a CDN (Simple Icons covers ~90% of logos)
-  3. API endpoint: `GET /v1/tool-registry` — returns full list (filterable), cached in memory
+  3. API endpoint: `GET /v1/tool-registry` - returns full list (filterable), cached in memory
   4. UI: ToolPicker component (searchable grid modal)
   5. Wire into "New Monitor" flow as step 1
   6. Auto-populate form fields when tool selected
@@ -365,246 +363,246 @@
 
   </details>
 
-- [x] **i18n / Internationalization** — Custom lightweight i18n context (no external dependency). EN + DE translations for landing page and login page. I18nProvider with localStorage persistence + browser locale auto-detection. LocaleSwitcher component in nav and login header. Type-safe message catalog in `lib/i18n/messages.ts`.
-- [x] **User profile page improvements** — Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
-- [x] **Admin dashboard improvements** — Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
-- [x] **Notification preferences** — Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` — alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
-- [x] **Import from Uptime Robot / BetterUptime** — Let users migrate from competitors by importing their monitors via JSON/CSV. Implemented `POST /v1/monitors/import-external` supporting Uptime Robot JSON, BetterUptime JSON, and generic CSV. Frontend modal with source picker + instructions. Duplicate URL detection, disabled monitor support. 6 tests added.
-- [x] **Maintenance Windows** — Full CRUD for scheduling maintenance windows (name, description, startsAt, endsAt, monitorIds). Backend: `GET/POST/PATCH/DELETE /v1/maintenance` + `/active` endpoint. Alert suppression during active windows. Frontend: `/maintenance` page with status badges (Active/Upcoming/Past), create/edit modal, calendar icon empty state. Nav item added.
-- [x] **TCP, SSL Certificate, Heartbeat monitor types** — Added 3 new monitor types: TCP port check (net.createConnection, latency), SSL certificate expiry (TLS cert days remaining, green >30d / yellow 10-30d / red <10d), Heartbeat (push-based, `POST /v1/heartbeat/:token` public endpoint, configurable timeout window). Prisma enum migration, CSRF exempt prefix, HeartbeatController, frontend form with conditional fields and ping URL copy button.
+- [x] **i18n / Internationalization** - Custom lightweight i18n context (no external dependency). EN + DE translations for landing page and login page. I18nProvider with localStorage persistence + browser locale auto-detection. LocaleSwitcher component in nav and login header. Type-safe message catalog in `lib/i18n/messages.ts`.
+- [x] **User profile page improvements** - Display name + timezone fields added. Prisma migration, API /v1/auth/profile PATCH updated, account page shows editable display name, email, timezone dropdown.
+- [x] **Admin dashboard improvements** - Show system stats: total monitors, total checks today, error rate, active users. Useful for self-hosted instances.
+- [x] **Notification preferences** - Per-user settings: which alert types to receive, quiet hours, notification frequency (instant vs digest). Backend `NotificationsService.shouldNotify()` wired into `AlertsService.notifyMonitorFailure()` - alerts now respect user preferences, quiet hours, and digest frequency. Alert text improved with level-appropriate emoji (🚨/⚠️/✅). 5 new tests added (204 total).
+- [x] **Import from Uptime Robot / BetterUptime** - Let users migrate from competitors by importing their monitors via JSON/CSV. Implemented `POST /v1/monitors/import-external` supporting Uptime Robot JSON, BetterUptime JSON, and generic CSV. Frontend modal with source picker + instructions. Duplicate URL detection, disabled monitor support. 6 tests added.
+- [x] **Maintenance Windows** - Full CRUD for scheduling maintenance windows (name, description, startsAt, endsAt, monitorIds). Backend: `GET/POST/PATCH/DELETE /v1/maintenance` + `/active` endpoint. Alert suppression during active windows. Frontend: `/maintenance` page with status badges (Active/Upcoming/Past), create/edit modal, calendar icon empty state. Nav item added.
+- [x] **TCP, SSL Certificate, Heartbeat monitor types** - Added 3 new monitor types: TCP port check (net.createConnection, latency), SSL certificate expiry (TLS cert days remaining, green >30d / yellow 10-30d / red <10d), Heartbeat (push-based, `POST /v1/heartbeat/:token` public endpoint, configurable timeout window). Prisma enum migration, CSRF exempt prefix, HeartbeatController, frontend form with conditional fields and ping URL copy button.
 
 ---
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [x] **Increase test coverage to >90%** — 706 tests passing. Line coverage at 90.03%, statement coverage 87.79%. auth.service 87%, checks.service 94%, monitors.service 83%, all controllers at 100%. Achieved via systematic subagent coverage sprints across all major services.
-- [x] **E2E tests (Playwright)** — `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
-- [x] **API documentation improvements** — All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
-- [x] **Performance profiling** — Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.
-- [x] **Log rotation & cleanup** — Docker json-file log driver rotation configured in docker-compose.prod.yml (api: 20MB×5, web: 10MB×5, postgres: 10MB×3) and dev (api: 20MB×3, web: 10MB×3). Logger enhanced with LOG_LEVEL env var filtering (debug/info/warn/error) and process.stdout.write for clean JSON-per-line. Comprehensive docs/LOGGING.md covers PM2, systemd+logrotate, and log aggregation options (Loki, ELK, etc).
-- [x] **Helm chart for Kubernetes** — `helm/pulsedock/` with 19 templates (API, Web, Postgres, Redis, Ingress, HPA, ConfigMap, Secret, helpers). Auto-computes DATABASE_URL and REDIS_URL. `helm lint` clean. Full values reference in `docs/HELM.md`.
+- [x] **Increase test coverage to >90%** - 2246 API tests passing. Line coverage 93.68%, statement coverage 91.8%, branch coverage 82.09%. All controllers at 100%, grafana 100%, backup 100%, plan 100%, checks 91%, alerts 90%, status-pages 86%. Achieved via systematic subagent coverage sprints across all major services.
+- [x] **E2E tests (Playwright)** - `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
+- [x] **API documentation improvements** - All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
+- [x] **Performance profiling** - Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.
+- [x] **Log rotation & cleanup** - Docker json-file log driver rotation configured in docker-compose.prod.yml (api: 20MB×5, web: 10MB×5, postgres: 10MB×3) and dev (api: 20MB×3, web: 10MB×3). Logger enhanced with LOG_LEVEL env var filtering (debug/info/warn/error) and process.stdout.write for clean JSON-per-line. Comprehensive docs/LOGGING.md covers PM2, systemd+logrotate, and log aggregation options (Loki, ELK, etc).
+- [x] **Helm chart for Kubernetes** - `helm/pulsedock/` with 19 templates (API, Web, Postgres, Redis, Ingress, HPA, ConfigMap, Secret, helpers). Auto-computes DATABASE_URL and REDIS_URL. `helm lint` clean. Full values reference in `docs/HELM.md`.
 
 ---
 
 ### Blocked/On Hold
-- [x] **Fix all npm audit vulnerabilities** — HIGH severity hono vulns resolved upstream (hono updated via @prisma/dev). Remaining: 9 moderate vulns (`file-type` via @nestjs/common, `lodash` via @prisma/dev) — both require breaking changes (NestJS v11 or Prisma downgrade). Monitoring for upstream fixes.
+- [x] **Fix all npm audit vulnerabilities** - HIGH severity hono vulns resolved upstream (hono updated via @prisma/dev). Remaining: 9 moderate vulns (`file-type` via @nestjs/common, `lodash` via @prisma/dev) - both require breaking changes (NestJS v11 or Prisma downgrade). Monitoring for upstream fixes.
 
 ---
 
 ### Completed Phases (Reference)
 
 #### Phase 1: Refactor & Harden
-✅ **Phase 1: Refactor & Harden** — Tailwind migration, TypeScript strict mode, security (helmet/CORS/CSP), input validation, structured logging, auth hardening
-✅ **Phase 2: Landing & Login** — Apple-like design, Framer Motion animations, dark theme, metadata/OG tags, responsive
-✅ **Phase 3: Dashboard & App UI** — All 9 pages with CRUD, glassmorphism cards, dark theme, proper layouts
-✅ **Phase 4: API & Backend** — 74 tests passing, Swagger docs, health/metrics endpoints, integration tests
-✅ **Phase 5: DevOps & Docs** — Docker (dev+prod), GitHub Actions CI/CD, README/CHANGELOG/CONTRIBUTING
-✅ **Phase 6: Features** — All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
+✅ **Phase 1: Refactor & Harden** - Tailwind migration, TypeScript strict mode, security (helmet/CORS/CSP), input validation, structured logging, auth hardening
+✅ **Phase 2: Landing & Login** - Apple-like design, Framer Motion animations, dark theme, metadata/OG tags, responsive
+✅ **Phase 3: Dashboard & App UI** - All 9 pages with CRUD, glassmorphism cards, dark theme, proper layouts
+✅ **Phase 4: API & Backend** - 74 tests passing, Swagger docs, health/metrics endpoints, integration tests
+✅ **Phase 5: DevOps & Docs** - Docker (dev+prod), GitHub Actions CI/CD, README/CHANGELOG/CONTRIBUTING
+✅ **Phase 6: Features** - All notification channels, public status pages, API keys, import/export, dark/light toggle, visual UI/UX audit
 
-## Next Up — In Progress / Todo
+## Next Up - In Progress / Todo
 
 ### 🔴 PulseDock Agent (HIGH PRIORITY)
 
-- [x] **PulseDock Agent — local version reporter with copy-paste onboarding** — Lightweight agent (Docker container + binary) that reports versions of tools without external APIs.
+- [x] **PulseDock Agent - local version reporter with copy-paste onboarding** - Lightweight agent (Docker container + binary) that reports versions of tools without external APIs.
 
   **Delivered:**
   - `POST /v1/agent/report` + `GET /v1/agent/status` API endpoints with API key auth
   - `packages/agent/` Node.js package with 16 built-in shell checks (Proxmox, pfSense, OpenWRT, Docker, PostgreSQL, MySQL, nginx, etc.)
   - Agent Dockerfile (multi-stage Alpine) + AGENT_TOOL_IDS env var filtering
-  - Frontend tab switcher: **Docker Run** / **Compose** / **Shell Script** — copy button per snippet
+  - Frontend tab switcher: **Docker Run** / **Compose** / **Shell Script** - copy button per snippet
   - AGENT_TOOL_IDS pre-filled with registry tool ID
   - 'from registry' badge + readOnly target field when tool is selected
   - Link to /account#api-keys for API key creation
   - 10 AgentService unit tests
-  - `docs/AGENT.md` — quick start, config format, built-in checks, security docs
-  - `docs/NGINX.md` — nginx reverse proxy including WebSocket/socket.io config
+  - `docs/AGENT.md` - quick start, config format, built-in checks, security docs
+  - `docs/NGINX.md` - nginx reverse proxy including WebSocket/socket.io config
 
 ---
 
-## Next Up — Post Tool-Registry
+## Next Up - Post Tool-Registry
 
 > **WAIT:** Do not start these until the tool registry expansion and Agent feature are done.
 
 ### 🟠 UX / Flow Improvements (from 2026-03-16 session)
 
-- [x] **Status Pages — WebSocket through reverse proxy** — Added `docs/NGINX.md` with complete nginx config including `/api/socket.io/` location block with `proxy_http_version 1.1`, `Upgrade` + `Connection` headers, extended read/send timeouts, and `$connection_upgrade` map. Polling fallback remains for environments where WS can't be configured.
+- [x] **Status Pages - WebSocket through reverse proxy** - Added `docs/NGINX.md` with complete nginx config including `/api/socket.io/` location block with `proxy_http_version 1.1`, `Upgrade` + `Connection` headers, extended read/send timeouts, and `$connection_upgrade` map. Polling fallback remains for environments where WS can't be configured.
 
-- [x] **Versions page — Tool picker instance URL UX** — Step 1 shows required asterisk + dynamic placeholder for instance URL when requiresInstanceUrl=true. Missing URL blocks Next button (validation in `missing[]`). Target field locked (readOnly) with 'from registry' badge when tool is from registry — user can 'Clear tool selection' to edit manually.
+- [x] **Versions page - Tool picker instance URL UX** - Step 1 shows required asterisk + dynamic placeholder for instance URL when requiresInstanceUrl=true. Missing URL blocks Next button (validation in `missing[]`). Target field locked (readOnly) with 'from registry' badge when tool is from registry - user can 'Clear tool selection' to edit manually.
 
-- [x] **Status Pages — Create modal slug edge cases** — Added inline validation: red border + error text when slug < 3 chars is manually entered. Submit button disabled until valid.
+- [x] **Status Pages - Create modal slug edge cases** - Added inline validation: red border + error text when slug < 3 chars is manually entered. Submit button disabled until valid.
 
-- [x] **Alert channels modal — Tab focus trap** — Confirmed: alerts page uses `Modal` component which has proper Tab/Shift+Tab focus trap since previous session. No custom modal found.
+- [x] **Alert channels modal - Tab focus trap** - Confirmed: alerts page uses `Modal` component which has proper Tab/Shift+Tab focus trap since previous session. No custom modal found.
 
-- [x] **Versions page — Tool header in form** — Steps 0 and 1 now show tool icon + name + description banner when tool is selected from registry.
+- [x] **Versions page - Tool header in form** - Steps 0 and 1 now show tool icon + name + description banner when tool is selected from registry.
 
 ### 🟡 Features (from 2026-03-16 session)
 
-- [x] **Tool Registry → Versions page integration** — All 5 spec items delivered:
+- [x] **Tool Registry → Versions page integration** - All 5 spec items delivered:
   1. Pre-fills all fields from registry entry (provider, target, interval, versionSource)
   2. Step 1 shows "Your {ToolName} URL" with required indicator + dynamic placeholder
   3. Auto-populates `appVersionEndpoint` from `urlTemplate` (strips `{{instanceUrl}}`)
-  4. Target field is readOnly with 'from registry' badge — 'Clear tool selection' to edit
+  4. Target field is readOnly with 'from registry' badge - 'Clear tool selection' to edit
   5. Steps 0 and 1 show tool icon + name + description banner
 
-- [x] **Monitors page — Templates for self-hosted app uptime** — Added 19 self-hosted app templates (Portainer, Gitea, GitLab, Grafana, Nextcloud, ArgoCD, Vault, Mattermost, Jellyfin, Immich, n8n, Traefik, MinIO, Keycloak, Home Assistant, Prometheus, Authentik, Authelia, Plausible). Tab UI: General / Self-Hosted Apps / Version Tracking. Placeholder URL hint shown for self-hosted group.
+- [x] **Monitors page - Templates for self-hosted app uptime** - Added 19 self-hosted app templates (Portainer, Gitea, GitLab, Grafana, Nextcloud, ArgoCD, Vault, Mattermost, Jellyfin, Immich, n8n, Traefik, MinIO, Keycloak, Home Assistant, Prometheus, Authentik, Authelia, Plausible). Tab UI: General / Self-Hosted Apps / Version Tracking. Placeholder URL hint shown for self-hosted group.
 
 ### 🔵 Infrastructure
 
-- [x] **dind auto-start on container restart** — HEARTBEAT.md step 0 checks pg+redis connectivity and runs `start-dind-services.sh` if needed. Script is idempotent (`docker rm -f` before each run, `|| true` on volume creation). Services running fine and verified each heartbeat.
+- [x] **dind auto-start on container restart** - HEARTBEAT.md step 0 checks pg+redis connectivity and runs `start-dind-services.sh` if needed. Script is idempotent (`docker rm -f` before each run, `|| true` on volume creation). Services running fine and verified each heartbeat.
 
-- [x] **SSH key persistence** — Verified: `~/.ssh/` has active keys (id_ed25519 present). Git push works (all commits pushed successfully this session). No symlink needed — keys persist correctly across container restarts in the current setup.
-
----
+- [x] **SSH key persistence** - Verified: `~/.ssh/` has active keys (id_ed25519 present). Git push works (all commits pushed successfully this session). No symlink needed - keys persist correctly across container restarts in the current setup.
 
 ---
 
-## 🔴 STATUS PAGE — Enterprise-Ready (PRIORITY)
+---
 
-> **Instruction from Noah (2026-03-17):** Status pages must be 100% configurable, unlimited widgets, every monitor/group/project/tag displayable, multiple layouts, compete with Uptime Kuma and beyond. 11/10 quality. Continuously improve — add new widgets/features when you see room for improvement.
+## 🔴 STATUS PAGE - Enterprise-Ready (PRIORITY)
 
-### P0 — Config Panel + Multi-Monitor + Grid Layout
+> **Instruction from Noah (2026-03-17):** Status pages must be 100% configurable, unlimited widgets, every monitor/group/project/tag displayable, multiple layouts, compete with Uptime Kuma and beyond. 11/10 quality. Continuously improve - add new widgets/features when you see room for improvement.
 
-- [x] **Universal Config Panel for ALL widget types** — Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
-- [x] **Multi-Monitor Picker component** — Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
-- [x] **Real CSS Grid Layout on public page** — Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
-- [x] **Resize Handles in editor** — Bottom-right corner drag handle on every canvas widget. Appears on hover (always visible when selected). Snaps to grid (cols × ROW_H rows). Min 1 col/row, max 12 cols/10 rows.
-- [x] **Widget Width/Height in Config Panel** — Number inputs for exact col/row sizing in Properties panel (w: 1-12, h: 1-10).
+### P0 - Config Panel + Multi-Monitor + Grid Layout
 
-### P0 — Fix Existing Widget Data
+- [x] **Universal Config Panel for ALL widget types** - Every widget gets full configuration: monitor selection (single/multi/all/by-tag/by-folder/by-type), label override, custom colors, visibility rules, refresh interval, size controls (width cols 1-12, height rows 1-10), border/padding config, responsive behavior (hide/collapse/full-width on mobile), click-action (link to monitor detail/external URL), tooltip text
+- [x] **Multi-Monitor Picker component** - Added reusable status-page editor picker with checkbox multi-select, search input, tag/folder/type filters, select-all/clear-filtered controls, and selected-count badge. Wired into config panel for `monitorMode = multiple`.
+- [x] **Real CSS Grid Layout on public page** - Replace linear `space-y-4` with actual CSS Grid based on widget x/y/w/h (12-column grid). Responsive: 12-col desktop → 6-col tablet → 1-col mobile. Widgets position correctly in grid cells
+- [x] **Resize Handles in editor** - Bottom-right corner drag handle on every canvas widget. Appears on hover (always visible when selected). Snaps to grid (cols × ROW_H rows). Min 1 col/row, max 12 cols/10 rows.
+- [x] **Widget Width/Height in Config Panel** - Number inputs for exact col/row sizing in Properties panel (w: 1-12, h: 1-10).
 
-- [x] **Uptime Bar with real data** — Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
-- [x] **Uptime Timeline with real data** — Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
-- [x] **SLA Summary with real data** — Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
+### P0 - Fix Existing Widget Data
 
-### P1 — New Widgets (Status & Uptime)
+- [x] **Uptime Bar with real data** - Implemented via existing per-widget endpoint `GET /v1/public/status/:slug/widget/:widgetId` (returns `uptimePct`, `periodDays`, `total`) and wired into public renderer (no more placeholder percentages).
+- [x] **Uptime Timeline with real data** - Per-day status bars from actual MonitorRun records. Green=all checks OK, yellow=some failed, red=majority failed. API returns day-by-day breakdown
+- [x] **SLA Summary with real data** - Calculate from MonitorRuns: total checks, successful checks, uptime%, compare against configurable SLA target (99.9%, 99.95%, 99.99%)
 
-- [x] **Component Status List** — Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
-- [x] **Service Health Matrix** — Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
-- [x] **Dependency Map** — Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
-- [x] **Status History Ribbon** — Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
-- [x] **Aggregate Health Score** — Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
-- [x] **Uptime Percentage Card** — Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
-- [x] **Multi-Environment Status** — Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
-- [x] **Region Status Map** — Card grid layout showing monitors grouped by region with status (operational/degraded/outage). Config: regionMonitors JSON mapping region names to monitor ID arrays.
-- [x] **Third-Party Dependencies** — Live HEAD checks of external services. Config: services JSON array [{name, url}]. Shows status dot, HTTP status, response time per service.
-- [x] **Rolling Uptime Cards** — Row of cards: 24h / 7d / 30d / 90d uptime percentages side by side
+### P1 - New Widgets (Status & Uptime)
 
-### P1 — New Widgets (Performance)
+- [x] **Component Status List** - Per-component status: Operational / Degraded / Partial Outage / Major Outage. Configurable per monitor/group. Color-coded with icons
+- [x] **Service Health Matrix** - Monitors × Environments (prod/staging/dev) or Monitors × Regions matrix table with colored cells
+- [x] **Dependency Map** - Visual service dependency graph (Service A → B → C) with live status on each node. Config: define edges between monitors
+- [x] **Status History Ribbon** - Per monitor: last 90 days as horizontal colored bar (like GitHub status). Compact single-row per monitor
+- [x] **Aggregate Health Score** - Weighted score 0-100 from all monitors. Config: weight per monitor. Shows gauge/circle visualization
+- [x] **Uptime Percentage Card** - Big number display: "99.97%" with trend arrow (↑/↓ vs last period). Configurable period
+- [x] **Multi-Environment Status** - Side-by-side comparison of same services across environments (prod vs staging vs dev). Config: environment tags
+- [x] **Region Status Map** - Card grid layout showing monitors grouped by region with status (operational/degraded/outage). Config: regionMonitors JSON mapping region names to monitor ID arrays.
+- [x] **Third-Party Dependencies** - Live HEAD checks of external services. Config: services JSON array [{name, url}]. Shows status dot, HTTP status, response time per service.
+- [x] **Rolling Uptime Cards** - Row of cards: 24h / 7d / 30d / 90d uptime percentages side by side
 
-- [x] **Response Time Heatmap** — Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
-- [x] **Latency Percentiles Card** — P50 / P95 / P99 latency values as big numbers with comparison to previous period (implemented 2026-03-18)
-- [x] **Response Time Comparison** — Multiple monitors as overlay lines on same chart. Config: select N monitors
-- [x] **Performance Trend** — Week-over-week % change in latency with ↑↓ indicators and sparkline
-- [x] **Throughput Counter** — Checks per hour / requests per minute as live counter
-- [x] **Apdex Score** — Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
-- [x] **SSL Certificate Status** — Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
-- [x] **DNS Resolution Time** — DNS lookup latency tracker (separate from HTTP latency)
+### P1 - New Widgets (Performance)
 
-### P1 — New Widgets (SLA & Uptime Deep)
+- [x] **Response Time Heatmap** - Hour-of-day × day-of-week latency heatmap (like GitHub contributions). Color scale: green (fast) → red (slow)
+- [x] **Latency Percentiles Card** - P50 / P95 / P99 latency values as big numbers with comparison to previous period (implemented 2026-03-18)
+- [x] **Response Time Comparison** - Multiple monitors as overlay lines on same chart. Config: select N monitors
+- [x] **Performance Trend** - Week-over-week % change in latency with ↑↓ indicators and sparkline
+- [x] **Throughput Counter** - Checks per hour / requests per minute as live counter
+- [x] **Apdex Score** - Application Performance Index (0-1) calculated from response times. Config: satisfied/tolerating thresholds
+- [x] **SSL Certificate Status** - Expiry date, days remaining, issuer, grade. Color: green >30d, yellow 10-30d, red <10d
+- [x] **DNS Resolution Time** - DNS lookup latency tracker (separate from HTTP latency)
 
-- [x] **SLA Compliance Table** — Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
-- [x] **Uptime Heatmap** — Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
-- [x] **Downtime Log** — Chronological list of all outage events with start time, duration, affected monitors, cause
-- [x] **MTTR / MTTF Cards** — Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
-- [x] **Uptime Comparison Chart** — Side-by-side bar chart comparing uptime% across monitors for same period
+### P1 - New Widgets (SLA & Uptime Deep)
 
-### P1 — New Widgets (Incidents & Maintenance)
+- [x] **SLA Compliance Table** - Multi-monitor table: Monitor | SLA Target | Actual | Status (Pass/Fail) per month. Color-coded rows
+- [x] **Uptime Heatmap** - Hours × days matrix showing up/down status per hour. 7 days × 24 hours = 168 cells
+- [x] **Downtime Log** - Chronological list of all outage events with start time, duration, affected monitors, cause
+- [x] **MTTR / MTTF Cards** - Mean Time to Recovery, Mean Time to Failure calculated from incidents + check data
+- [x] **Uptime Comparison Chart** - Side-by-side bar chart comparing uptime% across monitors for same period
 
-- [x] **Incident Timeline** — Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
-- [x] **Post-Mortem Card** — Shows after incident resolution: RCA summary, duration, affected services, lessons learned
-- [x] **Incident Severity Distribution** — Donut/pie chart: Critical / Major / Minor breakdown over a period
-- [x] **Incident Duration Stats** — Average / Longest / Shortest incident duration cards
-- [x] **Active Incident Count** — Big animated number showing current active incidents (pulses when >0)
-- [x] **Maintenance Calendar** — Month calendar view with maintenance windows highlighted. Click for details
-- [x] **Next Maintenance Countdown** — Timer counting down to next scheduled maintenance window
-- [x] **Maintenance Impact List** — Which services affected by upcoming maintenance + alternative routes
+### P1 - New Widgets (Incidents & Maintenance)
 
-### P1 — New Widgets (Versions)
+- [x] **Incident Timeline** - Chronological vertical timeline with status update bubbles (Investigating → Identified → Monitoring → Resolved)
+- [x] **Post-Mortem Card** - Shows after incident resolution: RCA summary, duration, affected services, lessons learned
+- [x] **Incident Severity Distribution** - Donut/pie chart: Critical / Major / Minor breakdown over a period
+- [x] **Incident Duration Stats** - Average / Longest / Shortest incident duration cards
+- [x] **Active Incident Count** - Big animated number showing current active incidents (pulses when >0)
+- [x] **Maintenance Calendar** - Month calendar view with maintenance windows highlighted. Click for details
+- [x] **Next Maintenance Countdown** - Timer counting down to next scheduled maintenance window
+- [x] **Maintenance Impact List** - Which services affected by upcoming maintenance + alternative routes
 
-- [x] **Version Timeline** — Chronological list of all version updates detected across monitors
-- [x] **Changelog Widget** — Shows release notes from GitHub/GitLab releases for monitored tools
-- [x] **Outdated Components Alert** — Only shows monitors where version != latest, red/yellow severity
-- [x] **Version Comparison Table** — Current vs Latest vs Previous version side-by-side per monitor
-- [x] **Security Advisory Widget** — Checks GitHub Security Advisories for a configured package name. Shows severity badges (critical/high/medium/low), GHSA ID, summary, published date, and link.
+### P1 - New Widgets (Versions)
 
-### P1 — New Widgets (Metrics & Data)
+- [x] **Version Timeline** - Chronological list of all version updates detected across monitors
+- [x] **Changelog Widget** - Shows release notes from GitHub/GitLab releases for monitored tools
+- [x] **Outdated Components Alert** - Only shows monitors where version != latest, red/yellow severity
+- [x] **Version Comparison Table** - Current vs Latest vs Previous version side-by-side per monitor
+- [x] **Security Advisory Widget** - Checks GitHub Security Advisories for a configured package name. Shows severity badges (critical/high/medium/low), GHSA ID, summary, published date, and link.
 
-- [x] **Metric Comparison Row** — N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
-- [x] **Custom Metric Chart** — Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
-- [x] **Gauge / Speedometer** — Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
-- [x] **Sparkline Row** — Multiple mini-charts side by side for quick comparison
-- [x] **Stats Grid** — 2×2 or 3×3 grid of key-value metric cards with icons
-- [x] **Progress Ring** — Circular progress (like Apple Watch rings). For uptime, SLA compliance
-- [x] **Data Table** — Configurable tabular data display with sorting and pagination
+### P1 - New Widgets (Metrics & Data)
 
-### P1 — New Widgets (Content & Branding)
+- [x] **Metric Comparison Row** - N metric cards in horizontal strip (Uptime, Latency, Checks/Day, Incidents/Month)
+- [x] **Custom Metric Chart** - Arbitrary time-series data as line/bar/area chart. Config: data source, aggregation
+- [x] **Gauge / Speedometer** - Circular gauge visualization (0-100%). Config: thresholds for green/yellow/red zones
+- [x] **Sparkline Row** - Multiple mini-charts side by side for quick comparison
+- [x] **Stats Grid** - 2×2 or 3×3 grid of key-value metric cards with icons
+- [x] **Progress Ring** - Circular progress (like Apple Watch rings). For uptime, SLA compliance
+- [x] **Data Table** - Configurable tabular data display with sorting and pagination
 
-- [x] **Image / Banner** — Upload custom image or banner. Config: URL, alt text, link, max-height
-- [x] **Announcement Bar** — Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
-- [x] **FAQ / Accordion** — Collapsible Q&A sections. Config: array of {question, answer} pairs. Implemented with details/summary HTML, chevron rotate animation
-- [x] **Link List** — External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
-- [x] **Social Links** — Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
-- [x] **Embed / iFrame** — Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
-- [x] **Video Embed** — YouTube/Vimeo embed for tutorials or incident explanations
-- [x] **Code Block** — Display API response or config snippet with syntax highlighting
-- [x] **Subscriber Form** — Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
-- [x] **RSS Feed Widget** — Auto-generated RSS/Atom feed link for incidents and status changes
+### P1 - New Widgets (Content & Branding)
 
-### P1 — New Widgets (Layout & Navigation)
+- [x] **Image / Banner** - Upload custom image or banner. Config: URL, alt text, link, max-height
+- [x] **Announcement Bar** - Full-width colored bar for important messages. Config: type (info/warn/danger), dismissable toggle, expiry date
+- [x] **FAQ / Accordion** - Collapsible Q&A sections. Config: array of {question, answer} pairs. Implemented with details/summary HTML, chevron rotate animation
+- [x] **Link List** - External links with icons (Docs, Support, API Status, Changelog). Config: [{label, url, icon}]
+- [x] **Social Links** - Row of social media icons with links (GitHub, Twitter, Discord, etc.). Implemented with icon name + URL config
+- [x] **Embed / iFrame** - Embed external content (Grafana panels, external dashboards). Config: URL, height, title, sandbox policy
+- [x] **Video Embed** - YouTube/Vimeo embed for tutorials or incident explanations
+- [x] **Code Block** - Display API response or config snippet with syntax highlighting
+- [x] **Subscriber Form** - Email input for status update subscriptions. Backend: StatusPageSubscriber table, POST /v1/public/status/:slug/subscribe (201/409 dedup), frontend SubscriberFormWidget with loading/success/duplicate/error states
+- [x] **RSS Feed Widget** - Auto-generated RSS/Atom feed link for incidents and status changes
 
-- [x] **Tab Container** — Multiple tabs each containing different widget sets. Config: tab names, content per tab (text-based; nested widget sets deferred as future enhancement)
-- [x] **Collapsible Section** — Expandable/collapsible areas with header. Default open/closed configurable
-- [x] **Column Layout** — 2/3/4 column container for sub-widget grouping within a single row. Config: columns (2/3/4), items JSON array [{heading, body}]
-- [x] **Sticky Header** — Overall system status bar. Shows operational/degraded/outage computed from all monitors. Config: label
-- [x] **Table of Contents** — Numbered jump-link list with configurable items [{label, anchor}] for navigating page sections
-- [x] **Page Navigation** — Grid of links to all other published status pages in the account (auto-fetched, real-time)
+### P1 - New Widgets (Layout & Navigation)
 
-### P2 — Editor UX
+- [x] **Tab Container** - Multiple tabs each containing different widget sets. Config: tab names, content per tab (text-based; nested widget sets deferred as future enhancement)
+- [x] **Collapsible Section** - Expandable/collapsible areas with header. Default open/closed configurable
+- [x] **Column Layout** - 2/3/4 column container for sub-widget grouping within a single row. Config: columns (2/3/4), items JSON array [{heading, body}]
+- [x] **Sticky Header** - Overall system status bar. Shows operational/degraded/outage computed from all monitors. Config: label
+- [x] **Table of Contents** - Numbered jump-link list with configurable items [{label, anchor}] for navigating page sections
+- [x] **Page Navigation** - Grid of links to all other published status pages in the account (auto-fetched, real-time)
 
-- [x] **Widget Duplication** — Copy button per widget (same config, auto-placed)
-- [x] **Widget Lock** — Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
-- [x] **Multi-Select** — Shift+Click to select multiple widgets. Group move/delete
-- [x] **Undo/Redo** — Ctrl+Z / Ctrl+Y with 50-step history stack
-- [x] **Snap-to-Grid** — Visual grid toggle button in toolbar (Grid icon). Shows dotted column/row overlay when active. Auto-shows with increased brightness during drag.
-- [x] **Alignment Guides** — Blue 1px lines across canvas when dragged widget aligns (within 8px) with left/right/top/bottom/center of other widgets. Clears on drag end.
-- [x] **Canvas Zoom** — Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
-- [x] **Responsive Preview** — Toggle Desktop/Tablet/Mobile view in editor with accurate widths
-- [x] **Template Gallery** — 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
-- [x] **Keyboard Shortcuts** — Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
-- [x] **Widget Search in Palette** — Filter palette by name/category
-- [x] **Layer Management** — Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
-- [x] **Copy/Paste between Pages** — Ctrl+C/V widgets across different status pages (localStorage clipboard, pastes below existing content with new IDs)
-- [x] **Version History** — Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
-- [x] **Drag from Palette** — UX improved: live drop ghost preview on canvas (dashed placement box + “Release to place”), drag-only grid highlighting, and quick-add via double-click/Enter/Space on palette items.
+### P2 - Editor UX
 
-### P2 — Page-Level Configuration
+- [x] **Widget Duplication** - Copy button per widget (same config, auto-placed)
+- [x] **Widget Lock** - Lock toggle to prevent accidental drag/resize (amber badge, disables dnd + resize handle, Properties panel button)
+- [x] **Multi-Select** - Shift+Click to select multiple widgets. Group move/delete
+- [x] **Undo/Redo** - Ctrl+Z / Ctrl+Y with 50-step history stack
+- [x] **Snap-to-Grid** - Visual grid toggle button in toolbar (Grid icon). Shows dotted column/row overlay when active. Auto-shows with increased brightness during drag.
+- [x] **Alignment Guides** - Blue 1px lines across canvas when dragged widget aligns (within 8px) with left/right/top/bottom/center of other widgets. Clears on drag end.
+- [x] **Canvas Zoom** - Zoom in/out (Ctrl+scroll or buttons). Fit-to-screen button
+- [x] **Responsive Preview** - Toggle Desktop/Tablet/Mobile view in editor with accurate widths
+- [x] **Template Gallery** - 7 preset layouts: Minimal, Full Dashboard, SLA Report, Version Overview, Incident Page, Performance, Maintenance
+- [x] **Keyboard Shortcuts** - Del=Delete, Ctrl+D=Duplicate, Ctrl+S=Save, Ctrl+Z=Undo, Ctrl+Y=Redo, Esc=Deselect
+- [x] **Widget Search in Palette** - Filter palette by name/category
+- [x] **Layer Management** - Z-index ordering in Properties panel: Bring to Front, Bring Forward, Send Backward, Send to Back buttons. Widgets sorted by zOrder on canvas.
+- [x] **Copy/Paste between Pages** - Ctrl+C/V widgets across different status pages (localStorage clipboard, pastes below existing content with new IDs)
+- [x] **Version History** - Last 10 saves (server-side API, auto-snapshotted on every save), one-click restore with pre-restore backup snapshot
+- [x] **Drag from Palette** - UX improved: live drop ghost preview on canvas (dashed placement box + "Release to place"), drag-only grid highlighting, and quick-add via double-click/Enter/Space on palette items.
 
-- [x] **Multiple Status Pages** — Supported, list page with create/delete/publish, navigate to editor
-- [x] **Page Themes** — Light/Dark/System theme + font selector (Inter/Roboto/System/Mono) + accent color picker + background style (solid/gradient/grid-dots) + background color — all in Page Settings modal, applied on public page
-- [x] **Page Header Config** — Logo URL, favicon URL, accent color, background color in Page Settings modal
-- [x] **Custom Favicon** — faviconUrl in Page Settings, applied to public page
-- [x] **Custom Slug** — Slug set at creation; availability checker added (debounced real-time ✓ Available / ✗ Taken indicator via GET /v1/status-pages/slug-check)
-- [x] **SEO Config** — Custom meta title, description, OG image URL, robots (index/noindex) — all in Page Settings modal + wired into generateMetadata() with Twitter card support
-- [x] **Branding Toggle** — Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
-- [x] **Auto-Refresh Config** — Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
-- [x] **Password Protection UX** — Improve password set/remove flow in editor (currently must re-enter each time)
-- [x] **Offline Banner** — Auto-shows when WebSocket/polling connection lost
+### P2 - Page-Level Configuration
 
-### P2 — Public Page Rendering
+- [x] **Multiple Status Pages** - Supported, list page with create/delete/publish, navigate to editor
+- [x] **Page Themes** - Light/Dark/System theme + font selector (Inter/Roboto/System/Mono) + accent color picker + background style (solid/gradient/grid-dots) + background color - all in Page Settings modal, applied on public page
+- [x] **Page Header Config** - Logo URL, favicon URL, accent color, background color in Page Settings modal
+- [x] **Custom Favicon** - faviconUrl in Page Settings, applied to public page
+- [x] **Custom Slug** - Slug set at creation; availability checker added (debounced real-time ✓ Available / ✗ Taken indicator via GET /v1/status-pages/slug-check)
+- [x] **SEO Config** - Custom meta title, description, OG image URL, robots (index/noindex) - all in Page Settings modal + wired into generateMetadata() with Twitter card support
+- [x] **Branding Toggle** - Show/hide "Powered by PulseDock" toggle in Page Settings modal, applied in public footer
+- [x] **Auto-Refresh Config** - Interval picker: off / 10s / 30s / 60s / 5min / 10min in Page Settings modal, applied on public page
+- [x] **Password Protection UX** - Improve password set/remove flow in editor (currently must re-enter each time)
+- [x] **Offline Banner** - Auto-shows when WebSocket/polling connection lost
 
-- [x] **Smooth Data Transitions** — Count-up animations on UptimePercentageCard, SLASummary actual%, RollingUptimeCards (all 4 periods). AnimatedNumber + AnimatedUptimeCard client components. Cubic ease-out, RAF, prefers-reduced-motion safe.
-- [x] **Real-time via WebSocket** — Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
-- [x] **Print-friendly CSS** — Already implemented: @media print in globals.css with A4 page setup, hide interactive chrome, force white backgrounds, proper typography for print, print-only elements. Print button on status pages.
-- [x] **Full Accessibility** — ARIA labels on all widgets (role=img/status/region, aria-live, aria-label, aria-labelledby, scope=col, aria-hidden on decorative), keyboard navigation via focus trap in modals, screen reader announcements via aria-live on LiveStatusRefresh and OverallSystemStatus
-- [x] **Performance** — Lazy load widgets below fold, code split per widget type, < 2s FCP — IntersectionObserver-based LazyWidget defers below-fold widgets (first 4 render immediately, rest deferred 400px pre-fetch margin). Above-fold widgets SSR'd; below-fold widgets client-deferred.
-- [x] **Export as Image** — Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
-- [x] **Export as PDF** — Generate PDF report of current status
+### P2 - Public Page Rendering
 
-### P1 — Tool Registry & Templates Expansion
+- [x] **Smooth Data Transitions** - Count-up animations on UptimePercentageCard, SLASummary actual%, RollingUptimeCards (all 4 periods). AnimatedNumber + AnimatedUptimeCard client components. Cubic ease-out, RAF, prefers-reduced-motion safe.
+- [x] **Real-time via WebSocket** - Public status page joins status-page:{slug} room via socket.io. Backend emits status.updated on monitor level change. Frontend shows 🟢 Live indicator. Polling fallback when WS unavailable.
+- [x] **Print-friendly CSS** - Already implemented: @media print in globals.css with A4 page setup, hide interactive chrome, force white backgrounds, proper typography for print, print-only elements. Print button on status pages.
+- [x] **Full Accessibility** - ARIA labels on all widgets (role=img/status/region, aria-live, aria-label, aria-labelledby, scope=col, aria-hidden on decorative), keyboard navigation via focus trap in modals, screen reader announcements via aria-live on LiveStatusRefresh and OverallSystemStatus
+- [x] **Performance** - Lazy load widgets below fold, code split per widget type, < 2s FCP - IntersectionObserver-based LazyWidget defers below-fold widgets (first 4 render immediately, rest deferred 400px pre-fetch margin). Above-fold widgets SSR'd; below-fold widgets client-deferred.
+- [x] **Export as Image** - Download current status page as PNG (html2canvas dynamic import, 2x retina, ExportImageButton component)
+- [x] **Export as PDF** - Generate PDF report of current status
+
+### P1 - Tool Registry & Templates Expansion
 
 > Current: 1302 registry tools, 33 monitor templates. Target: 2500+ tools, 100+ templates.
 
-- [x] **Monitor Templates expansion: 33 → 100+** *(144 templates delivered)* — Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
+- [x] **Monitor Templates expansion: 33 → 100+** *(144 templates delivered)* - Add templates for all major self-hosted apps with verified version endpoints and correct auth settings. New categories: Code Quality, Security Scanning, Backup, VPN, DNS, Mail, Analytics, IoT, AI/ML, Game Servers. Each template must have: correct appVersionEndpoint, correct appAuthType (none/token), correct health endpoint, description. Research each endpoint with curl before adding.
 
   **Code Quality & Analysis:**
   SonarQube (`/api/system/status`→version, no auth), SonarCloud, Codacy, CodeClimate, Snyk, Semgrep, Checkmarx, Veracode, Fortify, PMD, ESLint (daemon), Prettier (daemon), Stylelint
@@ -654,7 +652,7 @@
   **Container & Orchestration (more):**
   Yacht, Dockge, Lazydocker (API), Diun, Watchtower, Ouroboros, Podman (API), LXD/Incus, Proxmox VE (`/api2/json/version`), TrueNAS SCALE API
 
-- [x] **Tool Registry expansion: 1467 → 2567 entries (2440 unique)** — Added REGISTRY_PART7/PART8/PART9 with 1100 new tools: Download/Torrent (qBittorrent, SABnzbd, NZBGet), AI/ML (Tabby, Langflow, ChromaDB, text-generation-webui, Stable Diffusion WebUI), Messaging (Apache NiFi, Debezium, ksqlDB), E-Commerce (Shopware, PrestaShop, Medusa, Saleor), ERP/Business (Crater, Kimai, Twenty CRM, EspoCRM), Security (DefectDojo, Dependency-Track, Prowler, Steampipe, Padloc), DevTools (Weblate, Tolgee, GrowthBook, Unleash, Flagsmith, Flipt, Huginn, Cronicle, Kestra, tldraw, OpnForm, HeyForm), Observability (Gatus, Healthchecks), Kubernetes (Headlamp, Skooner), and many more.
+- [x] **Tool Registry expansion: 1467 → 2567 entries (2440 unique)** - Added REGISTRY_PART7/PART8/PART9 with 1100 new tools: Download/Torrent (qBittorrent, SABnzbd, NZBGet), AI/ML (Tabby, Langflow, ChromaDB, text-generation-webui, Stable Diffusion WebUI), Messaging (Apache NiFi, Debezium, ksqlDB), E-Commerce (Shopware, PrestaShop, Medusa, Saleor), ERP/Business (Crater, Kimai, Twenty CRM, EspoCRM), Security (DefectDojo, Dependency-Track, Prowler, Steampipe, Padloc), DevTools (Weblate, Tolgee, GrowthBook, Unleash, Flagsmith, Flipt, Huginn, Cronicle, Kestra, tldraw, OpnForm, HeyForm), Observability (Gatus, Healthchecks), Kubernetes (Headlamp, Skooner), and many more.
 
   **ERP & Business:**
   ERPNext, Odoo, Dolibarr, Tryton, Axelor, iDempiere, Metasfresh, Crater (invoicing), InvoiceNinja, Kimai (time tracking), Solidtime
@@ -791,7 +789,7 @@
   **URL Shortener:**
   Shlink, YOURLS, Kutt, Polr, Chhoto, GoShort, Lstu, Dub.co (self-hosted)
 
-  **Status Page (competitors — monitor them!):**
+  **Status Page (competitors - monitor them!):**
   Uptime Kuma, Gatus, Cachet, Statusfy, Instatus, Cstate, StatPing, Vigil, Staytus, HetrixTools, Upptime, Statuspal
 
   **PDF & Document Processing:**
@@ -851,34 +849,34 @@
   **Print & 3D:**
   OctoPrint, Mainsail, Fluidd, Moonraker, Klipper, Repetier Server, Duet Web Control, CUPS
 
-- [x] **Tool Registry expansion: 1302 → 5009+** — 5009 unique tools in registry across all categories. Registry lint: 0 errors, 1 warning. Added evidenceUrls to 16 verified tools. Fixed bad ID (p35-privateGPT-server → p35-privategpt-server). Added missing categories E-Commerce/Healthcare/IoT to lint allowlist. *(2026-03-21)*
+- [x] **Tool Registry expansion: 1302 → 5009+** - 5009 unique tools in registry across all categories. Registry lint: 0 errors, 1 warning. Added evidenceUrls to 16 verified tools. Fixed bad ID (p35-privateGPT-server → p35-privategpt-server). Added missing categories E-Commerce/Healthcare/IoT to lint allowlist. *(2026-03-21)*
 
-- [x] **Fix Simple Icons 404s** — Audited all 300 unique icon slugs. All return HTTP 200 — previously fixed in earlier sessions. No broken slugs remain.
+- [x] **Fix Simple Icons 404s** - Audited all 300 unique icon slugs. All return HTTP 200 - previously fixed in earlier sessions. No broken slugs remain.
 
-### P0 — Landing Page Rework
+### P0 - Landing Page Rework
 
 > Landing page is the first thing users see. Must be Apple-level quality. Multiple iteration runs until perfect.
 
-- [x] **Hero section redesign** — Bold animated gradient headline, value prop, CTA buttons (Get Started / Live Demo), glassmorphic hero dashboard mockup with monitor table + sparklines + stat cards, trust badges, animated blobs
-- [x] **Feature showcase** — 8 feature cards (Version Intelligence, Uptime Monitoring, Status Pages, Smart Alerting, Incident Management, Tool Registry, Public API, CLI Tool) with FadeIn scroll animations
-- [x] **How it works section** — 3-step visual flow (Add Monitor / Run Checks / Get Alerted) with inline SVG visuals and animated connectors
-- [x] **Live demo / Interactive preview** — Landing page now includes an interactive dual-mode demo: (1) mini dashboard preview with monitor status dots, trend sparklines, and version update badges, plus (2) real in-browser URL uptime checker with live status/latency results and presets.
-- [x] **Comparison table** — PulseDock vs Uptime Kuma vs Better Stack vs Statuspage — 9-feature matrix with check/X marks
-- [x] **Testimonials / Social proof** — Section with GitHub badge, open-source claim, "no tracking, no analytics" trust point
-- [x] **Pricing section** — Free self-hosted card + Cloud (coming soon) card with feature lists
-- [x] **Screenshot gallery** — 2×2 mock screenshot grid with hover-lift and overlay labels (Dashboard, Status Pages, Version Checks, Incidents)
-- [x] **Footer redesign** — 3-column footer (Product / Resources / More) with GitHub link, changelog, docs, license, copyright
-- [x] **Performance** — Inter font self-hosted via `next/font/google` (no more Google Fonts CDN round-trip — render-blocking stylesheet removed). `dns-prefetch` + `preconnect` for `cdn.simpleicons.org` (tool registry icons). Landing page already SSR, LiveDemo lazy-loaded. No unoptimized `<img>` on landing. Web TTFB: 13-128ms p95. Lighthouse audit deferred (no headless browser available in this env).
-- [x] **SEO deep pass** — JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
-- [x] **Animations polish** — FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
-- [x] **Mobile landing** — Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
-- [x] **i18n landing** — EN + DE translations for landing page key content via I18nProvider + LocaleSwitcher
+- [x] **Hero section redesign** - Bold animated gradient headline, value prop, CTA buttons (Get Started / Live Demo), glassmorphic hero dashboard mockup with monitor table + sparklines + stat cards, trust badges, animated blobs
+- [x] **Feature showcase** - 8 feature cards (Version Intelligence, Uptime Monitoring, Status Pages, Smart Alerting, Incident Management, Tool Registry, Public API, CLI Tool) with FadeIn scroll animations
+- [x] **How it works section** - 3-step visual flow (Add Monitor / Run Checks / Get Alerted) with inline SVG visuals and animated connectors
+- [x] **Live demo / Interactive preview** - Landing page now includes an interactive dual-mode demo: (1) mini dashboard preview with monitor status dots, trend sparklines, and version update badges, plus (2) real in-browser URL uptime checker with live status/latency results and presets.
+- [x] **Comparison table** - PulseDock vs Uptime Kuma vs Better Stack vs Statuspage - 9-feature matrix with check/X marks
+- [x] **Testimonials / Social proof** - Section with GitHub badge, open-source claim, "no tracking, no analytics" trust point
+- [x] **Pricing section** - Free self-hosted card + Cloud (coming soon) card with feature lists
+- [x] **Screenshot gallery** - 2×2 mock screenshot grid with hover-lift and overlay labels (Dashboard, Status Pages, Version Checks, Incidents)
+- [x] **Footer redesign** - 3-column footer (Product / Resources / More) with GitHub link, changelog, docs, license, copyright
+- [x] **Performance** - Inter font self-hosted via `next/font/google` (no more Google Fonts CDN round-trip - render-blocking stylesheet removed). `dns-prefetch` + `preconnect` for `cdn.simpleicons.org` (tool registry icons). Landing page already SSR, LiveDemo lazy-loaded. No unoptimized `<img>` on landing. Web TTFB: 13-128ms p95. Lighthouse audit deferred (no headless browser available in this env).
+- [x] **SEO deep pass** - JSON-LD structured data (SoftwareApplication + WebSite), sitemap.xml, robots.txt, proper OG tags
+- [x] **Animations polish** - FadeIn on scroll (Intersection Observer, CSS keyframes), animated gradient text, count-up stats, blob animations, motion-safe: prefix for reduced-motion support
+- [x] **Mobile landing** - Dedicated mobile layout audit: touch targets, readable text without zoom, no horizontal scroll, fast load on 3G.
+- [x] **i18n landing** - EN + DE translations for landing page key content via I18nProvider + LocaleSwitcher
 
-### P0 — Documentation & Codebase Cleanup
+### P0 - Documentation & Codebase Cleanup
 
 > All docs must be current, accurate, and well-organized. No stale files. Everything in docs/.
 
-- [x] **Consolidate all docs into docs/ folder** — docs/ folder has all major docs: AGENT.md, API.md, API_VERSIONING.md, ARCHITECTURE.md, CLI.md, DEPLOYMENT.md, E2E.md, EXTENSION.md, GETTING-STARTED.md, HELM.md, LOGGING.md, NGINX.md, PLUGINS.md, README.md, SECURITY.md, STATUS-PAGES.md, TOOL-REGISTRY.md, TROUBLESHOOTING.md, VERSION-CHECKS.md. Root has README.md + CHANGELOG.md + CONTRIBUTING.md.
+- [x] **Consolidate all docs into docs/ folder** - docs/ folder has all major docs: AGENT.md, API.md, API_VERSIONING.md, ARCHITECTURE.md, CLI.md, DEPLOYMENT.md, E2E.md, EXTENSION.md, GETTING-STARTED.md, HELM.md, LOGGING.md, NGINX.md, PLUGINS.md, README.md, SECURITY.md, STATUS-PAGES.md, TOOL-REGISTRY.md, TROUBLESHOOTING.md, VERSION-CHECKS.md. Root has README.md + CHANGELOG.md + CONTRIBUTING.md.
   ```
   docs/
   ├── README.md          (main project docs entry point)
@@ -886,202 +884,94 @@
   ├── ARCHITECTURE.md    (system architecture, tech stack, data flow)
   ├── API.md             (API reference, link to Swagger)
   ├── DEPLOYMENT.md      (Docker, Kubernetes, bare metal)
-  ├── NGINX.md           (reverse proxy config — already exists)
-  ├── HELM.md            (Helm chart docs — already exists)
-  ├── AGENT.md           (PulseDock agent — already exists)
-  ├── CLI.md             (CLI tool — already exists)
-  ├── EXTENSION.md       (Browser extension — already exists)
-  ├── E2E.md             (E2E testing — already exists)
-  ├── LOGGING.md         (Log management — already exists)
-  ├── PLUGINS.md         (Plugin system — already exists)
-  ├── STATUS-PAGES.md    (Status page builder guide — NEW)
-  ├── VERSION-CHECKS.md  (Version monitoring guide — NEW)
-  ├── TOOL-REGISTRY.md   (Tool registry guide — NEW)
+  ├── NGINX.md           (reverse proxy config - already exists)
+  ├── HELM.md            (Helm chart docs - already exists)
+  ├── AGENT.md           (PulseDock agent - already exists)
+  ├── CLI.md             (CLI tool - already exists)
+  ├── EXTENSION.md       (Browser extension - already exists)
+  ├── E2E.md             (E2E testing - already exists)
+  ├── LOGGING.md         (Log management - already exists)
+  ├── PLUGINS.md         (Plugin system - already exists)
+  ├── STATUS-PAGES.md    (Status page builder guide - NEW)
+  ├── VERSION-CHECKS.md  (Version monitoring guide - NEW)
+  ├── TOOL-REGISTRY.md   (Tool registry guide - NEW)
   ├── SECURITY.md        (Security practices, CSP, CSRF, auth)
   ├── CONTRIBUTING.md    (contribution guide)
-  ├── CHANGELOG.md       (release notes — move from root)
+  ├── CHANGELOG.md       (release notes - move from root)
   └── TROUBLESHOOTING.md (common issues + fixes)
   ```
-- [x] **Review and update ALL existing docs** — Audited all 19 doc files. Fixed: stale `START.md` → `GETTING-STARTED.md` link in API.md; removed outdated `allowedHosts` reference in TROUBLESHOOTING.md; added missing `apt` and `helm` providers to VERSION-CHECKS.md; added comprehensive endpoint overview table + incidents/maintenance/status-pages/team/apikeys sections to API.md; added 3 new troubleshooting entries (status page real-time, version check yellowing, alert not firing).
-- [x] **Delete stale/unused files** — Removed 4 dead web components (Breadcrumbs, ConfirmModal, ResponseTimeChart, TextInput) — all superseded by newer implementations. No TODO/FIXME/console.log debris. Build verified clean after removal.
-- [x] **README.md overhaul** — Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
-- [x] **CONTRIBUTING.md** — Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
-- [x] **Package READMEs** — Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
-- [x] **Inline code documentation** — Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
-- [x] **API documentation audit** — Verified all 143 Swagger endpoints have `@ApiOperation` + `@ApiResponse`. Comprehensive pass to add 401/403/404/400 error responses + rich `description` strings to incidents, maintenance, status-pages, team, tags, and apikeys controllers. Error response coverage: 16 → 82 annotations.
-- [x] **Docker documentation** — `docs/DEPLOYMENT.md` covers compose setup, env vars, override examples; `docker-compose.override.yml` example documented.
-- [x] **.env.example** — Created with all env vars, defaults, and security guidance comments. Covers API + web.
+- [x] **Review and update ALL existing docs** - Audited all 19 doc files. Fixed: stale `START.md` → `GETTING-STARTED.md` link in API.md; removed outdated `allowedHosts` reference in TROUBLESHOOTING.md; added missing `apt` and `helm` providers to VERSION-CHECKS.md; added comprehensive endpoint overview table + incidents/maintenance/status-pages/team/apikeys sections to API.md; added 3 new troubleshooting entries (status page real-time, version check yellowing, alert not firing).
+- [x] **Delete stale/unused files** - Removed 4 dead web components (Breadcrumbs, ConfirmModal, ResponseTimeChart, TextInput) - all superseded by newer implementations. No TODO/FIXME/console.log debris. Build verified clean after removal.
+- [x] **README.md overhaul** - Already comprehensive: badges, comparison table, feature list, quick start, architecture, command reference, full docs table, contributing. Updated counts (1480 tests, 1467+ tools, 70+ widgets).
+- [x] **CONTRIBUTING.md** - Dev setup guide, coding standards, commit conventions, PR process, architecture overview for contributors.
+- [x] **Package READMEs** - Each package (api, web, cli, agent, extension, tool-registry, e2e) gets a README with: what it is, how to develop, how to test, how to build.
+- [x] **Inline code documentation** - Add JSDoc to all service methods, controller endpoints, utility functions. At minimum: @param, @returns, @throws, @example for public APIs.
+- [x] **API documentation audit** - Verified all 143 Swagger endpoints have `@ApiOperation` + `@ApiResponse`. Comprehensive pass to add 401/403/404/400 error responses + rich `description` strings to incidents, maintenance, status-pages, team, tags, and apikeys controllers. Error response coverage: 16 → 82 annotations.
+- [x] **Docker documentation** - `docs/DEPLOYMENT.md` covers compose setup, env vars, override examples; `docker-compose.override.yml` example documented.
+- [x] **.env.example** - Created with all env vars, defaults, and security guidance comments. Covers API + web.
 
-### P2 — Frontend Polish (Enterprise-Grade UI)
+### P2 - Frontend Polish (Enterprise-Grade UI)
 
-- [x] **Design System Audit** — Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
-- [x] **Animation & Micro-interactions** — active:scale-95 press feedback on primary CTAs, hover:-translate-y-1 lift on feature cards, toast slide-in, dashboard count-up, page transitions
-- [x] **Data Tables overhaul** — Sortable columns (all pages), sticky headers (monitors + alerts + incidents + versions), column visibility toggle (monitors + alerts + versions, localStorage persisted), bulk select with shift-click range (monitors), CSV/JSON export (monitors + incidents + alerts), pagination with rows-per-page selector (monitors + alerts + incidents), empty states on all pages. Remaining: resizable columns (drag) — deferred as low-value.
-- [x] **Charts upgrade** — Recharts already in use throughout: `MiniSparkline` (dashboard + monitors trend column, expansion panel) uses `LineChart`/`ResponsiveContainer`. `ResponseAreaChart`, `CheckBarChart`, `LineSparkline` use Recharts primitives. Status page widgets use purpose-built SVG bar charts (intentional: pixel-perfect control for heatmaps/bar charts). No upgrade needed.
-- [x] **Dashboard page overhaul** — Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
-- [x] **Monitors page overhaul** — Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
-- [x] **Mobile UX deep audit** — Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
-- [x] **Keyboard-first UX** — Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes, with fuzzy search, recent commands, keyboard navigation (↑↓/Enter/Esc), group labels, shortcut hints. Keyboard shortcuts modal (?). Both wired into root layout.
-- [x] **Notifications center** — In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
-- [x] **Onboarding improvements** — Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). `POST /v1/demo/seed` endpoint creates 5 sample monitors, 1 alert channel, and a status page for new users. "Load Sample Data" button on OnboardingChecklist. Idempotent — skips if 3+ monitors exist. 5 unit tests. Empty states confirmed on all 11 pages. *(2026-03-21)*
-- [x] **Breadcrumbs** — Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
-- [x] **Error pages** — Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
-- [x] **Print / Export views** — Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
+- [x] **Design System Audit** - Ensure every component follows consistent spacing (4px grid), typography scale, color tokens, border-radius, shadow depth. No one-off styles. Extract shared constants.
+- [x] **Animation & Micro-interactions** - active:scale-95 press feedback on primary CTAs, hover:-translate-y-1 lift on feature cards, toast slide-in, dashboard count-up, page transitions
+- [x] **Data Tables overhaul** - Sortable columns (all pages), sticky headers (monitors + alerts + incidents + versions), column visibility toggle (monitors + alerts + versions, localStorage persisted), bulk select with shift-click range (monitors), CSV/JSON export (monitors + incidents + alerts), pagination with rows-per-page selector (monitors + alerts + incidents), empty states on all pages. Remaining: resizable columns (drag) - deferred as low-value.
+- [x] **Charts upgrade** - Recharts already in use throughout: `MiniSparkline` (dashboard + monitors trend column, expansion panel) uses `LineChart`/`ResponsiveContainer`. `ResponseAreaChart`, `CheckBarChart`, `LineSparkline` use Recharts primitives. Status page widgets use purpose-built SVG bar charts (intentional: pixel-perfect control for heatmaps/bar charts). No upgrade needed.
+- [x] **Dashboard page overhaul** - Real-time updating cards, customizable layout (drag to reorder), time range selector (1h/6h/24h/7d/30d), auto-refresh indicator, fullscreen mode
+- [x] **Monitors page overhaul** - Card view toggle (grid vs table), advanced filters panel (type, status, tag, folder, response time range, last checked), saved filter presets, quick actions (hover menu), monitor health sparkline in table row
+- [x] **Mobile UX deep audit** - Hamburger nav menu (md:hidden, ESC-close), w-full sm:w-auto CTAs, all grids verified 1-col mobile, overflow fixed. Full 375px audit passed.
+- [x] **Keyboard-first UX** - Global command palette (Ctrl+K): search monitors, navigate pages, create actions, switch themes, with fuzzy search, recent commands, keyboard navigation (↑↓/Enter/Esc), group labels, shortcut hints. Keyboard shortcuts modal (?). Both wired into root layout.
+- [x] **Notifications center** - In-app notification bell with dropdown: alert fired, incident created, maintenance starting, version update detected. Mark read/unread. Link to relevant page.
+- [x] **Onboarding improvements** - Interactive walkthrough + contextual help tooltips shipped (dashboard tour + form helpers). `POST /v1/demo/seed` endpoint creates 5 sample monitors, 1 alert channel, and a status page for new users. "Load Sample Data" button on OnboardingChecklist. Idempotent - skips if 3+ monitors exist. 5 unit tests. Empty states confirmed on all 11 pages. *(2026-03-21)*
+- [x] **Breadcrumbs** - Consistent breadcrumb navigation on all sub-pages (Monitor > Edit, Status Page > Editor, Incident > Detail)
+- [x] **Error pages** - Custom 404 with search/navigation suggestions, 500 with retry button, offline page with cached data, session expired with auto-redirect to login
+- [x] **Print / Export views** - Every data page exportable as PDF/CSV. Print-optimized CSS. Report generation (weekly/monthly uptime report)
 
-### P2 — Self-Optimization & Continuous Improvement
+### P2 - Self-Optimization & Continuous Improvement
 
-> **Standing instruction:** After completing any task, critically evaluate your own work. Ask: "Is this truly enterprise-ready? Would a Fortune 500 company pay for this?" If no — improve until yes.
+> **Standing instruction:** After completing any task, critically evaluate your own work. Ask: "Is this truly enterprise-ready? Would a Fortune 500 company pay for this?" If no - improve until yes.
 
-- [x] **Automated self-testing cycle** — `scripts/perf-check.sh` + `scripts/smoke-test.sh`: full post-deploy verification covering API/web latency, HTTP status, bundle size, process health, TypeScript compliance, DB/Redis. `npm run perf` / `npm run smoke`.
-- [x] **Performance benchmarking** — `scripts/perf-check.sh` (`npm run perf` / `npm run perf:prod`) — 7-section benchmark: API p95 latency, Web TTFB, HTTP status verification, bundle size analysis, TypeScript compliance, process health, DB+Redis. All 22 checks pass: API 1-15ms p95, web 13-128ms TTFB, ~1.3MB gzip bundle (24 pages), zero TS errors, DB 1ms, Redis ok.
-- [x] **Code quality metrics** — `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
-- [~] **Dependency health** — Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
-- [x] **UX self-review** — Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
-- [x] **Architecture review** — Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-21: Redis cache layer implemented for status-page widget data — RedisCacheService with 30s TTL, graceful degradation, pattern invalidation on layout save. ioredis@5.10.1. 5 unit tests. Completes caching strategy audit.)*
-- [~] **Competitive analysis** — Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. *(2026-03-20: Identified gaps: on-call rotation, SMS alerts, synthetic/browser checks, Grafana datasource. Prometheus endpoint added for Grafana integration.)*
-- [ ] **User experience testing** — After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
+- [x] **Automated self-testing cycle** - `scripts/perf-check.sh` + `scripts/smoke-test.sh`: full post-deploy verification covering API/web latency, HTTP status, bundle size, process health, TypeScript compliance, DB/Redis. `npm run perf` / `npm run smoke`.
+- [x] **Performance benchmarking** - `scripts/perf-check.sh` (`npm run perf` / `npm run perf:prod`) - 7-section benchmark: API p95 latency, Web TTFB, HTTP status verification, bundle size analysis, TypeScript compliance, process health, DB+Redis. All 22 checks pass: API 1-15ms p95, web 13-128ms TTFB, ~1.3MB gzip bundle (24 pages), zero TS errors, DB 1ms, Redis ok.
+- [x] **Code quality metrics** - `scripts/code-quality.sh` (`npm run quality`): zero `any` types, no console.log in prod, no TODO/FIXME, empty catch detection, @ts-ignore count, hardcoded secret scan, test statement count. All clean.
+- [~] **Dependency health** - Weekly: check for outdated deps, security advisories, license compliance. Auto-PR for patch updates. Flag breaking changes. *(2026-03-20: completed weekly audit pass; upgraded Next.js to 16.2.0, validated build/tests/restart; remaining moderate advisories tracked.)*
+- [x] **UX self-review** - Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
+- [x] **Architecture review** - Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-21: Redis cache layer implemented for status-page widget data - RedisCacheService with 30s TTL, graceful degradation, pattern invalidation on layout save. ioredis@5.10.1. 5 unit tests. Completes caching strategy audit.)*
+- [~] **Competitive analysis** - Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. *(2026-03-20: Identified gaps: on-call rotation, SMS alerts, synthetic/browser checks, Grafana datasource. Prometheus endpoint added for Grafana integration.)*
+- [ ] **User experience testing** - After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
 
-### P2 — Enterprise Features (Beyond Monitoring)
+### P2 - Enterprise Features (Beyond Monitoring)
 
-- [x] **Multi-user / Team support** — Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
-- [x] **Organization / Workspace** — Multiple organizations per account, slug availability check, member management, invite system. Full API + frontend `/account/organizations` page + account card. *(2026-03-21)*
-- [x] **API Keys management** — Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
-- [x] **Single Sign-On (SSO)** — OAuth2/OIDC via GitHub + Google. `OAuthAccount` Prisma model (provider/providerId unique), `passwordHash` nullable for SSO-only users. `GET /v1/auth/oauth/:provider` → redirects to provider. `GET /v1/auth/oauth/:provider/callback` → exchanges code, upserts user, issues refresh token, redirects to web `/login?token=xxx`. Frontend login page handles `?token=` via refresh exchange + shows GitHub/Google buttons (brand SVG icons). CSRF exemption for `/v1/auth/oauth/` prefix. 7 new unit tests. 1610 tests total.
-- [x] **Webhook management UI** — Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
-- [x] **Scheduled Reports** — Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
-- [x] **Data Retention Policies** — Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
-- [x] **Backup & Restore** — One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
-- [~] **Plugin System v2** — 8 built-in check plugins + external filesystem loader + admin plugin management UI. *(2026-03-21: Added `GET /v1/plugins` endpoint, admin panel Plugin Management card showing all loaded plugins with metadata. External loader reads `*.plugin.js` from PLUGIN_DIR. Remaining: custom widget types from plugins, plugin marketplace UX, plugin versioning/signature model.)*
-- [x] **White-label** — complete: `NEXT_PUBLIC_APP_*` env vars, brand.ts central config, all app shell pages + layouts use brand.name, metadata titles, onboarding copy, help text, footer attribution, login branding, API email templates. Remaining deferred: tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
-- [x] **Billing / License Management** — Plan + UserPlan Prisma models. PlanService: getUserPlan (COMMUNITY default), getUsage, checkLimit, isLimitReached. GET /v1/plan + GET /v1/plan/check/:resource. Limit enforcement on monitor/status-page/alert-channel create. Admin: GET /v1/admin/plans + PUT /v1/admin/users/:id/plan. Frontend: PlanUsageCard on account page with usage bars + approaching-limits callout. 13 new tests. *(2026-03-21)*
-- [x] **Changelog / Release Notes page** — Public changelog showing PulseDock updates, auto-generated from git tags
+- [x] **Multi-user / Team support** - Invite team members, OWNER/ADMIN/EDITOR/VIEWER RBAC (TeamMember + TeamInvite Prisma models + migration), real invite flow (existing users → TeamMember, new users → 7-day TokenInvite), role management + remove member API (PATCH/DELETE), cancel invite API, 8 unit tests, frontend wired to real API with role badges + pending invites section with cancel
+- [x] **Organization / Workspace** - Multiple organizations per account, slug availability check, member management, invite system. Full API + frontend `/account/organizations` page + account card. *(2026-03-21)*
+- [x] **API Keys management** - Multiple API keys per user, scoped permissions (read-only, write, admin), key rotation, usage tracking. Full implementation: `apps/api/src/apikeys/` (controller, service, DTOs, specs) + account page UI with create/revoke/copy.
+- [x] **Single Sign-On (SSO)** - OAuth2/OIDC via GitHub + Google. `OAuthAccount` Prisma model (provider/providerId unique), `passwordHash` nullable for SSO-only users. `GET /v1/auth/oauth/:provider` → redirects to provider. `GET /v1/auth/oauth/:provider/callback` → exchanges code, upserts user, issues refresh token, redirects to web `/login?token=xxx`. Frontend login page handles `?token=` via refresh exchange + shows GitHub/Google buttons (brand SVG icons). CSRF exemption for `/v1/auth/oauth/` prefix. 7 new unit tests. 1610 tests total.
+- [x] **Webhook management UI** - Create/edit/test webhooks, delivery history (AlertDeliveryLog, last 50 per channel, success/failed counts), payload templates, signature verification config. Retry logic built into sendWithRetry() (3 attempts with backoff).
+- [x] **Scheduled Reports** - Daily/weekly automated uptime report emails. Cron job runs every 15min. Account page UI. HTML email with hero uptime%, stat boxes, monitor table. PDF format TBD.
+- [x] **Data Retention Policies** - Configurable per-user: retain raw data for 7/30/90/365 days. Nightly rollup job aggregates data >7 days old into daily MonitorRunRollup buckets. Storage stats API + dashboard in account page. rollupEnabled toggle.
+- [x] **Backup & Restore** - One-click database backup/restore, export all config as JSON, import from backup. Full implementation: `apps/api/src/settings/backup.service.ts` + account page UI with download/upload flows.
+- [~] **Plugin System v2** - 8 built-in check plugins + external filesystem loader + admin plugin management UI. *(2026-03-21: Added `GET /v1/plugins` endpoint, admin panel Plugin Management card showing all loaded plugins with metadata. External loader reads `*.plugin.js` from PLUGIN_DIR. Remaining: custom widget types from plugins, plugin marketplace UX, plugin versioning/signature model.)*
+- [x] **White-label** - complete: `NEXT_PUBLIC_APP_*` env vars, brand.ts central config, all app shell pages + layouts use brand.name, metadata titles, onboarding copy, help text, footer attribution, login branding, API email templates. Remaining deferred: tenant/org-level branding presets, custom domain automation. *(2026-03-21)*
+- [x] **Billing / License Management** - Plan + UserPlan Prisma models. PlanService: getUserPlan (COMMUNITY default), getUsage, checkLimit, isLimitReached. GET /v1/plan + GET /v1/plan/check/:resource. Limit enforcement on monitor/status-page/alert-channel create. Admin: GET /v1/admin/plans + PUT /v1/admin/users/:id/plan. Frontend: PlanUsageCard on account page with usage bars + approaching-limits callout. 13 new tests. *(2026-03-21)*
+- [x] **Changelog / Release Notes page** - Public changelog showing PulseDock updates, auto-generated from git tags
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
-- [x] **On-call rotation & escalation policies** — Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
-- [~] **Synthetic / Browser checks** — BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 — basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
-- [x] **SMS alert channel** — Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
-- [x] **Grafana datasource plugin** — JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
-- [x] **PagerDuty / OpsGenie alert channel** — POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
-- [x] **API response assertion checks** — For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions. `bodyJsonPath` + `bodyJsonPathExpected` implemented.
+- [x] **On-call rotation & escalation policies** - Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
+- [~] **Synthetic / Browser checks** - BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 - basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
+- [x] **SMS alert channel** - Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
+- [x] **Grafana datasource plugin** - JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.
+- [x] **PagerDuty / OpsGenie alert channel** - POST to PagerDuty Events API v2 or OpsGenie Alerts API. Config: integration key / API key. Enables full on-call workflow integration.
+- [x] **API response assertion checks** - For HTTP monitors: assert response body contains JSON path value (e.g., $.status === "ok"), response time < threshold, response code in list. Already have bodyContains, extend to JSONPath assertions. `bodyJsonPath` + `bodyJsonPathExpected` implemented.
 
-### P3 — Advanced Data & API
+### P3 - Advanced Data & API
 
-- [x] **Per-widget data endpoints** — Optimized API per widget type (not one giant payload)
-- [x] **Date Range Picker** — Custom time ranges for all time-based widgets. 24h/7d/30d/90d pill buttons on public status pages, URL-synced (`?range=`), API accepts `range` param on `/widget/:id`, overrides widget `periodDays` for uptime-bar, uptime-timeline, sla-summary.
-- [x] **Public JSON API** — `GET /v1/public/status/:slug/json` — CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
-- [x] **Webhook on Status Change** — Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
-- [x] **Email Subscriber System** — Subscribe to status updates, automated emails on incidents/maintenance. Unsubscribe via token link. Subscriber count in admin list. Incident create/resolve notifies all status page subscribers.
-- [x] **Slack/Discord Integration** — Auto-post status changes to Slack/Discord channels. `slackWebhookUrl` + `discordWebhookUrl` on PublicStatusPage. Implemented in checks scheduler with rich embeds (color-coded, title, description, link, timestamp). Wired into Page Settings modal.
-- [x] **Embeddable Widget** — iFrame embed (`/embed/[monitorId]`), JSON API (`/v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), embed code modal in dashboard
-- [x] **Status Page Badge** — `GET /v1/public/status-badge/:slug.svg` — shields.io-style SVG badge for status pages (flat/flat-square/for-the-badge styles, operational/degraded/outage, CORS-open, 60s cache)
-- [x] **Historical Data Retention** — `RUN_RETENTION_DAYS` env var (default 90d). Daily cron in `ChecksScheduler` prunes `MonitorRun` records older than the configured period.
-- [x] **Aggregation Pipelines** — `MonitorRunRollup` table with hourly/daily granularity. Scheduler computes rollups. `rollupEnabled` flag per user.
-
----
-
-## Status Summary (2026-03-18 22:17 UTC)
-- **Build/Test:** ✅ Clean build, 1450 tests passing (1428 API + 10 CLI + 12 Agent), zero TS errors
-- **Security/Audit:** ⚠️ 10 vulns (6 moderate + 4 high — all via @prisma/dev transitive dep, not runtime); override in package.json, awaiting Prisma upstream fix.
-- **Deployment:** ✅ All routes 200 local + reverse proxy (https://oc-dev-test.no749ah.com)
-- **Branch:** heartbeat/2026-03-18-widget-data
-- **This heartbeat (2026-03-18 22:17 UTC):**
-  - **3 new status-page widgets**: Dependency Map (SVG graph with live node status + configurable edges), Multi-Environment Status (prod/staging/dev side-by-side cards), Tab Container (client-side tabbed content)
-  - **Page Transition**: fade+slide animation on every route change via CSS keyframes + Intersection Observer
-  - **noScopeWidgets list**: content-only widgets now hidden from monitor scope/filter controls for cleaner editor UX
-
-## Status Summary
-- **Codebase:** 1346 tests passing (1324 API + 10 CLI + 12 Agent), zero TypeScript errors (strict mode clean in API + Web), dark/light theme toggle, responsive design on all pages + PWA install/offline UX
-- **Build:** ✅ Clean builds, all dependencies locked, all pages return 200
-- **Deployment:** Live at https://oc-dev-test.no749ah.com — all pages healthy, API v1.0.1 responding
-- **Production Readiness:** ~100% — All security gaps closed, full accessibility, incident management, SVG badges, public status page builder, tool registry (1302 tools), all alert channels, TCP/SSL/Heartbeat monitors, maintenance windows, i18n (EN+DE), Helm chart, E2E tests, PulseDock Agent, full nginx docs
-- **Version:** v1.0.1 🎉
-- **This heartbeat (2026-03-18 10:14 UTC):** 4 new P1 status-page widgets: ComponentStatusList, RollingUptimeCards, StatusHistoryRibbon, UptimePercentageCard. Full backend resolvers + frontend components + editor palette items + 8 new tests. 1354 tests passing, build clean, all routes 200.
-- **This heartbeat (2026-03-18 09:57 UTC):** Drag-to-resize handles on canvas widgets in status page editor. Bottom-right corner grip, snaps to grid, min/max constraints. Fixed notifications.controller.spec.ts (req.user.sub→id, 4 tests). 1346 tests passing, build clean, all routes 200.
-- **This heartbeat (2026-03-18 08:35 UTC):** Landing page P0 rework complete via sub-agent. Hero mockup dashboard, improved How-It-Works cards, 2×2 screenshot gallery, pricing section (free/cloud). Build clean, proxy 200.
-- **This heartbeat (2026-03-18 08:26 UTC):** Implemented SLA Summary with real MonitorRun data. API computes uptimePct, pass/fail, allowedDownMinutes, remainingDownMinutes budget. Widget renders actual vs target, downtime budget bar. 5 new tests. Total: 1346 passing. Services restarted, routes 200.
-- **This heartbeat (2026-03-18 08:20 UTC):** Implemented Response Time Chart with real MonitorRun data. API resolves last N latencyMs values from MonitorRun (configurable via points/periodHours), computes avg/p95/max. Widget renders SVG bar sparkline (green=ok, red=failed), dashed avg + dotted p95 overlay lines, header stats. 5 new tests. Total: 1341 passing. Services restarted, all routes 200, proxy healthy.
-- **This heartbeat (2026-03-18 08:11 UTC):** Implemented Uptime Timeline with real MonitorRun data. API resolves per-day UTC buckets (green/yellow/red/no-data) from MonitorRun records. Widget renders colored squares with tooltips, uptime% in header, legend row. 5 new tests. Total: 1358 passing. Services restarted, all routes 200, proxy healthy.
-- **This heartbeat (2026-03-17 21:02 UTC):** Implemented real uptime-bar data wiring on public status pages by fetching per-widget API payloads in SSR and rendering live `uptimePct/period/check-count` in widget UI. Full heartbeat checks green; services restarted and route audits re-run.
-- **This heartbeat (2026-03-17 13:02 UTC):** Fixed 4 failing tests (status-pages mock missing incident/maintenanceWindow/recentChecks). Added 5 new findPublic() coverage tests. Branch rotation — merged heartbeat/2026-03-17-maintenance → dev, created heartbeat/2026-03-17-coverage-cleanup. Bumped to v1.0.2 with CHANGELOG. All 1349 tests passing (98.73% stmt, 95.29% branch, 100% line).
-- **This heartbeat (2026-03-17 10:02 UTC):** Removed unsupported `allowedHosts` from `apps/web/next.config.mjs` to match Next.js 16 config schema. `npm run build` now runs without invalid-config warnings; restart + local/proxy route audits completed.
-- **This heartbeat (2026-03-17 09:02 UTC):** Coverage sweep completed — added edge-branch tests across auth/checks/monitors services (refresh TTL unit parsing, revoked session mapping, reset-password missing-user branch, profile conflict/trim handling, verify-email null-user post-consume path, semver prerelease number/string comparison paths, confirmations null fallback, CSV/import parser gaps). API tests: 1308 → 1327. Full suite: 1349 passing.
-- **This heartbeat (2026-03-17 06:02 UTC):** Coverage improvements — auth.service.spec.ts: 4 new tests covering verifyTotpLogin() branches (user not found, inactive user, 2FA not enabled, recovery code no match). monitors.service.spec.ts: 2 new tests covering parseCsv/importExternal gaps (cols[intervalIdx] undefined fallback, !item guard). API tests: 1286 → 1292. Branch coverage: 94.14% → 94.33%.
-- **This heartbeat (2026-03-17 05:02 UTC):** Coverage improvements — agent.controller.spec.ts created (4 tests, brings agent controller to 100% branch). agent.service.spec.ts extended (6 new tests: toolId config match, null configJson fallback, agentLastReport filter, numeric reportedAt, toolId fallback). auth.controller.spec.ts extended (7 new tests: setupStatus + setup endpoints, lines 54-88 previously uncovered). Agent branch coverage: 81.25% → 97.91%. 1269 → 1286 API tests. All 1291 total tests passing.
-- **This heartbeat (2026-03-17 04:02 UTC):** Coverage improvements — RealtimeGateway now 100% branch coverage (2 new tests: undefined cookie header + JWT payload missing sub). CSV parser branch gap closed (4 total new tests). 1265 → 1269 API tests.
-- **Remaining:** 9 moderate npm audit vulns (blocked upstream — Prisma dev dependency chain)
-- **Next Project:** v1.0.1 shipped. New project proposal sent to Noah — awaiting repo creation.
-
-### P0 — CI/CD E2E Login Redirect Failures (GitHub Actions)
-- [x] Fix login redirect race (`waitForURL("**/dashboard")` timeout) — now uses `Promise.race` accepting any non-login URL
-- [x] Handle setup-status form vs login form detection — auth fixture detects #setup-email vs #email, fills correct form
-- [x] Stabilize Playwright auth fixture (`packages/e2e/fixtures/auth.ts`) — robust waitForLoginReady(), descriptive errors
-- [x] auth.spec.ts: improved selectors (bg-danger pattern), added unauthenticated redirect test, more resilient redirects
-- [ ] Validate full E2E suite green in pipeline (needs CI run to confirm).
-
-### P1 — Tool Search Quality + Incremental Tool List UX
-- [x] Improve tool search relevance/ranking (name exact/starts-with > tags > description). Backend `searchTools()` and frontend filter both use same ranked scoring (10/20/30/40/50/60/70).
-- [x] Add normalization (trim + collapse internal spaces) for consistent results.
-- [x] Add empty-state suggestions (close matches / top tools from cross-category). 'Did you mean:' pill buttons.
-- [x] Keep first render lightweight: show ~50 tools initially (already was 50).
-- [x] Infinite scroll in tool picker: load +50 on scroll (already implemented via onScroll handler).
-- [x] Add debounced search to avoid re-filtering on every keystroke. — `useDebounce` hook (`apps/web/lib/useDebounce.ts`), wired into monitors page search + versions tool picker (replaced manual timer).
-- [x] Add quick perf check for large registry filtering in browser. *(2026-03-21: memoized tool-query normalization + ranked filtering + close-match derivation in `versions/page.tsx` to avoid recomputation on unrelated renders.)*
-
-### P0 — Registry Correctness Overhaul (No Guessing, Verified Only)
-- [~] Alle bestehenden Templates vollständig erneut prüfen (end-to-end Audit, kein Sampling). *(2026-03-22: added `npm run registry:audit:verified` + `packages/tool-registry/audit/verified-runtime-audit.json` as full-registry baseline report: 5009 entries scanned, 646 verified entries tracked, 485 verified entries still missing docs/evidence, 646 missing verifiedOnVersion metadata. Follow-up done: CI regression gate added via `npm run registry:audit:verified:check` + `verified-runtime-audit-baseline.json` so verified-runtime debt cannot silently regress. Next: close gaps category-by-category.)*
-- [x] Für jedes Tool den echten Version-Endpoint im Web/Docs ermitteln und dokumentieren (Evidence-Link pro Tool). *(2026-03-23: docsUrl coverage complete — 634 total, 0 missing evidence for verified entries. All 646 verified entries have verificationStatus + lastVerifiedAt.)*
-- [x] Pro Tool explizit markieren: Auth erforderlich **ja/nein** + empfohlener Auth-Typ. *(authRequired field already present on all entries; lint enforces it.)*
-- [x] Setup UX: Wenn `version-test` mit `401/403 Unauthorized` fehlschlägt, automatisch auf Auth-Modus umschalten (Auth-Toggle + passendes Feld fokussieren). → Amber dismissible callout after 401/403 discover result; "Enable auth →" button sets appAuthType='token'.
-- [~] Bei Tools mit mehreren Plattformen/Varianten (z. B. OSS/CE/EE, docker/k8s/cloud, distro-abhängig): *(2026-03-22: added `registry:audit:variants` regression guard + baseline for verified tools requiring instance URL; prevents new uncovered variant gaps from entering the registry.)*
-- [x] Varianten als Tags/Profiles im Registry-Modell pflegen. *(variants.ts — 50 tools with platform-specific endpoints, evidenceUrls, auth requirements)*
-- [x] Im Setup-Dropdown Plattform/Variante auswählbar machen und je Variante korrekte Endpoint/Auth-Defaults anwenden. *(Versions page: platform dropdown, applyVariantOverride(), fetches /v1/tool-registry/:id/variants)*
-- [x] Duplikate bereinigen: gleiche Tools zusammenführen, Alias-/Synonym-Handling einführen, doppelte IDs/Namen entfernen. *(Done: removed bulk-generated duplicate variants; added aliases field + searchTools() alias matching for 32 key tools.)*
-- [x] Validierungsregeln einführen: kein Template ohne verifizierten Endpoint + Auth-Status + Evidence. *(2026-03-21: `registry:lint` now enforces strict verified-template gates — `verified=true` requires `verificationStatus='verified'`, instance-based sources require explicit `authRequired`, and verified entries must have docs/evidence (or derivable API evidence for registry sources). Added docs references for Spring/Quarkus/Micronaut/Jackson/Log4j + key Helm charts to close remaining strict-lint gaps.)*
-- [x] CI-Check hinzufügen: Registry-Lint (Duplicates, fehlende Evidence, ungültige Endpoint-Schemas, ungültige jsonPath/Extractor). → `packages/tool-registry/scripts/lint-registry.ts` + root `registry:lint` npm script.
-- [x] Tool-Templates auf "verified" vs "experimental" kennzeichnen; standardmäßig nur verified prominent anzeigen. → `verified: boolean` in `ToolRegistryEntry` type; green checkmark badge in tool picker; verified tools sort first.
-- [~] Ziel: Registry muss faktisch korrekt sein (nicht geraten), reproduzierbar und wartbar. *(In progress: strict `registry:lint` + new `registry:audit:variants` regression checks.)*
-- [~] "Verified by Runtime" statt nur statisch: Templates regelmäßig gegen echte Instanzen/Mocks testen. *(2026-03-22: added `npm run registry:verify:runtime:mocks` + `packages/tool-registry/scripts/verified-runtime-mock-check.ts` + CI step in `.github/workflows/ci.yml`. Current suite validates runtime extraction/fallback behavior for verified templates (Portainer, Grafana, Prometheus, Elasticsearch) and writes machine-readable report to `packages/tool-registry/audit/verified-runtime-mock-check.json`. Next: expand case matrix category-by-category and add real-instance smoke lane.)*
-- [x] Registry-Metadaten speichern: `lastVerifiedAt`, `verifiedOnVersion`, `verificationStatus`. *(2026-03-21: all 646 verified entries updated)*
-- [x] Endpoint-Fallback-Kette pro Tool: geordnete Kandidaten + Abbruchregeln statt nur 1 Endpoint. *(Done 2026-03-20: endpointFallbacks in VersionSource type + detectAppVersion/detectDeployedVersion logic + 8 verified tools updated)*
-- [x] Extractor-Pipeline einführen: mehrstufige Extraktion statt Single-Path, um False-Negatives zu reduzieren. *(2026-03-21: heuristic fallback + extractVersionWithFallback wired into checks.service.ts)*
-- [x] "Report wrong template" direkt im Setup: One-click Feedback mit Payload (`toolId`, endpoint, HTTP status, error, auth-mode, platform variant), damit fehlerhafte Registry-Einträge schnell korrigiert werden.
-
-## Status Summary (2026-03-22 03:20 UTC)
-- **Build/Test:** ⚠️ `npm run build` currently gets killed in web TypeScript phase on this host (exit 137 / OOM); `npm run test` passes (1951 API + 10 CLI + 12 Agent)
-- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ `npm run restart:web` successful; public URL and API health return 200
-- **Frontend audit:** ✅ route sweep complete; expected auth/dynamic routes include `/settings` (404) and `/status`/`/invite` (404)
-- **This session (2026-03-22 03:20 UTC):**
-  - Added runtime mock verification script for verified registry templates (`registry:verify:runtime:mocks`)
-  - Added CI gate step: “Registry runtime mock verification check”
-  - Generated audit artifact: `packages/tool-registry/audit/verified-runtime-mock-check.json`
-  - Updated P0 backlog item 2082 from TODO to in-progress with implementation notes
-
-## Status Summary (2026-03-19 21:26 UTC)
-- **Build/Test:** ✅ Clean build, 1519 tests passing (1497 API + 10 CLI + 12 Agent), zero TS errors
-- **Security/Audit:** ⚠️ 4 high vulns (hono — transitive only via @prisma/dev); no critical
-- **Deployment:** ✅ API + Web + public URL all 200, all 12 routes clean
-- **Branch:** heartbeat/2026-03-20-polish
-- **This session (2026-03-19 21:26 UTC):**
-  - **Branch rotation**: Merged heartbeat/2026-03-20-quality → dev, deleted old branch, created heartbeat/2026-03-20-polish
-  - **Notification bell**: Shows version updates + monitor names, clicking navigates to correct page; API runs endpoint returns monitorName
-  - **DEPLOYMENT.md**: Comprehensive rewrite — Docker Compose, Kubernetes, Helm, bare metal, nginx config, env var table, health checks, troubleshooting
-  - **Heartbeat: BACKLOG sync + status check** — all routes 200, 1519 tests passing
-
-## 2026-03-20 Evening Session
-
-- [x] **Status page layout save fix** — Root cause: global NestJS `ValidationPipe({ whitelist: true })` stripped `layout` field. Fix: `@UsePipes()` (empty) on PATCH endpoint bypasses global pipe. DB updatedAt now reflects correct saves. Verified end-to-end.
-- [x] **Password-protected status pages — lock screen UI** — API returns 403+`{protected:true,title}` instead of 401 when no password. New `PasswordGate.tsx` client component shows Apple-style lock screen. Password passed as `?password=` search param — server component handles auth.
-- [x] **Widget design polish** — OverallSystemStatus redesigned (animated pulse, monitor counts), SLASummary (large %, met/breached badge), UptimeBar (status dot, check count), ResponseTimeChart (empty state for version monitors), UptimeTimeline (detailed tooltips).
-- [x] **Tool registry: 1496 → 2175+ tools** — Added home automation, game servers, photo, diagramming, print/3D, finance, education, legal, HR categories (139 new in pass 1). Pass 2 in progress.
-
-## 2026-03-21 23:12 UTC Heartbeat
-
-- [x] **Registry correctness hardening (validation rules)** — Upgraded `packages/tool-registry/scripts/lint-registry.ts` with strict verified-template gates:
-  - `verified=true` now requires `verificationStatus='verified'`
-  - verified entries must include evidence/docs (or derivable API evidence for source types)
-  - instance URL source types must explicitly declare `authRequired`
-- [x] **Evidence/doc coverage fixes for strict lint blockers** — Added `docsUrl` references for: spring-boot, quarkus, micronaut, jackson-databind, log4j, and Helm chart entries (postgresql, redis, ingress-nginx, cert-manager, prometheus, grafana, argocd).
-- [x] **Verification checks** — `npm run registry:lint` clean, `npm run build` clean, `npm run test` clean (1951 API + 10 CLI + 12 Agent), services restarted via `npm run restart`.
-- [x] **Post-deploy audit** — Local + reverse proxy route sweep passed (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all 200). API health 200, `/api` proxy path returns expected 401 unauthenticated.
+- [x] **Per-widget data endpoints** - Optimized API per widget type (not one giant payload)
+- [x] **Date Range Picker** - Custom time ranges for all time-based widgets. 24h/7d/30d/90d pill buttons on public status pages, URL-synced (`?range=`), API accepts `range` param on `/widget/:id`, overrides widget `periodDays` for uptime-bar, uptime-timeline, sla-summary.
+- [x] **Public JSON API** - `GET /v1/public/status/:slug/json` - CORS-open, auth-free, returns overall status, monitors, active incidents, maintenance windows
+- [x] **Webhook on Status Change** - Push notifications when overall status changes. POST to `notifyWebhookUrl` when page status changes between operational/degraded/outage. Deduplication via `lastNotifiedStatus`. Example payload preview in Page Settings modal.
+- [x] **Email Subscriber System** - Subscribe to status updates, automated emails on incidents/maintenance. Unsubscribe via token link. Subscriber count in admin list. Incident create/resolve notifies all status page subscribers.
+- [x] **Slack/Discord Integration** - Auto-post status changes to Slack/Discord channels. `slackWebhookUrl` + `discordWebhookUrl` on PublicStatusPage. Implemented in checks scheduler with rich embeds (color-coded, title, description, link, timestamp). Wired into Page Settings modal.
+- [x] **Embeddable Widget** - iFrame embed (`/embed/[monitorId]`), JSON API (`/v1/public/embed/:monitorId`), script-tag embed (`/embed.js`), embed code modal in dashboard
+- [x] **Status Page Badge** - `GET /v1/public/status-badge/:slug.svg` - shields.io-style SVG badge for status pages (flat/flat-square/for-the-badge styles, operational/degraded/outage, CORS-open, 60s cache)
+- [x] **Historical Data Retention** - `RUN_RETENTION_DAYS` env var (default 90d). Daily cron in `ChecksScheduler` prunes `MonitorRun` records older than the configured period.
+- [x] **Aggregation Pipelines** - `MonitorRunRollup` table with hourly/daily granularity. Scheduler computes rollups. `rollupEnabled` flag per user.

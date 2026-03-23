@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   Delete,
+  ValidationPipe,
   ForbiddenException,
   Get,
   Header,
@@ -99,13 +100,12 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
-  // Read body directly from request to bypass the global ValidationPipe which
-  // strips unknown/nested fields from the deeply-nested `layout` JSON.
-  update(@Req() req: AuthRequest & { body?: unknown }, @Param('id') id: string) {
-    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
-    const keys = Object.keys(body);
-    console.error(`[PATCH-DEBUG] id=${id} bodyKeys=[${keys}] hasLayout=${!!body.layout} rawType=${typeof req.body} rawKeys=${req.body ? Object.keys(req.body as object) : 'N/A'}`);
-    return this.statusPagesService.update(req.user.id, id, body as unknown as UpdateStatusPageDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false })) body: UpdateStatusPageDto,
+  ) {
+    return this.statusPagesService.update(req.user.id, id, body);
   }
 
   @UseGuards(AuthGuard)

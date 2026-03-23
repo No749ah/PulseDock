@@ -223,6 +223,7 @@ export class StatusPagesService {
    * @throws ForbiddenException if the page belongs to a different user
    */
   async update(userId: string, id: string, dto: UpdateStatusPageDto) {
+    this.logger.debug(`StatusPage update: id=${id}, keys=${dto ? Object.keys(dto).join(',') : 'none'}`);
     // Gracefully handle missing/empty body — treat as no-op update
     if (!dto || typeof dto !== 'object') {
       dto = {} as UpdateStatusPageDto;

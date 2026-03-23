@@ -375,7 +375,7 @@
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [x] **Increase test coverage to >90%** - 706 tests passing. Line coverage at 90.03%, statement coverage 87.79%. auth.service 87%, checks.service 94%, monitors.service 83%, all controllers at 100%. Achieved via systematic subagent coverage sprints across all major services.
+- [x] **Increase test coverage to >90%** - 2216 API tests passing. Line coverage 91.88%, statement coverage 90.16%, branch coverage 80.63%. All controllers at 100%, backup 100%, plan 100%, alerts 90%, status-pages 86%. Achieved via systematic subagent coverage sprints across all major services.
 - [x] **E2E tests (Playwright)** - `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
 - [x] **API documentation improvements** - All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
 - [x] **Performance profiling** - Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

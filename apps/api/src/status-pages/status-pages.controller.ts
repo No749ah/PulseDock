@@ -103,6 +103,8 @@ export class StatusPagesController {
   // strips unknown/nested fields from the deeply-nested `layout` JSON.
   update(@Req() req: AuthRequest & { body?: unknown }, @Param('id') id: string) {
     const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
+    const keys = Object.keys(body);
+    console.error(`[PATCH-DEBUG] id=${id} bodyKeys=[${keys}] hasLayout=${!!body.layout} rawType=${typeof req.body} rawKeys=${req.body ? Object.keys(req.body as object) : 'N/A'}`);
     return this.statusPagesService.update(req.user.id, id, body as unknown as UpdateStatusPageDto);
   }
 

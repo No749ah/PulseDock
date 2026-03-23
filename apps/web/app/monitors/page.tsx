@@ -2460,7 +2460,7 @@ function MonitorsPageInner() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); setSelectedTags([]); setTagInput(""); }}
         title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
-        size="md"
+        size="xl"
         actions={
           <>
             <Button variant="secondary" onClick={() => { setShowModal(false); setEditingMonitor(null); }}>
@@ -2472,7 +2472,7 @@ function MonitorsPageInner() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           {modalMode === "create" && showTemplates && (
             <div className="rounded-xl border border-border/60 p-3 bg-surface-elevated/30">
               <MonitorTemplates onSelect={handleApplyTemplate} />
@@ -2521,51 +2521,53 @@ function MonitorsPageInner() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
-            <select
-              value={formData.type}
-              onChange={(e) => {
-                const nextType = e.target.value as typeof formData.type;
-                setFormData({
-                  ...formData,
-                  type: nextType,
-                  pluginId: "",
-                  expectedText: "",
-                  heartbeatTimeoutMin: nextType === "HEARTBEAT" ? formData.heartbeatTimeoutMin || 5 : formData.heartbeatTimeoutMin,
-                  heartbeatToken: nextType === "HEARTBEAT" ? (formData.heartbeatToken || crypto.randomUUID()) : formData.heartbeatToken,
-                });
-              }}
-              className={inputClass}
-            >
-              <option value="HTTP">HTTP Check</option>
-              <option value="TCP">TCP Port</option>
-              <option value="SSL_CERT">SSL Certificate</option>
-              <option value="HEARTBEAT">Heartbeat</option>
-              <option value="DNS">DNS Lookup</option>
-              <option value="PING">ICMP Ping</option>
-              <option value="SMTP">SMTP Email Server</option>
-              <option value="BROWSER">Browser / Page Check</option>
-            </select>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
+              <select
+                value={formData.type}
+                onChange={(e) => {
+                  const nextType = e.target.value as typeof formData.type;
+                  setFormData({
+                    ...formData,
+                    type: nextType,
+                    pluginId: "",
+                    expectedText: "",
+                    heartbeatTimeoutMin: nextType === "HEARTBEAT" ? formData.heartbeatTimeoutMin || 5 : formData.heartbeatTimeoutMin,
+                    heartbeatToken: nextType === "HEARTBEAT" ? (formData.heartbeatToken || crypto.randomUUID()) : formData.heartbeatToken,
+                  });
+                }}
+                className={inputClass}
+              >
+                <option value="HTTP">HTTP Check</option>
+                <option value="TCP">TCP Port</option>
+                <option value="SSL_CERT">SSL Certificate</option>
+                <option value="HEARTBEAT">Heartbeat</option>
+                <option value="DNS">DNS Lookup</option>
+                <option value="PING">ICMP Ping</option>
+                <option value="SMTP">SMTP Email Server</option>
+                <option value="BROWSER">Browser / Page Check</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Check Plugin</label>
-            <select
-              value={formData.pluginId}
-              onChange={(e) => setFormData({ ...formData, pluginId: e.target.value, expectedText: "" })}
-              className={inputClass}
-            >
-              <option value="">Built-in check logic</option>
-              {availablePlugins.map((plugin) => (
-                <option key={plugin.id} value={plugin.id}>
-                  {plugin.displayName}
-                </option>
-              ))}
-            </select>
-            {selectedPlugin?.description && (
-              <p className="mt-1 text-xs text-text-secondary">{selectedPlugin.description}</p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Check Plugin</label>
+              <select
+                value={formData.pluginId}
+                onChange={(e) => setFormData({ ...formData, pluginId: e.target.value, expectedText: "" })}
+                className={inputClass}
+              >
+                <option value="">Built-in check logic</option>
+                {availablePlugins.map((plugin) => (
+                  <option key={plugin.id} value={plugin.id}>
+                    {plugin.displayName}
+                  </option>
+                ))}
+              </select>
+              {selectedPlugin?.description && (
+                <p className="mt-1 text-xs text-text-secondary">{selectedPlugin.description}</p>
+              )}
+            </div>
           </div>
 
           {formData.pluginId === "http.response-match" && (
@@ -2976,56 +2978,58 @@ function MonitorsPageInner() {
             </>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
-              <HelpTooltip content={`How often ${brand.name} checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources.`} className="ml-1 align-middle" />
-            </label>
-            <input
-              type="number"
-              min="30"
-              max="3600"
-              value={formData.intervalSec}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                setFormData({ ...formData, intervalSec: val });
-                if (formTouched.interval) setFormErrors((prev) => ({ ...prev, interval: val < 30 ? "Min 30s" : val > 3600 ? "Max 3600s" : "" }));
-              }}
-              onBlur={() => setFormTouched((t) => ({ ...t, interval: true }))}
-              className={`${inputClass} ${formTouched.interval && formErrors.interval ? "border-danger focus:ring-danger" : ""}`}
-              aria-invalid={formTouched.interval && !!formErrors.interval}
-            />
-            {formTouched.interval && formErrors.interval ? (
-              <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
-            ) : (
-              <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
-            )}
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
+                <HelpTooltip content={`How often ${brand.name} checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources.`} className="ml-1 align-middle" />
+              </label>
+              <input
+                type="number"
+                min="30"
+                max="3600"
+                value={formData.intervalSec}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setFormData({ ...formData, intervalSec: val });
+                  if (formTouched.interval) setFormErrors((prev) => ({ ...prev, interval: val < 30 ? "Min 30s" : val > 3600 ? "Max 3600s" : "" }));
+                }}
+                onBlur={() => setFormTouched((t) => ({ ...t, interval: true }))}
+                className={`${inputClass} ${formTouched.interval && formErrors.interval ? "border-danger focus:ring-danger" : ""}`}
+                aria-invalid={formTouched.interval && !!formErrors.interval}
+              />
+              {formTouched.interval && formErrors.interval ? (
+                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
+              ) : (
+                <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
-              <HelpTooltip content="Number of consecutive failures before triggering an alert. Set to 1 for immediate alerts, or higher to reduce false positives from transient errors. Range: 1–10." className="ml-1 align-middle" />
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={formData.confirmations}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                setFormData({ ...formData, confirmations: val });
-                if (formTouched.confirmations) setFormErrors((prev) => ({ ...prev, confirmations: val < 1 ? "Min 1" : val > 10 ? "Max 10" : "" }));
-              }}
-              onBlur={() => setFormTouched((t) => ({ ...t, confirmations: true }))}
-              className={`${inputClass} ${formTouched.confirmations && formErrors.confirmations ? "border-danger focus:ring-danger" : ""}`}
-              aria-invalid={formTouched.confirmations && !!formErrors.confirmations}
-            />
-            {formTouched.confirmations && formErrors.confirmations ? (
-              <p role="alert" className="mt-1 text-xs text-danger">{formErrors.confirmations}</p>
-            ) : (
-              <p className="mt-1 text-xs text-text-secondary">How many consecutive failures before sending an alert (1-10).</p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
+                <HelpTooltip content="Number of consecutive failures before triggering an alert. Set to 1 for immediate alerts, or higher to reduce false positives from transient errors. Range: 1–10." className="ml-1 align-middle" />
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={formData.confirmations}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setFormData({ ...formData, confirmations: val });
+                  if (formTouched.confirmations) setFormErrors((prev) => ({ ...prev, confirmations: val < 1 ? "Min 1" : val > 10 ? "Max 10" : "" }));
+                }}
+                onBlur={() => setFormTouched((t) => ({ ...t, confirmations: true }))}
+                className={`${inputClass} ${formTouched.confirmations && formErrors.confirmations ? "border-danger focus:ring-danger" : ""}`}
+                aria-invalid={formTouched.confirmations && !!formErrors.confirmations}
+              />
+              {formTouched.confirmations && formErrors.confirmations ? (
+                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.confirmations}</p>
+              ) : (
+                <p className="mt-1 text-xs text-text-secondary">Consecutive failures before alerting (1-10).</p>
+              )}
+            </div>
           </div>
 
           {/* SLA Target */}

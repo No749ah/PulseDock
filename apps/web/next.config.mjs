@@ -60,7 +60,9 @@ const nextConfig = {
     ];
   },
 
-  // Proxy all /api requests to the API server.
+  // API proxy: Route Handler at app/api/[...path]/route.ts handles all /api/* requests.
+  // Next.js rewrites drop request bodies on PATCH/POST — the Route Handler preserves them.
+  // Socket.io uses rewrites for WebSocket upgrade passthrough.
   async rewrites() {
     const apiUrl = process.env.INTERNAL_API_URL ?? 'http://localhost:4321';
     return [
@@ -71,10 +73,6 @@ const nextConfig = {
       {
         source: '/api/socket.io/:path*',
         destination: `${apiUrl}/socket.io/:path*`,
-      },
-      {
-        source: '/api/:path*',
-        destination: `${apiUrl}/:path*`,
       },
     ];
   },

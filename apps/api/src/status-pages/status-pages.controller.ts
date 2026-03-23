@@ -15,6 +15,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -100,10 +101,13 @@ export class StatusPagesController {
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Status page not found.' })
+  // Override the global ValidationPipe: disable whitelist+transform so the
+  // deeply-nested `layout` JSON is never stripped by class-transformer.
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false }))
   update(
     @Req() req: AuthRequest,
     @Param('id') id: string,
-    @Body(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false })) body: UpdateStatusPageDto,
+    @Body() body: UpdateStatusPageDto,
   ) {
     return this.statusPagesService.update(req.user.id, id, body);
   }

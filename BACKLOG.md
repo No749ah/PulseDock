@@ -6,8 +6,8 @@
 - **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
-- **Coverage:** 90.16% stmts / 80.63% branches / 91.88% lines (API). All major modules now 85%+. monitors.controller 100%, backup 100%, plan 100%, alerts ~90%, redis-cache 89%, status-pages 85.77%.
-- **Last sweep:** Coverage expansion complete (+157 tests this session). Added loading/error states for 7 pages (incidents, maintenance, status-pages, reports, changelog, verify-email, invite). Added metadata layouts for 3 pages (folders, reports, changelog). All 16 web routes verified 200.
+- **Coverage:** 91.8% stmts / 82.09% branches / 93.68% lines (API). All major modules 85%+. grafana.service 100%, backup 100%, plan 100%, monitors.controller 100%, checks.service 91%, alerts 90%, status-pages 86%.
+- **Last sweep:** Coverage expansion complete (+187 tests this session, 2246 total). Added loading/error states for 7 pages. Added metadata layouts for 3 pages. All 16 web routes verified 200. Ready for heartbeat→dev merge at ~00:00 UTC.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -375,7 +375,7 @@
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [x] **Increase test coverage to >90%** - 2216 API tests passing. Line coverage 91.88%, statement coverage 90.16%, branch coverage 80.63%. All controllers at 100%, backup 100%, plan 100%, alerts 90%, status-pages 86%. Achieved via systematic subagent coverage sprints across all major services.
+- [x] **Increase test coverage to >90%** - 2246 API tests passing. Line coverage 93.68%, statement coverage 91.8%, branch coverage 82.09%. All controllers at 100%, grafana 100%, backup 100%, plan 100%, checks 91%, alerts 90%, status-pages 86%. Achieved via systematic subagent coverage sprints across all major services.
 - [x] **E2E tests (Playwright)** - `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
 - [x] **API documentation improvements** - All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
 - [x] **Performance profiling** - Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

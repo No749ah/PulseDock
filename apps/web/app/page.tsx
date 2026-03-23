@@ -39,8 +39,8 @@ const navLinks = [
 
 const stats = [
   { value: "5000+", label: "Tools Tracked" },
-  { value: "65+", label: "Status Page Widgets" },
-  { value: "86+", label: "Monitor Templates" },
+  { value: "80+", label: "Status Page Widgets" },
+  { value: "140+", label: "Monitor Templates" },
   { value: "100%", label: "Free & Open Source" },
 ];
 
@@ -297,7 +297,7 @@ export default function LandingPage() {
                 <div className="text-xs text-text-secondary mt-1">Tools tracked</div>
               </div>
               <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 text-center">
-                <div className="text-2xl font-bold text-purple-400">70+</div>
+                <div className="text-2xl font-bold text-purple-400">80+</div>
                 <div className="text-xs text-text-secondary mt-1">Widget types</div>
               </div>
               <div className="rounded-xl border border-border bg-surface/60 p-4 text-center">

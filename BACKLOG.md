@@ -1,13 +1,13 @@
-## Status Summary (2026-03-23 21:16 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (2246 API + 56 Web + 10 CLI + 12 Agent = 2324 total)
+## Status Summary (2026-03-23 22:09 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (2260 API + 56 Web + 10 CLI + 12 Agent = 2338 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
 - **Branch:** heartbeat/2026-03-23-evening
 - **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
-- **Coverage:** checks.service 91% stmts / 86% branches, grafana.service 100% stmts / 85% branches. All major modules 85%+.
-- **Last change:** Added web package unit test suite (Vitest + jsdom): 56 tests covering brand, design tokens, i18n, API base, sort/export utilities.
+- **Coverage:** tool-registry controller 47 tests (was 30), all major modules 85%+. Overall: 91.8% stmts / 82.4% branch.
+- **Last change:** Expanded tool-registry controller test coverage (+17 tests): npm/pypi/cargo/docker-hub/github-tags upstream paths, namespace handling, fallback chains, edge cases.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

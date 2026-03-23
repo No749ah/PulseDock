@@ -1809,7 +1809,7 @@ export class ChecksService {
             signal: ctrl.signal,
           });
         } catch (err) {
-          console.error('[PulseDock] Slack webhook delivery failed:', err instanceof Error ? err.message : String(err));
+          this.logger.warn(`Slack webhook delivery failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
           clearTimeout(timer);
         }
@@ -1837,7 +1837,7 @@ export class ChecksService {
             signal: ctrl.signal,
           });
         } catch (err) {
-          console.error('[PulseDock] Discord webhook delivery failed:', err instanceof Error ? err.message : String(err));
+          this.logger.warn(`Discord webhook delivery failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
           clearTimeout(timer);
         }

@@ -1,5 +1,5 @@
-## Status Summary (2026-03-23 20:12 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (2246 API + 10 CLI + 12 Agent = 2268 total)
+## Status Summary (2026-03-23 21:16 UTC)
+- **Build/Test:** ✅ Clean build + full tests passing (2246 API + 56 Web + 10 CLI + 12 Agent = 2324 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
 - **Branch:** heartbeat/2026-03-23-evening
@@ -7,7 +7,7 @@
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
 - **Coverage:** checks.service 91% stmts / 86% branches, grafana.service 100% stmts / 85% branches. All major modules 85%+.
-- **Last fix:** Removed hardcoded CORS origin, added configurable `CORS_ORIGINS` env var. No deployment-specific URLs remain in source.
+- **Last change:** Added web package unit test suite (Vitest + jsdom): 56 tests covering brand, design tokens, i18n, API base, sort/export utilities.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

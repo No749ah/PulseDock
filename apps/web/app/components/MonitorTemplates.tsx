@@ -38,6 +38,7 @@ const GENERAL_TEMPLATES: MonitorTemplate[] = [
     type: "HTTP",
     target: "https://api.example.com/health",
     intervalSec: 60,
+    requiresUrl: true,
   },
   {
     label: "HTTP Response Match",
@@ -48,6 +49,7 @@ const GENERAL_TEMPLATES: MonitorTemplate[] = [
     intervalSec: 120,
     pluginId: "http.response-match",
     expectedText: "OK",
+    requiresUrl: true,
   },
 ];
 

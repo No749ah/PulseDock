@@ -905,7 +905,12 @@ function MonitorsPageInner() {
   };
 
   const handleApplyTemplate = (t: MonitorTemplate) => {
-    // Version types are handled on the Versions page; fall back to HTTP if a version template slips through
+    // Version types → redirect to Versions page
+    if (t.type === "GIT_RELEASE" || t.type === "DOCKER_IMAGE") {
+      router.push(`/versions?template=${encodeURIComponent(t.target)}&type=${t.type}`);
+      setShowModal(false);
+      return;
+    }
     const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"] as string[]).includes(t.type)
       ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER")
       : "HTTP";

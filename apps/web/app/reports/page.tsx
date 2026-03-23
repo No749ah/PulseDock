@@ -287,8 +287,7 @@ export default function ReportsPage() {
       }
 
       pdf.save(`pulsedock-report-${period}-${new Date().toISOString().slice(0, 10)}.pdf`);
-    } catch (err) {
-      console.error('PDF export failed:', err);
+    } catch (_err) {
       toastCtx.error('PDF export failed');
     } finally {
       setExporting(false);

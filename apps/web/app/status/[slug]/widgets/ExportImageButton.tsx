@@ -36,8 +36,8 @@ export function ExportImageButton({ slug }: { slug: string }) {
       link.download = `status-${slug}-${new Date().toISOString().slice(0, 10)}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
-    } catch (err) {
-      console.error("Export failed:", err);
+    } catch (_err) {
+      // Silent fail — button re-enables; user can retry
     } finally {
       setExporting(false);
     }

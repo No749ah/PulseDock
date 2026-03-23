@@ -89,16 +89,16 @@ describe('StatusPagesController', () => {
   describe('update()', () => {
     it('calls update with userId, id, and body from request', async () => {
       const dto = { title: 'Updated Title' };
-      const req = makeReq('user-1');
-      await controller.update(req, 'page-3', dto as any);
+      const req = { ...makeReq('user-1'), body: dto } as any;
+      await controller.update(req, 'page-3');
       expect(service.update).toHaveBeenCalledWith('user-1', 'page-3', dto);
     });
 
     it('returns the updated page', async () => {
       const updated = { id: 'page-3', title: 'Updated Title' };
       (service.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
-      const req = makeReq();
-      const result = await controller.update(req, 'page-3', { title: 'Updated Title' } as any);
+      const req = { ...makeReq(), body: { title: 'Updated Title' } } as any;
+      const result = await controller.update(req, 'page-3');
       expect(result).toEqual(updated);
     });
   });

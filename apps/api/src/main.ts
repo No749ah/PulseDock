@@ -149,6 +149,11 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
+  // Enable NestJS lifecycle hooks (onModuleDestroy, onApplicationShutdown) on SIGTERM/SIGINT.
+  // This ensures in-flight checks finish, DB connections close cleanly, and Redis disconnects
+  // before the process exits — critical for zero-downtime deploys and container orchestration.
+  app.enableShutdownHooks();
+
   const port = Number(process.env.API_PORT ?? 4000);
   await app.listen(port);
   logger.info('PulseDock API started', {

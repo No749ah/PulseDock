@@ -372,4 +372,31 @@ describe('ChecksScheduler', () => {
       );
     });
   });
+
+  describe('graceful shutdown', () => {
+    it('suppresses new tick cycles after beforeApplicationShutdown is called', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      // Start shutdown (draining = true, but queueDepth = 0 so it resolves immediately)
+      await scheduler.beforeApplicationShutdown();
+
+      // tick() should now be a no-op (draining flag set)
+      await scheduler.tick();
+      // findMany should NOT have been called again after shutdown
+      expect(prisma.monitor.findMany).not.toHaveBeenCalled();
+    });
+
+    it('suppresses checkSlaBreach after shutdown signal', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      await scheduler.beforeApplicationShutdown();
+
+      await scheduler.checkSlaBreach();
+      expect(prisma.monitor.findMany).not.toHaveBeenCalled();
+    });
+
+    it('reports clean shutdown when queueDepth reaches zero', async () => {
+      // queueDepth is already 0 → should resolve immediately
+      await scheduler.beforeApplicationShutdown();
+      expect(scheduler.getQueueDepth()).toBe(0);
+    });
+  });
 });

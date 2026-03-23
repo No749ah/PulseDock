@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BeforeApplicationShutdown } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
@@ -14,8 +14,11 @@ const MAX_JITTER_MS = 5_000;
 /** Log a warning when this many monitors are concurrently being checked. */
 const QUEUE_DEPTH_WARN_THRESHOLD = 50;
 
+/** Maximum time (ms) to wait for in-flight checks to finish during shutdown. */
+const SHUTDOWN_DRAIN_TIMEOUT_MS = 30_000;
+
 @Injectable()
-export class ChecksScheduler {
+export class ChecksScheduler implements BeforeApplicationShutdown {
   private readonly logger = new Logger(ChecksScheduler.name);
 
   /** Tracks how many monitors are currently being checked. */
@@ -23,6 +26,9 @@ export class ChecksScheduler {
 
   /** Duration (ms) of the last completed check cycle. */
   private lastCycleMs = 0;
+
+  /** When true, new check cycles are suppressed. Set on shutdown signal. */
+  private draining = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -40,8 +46,30 @@ export class ChecksScheduler {
     return this.lastCycleMs;
   }
 
+  /**
+   * Graceful shutdown: stop accepting new check cycles and wait for in-flight checks
+   * to complete (up to SHUTDOWN_DRAIN_TIMEOUT_MS). This prevents data loss or orphaned
+   * check results during container restarts or zero-downtime deploys.
+   */
+  async beforeApplicationShutdown(): Promise<void> {
+    this.draining = true;
+    this.logger.log(`Shutdown signal received — draining ${this.queueDepth} in-flight checks…`);
+
+    const deadline = Date.now() + SHUTDOWN_DRAIN_TIMEOUT_MS;
+    while (this.queueDepth > 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    if (this.queueDepth > 0) {
+      this.logger.warn(`Shutdown timeout: ${this.queueDepth} checks still in-flight after ${SHUTDOWN_DRAIN_TIMEOUT_MS}ms`);
+    } else {
+      this.logger.log('All in-flight checks completed — shutting down cleanly');
+    }
+  }
+
   @Cron(CronExpression.EVERY_10_SECONDS)
   async tick() {
+    if (this.draining) return; // suppress new cycles during shutdown drain
     const cycleStart = Date.now();
 
     // Single query: fetch all enabled monitors with their latest run (avoids N+1).
@@ -178,6 +206,7 @@ export class ChecksScheduler {
    */
   @Cron('*/15 * * * *')
   async checkSlaBreach() {
+    if (this.draining) return;
     const monitors = await this.prisma.monitor.findMany({
       where: { enabled: true, slaTarget: { not: null } },
     });

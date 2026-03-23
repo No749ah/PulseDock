@@ -223,7 +223,10 @@ export class StatusPagesService {
    * @throws ForbiddenException if the page belongs to a different user
    */
   async update(userId: string, id: string, dto: UpdateStatusPageDto) {
-    if (!dto || typeof dto !== 'object') throw new BadRequestException('Invalid request body');
+    // Gracefully handle missing/empty body — treat as no-op update
+    if (!dto || typeof dto !== 'object') {
+      dto = {} as UpdateStatusPageDto;
+    }
     const page = await this.prisma.publicStatusPage.findUnique({ where: { id } });
     if (!page) throw new NotFoundException('Status page not found');
     if (page.userId !== userId) throw new ForbiddenException('Access denied');

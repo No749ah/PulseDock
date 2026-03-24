@@ -373,6 +373,217 @@ describe('ChecksScheduler', () => {
     });
   });
 
+  describe('checkSlaBreach() — edge cases', () => {
+    it('skips monitor when slaTarget is null', async () => {
+      const monitor = makeMonitor({ slaTarget: null });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+
+      await scheduler.checkSlaBreach();
+
+      expect(prisma.monitorRun.findMany).not.toHaveBeenCalled();
+      expect(alerts.notifySlaBreached).not.toHaveBeenCalled();
+    });
+
+    it('skips monitor when there are no runs in the period', async () => {
+      const monitor = makeMonitor({ slaTarget: 99.9, slaPeriodDays: 30 });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([]); // no runs
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaBreached).not.toHaveBeenCalled();
+      expect(alerts.notifySlaRecovered).not.toHaveBeenCalled();
+    });
+
+    it('re-fires breach alert when last alert was >24h ago', async () => {
+      const oldAlert = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25h ago
+      const monitor = makeMonitor({
+        slaTarget: 99.9,
+        slaPeriodDays: 30,
+        slaBreachAlertedAt: oldAlert,
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([
+        { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: false },
+      ]); // 80% — below 99.9%
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaBreached).toHaveBeenCalledOnce();
+      expect(prisma.monitor.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { slaBreachAlertedAt: expect.any(Date) },
+        }),
+      );
+    });
+
+    it('uses default slaPeriodDays of 30 when slaPeriodDays is null', async () => {
+      const monitor = makeMonitor({
+        slaTarget: 99.9,
+        slaPeriodDays: null,
+        slaBreachAlertedAt: null,
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: false }]); // 0% uptime
+
+      await scheduler.checkSlaBreach();
+
+      // Should have used 30-day window
+      expect(alerts.notifySlaBreached).toHaveBeenCalledWith(
+        'monitor-1', 'Test Monitor', 'user-1', 0, 99.9, 30,
+      );
+    });
+
+    it('does not throw when notifySlaBreached rejects (logs error instead)', async () => {
+      const monitor = makeMonitor({ slaTarget: 99.9, slaBreachAlertedAt: null });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: false }]);
+      alerts.notifySlaBreached.mockRejectedValue(new Error('notification failed'));
+
+      await expect(scheduler.checkSlaBreach()).resolves.not.toThrow();
+      // update should still be called (continues after catch)
+      expect(prisma.monitor.update).toHaveBeenCalled();
+    });
+
+    it('does not throw when notifySlaRecovered rejects (logs error instead)', async () => {
+      const monitor = makeMonitor({
+        slaTarget: 50,
+        slaBreachAlertedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: true }]); // 100% — above 50%
+      alerts.notifySlaRecovered.mockRejectedValue(new Error('notification failed'));
+
+      await expect(scheduler.checkSlaBreach()).resolves.not.toThrow();
+      // update should still be called
+      expect(prisma.monitor.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { slaBreachAlertedAt: null } }),
+      );
+    });
+
+    it('handles non-Error rejection in notifySlaBreached (String path)', async () => {
+      const monitor = makeMonitor({ slaTarget: 99.9, slaBreachAlertedAt: null });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: false }]);
+      alerts.notifySlaBreached.mockRejectedValue('string error');
+
+      await expect(scheduler.checkSlaBreach()).resolves.not.toThrow();
+    });
+
+    it('handles non-Error rejection in notifySlaRecovered (String path)', async () => {
+      const monitor = makeMonitor({
+        slaTarget: 50,
+        slaBreachAlertedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: true }]);
+      alerts.notifySlaRecovered.mockRejectedValue('string error');
+
+      await expect(scheduler.checkSlaBreach()).resolves.not.toThrow();
+    });
+
+    it('does not fire recovery when slaBreachAlertedAt is null and uptime is above target', async () => {
+      const monitor = makeMonitor({
+        slaTarget: 99,
+        slaBreachAlertedAt: null,
+      });
+      prisma.monitor.findMany.mockResolvedValueOnce([monitor]);
+      prisma.monitorRun.findMany.mockResolvedValueOnce([{ ok: true }, { ok: true }]); // 100%
+
+      await scheduler.checkSlaBreach();
+
+      expect(alerts.notifySlaRecovered).not.toHaveBeenCalled();
+      expect(prisma.monitor.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tick() — additional edge cases', () => {
+    it('tracks lastCycleMs via getLastCycleMs()', async () => {
+      expect(scheduler.getLastCycleMs()).toBe(0);
+      prisma.monitor.findMany.mockResolvedValue([]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // After a tick, lastCycleMs should be set (even if 0ms with fake timers)
+      expect(typeof scheduler.getLastCycleMs()).toBe('number');
+    });
+
+    it('logs early cycle event when no monitors are due', async () => {
+      const recentRun = { checkedAt: new Date(Date.now() - 1_000) };
+      const monitor = makeMonitor({ intervalSec: 60, runs: [recentRun] });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+      const logSpy = vi.spyOn(scheduler['logger'], 'log');
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const cycleLogs = logSpy.mock.calls
+        .map((c) => { try { return JSON.parse(c[0] as string) as { event?: string; due?: number }; } catch { return null; } })
+        .filter((obj) => obj?.event === 'check.cycle');
+      expect(cycleLogs.length).toBeGreaterThanOrEqual(1);
+      expect(cycleLogs[0]!.due).toBe(0);
+    });
+
+    it('defaults config to {} when monitor configJson is undefined', async () => {
+      const monitor = makeMonitor({ configJson: undefined, runs: [] });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+      expect(checks.runMonitor).toHaveBeenCalledWith(
+        expect.objectContaining({ config: {} }),
+      );
+    });
+
+    it('passes sla fields correctly to runMonitor', async () => {
+      const breachDate = new Date('2026-01-15T12:00:00Z');
+      const monitor = makeMonitor({
+        slaTarget: 99.9,
+        slaPeriodDays: 7,
+        slaBreachAlertedAt: breachDate,
+        runs: [],
+      });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(checks.runMonitor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaTarget: 99.9,
+          slaPeriodDays: 7,
+          slaBreachAlertedAt: '2026-01-15T12:00:00.000Z',
+        }),
+      );
+    });
+
+    it('passes null slaBreachAlertedAt when field is null', async () => {
+      const monitor = makeMonitor({
+        slaTarget: null,
+        slaPeriodDays: null,
+        slaBreachAlertedAt: null,
+        runs: [],
+      });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(checks.runMonitor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slaTarget: null,
+          slaPeriodDays: null,
+          slaBreachAlertedAt: null,
+        }),
+      );
+    });
+  });
+
   describe('graceful shutdown', () => {
     it('suppresses new tick cycles after beforeApplicationShutdown is called', async () => {
       prisma.monitor.findMany.mockResolvedValue([]);

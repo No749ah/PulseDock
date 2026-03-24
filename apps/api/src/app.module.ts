@@ -9,6 +9,7 @@ import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { MonitorsController } from './monitors/monitors.controller';
 import { MonitorsService } from './monitors/monitors.service';
+import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
 import { ChecksService } from './checks/checks.service';
@@ -116,6 +117,7 @@ import { DemoService } from './demo/demo.service';
     BootstrapService,
     AuthService,
     MonitorsService,
+    VersionDetectionService,
     AlertsService,
     ChecksService,
     ChecksScheduler,

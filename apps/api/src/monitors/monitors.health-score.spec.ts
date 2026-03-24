@@ -8,6 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MonitorsService } from './monitors.service';
+import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
@@ -64,6 +65,7 @@ async function buildService(prisma: object): Promise<MonitorsService> {
       },
       { provide: AuditService, useValue: { log: vi.fn() } },
       { provide: RealtimeEvents, useValue: { emit: vi.fn() } },
+      { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
   return module.get<MonitorsService>(MonitorsService);

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
+import { VersionDetectionService } from './version-detection.service';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
   return {
@@ -121,12 +122,18 @@ function makeRealtime() {
   };
 }
 
+function makeVersionDetection(prismaOverride?: unknown) {
+  return new VersionDetectionService((prismaOverride ?? makePrisma()) as never);
+}
+
 function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
+  const prisma = (prismaOverride ?? makePrisma()) as never;
   return new MonitorsService(
-    (prismaOverride ?? makePrisma()) as never,
+    prisma,
     makeChecksService() as never,
     makeAudit() as never,
     makeRealtime() as never,
+    makeVersionDetection(prisma) as never,
   );
 }
 
@@ -292,7 +299,7 @@ describe('MonitorsService', () => {
 
     it('fires realtime.monitorCreated after creation', async () => {
       const realtime = makeRealtime();
-      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never);
+      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never, makeVersionDetection(prisma) as never);
       await svc.create('user-1', { name: 'RT Monitor', target: 'nestjs/nest', type: 'GIT_RELEASE' });
       expect(realtime.monitorCreated).toHaveBeenCalledWith('user-1', expect.objectContaining({ id: expect.any(String) }));
     });
@@ -361,7 +368,7 @@ describe('MonitorsService', () => {
 
     it('fires realtime.monitorUpdated after update', async () => {
       const realtime = makeRealtime();
-      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never);
+      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never, makeVersionDetection(prisma) as never);
       await svc.update('user-1', 'monitor-1', { name: 'Updated' });
       expect(realtime.monitorUpdated).toHaveBeenCalled();
     });
@@ -388,7 +395,7 @@ describe('MonitorsService', () => {
 
     it('fires realtime.monitorDeleted with the id', async () => {
       const realtime = makeRealtime();
-      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never);
+      const svc = new MonitorsService(prisma as never, makeChecksService() as never, makeAudit() as never, realtime as never, makeVersionDetection(prisma) as never);
       await svc.remove('user-1', 'monitor-1');
       expect(realtime.monitorDeleted).toHaveBeenCalledWith('user-1', { id: 'monitor-1' });
     });
@@ -1040,7 +1047,7 @@ describe('bulkAction()', () => {
   it('calls runNow for each monitor on bulk run', async () => {
     const checksService = makeChecksService();
     prisma.monitor.findMany.mockResolvedValue([makeMonitor()]);
-    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection(prisma) as never);
     const result = await svc.bulkAction('user-1', ['monitor-1'], 'run');
     expect(checksService.runMonitor).toHaveBeenCalled();
     expect(result).toMatchObject({ ok: true });
@@ -1050,7 +1057,7 @@ describe('bulkAction()', () => {
     const checksService = makeChecksService();
     checksService.runMonitor.mockRejectedValueOnce(new Error('fail'));
     prisma.monitor.findMany.mockResolvedValue([makeMonitor(), makeMonitor({ id: 'monitor-2' })]);
-    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection(prisma) as never);
     const result = await svc.bulkAction('user-1', ['monitor-1', 'monitor-2'], 'run');
     // 1 rejected, 1 fulfilled
     expect(result.affected).toBe(1);
@@ -1135,7 +1142,7 @@ describe('runNow()', () => {
 
   it('calls checksService.runMonitor with correct monitor shape', async () => {
     const checksService = makeChecksService();
-    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(prisma as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection(prisma) as never);
 
     const result = await svc.runNow('user-1', 'monitor-1');
 
@@ -1147,7 +1154,7 @@ describe('runNow()', () => {
 
   it('logs audit event on runNow', async () => {
     const audit = makeAudit();
-    const svc = new MonitorsService(prisma as never, makeChecksService() as never, audit as never, makeRealtime() as never);
+    const svc = new MonitorsService(prisma as never, makeChecksService() as never, audit as never, makeRealtime() as never, makeVersionDetection(prisma) as never);
     await svc.runNow('user-1', 'monitor-1');
     expect(audit.log).toHaveBeenCalledWith('monitor.run_now', 'user-1', 'user-1', expect.objectContaining({ monitorId: 'monitor-1' }));
   });
@@ -1158,7 +1165,7 @@ describe('runNow()', () => {
 describe('listPlugins()', () => {
   it('delegates to checksService.listPlugins()', () => {
     const checksService = makeChecksService();
-    const svc = new MonitorsService(makePrisma() as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(makePrisma() as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection() as never);
     const result = svc.listPlugins();
     expect(checksService.listPlugins).toHaveBeenCalled();
     expect(result).toEqual([]);
@@ -2791,7 +2798,8 @@ describe('MonitorsService branch coverage gaps', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await (service as unknown as {
+    const versionSvc = makeVersionDetection();
+    const result = await (versionSvc as unknown as {
       detectDeployedVersion: (input: {
         appUrl: string;
         appVersionEndpoint: string;
@@ -3636,6 +3644,7 @@ describe('listDependencies / addDependency / removeDependency', () => {
       { checkNow: vi.fn(), checkAppVersion: vi.fn() } as never,
       { log: vi.fn() } as never,
       { alertTriggered: vi.fn() } as never,
+      makeVersionDetection(prisma) as never,
     );
     return service;
   }
@@ -3765,7 +3774,7 @@ describe('snooze()', () => {
   it('logs audit event on snooze', async () => {
     const p = makePrisma();
     const audit = makeAudit();
-    const svc = new MonitorsService(p as never, makeChecksService() as never, audit as never, makeRealtime() as never);
+    const svc = new MonitorsService(p as never, makeChecksService() as never, audit as never, makeRealtime() as never, makeVersionDetection(p) as never);
     (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm-1', name: 'Test' });
     (p.maintenanceWindow.create as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 'mw-4',
@@ -5587,7 +5596,7 @@ describe('runNow() — sla field mapping', () => {
     const monitor = makeMonitor({ slaTarget: null, slaPeriodDays: null, slaBreachAlertedAt: null });
     const p = makePrisma(monitor);
     const checksService = makeChecksService();
-    const svc = new MonitorsService(p as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(p as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection(p) as never);
     await svc.runNow('user-1', 'monitor-1');
     expect(checksService.runMonitor).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -5602,7 +5611,7 @@ describe('runNow() — sla field mapping', () => {
     const monitor = makeMonitor({ slaTarget: 99.9, slaPeriodDays: 30, slaBreachAlertedAt: new Date('2026-02-01') });
     const p = makePrisma(monitor);
     const checksService = makeChecksService();
-    const svc = new MonitorsService(p as never, checksService as never, makeAudit() as never, makeRealtime() as never);
+    const svc = new MonitorsService(p as never, checksService as never, makeAudit() as never, makeRealtime() as never, makeVersionDetection(p) as never);
     await svc.runNow('user-1', 'monitor-1');
     expect(checksService.runMonitor).toHaveBeenCalledWith(
       expect.objectContaining({

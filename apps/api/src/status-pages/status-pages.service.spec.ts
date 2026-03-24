@@ -96,9 +96,12 @@ function makePrisma(opts: {
     incident: {
       findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
     },
     maintenanceWindow: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
     },
     statusPageHistory: {
       create: vi.fn().mockResolvedValue({ id: 'hist-1', statusPageId: 'page-1', savedAt: new Date(), label: null, layout: {} }),
@@ -107,6 +110,7 @@ function makePrisma(opts: {
       findUnique: vi.fn().mockResolvedValue(null),
     },
     statusPageSubscriber: {
+      findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: 'sub-1', statusPageId: data.statusPageId, email: data.email, unsubscribeToken: 'tok-abc', createdAt: new Date() })
@@ -5347,7 +5351,7 @@ describe('StatusPagesService', () => {
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'mmsg1');
       expect(result.monitors).toHaveLength(1);
-      expect(result.summary.healthy).toBe(1);
+      expect((result as { summary: { healthy: number } }).summary.healthy).toBe(1);
     });
 
     it('filters by monitorType when configured', async () => {

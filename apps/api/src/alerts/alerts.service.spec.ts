@@ -1753,7 +1753,7 @@ describe('AlertsService', () => {
         (c: unknown[]) => (c[0] as { data: { status: string } }).data.status === 'failed',
       );
       expect(failedCall).toBeDefined();
-      expect(failedCall[0].data.errorMessage).toBe('string error');
+      expect(failedCall![0].data.errorMessage).toBe('string error');
     });
 
     it('uses default trigger "monitor_failure" when deliveryMeta has no trigger', async () => {

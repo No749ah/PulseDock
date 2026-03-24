@@ -195,8 +195,8 @@ describe('SettingsService', () => {
   })
 
   it('updateRetention without rollupEnabled does not include it in update', async () => {
-    prisma.userSettings.upsert.mockResolvedValue({ userId: 'u1', retentionDays: 14, rollupEnabled: true })
-    const result = await service.updateRetention('u1', { retentionDays: 14 })
+    prisma.userSettings.upsert.mockResolvedValue({ userId: 'u1', retentionDays: 14 as 7 | 30 | 90 | 365, rollupEnabled: true })
+    const result = await service.updateRetention('u1', { retentionDays: 14 as unknown as 7 | 30 | 90 | 365 })
     expect(result.retentionDays).toBe(14)
     // The upsert call should not have rollupEnabled in the update data
     const upsertCall = prisma.userSettings.upsert.mock.calls[0][0]

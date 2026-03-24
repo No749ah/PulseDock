@@ -4346,7 +4346,7 @@ describe('getHealthScore()', () => {
       checkedAt: new Date(now - (100 - i) * 60_000),
     }));
     // Make last run a failure for streak = 0
-    recentRuns[recentRuns.length - 1] = { ok: false, latencyMs: null, checkedAt: new Date(now - 10_000) };
+    recentRuns[recentRuns.length - 1] = { ok: false, latencyMs: null as unknown as number, checkedAt: new Date(now - 10_000) };
     const p = makeHealthPrisma({}, [...priorRuns, ...recentRuns]);
     const svc = makeService(p);
     const result = await svc.getHealthScore('user-1', 'monitor-1');

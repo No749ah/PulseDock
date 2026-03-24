@@ -1039,4 +1039,180 @@ describe('AlertsService', () => {
       expect(createCall[0].data.durationMs).toBeGreaterThanOrEqual(0);
     });
   });
+
+  // ── SLA notifications ───────────────────────────────────────────────────────
+
+  describe('notifySlaBreached()', () => {
+    it('sends SLA breach alert to all linked channels', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaBreached('monitor-1', 'API Monitor', 'user-1', 99.5, 99.9, 30);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.text).toContain('SLA Breach');
+      expect(body.text).toContain('API Monitor');
+      expect(body.text).toContain('99.5%');
+      expect(body.text).toContain('99.9%');
+      expect(body.text).toContain('30d');
+    });
+
+    it('filters out channels from other users', async () => {
+      const channel = makeChannel({ userId: 'other-user' });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaBreached('monitor-1', 'API Monitor', 'user-1', 99.0, 99.9, 7);
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no channels are linked', async () => {
+      const prisma = makePrisma([]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaBreached('monitor-1', 'API Monitor', 'user-1', 98.0, 99.9, 30);
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('continues if one channel fails', async () => {
+      const chan1 = makeChannel({ id: 'chan-1', config: { url: 'https://hooks.example.com/1' } });
+      const chan2 = makeChannel({ id: 'chan-2', config: { url: 'https://hooks.example.com/2' } });
+      const prisma = makePrisma([{ alertChannel: chan1 }, { alertChannel: chan2 }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      vi.useFakeTimers();
+      fetchMock
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = service.notifySlaBreached('monitor-1', 'API Monitor', 'user-1', 99.0, 99.9, 7);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      // chan1 failed 3 retries, chan2 succeeded
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe('notifySlaRecovered()', () => {
+    it('sends SLA recovered alert with correct text', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaRecovered('monitor-1', 'API Monitor', 'user-1', 99.95, 99.9, 30);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.text).toContain('SLA Recovered');
+      expect(body.text).toContain('99.95%');
+      expect(body.text).toContain('99.9%');
+    });
+
+    it('uses sla_recovered trigger in delivery log', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifySlaRecovered('monitor-1', 'API Monitor', 'user-1', 99.99, 99.9, 7);
+
+      const logCall = prisma.alertDeliveryLog.create.mock.calls[0];
+      expect(logCall[0].data.trigger).toBe('sla_recovered');
+      expect(logCall[0].data.status).toBe('success');
+    });
+  });
+
+  // ── notifyOn: DAILY_DIGEST lastNotifiedAt update ───────────────────────────
+
+  describe('notifyMonitorFailure() — DAILY_DIGEST lastNotifiedAt update', () => {
+    it('updates lastNotifiedAt for DAILY_DIGEST channels when they fire', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Override findMany to include notifyOn and lastNotifiedAt
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'DAILY_DIGEST',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor(), makeRun(), { levelChanged: true });
+
+      expect(prisma.monitorAlert.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            monitorId: 'monitor-1',
+            alertChannelId: { in: [channel.id] },
+          }),
+        }),
+      );
+    });
+  });
+
+  // ── notifyOn: default branch ───────────────────────────────────────────────
+
+  describe('notifyMonitorFailure() — unknown notifyOn value', () => {
+    it('defaults to levelChanged behavior for unknown notifyOn value', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'UNKNOWN_VALUE',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // levelChanged=true → should send (default branch)
+      await service.notifyMonitorFailure(makeMonitor(), makeRun(), { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('does not send for unknown notifyOn when level has not changed', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'SOME_FUTURE_TYPE',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor(), makeRun(), { levelChanged: false });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -300,9 +300,7 @@ export default async function PublicStatusSlugPage({
     widgetDataEntries.filter((entry): entry is readonly [string, Record<string, unknown>] => entry[1] !== null)
   );
 
-  const desktop = new Map<string, GridPlacement>(
-    visible.map((w) => [w.id, { x: clamp(w.x, 0, 11), y: Math.max(0, w.y), w: clamp(w.w, 1, 12), h: Math.max(1, w.h) }])
-  );
+  const desktop = buildResponsivePlacement(visible, 12);
   const tablet = buildResponsivePlacement(visible, 6);
 
   const now = new Date();
@@ -348,14 +346,14 @@ export default async function PublicStatusSlugPage({
       {/* Live refresh client component replaces meta http-equiv refresh */}
       <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
-      <main id="status-page-content" role="main" aria-label={`${data.title} status page`} className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
+      <main id="status-page-content" role="main" aria-label={`${data.title} status page`} className={`min-h-screen px-4 pb-10 pt-6 ${bgClass} ${themeClass}`} style={containerStyle}>
         {/* Skip to main content link for keyboard users */}
         <a href="#status-widgets" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-semibold">
           Skip to status widgets
         </a>
-        <div className="mx-auto max-w-6xl space-y-4">
+        <div className="mx-auto max-w-6xl space-y-3">
           {/* Page header */}
-          <header className="mb-8 text-center relative">
+          <header className="mb-4 text-center relative">
             {/* Action buttons — top-right of header, hidden when printing */}
             <div className="absolute right-0 top-0 no-print flex items-center gap-2" role="toolbar" aria-label="Page actions">
               <Suspense fallback={null}>
@@ -389,7 +387,7 @@ export default async function PublicStatusSlugPage({
               <h2 id="status-widgets-heading" className="sr-only">Status widgets</h2>
               {/* Mobile + Print: single-column flow
                   `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
-              <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
+              <div id="status-widgets" className="status-page-mobile-flow space-y-3 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget, idx) => {
                   const content = renderWidget(widget, data.monitors, {
                     incidents: data.incidents ?? [],
@@ -401,7 +399,7 @@ export default async function PublicStatusSlugPage({
                   return (
                     <div key={`m-${widget.id}`}>
                       {idx < 3 ? content : (
-                        <LazyWidget placeholderHeight={widget.h * 80}>
+                        <LazyWidget placeholderHeight={widget.h * 60}>
                           {content}
                         </LazyWidget>
                       )}
@@ -411,7 +409,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Tablet: 6-column responsive grid */}
-              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
+              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[60px] gap-3 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget, idx) => {
                   const t = tablet.get(widget.id);
                   if (!t) return null;
@@ -431,7 +429,7 @@ export default async function PublicStatusSlugPage({
                       }}
                     >
                       {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={t.h * 80}>
+                        <LazyWidget placeholderHeight={t.h * 60}>
                           {content}
                         </LazyWidget>
                       )}
@@ -441,7 +439,7 @@ export default async function PublicStatusSlugPage({
               </div>
 
               {/* Desktop: 12-column editor-parity grid */}
-              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-labelledby="status-widgets-heading">
+              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[60px] gap-3 lg:grid" role="region" aria-labelledby="status-widgets-heading">
                 {visible.map((widget, idx) => {
                   const d = desktop.get(widget.id);
                   if (!d) return null;
@@ -461,7 +459,7 @@ export default async function PublicStatusSlugPage({
                       }}
                     >
                       {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={d.h * 80}>
+                        <LazyWidget placeholderHeight={d.h * 60}>
                           {content}
                         </LazyWidget>
                       )}
@@ -473,7 +471,7 @@ export default async function PublicStatusSlugPage({
           )}
 
           {/* Footer */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
             <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
             {showBranding && (
               <span>

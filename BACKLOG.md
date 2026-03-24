@@ -1,13 +1,13 @@
-## Status Summary (2026-03-24 04:14 UTC)
-- **Build/Test:** ✅ Clean build (webpack, 0 warnings) + full tests passing (2316 API + 93 Web + 10 CLI + 12 Agent = 2431 total)
-- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 11 routes 200
+## Status Summary (2026-03-24 05:17 UTC)
+- **Build/Test:** ✅ Clean build (webpack, 0 warnings) + full tests passing (2321 API + 119 Web + 10 CLI + 12 Agent = 2462 total)
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities; web security headers (CSP/HSTS/X-Frame-Options/Referrer-Policy/Permissions-Policy) added
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 12 routes 200
 - **Branch:** heartbeat/2026-03-24-midnight
 - **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** All at wanted versions. Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Coverage:** Overall: 91.84% stmts / 83.25% branch / 91.29% funcs / 93.78% lines. All major modules 85%+.
-- **Last change:** Expand branch coverage: app controller, useTableSort, realtime socket (+13 tests).
+- **Coverage:** Overall: 92.4% stmts / 83.8% branch / 92.4% funcs. All major modules 85%+.
+- **Last change:** Web security headers hardening + useCountUp tests + branch coverage gaps (app.controller, demo.service).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

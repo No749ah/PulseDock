@@ -455,61 +455,73 @@ export class StatusPagesService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // Compute aggregate status per page from referenced monitors
-    const result = await Promise.all(
-      pages.map(async (page) => {
-        const rawLayout = page.layout as unknown;
-        const layout = (typeof rawLayout === 'string' ? JSON.parse(rawLayout) : rawLayout) as PageLayout | null;
-        const widgets: Widget[] = layout?.widgets ?? [];
-        const monitorIds = new Set<string>();
-        for (const w of widgets) {
-          if (typeof w.config?.monitorId === 'string') monitorIds.add(w.config.monitorId);
-          if (Array.isArray(w.config?.monitorIds)) {
-            for (const id of w.config.monitorIds) {
-              if (typeof id === 'string') monitorIds.add(id);
-            }
+    // Extract monitor IDs per page from layout JSON
+    const pageMonitorMap = new Map<string, Set<string>>();
+    const allMonitorIds = new Set<string>();
+
+    for (const page of pages) {
+      const rawLayout = page.layout as unknown;
+      const layout = (typeof rawLayout === 'string' ? JSON.parse(rawLayout) : rawLayout) as PageLayout | null;
+      const widgets: Widget[] = layout?.widgets ?? [];
+      const ids = new Set<string>();
+      for (const w of widgets) {
+        if (typeof w.config?.monitorId === 'string') ids.add(w.config.monitorId);
+        if (Array.isArray(w.config?.monitorIds)) {
+          for (const id of w.config.monitorIds) {
+            if (typeof id === 'string') ids.add(id);
           }
         }
+      }
+      pageMonitorMap.set(page.slug, ids);
+      ids.forEach((id) => allMonitorIds.add(id));
+    }
 
-        let status: 'operational' | 'degraded' | 'outage' | 'unknown' = 'unknown';
-        let monitorsTotal = 0;
-        let monitorsUp = 0;
+    // Single batched query for all monitors across all pages
+    const monitorStatusMap = new Map<string, boolean | null>(); // id → ok (null = no runs)
+    if (allMonitorIds.size > 0) {
+      const monitors = await this.prisma.monitor.findMany({
+        where: { id: { in: [...allMonitorIds] } },
+        select: {
+          id: true,
+          runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { ok: true } },
+        },
+      });
+      for (const m of monitors) {
+        monitorStatusMap.set(m.id, m.runs.length > 0 ? m.runs[0].ok : null);
+      }
+    }
 
-        if (monitorIds.size > 0) {
-          const idArray = [...monitorIds];
-          // Get latest run per monitor to determine current status
-          const monitors = await this.prisma.monitor.findMany({
-            where: { id: { in: idArray } },
-            select: {
-              id: true,
-              runs: {
-                orderBy: { checkedAt: 'desc' },
-                take: 1,
-                select: { ok: true },
-              },
-            },
-          });
-          monitorsTotal = monitors.length;
-          monitorsUp = monitors.filter((m) => m.runs.length > 0 && m.runs[0].ok).length;
-          const monitorsDown = monitors.filter((m) => m.runs.length > 0 && !m.runs[0].ok).length;
+    // Compute aggregate status per page
+    return pages.map((page) => {
+      const ids = pageMonitorMap.get(page.slug) ?? new Set();
+      let status: 'operational' | 'degraded' | 'outage' | 'unknown' = 'unknown';
+      let monitorsTotal = 0;
+      let monitorsUp = 0;
 
-          if (monitorsTotal === 0) {
-            status = 'unknown';
-          } else if (monitorsDown === 0 && monitorsUp > 0) {
-            status = 'operational';
-          } else if (monitorsDown === monitorsTotal) {
-            status = 'outage';
-          } else if (monitorsDown > 0) {
-            status = 'degraded';
+      if (ids.size > 0) {
+        for (const id of ids) {
+          const ok = monitorStatusMap.get(id);
+          if (ok !== undefined) {
+            monitorsTotal++;
+            if (ok === true) monitorsUp++;
           }
         }
+        const monitorsDown = monitorsTotal - monitorsUp;
+        if (monitorsTotal === 0) {
+          status = 'unknown';
+        } else if (monitorsDown === 0 && monitorsUp > 0) {
+          status = 'operational';
+        } else if (monitorsDown === monitorsTotal) {
+          status = 'outage';
+        } else if (monitorsDown > 0) {
+          status = 'degraded';
+        }
+      }
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { layout: _layout, ...rest } = page;
-        return { ...rest, status, monitorsTotal, monitorsUp };
-      }),
-    );
-    return result;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { layout: _layout, ...rest } = page;
+      return { ...rest, status, monitorsTotal, monitorsUp };
+    });
   }
 
   async findPublic(slug: string, password?: string) {

@@ -6,7 +6,6 @@ import type { AlertChannel, Monitor, MonitorLevel, MonitorRun } from '../types';
 import { MetricsService } from '../common/metrics.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { NotificationsService } from '../notifications/notifications.service';
-import { OnCallService } from '../oncall/oncall.service';
 
 @Injectable()
 export class AlertsService {
@@ -18,7 +17,6 @@ export class AlertsService {
     private readonly metrics: MetricsService,
     private readonly mailer: MailerService,
     private readonly notifications: NotificationsService,
-    @Optional() private readonly onCallService?: OnCallService,
     @Optional() realtime?: RealtimeEvents,
   ) {
     this.realtime = realtime ?? { alertTriggered: () => undefined };
@@ -548,69 +546,6 @@ export class AlertsService {
       }
     }
 
-    // ── On-call escalation via escalation policy ──────────────────────────
-    await this.escalateToOnCall(monitor, run);
-  }
-
-  /**
-   * Escalates an alert to the current on-call person via the monitor's escalation policy.
-   * Loads the policy's schedule, determines the current on-call participant,
-   * and sends an email notification.
-   */
-  private async escalateToOnCall(monitor: Monitor, run: MonitorRun): Promise<void> {
-    if (!this.onCallService) return;
-
-    // Only escalate for non-green (down/degraded) levels
-    if (run.level === 'green') return;
-
-    // Check if monitor has an escalation policy
-    const dbMonitor = await this.prisma.monitor.findUnique({
-      where: { id: monitor.id },
-      select: { escalationPolicyId: true },
-    });
-    if (!dbMonitor?.escalationPolicyId) return;
-
-    try {
-      const policy = await this.prisma.escalationPolicy.findUnique({
-        where: { id: dbMonitor.escalationPolicyId },
-        include: {
-          schedule: {
-            include: { participants: { orderBy: { order: 'asc' } } },
-          },
-        },
-      });
-      if (!policy?.schedule) {
-        this.logger.debug(`Escalation policy ${dbMonitor.escalationPolicyId} has no schedule — skipping on-call escalation`);
-        return;
-      }
-
-      const currentOnCall = this.onCallService.getCurrentOnCall(policy.schedule);
-      if (!currentOnCall) {
-        this.logger.debug(`Schedule ${policy.schedule.id} has no participants — skipping on-call escalation`);
-        return;
-      }
-
-      // Look up the participant's user to get their email
-      const user = await this.prisma.user.findUnique({
-        where: { id: currentOnCall.userId },
-        select: { email: true, displayName: true },
-      });
-      if (!user?.email) {
-        this.logger.warn(`On-call user ${currentOnCall.userId} has no email — skipping escalation`);
-        return;
-      }
-
-      const levelEmoji = run.level === 'red' ? '🚨' : '⚠️';
-      const subject = `${levelEmoji} On-Call Alert: ${monitor.name} is ${run.level.toUpperCase()}`;
-      const body = `${subject}\n\nMonitor: ${monitor.name}\nTarget: ${monitor.target}\nStatus: ${run.level.toUpperCase()}\nMessage: ${run.message}\n\nYou are receiving this because you are the current on-call responder via escalation policy "${policy.name}".`;
-
-      await this.mailer.sendAlertEmail(user.email, body);
-      this.logger.log(`On-call escalation sent to ${user.email} (policy: ${policy.name}, schedule: ${policy.schedule.name})`);
-    } catch (error) {
-      this.logger.error(
-        `On-call escalation failed for monitor ${monitor.id}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
   }
 
   /**

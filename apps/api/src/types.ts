@@ -49,7 +49,6 @@ export interface Monitor {
   slaTarget: number | null;
   slaPeriodDays: number | null;
   slaBreachAlertedAt: string | null;
-  escalationPolicyId?: string | null;
   createdAt: string;
 }
 

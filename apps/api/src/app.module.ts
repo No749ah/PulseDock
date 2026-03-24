@@ -60,8 +60,6 @@ import { PlanService } from './settings/plan.service';
 import { FeedbackController } from './feedback/feedback.controller';
 import { GrafanaController } from './grafana/grafana.controller';
 import { GrafanaService } from './grafana/grafana.service';
-import { OnCallController } from './oncall/oncall.controller';
-import { OnCallService } from './oncall/oncall.service';
 import { RedisCacheService } from './common/redis-cache.service';
 import { DemoController } from './demo/demo.controller';
 import { DemoService } from './demo/demo.service';
@@ -103,7 +101,7 @@ import { DemoService } from './demo/demo.service';
     PlanController,
     FeedbackController,
     GrafanaController,
-    OnCallController,
+
     OrganizationsController,
     DemoController,
   ],
@@ -133,7 +131,7 @@ import { DemoService } from './demo/demo.service';
     BackupService,
     PlanService,
     GrafanaService,
-    OnCallService,
+
     OrganizationsService,
     RedisCacheService,
     DemoService,

@@ -65,8 +65,7 @@ model User {
   teamMemberships         TeamMember[]       @relation("workspace_member")
   sentTeamInvites         TeamInvite[]       @relation("sent_invites")
   templateFeedback        ToolTemplateFeedback[]
-  onCallSchedules         OnCallSchedule[]
-  escalationPolicies      EscalationPolicy[]
+
   oauthAccounts           OAuthAccount[]
   activeOrgId             String?
   orgMemberships          OrgMember[]
@@ -132,8 +131,7 @@ model Monitor {
   // Monitors that depend on this monitor
   dependents    MonitorDependency[] @relation("DependencyMonitor")
   events        MonitorEvent[]
-  escalationPolicyId String?
-  escalationPolicy   EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id], onDelete: SetNull)
+
 
   @@index([userId])
   @@index([enabled])
@@ -615,64 +613,6 @@ model ToolTemplateFeedback {
 
   @@index([toolId])
   @@index([userId])
-}
-
-model OnCallSchedule {
-  id            String              @id @default(cuid())
-  userId        String
-  name          String
-  description   String?
-  timezone      String              @default("UTC")
-  rotationDays  Int                 @default(7)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  participants  OnCallParticipant[]
-  policies      EscalationPolicy[]
-}
-
-model OnCallParticipant {
-  id          String         @id @default(cuid())
-  scheduleId  String
-  userId      String
-  order       Int
-  createdAt   DateTime       @default(now())
-
-  schedule    OnCallSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-
-  @@unique([scheduleId, order])
-  @@index([scheduleId])
-}
-
-model EscalationPolicy {
-  id                String           @id @default(cuid())
-  userId            String
-  name              String
-  description       String?
-  scheduleId        String?
-  escalateAfterMin  Int              @default(15)
-  maxEscalations    Int              @default(3)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  schedule          OnCallSchedule?  @relation(fields: [scheduleId], references: [id])
-  steps             EscalationStep[]
-  monitors          Monitor[]
-}
-
-model EscalationStep {
-  id              String           @id @default(cuid())
-  policyId        String
-  stepOrder       Int
-  waitMinutes     Int              @default(15)
-  notifyEmail     String?
-  createdAt       DateTime         @default(now())
-
-  policy          EscalationPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
-
-  @@index([policyId])
 }
 
 model OAuthAccount {

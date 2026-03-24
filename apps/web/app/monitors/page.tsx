@@ -46,11 +46,6 @@ interface AlertChannelSummary {
   notifyOn: string;
 }
 
-interface EscalationPolicySummary {
-  id: string;
-  name: string;
-}
-
 interface MonitorItem {
   id: string;
   name: string;
@@ -67,8 +62,6 @@ interface MonitorItem {
   alertChannels?: AlertChannelSummary[];
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
-  escalationPolicyId?: string | null;
-  escalationPolicy?: EscalationPolicySummary | null;
 }
 
 interface MonitorRun {
@@ -151,7 +144,7 @@ function MonitorsPageInner() {
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [allTags, setAllTags] = useState<TagItem[]>([]);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
-  const [escalationPolicies, setEscalationPolicies] = useState<EscalationPolicySummary[]>([]);
+
   const [healthScores, setHealthScores] = useState<Record<string, { score: number; grade: string }>>({});
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
@@ -217,7 +210,6 @@ function MonitorsPageInner() {
     folderId: string;
     slaTarget: number | "";
     slaPeriodDays: number;
-    escalationPolicyId: string;
   }>({
     name: "",
     description: "",
@@ -233,7 +225,6 @@ function MonitorsPageInner() {
     folderId: "",
     slaTarget: "",
     slaPeriodDays: 30,
-    escalationPolicyId: "",
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -358,7 +349,7 @@ function MonitorsPageInner() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData, policiesData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
@@ -366,7 +357,6 @@ function MonitorsPageInner() {
           api<TagItem[]>("/v1/tags", userId),
           api<{ id: string; name: string }[]>("/v1/folders", userId),
           api<{ scores: Array<{ monitorId: string; name: string; score: number; grade: string }>; overall: { avg: number } }>("/v1/monitors/health-summary", userId).catch(() => null),
-          api<EscalationPolicySummary[]>("/v1/oncall/policies", userId).catch(() => [] as EscalationPolicySummary[]),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
@@ -374,7 +364,7 @@ function MonitorsPageInner() {
         setPlugins(pluginsData);
         setAllTags(tagsData);
         setFolders(foldersData);
-        setEscalationPolicies(policiesData);
+
         if (healthSummaryData?.scores) {
           const scoreMap: Record<string, { score: number; grade: string }> = {};
           for (const s of healthSummaryData.scores) {
@@ -627,11 +617,11 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           ...(formData.slaTarget !== "" ? { slaTarget: formData.slaTarget } : {}),
           slaPeriodDays: formData.slaPeriodDays,
-          ...(formData.escalationPolicyId ? { escalationPolicyId: formData.escalationPolicyId } : {}),
+
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, escalationPolicyId: "" });
+      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -721,7 +711,6 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           slaTarget: formData.slaTarget !== "" ? formData.slaTarget : null,
           slaPeriodDays: formData.slaPeriodDays,
-          escalationPolicyId: formData.escalationPolicyId || null,
         }),
       });
       setShowModal(false);
@@ -875,7 +864,6 @@ function MonitorsPageInner() {
     folderId: monitor.folderId ?? "",
     slaTarget: monitor.slaTarget ?? "",
     slaPeriodDays: monitor.slaPeriodDays ?? 30,
-    escalationPolicyId: monitor.escalationPolicyId ?? "",
     expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
     bodyContains: String(monitor.config?.bodyContains ?? ""),
     httpMethod: String(monitor.config?.httpMethod ?? "GET"),
@@ -944,7 +932,6 @@ function MonitorsPageInner() {
       folderId: "",
       slaTarget: "",
       slaPeriodDays: 30,
-      escalationPolicyId: "",
       // Carry through monitor-type-specific config from template
       ...(cfg.checkTls !== undefined ? { checkTls: Boolean(cfg.checkTls) } : {}),
       ...(typeof cfg.ehlo === "string" ? { ehlo: cfg.ehlo } : {}),
@@ -1343,7 +1330,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, escalationPolicyId: "" });
+                  setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1647,7 +1634,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, escalationPolicyId: "" });
+                      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -3088,26 +3075,6 @@ function MonitorsPageInner() {
             </select>
             <p className="mt-1 text-xs text-text-secondary">Rolling window for SLA uptime calculation.</p>
           </div>
-
-          {/* Escalation Policy */}
-          {escalationPolicies.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Escalation Policy
-              </label>
-              <select
-                value={formData.escalationPolicyId}
-                onChange={(e) => setFormData({ ...formData, escalationPolicyId: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">None</option>
-                {escalationPolicies.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-text-secondary">Optional. Notify the current on-call person when this monitor triggers an alert.</p>
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>

@@ -108,10 +108,6 @@ export class CreateMonitorDto {
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
 
-  @ApiPropertyOptional({ description: 'Optional escalation policy ID for on-call notifications', example: 'clxyz123' })
-  @IsOptional()
-  @IsString()
-  escalationPolicyId?: string;
 }
 
 export class UpdateMonitorDto {
@@ -184,9 +180,6 @@ export class UpdateMonitorDto {
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
 
-  @IsOptional()
-  @IsString()
-  escalationPolicyId?: string;
 }
 
 export class RunMonitorDto {

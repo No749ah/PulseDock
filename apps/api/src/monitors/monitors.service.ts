@@ -66,7 +66,7 @@ export class MonitorsService {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
         monitorTags: { include: { tag: true } },
         runs: { take: 1, orderBy: { checkedAt: 'desc' } },
-        escalationPolicy: { select: { id: true, name: true } },
+
       },
     });
 
@@ -88,8 +88,7 @@ export class MonitorsService {
       slaTarget: m.slaTarget,
       slaPeriodDays: m.slaPeriodDays,
       slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
-      escalationPolicyId: m.escalationPolicyId ?? null,
-      escalationPolicy: m.escalationPolicy ?? null,
+
       createdAt: m.createdAt.toISOString(),
     }));
   }
@@ -117,7 +116,6 @@ export class MonitorsService {
     enabled?: boolean;
     slaTarget?: number;
     slaPeriodDays?: number;
-    escalationPolicyId?: string;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -143,7 +141,6 @@ export class MonitorsService {
         folderId: body.folderId ?? null,
         slaTarget: body.slaTarget ?? null,
         slaPeriodDays: body.slaPeriodDays ?? null,
-        escalationPolicyId: body.escalationPolicyId ?? null,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -183,7 +180,6 @@ export class MonitorsService {
       slaTarget: created.slaTarget,
       slaPeriodDays: created.slaPeriodDays,
       slaBreachAlertedAt: created.slaBreachAlertedAt?.toISOString() ?? null,
-      escalationPolicyId: created.escalationPolicyId ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -217,7 +213,6 @@ export class MonitorsService {
     tags?: string[];
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
-    escalationPolicyId?: string | null;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -249,7 +244,7 @@ export class MonitorsService {
         enabled: body.enabled ?? current.enabled,
         ...(body.slaTarget !== undefined ? { slaTarget: body.slaTarget } : {}),
         ...(body.slaPeriodDays !== undefined ? { slaPeriodDays: body.slaPeriodDays } : {}),
-        ...(body.escalationPolicyId !== undefined ? { escalationPolicyId: body.escalationPolicyId } : {}),
+
       },
     });
 

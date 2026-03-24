@@ -386,6 +386,35 @@ describe('StatusPagesService', () => {
     });
   });
 
+  // ── listPublicPages() ────────────────────────────────────────────────────
+
+  describe('listPublicPages()', () => {
+    it('returns only published pages with summary fields', async () => {
+      const pages = [
+        { slug: 'page-a', title: 'Page A', description: 'Desc A', createdAt: new Date(), updatedAt: new Date() },
+        { slug: 'page-b', title: 'Page B', description: null, createdAt: new Date(), updatedAt: new Date() },
+      ];
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue(pages);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result).toEqual(pages);
+      expect(prisma.publicStatusPage.findMany).toHaveBeenCalledWith({
+        where: { isPublished: true },
+        select: { slug: true, title: true, description: true, createdAt: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+    });
+
+    it('returns empty array when no pages are published', async () => {
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result).toEqual([]);
+    });
+  });
+
   // ── findPublic() ──────────────────────────────────────────────────────────
 
   describe('findPublic()', () => {

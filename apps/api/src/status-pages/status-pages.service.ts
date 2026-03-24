@@ -437,6 +437,25 @@ export class StatusPagesService {
    * @throws NotFoundException if the page does not exist or is not published
    * @throws UnauthorizedException if the page is password-protected and no/incorrect password is supplied
    */
+  /**
+   * List all published status pages (public summary only).
+   * Returns slug, title, description, and createdAt — no layout or monitor data.
+   */
+  async listPublicPages() {
+    const pages = await this.prisma.publicStatusPage.findMany({
+      where: { isPublished: true },
+      select: {
+        slug: true,
+        title: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return pages;
+  }
+
   async findPublic(slug: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');

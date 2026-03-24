@@ -1794,6 +1794,7 @@ describe('AlertsService', () => {
         metrics,
         makeMailer() as never,
         makeNotifications() as never,
+        undefined,
         { alertTriggered } as never,
       );
 
@@ -2126,6 +2127,115 @@ describe('AlertsService', () => {
 
       await service.notifyMonitorFailure(makeMonitor(), makeRun(), { levelChanged: false });
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── On-call escalation ────────────────────────────────────────────────────
+
+  describe('on-call escalation via escalation policy', () => {
+    function makeOnCallService() {
+      return {
+        getCurrentOnCall: vi.fn().mockReturnValue({ id: 'participant-1', userId: 'oncall-user-1', scheduleId: 'sched-1', order: 0 }),
+      };
+    }
+
+    function makePrismaWithEscalation(opts: { hasPolicy?: boolean; hasSchedule?: boolean; hasParticipants?: boolean; hasEmail?: boolean } = {}) {
+      const { hasPolicy = true, hasSchedule = true, hasParticipants = true, hasEmail = true } = opts;
+      const basePrisma = makePrisma([]);
+      return {
+        ...basePrisma,
+        monitor: {
+          findUnique: vi.fn().mockResolvedValue(hasPolicy ? { escalationPolicyId: 'policy-1' } : { escalationPolicyId: null }),
+        },
+        escalationPolicy: {
+          findUnique: vi.fn().mockResolvedValue(hasPolicy ? {
+            id: 'policy-1',
+            name: 'Primary Escalation',
+            schedule: hasSchedule ? {
+              id: 'sched-1',
+              name: 'Weekly Rotation',
+              rotationDays: 7,
+              participants: hasParticipants ? [
+                { id: 'p-1', userId: 'oncall-user-1', scheduleId: 'sched-1', order: 0 },
+              ] : [],
+            } : null,
+          } : null),
+        },
+        user: {
+          findUnique: vi.fn().mockResolvedValue(hasEmail ? { email: 'oncall@example.com', name: 'On-Call Person' } : { email: null, name: null }),
+        },
+      };
+    }
+
+    it('sends email to on-call person when monitor has escalation policy', async () => {
+      const prisma = makePrismaWithEscalation();
+      const mailer = makeMailer();
+      const onCallSvc = makeOnCallService();
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never, onCallSvc as never);
+
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(onCallSvc.getCurrentOnCall).toHaveBeenCalled();
+      expect(mailer.sendAlertEmail).toHaveBeenCalledWith(
+        'oncall@example.com',
+        expect.stringContaining('On-Call Alert'),
+      );
+    });
+
+    it('does NOT escalate when monitor has no escalation policy', async () => {
+      const prisma = makePrismaWithEscalation({ hasPolicy: false });
+      const mailer = makeMailer();
+      const onCallSvc = makeOnCallService();
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never, onCallSvc as never);
+
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(onCallSvc.getCurrentOnCall).not.toHaveBeenCalled();
+      expect(mailer.sendAlertEmail).not.toHaveBeenCalled();
+    });
+
+    it('gracefully skips when schedule has no participants', async () => {
+      const prisma = makePrismaWithEscalation({ hasParticipants: false });
+      const mailer = makeMailer();
+      const onCallSvc = { getCurrentOnCall: vi.fn().mockReturnValue(null) };
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never, onCallSvc as never);
+
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(mailer.sendAlertEmail).not.toHaveBeenCalled();
+    });
+
+    it('does NOT escalate for green (recovery) level', async () => {
+      const prisma = makePrismaWithEscalation();
+      const mailer = makeMailer();
+      const onCallSvc = makeOnCallService();
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never, onCallSvc as never);
+
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(onCallSvc.getCurrentOnCall).not.toHaveBeenCalled();
+      expect(mailer.sendAlertEmail).not.toHaveBeenCalled();
+    });
+
+    it('gracefully skips when on-call user has no email', async () => {
+      const prisma = makePrismaWithEscalation({ hasEmail: false });
+      const mailer = makeMailer();
+      const onCallSvc = makeOnCallService();
+      const service = new AlertsService(prisma as never, metrics, mailer as never, makeNotifications() as never, onCallSvc as never);
+
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(mailer.sendAlertEmail).not.toHaveBeenCalled();
     });
   });
 });

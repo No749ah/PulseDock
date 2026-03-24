@@ -132,6 +132,8 @@ model Monitor {
   // Monitors that depend on this monitor
   dependents    MonitorDependency[] @relation("DependencyMonitor")
   events        MonitorEvent[]
+  escalationPolicyId String?
+  escalationPolicy   EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([enabled])
@@ -657,6 +659,7 @@ model EscalationPolicy {
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   schedule          OnCallSchedule?  @relation(fields: [scheduleId], references: [id])
   steps             EscalationStep[]
+  monitors          Monitor[]
 }
 
 model EscalationStep {

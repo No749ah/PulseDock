@@ -301,7 +301,6 @@ export default async function PublicStatusSlugPage({
   );
 
   const desktop = buildResponsivePlacement(visible, 12);
-  const tablet = buildResponsivePlacement(visible, 6);
 
   const now = new Date();
   const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
@@ -385,88 +384,75 @@ export default async function PublicStatusSlugPage({
           ) : (
             <>
               <h2 id="status-widgets-heading" className="sr-only">Status widgets</h2>
-              {/* Mobile + Print: single-column flow
-                  `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
-              <div id="status-widgets" className="status-page-mobile-flow space-y-3 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  // First 3 widgets render immediately (above fold); rest are lazy
-                  return (
-                    <div key={`m-${widget.id}`}>
-                      {idx < 3 ? content : (
-                        <LazyWidget placeholderHeight={widget.h * 60}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Tablet: 6-column responsive grid */}
-              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[60px] gap-3 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
-                  const t = tablet.get(widget.id);
-                  if (!t) return null;
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  return (
-                    <div
-                      key={`t-${widget.id}`}
-                      style={{
-                        gridColumn: `${t.x + 1} / span ${t.w}`,
-                        gridRow: `${t.y + 1} / span ${t.h}`,
-                        minWidth: 0,
-                      }}
-                    >
-                      {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={t.h * 60}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop: 12-column editor-parity grid */}
-              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[60px] gap-3 lg:grid" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
+              {/* Group widgets into rows based on desktop placement, then render
+                  each row as a flex row.  This gives auto-height per row (no fixed
+                  grid rows) while still supporting side-by-side widgets. */}
+              {(() => {
+                // Build rows: group widgets that share the same y band
+                const rows: { y: number; widgets: { widget: Widget; placement: GridPlacement }[] }[] = [];
+                for (const widget of visible) {
                   const d = desktop.get(widget.id);
-                  if (!d) return null;
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  return (
-                    <div
-                      key={`d-${widget.id}`}
-                      style={{
-                        gridColumn: `${d.x + 1} / span ${d.w}`,
-                        gridRow: `${d.y + 1} / span ${d.h}`,
-                        minWidth: 0,
-                      }}
-                    >
-                      {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={d.h * 60}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                  if (!d) continue;
+                  let row = rows.find((r) => r.y === d.y);
+                  if (!row) {
+                    row = { y: d.y, widgets: [] };
+                    rows.push(row);
+                  }
+                  row.widgets.push({ widget, placement: d });
+                }
+                rows.sort((a, b) => a.y - b.y);
+
+                let globalIdx = 0;
+                return (
+                  <div id="status-widgets" className="space-y-3" role="region" aria-labelledby="status-widgets-heading">
+                    {rows.map((row) => {
+                      const isSingleFull = row.widgets.length === 1 && row.widgets[0].placement.w === 12;
+                      return (
+                        <div
+                          key={`row-${row.y}`}
+                          className={isSingleFull ? "" : "grid grid-cols-12 gap-3"}
+                        >
+                          {row.widgets.map(({ widget, placement }) => {
+                            const idx = globalIdx++;
+                            const content = renderWidget(widget, data.monitors, {
+                              incidents: data.incidents ?? [],
+                              maintenance: data.maintenance ?? [],
+                              recentChecks: data.recentChecks ?? [],
+                              widgetDataById,
+                            });
+                            if (isSingleFull) {
+                              return (
+                                <div key={widget.id}>
+                                  {idx < 4 ? content : (
+                                    <LazyWidget placeholderHeight={120}>
+                                      {content}
+                                    </LazyWidget>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                key={widget.id}
+                                style={{
+                                  gridColumn: `${placement.x + 1} / span ${placement.w}`,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {idx < 4 ? content : (
+                                  <LazyWidget placeholderHeight={120}>
+                                    {content}
+                                  </LazyWidget>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </>
           )}
 

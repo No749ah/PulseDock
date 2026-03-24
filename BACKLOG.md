@@ -1,13 +1,11 @@
-## Status Summary (2026-03-24 07:15 UTC)
-- **Build/Test:** ✅ Clean build + 2683 API + 10 CLI + 12 Agent tests passing (2705 total)
+## Status Summary (2026-03-24 09:06 UTC)
+- **Build/Test:** ✅ Clean build + 2632 API + 10 CLI + 12 Agent tests passing (2654 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 14 routes 200
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-24-midnight
-- **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass (0 TS errors)
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** All at wanted versions. Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Coverage:** Overall: 96.0% stmts / 90.2% branch / 95.6% funcs / 97.0% lines. All major modules 90%+.
-- **Last change:** Fixed 15 TypeScript strict mode errors in test files (alerts, monitors, settings, status-pages specs). Deleted stale `develop` remote branch. All quality gates green.
+- **Last changes:** Removed on-call feature per Noah (-1973 lines). Fixed public status page spacing (grid row 80→60px, compact placement, tighter gaps).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -956,8 +954,8 @@
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
-- [x] **On-call rotation & escalation policies** - Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy. Frontend `/oncall` page with Schedules + Escalation Policies tabs, full CRUD, PhoneCall nav icon.
-- [x] **On-call ↔ Alert integration** - Monitor → EscalationPolicy relation, AlertsService.escalateToOnCall() emails current on-call person on monitor failure, escalation policy dropdown in monitor create/edit UI. 5 new tests (2683 total). Graceful fallback when no policy/schedule/participants.
+- [x] ~~**On-call rotation & escalation policies**~~ - REMOVED by Noah (2026-03-24). Feature fully stripped: OnCallSchedule, OnCallParticipant, EscalationPolicy, EscalationStep models deleted from Prisma schema; oncall controller/service/DTOs/specs deleted; escalation logic removed from AlertsService; nav link + /oncall page + monitor form escalation dropdown removed. -1973 lines.
+- [x] ~~**On-call ↔ Alert integration**~~ - REMOVED with on-call feature (2026-03-24).
 - [~] **Synthetic / Browser checks** - BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 - basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
 - [x] **SMS alert channel** - Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [x] **Grafana datasource plugin** - JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.

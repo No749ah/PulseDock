@@ -69,4 +69,21 @@ describe("createRealtimeSocket", () => {
     expect(config.auth).toEqual({ userId: "abc-def" });
     expect(config.query).toEqual({ userId: "abc-def" });
   });
+
+  it("falls back to empty origin when window is undefined (SSR)", async () => {
+    vi.unstubAllGlobals();
+    // @ts-expect-error - simulate SSR by removing window
+    delete globalThis.window;
+    vi.resetModules();
+
+    const { createRealtimeSocket } = await import("./realtime");
+    createRealtimeSocket("ssr-user");
+
+    expect(io).toHaveBeenCalledWith(
+      "/realtime",
+      expect.objectContaining({
+        auth: { userId: "ssr-user" },
+      })
+    );
+  });
 });

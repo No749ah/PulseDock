@@ -39,6 +39,18 @@ describe('AppController', () => {
       mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('connection refused'));
       await expect(controller.health()).rejects.toThrow();
     });
+
+    it('includes DB latency in milliseconds when healthy', async () => {
+      const result = await controller.health();
+      expect(typeof result.checks.database.latencyMs).toBe('number');
+      expect(result.checks.database.latencyMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('reports version from package.json', async () => {
+      const result = await controller.health();
+      expect(typeof result.version).toBe('string');
+      expect(result.version).toMatch(/^\d+\.\d+\.\d+/);
+    });
   });
 
   describe('liveness()', () => {

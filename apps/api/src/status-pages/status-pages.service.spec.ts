@@ -6,6 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { StatusPagesService } from './status-pages.service';
+import { WidgetDataResolverService } from './widget-data-resolver.service';
+import { StatusPageSubscriberService } from './subscriber.service';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,8 +125,19 @@ function makePrisma(opts: {
 /** Minimal no-op RedisCacheService stub for tests (cache always misses, writes are no-ops). */
 const noCacheService = { get: async () => null, set: async () => {}, invalidatePattern: async () => {}, del: async () => {}, isConnected: () => false } as never;
 
+/** Stub WidgetDataResolverService that delegates to actual resolver logic via the real class. */
+function makeWidgetResolver(prismaOverride?: unknown, cacheOverride?: unknown) {
+  return new WidgetDataResolverService((prismaOverride ?? makePrisma()) as never, (cacheOverride ?? noCacheService) as never);
+}
+
+/** Stub StatusPageSubscriberService */
+function makeSubscriberService(prismaOverride?: unknown, mailerOverride?: unknown) {
+  return new StatusPageSubscriberService((prismaOverride ?? makePrisma()) as never, (mailerOverride ?? {}) as never);
+}
+
 function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
-  return new StatusPagesService((prismaOverride ?? makePrisma()) as never, {} as never, noCacheService);
+  const prisma = (prismaOverride ?? makePrisma()) as never;
+  return new StatusPagesService(prisma, noCacheService, makeWidgetResolver(prisma), makeSubscriberService(prisma));
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────
@@ -2997,7 +3010,7 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true }) });
       (prisma.statusPageSubscriber.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
-      service = new StatusPagesService(prisma as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(prisma as never, noCacheService, makeWidgetResolver(prisma) as never, makeSubscriberService(prisma, mockMailer) as never);
       const result = await service.subscribeToStatusPage('my-status-page', 'new@example.com');
       expect(result.subscribed).toBe(true);
       expect(result.alreadySubscribed).toBe(false);
@@ -3011,7 +3024,7 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true }) });
       (prisma.statusPageSubscriber.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockRejectedValue(new Error('SMTP fail')) };
-      service = new StatusPagesService(prisma as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(prisma as never, noCacheService, makeWidgetResolver(prisma) as never, makeSubscriberService(prisma, mockMailer) as never);
       // Should not throw even though mailer fails
       const result = await service.subscribeToStatusPage('my-status-page', 'new@example.com');
       expect(result.subscribed).toBe(true);
@@ -3074,7 +3087,7 @@ describe('StatusPagesService', () => {
     it('sends emails to subscribers for created incidents', async () => {
       const p = makePrismaForNotify();
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
-      service = new StatusPagesService(p as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(p as never, noCacheService, makeWidgetResolver(p) as never, makeSubscriberService(p, mockMailer) as never);
       await service.notifySubscribersOfIncident('inc-1', 'created');
       expect(mockMailer.sendStatusPageUpdateEmail).toHaveBeenCalledWith('sub@example.com', expect.objectContaining({
         headline: expect.stringContaining('New incident'),
@@ -3084,7 +3097,7 @@ describe('StatusPagesService', () => {
     it('sends resolved notification', async () => {
       const p = makePrismaForNotify();
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
-      service = new StatusPagesService(p as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(p as never, noCacheService, makeWidgetResolver(p) as never, makeSubscriberService(p, mockMailer) as never);
       await service.notifySubscribersOfIncident('inc-1', 'resolved');
       expect(mockMailer.sendStatusPageUpdateEmail).toHaveBeenCalledWith('sub@example.com', expect.objectContaining({
         headline: expect.stringContaining('Resolved'),
@@ -4083,7 +4096,7 @@ describe('StatusPagesService', () => {
         del: vi.fn(),
         isConnected: () => true,
       };
-      service = new StatusPagesService(prisma as never, {} as never, cacheService as never);
+      service = new StatusPagesService(prisma as never, cacheService as never, makeWidgetResolver(prisma, cacheService) as never, makeSubscriberService(prisma) as never);
       const result = await service.getWidgetData('my-status-page', 'w1');
       expect(result).toEqual(cachedResult);
       expect(cacheService.set).not.toHaveBeenCalled();
@@ -5223,7 +5236,7 @@ describe('StatusPagesService', () => {
       prisma.statusPageSubscriber.findMany = vi.fn().mockResolvedValue([
         { email: 'sub@test.com', statusPageId: 'sp-1', unsubscribeToken: 'tok-1' },
       ]);
-      service = new StatusPagesService(prisma as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(prisma as never, noCacheService, makeWidgetResolver(prisma) as never, makeSubscriberService(prisma, mockMailer) as never);
       await service.notifySubscribersOfIncident('inc-1', 'resolved');
       expect(mockMailer.sendStatusPageUpdateEmail).toHaveBeenCalledWith(
         'sub@test.com',
@@ -5249,7 +5262,7 @@ describe('StatusPagesService', () => {
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockResolvedValue(undefined) };
       prisma = makePrisma({ page: makePage({ isPublished: true }) });
       prisma.statusPageSubscriber.findUnique = vi.fn().mockResolvedValue(null);
-      service = new StatusPagesService(prisma as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(prisma as never, noCacheService, makeWidgetResolver(prisma) as never, makeSubscriberService(prisma, mockMailer) as never);
       const result = await service.subscribeToStatusPage('my-status-page', 'user@test.com');
       expect(result.subscribed).toBe(true);
       expect(result.alreadySubscribed).toBe(false);
@@ -5260,7 +5273,7 @@ describe('StatusPagesService', () => {
       const mockMailer = { sendStatusPageUpdateEmail: vi.fn().mockRejectedValue(new Error('SMTP error')) };
       prisma = makePrisma({ page: makePage({ isPublished: true }) });
       prisma.statusPageSubscriber.findUnique = vi.fn().mockResolvedValue(null);
-      service = new StatusPagesService(prisma as never, mockMailer as never, noCacheService);
+      service = new StatusPagesService(prisma as never, noCacheService, makeWidgetResolver(prisma) as never, makeSubscriberService(prisma, mockMailer) as never);
       const result = await service.subscribeToStatusPage('my-status-page', 'user@test.com');
       expect(result.subscribed).toBe(true);
     });

@@ -1,0 +1,117 @@
+export interface MonitorItem {
+  id: string;
+  name: string;
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+  target: string;
+  intervalSec: number;
+  enabled: boolean;
+  createdAt: string;
+  config?: Record<string, unknown>;
+  slaTarget?: number | null;
+  slaPeriodDays?: number | null;
+  tags?: Array<{ id: string; name: string; color?: string | null }>;
+  description?: string | null;
+}
+
+export interface AlertChannelInfo {
+  alertChannelId: string;
+  notifyOn: string;
+  alertChannel: {
+    id: string;
+    name: string;
+    type: string;
+  };
+}
+
+export interface MonitorDependency {
+  id: string;
+  monitorId: string;
+  dependsOnId: string;
+  createdAt: string;
+  dependsOn: {
+    id: string;
+    name: string;
+    type: string;
+    target: string;
+    enabled: boolean;
+  };
+}
+
+export interface MonitorRun {
+  id: string;
+  monitorId: string;
+  ok: boolean;
+  statusCode: number;
+  latencyMs: number | null;
+  message: string;
+  checkedAt: string;
+  level?: string;
+}
+
+export type UptimePeriod = "1d" | "7d" | "30d" | "90d";
+
+export interface UptimeStats {
+  monitorId: string;
+  period: UptimePeriod;
+  from: string;
+  to: string;
+  uptimePct: number;
+  totalChecks: number;
+  failedChecks: number;
+  successChecks: number;
+  totalDowntimeSec: number;
+  incidents: number;
+  incidentList: Array<{ start: string; end: string; durationSec: number }>;
+  mttrSec: number;
+  mtbfSec: number;
+  avgLatencyMs: number | null;
+}
+
+export interface ErrorBudget {
+  monitorId: string;
+  period: string;
+  slaTarget: number;
+  totalMinutes: number;
+  allowedDownMinutes: number;
+  actualDownMinutes: number;
+  remainingDownMinutes: number;
+  budgetConsumedPct: number;
+  budgetRemainingPct: number;
+}
+
+export interface HealthScore {
+  score: number;
+  grade: string;
+  breakdown: { uptime: number; latency: number; sla: number; streak: number };
+}
+
+export interface MonitorEvent {
+  id: string;
+  message: string;
+  eventType: string;
+  createdAt: string;
+  userId: string;
+}
+
+export interface ChartPoint {
+  ts: string;
+  avgLatencyMs: number | null;
+  p95LatencyMs: number | null;
+  uptimePct: number;
+  checkCount: number;
+}
+
+export const PERIOD_LABELS: Record<UptimePeriod, string> = {
+  "1d": "24h",
+  "7d": "7d",
+  "30d": "30d",
+  "90d": "90d",
+};
+
+export function formatDuration(sec: number): string {
+  if (sec === 0) return "0s";
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < 86400) return `${Math.round(sec / 3600)}h`;
+  return `${Math.round(sec / 86400)}d`;
+}

@@ -40,6 +40,8 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { NotificationsService } from './notifications/notifications.service';
 import { StatusPagesController } from './status-pages/status-pages.controller';
 import { StatusPagesService } from './status-pages/status-pages.service';
+import { WidgetDataResolverService } from './status-pages/widget-data-resolver.service';
+import { StatusPageSubscriberService } from './status-pages/subscriber.service';
 import { MaintenanceController } from './maintenance/maintenance.controller';
 import { MaintenanceService } from './maintenance/maintenance.service';
 import { IncidentsController } from './incidents/incidents.controller';
@@ -122,6 +124,8 @@ import { DemoService } from './demo/demo.service';
     TagsService,
     NotificationsService,
     StatusPagesService,
+    WidgetDataResolverService,
+    StatusPageSubscriberService,
     MaintenanceService,
     IncidentsService,
     AgentService,

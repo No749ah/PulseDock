@@ -20,6 +20,32 @@
 
 ## In Progress
 
+- [ ] **🔴 Status Page Widget Full Audit & Visual Review (HIGH PRIORITY — Noah)** - Systematisch ALLE Status-Page Widget-Typen durchgehen, auf einer Test-Statuspage hinzufügen, komplett konfigurieren und visuell überprüfen. Ziel: Noah kann die fertige Seite anschauen und entscheiden ob jedes Widget gut aussieht und Sinn macht.
+
+  **Scope:**
+  1. Test-Statuspage erstellen mit ALLEN verfügbaren Widget-Typen (70+)
+  2. Jedes Widget mit echten Monitor-Daten konfigurieren (keine Placeholder)
+  3. Test-Routen/API-Endpoints für Widget-Daten sicherstellen
+  4. Widgets visuell prüfen: Spacing, Farben, Typography, Dark-Mode, Responsive
+  5. Entscheiden ob jedes Widget sinnvoll ist — überflüssige/redundante entfernen
+  6. Design-Konsistenz: gleiche Border-Radii, Shadows, Padding, Font-Sizes
+  7. Edge Cases: leere Daten, ein Monitor, viele Monitore, lange Texte
+  8. Screenshot/Browser-Check der fertigen Seite via Skill
+  9. Seite deployed lassen damit Noah sie live anschauen kann
+
+  **Widget-Kategorien zum Durchgehen:**
+  - Status & Uptime (overall-status, component-status, uptime-bar, uptime-timeline, uptime-heatmap, rolling-uptime, health-score, region-map, multi-env, dependency-map, third-party-deps, status-ribbon)
+  - Performance (response-time-chart, response-time-heatmap, latency-percentiles, response-comparison, performance-trend, throughput-counter, apdex, ssl-cert, dns-resolution)
+  - SLA (sla-summary, sla-compliance-table, uptime-percentage, uptime-comparison, downtime-log, mttr-mttf)
+  - Incidents (incident-history, incident-timeline, post-mortem, severity-distribution, duration-stats, active-incident-count, check-history-feed)
+  - Maintenance (maintenance-calendar, next-maintenance, maintenance-impact)
+  - Versions (version-timeline, changelog, outdated-alert, version-comparison, security-advisory)
+  - Metrics (metric-counter, metric-comparison, custom-chart, gauge, sparkline-row, stats-grid, progress-ring, data-table)
+  - Content (text-block, image-banner, announcement-bar, faq, link-list, social-links, embed, video-embed, code-block, subscriber-form, rss-feed)
+  - Layout (tab-container, collapsible-section, column-layout, sticky-header, toc, page-nav, divider)
+
+  **Viel Zeit investieren. Alles durchkonfigurieren. Tests stehen lassen für Noah.**
+
 - [x] **Response Time Heatmap widget** - Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
 
 - [x] **Dependency Map widget** - SVG graph showing monitors as nodes with colored edges based on live status. Green=ok, yellow=degraded, red=outage (pulsing). Edges defined via JSON config `{source, target, label?}`. Simple auto-layout grid, shows latency in node. API resolver loads monitor statuses. Editor palette under Status category.

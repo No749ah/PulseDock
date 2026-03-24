@@ -248,4 +248,141 @@ describe('OnCallService', () => {
     });
     expect(result.steps).toHaveLength(1);
   });
+
+  // ─── Additional branch coverage tests ─────────────────────────────────────
+
+  it('should create schedule with explicit timezone and rotationDays (non-default ?? branches)', async () => {
+    mockPrisma.onCallSchedule.create.mockResolvedValue({ ...mockSchedule, timezone: 'US/Pacific', rotationDays: 14 });
+    const result = await service.createSchedule(OWNER_ID, {
+      name: 'Custom Schedule',
+      timezone: 'US/Pacific',
+      rotationDays: 14,
+    });
+    expect(result.timezone).toBe('US/Pacific');
+    expect(result.rotationDays).toBe(14);
+    expect(mockPrisma.onCallSchedule.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ timezone: 'US/Pacific', rotationDays: 14 }),
+      }),
+    );
+  });
+
+  it('should create schedule with description', async () => {
+    mockPrisma.onCallSchedule.create.mockResolvedValue({ ...mockSchedule, description: 'My desc' });
+    const result = await service.createSchedule(OWNER_ID, {
+      name: 'With Desc',
+      description: 'My desc',
+    });
+    expect(result.description).toBe('My desc');
+  });
+
+  it('getCurrentOnCall should clamp negative index to 0', () => {
+    // Use a time before the ROTATION_EPOCH to get a negative modulo
+    const EPOCH = new Date('2026-01-05T00:00:00Z').getTime();
+    const beforeEpoch = EPOCH - 1000; // 1 second before epoch
+    const result = service.getCurrentOnCall(mockSchedule as any, beforeEpoch);
+    // With negative idx, it should fall back to index 0
+    expect(result).toEqual(mockSchedule.participants[0]);
+  });
+
+  it('should create policy with scheduleId and verify ownership', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    mockPrisma.escalationPolicy.create.mockResolvedValue({ ...mockPolicy, scheduleId: 'sched-1' });
+    const result = await service.createPolicy(OWNER_ID, {
+      name: 'Linked Policy',
+      scheduleId: 'sched-1',
+    });
+    expect(result.scheduleId).toBe('sched-1');
+    expect(mockPrisma.onCallSchedule.findUnique).toHaveBeenCalled();
+  });
+
+  it('should create policy without steps (undefined branch)', async () => {
+    mockPrisma.escalationPolicy.create.mockResolvedValue(mockPolicy);
+    const result = await service.createPolicy(OWNER_ID, { name: 'No Steps' });
+    expect(result).toEqual(mockPolicy);
+    expect(mockPrisma.escalationPolicy.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ steps: undefined }),
+      }),
+    );
+  });
+
+  it('should create policy with explicit escalateAfterMin and maxEscalations', async () => {
+    mockPrisma.escalationPolicy.create.mockResolvedValue({ ...mockPolicy, escalateAfterMin: 30, maxEscalations: 5 });
+    const result = await service.createPolicy(OWNER_ID, {
+      name: 'Custom Escalation',
+      escalateAfterMin: 30,
+      maxEscalations: 5,
+    });
+    expect(result.escalateAfterMin).toBe(30);
+    expect(result.maxEscalations).toBe(5);
+  });
+
+  it('should update policy with scheduleId and verify ownership', async () => {
+    mockPrisma.escalationPolicy.findUnique.mockResolvedValue(mockPolicy);
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const updated = { ...mockPolicy, scheduleId: 'sched-1' };
+    mockPrisma.escalationPolicy.update.mockResolvedValue(updated);
+    const result = await service.updatePolicy(OWNER_ID, 'policy-1', { scheduleId: 'sched-1' });
+    expect(result.scheduleId).toBe('sched-1');
+    expect(mockPrisma.onCallSchedule.findUnique).toHaveBeenCalled();
+  });
+
+  it('should update schedule with all fields defined', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const updated = { ...mockSchedule, name: 'X', description: 'Y', timezone: 'CET', rotationDays: 3 };
+    mockPrisma.onCallSchedule.update.mockResolvedValue(updated);
+    const result = await service.updateSchedule(OWNER_ID, 'sched-1', {
+      name: 'X',
+      description: 'Y',
+      timezone: 'CET',
+      rotationDays: 3,
+    });
+    expect(result.name).toBe('X');
+    expect(result.description).toBe('Y');
+    expect(result.timezone).toBe('CET');
+    expect(result.rotationDays).toBe(3);
+  });
+
+  it('should update schedule with no fields (empty dto)', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    mockPrisma.onCallSchedule.update.mockResolvedValue(mockSchedule);
+    const result = await service.updateSchedule(OWNER_ID, 'sched-1', {});
+    expect(result).toEqual(mockSchedule);
+  });
+
+  it('should update policy with all optional fields', async () => {
+    mockPrisma.escalationPolicy.findUnique.mockResolvedValue(mockPolicy);
+    const updated = { ...mockPolicy, name: 'A', description: 'B', escalateAfterMin: 5, maxEscalations: 10 };
+    mockPrisma.escalationPolicy.update.mockResolvedValue(updated);
+    const result = await service.updatePolicy(OWNER_ID, 'policy-1', {
+      name: 'A',
+      description: 'B',
+      escalateAfterMin: 5,
+      maxEscalations: 10,
+    });
+    expect(result.name).toBe('A');
+    expect(result.description).toBe('B');
+  });
+
+  it('should update policy with no fields (empty dto)', async () => {
+    mockPrisma.escalationPolicy.findUnique.mockResolvedValue(mockPolicy);
+    mockPrisma.escalationPolicy.update.mockResolvedValue(mockPolicy);
+    const result = await service.updatePolicy(OWNER_ID, 'policy-1', {});
+    expect(result).toEqual(mockPolicy);
+  });
+
+  it('getCurrentOnCall wraps around with more than 2 rotations', () => {
+    const EPOCH = new Date('2026-01-05T00:00:00Z').getTime();
+    const oneWeekMs = 7 * 86400 * 1000;
+    // After two full rotations (2 participants), we're back to slot 0 (alice)
+    const result = service.getCurrentOnCall(mockSchedule as any, EPOCH + oneWeekMs * 2);
+    expect(result).toEqual(mockSchedule.participants[0]);
+  });
+
+  it('should find schedule and return it for valid owner', async () => {
+    mockPrisma.onCallSchedule.findUnique.mockResolvedValue(mockSchedule);
+    const result = await service.findSchedule(OWNER_ID, 'sched-1');
+    expect(result.id).toBe('sched-1');
+  });
 });

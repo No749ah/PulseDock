@@ -1,11 +1,11 @@
-## Status Summary (2026-03-24 09:06 UTC)
-- **Build/Test:** ✅ Clean build + 2632 API + 10 CLI + 12 Agent tests passing (2654 total)
+## Status Summary (2026-03-24 09:15 UTC)
+- **Build/Test:** ✅ Clean build + 2632 API + 119 Web + 10 CLI + 12 Agent tests passing (2773 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.2.0 + web running; public URL + all routes 200
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200; 0 TS errors
 - **Branch:** heartbeat/2026-03-24-midnight
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** All at wanted versions. Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes:** Removed on-call feature per Noah (-1973 lines). Fixed public status page spacing (grid row 80→60px, compact placement, tighter gaps).
+- **Last changes:** On-call feature removed (was added then reverted). Status page spacing fix. Backlog cleanup pass.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -373,7 +373,7 @@
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [x] **Increase test coverage to >90%** - 2678 API tests passing. Statement 96.0%, branch 90.2%, function 95.6%, line 97.0%. All major services at 90%+ branch: alerts 96%, monitors 90%, status-pages 85%, checks 91%, oncall 100%, settings 98%, reports 98%, organizations 100%. Achieved via systematic subagent coverage sprints.
+- [x] **Increase test coverage to >90%** - 2632 API + 119 Web + 10 CLI + 12 Agent = 2773 tests passing. All major services at 90%+ branch: alerts 96%, monitors 90%, status-pages 85%, checks 91%, settings 98%, reports 98%, organizations 100%. Achieved via systematic subagent coverage sprints.
 - [x] **E2E tests (Playwright)** - `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
 - [x] **API documentation improvements** - All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
 - [x] **Performance profiling** - Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.

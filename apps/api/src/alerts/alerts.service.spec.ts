@@ -1129,6 +1129,919 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── Discord embed edge cases ─────────────────────────────────────────────────
+
+  describe('discord embed details', () => {
+    it('uses custom username and avatarUrl from config', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b', username: 'MyBot', avatarUrl: 'https://img.example.com/avatar.png' },
+      });
+
+      await service.notifyTest(channel);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.username).toBe('MyBot');
+      expect(body.avatar_url).toBe('https://img.example.com/avatar.png');
+    });
+
+    it('defaults username to PulseDock when not configured', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b' },
+      });
+
+      await service.notifyTest(channel);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.username).toBe('PulseDock');
+      expect(body.avatar_url).toBeUndefined();
+    });
+
+    it('includes mention pings for mentionRoleId and mentionUserId', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b', mentionRoleId: '111', mentionUserId: '222' },
+      });
+
+      await service.notifyTest(channel);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.content).toContain('<@&111>');
+      expect(body.content).toContain('<@222>');
+    });
+
+    it('uses messageTemplate when configured', async () => {
+      const monitor = makeMonitor({ name: 'Web API', type: 'HTTP', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', message: 'Timeout', latencyMs: 4500 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'discord',
+        config: {
+          webhookUrl: 'https://discord.com/api/webhooks/a/b',
+          messageTemplate: '{monitor} is {status}: {message} ({latency})',
+        },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.embeds[0].description).toBe('Web API is Down: Timeout (4500ms)');
+    });
+
+    it('shows yellow level as Degraded with ⚠️ emoji and correct color', async () => {
+      const monitor = makeMonitor({ name: 'Slow API' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'High latency', latencyMs: 3000 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.embeds[0].title).toContain('⚠️');
+      expect(body.embeds[0].title).toContain('Degraded');
+      expect(body.embeds[0].color).toBe(0xd29922);
+    });
+
+    it('throws on non-ok Discord response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => 'Rate limited' });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b' },
+      });
+
+      const promise = service.notifyTest(channel);
+      const rejection = expect(promise).rejects.toThrow('Discord webhook returned 429');
+      await vi.runAllTimersAsync();
+      await rejection;
+      vi.useRealTimers();
+    });
+
+    it('handles Discord error response text() failure gracefully', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.reject(new Error('read failed')) });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b' },
+      });
+
+      const promise = service.notifyTest(channel);
+      const rejection = expect(promise).rejects.toThrow('Discord webhook returned 500');
+      await vi.runAllTimersAsync();
+      await rejection;
+      vi.useRealTimers();
+    });
+
+    it('includes monitor type field with underscore replaced', async () => {
+      const monitor = makeMonitor({ name: 'Version Check', type: 'GIT_RELEASE', target: 'https://github.com/test' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Behind', latencyMs: 100, checkedAt: '2026-01-01T00:00:00Z' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'discord',
+        config: { webhookUrl: 'https://discord.com/api/webhooks/a/b' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      const fields = body.embeds[0].fields as Array<{ name: string; value: string }>;
+      const typeField = fields.find((f: { name: string }) => f.name === 'Type');
+      expect(typeField?.value).toBe('GIT RELEASE');
+      const latencyField = fields.find((f: { name: string }) => f.name === 'Latency');
+      expect(latencyField?.value).toBe('100ms');
+      const targetField = fields.find((f: { name: string }) => f.name === 'Target');
+      expect(targetField).toBeDefined();
+    });
+  });
+
+  // ── Slack channel edge cases ───────────────────────────────────────────────
+
+  describe('slack channel edge cases', () => {
+    it('includes latency and target fields when present', async () => {
+      const monitor = makeMonitor({ name: 'API', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', message: 'Timeout', latencyMs: 2500 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'slack',
+        config: { webhookUrl: 'https://hooks.slack.com/services/T/B/x' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      const sectionFields = body.blocks[1].fields;
+      const latencyField = sectionFields.find((f: { text: string }) => f.text.includes('Latency'));
+      expect(latencyField.text).toContain('2500ms');
+      const targetField = sectionFields.find((f: { text: string }) => f.text.includes('Target'));
+      expect(targetField.text).toContain('https://api.example.com');
+    });
+
+    it('uses green emoji for recovery level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'slack',
+        config: { webhookUrl: 'https://hooks.slack.com/services/T/B/x' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.blocks[0].text.text).toContain(':white_check_mark:');
+    });
+
+    it('uses warning emoji for yellow level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'slack',
+        config: { webhookUrl: 'https://hooks.slack.com/services/T/B/x' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.blocks[0].text.text).toContain(':warning:');
+    });
+
+    it('omits latency/target fields when not present', async () => {
+      const monitor = makeMonitor({ name: 'API', target: '' });
+      const run = makeRun({ level: 'red', message: 'Down', latencyMs: null });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'slack',
+        config: { webhookUrl: 'https://hooks.slack.com/services/T/B/x' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      const sectionFields = body.blocks[1].fields;
+      expect(sectionFields.find((f: { text: string }) => f.text.includes('Latency'))).toBeUndefined();
+      expect(sectionFields.find((f: { text: string }) => f.text.includes('Target'))).toBeUndefined();
+    });
+  });
+
+  // ── Telegram channel edge cases ────────────────────────────────────────────
+
+  describe('telegram channel edge cases', () => {
+    it('formats HTML message with full monitor context', async () => {
+      const monitor = makeMonitor({ name: 'DB Monitor', target: 'postgres://db:5432' });
+      const run = makeRun({ level: 'red', message: 'Connection refused', latencyMs: 50 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok123', chatId: '-100111' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toContain('🚨');
+      expect(body.text).toContain('<b>DB Monitor</b>');
+      expect(body.text).toContain('Down');
+      expect(body.text).toContain('<code>Connection refused</code>');
+      expect(body.text).toContain('Latency: <b>50ms</b>');
+      expect(body.text).toContain('Target: <code>postgres://db:5432</code>');
+      expect(body.parse_mode).toBe('HTML');
+    });
+
+    it('shows Recovered with ✅ for green level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok', chatId: '-100' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toContain('✅');
+      expect(body.text).toContain('Recovered');
+    });
+
+    it('shows Degraded with ⚠️ for yellow level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok', chatId: '-100' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toContain('⚠️');
+      expect(body.text).toContain('Degraded');
+    });
+
+    it('uses non-HTML parse mode and skips HTML formatting', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok', chatId: '-100', parseMode: 'Markdown' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.parse_mode).toBe('Markdown');
+      // Should NOT contain HTML tags since parseMode is not HTML
+      expect(body.text).not.toContain('<b>');
+    });
+
+    it('omits latency when not present in HTML mode', async () => {
+      const monitor = makeMonitor({ name: 'API', target: '' });
+      const run = makeRun({ level: 'red', message: 'Down', latencyMs: null });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok', chatId: '-100' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).not.toContain('Latency');
+    });
+  });
+
+  // ── PagerDuty edge cases ──────────────────────────────────────────────────
+
+  describe('pagerduty edge cases', () => {
+    it('sends warning severity for yellow level', async () => {
+      const monitor = makeMonitor({ name: 'API', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'pagerduty' as never,
+        config: { integrationKey: 'pd-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.payload.severity).toBe('warning');
+      expect(body.event_action).toBe('trigger');
+    });
+
+    it('throws on non-ok PagerDuty response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Invalid key' });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'pagerduty' as never,
+        config: { integrationKey: 'bad-key' },
+      });
+
+      const promise = service.notifyTest(channel);
+      const rejection = expect(promise).rejects.toThrow('PagerDuty returned 400');
+      await vi.runAllTimersAsync();
+      await rejection;
+      vi.useRealTimers();
+    });
+
+    it('handles PagerDuty error response text() failure', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.reject(new Error('read err')) });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'pagerduty' as never,
+        config: { integrationKey: 'key' },
+      });
+
+      const promise = service.notifyTest(channel);
+      const rejection = expect(promise).rejects.toThrow('PagerDuty returned 500');
+      await vi.runAllTimersAsync();
+      await rejection;
+      vi.useRealTimers();
+    });
+
+    it('uses monitor target as source and monitor name as dedup_key fallback', async () => {
+      const monitor = makeMonitor({ id: 'mon-42', name: 'Web', target: 'https://web.example.com' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'pagerduty' as never,
+        config: { integrationKey: 'pd-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.payload.source).toBe('https://web.example.com');
+      // monitorId is not on the extra object, so falls back to monitor.name
+      expect(body.dedup_key).toBe('Web');
+    });
+  });
+
+  // ── OpsGenie edge cases ───────────────────────────────────────────────────
+
+  describe('opsgenie edge cases', () => {
+    it('uses EU base URL when region is eu', async () => {
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key', region: 'eu' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [url] = fetchMock.mock.calls[0] as [string];
+      expect(url).toBe('https://api.eu.opsgenie.com/v2/alerts');
+    });
+
+    it('uses P2 priority for yellow level', async () => {
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.priority).toBe('P2');
+    });
+
+    it('does not throw when close returns 404', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 404 });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'Recovered' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // Should not throw — 404 on close is acceptable
+      await service.notifyMonitorFailure(monitor, run);
+      expect(metrics.snapshot().alertsSent).toBe(1);
+    });
+
+    it('throws when close returns non-ok non-404 status', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: async () => 'Server Error' });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'Recovered' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      // Should not throw because notifyMonitorFailure catches channel errors
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+      expect(metrics.snapshot().alertsFailed).toBe(1);
+    });
+
+    it('throws when OpsGenie create alert returns non-ok', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 422, text: async () => 'Validation error' });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+      expect(metrics.snapshot().alertsFailed).toBe(1);
+    });
+
+    it('uses EU URL for close on green level with eu region', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200 });
+      const monitor = makeMonitor({ id: 'mon-eu' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key', region: 'eu' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [url] = fetchMock.mock.calls[0] as [string];
+      expect(url).toContain('api.eu.opsgenie.com');
+      expect(url).toContain('/close');
+    });
+
+    it('handles OpsGenie close error text() failure', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 503, text: () => Promise.reject(new Error('read fail')) });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+    });
+
+    it('handles OpsGenie create error text() failure', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 503, text: () => Promise.reject(new Error('read fail')) });
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'opsgenie' as never,
+        config: { apiKey: 'og-key' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+    });
+  });
+
+  // ── SMS channel edge cases ────────────────────────────────────────────────
+
+  describe('sms channel edge cases', () => {
+    it('uses ✅ emoji for green level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'sms' as never,
+        config: { accountSid: 'AC123', authToken: 'tok', from: '+1000', to: '+2000' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = (fetchMock.mock.calls[0][1] as { body: string }).body;
+      expect(body).toContain('%E2%9C%85'); // URL-encoded ✅
+    });
+
+    it('uses ⚠️ emoji for yellow level', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'sms' as never,
+        config: { accountSid: 'AC123', authToken: 'tok', from: '+1000', to: '+2000' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = (fetchMock.mock.calls[0][1] as { body: string }).body;
+      expect(body).toContain('%E2%9A%A0'); // URL-encoded ⚠️
+    });
+
+    it('throws on non-ok Twilio response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 401, text: async () => 'Unauthorized' });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'sms' as never,
+        config: { accountSid: 'AC123', authToken: 'tok', from: '+1000', to: '+2000' },
+      });
+
+      const promise = service.notifyTest(channel);
+      const rejection = expect(promise).rejects.toThrow('Twilio SMS returned 401');
+      await vi.runAllTimersAsync();
+      await rejection;
+      vi.useRealTimers();
+    });
+  });
+
+  // ── sendWithRetry delivery log edge cases ─────────────────────────────────
+
+  describe('sendWithRetry delivery log edge cases', () => {
+    it('logs non-Error lastError as String in failure delivery log', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockRejectedValue('string error');
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel();
+
+      const promise = service.notifyTest(channel).catch(() => {});
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      const failedCall = prisma.alertDeliveryLog.create.mock.calls.find(
+        (c: unknown[]) => (c[0] as { data: { status: string } }).data.status === 'failed',
+      );
+      expect(failedCall).toBeDefined();
+      expect(failedCall[0].data.errorMessage).toBe('string error');
+    });
+
+    it('uses default trigger "monitor_failure" when deliveryMeta has no trigger', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel();
+
+      await service.notifyTest(channel);
+
+      // notifyTest passes trigger: 'test'
+      const successCall = prisma.alertDeliveryLog.create.mock.calls[0];
+      expect(successCall[0].data.trigger).toBe('test');
+    });
+
+    it('delivery log create catch does not break flow when log fails', async () => {
+      const prisma = makePrisma();
+      prisma.alertDeliveryLog.create = vi.fn().mockRejectedValue(new Error('DB write failed'));
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel();
+
+      // Should not throw even though delivery log creation fails
+      await service.notifyTest(channel);
+      expect(metrics.snapshot().alertsSent).toBe(1);
+    });
+  });
+
+  // ── Realtime event ────────────────────────────────────────────────────────
+
+  describe('realtime alertTriggered event', () => {
+    it('emits alertTriggered event with monitor info', async () => {
+      const alertTriggered = vi.fn();
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(
+        prisma as never,
+        metrics,
+        makeMailer() as never,
+        makeNotifications() as never,
+        { alertTriggered } as never,
+      );
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(alertTriggered).toHaveBeenCalledWith(
+        monitor.userId,
+        expect.objectContaining({
+          monitor: { id: monitor.id, name: monitor.name },
+          channelCount: 1,
+        }),
+      );
+    });
+
+    it('uses default noop realtime when not provided', async () => {
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const prisma = makePrisma([]);
+      // Pass undefined for realtime — should use default noop
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // Should not throw
+      await service.notifyMonitorFailure(monitor, run);
+    });
+  });
+
+  // ── notifyMonitorFailure context defaults ─────────────────────────────────
+
+  describe('notifyMonitorFailure context defaults', () => {
+    it('defaults levelChanged to true, previousLevel to null, failureStreak to 1 when no context', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      // Use ON_CHANGE notifyOn (default) — should fire since levelChanged defaults to true
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'ON_CHANGE',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // No context parameter
+      await service.notifyMonitorFailure(makeMonitor(), makeRun());
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('defaults notifyOn to ON_CHANGE when notifyOn is empty string', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: '',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // Empty notifyOn defaults to ON_CHANGE, levelChanged defaults to true → should fire
+      await service.notifyMonitorFailure(makeMonitor(), makeRun());
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('uses ⚠️ emoji for yellow level in alert text', async () => {
+      const monitor = makeMonitor({ name: 'API' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'Slow' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(opts.body as string) as { text: string };
+      expect(body.text).toMatch(/^⚠️/);
+      expect(body.text).toContain('YELLOW');
+    });
+
+    it('sets trigger to monitor_recovery for green level', async () => {
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({ userId: monitor.userId });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const logCall = prisma.alertDeliveryLog.create.mock.calls[0];
+      expect(logCall[0].data.trigger).toBe('monitor_recovery');
+    });
+  });
+
+  // ── DAILY_DIGEST: sends when notified >24h ago ────────────────────────────
+
+  describe('notifyOn DAILY_DIGEST edge case', () => {
+    it('sends when last notified more than 24h ago', async () => {
+      const channel = makeChannel();
+      const oldDate = new Date(Date.now() - 25 * 3600000); // 25h ago
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'DAILY_DIGEST',
+        lastNotifiedAt: oldDate,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor(), makeRun(), { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+  });
+
+  // ── VERSION_ANY/VERSION_MAJOR with DOCKER_IMAGE ────────────────────────────
+
+  describe('notifyOn version monitor with DOCKER_IMAGE', () => {
+    it('VERSION_ANY: sends for DOCKER_IMAGE with red level', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'VERSION_ANY',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor({ type: 'DOCKER_IMAGE' }), makeRun({ level: 'red' }), { levelChanged: true });
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('VERSION_ANY: does NOT send for version monitor with green level', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'VERSION_ANY',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor({ type: 'GIT_RELEASE' }), makeRun({ level: 'green', ok: true }), { levelChanged: true });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('VERSION_MAJOR: does NOT send for non-version monitor', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      prisma.monitorAlert.findMany.mockResolvedValue([{
+        alertChannelId: channel.id,
+        monitorId: 'monitor-1',
+        notifyOn: 'VERSION_MAJOR',
+        lastNotifiedAt: null,
+        alertChannel: {
+          id: channel.id,
+          userId: channel.userId,
+          name: channel.name,
+          type: channel.type,
+          configJson: channel.config,
+          createdAt: new Date(channel.createdAt),
+        },
+      }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor({ type: 'HTTP' }), makeRun({ level: 'red' }), { levelChanged: true });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── SLA notification edge cases ──────────────────────────────────────────
+
+  describe('SLA notification error handling', () => {
+    it('logs String(error) when SLA channel catch receives non-Error', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockRejectedValue('network issue');
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifySlaBreached('mon-1', 'API', 'user-1', 98, 99.9, 30);
+      await vi.runAllTimersAsync();
+      // Should not throw — error is caught and logged
+      await expect(promise).resolves.not.toThrow();
+      vi.useRealTimers();
+    });
+
+    it('continues sending to remaining channels when one SLA channel fails', async () => {
+      vi.useFakeTimers();
+      const chan1 = makeChannel({ id: 'ch-1', config: { url: 'https://hooks.example.com/1' } });
+      const chan2 = makeChannel({ id: 'ch-2', config: { url: 'https://hooks.example.com/2' } });
+      const prisma = makePrisma([{ alertChannel: chan1 }, { alertChannel: chan2 }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      fetchMock
+        .mockRejectedValueOnce(new Error('fail'))
+        .mockRejectedValueOnce(new Error('fail'))
+        .mockRejectedValueOnce(new Error('fail'))
+        .mockResolvedValueOnce({ ok: true });
+
+      const promise = service.notifySlaRecovered('mon-1', 'API', 'user-1', 99.95, 99.9, 7);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      expect(metrics.snapshot().alertsFailed).toBe(1);
+      expect(metrics.snapshot().alertsSent).toBe(1);
+    });
+  });
+
   // ── notifyOn: DAILY_DIGEST lastNotifiedAt update ───────────────────────────
 
   describe('notifyMonitorFailure() — DAILY_DIGEST lastNotifiedAt update', () => {

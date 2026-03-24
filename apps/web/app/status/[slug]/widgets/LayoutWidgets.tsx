@@ -1,3 +1,4 @@
+"use client";
 // Layout widgets — containers, sections, navigation, columns, sticky headers
 import React from "react";
 import {

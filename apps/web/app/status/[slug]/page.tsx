@@ -300,10 +300,7 @@ export default async function PublicStatusSlugPage({
     widgetDataEntries.filter((entry): entry is readonly [string, Record<string, unknown>] => entry[1] !== null)
   );
 
-  const desktop = new Map<string, GridPlacement>(
-    visible.map((w) => [w.id, { x: clamp(w.x, 0, 11), y: Math.max(0, w.y), w: clamp(w.w, 1, 12), h: Math.max(1, w.h) }])
-  );
-  const tablet = buildResponsivePlacement(visible, 6);
+  const desktop = buildResponsivePlacement(visible, 12);
 
   const now = new Date();
   const lastUpdated = now.toISOString().slice(11, 19) + " UTC";
@@ -348,14 +345,14 @@ export default async function PublicStatusSlugPage({
       {/* Live refresh client component replaces meta http-equiv refresh */}
       <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
 
-      <main id="status-page-content" role="main" aria-label={`${data.title} status page`} className={`min-h-screen px-4 pb-16 pt-8 ${bgClass} ${themeClass}`} style={containerStyle}>
+      <main id="status-page-content" role="main" aria-label={`${data.title} status page`} className={`min-h-screen px-4 pb-10 pt-6 ${bgClass} ${themeClass}`} style={containerStyle}>
         {/* Skip to main content link for keyboard users */}
         <a href="#status-widgets" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-semibold">
           Skip to status widgets
         </a>
-        <div className="mx-auto max-w-6xl space-y-4">
+        <div className="mx-auto max-w-6xl space-y-3">
           {/* Page header */}
-          <header className="mb-8 text-center relative">
+          <header className="mb-4 text-center relative">
             {/* Action buttons — top-right of header, hidden when printing */}
             <div className="absolute right-0 top-0 no-print flex items-center gap-2" role="toolbar" aria-label="Page actions">
               <Suspense fallback={null}>
@@ -387,93 +384,80 @@ export default async function PublicStatusSlugPage({
           ) : (
             <>
               <h2 id="status-widgets-heading" className="sr-only">Status widgets</h2>
-              {/* Mobile + Print: single-column flow
-                  `status-page-mobile-flow` class enables print layout (print CSS shows this, hides grids) */}
-              <div id="status-widgets" className="status-page-mobile-flow space-y-4 sm:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  // First 3 widgets render immediately (above fold); rest are lazy
-                  return (
-                    <div key={`m-${widget.id}`}>
-                      {idx < 3 ? content : (
-                        <LazyWidget placeholderHeight={widget.h * 80}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Tablet: 6-column responsive grid */}
-              <div className="status-page-tablet-grid hidden grid-cols-6 auto-rows-[80px] gap-4 sm:grid lg:hidden" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
-                  const t = tablet.get(widget.id);
-                  if (!t) return null;
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  return (
-                    <div
-                      key={`t-${widget.id}`}
-                      style={{
-                        gridColumn: `${t.x + 1} / span ${t.w}`,
-                        gridRow: `${t.y + 1} / span ${t.h}`,
-                        minWidth: 0,
-                      }}
-                    >
-                      {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={t.h * 80}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Desktop: 12-column editor-parity grid */}
-              <div className="status-page-desktop-grid hidden grid-cols-12 auto-rows-[80px] gap-4 lg:grid" role="region" aria-labelledby="status-widgets-heading">
-                {visible.map((widget, idx) => {
+              {/* Group widgets into rows based on desktop placement, then render
+                  each row as a flex row.  This gives auto-height per row (no fixed
+                  grid rows) while still supporting side-by-side widgets. */}
+              {(() => {
+                // Build rows: group widgets that share the same y band
+                const rows: { y: number; widgets: { widget: Widget; placement: GridPlacement }[] }[] = [];
+                for (const widget of visible) {
                   const d = desktop.get(widget.id);
-                  if (!d) return null;
-                  const content = renderWidget(widget, data.monitors, {
-                    incidents: data.incidents ?? [],
-                    maintenance: data.maintenance ?? [],
-                    recentChecks: data.recentChecks ?? [],
-                    widgetDataById,
-                  });
-                  return (
-                    <div
-                      key={`d-${widget.id}`}
-                      style={{
-                        gridColumn: `${d.x + 1} / span ${d.w}`,
-                        gridRow: `${d.y + 1} / span ${d.h}`,
-                        minWidth: 0,
-                      }}
-                    >
-                      {idx < 4 ? content : (
-                        <LazyWidget placeholderHeight={d.h * 80}>
-                          {content}
-                        </LazyWidget>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                  if (!d) continue;
+                  let row = rows.find((r) => r.y === d.y);
+                  if (!row) {
+                    row = { y: d.y, widgets: [] };
+                    rows.push(row);
+                  }
+                  row.widgets.push({ widget, placement: d });
+                }
+                rows.sort((a, b) => a.y - b.y);
+
+                let globalIdx = 0;
+                return (
+                  <div id="status-widgets" className="space-y-3" role="region" aria-labelledby="status-widgets-heading">
+                    {rows.map((row) => {
+                      const isSingleFull = row.widgets.length === 1 && row.widgets[0].placement.w === 12;
+                      return (
+                        <div
+                          key={`row-${row.y}`}
+                          className={isSingleFull ? "" : "grid grid-cols-12 gap-3"}
+                        >
+                          {row.widgets.map(({ widget, placement }) => {
+                            const idx = globalIdx++;
+                            const content = renderWidget(widget, data.monitors, {
+                              incidents: data.incidents ?? [],
+                              maintenance: data.maintenance ?? [],
+                              recentChecks: data.recentChecks ?? [],
+                              widgetDataById,
+                            });
+                            if (isSingleFull) {
+                              return (
+                                <div key={widget.id}>
+                                  {idx < 4 ? content : (
+                                    <LazyWidget placeholderHeight={120}>
+                                      {content}
+                                    </LazyWidget>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                key={widget.id}
+                                style={{
+                                  gridColumn: `${placement.x + 1} / span ${placement.w}`,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {idx < 4 ? content : (
+                                  <LazyWidget placeholderHeight={120}>
+                                    {content}
+                                  </LazyWidget>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </>
           )}
 
           {/* Footer */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-xs text-text-secondary print:hidden">
             <LiveStatusRefresh intervalSec={autoRefreshSec} slug={slug} />
             {showBranding && (
               <span>

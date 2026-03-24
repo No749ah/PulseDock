@@ -398,7 +398,7 @@ export default function StatusPagesPage() {
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                 <h2 className="text-base font-semibold text-text-primary flex items-center gap-2"><Shield className="h-4 w-4 text-accent" /> Embed Badge</h2>
-                <button onClick={() => setBadgePage(null)} className="rounded-lg p-1 text-text-secondary hover:text-text-primary transition-colors"><X className="h-4 w-4" /></button>
+                <button onClick={() => setBadgePage(null)} aria-label="Close badge modal" className="rounded-lg p-1 text-text-secondary hover:text-text-primary transition-colors"><X className="h-4 w-4" /></button>
               </div>
 
               {/* Scrollable body */}

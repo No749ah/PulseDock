@@ -244,6 +244,222 @@ describe('MailerService', () => {
     });
   });
 
+  // ─── sendUptimeReport() ────────────────────────────────────────────────────
+
+  describe('sendUptimeReport()', () => {
+    beforeEach(() => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'user';
+      process.env.SMTP_PASS = 'pass';
+      process.env.MAIL_FROM = 'noreply@example.com';
+      mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
+      svc = new MailerService();
+    });
+
+    const baseData = {
+      frequency: 'daily' as const,
+      periodLabel: 'March 24, 2026',
+      overallUptimePct: 99.95,
+      totalMonitors: 10,
+      uptimeMonitors: 9,
+      greenCount: 8,
+      yellowCount: 1,
+      redCount: 1,
+      topMonitors: [
+        { name: 'API', uptimePct: 100, status: 'green' },
+        { name: 'Web', uptimePct: 95.5, status: 'yellow' },
+        { name: 'DB', uptimePct: 80.0, status: 'red' },
+      ],
+      activeIncidents: 2,
+      dashboardUrl: 'https://example.com/dashboard',
+    };
+
+    it('sends daily report with correct subject', async () => {
+      const result = await svc.sendUptimeReport('admin@example.com', baseData);
+      expect(result).toEqual({ sent: true });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.subject).toContain('Daily Report');
+      expect(args.to).toBe('admin@example.com');
+    });
+
+    it('sends weekly report with correct subject', async () => {
+      await svc.sendUptimeReport('admin@example.com', { ...baseData, frequency: 'weekly' });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.subject).toContain('Weekly Report');
+    });
+
+    it('includes uptime percentage in text body', async () => {
+      await svc.sendUptimeReport('admin@example.com', baseData);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.text).toContain('99.95%');
+    });
+
+    it('includes monitor statuses in HTML', async () => {
+      await svc.sendUptimeReport('admin@example.com', baseData);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('API');
+      expect(args.html).toContain('Web');
+      expect(args.html).toContain('DB');
+      expect(args.html).toContain('UP');
+      expect(args.html).toContain('DEGRADED');
+      expect(args.html).toContain('DOWN');
+    });
+
+    it('shows degraded alert when yellow+red > 0', async () => {
+      await svc.sendUptimeReport('admin@example.com', baseData);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('degraded or down');
+    });
+
+    it('hides degraded alert when all green', async () => {
+      await svc.sendUptimeReport('admin@example.com', {
+        ...baseData,
+        yellowCount: 0,
+        redCount: 0,
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).not.toContain('degraded or down');
+    });
+
+    it('uses green color for 99%+ uptime', async () => {
+      await svc.sendUptimeReport('admin@example.com', baseData);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('#22c55e'); // green for 99.95%
+    });
+
+    it('uses yellow color for 95-99% uptime', async () => {
+      await svc.sendUptimeReport('admin@example.com', { ...baseData, overallUptimePct: 97.5 });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('#f59e0b');
+    });
+
+    it('uses red color for <95% uptime', async () => {
+      await svc.sendUptimeReport('admin@example.com', { ...baseData, overallUptimePct: 90.0 });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('#ef4444');
+    });
+
+    it('includes dashboard URL in text and HTML', async () => {
+      await svc.sendUptimeReport('admin@example.com', baseData);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.text).toContain('https://example.com/dashboard');
+      expect(args.html).toContain('https://example.com/dashboard');
+    });
+
+    it('handles empty topMonitors array', async () => {
+      await svc.sendUptimeReport('admin@example.com', { ...baseData, topMonitors: [] });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).not.toContain('Monitor Status');
+    });
+
+    it('uses singular form for 1 degraded monitor', async () => {
+      await svc.sendUptimeReport('admin@example.com', {
+        ...baseData,
+        yellowCount: 1,
+        redCount: 0,
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('is degraded or down');
+    });
+
+    it('returns { sent: false } when SMTP not configured', async () => {
+      delete process.env.SMTP_HOST;
+      svc = new MailerService();
+      const result = await svc.sendUptimeReport('admin@example.com', baseData);
+      expect(result).toEqual({ sent: false });
+    });
+  });
+
+  // ─── sendStatusPageUpdateEmail() ────────────────────────────────────────────
+
+  describe('sendStatusPageUpdateEmail()', () => {
+    beforeEach(() => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'user';
+      process.env.SMTP_PASS = 'pass';
+      process.env.MAIL_FROM = 'noreply@example.com';
+      mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
+      svc = new MailerService();
+    });
+
+    const baseOpts = {
+      pageTitle: 'Acme Status',
+      pageSlug: 'acme',
+      pageUrl: 'https://status.acme.com',
+      subject: 'Acme Status Update',
+      headline: 'API Outage Detected',
+      body: 'Our API endpoint is experiencing elevated error rates.\nWe are investigating.',
+    };
+
+    it('sends status update email with correct subject', async () => {
+      const result = await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      expect(result).toEqual({ sent: true });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.subject).toBe('Acme Status Update');
+      expect(args.to).toBe('sub@example.com');
+    });
+
+    it('includes headline and body in HTML', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('API Outage Detected');
+      expect(args.html).toContain('elevated error rates');
+    });
+
+    it('includes page URL in text body', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.text).toContain('https://status.acme.com');
+    });
+
+    it('includes unsubscribe link when provided', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', {
+        ...baseOpts,
+        unsubscribeUrl: 'https://status.acme.com/unsub/abc123',
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('Unsubscribe');
+      expect(args.html).toContain('https://status.acme.com/unsub/abc123');
+      expect(args.text).toContain('https://status.acme.com/unsub/abc123');
+    });
+
+    it('omits unsubscribe section when no URL', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).not.toContain('Unsubscribe');
+    });
+
+    it('uses custom statusColor when provided', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', {
+        ...baseOpts,
+        statusColor: '#ef4444',
+      });
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('#ef4444');
+    });
+
+    it('defaults statusColor to yellow when not provided', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('#f59e0b');
+    });
+
+    it('converts newlines in body to <br> in HTML', async () => {
+      await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      const args = mockSendMail.mock.calls[0][0] as Record<string, string>;
+      expect(args.html).toContain('<br>');
+    });
+
+    it('returns { sent: false } when SMTP not configured', async () => {
+      delete process.env.SMTP_HOST;
+      svc = new MailerService();
+      const result = await svc.sendStatusPageUpdateEmail('sub@example.com', baseOpts);
+      expect(result).toEqual({ sent: false });
+    });
+  });
+
   // ─── sendAccountLockedEmail() ────────────────────────────────────────────────
 
   describe('sendAccountLockedEmail()', () => {

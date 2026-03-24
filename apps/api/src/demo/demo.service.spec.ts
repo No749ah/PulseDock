@@ -76,6 +76,33 @@ describe('DemoService.seed()', () => {
     expect(result.monitors.length).toBeGreaterThan(0);
   });
 
+  it('handles non-Error throw from monitor creation (String(err) branch)', async () => {
+    mockPrisma.monitor.count.mockResolvedValue(0);
+    let callCount = 0;
+    mockMonitorsService.create.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return Promise.reject('string-error'); // not an Error instance
+      return Promise.resolve({ id: `m-${callCount}` });
+    });
+    const svc = makeService();
+    const result = await svc.seed('user-1');
+
+    expect(result.alreadySeeded).toBe(false);
+    // Should still create remaining monitors despite the string throw
+    expect(result.monitors.length).toBeGreaterThan(0);
+  });
+
+  it('handles non-Error throw from status page creation (String(err) branch)', async () => {
+    mockPrisma.monitor.count.mockResolvedValue(0);
+    mockStatusPagesService.create.mockRejectedValue(42); // not an Error instance
+    const svc = makeService();
+    const result = await svc.seed('user-1');
+
+    expect(result.statusPageId).toBeNull();
+    expect(result.statusPageSlug).toBeNull();
+    expect(result.monitors.length).toBeGreaterThan(0);
+  });
+
   it('returns statusPageId=null when status page creation fails', async () => {
     mockPrisma.monitor.count.mockResolvedValue(0);
     mockStatusPagesService.create.mockRejectedValue(new Error('slug conflict'));

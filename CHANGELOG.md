@@ -22,7 +22,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 - **Next.js** upgraded 16.2.0 → 16.2.1
-- **React** upgraded 19.2.0 → 19.2.4
+- **React** remains at 18.3.1 (React 19 upgrade deferred — breaking changes in ecosystem)
 - **Prisma config** — switched to `process.env.DATABASE_URL` and enabled `driverAdapters` preview feature
 - **Web build** — `scripts/build-web.sh` hardened against flaky heartbeat builds (stale `.next/lock` cleanup, bounded `NODE_OPTIONS` heap)
 - **Version tool picker** — Memoized normalization + ranked filtering to avoid recomputation on unrelated renders

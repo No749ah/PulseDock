@@ -545,6 +545,7 @@ export class AlertsService {
         this.logger.error(`Alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
       }
     }
+
   }
 
   /**

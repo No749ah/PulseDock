@@ -107,6 +107,7 @@ export class CreateMonitorDto {
   @IsInt()
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -178,6 +179,7 @@ export class UpdateMonitorDto {
   @IsInt()
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
+
 }
 
 export class RunMonitorDto {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -15,212 +15,20 @@ import { FadeIn } from "../../components/FadeIn";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../../components/Table";
 import { ResponseAreaChart, CheckBarChart, LineSparkline } from "../../../components/charts";
 import { relativeTime, formatMonitorType } from "../../components/timeUtils";
-
-interface MonitorItem {
-  id: string;
-  name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
-  target: string;
-  intervalSec: number;
-  enabled: boolean;
-  createdAt: string;
-  config?: Record<string, unknown>;
-  slaTarget?: number | null;
-  slaPeriodDays?: number | null;
-  tags?: Array<{ id: string; name: string; color?: string | null }>;
-  description?: string | null;
-}
-
-interface AlertChannelInfo {
-  alertChannelId: string;
-  notifyOn: string;
-  alertChannel: {
-    id: string;
-    name: string;
-    type: string;
-  };
-}
-
-interface MonitorDependency {
-  id: string;
-  monitorId: string;
-  dependsOnId: string;
-  createdAt: string;
-  dependsOn: {
-    id: string;
-    name: string;
-    type: string;
-    target: string;
-    enabled: boolean;
-  };
-}
-
-interface MonitorRun {
-  id: string;
-  monitorId: string;
-  ok: boolean;
-  statusCode: number;
-  latencyMs: number | null;
-  message: string;
-  checkedAt: string;
-  level?: string;
-}
-
-type UptimePeriod = "1d" | "7d" | "30d" | "90d";
-
-interface UptimeStats {
-  monitorId: string;
-  period: UptimePeriod;
-  from: string;
-  to: string;
-  uptimePct: number;
-  totalChecks: number;
-  failedChecks: number;
-  successChecks: number;
-  totalDowntimeSec: number;
-  incidents: number;
-  incidentList: Array<{ start: string; end: string; durationSec: number }>;
-  mttrSec: number;
-  mtbfSec: number;
-  avgLatencyMs: number | null;
-}
-
-interface ErrorBudget {
-  monitorId: string;
-  period: string;
-  slaTarget: number;
-  totalMinutes: number;
-  allowedDownMinutes: number;
-  actualDownMinutes: number;
-  remainingDownMinutes: number;
-  budgetConsumedPct: number;
-  budgetRemainingPct: number;
-}
-
-const PERIOD_LABELS: Record<UptimePeriod, string> = {
-  "1d": "24h",
-  "7d": "7d",
-  "30d": "30d",
-  "90d": "90d",
-};
-
-function formatDuration(sec: number): string {
-  if (sec === 0) return "0s";
-  if (sec < 60) return `${sec}s`;
-  if (sec < 3600) return `${Math.round(sec / 60)}m`;
-  if (sec < 86400) return `${Math.round(sec / 3600)}h`;
-  return `${Math.round(sec / 86400)}d`;
-}
-
-/**
- * Renders a 7-day × 24-hour uptime heatmap from run history.
- * Each cell is colored green (all ok), yellow (some fail), red (majority fail), or grey (no data).
- */
-function UptimeHeatmapChart({ runs }: { runs: MonitorRun[] }) {
-  const DAYS = 7;
-  const HOURS = 24;
-  const CELL_W = 20;
-  const CELL_H = 14;
-  const LABEL_W = 28;
-  const LABEL_H = 18;
-
-  // Build 7×24 bucket grid: [dayOffset][hour] = { ok: n, fail: n }
-  const now = new Date();
-  type Bucket = { ok: number; fail: number };
-  const grid: Bucket[][] = Array.from({ length: DAYS }, () =>
-    Array.from({ length: HOURS }, () => ({ ok: 0, fail: 0 }))
-  );
-
-  for (const run of runs) {
-    const runDate = new Date(run.checkedAt);
-    const diffMs = now.getTime() - runDate.getTime();
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays < 0 || diffDays >= DAYS) continue;
-    const dayIdx = DAYS - 1 - diffDays; // 0 = oldest, 6 = today
-    const hour = runDate.getUTCHours();
-    if (run.ok) grid[dayIdx][hour].ok++;
-    else grid[dayIdx][hour].fail++;
-  }
-
-  const cellColor = (b: Bucket) => {
-    const total = b.ok + b.fail;
-    if (total === 0) return "#1e2430"; // no data
-    const failRate = b.fail / total;
-    if (failRate === 0) return "#22c55e"; // all ok
-    if (failRate < 0.5) return "#f59e0b"; // some fail
-    return "#ef4444"; // mostly fail
-  };
-
-  const dayLabels = Array.from({ length: DAYS }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - (DAYS - 1 - i));
-    return d.toLocaleDateString([], { weekday: "short" }).slice(0, 3);
-  });
-
-  const hourLabels = [0, 6, 12, 18, 23];
-  const svgW = LABEL_W + HOURS * CELL_W + 4;
-  const svgH = LABEL_H + DAYS * CELL_H + 4;
-
-  return (
-    <svg
-      width="100%"
-      viewBox={`0 0 ${svgW} ${svgH}`}
-      role="img"
-      aria-label="Uptime heatmap: 7 days × 24 hours"
-      className="block"
-    >
-      {/* Hour axis labels */}
-      {hourLabels.map((h) => (
-        <text
-          key={h}
-          x={LABEL_W + h * CELL_W + CELL_W / 2}
-          y={12}
-          fontSize={8}
-          fill="#6b7280"
-          textAnchor="middle"
-          fontFamily="inherit"
-        >
-          {h.toString().padStart(2, "0")}h
-        </text>
-      ))}
-
-      {/* Grid cells + day labels */}
-      {grid.map((dayBuckets, dayIdx) => (
-        <g key={dayIdx}>
-          <text
-            x={LABEL_W - 4}
-            y={LABEL_H + dayIdx * CELL_H + CELL_H / 2 + 3}
-            fontSize={8}
-            fill="#6b7280"
-            textAnchor="end"
-            fontFamily="inherit"
-          >
-            {dayLabels[dayIdx]}
-          </text>
-          {dayBuckets.map((bucket, hour) => (
-            <rect
-              key={hour}
-              x={LABEL_W + hour * CELL_W + 1}
-              y={LABEL_H + dayIdx * CELL_H + 1}
-              width={CELL_W - 2}
-              height={CELL_H - 2}
-              rx={2}
-              fill={cellColor(bucket)}
-              opacity={bucket.ok + bucket.fail === 0 ? 0.3 : 0.85}
-            >
-              <title>
-                {dayLabels[dayIdx]} {hour.toString().padStart(2, "0")}:00 —{" "}
-                {bucket.ok + bucket.fail === 0
-                  ? "No data"
-                  : `${bucket.ok} ok, ${bucket.fail} fail (${Math.round((bucket.fail / (bucket.ok + bucket.fail)) * 100)}% fail rate)`}
-              </title>
-            </rect>
-          ))}
-        </g>
-      ))}
-    </svg>
-  );
-}
+import type {
+  MonitorItem,
+  AlertChannelInfo,
+  MonitorDependency,
+  MonitorRun,
+  UptimePeriod,
+  UptimeStats,
+  ErrorBudget,
+  HealthScore,
+  MonitorEvent,
+  ChartPoint,
+} from "./components/types";
+import { PERIOD_LABELS, formatDuration } from "./components/types";
+import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -234,7 +42,7 @@ export default function MonitorDetailPage() {
   const [uptimeLoading, setUptimeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>("7d");
-  const [chartData, setChartData] = useState<Array<{ ts: string; avgLatencyMs: number | null; p95LatencyMs: number | null; uptimePct: number; checkCount: number }>>([]);
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -248,16 +56,9 @@ export default function MonitorDetailPage() {
   const [addingDepId, setAddingDepId] = useState("");
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
-
-  interface HealthScore {
-    score: number;
-    grade: string;
-    breakdown: { uptime: number; latency: number; sla: number; streak: number };
-  }
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
 
   // Timeline events/annotations
-  interface MonitorEvent { id: string; message: string; eventType: string; createdAt: string; userId: string; }
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [newEventMsg, setNewEventMsg] = useState("");
   const [newEventType, setNewEventType] = useState<"deploy"|"note"|"incident"|"maintenance"|"config">("note");
@@ -336,7 +137,7 @@ export default function MonitorDetailPage() {
       if (!user || !id) return;
       setChartLoading(true);
       try {
-        const data = await api<{ points: Array<{ ts: string; avgLatencyMs: number | null; p95LatencyMs: number | null; uptimePct: number; checkCount: number }> }>(`/v1/monitors/${id}/chart?period=${period}`, user.id);
+        const data = await api<{ points: ChartPoint[] }>(`/v1/monitors/${id}/chart?period=${period}`, user.id);
         setChartData(data.points);
       } catch {
         // Non-fatal

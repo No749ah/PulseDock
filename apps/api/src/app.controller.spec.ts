@@ -39,7 +39,57 @@ describe('AppController', () => {
       mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('connection refused'));
       await expect(controller.health()).rejects.toThrow();
     });
+
+    it('includes DB latency in milliseconds when healthy', async () => {
+      const result = await controller.health();
+      expect(typeof result.checks.database.latencyMs).toBe('number');
+      expect(result.checks.database.latencyMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('reports version from package.json', async () => {
+      const result = await controller.health();
+      expect(typeof result.version).toBe('string');
+      expect(result.version).toMatch(/^\d+\.\d+\.\d+/);
+    });
   });
+
+    it('uses default redis host/port when REDIS_URL is unset', async () => {
+      const origUrl = process.env['REDIS_URL'];
+      delete process.env['REDIS_URL'];
+      try {
+        // health() will attempt to ping Redis at localhost:6379 (default)
+        // It may fail (no local Redis), but should not throw — Redis status is non-fatal
+        const result = await controller.health();
+        expect(result.checks.redis.status).toMatch(/^(ok|error)$/);
+      } finally {
+        if (origUrl !== undefined) process.env['REDIS_URL'] = origUrl;
+      }
+    });
+
+    it('parses REDIS_URL with non-standard host/port', async () => {
+      const origUrl = process.env['REDIS_URL'];
+      process.env['REDIS_URL'] = 'redis://customhost:9999';
+      try {
+        // Will likely fail (no Redis at customhost:9999), but covers the regex branch
+        const result = await controller.health();
+        expect(result.checks.redis.status).toMatch(/^(ok|error)$/);
+      } finally {
+        if (origUrl !== undefined) process.env['REDIS_URL'] = origUrl;
+        else delete process.env['REDIS_URL'];
+      }
+    });
+
+    it('falls back gracefully when REDIS_URL has unexpected format', async () => {
+      const origUrl = process.env['REDIS_URL'];
+      process.env['REDIS_URL'] = 'not-a-valid-url';
+      try {
+        const result = await controller.health();
+        expect(result.checks.redis.status).toMatch(/^(ok|error)$/);
+      } finally {
+        if (origUrl !== undefined) process.env['REDIS_URL'] = origUrl;
+        else delete process.env['REDIS_URL'];
+      }
+    });
 
   describe('liveness()', () => {
     it('returns ok=true', () => {

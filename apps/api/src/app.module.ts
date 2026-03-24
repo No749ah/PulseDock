@@ -9,6 +9,7 @@ import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { MonitorsController } from './monitors/monitors.controller';
 import { MonitorsService } from './monitors/monitors.service';
+import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
 import { ChecksService } from './checks/checks.service';
@@ -40,6 +41,8 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { NotificationsService } from './notifications/notifications.service';
 import { StatusPagesController } from './status-pages/status-pages.controller';
 import { StatusPagesService } from './status-pages/status-pages.service';
+import { WidgetDataResolverService } from './status-pages/widget-data-resolver.service';
+import { StatusPageSubscriberService } from './status-pages/subscriber.service';
 import { MaintenanceController } from './maintenance/maintenance.controller';
 import { MaintenanceService } from './maintenance/maintenance.service';
 import { IncidentsController } from './incidents/incidents.controller';
@@ -60,8 +63,6 @@ import { PlanService } from './settings/plan.service';
 import { FeedbackController } from './feedback/feedback.controller';
 import { GrafanaController } from './grafana/grafana.controller';
 import { GrafanaService } from './grafana/grafana.service';
-import { OnCallController } from './oncall/oncall.controller';
-import { OnCallService } from './oncall/oncall.service';
 import { RedisCacheService } from './common/redis-cache.service';
 import { DemoController } from './demo/demo.controller';
 import { DemoService } from './demo/demo.service';
@@ -103,7 +104,7 @@ import { DemoService } from './demo/demo.service';
     PlanController,
     FeedbackController,
     GrafanaController,
-    OnCallController,
+
     OrganizationsController,
     DemoController,
   ],
@@ -116,6 +117,7 @@ import { DemoService } from './demo/demo.service';
     BootstrapService,
     AuthService,
     MonitorsService,
+    VersionDetectionService,
     AlertsService,
     ChecksService,
     ChecksScheduler,
@@ -124,6 +126,8 @@ import { DemoService } from './demo/demo.service';
     TagsService,
     NotificationsService,
     StatusPagesService,
+    WidgetDataResolverService,
+    StatusPageSubscriberService,
     MaintenanceService,
     IncidentsService,
     AgentService,
@@ -133,7 +137,7 @@ import { DemoService } from './demo/demo.service';
     BackupService,
     PlanService,
     GrafanaService,
-    OnCallService,
+
     OrganizationsService,
     RedisCacheService,
     DemoService,

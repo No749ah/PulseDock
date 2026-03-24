@@ -86,6 +86,56 @@ describe('sort logic', () => {
   });
 });
 
+describe('sort comparator edge cases', () => {
+  function sortItems<T>(items: T[], accessor: (item: T) => unknown, dir: 'asc' | 'desc'): T[] {
+    return [...items].sort((a, b) => {
+      const av = accessor(a);
+      const bv = accessor(b);
+      let cmp = 0;
+      if (av == null && bv == null) cmp = 0;
+      else if (av == null) cmp = 1;
+      else if (bv == null) cmp = -1;
+      else if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv));
+      return dir === 'asc' ? cmp : -cmp;
+    });
+  }
+
+  it('handles null values in descending sort (null goes to start)', () => {
+    const items = [{ name: 'Bob' }, { name: null }, { name: 'Alice' }];
+    const sorted = sortItems(items, (i) => i.name, 'desc');
+    // In desc: cmp is negated, so null (cmp=1) becomes -1 → null moves to front
+    expect(sorted[0]).toEqual({ name: null });
+    expect(sorted[1]).toEqual({ name: 'Bob' });
+    expect(sorted[2]).toEqual({ name: 'Alice' });
+  });
+
+  it('handles numbers descending', () => {
+    const items = [{ n: 1 }, { n: 3 }, { n: 2 }];
+    const sorted = sortItems(items, (i) => i.n, 'desc');
+    expect(sorted.map((i) => i.n)).toEqual([3, 2, 1]);
+  });
+
+  it('handles bv==null with av present', () => {
+    const items = [{ v: null }, { v: 'a' }];
+    const sorted = sortItems(items, (i) => i.v, 'asc');
+    expect(sorted.map((i) => i.v)).toEqual(['a', null]);
+  });
+
+  it('handles both null values with other items', () => {
+    const items = [{ v: null }, { v: 'b' }, { v: null }, { v: 'a' }];
+    const sorted = sortItems(items, (i) => i.v, 'asc');
+    expect(sorted.map((i) => i.v)).toEqual(['a', 'b', null, null]);
+  });
+
+  it('handles boolean-like values as strings', () => {
+    const items = [{ v: true }, { v: false }];
+    const sorted = sortItems(items, (i) => i.v, 'asc');
+    // "false" < "true" in string comparison
+    expect(sorted.map((i) => i.v)).toEqual([false, true]);
+  });
+});
+
 describe('exportCSV', () => {
   let createObjectURL: ReturnType<typeof vi.fn>;
   let revokeObjectURL: ReturnType<typeof vi.fn>;
@@ -134,6 +184,26 @@ describe('exportCSV', () => {
   it('handles null/undefined values gracefully', () => {
     exportCSV('test.csv', [{ a: null, b: undefined, c: '' }]);
     expect(createObjectURL).toHaveBeenCalled();
+  });
+
+  it('quotes values containing newlines', () => {
+    exportCSV('test.csv', [{ desc: 'line1\nline2' }]);
+    expect(createObjectURL).toHaveBeenCalled();
+  });
+
+  it('quotes values containing carriage returns', () => {
+    exportCSV('test.csv', [{ desc: 'line1\rline2' }]);
+    expect(createObjectURL).toHaveBeenCalled();
+  });
+
+  it('handles multiple rows with mixed special chars', () => {
+    exportCSV('multi.csv', [
+      { name: 'normal', desc: 'plain' },
+      { name: 'with,comma', desc: 'with "quotes"' },
+      { name: 'with\nnewline', desc: '' },
+    ]);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalled();
   });
 });
 

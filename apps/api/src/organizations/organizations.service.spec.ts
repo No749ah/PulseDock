@@ -327,4 +327,129 @@ describe('OrganizationsService', () => {
       await expect(service.removeMember('org-1', 'user-99', 'user-1')).rejects.toBeInstanceOf(NotFoundException)
     })
   })
+
+  // ─── Additional branch coverage tests ─────────────────────────────────────
+
+  describe('getOrganization - non-member branch', () => {
+    it('throws NotFoundException when org exists but user is not a member', async () => {
+      const org = {
+        ...makeOrg(),
+        members: [
+          { ...makeMember({ userId: 'user-other' }), user: { id: 'user-other', email: 'other@example.com', displayName: null } },
+        ],
+      }
+      prisma.organization.findUnique.mockResolvedValue(org)
+      await expect(service.getOrganization('org-1', 'user-1')).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  describe('inviteMember - new user (invite token path)', () => {
+    it('creates invite token when user does not exist', async () => {
+      prisma.orgMember.findUnique.mockResolvedValueOnce(makeMember({ role: OrgRole.OWNER })) // requireRole
+      prisma.user.findUnique.mockResolvedValue(null) // user not found
+      prisma.orgInvite.create.mockResolvedValue({
+        id: 'invite-1', token: 'abc-token', email: 'new@example.com',
+        organizationId: 'org-1', role: OrgRole.MEMBER,
+        expiresAt: new Date(Date.now() + 86400000), createdAt: new Date(),
+      })
+
+      const result = await service.inviteMember('org-1', 'user-1', {
+        email: 'new@example.com',
+        role: OrgRole.MEMBER,
+      })
+      expect(result.token).toBe('abc-token')
+      expect(prisma.orgInvite.create).toHaveBeenCalled()
+    })
+  })
+
+  describe('acceptInvite - additional branches', () => {
+    it('throws NotFoundException when user not found', async () => {
+      const invite = {
+        token: 'valid-token',
+        organizationId: 'org-1',
+        role: OrgRole.MEMBER,
+        expiresAt: new Date(Date.now() + 86400000),
+      }
+      prisma.orgInvite.findUnique.mockResolvedValue(invite)
+      prisma.user.findUnique.mockResolvedValue(null) // user not found
+      await expect(service.acceptInvite('valid-token', 'user-ghost')).rejects.toBeInstanceOf(NotFoundException)
+    })
+
+    it('throws BadRequestException when user is already a member', async () => {
+      const invite = {
+        token: 'valid-token',
+        organizationId: 'org-1',
+        role: OrgRole.MEMBER,
+        expiresAt: new Date(Date.now() + 86400000),
+      }
+      prisma.orgInvite.findUnique.mockResolvedValue(invite)
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'user@example.com' })
+      prisma.orgMember.findUnique.mockResolvedValue(makeMember()) // already member
+      await expect(service.acceptInvite('valid-token', 'user-1')).rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('throws NotFoundException when org not found after transaction', async () => {
+      const invite = {
+        token: 'valid-token',
+        organizationId: 'org-1',
+        role: OrgRole.MEMBER,
+        expiresAt: new Date(Date.now() + 86400000),
+      }
+      prisma.orgInvite.findUnique.mockResolvedValue(invite)
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-2', email: 'jane@example.com' })
+      prisma.orgMember.findUnique.mockResolvedValue(null) // not already member
+      prisma.$transaction.mockResolvedValue([])
+      prisma.organization.findUnique.mockResolvedValue(null) // org gone!
+      await expect(service.acceptInvite('valid-token', 'user-2')).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  describe('requireRole - null member', () => {
+    it('throws ForbiddenException when member record is null (non-member)', async () => {
+      prisma.orgMember.findUnique.mockResolvedValue(null)
+      await expect(service.updateOrganization('org-1', 'user-stranger', { name: 'X' })).rejects.toBeInstanceOf(ForbiddenException)
+    })
+  })
+
+  describe('updateMemberRole - target not found', () => {
+    it('throws NotFoundException when target member does not exist', async () => {
+      const ownerRequester = makeMember({ userId: 'user-1', role: OrgRole.OWNER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(ownerRequester) // requireRole
+        .mockResolvedValueOnce(null)           // target not found
+      await expect(
+        service.updateMemberRole('org-1', 'user-ghost', 'user-1', { role: OrgRole.ADMIN }),
+      ).rejects.toBeInstanceOf(NotFoundException)
+    })
+  })
+
+  describe('createOrganization - with optional fields', () => {
+    it('passes logoUrl and website when provided', async () => {
+      prisma.organization.findUnique.mockResolvedValue(null)
+      const org = makeOrg({ logoUrl: 'https://logo.png', website: 'https://acme.com' })
+      prisma.organization.create.mockResolvedValue(org)
+
+      const result = await service.createOrganization('user-1', {
+        name: 'Acme Corp',
+        slug: 'acme-corp',
+        logoUrl: 'https://logo.png',
+        website: 'https://acme.com',
+      })
+      expect(result.logoUrl).toBe('https://logo.png')
+      expect(result.website).toBe('https://acme.com')
+    })
+  })
+
+  describe('removeMember - ADMIN removing MEMBER', () => {
+    it('allows ADMIN to remove a MEMBER', async () => {
+      const adminRequester = makeMember({ userId: 'user-1', role: OrgRole.ADMIN })
+      const memberTarget = makeMember({ userId: 'user-2', role: OrgRole.MEMBER })
+      prisma.orgMember.findUnique
+        .mockResolvedValueOnce(adminRequester)
+        .mockResolvedValueOnce(memberTarget)
+      prisma.orgMember.delete.mockResolvedValue(memberTarget)
+      await service.removeMember('org-1', 'user-2', 'user-1')
+      expect(prisma.orgMember.delete).toHaveBeenCalled()
+    })
+  })
 })

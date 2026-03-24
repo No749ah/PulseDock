@@ -3,18 +3,14 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, SlidersHorizontal, BookmarkPlus, Bookmark, Filter, Clock, Tag } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
 import { AppFrame } from "../../components/app-frame";
 import { Card } from "../components/Card";
-import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../components/Table";
-import { Modal } from "../components/Modal";
-import { FadeIn } from "../components/FadeIn";
-import { MonitorTemplates } from "../components/MonitorTemplates";
 import type { MonitorTemplate } from "../components/MonitorTemplates";
 import { relativeTime, formatMonitorType, targetPlaceholder, targetHelperText } from "../components/timeUtils";
 import { useToast } from "../../components/ui/toast";
@@ -22,116 +18,16 @@ import { useDebounce } from "../../lib/useDebounce";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
-import { HelpTooltip } from "../../components/help-tooltip";
 import { brand } from "../../lib/brand";
-
-interface MonitorTag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface TagItem {
-  id: string;
-  name: string;
-  color: string;
-  monitorCount: number;
-  createdAt: string;
-}
-
-interface AlertChannelSummary {
-  id: string;
-  name: string;
-  type: string;
-  notifyOn: string;
-}
-
-interface MonitorItem {
-  id: string;
-  name: string;
-  description?: string | null;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
-  target: string;
-  intervalSec: number;
-  confirmations: number;
-  enabled: boolean;
-  createdAt: string;
-  folderId?: string | null;
-  config?: Record<string, unknown>;
-  tags?: MonitorTag[];
-  alertChannels?: AlertChannelSummary[];
-  slaTarget?: number | null;
-  slaPeriodDays?: number | null;
-}
-
-interface MonitorRun {
-  id: string;
-  monitorId: string;
-  ok: boolean;
-  statusCode: number;
-  latencyMs?: number;
-  message: string;
-  checkedAt: string;
-  level?: "green" | "yellow" | "red";
-}
-
-interface AlertChannel {
-  id: string;
-  name: string;
-  type: string;
-  config: Record<string, unknown>;
-  createdAt: string;
-  notifyOn?: string;
-}
-
-interface PluginField {
-  key: string;
-  label: string;
-  type: "text" | "number" | "boolean";
-  required?: boolean;
-  placeholder?: string;
-  helpText?: string;
-}
-
-interface MonitorPlugin {
-  id: string;
-  displayName: string;
-  description?: string | null;
-  supportedMonitorTypes: Array<MonitorItem["type"]>;
-  configFields: PluginField[];
-}
-
-const inputClass =
-  "w-full px-4 py-3 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
-
-const CHANNEL_TYPE_COLORS: Record<string, string> = {
-  discord: "text-indigo-400",
-  slack: "text-green-400",
-  webhook: "text-blue-400",
-  telegram: "text-sky-400",
-  email: "text-yellow-400",
-};
-
-const NOTIFY_ON_LABELS: Record<string, string> = {
-  ON_CHANGE:     "On status change",
-  ALWAYS:        "Every failed check",
-  FIRST_ONLY:    "First failure only",
-  DAILY_DIGEST:  "Daily digest",
-  VERSION_ANY:   "Any update",
-  VERSION_MAJOR: "Major updates only",
-};
-
-const UPTIME_NOTIFY_OPTIONS = [
-  { value: "ON_CHANGE",    label: "On status change" },
-  { value: "ALWAYS",       label: "Every failed check" },
-  { value: "FIRST_ONLY",   label: "First failure only" },
-  { value: "DAILY_DIGEST", label: "Daily digest (max 1/day)" },
-];
-
-const VERSION_NOTIFY_OPTIONS = [
-  { value: "VERSION_ANY",   label: "Any update (minor + major)" },
-  { value: "VERSION_MAJOR", label: "Major updates only" },
-];
+import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin } from "./types";
+import { CHANNEL_TYPE_COLORS, NOTIFY_ON_LABELS } from "./constants";
+import { buildEditFormData, buildFormDataFromTemplate } from "./utils";
+import { AlertPanel } from "./components/AlertPanel";
+import { ExternalImportModal } from "./components/ExternalImportModal";
+import { BadgeModal } from "./components/BadgeModal";
+import { MonitorFormModal } from "./components/MonitorFormModal";
+import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
+import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -144,6 +40,7 @@ function MonitorsPageInner() {
   const [plugins, setPlugins] = useState<MonitorPlugin[]>([]);
   const [allTags, setAllTags] = useState<TagItem[]>([]);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
+
   const [healthScores, setHealthScores] = useState<Record<string, { score: number; grade: string }>>({});
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
@@ -236,7 +133,6 @@ function MonitorsPageInner() {
   const [importResult, setImportResult] = useState<{ imported: number; errors: Array<{ index: number; name: string; error: string }> } | null>(null);
 
   // external import modal
-  const externalImportFileRef = useRef<HTMLInputElement>(null);
   const [showExternalImport, setShowExternalImport] = useState(false);
   const [externalImportSource, setExternalImportSource] = useState<"uptime-robot" | "better-uptime" | "uptime-kuma" | "csv">("uptime-robot");
   const [externalImporting, setExternalImporting] = useState(false);
@@ -363,6 +259,7 @@ function MonitorsPageInner() {
         setPlugins(pluginsData);
         setAllTags(tagsData);
         setFolders(foldersData);
+
         if (healthSummaryData?.scores) {
           const scoreMap: Record<string, { score: number; grade: string }> = {};
           for (const s of healthSummaryData.scores) {
@@ -540,66 +437,70 @@ function MonitorsPageInner() {
     return Object.keys(errors).length === 0;
   };
 
+  const buildMonitorConfig = (isCreate: boolean): Record<string, unknown> => {
+    const config: Record<string, unknown> = {};
+    if (formData.pluginId) config.pluginId = formData.pluginId;
+    if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
+    if (formData.type === "HEARTBEAT") {
+      config.token = isCreate ? (formData.heartbeatToken || crypto.randomUUID()) : formData.heartbeatToken;
+      config.timeoutMin = formData.heartbeatTimeoutMin;
+    }
+    if (formData.type === "SMTP") {
+      const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
+      if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
+      if (f.checkTls) config.checkTls = f.checkTls;
+    }
+    if (formData.type === "DNS") {
+      const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
+      config.recordType = f.dnsRecordType ?? "A";
+      if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
+      if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
+    }
+    if (formData.type === "PING") {
+      const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
+      config.pingCount = f.pingCount ?? 3;
+      if (f.pingMaxLossPct !== undefined) config.maxPacketLossPct = f.pingMaxLossPct;
+    }
+    if (formData.type === "BROWSER") {
+      const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
+      if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
+      if (f2.browserSelector?.trim()) config.browserSelector = f2.browserSelector.trim();
+      if (f2.browserStatusCodesRaw?.trim()) {
+        const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+        if (codes.length > 0) config.browserStatusCodes = codes;
+      }
+    }
+    if (formData.type === "HTTP") {
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+      if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
+      if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
+      if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
+      if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
+      if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
+      if (f.requestHeaders?.trim()) {
+        try {
+          const parsed: Record<string, string> = {};
+          for (const line of f.requestHeaders.split("\n")) {
+            const idx = line.indexOf(":");
+            if (idx > 0) {
+              const key = line.slice(0, idx).trim();
+              const val = line.slice(idx + 1).trim();
+              if (key) parsed[key] = val;
+            }
+          }
+          if (Object.keys(parsed).length > 0) config.requestHeaders = parsed;
+        } catch { /* skip invalid */ }
+      }
+      if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
+      if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
+    }
+    return config;
+  };
+
   const handleCreate = async () => {
     if (!validateMonitorForm()) return;
     try {
-      const config: Record<string, unknown> = {};
-      if (formData.pluginId) config.pluginId = formData.pluginId;
-      if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
-      if (formData.type === "HEARTBEAT") {
-        const token = formData.heartbeatToken || crypto.randomUUID();
-        config.token = token;
-        config.timeoutMin = formData.heartbeatTimeoutMin;
-      }
-      if (formData.type === "SMTP") {
-        const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
-        if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
-        if (f.checkTls) config.checkTls = f.checkTls;
-      }
-      if (formData.type === "DNS") {
-        const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
-        config.recordType = f.dnsRecordType ?? "A";
-        if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
-        if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
-      }
-      if (formData.type === "PING") {
-        const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
-        config.pingCount = f.pingCount ?? 3;
-        if (f.pingMaxLossPct !== undefined) config.maxPacketLossPct = f.pingMaxLossPct;
-      }
-      if (formData.type === "BROWSER") {
-        const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
-        if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
-        if (f2.browserSelector?.trim()) config.browserSelector = f2.browserSelector.trim();
-        if (f2.browserStatusCodesRaw?.trim()) {
-          const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-          if (codes.length > 0) config.browserStatusCodes = codes;
-        }
-      }
-      if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
-        if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
-        if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
-        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
-        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
-        if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
-        if (f.requestHeaders?.trim()) {
-          try {
-            const parsed: Record<string, string> = {};
-            for (const line of f.requestHeaders.split("\n")) {
-              const idx = line.indexOf(":");
-              if (idx > 0) {
-                const key = line.slice(0, idx).trim();
-                const val = line.slice(idx + 1).trim();
-                if (key) parsed[key] = val;
-              }
-            }
-            if (Object.keys(parsed).length > 0) config.requestHeaders = parsed;
-          } catch { /* skip invalid */ }
-        }
-        if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
-        if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
-      }
+      const config = buildMonitorConfig(true);
 
       await api("/v1/monitors", user?.id, {
         method: "POST",
@@ -615,6 +516,7 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           ...(formData.slaTarget !== "" ? { slaTarget: formData.slaTarget } : {}),
           slaPeriodDays: formData.slaPeriodDays,
+
         }),
       });
       setShowModal(false);
@@ -637,62 +539,7 @@ function MonitorsPageInner() {
     if (!editingMonitor) return;
     if (!validateMonitorForm()) return;
     try {
-      const config: Record<string, unknown> = {};
-      if (formData.pluginId) config.pluginId = formData.pluginId;
-      if (formData.expectedText.trim()) config.expectedText = formData.expectedText.trim();
-      if (formData.type === "HEARTBEAT") {
-        config.token = formData.heartbeatToken;
-        config.timeoutMin = formData.heartbeatTimeoutMin;
-      }
-      if (formData.type === "SMTP") {
-        const f = formData as typeof formData & { ehlo?: string; checkTls?: boolean };
-        if (f.ehlo?.trim()) config.ehlo = f.ehlo.trim();
-        if (f.checkTls) config.checkTls = f.checkTls;
-      }
-      if (formData.type === "DNS") {
-        const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
-        config.recordType = f.dnsRecordType ?? "A";
-        if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
-        if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
-      }
-      if (formData.type === "PING") {
-        const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
-        config.pingCount = f.pingCount ?? 3;
-        if (f.pingMaxLossPct !== undefined) config.maxPacketLossPct = f.pingMaxLossPct;
-      }
-      if (formData.type === "BROWSER") {
-        const f2 = formData as typeof formData & { browserExpectedText?: string; browserSelector?: string; browserStatusCodesRaw?: string };
-        if (f2.browserExpectedText?.trim()) config.browserExpectedText = f2.browserExpectedText.trim();
-        if (f2.browserSelector?.trim()) config.browserSelector = f2.browserSelector.trim();
-        if (f2.browserStatusCodesRaw?.trim()) {
-          const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-          if (codes.length > 0) config.browserStatusCodes = codes;
-        }
-      }
-      if (formData.type === "HTTP") {
-        const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
-        if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
-        if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
-        if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
-        if (f.bodyJsonPathExpected?.trim()) config.bodyJsonPathExpected = f.bodyJsonPathExpected.trim();
-        if (f.httpMethod && f.httpMethod !== "GET") config.httpMethod = f.httpMethod;
-        if (f.requestHeaders?.trim()) {
-          try {
-            const parsed: Record<string, string> = {};
-            for (const line of f.requestHeaders.split("\n")) {
-              const idx = line.indexOf(":");
-              if (idx > 0) {
-                const key = line.slice(0, idx).trim();
-                const val = line.slice(idx + 1).trim();
-                if (key) parsed[key] = val;
-              }
-            }
-            if (Object.keys(parsed).length > 0) config.requestHeaders = parsed;
-          } catch { /* skip invalid */ }
-        }
-        if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
-        if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
-      }
+      const config = buildMonitorConfig(false);
 
       await api(`/v1/monitors/${editingMonitor.id}`, user?.id, {
         method: "PATCH",
@@ -846,112 +693,13 @@ function MonitorsPageInner() {
     }
   };
 
-  const buildEditFormData = (monitor: MonitorItem) => ({
-    name: monitor.name,
-    description: monitor.description ?? "",
-    type: monitor.type,
-    target: monitor.target,
-    intervalSec: monitor.intervalSec,
-    confirmations: monitor.confirmations ?? 1,
-    enabled: monitor.enabled,
-    pluginId: String(monitor.config?.pluginId ?? ""),
-    expectedText: String(monitor.config?.expectedText ?? ""),
-    heartbeatTimeoutMin: Number(monitor.config?.timeoutMin ?? 5),
-    heartbeatToken: String(monitor.config?.token ?? ""),
-    folderId: monitor.folderId ?? "",
-    slaTarget: monitor.slaTarget ?? "",
-    slaPeriodDays: monitor.slaPeriodDays ?? 30,
-    expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
-    bodyContains: String(monitor.config?.bodyContains ?? ""),
-    httpMethod: String(monitor.config?.httpMethod ?? "GET"),
-    requestHeaders: monitor.config?.requestHeaders
-      ? Object.entries(monitor.config.requestHeaders as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("\n")
-      : "",
-    requestBody: String(monitor.config?.requestBody ?? ""),
-    responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
-    bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
-    bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
-    ehlo: String(monitor.config?.ehlo ?? "pulsedock.monitor"),
-    checkTls: Boolean(monitor.config?.checkTls),
-    dnsRecordType: String(monitor.config?.recordType ?? "A"),
-    dnsExpectedValue: String(monitor.config?.expectedValue ?? ""),
-    dnsTimeoutMs: Number(monitor.config?.timeoutMs ?? 10000),
-    pingCount: Number(monitor.config?.pingCount ?? 3),
-    pingMaxLossPct: monitor.config?.maxPacketLossPct !== undefined ? Number(monitor.config.maxPacketLossPct) : undefined,
-    browserExpectedText: String(monitor.config?.browserExpectedText ?? ""),
-    browserSelector: String(monitor.config?.browserSelector ?? ""),
-    browserStatusCodesRaw: Array.isArray(monitor.config?.browserStatusCodes)
-      ? (monitor.config.browserStatusCodes as number[]).join(", ")
-      : "",
-  }) as typeof formData & {
-    expectedStatus?: number;
-    bodyContains?: string;
-    bodyJsonPath?: string;
-    bodyJsonPathExpected?: string;
-    httpMethod?: string;
-    requestHeaders?: string;
-    requestBody?: string;
-    responseTimeThresholdMs?: number;
-    ehlo?: string;
-    checkTls?: boolean;
-    dnsRecordType?: string;
-    dnsExpectedValue?: string;
-    dnsTimeoutMs?: number;
-    pingCount?: number;
-    pingMaxLossPct?: number;
-    browserExpectedText?: string;
-    browserSelector?: string;
-    browserStatusCodesRaw?: string;
-  };
-
   const handleApplyTemplate = (t: MonitorTemplate) => {
-    // Version types → redirect to Versions page
     if (t.type === "GIT_RELEASE" || t.type === "DOCKER_IMAGE") {
       router.push(`/versions?template=${encodeURIComponent(t.target)}&type=${t.type}`);
       setShowModal(false);
       return;
     }
-    const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"] as string[]).includes(t.type)
-      ? (t.type as "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER")
-      : "HTTP";
-    const cfg = (t.config ?? {}) as Record<string, unknown>;
-    setFormData({
-      name: t.name,
-      type: safeType,
-      target: t.target,
-      intervalSec: t.intervalSec,
-      confirmations: 1,
-      enabled: true,
-      pluginId: t.pluginId ?? "",
-      expectedText: t.expectedText ?? "",
-      heartbeatTimeoutMin: 5,
-      heartbeatToken: "",
-      folderId: "",
-      slaTarget: "",
-      slaPeriodDays: 30,
-      // Carry through monitor-type-specific config from template
-      ...(cfg.checkTls !== undefined ? { checkTls: Boolean(cfg.checkTls) } : {}),
-      ...(typeof cfg.ehlo === "string" ? { ehlo: cfg.ehlo } : {}),
-      ...(typeof cfg.recordType === "string" ? { dnsRecordType: cfg.recordType } : {}),
-      ...(typeof cfg.expectedValue === "string" ? { dnsExpectedValue: cfg.expectedValue } : {}),
-      ...(typeof cfg.timeoutMs === "number" ? { dnsTimeoutMs: cfg.timeoutMs } : {}),
-      ...(typeof cfg.pingCount === "number" ? { pingCount: cfg.pingCount } : {}),
-      ...(typeof cfg.maxPacketLossPct === "number" ? { pingMaxLossPct: cfg.maxPacketLossPct } : {}),
-      ...(typeof cfg.browserExpectedText === "string" ? { browserExpectedText: cfg.browserExpectedText } : {}),
-      ...(typeof cfg.browserSelector === "string" ? { browserSelector: cfg.browserSelector } : {}),
-      ...(Array.isArray(cfg.browserStatusCodes) ? { browserStatusCodesRaw: (cfg.browserStatusCodes as number[]).join(", ") } : {}),
-    } as typeof formData & {
-      checkTls?: boolean;
-      ehlo?: string;
-      dnsRecordType?: string;
-      dnsExpectedValue?: string;
-      dnsTimeoutMs?: number;
-      pingCount?: number;
-      pingMaxLossPct?: number;
-      browserExpectedText?: string;
-      browserSelector?: string;
-      browserStatusCodesRaw?: string;
-    });
+    setFormData(buildFormDataFromTemplate(t) as typeof formData);
     setShowTemplates(false);
   };
 
@@ -1043,7 +791,7 @@ function MonitorsPageInner() {
       setExternalImportResult({ imported: 0, skipped: 0, errors: [], message: e instanceof Error ? e.message : "Import failed" });
     } finally {
       setExternalImporting(false);
-      if (externalImportFileRef.current) externalImportFileRef.current.value = "";
+      // File input ref reset handled by ExternalImportModal component
     }
   };
 
@@ -1098,8 +846,6 @@ function MonitorsPageInner() {
     }
     return true;
   });
-
-  const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"] as const;
 
   function saveCurrentPreset() {
     const name = prompt("Save filter preset as:");
@@ -1186,24 +932,19 @@ function MonitorsPageInner() {
     <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
       <div className="space-y-6">
         {error && (
-          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
               <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
               <span className="text-danger text-sm">{error}</span>
             </div>
-          
         )}
 
         {realtimeAlert && (
-          
             <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20">
               <Bell className="w-5 h-5 text-warning mt-0.5 shrink-0" />
               <span className="text-warning text-sm">{realtimeAlert}</span>
             </div>
-          
         )}
 
-        
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
@@ -1343,10 +1084,8 @@ function MonitorsPageInner() {
               </Button>
             </div>
           </div>
-        
 
         {/* Search + Status filter bar */}
-        
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
@@ -1404,164 +1143,35 @@ function MonitorsPageInner() {
               )}
             </button>
           </div>
-        
 
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          
-            <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-text-primary">Filters</span>
-                <div className="flex items-center gap-2">
-                  {savedPresets.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {savedPresets.map((preset, idx) => (
-                        <div key={idx} className="flex items-center gap-0.5 bg-surface-elevated border border-border rounded-lg overflow-hidden">
-                          <button
-                            onClick={() => applyPreset(preset)}
-                            className="px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
-                          >
-                            <Bookmark className="w-3 h-3 inline mr-1" />
-                            {preset.name}
-                          </button>
-                          <button
-                            onClick={() => deletePreset(idx)}
-                            className="px-1.5 py-1 text-text-muted hover:text-danger transition-colors"
-                            aria-label={`Delete preset ${preset.name}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={saveCurrentPreset}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-surface-elevated text-xs text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    <BookmarkPlus className="w-3.5 h-3.5" />
-                    Save
-                  </button>
-                  {activeFilterCount > 0 && (
-                    <button
-                      onClick={() => {
-                        setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-                        setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
-                        setFilterTags(new Set());
-                        setTypeFilter("all");
-                        setStatusFilter("all");
-                        setActiveTagFilter(null);
-                        setFolderFilter(null);
-                      }}
-                      className="text-xs text-danger/70 hover:text-danger transition-colors"
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Status filter */}
-                <div className="space-y-2">
-                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Status</span>
-                  <div className="space-y-1.5">
-                    {([
-                      { key: "up", label: "Up", color: "text-success" },
-                      { key: "down", label: "Down", color: "text-danger" },
-                      { key: "degraded", label: "Degraded", color: "text-warning" },
-                      { key: "paused", label: "Paused", color: "text-text-secondary" },
-                    ] as const).map(({ key, label, color }) => (
-                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={filterStatuses.has(key)}
-                          onChange={() => {
-                            setFilterStatuses((prev) => {
-                              const next = new Set(prev);
-                              next.has(key) ? next.delete(key) : next.add(key);
-                              return next;
-                            });
-                          }}
-                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
-                        />
-                        <span className={`text-xs font-medium ${color} group-hover:opacity-80`}>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Type filter */}
-                <div className="space-y-2">
-                  <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Type</span>
-                  <div className="space-y-1.5">
-                    {([
-                      { key: "HTTP", label: "HTTP" },
-                      { key: "TCP", label: "TCP" },
-                      { key: "SSL_CERT", label: "SSL" },
-                      { key: "HEARTBEAT", label: "Heartbeat" },
-                      { key: "DNS", label: "DNS" },
-                      { key: "PING", label: "Ping" },
-                      { key: "SMTP", label: "SMTP" },
-                      { key: "BROWSER", label: "Browser" },
-                      { key: "GIT_RELEASE", label: "Git Release" },
-                      { key: "DOCKER_IMAGE", label: "Docker" },
-                    ] as const).map(({ key, label }) => (
-                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={filterTypes.has(key)}
-                          onChange={() => {
-                            setFilterTypes((prev) => {
-                              const next = new Set(prev);
-                              next.has(key) ? next.delete(key) : next.add(key);
-                              return next;
-                            });
-                          }}
-                          className="w-3.5 h-3.5 rounded border-border bg-surface accent-accent"
-                        />
-                        <span className="text-xs text-text-primary group-hover:opacity-80">{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tag filter */}
-                {allTags.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Tags</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {allTags.map((tag) => (
-                        <button
-                          key={tag.id}
-                          onClick={() => {
-                            setFilterTags((prev) => {
-                              const next = new Set(prev);
-                              next.has(tag.name) ? next.delete(tag.name) : next.add(tag.name);
-                              return next;
-                            });
-                          }}
-                          className="px-2 py-1 rounded-full text-xs font-medium transition-all border"
-                          style={{
-                            backgroundColor: filterTags.has(tag.name) ? tag.color + "40" : "transparent",
-                            borderColor: tag.color + "80",
-                            color: filterTags.has(tag.name) ? tag.color : undefined,
-                            opacity: filterTags.has(tag.name) ? 1 : 0.6,
-                          }}
-                        >
-                          {tag.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          
+          <AdvancedFiltersPanel
+            filterStatuses={filterStatuses}
+            filterTypes={filterTypes}
+            filterTags={filterTags}
+            allTags={allTags}
+            savedPresets={savedPresets}
+            activeFilterCount={activeFilterCount}
+            onSetFilterStatuses={setFilterStatuses}
+            onSetFilterTypes={setFilterTypes}
+            onSetFilterTags={setFilterTags}
+            onSavePreset={saveCurrentPreset}
+            onApplyPreset={applyPreset}
+            onDeletePreset={deletePreset}
+            onClearFilters={() => {
+              setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
+              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
+              setFilterTags(new Set());
+              setTypeFilter("all");
+              setStatusFilter("all");
+              setActiveTagFilter(null);
+              setFolderFilter(null);
+            }}
+          />
         )}
 
         {allTags.length > 0 && (
-          
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setActiveTagFilter(null)}
@@ -1585,11 +1195,9 @@ function MonitorsPageInner() {
                 </button>
               ))}
             </div>
-          
         )}
 
         {importResult && (
-          
             <div className={`flex items-start gap-3 p-4 rounded-xl border ${importResult.errors.length === 0 ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
               <CheckCircle2 className={`w-5 h-5 mt-0.5 shrink-0 ${importResult.errors.length === 0 ? "text-success" : "text-warning"}`} />
               <div className="flex-1">
@@ -1611,11 +1219,9 @@ function MonitorsPageInner() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          
         )}
 
         {filteredMonitors.length === 0 ? (
-          
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-surface-elevated inline-block mb-4">
                 <Monitor className="w-12 h-12 text-text-secondary opacity-50" />
@@ -1655,7 +1261,6 @@ function MonitorsPageInner() {
                 </>
               )}
             </Card>
-          
         ) : (
           <>
             {/* Bulk action bar */}
@@ -1702,160 +1307,14 @@ function MonitorsPageInner() {
               </div>
             )}
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paginatedMonitors.map((monitor) => {
-                  const lastRun = runs.find((r) => r.monitorId === monitor.id);
-                  const level = !monitor.enabled ? "paused" : (lastRun?.level ?? "green");
-                  const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-text-muted/60" : "bg-danger";
-                  const typeLabel = monitor.type === "HTTP" ? "HTTP" : monitor.type === "TCP" ? "TCP" : monitor.type === "SSL_CERT" ? "SSL" : monitor.type === "HEARTBEAT" ? "Heartbeat" : monitor.type;
-                  const monitorRuns = runs.filter((r) => r.monitorId === monitor.id);
-                  const upCount = monitorRuns.filter((r) => r.ok).length;
-                  const uptime7d = monitorRuns.length > 0 ? Math.round((upCount / monitorRuns.length) * 100) : null;
-                  // Compute last check relative time
-                  const lastCheckText = lastRun ? relativeTime(lastRun.checkedAt) : null;
-                  // Interval label
-                  const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
-                  return (
-                    <div key={monitor.id} className="rounded-2xl border border-border bg-surface p-6 transition-all hover:border-border-hover group">
-                      {/* Top row: status dot + name + type badge */}
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 ${dotCls}`} />
-                          <p className="font-semibold text-text-primary truncate text-sm">{monitor.name}</p>
-                        </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border/60 text-text-muted shrink-0">{typeLabel}</span>
-                      </div>
-                      {/* Target URL */}
-                      <p className="text-xs text-text-secondary font-mono truncate mb-3" title={monitor.target}>{monitor.target}</p>
-                      {/* Stats row */}
-                      <div className="flex items-center gap-3 text-xs text-text-secondary mb-3">
-                        {lastCheckText && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 opacity-60" />
-                            {lastCheckText}
-                          </span>
-                        )}
-                        {uptime7d !== null && (
-                          <span className={`font-medium ${uptime7d >= 99 ? "text-success" : uptime7d >= 90 ? "text-warning" : "text-danger"}`}>
-                            {uptime7d}% up
-                          </span>
-                        )}
-                        {lastRun?.latencyMs != null && (
-                          <span className="font-mono">{lastRun.latencyMs}ms</span>
-                        )}
-                      </div>
-                      {/* Tags */}
-                      {monitor.tags && monitor.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {monitor.tags.slice(0, 3).map((t: { id: string; name: string; color: string }) => (
-                            <span key={t.id} className="text-xs px-1.5 py-0.5 rounded-full border" style={{ borderColor: t.color + "80", color: t.color, backgroundColor: t.color + "22" }}>{t.name}</span>
-                          ))}
-                        </div>
-                      )}
-                      {/* Bottom row: interval chip + actions */}
-                      <div className="flex items-center gap-2 pt-3 border-t border-border/60">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-border/60 text-text-muted">{intervalLabel}</span>
-                        <div className="flex items-center gap-1 ml-auto">
-                          <button
-                            onClick={() => { setModalMode("edit"); setEditingMonitor(monitor); setFormData(buildEditFormData(monitor)); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
-                            className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border/60 text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
-                          >
-                            <Pencil className="w-3 h-3" /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(monitor.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-elevated border border-border/60 text-danger/70 hover:text-danger hover:border-danger/50 transition-colors"
-                          >
-                            <Trash2 className="w-3 h-3" /> Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <MonitorGridView
+                monitors={paginatedMonitors}
+                runs={runs}
+                onEdit={(monitor) => { setModalMode("edit"); setEditingMonitor(monitor); setFormData(buildEditFormData(monitor)); setSelectedTags(monitor.tags?.map((t) => t.name) ?? []); setTagInput(""); setFormErrors({}); setFormTouched({}); setShowModal(true); setShowTemplates(false); }}
+                onDelete={handleDelete}
+              />
             ) : viewMode === "grouped" ? (
-              (() => {
-                // Group monitors by first tag (or "Untagged" if no tags)
-                const groups = new Map<string, typeof paginatedMonitors>();
-                for (const m of filteredMonitors) {
-                  const groupKey = m.tags && m.tags.length > 0 ? m.tags[0].name : "Untagged";
-                  const existing = groups.get(groupKey) ?? [];
-                  existing.push(m);
-                  groups.set(groupKey, existing);
-                }
-                // Sort: tagged groups alphabetically, Untagged last
-                const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
-                  if (a === "Untagged") return 1;
-                  if (b === "Untagged") return -1;
-                  return a.localeCompare(b);
-                });
-
-                if (sortedGroups.length === 0) {
-                  return (
-                    <div className="flex flex-col items-center justify-center py-16 text-text-muted">
-                      <Tag className="w-8 h-8 mb-3 opacity-40" />
-                      <p className="text-sm">No monitors match your filters.</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-6">
-                    {sortedGroups.map(([groupName, groupMonitors]) => {
-                      const allGreen = groupMonitors.every((m) => {
-                        const lastRun = runs.find((r) => r.monitorId === m.id);
-                        return m.enabled && (lastRun?.level === "green" || !lastRun);
-                      });
-                      const anyRed = groupMonitors.some((m) => {
-                        const lastRun = runs.find((r) => r.monitorId === m.id);
-                        return m.enabled && lastRun?.level === "red";
-                      });
-                      const groupStatus = !allGreen && anyRed ? "red" : !allGreen ? "yellow" : "green";
-                      const statusDot = groupStatus === "green" ? "bg-success" : groupStatus === "yellow" ? "bg-warning" : "bg-danger";
-                      return (
-                        <div key={groupName}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className={`w-2 h-2 rounded-full ${statusDot}`} />
-                            <h3 className="text-sm font-semibold text-text-primary">{groupName}</h3>
-                            <span className="text-xs text-text-muted">({groupMonitors.length})</span>
-                            <div className="h-px flex-1 bg-border" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {groupMonitors.map((monitor) => {
-                              const lastRun = runs.find((r) => r.monitorId === monitor.id);
-                              const level = !monitor.enabled ? "paused" : (lastRun?.level ?? "green");
-                              const dotCls = level === "green" ? "bg-success" : level === "yellow" ? "bg-warning" : level === "paused" ? "bg-text-muted/60" : "bg-danger";
-                              const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
-                              const lastCheckText = lastRun ? relativeTime(lastRun.checkedAt) : null;
-                              return (
-                                <div key={monitor.id} className="rounded-xl border border-border bg-surface p-4 hover:border-border-hover transition-colors group">
-                                  <div className="flex items-start justify-between gap-2 mb-1">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${dotCls}`} />
-                                      <p className="font-medium text-text-primary truncate text-sm">{monitor.name}</p>
-                                    </div>
-                                    <span className="text-xs text-text-muted shrink-0 font-mono">{intervalLabel}</span>
-                                  </div>
-                                  <p className="text-xs text-text-muted truncate mb-2 pl-4">{monitor.target}</p>
-                                  <div className="flex items-center justify-between pl-4">
-                                    {lastRun?.latencyMs != null && (
-                                      <span className="text-xs text-text-secondary">{lastRun.latencyMs}ms</span>
-                                    )}
-                                    {lastCheckText && (
-                                      <span className="text-xs text-text-muted ml-auto">{lastCheckText}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()
+              <MonitorGroupedView monitors={filteredMonitors} runs={runs} />
             ) : (
             <Card className="p-0">
               {/* Table top bar: row count + page size */}
@@ -2415,7 +1874,6 @@ function MonitorsPageInner() {
         )}
 
         {/* Recent runs */}
-        
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
             {runs.length === 0 ? (
@@ -2457,1191 +1915,66 @@ function MonitorsPageInner() {
               </Card>
             )}
           </div>
-        
       </div>
 
       {/* Create/Edit Modal */}
-      <Modal
+      <MonitorFormModal
         isOpen={showModal}
+        mode={modalMode}
+        showTemplates={showTemplates}
+        formData={formData}
+        formErrors={formErrors}
+        formTouched={formTouched}
+        tagInput={tagInput}
+        selectedTags={selectedTags}
+        allTags={allTags}
+        folders={folders}
+        availablePlugins={availablePlugins}
+        selectedPlugin={selectedPlugin}
         onClose={() => { setShowModal(false); setEditingMonitor(null); setFormErrors({}); setFormTouched({}); setSelectedTags([]); setTagInput(""); }}
-        title={modalMode === "create" ? "New Monitor" : "Edit Monitor"}
-        size="xl"
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => { setShowModal(false); setEditingMonitor(null); }}>
-              Cancel
-            </Button>
-            <Button onClick={modalMode === "create" ? handleCreate : handleUpdate}>
-              {modalMode === "create" ? "Create" : "Update"}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          {modalMode === "create" && showTemplates && (
-            <div className="rounded-xl border border-border/60 p-3 bg-surface-elevated/30">
-              <MonitorTemplates onSelect={handleApplyTemplate} />
-              <div className="mt-3 pt-3 border-t border-border/40">
-                <button
-                  type="button"
-                  onClick={() => setShowTemplates(false)}
-                  className="text-xs text-text-secondary hover:text-accent transition-colors"
-                >
-                  Start from scratch →
-                </button>
-              </div>
-            </div>
-          )}
+        onCancel={() => { setShowModal(false); setEditingMonitor(null); }}
+        onSubmit={modalMode === "create" ? handleCreate : handleUpdate}
+        onSetShowTemplates={setShowTemplates}
+        onSetFormData={setFormData}
+        onSetFormErrors={setFormErrors}
+        onSetFormTouched={setFormTouched}
+        onSetTagInput={setTagInput}
+        onSetSelectedTags={setSelectedTags}
+        onApplyTemplate={handleApplyTemplate}
+        onCopySuccess={success}
+      />
 
-          {modalMode === "create" && !showTemplates && (
-            <button
-              type="button"
-              onClick={() => setShowTemplates(true)}
-              className="text-xs text-text-secondary hover:text-accent transition-colors flex items-center gap-1"
-            >
-              ← Use a template
-            </button>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Monitor Name <span className="text-danger" aria-hidden="true">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
-                if (formTouched.name) setFormErrors((prev) => ({ ...prev, name: e.target.value.trim().length < 2 ? "Name must be at least 2 characters" : "" }));
-              }}
-              onBlur={() => setFormTouched((t) => ({ ...t, name: true }))}
-              className={`${inputClass} ${formTouched.name && formErrors.name ? "border-danger focus:ring-danger" : ""}`}
-              placeholder="My API"
-              aria-required="true"
-              aria-invalid={formTouched.name && !!formErrors.name}
-              aria-describedby={formErrors.name ? "name-error" : undefined}
-            />
-            {formTouched.name && formErrors.name && (
-              <p id="name-error" role="alert" className="mt-1 text-xs text-danger">{formErrors.name}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => {
-                  const nextType = e.target.value as typeof formData.type;
-                  setFormData({
-                    ...formData,
-                    type: nextType,
-                    pluginId: "",
-                    expectedText: "",
-                    heartbeatTimeoutMin: nextType === "HEARTBEAT" ? formData.heartbeatTimeoutMin || 5 : formData.heartbeatTimeoutMin,
-                    heartbeatToken: nextType === "HEARTBEAT" ? (formData.heartbeatToken || crypto.randomUUID()) : formData.heartbeatToken,
-                  });
-                }}
-                className={inputClass}
-              >
-                <option value="HTTP">HTTP Check</option>
-                <option value="TCP">TCP Port</option>
-                <option value="SSL_CERT">SSL Certificate</option>
-                <option value="HEARTBEAT">Heartbeat</option>
-                <option value="DNS">DNS Lookup</option>
-                <option value="PING">ICMP Ping</option>
-                <option value="SMTP">SMTP Email Server</option>
-                <option value="BROWSER">Browser / Page Check</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Check Plugin</label>
-              <select
-                value={formData.pluginId}
-                onChange={(e) => setFormData({ ...formData, pluginId: e.target.value, expectedText: "" })}
-                className={inputClass}
-              >
-                <option value="">Built-in check logic</option>
-                {availablePlugins.map((plugin) => (
-                  <option key={plugin.id} value={plugin.id}>
-                    {plugin.displayName}
-                  </option>
-                ))}
-              </select>
-              {selectedPlugin?.description && (
-                <p className="mt-1 text-xs text-text-secondary">{selectedPlugin.description}</p>
-              )}
-            </div>
-          </div>
-
-          {formData.pluginId === "http.response-match" && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Expected response text <span className="text-danger" aria-hidden="true">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.expectedText}
-                onChange={(e) => {
-                  setFormData({ ...formData, expectedText: e.target.value });
-                  if (formTouched.expectedText) setFormErrors((prev) => ({ ...prev, expectedText: !e.target.value.trim() ? "Expected text is required" : "" }));
-                }}
-                onBlur={() => setFormTouched((t) => ({ ...t, expectedText: true }))}
-                className={`${inputClass} ${formTouched.expectedText && formErrors.expectedText ? "border-danger focus:ring-danger" : ""}`}
-                placeholder={selectedPlugin?.configFields?.[0]?.placeholder ?? "OK"}
-                aria-invalid={formTouched.expectedText && !!formErrors.expectedText}
-              />
-              {formTouched.expectedText && formErrors.expectedText ? (
-                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.expectedText}</p>
-              ) : (
-                <p className="mt-1 text-xs text-text-secondary">
-                  {selectedPlugin?.configFields?.[0]?.helpText ?? "Case-sensitive substring that must be present in the response body."}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Target <span className="text-danger" aria-hidden="true">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.target}
-              onChange={(e) => {
-                setFormData({ ...formData, target: e.target.value });
-                if (formTouched.target) {
-                  let err = "";
-                  const nextTarget = e.target.value.trim();
-                  if (!nextTarget) err = "Target is required";
-                  else if (formData.type === "HTTP") { try { new URL(nextTarget); } catch { err = "Must be a valid URL"; } }
-                  else if (formData.type === "TCP" && !/^[^:\s]+:\d+$/.test(nextTarget)) err = "Must be host:port";
-                  else if (formData.type === "SMTP" && !/^[^:\s]+:\d+$/.test(nextTarget)) err = "Must be host:port (e.g. mail.example.com:25)";
-                  setFormErrors((prev) => ({ ...prev, target: err }));
-                }
-              }}
-              onBlur={() => setFormTouched((t) => ({ ...t, target: true }))}
-              className={`${inputClass} ${formTouched.target && formErrors.target ? "border-danger focus:ring-danger" : ""}`}
-              placeholder={targetPlaceholder(formData.type)}
-              aria-required="true"
-              aria-invalid={formTouched.target && !!formErrors.target}
-              aria-describedby={formErrors.target ? "target-error" : "target-hint"}
-            />
-            {formTouched.target && formErrors.target ? (
-              <p id="target-error" role="alert" className="mt-1 text-xs text-danger">{formErrors.target}</p>
-            ) : (
-              <p id="target-hint" className="mt-1 text-xs text-text-secondary">{targetHelperText(formData.type)}</p>
-            )}
-          </div>
-
-          {formData.type === "HEARTBEAT" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Alert if no ping for (minutes) <span className="text-danger" aria-hidden="true">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="1440"
-                  value={formData.heartbeatTimeoutMin}
-                  onChange={(e) => {
-                    const value = Math.max(1, Number(e.target.value || 1));
-                    setFormData({ ...formData, heartbeatTimeoutMin: value });
-                  }}
-                  className={inputClass}
-                />
-                {formErrors.heartbeatTimeoutMin && (
-                  <p role="alert" className="mt-1 text-xs text-danger">{formErrors.heartbeatTimeoutMin}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Ping URL</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`}
-                    className={`${inputClass} font-mono text-xs`}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={async () => {
-                      const url = `${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`;
-                      await navigator.clipboard.writeText(url);
-                      success("Heartbeat URL copied");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                <p className="mt-1 text-xs text-text-secondary">Call this URL with POST from your cron job or app to mark it healthy.</p>
-              </div>
-            </>
-          )}
-
-          {/* SMTP-specific config */}
-          {formData.type === "SMTP" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">EHLO Hostname</label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { ehlo?: string }).ehlo ?? "pulsedock.monitor"}
-                  onChange={(e) => setFormData({ ...formData, ehlo: e.target.value } as typeof formData & { ehlo?: string })}
-                  placeholder="pulsedock.monitor"
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">The hostname sent in the EHLO command (default: pulsedock.monitor).</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="smtpCheckTls"
-                  checked={(formData as unknown as { checkTls?: boolean }).checkTls ?? false}
-                  onChange={(e) => setFormData({ ...formData, checkTls: e.target.checked } as typeof formData & { checkTls?: boolean })}
-                  className="w-4 h-4 rounded border border-border bg-surface accent-accent"
-                />
-                <label htmlFor="smtpCheckTls" className="text-sm text-text-primary cursor-pointer">
-                  Test STARTTLS upgrade (port 587 / STARTTLS required)
-                </label>
-              </div>
-              <p className="text-xs text-text-secondary -mt-1">When enabled, {brand.name} sends STARTTLS after EHLO. Warns if STARTTLS is advertised but connection fails.</p>
-            </>
-          )}
-
-          {/* DNS-specific config */}
-          {formData.type === "DNS" && (
-            <>
-              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  <span className="font-medium text-text-primary">DNS Lookup</span> — resolves the target hostname via DNS and measures lookup latency. Optionally assert a specific value in the result.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Record Type</label>
-                <select
-                  value={(formData as unknown as { dnsRecordType?: string }).dnsRecordType ?? "A"}
-                  onChange={(e) => setFormData({ ...formData, dnsRecordType: e.target.value } as typeof formData & { dnsRecordType?: string })}
-                  className={inputClass}
-                >
-                  {["A", "AAAA", "MX", "TXT", "CNAME", "NS"].map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-text-secondary">DNS record type to look up. Default: A (IPv4).</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Expected value <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { dnsExpectedValue?: string }).dnsExpectedValue ?? ""}
-                  onChange={(e) => setFormData({ ...formData, dnsExpectedValue: e.target.value } as typeof formData & { dnsExpectedValue?: string })}
-                  placeholder="e.g. 1.2.3.4 or mail.example.com."
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Check warns if the DNS result does not contain this value. Leave blank to only verify the lookup succeeds.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Timeout <span className="text-xs text-text-muted">(ms, optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min="500"
-                  max="30000"
-                  value={(formData as unknown as { dnsTimeoutMs?: number }).dnsTimeoutMs ?? 10000}
-                  onChange={(e) => setFormData({ ...formData, dnsTimeoutMs: Number(e.target.value) } as typeof formData & { dnsTimeoutMs?: number })}
-                  className={inputClass}
-                />
-              </div>
-            </>
-          )}
-
-          {/* PING-specific config */}
-          {formData.type === "PING" && (
-            <>
-              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  <span className="font-medium text-text-primary">ICMP Ping</span> — sends ping packets to the target host and measures round-trip latency and packet loss.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Ping Count</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={(formData as unknown as { pingCount?: number }).pingCount ?? 3}
-                  onChange={(e) => setFormData({ ...formData, pingCount: Math.min(10, Math.max(1, Number(e.target.value))) } as typeof formData & { pingCount?: number })}
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Number of ICMP packets to send (1–10). Default: 3.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Max packet loss % before warning <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={(formData as unknown as { pingMaxLossPct?: number }).pingMaxLossPct ?? ""}
-                  onChange={(e) => setFormData({ ...formData, pingMaxLossPct: e.target.value === "" ? undefined : Number(e.target.value) } as typeof formData & { pingMaxLossPct?: number })}
-                  placeholder="e.g. 20 (any loss = warn by default)"
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Any packet loss triggers a warning by default. Set a threshold (0–100%) to allow some loss before alerting.</p>
-              </div>
-            </>
-          )}
-
-          {/* Browser check — expected text + CSS selector assertions */}
-          {formData.type === "BROWSER" && (
-            <>
-              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  <span className="font-medium text-text-primary">Browser / Page Check</span> — fetches your URL with a browser-like User-Agent and verifies the page loads successfully (2xx/3xx). Optionally assert that a specific text or HTML element is present.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Expected text <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { browserExpectedText?: string }).browserExpectedText ?? ""}
-                  onChange={(e) => setFormData({ ...formData, browserExpectedText: e.target.value } as typeof formData & { browserExpectedText?: string })}
-                  placeholder='e.g. "Welcome" or "Dashboard"'
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Check fails if this text is not found in the page HTML (case-insensitive).</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  CSS selector <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { browserSelector?: string }).browserSelector ?? ""}
-                  onChange={(e) => setFormData({ ...formData, browserSelector: e.target.value } as typeof formData & { browserSelector?: string })}
-                  placeholder='e.g. #app, .nav-bar, [data-testid="login"], main'
-                  className={`${inputClass} font-mono text-xs`}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Check fails if this selector does not match any element. Supports: <code className="bg-surface-2 px-1 rounded">#id</code>, <code className="bg-surface-2 px-1 rounded">.class</code>, <code className="bg-surface-2 px-1 rounded">tag</code>, <code className="bg-surface-2 px-1 rounded">[attr]</code>, <code className="bg-surface-2 px-1 rounded">tag.class</code>, <code className="bg-surface-2 px-1 rounded">tag#id</code></p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Allowed status codes <span className="text-xs text-text-muted">(optional, default: 2xx–3xx)</span>
-                </label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { browserStatusCodesRaw?: string }).browserStatusCodesRaw ?? ""}
-                  onChange={(e) => setFormData({ ...formData, browserStatusCodesRaw: e.target.value } as typeof formData & { browserStatusCodesRaw?: string })}
-                  placeholder="200, 301, 302"
-                  className={inputClass}
-                />
-                <p className="mt-1 text-xs text-text-secondary">Comma-separated list. Leave blank to accept any 2xx or 3xx response.</p>
-              </div>
-            </>
-          )}
-
-          {/* HTTP-specific: method, headers, body keyword, expected status */}
-          {formData.type === "HTTP" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  HTTP Method
-                </label>
-                <select
-                  value={(formData as unknown as { httpMethod?: string }).httpMethod ?? "GET"}
-                  onChange={(e) => setFormData({ ...formData, httpMethod: e.target.value } as typeof formData & { httpMethod?: string })}
-                  className={inputClass}
-                >
-                  {["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Request Headers <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={(formData as unknown as { requestHeaders?: string }).requestHeaders ?? ""}
-                  onChange={(e) => setFormData({ ...formData, requestHeaders: e.target.value } as typeof formData & { requestHeaders?: string })}
-                  className={`${inputClass} font-mono text-xs resize-y`}
-                  placeholder={"Authorization: Bearer <token>\nX-API-Key: your-key"}
-                  spellCheck={false}
-                />
-                <p className="mt-1 text-xs text-text-secondary">One header per line: <code className="bg-surface-2 px-1 rounded">Name: Value</code>. Added to every request.</p>
-              </div>
-              {["POST", "PUT", "PATCH"].includes((formData as unknown as { httpMethod?: string }).httpMethod ?? "GET") && (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">
-                    Request Body <span className="text-xs text-text-muted">(optional)</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={(formData as unknown as { requestBody?: string }).requestBody ?? ""}
-                    onChange={(e) => setFormData({ ...formData, requestBody: e.target.value } as typeof formData & { requestBody?: string })}
-                    className={`${inputClass} font-mono text-xs resize-y`}
-                    placeholder={'{"key": "value"}'}
-                    spellCheck={false}
-                  />
-                  <p className="mt-1 text-xs text-text-secondary">Raw request body sent with POST/PUT/PATCH requests. Add <code className="bg-surface-2 px-1 rounded">Content-Type</code> header above if needed.</p>
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Expected status code <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min="100"
-                  max="599"
-                  value={(formData as unknown as { expectedStatus?: number }).expectedStatus ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
-                    setFormData({ ...formData, expectedStatus: val } as typeof formData & { expectedStatus?: number });
-                  }}
-                  className={inputClass}
-                  placeholder="Default: any 2xx"
-                />
-                <p className="mt-1 text-xs text-text-secondary">Leave blank to accept any 2xx response. Set to 200, 201, etc. to require an exact status.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Body must contain <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={(formData as unknown as { bodyContains?: string }).bodyContains ?? ""}
-                  onChange={(e) => {
-                    setFormData({ ...formData, bodyContains: e.target.value } as typeof formData & { bodyContains?: string });
-                  }}
-                  className={inputClass}
-                  placeholder='e.g. "ok" or "status\":\"healthy"'
-                  maxLength={500}
-                />
-                <p className="mt-1 text-xs text-text-secondary">If set, the response body must contain this string (case-insensitive). Leave blank to skip body check.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  JSON path assertion <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={(formData as unknown as { bodyJsonPath?: string }).bodyJsonPath ?? ""}
-                    onChange={(e) => {
-                      setFormData({ ...formData, bodyJsonPath: e.target.value } as typeof formData & { bodyJsonPath?: string });
-                    }}
-                    className={inputClass + " flex-1"}
-                    placeholder="e.g. status or data.health"
-                    maxLength={200}
-                    aria-label="JSON path"
-                  />
-                  <input
-                    type="text"
-                    value={(formData as unknown as { bodyJsonPathExpected?: string }).bodyJsonPathExpected ?? ""}
-                    onChange={(e) => {
-                      setFormData({ ...formData, bodyJsonPathExpected: e.target.value } as typeof formData & { bodyJsonPathExpected?: string });
-                    }}
-                    className={inputClass + " w-36"}
-                    placeholder='Expected value'
-                    maxLength={200}
-                    aria-label="Expected value"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-text-secondary">Assert a JSON field in the response (dot-notation, e.g. <code className="bg-surface px-1 rounded">data.status</code>). Optional expected value — leave blank for a truthy check. Requires JSON response.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Response time threshold (ms) <span className="text-xs text-text-muted">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min="50"
-                  max="60000"
-                  value={(formData as unknown as { responseTimeThresholdMs?: number }).responseTimeThresholdMs ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
-                    setFormData({ ...formData, responseTimeThresholdMs: val } as typeof formData & { responseTimeThresholdMs?: number });
-                  }}
-                  className={inputClass}
-                  placeholder="e.g. 2000"
-                />
-                <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
-              </div>
-            </>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Check Interval (seconds) <span className="text-danger" aria-hidden="true">*</span>
-                <HelpTooltip content={`How often ${brand.name} checks your monitor. Minimum 30s, maximum 3600s (1 hour). Lower intervals catch outages faster but use more resources.`} className="ml-1 align-middle" />
-              </label>
-              <input
-                type="number"
-                min="30"
-                max="3600"
-                value={formData.intervalSec}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setFormData({ ...formData, intervalSec: val });
-                  if (formTouched.interval) setFormErrors((prev) => ({ ...prev, interval: val < 30 ? "Min 30s" : val > 3600 ? "Max 3600s" : "" }));
-                }}
-                onBlur={() => setFormTouched((t) => ({ ...t, interval: true }))}
-                className={`${inputClass} ${formTouched.interval && formErrors.interval ? "border-danger focus:ring-danger" : ""}`}
-                aria-invalid={formTouched.interval && !!formErrors.interval}
-              />
-              {formTouched.interval && formErrors.interval ? (
-                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.interval}</p>
-              ) : (
-                <p className="mt-1 text-xs text-text-secondary">Between 30 and 3600 seconds</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Failure confirmations <span className="text-danger" aria-hidden="true">*</span>
-                <HelpTooltip content="Number of consecutive failures before triggering an alert. Set to 1 for immediate alerts, or higher to reduce false positives from transient errors. Range: 1–10." className="ml-1 align-middle" />
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={formData.confirmations}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setFormData({ ...formData, confirmations: val });
-                  if (formTouched.confirmations) setFormErrors((prev) => ({ ...prev, confirmations: val < 1 ? "Min 1" : val > 10 ? "Max 10" : "" }));
-                }}
-                onBlur={() => setFormTouched((t) => ({ ...t, confirmations: true }))}
-                className={`${inputClass} ${formTouched.confirmations && formErrors.confirmations ? "border-danger focus:ring-danger" : ""}`}
-                aria-invalid={formTouched.confirmations && !!formErrors.confirmations}
-              />
-              {formTouched.confirmations && formErrors.confirmations ? (
-                <p role="alert" className="mt-1 text-xs text-danger">{formErrors.confirmations}</p>
-              ) : (
-                <p className="mt-1 text-xs text-text-secondary">Consecutive failures before alerting (1-10).</p>
-              )}
-            </div>
-          </div>
-
-          {/* SLA Target */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              SLA Target (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              placeholder="e.g. 99.9"
-              value={formData.slaTarget}
-              onChange={(e) => setFormData({ ...formData, slaTarget: e.target.value === "" ? "" : parseFloat(e.target.value) })}
-              className={inputClass}
-            />
-            <p className="mt-1 text-xs text-text-secondary">Optional. Alert when rolling uptime drops below this percentage.</p>
-          </div>
-
-          {/* SLA Period */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              SLA Period
-            </label>
-            <select
-              value={formData.slaPeriodDays}
-              onChange={(e) => setFormData({ ...formData, slaPeriodDays: parseInt(e.target.value) })}
-              className={inputClass}
-            >
-              <option value={7}>7 days</option>
-              <option value={14}>14 days</option>
-              <option value={30}>30 days</option>
-              <option value={90}>90 days</option>
-            </select>
-            <p className="mt-1 text-xs text-text-secondary">Rolling window for SLA uptime calculation.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>
-            {selectedTags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {selectedTags.map((tag) => {
-                  const tagObj = allTags.find((t) => t.name === tag);
-                  return (
-                    <span
-                      key={tag}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{ backgroundColor: (tagObj?.color ?? "#6366f1") + "22", color: tagObj?.color ?? "#6366f1" }}
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
-                        aria-label={`Remove tag ${tag}`}
-                        className="hover:opacity-70"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-                  e.preventDefault();
-                  const newTag = tagInput.trim().replace(/,+$/, "").trim();
-                  if (newTag && !selectedTags.includes(newTag)) {
-                    setSelectedTags((prev) => [...prev, newTag]);
-                  }
-                  setTagInput("");
-                }
-              }}
-              className={inputClass}
-              placeholder="Type a tag name, press Enter or comma"
-            />
-            {allTags.filter((t) => !selectedTags.includes(t.name)).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {allTags
-                  .filter((t) => !selectedTags.includes(t.name))
-                  .map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => setSelectedTags((prev) => [...prev, tag.name])}
-                      className="px-2 py-0.5 rounded-full text-xs border transition-colors hover:opacity-80"
-                      style={{ borderColor: tag.color + "80", color: tag.color }}
-                    >
-                      + {tag.name}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          {folders.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Project</label>
-              <select
-                value={formData.folderId}
-                onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">(No project)</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <label className="flex items-center gap-3 py-1">
-            <input
-              type="checkbox"
-              checked={formData.enabled}
-              onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-              className="w-5 h-5 rounded border-border bg-surface text-accent focus:ring-accent"
-            />
-            <span className="text-sm text-text-primary">Enabled</span>
-          </label>
-        </div>
-      </Modal>
-
-      {/* Alert Assignment Panel (slide-in from right) */}
       {alertPanelMonitor && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setAlertPanelMonitor(null)}
-          />
-          {/* Panel */}
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="alert-panel-title"
-            className="relative w-full max-w-md bg-background border-l border-border shadow-2xl flex flex-col overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <Bell className="w-4 h-4 text-accent" />
-                </div>
-                <div>
-                  <h3 id="alert-panel-title" className="text-base font-semibold text-text-primary">Alert Channels</h3>
-                  <p className="text-xs text-text-secondary truncate max-w-[200px]">{alertPanelMonitor.name}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setAlertPanelMonitor(null)}
-                className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-secondary hover:text-text-primary"
-                aria-label="Close alert channels panel"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {alertPanelError && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20">
-                  <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />
-                  <span className="text-danger text-xs">{alertPanelError}</span>
-                </div>
-              )}
-
-              {alertPanelLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
-                </div>
-              ) : (
-                <>
-                  {/* Assigned channels */}
-                  <div>
-                    <h4 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-3">
-                      Assigned ({assignedChannels.length})
-                    </h4>
-                    {assignedChannels.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 rounded-xl border border-dashed border-border text-center">
-                        <BellOff className="w-8 h-8 text-text-secondary opacity-40 mb-2" />
-                        <p className="text-sm text-text-secondary">No channels assigned</p>
-                        <p className="text-xs text-text-secondary opacity-60 mt-1">
-                          Add channels below to receive alerts
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {assignedChannels.map((channel) => {
-                          const isVersion = alertPanelMonitor?.type === "GIT_RELEASE" || alertPanelMonitor?.type === "DOCKER_IMAGE";
-                          const options = isVersion ? VERSION_NOTIFY_OPTIONS : UPTIME_NOTIFY_OPTIONS;
-                          return (
-                            <div key={channel.id} className="rounded-lg bg-surface-elevated border border-border/50 overflow-hidden">
-                              <div className="flex items-center justify-between px-3 pt-3 pb-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className={`text-[11px] font-bold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? "text-text-secondary"}`}>
-                                    {channel.type}
-                                  </span>
-                                  <span className="text-sm text-text-primary truncate">{channel.name}</span>
-                                </div>
-                                <button
-                                  onClick={() => unassignChannel(channel.id)}
-                                  className="ml-2 p-1 rounded hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors shrink-0"
-                                  title="Remove"
-                                  aria-label={`Remove ${channel.name}`}
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                              <div className="px-3 pb-3">
-                                <label className="block text-[10px] text-text-secondary uppercase tracking-wide mb-1">Notify when</label>
-                                <select
-                                  value={channel.notifyOn ?? (isVersion ? "VERSION_ANY" : "ON_CHANGE")}
-                                  onChange={(e) => updateNotifyOn(channel.id, e.target.value)}
-                                  className="w-full text-xs bg-bg border border-border rounded-lg px-2 py-1.5 text-text-primary focus:outline-none focus:border-accent"
-                                >
-                                  {options.map((o) => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Available channels to add */}
-                  {unassignedChannels.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-3">
-                        Available
-                      </h4>
-                      <div className="space-y-2">
-                        {unassignedChannels.map((channel) => (
-                          <div
-                            key={channel.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-surface border border-border/50 hover:border-accent/30 transition-colors"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className={`text-xs font-semibold uppercase tracking-wide ${CHANNEL_TYPE_COLORS[channel.type] ?? "text-text-secondary"}`}>
-                                {channel.type}
-                              </span>
-                              <span className="text-sm text-text-primary truncate">{channel.name}</span>
-                            </div>
-                            <button
-                              onClick={() => assignChannel(channel.id)}
-                              className="ml-3 p-1.5 rounded-md bg-accent/10 hover:bg-accent/20 text-accent transition-colors shrink-0"
-                              title="Add"
-                              aria-label={`Add ${channel.name} to this monitor`}
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {allChannels.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-text-secondary">No alert channels configured.</p>
-                      <p className="text-xs text-text-secondary opacity-60 mt-1">
-                        Create channels on the Alerts page first.
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-border">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => setAlertPanelMonitor(null)}
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </div>
+        <AlertPanel
+          monitor={alertPanelMonitor}
+          assignedChannels={assignedChannels}
+          unassignedChannels={unassignedChannels}
+          allChannels={allChannels}
+          loading={alertPanelLoading}
+          error={alertPanelError}
+          onClose={() => setAlertPanelMonitor(null)}
+          onAssign={assignChannel}
+          onUnassign={unassignChannel}
+          onUpdateNotifyOn={updateNotifyOn}
+        />
       )}
-      {/* External Import Modal */}
       {showExternalImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-text-primary">Import from external service</h2>
-              <button onClick={() => setShowExternalImport(false)} className="text-text-secondary hover:text-text-primary transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 space-y-5">
-              {/* Source selector */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-text-primary">Source</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {([
-                    { id: "uptime-robot", label: "Uptime Robot", hint: "JSON export" },
-                    { id: "better-uptime", label: "BetterUptime", hint: "JSON export" },
-                    { id: "uptime-kuma", label: "Uptime Kuma", hint: "JSON backup" },
-                    { id: "csv", label: "Generic CSV", hint: ".csv file" },
-                  ] as const).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setExternalImportSource(s.id)}
-                      className={`flex flex-col items-center gap-1 px-3 py-3 rounded-xl border text-sm transition-colors ${
-                        externalImportSource === s.id
-                          ? "border-accent bg-accent/10 text-accent"
-                          : "border-border bg-surface-secondary text-text-secondary hover:border-accent/50"
-                      }`}
-                    >
-                      <span className="font-medium">{s.label}</span>
-                      <span className="text-xs opacity-70">{s.hint}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="rounded-xl bg-surface-secondary border border-border p-4 text-xs text-text-secondary space-y-1">
-                {externalImportSource === "uptime-robot" && (
-                  <>
-                    <p className="font-medium text-text-primary mb-1">How to export from Uptime Robot:</p>
-                    <p>1. Log in → My Settings → Export → Download JSON</p>
-                    <p>2. Upload the downloaded <code className="font-mono bg-surface px-1 rounded">uptimerobot-*.json</code> file below.</p>
-                    <p className="mt-1 text-text-secondary/70">Only HTTP/HTTPS monitors are imported. Ping, port, and keyword monitors are skipped.</p>
-                  </>
-                )}
-                {externalImportSource === "better-uptime" && (
-                  <>
-                    <p className="font-medium text-text-primary mb-1">How to export from BetterUptime:</p>
-                    <p>1. Use the BetterUptime API: <code className="font-mono bg-surface px-1 rounded">GET /api/v2/monitors</code></p>
-                    <p>2. Save the JSON response and upload it below.</p>
-                    <p className="mt-1 text-text-secondary/70">Only status/keyword check types are imported.</p>
-                  </>
-                )}
-                {externalImportSource === "uptime-kuma" && (
-                  <>
-                    <p className="font-medium text-text-primary mb-1">How to export from Uptime Kuma:</p>
-                    <p>1. Open Uptime Kuma → Settings → Backup → Export</p>
-                    <p>2. Save the downloaded <code className="font-mono bg-surface px-1 rounded">backup.json</code> file.</p>
-                    <p>3. Upload the file below — all HTTP monitors will be imported.</p>
-                    <p className="mt-1 text-text-secondary/70">Only HTTP/HTTPS monitors are imported. Port, ping, and DNS monitors are skipped.</p>
-                  </>
-                )}
-                {externalImportSource === "csv" && (
-                  <>
-                    <p className="font-medium text-text-primary mb-1">CSV format:</p>
-                    <p>First row must be headers. Required column: <code className="font-mono bg-surface px-1 rounded">url</code></p>
-                    <p>Optional: <code className="font-mono bg-surface px-1 rounded">name</code>, <code className="font-mono bg-surface px-1 rounded">interval</code>, <code className="font-mono bg-surface px-1 rounded">paused</code></p>
-                  </>
-                )}
-              </div>
-
-              {/* Result */}
-              {externalImportResult && (
-                <div className={`rounded-xl p-4 border text-sm ${
-                  externalImportResult.errors.length === 0 && externalImportResult.imported > 0
-                    ? "bg-success/10 border-success/20 text-success"
-                    : externalImportResult.imported === 0
-                      ? "bg-danger/10 border-danger/20 text-danger"
-                      : "bg-warning/10 border-warning/20 text-warning"
-                }`}>
-                  <p className="font-medium">{externalImportResult.message}</p>
-                  {externalImportResult.skipped > 0 && (
-                    <p className="text-xs mt-1 opacity-80">{externalImportResult.skipped} duplicate{externalImportResult.skipped !== 1 ? "s" : ""} skipped (URL already monitored).</p>
-                  )}
-                  {externalImportResult.errors.map((err, i) => (
-                    <p key={i} className="text-xs mt-1 opacity-80">⚠ {err.name}: {err.error}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3">
-              <Button variant="secondary" onClick={() => setShowExternalImport(false)}>Cancel</Button>
-              <Button
-                onClick={() => externalImportFileRef.current?.click()}
-                disabled={externalImporting}
-                className="flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                {externalImporting ? "Importing…" : "Choose file & Import"}
-              </Button>
-              <input
-                ref={externalImportFileRef}
-                type="file"
-                accept={externalImportSource === "csv" ? ".csv,text/csv" : ".json,application/json"}
-                className="hidden"
-                onChange={handleExternalImportFile}
-              />
-            </div>
-          </div>
-        </div>
+        <ExternalImportModal
+          source={externalImportSource}
+          onSourceChange={setExternalImportSource}
+          importing={externalImporting}
+          result={externalImportResult}
+          onClose={() => setShowExternalImport(false)}
+          onImportFile={handleExternalImportFile}
+        />
       )}
-      {/* Badge Embed Modal */}
-      {badgeMonitor && (() => {
-        const badgeBase = typeof window !== "undefined" ? `${window.location.origin}/api/v1/public/badge` : "/api/v1/public/badge";
-        return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="badge-modal-title">
-          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-              <h2 id="badge-modal-title" className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                <Shield className="w-5 h-5 text-accent" />
-                Embed Badge — {badgeMonitor.name}
-              </h2>
-              <button onClick={() => setBadgeMonitor(null)} className="text-text-secondary hover:text-text-primary p-1 rounded" aria-label="Close badge modal">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
-              <p className="text-sm text-text-secondary">
-                Embed a live status badge anywhere — GitHub READMEs, documentation, or websites. Updates every 60 seconds.
-              </p>
-              {/* Preview */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Preview</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/v1/public/badge/${badgeMonitor.id}.svg`}
-                  alt={`${badgeMonitor.name} status badge`}
-                  className="h-6"
-                />
-              </div>
-              {/* Markdown */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Markdown (GitHub README)</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`![${badgeMonitor.name}](${badgeBase}/${badgeMonitor.id}.svg)`}
-                  </code>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(`![${badgeMonitor.name}](${badgeBase}/${badgeMonitor.id}.svg)`);
-                      success("Markdown copied!");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-              {/* HTML */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">HTML</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`<img src="${badgeBase}/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`}
-                  </code>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(`<img src="${badgeBase}/${badgeMonitor.id}.svg" alt="${badgeMonitor.name} status" />`);
-                      success("HTML copied!");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-              {/* Direct URL */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Direct URL</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`${badgeBase}/${badgeMonitor.id}.svg`}
-                  </code>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(`${badgeBase}/${badgeMonitor.id}.svg`);
-                      success("URL copied!");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-              {/* Style variants */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Style variants</p>
-                <div className="flex flex-wrap gap-3">
-                  {(["flat", "flat-square", "for-the-badge"] as const).map((s) => (
-                    <div key={s} className="flex flex-col items-center gap-1">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/api/v1/public/badge/${badgeMonitor.id}.svg?style=${s}`}
-                        alt={s}
-                        className={s === "for-the-badge" ? "h-7" : "h-5"}
-                      />
-                      <span className="text-xs text-text-secondary">{s}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* iFrame embed */}
-              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
-                <div>
-                  <p className="text-xs font-semibold text-text-primary mb-1">iFrame Embed</p>
-                  <p className="text-xs text-text-secondary mb-3">Embed a live status widget on any webpage. Supports <code className="text-accent">?style=compact|card</code> and <code className="text-accent">?theme=dark|light</code>.</p>
-                  {/* iFrame preview */}
-                  <div className="mb-3 rounded overflow-hidden border border-border">
-                    <iframe
-                      src={`/embed/${badgeMonitor.id}?style=compact&theme=dark`}
-                      width="100%"
-                      height="40"
-                      style={{ border: 'none', display: 'block' }}
-                      title={`${badgeMonitor.name} status widget preview`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`}
-                    </code>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}" width="300" height="40" frameborder="0"></iframe>`);
-                        success("iFrame snippet copied!");
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-                {/* Card style iFrame */}
-                <div>
-                  <p className="text-xs font-medium text-text-secondary mb-2">Card style (120px tall, includes uptime %)</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                      {`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`}
-                    </code>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(`<iframe src="${typeof window !== "undefined" ? window.location.origin : ""}/embed/${badgeMonitor.id}?style=card" width="300" height="120" frameborder="0"></iframe>`);
-                        success("Card iFrame snippet copied!");
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              {/* Script tag embed */}
-              <div className="rounded-xl border border-border bg-surface-elevated p-4 space-y-3">
-                <div>
-                  <p className="text-xs font-semibold text-text-primary mb-1">Script Tag Embed</p>
-                  <p className="text-xs text-text-secondary mb-3">Injects a status widget inline — no iframe needed. Add the <code className="text-accent">data-pulsedock-monitor</code> attribute to any div.</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs bg-surface border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                      {`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`}
-                    </code>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(`<div data-pulsedock-monitor="${badgeMonitor.id}" data-style="compact" data-theme="dark"></div>\n<script src="${typeof window !== "undefined" ? window.location.origin : ""}/embed.js" async></script>`);
-                        success("Script tag snippet copied!");
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              {/* Floating widget embed */}
-              <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
-                <p className="text-xs font-semibold text-text-primary mb-1">Floating Widget</p>
-                <p className="text-xs text-text-secondary mb-3">Paste into any webpage to show a live floating badge in the bottom-right corner.</p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-surface-elevated border border-border rounded px-3 py-2 font-mono text-text-primary overflow-x-auto whitespace-nowrap">
-                    {`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`}
-                  </code>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/v1/public/embed/monitor/${badgeMonitor.id}.js"></script>`);
-                      success("Script tag copied!");
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end">
-              <Button variant="secondary" onClick={() => setBadgeMonitor(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      {badgeMonitor && (
+        <BadgeModal
+          monitor={badgeMonitor}
+          onClose={() => setBadgeMonitor(null)}
+          onCopySuccess={success}
+        />
+      )}
     </AppFrame>
   );
 }

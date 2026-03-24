@@ -1,13 +1,12 @@
-## Status Summary (2026-03-23 23:12 UTC)
-- **Build/Test:** ✅ Clean build + full tests passing (2260 API + 56 Web + 10 CLI + 12 Agent = 2338 total)
+## Status Summary (2026-03-24 13:20 UTC)
+- **Build/Test:** ✅ Clean build + 2632 API + 119 Web + 10 CLI + 12 Agent tests passing (2773 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.2.0 + web running; public URL + all 13 routes 200
-- **Branch:** heartbeat/2026-03-24-night (rotated from heartbeat/2026-03-23-evening at ~00:00 UTC)
-- **Smoke test:** 27/27 pass; perf: 22/22 pass; code quality: 8/8 pass, 0 warnings
+- **Deployment:** ✅ API v1.2.0 + web running; public URL + all routes 200; 0 TS errors
+- **Branch:** heartbeat/2026-03-24-midnight (44 commits ahead of dev, ready to merge)
 - **Registry:** 5009 tools, lint clean, 646 verified entries
-- **Deps:** Prisma 7, React 19, TypeScript 6, lucide-react 1.0, class-validator 0.15 — all breaking, deferred
-- **Coverage:** tool-registry controller 47 tests (was 30), all major modules 85%+. Overall: 91.8% stmts / 82.4% branch. Zero TS errors across all packages.
-- **Last change:** Added root vitest workspace config (`vitest.config.ts` with `projects` array) for unified `npx vitest run` from root — all 2338 tests pass, zero failures. Fixed TS errors in web test mocks.
+- **Deps:** All at wanted versions. Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
+- **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` with 7 live monitors — ready for Noah's visual review
+- **Last changes:** Widget full audit complete (99 widgets, LayoutWidgets `use client` fix). Previous: codebase decomposition sprint.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -21,6 +20,32 @@
 ---
 
 ## In Progress
+
+- [x] **🔴 Status Page Widget Full Audit & Visual Review (HIGH PRIORITY — Noah)** - Systematisch ALLE Status-Page Widget-Typen durchgehen, auf einer Test-Statuspage hinzufügen, komplett konfigurieren und visuell überprüfen. Ziel: Noah kann die fertige Seite anschauen und entscheiden ob jedes Widget gut aussieht und Sinn macht. *(2026-03-24: 99 widgets deployed to `/status/widget-showcase` covering all categories. 7 monitors created with live data. Fixed missing `"use client"` in LayoutWidgets.tsx. Page live at https://oc-dev-test.no749ah.com/status/widget-showcase for Noah's review.)*
+
+  **Scope:**
+  1. Test-Statuspage erstellen mit ALLEN verfügbaren Widget-Typen (70+)
+  2. Jedes Widget mit echten Monitor-Daten konfigurieren (keine Placeholder)
+  3. Test-Routen/API-Endpoints für Widget-Daten sicherstellen
+  4. Widgets visuell prüfen: Spacing, Farben, Typography, Dark-Mode, Responsive
+  5. Entscheiden ob jedes Widget sinnvoll ist — überflüssige/redundante entfernen
+  6. Design-Konsistenz: gleiche Border-Radii, Shadows, Padding, Font-Sizes
+  7. Edge Cases: leere Daten, ein Monitor, viele Monitore, lange Texte
+  8. Screenshot/Browser-Check der fertigen Seite via Skill
+  9. Seite deployed lassen damit Noah sie live anschauen kann
+
+  **Widget-Kategorien zum Durchgehen:**
+  - Status & Uptime (overall-status, component-status, uptime-bar, uptime-timeline, uptime-heatmap, rolling-uptime, health-score, region-map, multi-env, dependency-map, third-party-deps, status-ribbon)
+  - Performance (response-time-chart, response-time-heatmap, latency-percentiles, response-comparison, performance-trend, throughput-counter, apdex, ssl-cert, dns-resolution)
+  - SLA (sla-summary, sla-compliance-table, uptime-percentage, uptime-comparison, downtime-log, mttr-mttf)
+  - Incidents (incident-history, incident-timeline, post-mortem, severity-distribution, duration-stats, active-incident-count, check-history-feed)
+  - Maintenance (maintenance-calendar, next-maintenance, maintenance-impact)
+  - Versions (version-timeline, changelog, outdated-alert, version-comparison, security-advisory)
+  - Metrics (metric-counter, metric-comparison, custom-chart, gauge, sparkline-row, stats-grid, progress-ring, data-table)
+  - Content (text-block, image-banner, announcement-bar, faq, link-list, social-links, embed, video-embed, code-block, subscriber-form, rss-feed)
+  - Layout (tab-container, collapsible-section, column-layout, sticky-header, toc, page-nav, divider)
+
+  **Viel Zeit investieren. Alles durchkonfigurieren. Tests stehen lassen für Noah.**
 
 - [x] **Response Time Heatmap widget** - Hour-of-day × day-of-week latency heatmap (GitHub contributions style). API aggregates MonitorRun latencies into 7×24 grid bucketed by UTC day/hour. Frontend renders SVG color-coded grid: green (fast) → yellow → red (slow). Color scale normalized to min/max. Legend + period/avg/peak stats. Editor palette item added under Performance category.
 
@@ -375,7 +400,7 @@
 
 ### 🟢 CODE QUALITY / DEVOPS
 
-- [x] **Increase test coverage to >90%** - 2246 API tests passing. Line coverage 93.68%, statement coverage 91.8%, branch coverage 82.09%. All controllers at 100%, grafana 100%, backup 100%, plan 100%, checks 91%, alerts 90%, status-pages 86%. Achieved via systematic subagent coverage sprints across all major services.
+- [x] **Increase test coverage to >90%** - 2632 API + 119 Web + 10 CLI + 12 Agent = 2773 tests passing. All major services at 90%+ branch: alerts 96%, monitors 90%, status-pages 85%, checks 91%, settings 98%, reports 98%, organizations 100%. Achieved via systematic subagent coverage sprints.
 - [x] **E2E tests (Playwright)** - `packages/e2e/` with landing, auth, dashboard, monitors test suites. `loggedIn` fixture with storage state reuse. CI workflow `.github/workflows/e2e.yml` with artifact upload. Documented in `docs/E2E.md`.
 - [x] **API documentation improvements** - All 95 endpoints have `@ApiOperation`, `@ApiParam`, `@ApiQuery`, `@ApiResponse` decorators (122 response annotations). Swagger UI live at `/api/docs`.
 - [x] **Performance profiling** - Profile API under load. Check for slow queries, missing DB indexes (especially on monitor runs table). Add indexes where needed.
@@ -956,7 +981,8 @@
 
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
-- [x] **On-call rotation & escalation policies** - Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy.
+- [x] ~~**On-call rotation & escalation policies**~~ - REMOVED by Noah (2026-03-24). Feature fully stripped: OnCallSchedule, OnCallParticipant, EscalationPolicy, EscalationStep models deleted from Prisma schema; oncall controller/service/DTOs/specs deleted; escalation logic removed from AlertsService; nav link + /oncall page + monitor form escalation dropdown removed. -1973 lines.
+- [x] ~~**On-call ↔ Alert integration**~~ - REMOVED with on-call feature (2026-03-24).
 - [~] **Synthetic / Browser checks** - BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 - basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
 - [x] **SMS alert channel** - Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [x] **Grafana datasource plugin** - JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.

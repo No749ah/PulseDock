@@ -24,23 +24,12 @@ import {
   Globe,
   EyeOff,
   Activity,
-  BarChart2,
-  AlertTriangle,
-  Zap,
   Type,
-  Minus,
-  Clock,
-  TrendingUp,
-  CheckCircle,
   Grid,
   GripVertical,
   X,
   Settings,
-  CalendarDays,
-  FileText,
   Image,
-  Table2,
-  Rss,
   Copy,
   Undo2,
   Redo2,
@@ -53,8 +42,6 @@ import {
   ZoomOut,
   Maximize2,
   LayoutTemplate,
-  Code2,
-  Play,
   Settings2,
   RefreshCw,
   History,
@@ -64,9 +51,7 @@ import {
   AlignEndHorizontal,
   AlignCenterVertical,
   AlignCenterHorizontal,
-  GitFork,
   Layers,
-  ShieldAlert,
   ChevronUp,
   ChevronsUp,
   ChevronsDown,
@@ -78,716 +63,42 @@ import { useToast } from "../../../../components/ui/toast";
 import { MultiMonitorPicker } from "../../components/MultiMonitorPicker";
 import { brand } from "../../../../lib/brand";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface Widget {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  locked?: boolean;
-  zOrder?: number;
-  config: {
-    monitorId?: string;
-    monitorIds?: string[];
-    monitorMode?: "single" | "multiple" | "all";
-    label?: string;
-    periodDays?: number;
-    text?: string;
-    [key: string]: unknown;
-  };
-}
-
-type ViewportMode = "desktop" | "tablet" | "mobile";
-
-interface PageSettings {
-  autoRefreshInterval?: number; // seconds, 0 = off
-  showBranding?: boolean;
-  logoUrl?: string;
-  faviconUrl?: string;
-  accentColor?: string;
-  theme?: "dark" | "light" | "system";
-  fontFamily?: "inter" | "roboto" | "system" | "mono";
-  backgroundStyle?: "solid" | "gradient" | "grid-dots";
-  backgroundColor?: string;
-  // SEO
-  metaTitle?: string;
-  metaDescription?: string;
-  ogImageUrl?: string;
-  robotsIndex?: boolean;
-  // Webhook notifications
-  notifyWebhookUrl?: string;
-  slackWebhookUrl?: string;
-  discordWebhookUrl?: string;
-  // Advanced
-  customCss?: string;
-}
-
-interface PageLayout {
-  widgets: Widget[];
-  settings?: PageSettings;
-}
-
-interface StatusPage {
-  id: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  isPublished: boolean;
-  hasPassword: boolean;
-  notifyWebhookUrl?: string | null;
-  slackWebhookUrl?: string | null;
-  discordWebhookUrl?: string | null;
-  customCss?: string | null;
-  layout: PageLayout;
-}
-
-interface Monitor {
-  id: string;
-  name: string;
-  type: string;
-  folderId?: string | null;
-  tags?: { id: string; name: string; color?: string }[];
-}
-
-interface TagOption {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface FolderOption {
-  id: string;
-  name: string;
-}
-
-interface WidgetPaletteItem {
-  type: string;
-  label: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  category: string;
-  defaultW: number;
-  defaultH: number;
-}
-
-// ── Widget palette ─────────────────────────────────────────────────────────
-
-const WIDGET_PALETTE: WidgetPaletteItem[] = [
-  { type: "overall-system-status", label: "Overall Status", description: "Hero operational / degraded / outage banner", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 2 },
-  { type: "current-status-badge", label: "Status Badge", description: "Green/yellow/red pill for a single monitor", icon: Zap, category: "Status", defaultW: 3, defaultH: 2 },
-  { type: "multi-monitor-status-grid", label: "Monitor Grid", description: "Grid of status badges for multiple monitors", icon: Grid, category: "Status", defaultW: 12, defaultH: 3 },
-  { type: "active-incident-banner", label: "Incident Banner", description: "Full-width banner when something is down", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 2 },
-  { type: "uptime-bar", label: "Uptime Bar", description: "Shows uptime % over a selectable period", icon: Activity, category: "Uptime", defaultW: 6, defaultH: 2 },
-  { type: "uptime-timeline", label: "Uptime Timeline", description: "90-day bar chart (green/red per day)", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
-  { type: "sla-summary", label: "SLA Summary", description: "SLA target vs actual for a period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
-  { type: "response-time-chart", label: "Response Time", description: "Sparkline or area chart of latency", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
-  { type: "response-time-heatmap", label: "Latency Heatmap", description: "Hour-of-day × day-of-week latency heatmap (GitHub-style)", icon: BarChart2, category: "Performance", defaultW: 12, defaultH: 4 },
-  { type: "check-history-feed", label: "Check History", description: "Live-updating log of recent check results", icon: Clock, category: "Performance", defaultW: 12, defaultH: 4 },
-  { type: "incident-history", label: "Incident History", description: "Paginated list of past incidents", icon: AlertTriangle, category: "Incidents", defaultW: 12, defaultH: 4 },
-  { type: "text-block", label: "Text Block", description: "Free text / markdown for announcements", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
-  { type: "metric-counter", label: "Metric Counter", description: "Single big stat (uptime, latency, checks, incidents) with optional suffix", icon: BarChart2, category: "Metrics", defaultW: 4, defaultH: 2 },
-  { type: "scheduled-maintenance", label: "Maintenance", description: "Shows upcoming maintenance windows", icon: Clock, category: "Content", defaultW: 6, defaultH: 2 },
-  { type: "monitor-group", label: "Monitor Group", description: "Group monitors by tag or folder with status overview", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
-  { type: "monitor-group-status", label: "Monitor Group Status", description: "Alias of monitor group widget for legacy layouts", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
-  { type: "multi-status-badges", label: "Multi Status", description: "Multiple monitor status badges in a compact grid", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 3 },
-  { type: "version-status-grid", label: "Version Grid", description: "Grid showing current vs latest version for all monitors", icon: BarChart2, category: "Versions", defaultW: 12, defaultH: 4 },
-  { type: "version-check-badge", label: "Version Badge", description: "Single monitor version status badge", icon: CheckCircle, category: "Versions", defaultW: 6, defaultH: 2 },
-  { type: "update-summary", label: "Update Summary", description: "Overview: up-to-date / minor / major updates available", icon: TrendingUp, category: "Versions", defaultW: 12, defaultH: 2 },
-  { type: "component-status-list", label: "Component Status", description: "Per-service Operational / Degraded / Outage with overall header", icon: CheckCircle, category: "Status", defaultW: 8, defaultH: 4 },
-  { type: "rolling-uptime-cards", label: "Rolling Uptime", description: "Uptime % cards: 24h / 7d / 30d / 90d side by side", icon: Activity, category: "Uptime", defaultW: 12, defaultH: 2 },
-  { type: "status-history-ribbon", label: "Status Ribbon", description: "GitHub-style daily status bars per monitor for the last 90 days", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
-  { type: "uptime-percentage-card", label: "Uptime %", description: "Big number uptime display with trend arrow vs previous period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
-  { type: "service-health-matrix", label: "Health Matrix", description: "Monitors × environments/regions matrix table with status cells", icon: Grid, category: "Status", defaultW: 12, defaultH: 4 },
-  { type: "aggregate-health-score", label: "Health Score", description: "Weighted 0–100 health score gauge from all monitors", icon: Activity, category: "Status", defaultW: 4, defaultH: 3 },
-  { type: "latency-percentiles-card", label: "Latency Percentiles", description: "P50/P95/P99 latency with trend arrows vs previous period", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
-  { type: "downtime-log", label: "Downtime Log", description: "Chronological list of outage events with duration and timestamps", icon: Clock, category: "Incidents", defaultW: 8, defaultH: 4 },
-  { type: "active-incident-count", label: "Active Incidents", description: "Animated big-number counter of active (unresolved) incidents", icon: AlertTriangle, category: "Incidents", defaultW: 4, defaultH: 3 },
-  { type: "mttr-mttf-cards", label: "MTTR / MTTF", description: "Mean Time to Recovery and Mean Time to Failure side-by-side", icon: Activity, category: "Incidents", defaultW: 6, defaultH: 3 },
-  { type: "sla-compliance-table", label: "SLA Compliance", description: "Multi-monitor SLA pass/fail table for a configurable period", icon: TrendingUp, category: "SLA/Uptime", defaultW: 12, defaultH: 4 },
-  { type: "uptime-heatmap", label: "Uptime Heatmap", description: "7-day × 24-hour GitHub-style uptime grid per monitor", icon: BarChart2, category: "SLA/Uptime", defaultW: 12, defaultH: 3 },
-  { type: "incident-timeline", label: "Incident Timeline", description: "Chronological timeline with Investigating → Resolved status updates", icon: AlertTriangle, category: "Incidents", defaultW: 8, defaultH: 5 },
-  { type: "ssl-certificate-status", label: "SSL Certificate", description: "SSL cert expiry: domain, days remaining, issuer, grade", icon: CheckCircle, category: "Performance", defaultW: 6, defaultH: 3 },
-  { type: "incident-severity-distribution", label: "Severity Distribution", description: "Donut chart: Critical / Major / Minor incidents over a period", icon: Activity, category: "Incidents", defaultW: 6, defaultH: 3 },
-  { type: "incident-duration-stats", label: "Incident Duration Stats", description: "Avg / Longest / Shortest incident duration over a configurable period", icon: Clock, category: "Incidents", defaultW: 6, defaultH: 3 },
-  { type: "post-mortem-card", label: "Post-Mortem Card", description: "RCA-style summary of the most recent resolved incident with timeline", icon: AlertTriangle, category: "Incidents", defaultW: 8, defaultH: 5 },
-  { type: "performance-trend", label: "Performance Trend", description: "Week-over-week latency change with sparkline", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
-  { type: "apdex-score", label: "Apdex Score", description: "Application Performance Index (0.0–1.0) with breakdown bar", icon: Activity, category: "Performance", defaultW: 6, defaultH: 4 },
-  { type: "throughput-counter", label: "Throughput Counter", description: "Checks per hour live counter with 24-bar sparkline", icon: BarChart2, category: "Performance", defaultW: 6, defaultH: 3 },
-  { type: "response-time-comparison", label: "Response Time Comparison", description: "Overlay line chart comparing latency across multiple services", icon: TrendingUp, category: "Performance", defaultW: 12, defaultH: 4 },
-  { type: "uptime-comparison-chart", label: "Uptime Comparison", description: "Horizontal bar chart comparing uptime % across monitors", icon: BarChart2, category: "Performance", defaultW: 8, defaultH: 4 },
-  { type: "next-maintenance-countdown", label: "Maintenance Countdown", description: "Countdown timer to the next scheduled maintenance window", icon: Clock, category: "Maintenance", defaultW: 6, defaultH: 3 },
-  { type: "maintenance-impact-list", label: "Maintenance Impact", description: "List of upcoming maintenance windows with affected services", icon: AlertTriangle, category: "Maintenance", defaultW: 8, defaultH: 4 },
-  { type: "version-timeline", label: "Version Timeline", description: "Chronological list of version updates detected across services", icon: TrendingUp, category: "Versions", defaultW: 8, defaultH: 5 },
-  { type: "outdated-components-alert", label: "Outdated Components", description: "Highlights monitors where current ≠ latest version with severity badges", icon: AlertTriangle, category: "Versions", defaultW: 8, defaultH: 4 },
-  { type: "version-comparison-table", label: "Version Comparison", description: "Side-by-side table: Service | Current | Latest | Status", icon: BarChart2, category: "Versions", defaultW: 10, defaultH: 4 },
-  { type: "dns-resolution-time", label: "DNS Resolution Time", description: "Avg DNS/response latency tracker with trend and per-monitor breakdown", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 4 },
-  { type: "gauge", label: "Gauge / Speedometer", description: "Circular gauge for uptime%, SLA compliance%, or Apdex score", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
-  { type: "stats-grid", label: "Stats Grid", description: "2×2/3×3 grid of key metrics: uptime, incidents, response time, alerts", icon: Grid, category: "Metrics", defaultW: 12, defaultH: 3 },
-  { type: "metric-comparison-row", label: "Metric Comparison Row", description: "Horizontal strip of metric counters: uptime, latency, checks, incidents", icon: BarChart2, category: "Metrics", defaultW: 12, defaultH: 2 },
-  { type: "sparkline-row", label: "Sparkline Row", description: "Mini sparkline charts side by side for quick latency comparison across monitors", icon: TrendingUp, category: "Metrics", defaultW: 12, defaultH: 3 },
-  { type: "progress-ring", label: "Progress Ring", description: "Circular Apple Watch-style ring showing uptime%, SLA compliance, or custom value", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
-  { type: "announcement-bar", label: "Announcement Bar", description: "Full-width colored info/warning/danger/success banner for important messages", icon: AlertTriangle, category: "Content", defaultW: 12, defaultH: 1 },
-  { type: "link-list", label: "Link List", description: "List of external links with icons: Docs, Support, Changelog, API Status", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
-  { type: "faq-accordion", label: "FAQ / Accordion", description: "Collapsible Q&A sections — config-driven, no monitor data needed", icon: Type, category: "Content", defaultW: 8, defaultH: 4 },
-  { type: "social-links", label: "Social Links", description: "Row of social media icon buttons (GitHub, Twitter/X, Discord, LinkedIn, etc.)", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
-  { type: "embed-iframe", label: "Embed / iFrame", description: "Embed external dashboards or Grafana panels in an iframe", icon: Type, category: "Content", defaultW: 12, defaultH: 6 },
-  { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
-  { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
-  { type: "last-updated-footer", label: "Last Updated Footer", description: "Displays the latest data refresh time with auto-refresh hint", icon: RefreshCw, category: "Content", defaultW: 12, defaultH: 1 },
-  { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
-  { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
-  { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
-  { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
-  { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
-  { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
-  { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
-  { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
-  { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
-  { type: "dependency-map", label: "Dependency Map", description: "Visual service dependency graph with live status on each node. Define edges between monitors in config.", icon: GitFork, category: "Status", defaultW: 12, defaultH: 5 },
-  { type: "multi-environment-status", label: "Multi-Environment Status", description: "Side-by-side status comparison across environments (prod/staging/dev). Configure envMonitors mapping.", icon: Layers, category: "Status", defaultW: 12, defaultH: 4 },
-  { type: "tab-container", label: "Tab Container", description: "Multiple tabs each showing configurable text/content sections.", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 4 },
-{ type: "region-status-map", label: "Region Status Map", description: "Status overview per geographic region. Configure regionMonitors mapping.", icon: Globe, category: "Status", defaultW: 12, defaultH: 4 },
-{ type: "third-party-dependencies", label: "Third-Party Dependencies", description: "Live status check of external services. Configure services array.", icon: ExternalLink, category: "Status", defaultW: 8, defaultH: 5 },
-{ type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
-{ type: "column-layout", label: "Column Layout", description: "2, 3, or 4 column text/content layout within a single row", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 3 },
-{ type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
-{ type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
-{ type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
-{ type: "offline-banner", label: "Offline Banner", description: "Dismissible banner that auto-shows when the visitor's connection is lost.", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 1 },
-{ type: "custom-metric-chart", label: "Custom Metric Chart", description: "Time-series chart for latency, uptime %, or check count. Choose line, bar, or area style.", icon: BarChart2, category: "Metrics", defaultW: 8, defaultH: 4 },
-];
-
-const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
-
-/** Widget types that require a monitor to be configured to show real data. */
-const NEEDS_MONITOR_TYPES = new Set([
-  'uptime-bar', 'uptime-timeline', 'sla-summary', 'response-time-chart', 'response-time-heatmap',
-  'current-status-badge', 'rolling-uptime-cards', 'uptime-percentage-card', 'ssl-certificate-status',
-  'latency-percentiles-card', 'performance-trend', 'apdex-score', 'dns-resolution-time',
-  'uptime-heatmap', 'status-history-ribbon', 'gauge', 'progress-ring', 'throughput-counter',
-  'custom-metric-chart', 'changelog-widget', 'version-check-badge',
-]);
-
-/** Widget types that require monitorIds (array) to be configured. */
-const NEEDS_MONITORS_TYPES = new Set([
-  'uptime-comparison-chart', 'response-time-comparison', 'sla-compliance-table',
-  'service-health-matrix', 'sparkline-row', 'component-status-list',
-  'aggregate-health-score', 'multi-environment-status',
-]);
-
-/**
- * Widget types that do NOT need any monitor config — purely content/layout widgets.
- * All other widget types will show a "⚠️ Configure" badge when no monitor is selected.
- */
-const NO_MONITOR_NEEDED_TYPES = new Set([
-  'text', 'text-block', 'divider', 'spacer', 'custom-header', 'announcement-bar',
-  'faq-accordion', 'link-list', 'social-links', 'embed-iframe', 'video-embed',
-  'code-block', 'countdown', 'table-of-contents', 'page-navigation', 'image-banner',
-  'column-layout', 'collapsible-section', 'tab-container', 'sticky-header',
-  'subscriber-form', 'subscriber-form-widget', 'rss-feed-widget', 'offline-banner',
-  'offline-banner-widget',
-  // These widgets aggregate all monitors or have their own scope — no per-monitor config needed
-  'overall-system-status', 'scheduled-maintenance', 'incident-history',
-  'check-history-feed', 'third-party-dependencies', 'security-advisory',
-]);
-
-/** Returns true if a canvas widget is missing required monitor config and should show the "⚠️ Configure" badge. */
-function needsMonitorConfig(widget: Widget): boolean {
-  if (NO_MONITOR_NEEDED_TYPES.has(widget.type)) return false;
-  const { monitorId, monitorIds, monitorMode } = widget.config;
-  if (monitorMode === 'all') return false;
-  const hasMonitor = Boolean(monitorId);
-  const hasMonitors = Array.isArray(monitorIds) && monitorIds.length > 0;
-  return !hasMonitor && !hasMonitors;
-}
-
-function hasMappedMonitorRecord(value: unknown): boolean {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  return Object.values(value as Record<string, unknown>).some(
-    (entry) => Array.isArray(entry) && entry.length > 0,
-  );
-}
-
-function getConfigWarnings(widget: Widget, monitorMode: string): string[] {
-  const warnings: string[] = [];
-
-  if (monitorMode === "single" && !NO_MONITOR_NEEDED_TYPES.has(widget.type) && !widget.config.monitorId) {
-    warnings.push("Select a monitor (or switch monitor scope to Multiple/All).");
-  }
-
-  if (monitorMode === "multiple" && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
-    warnings.push("Select at least one monitor in multi-monitor mode.");
-  }
-
-  if (widget.type === "custom-metric-chart" && !widget.config.monitorId) {
-    warnings.push("Custom Metric Chart requires a monitor selection.");
-  }
-
-  if (widget.type === "security-advisory" && !String(widget.config.packageName ?? "").trim()) {
-    warnings.push("Package name is required for Security Advisory.");
-  }
-
-  if (widget.type === "tab-container" && (!Array.isArray(widget.config.tabs) || widget.config.tabs.length === 0)) {
-    warnings.push("Add at least one tab entry ({ title, content }).");
-  }
-
-  if (widget.type === "dependency-map" && (!Array.isArray(widget.config.edges) || widget.config.edges.length === 0)) {
-    warnings.push("Add at least one dependency edge ({ source, target }).");
-  }
-
-  if (widget.type === "multi-environment-status" && !hasMappedMonitorRecord(widget.config.envMonitors)) {
-    warnings.push("Define envMonitors with at least one monitor ID per environment.");
-  }
-
-  if (widget.type === "region-status-map" && !hasMappedMonitorRecord(widget.config.regionMonitors)) {
-    warnings.push("Define regionMonitors with at least one monitor ID per region.");
-  }
-
-  if (widget.type === "third-party-dependencies" && (!Array.isArray(widget.config.services) || widget.config.services.length === 0)) {
-    warnings.push("Add at least one external service ({ name, url }).");
-  }
-
-  if (widget.type === "embed-iframe" && !String(widget.config.url ?? "").trim()) {
-    warnings.push("Embed URL is required for iFrame widgets.");
-  }
-
-  if ((widget.type === "version-comparison-table" || widget.type === "outdated-components-alert" || widget.type === "metric-comparison-row")
-    && (!Array.isArray(widget.config.monitorIds) || widget.config.monitorIds.length === 0)) {
-    warnings.push("Select at least one monitor for this comparison widget.");
-  }
-
-  if ((widget.type === "table-of-contents" || widget.type === "column-layout") && (!Array.isArray(widget.config.items) || widget.config.items.length === 0)) {
-    warnings.push("Add at least one item entry in JSON configuration.");
-  }
-
-  return warnings;
-}
-
-// ── Template Gallery ────────────────────────────────────────────────────────
-
-interface StatusTemplate {
-  id: string;
-  name: string;
-  description: string;
-  preview: string;
-  widgets: Omit<Widget, 'id'>[];
-}
-
-const STATUS_TEMPLATES: StatusTemplate[] = [
-  {
-    id: 'minimal',
-    name: 'Minimal',
-    description: 'Clean overall status + uptime bar. Perfect for simple status pages.',
-    preview: '⚡',
-    widgets: [
-      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'uptime-bar', x: 0, y: 2, w: 12, h: 2, config: { periodDays: 30 } },
-    ],
-  },
-  {
-    id: 'full-dashboard',
-    name: 'Full Dashboard',
-    description: 'Comprehensive status page with uptime, performance, and incidents.',
-    preview: '📊',
-    widgets: [
-      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'active-incident-banner', x: 0, y: 2, w: 12, h: 2, config: {} },
-      { type: 'rolling-uptime-cards', x: 0, y: 4, w: 12, h: 2, config: {} },
-      { type: 'uptime-timeline', x: 0, y: 6, w: 8, h: 3, config: { periodDays: 90 } },
-      { type: 'response-time-chart', x: 8, y: 6, w: 4, h: 3, config: {} },
-      { type: 'component-status-list', x: 0, y: 9, w: 6, h: 4, config: {} },
-      { type: 'incident-history', x: 6, y: 9, w: 6, h: 4, config: {} },
-      { type: 'status-history-ribbon', x: 0, y: 13, w: 12, h: 3, config: {} },
-    ],
-  },
-  {
-    id: 'sla-report',
-    name: 'SLA Report',
-    description: 'SLA compliance, uptime percentages, and downtime statistics.',
-    preview: '📈',
-    widgets: [
-      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'sla-compliance-table', x: 0, y: 2, w: 12, h: 4, config: {} },
-      { type: 'rolling-uptime-cards', x: 0, y: 6, w: 12, h: 2, config: {} },
-      { type: 'uptime-heatmap', x: 0, y: 8, w: 12, h: 3, config: {} },
-      { type: 'mttr-mttf-cards', x: 0, y: 11, w: 6, h: 3, config: {} },
-      { type: 'downtime-log', x: 6, y: 11, w: 6, h: 3, config: {} },
-    ],
-  },
-  {
-    id: 'incident-page',
-    name: 'Incident Page',
-    description: 'Focus on active incidents, timeline, and post-mortems.',
-    preview: '🚨',
-    widgets: [
-      { type: 'active-incident-banner', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'active-incident-count', x: 0, y: 2, w: 4, h: 3, config: {} },
-      { type: 'incident-timeline', x: 4, y: 2, w: 8, h: 5, config: {} },
-      { type: 'incident-history', x: 0, y: 7, w: 8, h: 4, config: {} },
-      { type: 'incident-severity-distribution', x: 8, y: 7, w: 4, h: 4, config: {} },
-      { type: 'post-mortem-card', x: 0, y: 11, w: 12, h: 5, config: {} },
-    ],
-  },
-  {
-    id: 'version-overview',
-    name: 'Version Overview',
-    description: 'Track versions of all your tools and services.',
-    preview: '🏷️',
-    widgets: [
-      { type: 'update-summary', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'version-status-grid', x: 0, y: 2, w: 12, h: 4, config: {} },
-      { type: 'outdated-components-alert', x: 0, y: 6, w: 6, h: 4, config: {} },
-      { type: 'version-timeline', x: 6, y: 6, w: 6, h: 4, config: {} },
-    ],
-  },
-  {
-    id: 'performance',
-    name: 'Performance',
-    description: 'Response times, latency percentiles, and performance trends.',
-    preview: '⚡',
-    widgets: [
-      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'latency-percentiles-card', x: 0, y: 2, w: 6, h: 3, config: {} },
-      { type: 'apdex-score', x: 6, y: 2, w: 6, h: 3, config: {} },
-      { type: 'response-time-chart', x: 0, y: 5, w: 12, h: 3, config: {} },
-      { type: 'response-time-heatmap', x: 0, y: 8, w: 12, h: 4, config: {} },
-      { type: 'performance-trend', x: 0, y: 12, w: 6, h: 3, config: {} },
-      { type: 'throughput-counter', x: 6, y: 12, w: 6, h: 3, config: {} },
-    ],
-  },
-  {
-    id: 'maintenance',
-    name: 'Maintenance',
-    description: 'Scheduled maintenance windows and countdowns.',
-    preview: '🔧',
-    widgets: [
-      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
-      { type: 'scheduled-maintenance', x: 0, y: 2, w: 6, h: 3, config: {} },
-      { type: 'maintenance-calendar', x: 6, y: 2, w: 6, h: 3, config: {} },
-      { type: 'next-maintenance-countdown', x: 0, y: 5, w: 6, h: 3, config: {} },
-      { type: 'maintenance-impact-list', x: 6, y: 5, w: 6, h: 3, config: {} },
-    ],
-  },
-];
-
-const ROW_H = 80;
-const COL_COUNT = 12;
-const MULTI_MODE_PRIMARY_WIDGETS = new Set([
-  "uptime-bar",
-  "uptime-timeline",
-  "sla-summary",
-  "response-time-chart",
-  "version-check-badge",
-]);
-
-function getMultiModeHelperText(widgetType: string): string {
-  if (MULTI_MODE_PRIMARY_WIDGETS.has(widgetType)) {
-    return "This widget uses the first selected monitor as its primary series in multi-monitor mode.";
-  }
-
-  return "This widget will render data for all selected monitors.";
-}
-
-function getWidgetConfigHints(widgetType: string): string[] {
-  switch (widgetType) {
-    case "embed-iframe":
-      return [
-        "Use a full HTTPS URL and a source that allows iFrame embedding.",
-        "If the widget stays blank on public pages, check X-Frame-Options/CSP on the target site.",
-      ];
-    case "security-advisory":
-      return [
-        "Use the real package name from your ecosystem (for example: express, requests, serde).",
-        "Set ecosystem when names overlap across package managers.",
-      ];
-    case "dependency-map":
-      return [
-        "Edges use monitor IDs, not names.",
-        "Format: { source, target, label? }.",
-      ];
-    case "multi-environment-status":
-    case "region-status-map":
-      return [
-        "Use monitor IDs in each group list.",
-        "Groups with empty arrays render as no-data until monitors are added.",
-      ];
-    case "third-party-dependencies":
-      return [
-        "Each service runs a lightweight HEAD request.",
-        "Use stable health/status endpoints for best results.",
-      ];
-    case "table-of-contents":
-      return [
-        "Anchors must match element IDs on your page.",
-        "Use short, lowercase IDs like 'incidents' or 'uptime'.",
-      ];
-    case "tab-container":
-      return [
-        "Use a tabs array with { title, content } items.",
-        "Keep content concise for mobile readability.",
-      ];
-    case "column-layout":
-      return [
-        "Use items as an array of { heading?, body }.",
-        "For readability, keep body text short per column.",
-      ];
-    case "custom-metric-chart":
-      return [
-        "Select a monitor first, then tune metric + chart type.",
-        "Use line/area for trends and bar for discrete comparisons.",
-      ];
-    default:
-      return [];
-  }
-}
-
-function getDefaultMultiMonitorIds(widget: Widget, monitors: Monitor[]): string[] {
-  const configured = Array.isArray(widget.config.monitorIds)
-    ? widget.config.monitorIds.filter((id): id is string => typeof id === "string" && id.length > 0)
-    : [];
-
-  if (configured.length > 0) return configured;
-
-  const singleId = typeof widget.config.monitorId === "string" ? widget.config.monitorId : undefined;
-  const ordered = [singleId, ...monitors.map((m) => m.id)].filter(
-    (id): id is string => typeof id === "string" && id.length > 0,
-  );
-  const unique = Array.from(new Set(ordered));
-  const limit = MULTI_MODE_PRIMARY_WIDGETS.has(widget.type) ? 1 : 6;
-  return unique.slice(0, limit);
-}
-
-// ── Palette widget (draggable from sidebar) ──────────────────────────────
-
-function PaletteWidget({ item, onQuickAdd }: { item: WidgetPaletteItem; onQuickAdd: (type: string) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `palette-${item.type}`,
-    data: { source: "palette", widgetType: item.type, paletteItem: item },
-  });
-  const Icon = item.icon;
-  return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      role="button"
-      tabIndex={0}
-      onDoubleClick={() => onQuickAdd(item.type)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onQuickAdd(item.type);
-        }
-      }}
-      className={`w-full cursor-grab rounded-xl border border-border bg-bg p-3 text-left transition hover:border-accent/50 hover:bg-accent/5 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${isDragging ? "opacity-40" : ""}`}
-      title="Drag to canvas or double-click to add"
-      aria-label={`Widget ${item.label}. Drag to canvas or double-click to add.`}
-    >
-      <div className="mb-1 flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 shrink-0 text-accent" />
-        <span className="text-xs font-semibold text-text-primary">{item.label}</span>
-      </div>
-      <p className="text-[10px] leading-tight text-text-secondary">{item.description}</p>
-      <p className="mt-1.5 text-[10px] text-text-secondary/60">Drag or double-click to add</p>
-    </div>
-  );
-}
-
-// ── Canvas widget (draggable on canvas) ─────────────────────────────────
-
-/** Live preview content for widgets in the editor */
-function WidgetPreview({ type, config, w, liveData }: { type: string; config: Record<string, unknown>; w: number; liveData?: unknown }) {
-  // Extract live values when available
-  const live = liveData as Record<string, unknown> | undefined;
-  const label = (config.label as string) || "";
-  switch (type) {
-    case "overall-status":
-      return (<div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-success animate-pulse" /><span className="text-sm font-semibold text-success">{label || "All Systems Operational"}</span></div>);
-    case "current-status-badge":
-      return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium text-text-primary">{label || "Monitor"}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">Up</span></div>);
-    case "uptime-bar": {
-      const uptimePct = typeof live?.uptimePct === "number" ? Math.round(live.uptimePct * 100) / 100 : null;
-      const barColor = uptimePct !== null ? (uptimePct >= 99.5 ? "bg-success/70" : uptimePct >= 90 ? "bg-warning/70" : "bg-danger/70") : "bg-success/70";
-      const pctColor = uptimePct !== null ? (uptimePct >= 99.5 ? "text-success" : uptimePct >= 90 ? "text-warning" : "text-danger") : "text-success";
-      const pctStr = uptimePct !== null ? `${uptimePct}%` : "99.9%";
-      const barWidth = uptimePct !== null ? `${uptimePct}%` : "99.9%";
-      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Uptime"}</span><span className={`font-medium ${pctColor}`}>{pctStr}{live && <span className="ml-1 text-green-400/60">●</span>}</span></div><div className="h-2 rounded-full bg-surface-elevated overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: barWidth }} /></div></div>);
-    }
-    case "uptime-timeline":
-      return (<div className="space-y-1">{label && <span className="text-[10px] text-text-secondary">{label}</span>}<div className="flex gap-px">{Array.from({ length: Math.min(w * 3, 30) }).map((_, i) => (<div key={i} className={`flex-1 h-4 rounded-sm ${i === 18 ? "bg-warning/60" : i === 22 ? "bg-danger/60" : "bg-success/50"}`} />))}</div></div>);
-    case "response-time-chart":
-      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Response Time"}</span><span className="font-mono">~120ms</span></div><svg viewBox="0 0 100 20" className="w-full h-6 text-accent/60" preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" strokeWidth="1.5" points="0,15 10,12 20,14 30,10 40,8 50,11 60,7 70,9 80,6 90,8 100,5" /></svg></div>);
-    case "multi-monitor-grid":
-      return (<div className="flex flex-wrap gap-1">{["API", "Web", "DB", "Redis", "CDN", "Auth"].map((n) => (<div key={n} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-elevated text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">{n}</span></div>))}</div>);
-    case "incident-history":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label || "Recent Incidents"}</span><div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">No incidents in the last 7 days</span></div></div>);
-    case "active-incident-banner":
-      return (<div className="flex items-center gap-2 px-2 py-1 rounded bg-success/10 border border-success/20"><div className="h-2 w-2 rounded-full bg-success" /><span className="text-[10px] font-medium text-success">{label || "All clear — no active incidents"}</span></div>);
-    case "text-block":
-      return <p className="text-xs text-text-secondary">{label || "Announcement text goes here..."}</p>;
-    case "metric-counter": {
-      const mcVal = typeof live?.value === "number" ? live.value : typeof live?.uptimePct === "number" ? live.uptimePct : null;
-      const mcDisplay = mcVal !== null ? `${Math.round(mcVal * 100) / 100}%` : "—";
-      return (<div className="text-center"><div className="text-lg font-bold text-accent tabular-nums">{mcVal !== null ? mcDisplay : "99.9%"}{live && <span className="ml-1 text-[8px] text-green-400/60 align-top">●</span>}</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div>);
-    }
-    case "last-updated-footer":
-      return <div className="text-[10px] text-text-muted text-center">Last updated: just now</div>;
-    case "custom-header":
-      return (<div><div className="text-sm font-bold text-text-primary">{label || "Status Page"}</div><div className="text-[10px] text-text-secondary">Subtitle or description</div></div>);
-    case "monitor-group":
-      return (<div className="space-y-1.5"><div className="text-[10px] font-semibold text-text-secondary uppercase">{label || "Infrastructure"}</div>{["API Server","Database","Cache","Queue"].map(n=>(<div key={n} className="flex items-center gap-1.5 text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success"/><span className="text-text-primary">{n}</span><span className="ml-auto text-text-muted font-mono">12ms</span></div>))}</div>);
-    case "multi-status-badges":
-      return (<div className="grid grid-cols-3 gap-1.5">{["API","Web","DB","Redis","Auth","CDN"].map(n=>(<div key={n} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-elevated border border-border/50"><div className="h-2 w-2 rounded-full bg-success"/><span className="text-[10px] font-medium text-text-primary">{n}</span></div>))}</div>);
-    case "version-status-grid":
-      return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>Version Status</span><span>2 up-to-date · 1 update</span></div>{[{n:"Portainer",c:"2.39.0",l:"2.39.0",ok:true},{n:"GitLab",c:"18.7.0",l:"18.9.0",ok:false},{n:"Redis",c:"7.2.4",l:"7.2.4",ok:true}].map(v=>(<div key={v.n} className="flex items-center gap-2 text-[10px] py-0.5"><div className={`h-1.5 w-1.5 rounded-full ${v.ok?"bg-success":"bg-warning"}`}/><span className="text-text-primary w-16 truncate">{v.n}</span><span className="text-text-secondary font-mono">{v.c}</span><span className="text-text-muted">→</span><span className={`font-mono ${v.ok?"text-text-secondary":"text-warning font-medium"}`}>{v.l}</span></div>))}</div>);
-    case "version-check-badge":
-      return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium">{label || "App"}</span><span className="text-[10px] font-mono text-text-secondary">v2.39.0</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success">Up to date</span></div>);
-    case "update-summary":
-      return (<div className="flex items-center gap-4"><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-success">2</span><span className="text-[10px] text-text-secondary">up to date</span></div><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-warning">1</span><span className="text-[10px] text-text-secondary">minor update</span></div><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-danger">0</span><span className="text-[10px] text-text-secondary">major update</span></div></div>);
-    case "divider":
-      return <hr className="border-border my-1" />;
-
-    // ── Performance ────────────────────────────────────────────────────────
-    case "response-time-heatmap":
-      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label || "Response Time Heatmap"}</div><div className="grid gap-px" style={{gridTemplateColumns:"repeat(24,1fr)"}}>{Array.from({length:168},(_,i)=>(<div key={i} className={`rounded-sm ${i%7===3?"bg-danger/60":i%5===2?"bg-warning/50":i%11===0?"bg-success/30":"bg-success/15"}`} style={{height:6}} />))}</div><div className="flex justify-between text-[9px] text-text-muted mt-0.5"><span>00:00</span><span>12:00</span><span>23:00</span></div></div>);
-    case "latency-percentiles-card":
-      return (<div className="flex items-end gap-3"><div className="text-center"><div className="text-base font-bold text-text-primary tabular-nums">42<span className="text-[9px] text-text-muted ml-0.5">ms</span></div><div className="text-[9px] text-text-muted">P50</div></div><div className="text-center"><div className="text-base font-bold text-warning tabular-nums">110<span className="text-[9px] text-text-muted ml-0.5">ms</span></div><div className="text-[9px] text-text-muted">P95</div></div><div className="text-center"><div className="text-base font-bold text-danger tabular-nums">210<span className="text-[9px] text-text-muted ml-0.5">ms</span></div><div className="text-[9px] text-text-muted">P99</div></div></div>);
-    case "response-time-comparison":
-      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label||"Response Time Comparison"}</div><svg viewBox="0 0 100 24" className="w-full" preserveAspectRatio="none"><polyline fill="none" stroke="#6366f1" strokeWidth="1.5" points="0,18 15,14 30,10 45,12 60,8 75,10 90,6 100,7"/><polyline fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="2,2" points="0,20 15,17 30,15 45,13 60,14 75,11 90,12 100,10"/></svg></div>);
-    case "ssl-certificate-status":
-      return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success shrink-0"/><span className="text-xs font-medium text-text-primary">{label||"SSL Certificate"}</span><span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">85d left</span></div>);
-    case "dns-resolution-time":
-      return (<div className="flex items-center gap-2"><span className="text-xs text-text-secondary">{label||"DNS"}</span><div className="flex-1 h-1.5 rounded-full bg-surface-elevated overflow-hidden"><div className="h-full rounded-full bg-accent/60" style={{width:"30%"}}/></div><span className="text-[10px] font-mono text-text-secondary">12ms</span></div>);
-    case "performance-trend":
-      return (<div className="space-y-1"><div className="flex items-center gap-2"><span className="text-[10px] text-text-secondary">{label||"Performance Trend"}</span><span className="text-[10px] text-success">↓ 8% faster</span></div><svg viewBox="0 0 100 20" className="w-full h-5" preserveAspectRatio="none"><polyline fill="none" stroke="#22c55e" strokeWidth="1.5" points="0,16 20,14 40,12 60,10 80,8 100,6"/></svg></div>);
-    case "apdex-score":
-      return (<div className="flex items-center gap-3"><div className="text-2xl font-bold text-success tabular-nums">0.96</div><div><div className="text-[10px] text-text-secondary">Apdex Score</div><div className="text-[10px] text-success">Excellent</div></div></div>);
-    case "throughput-counter":
-      return (<div className="flex items-center gap-2"><div className="text-lg font-bold text-accent tabular-nums">243</div><div className="text-[10px] text-text-secondary">{label||"checks/hr"}</div></div>);
-
-    // ── SLA ───────────────────────────────────────────────────────────────
-    case "sla-compliance-table":
-      return (<div className="space-y-1">{[{n:"API",t:"99.9%",a:"99.97%",ok:true},{n:"Web",t:"99.5%",a:"99.84%",ok:true},{n:"DB",t:"99.9%",a:"99.61%",ok:false}].map(r=>(<div key={r.n} className="flex items-center gap-2 text-[10px]"><span className="w-8 text-text-primary font-medium">{r.n}</span><span className="text-text-muted w-10">{r.t}</span><span className={`font-mono ${r.ok?"text-success":"text-danger"}`}>{r.a}</span><span className={`ml-auto px-1 py-0.5 rounded text-[9px] font-semibold ${r.ok?"bg-success/15 text-success":"bg-danger/15 text-danger"}`}>{r.ok?"Pass":"Fail"}</span></div>))}</div>);
-    case "uptime-heatmap":
-      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label||"Uptime Heatmap"}</div><div className="grid gap-px" style={{gridTemplateColumns:"repeat(24,1fr)"}}>{Array.from({length:168},(_,i)=>(<div key={i} className={`rounded-sm ${i===42||i===43?"bg-danger/70":i===100?"bg-warning/60":"bg-success/40"}`} style={{height:6}}/>))}</div></div>);
-    case "downtime-log":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Downtime Log"}</span>{[{t:"Mar 12",d:"14m",r:"Timeout"},{t:"Mar 7",d:"3m",r:"Deploy"}].map(e=>(<div key={e.t} className="flex items-center gap-2 py-0.5"><span className="text-text-muted w-12">{e.t}</span><span className="text-danger font-mono">{e.d}</span><span className="text-text-secondary">{e.r}</span></div>))}</div>);
-    case "mttr-mttf-cards":
-      return (<div className="flex gap-4"><div className="text-center"><div className="text-base font-bold text-warning tabular-nums">18m</div><div className="text-[9px] text-text-muted">MTTR</div></div><div className="text-center"><div className="text-base font-bold text-success tabular-nums">12.4d</div><div className="text-[9px] text-text-muted">MTTF</div></div></div>);
-    case "uptime-comparison-chart":
-      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label||"Uptime Comparison"}</div><div className="flex items-end gap-1 h-10">{[99.9,99.7,100,98.5,99.8].map((v,i)=>(<div key={i} className="flex-1 rounded-sm bg-accent/50" style={{height:`${((v-98)/2)*100}%`,minHeight:2}}/>))}</div></div>);
-
-    // ── Incidents ─────────────────────────────────────────────────────────
-    case "incident-timeline":
-      return (<div className="space-y-2 text-[10px]"><span className="text-text-secondary font-medium">{label||"Incident Timeline"}</span>{[{s:"Resolved",c:"text-success",m:"Service restored"},{s:"Monitoring",c:"text-warning",m:"Fix deployed"},{s:"Identified",c:"text-danger",m:"Root cause found"}].map(e=>(<div key={e.s} className="flex items-start gap-2"><div className={`mt-0.5 h-1.5 w-1.5 rounded-full shrink-0 ${e.c.replace("text-","bg-")}`}/><div><span className={`font-semibold ${e.c}`}>{e.s}</span><span className="text-text-muted ml-1">{e.m}</span></div></div>))}</div>);
-    case "incident-severity-distribution":
-      return (<div className="flex items-center gap-2"><div className="flex-1 h-3 rounded-full overflow-hidden flex"><div className="bg-danger/70" style={{width:"15%"}}/><div className="bg-warning/70" style={{width:"35%"}}/><div className="bg-success/50" style={{width:"50%"}}/></div><div className="flex gap-2 text-[9px]"><span className="text-danger">Crit</span><span className="text-warning">Maj</span><span className="text-success">Min</span></div></div>);
-    case "incident-duration-stats":
-      return (<div className="flex gap-4 text-center"><div><div className="text-sm font-bold text-text-primary">3m</div><div className="text-[9px] text-text-muted">Shortest</div></div><div><div className="text-sm font-bold text-warning">18m</div><div className="text-[9px] text-text-muted">Average</div></div><div><div className="text-sm font-bold text-danger">2.1h</div><div className="text-[9px] text-text-muted">Longest</div></div></div>);
-    case "active-incident-count":
-      return (<div className="flex items-center gap-2"><div className="text-3xl font-bold text-danger tabular-nums animate-pulse">2</div><div className="text-[10px] text-text-secondary leading-tight">{label||"Active\nIncidents"}</div></div>);
-    case "post-mortem-card":
-      return (<div className="space-y-1 text-[10px]"><span className="font-semibold text-text-primary">{label||"Post-Mortem"}</span><p className="text-text-secondary leading-relaxed">Database failover triggered by OOM. Fix: increased replica memory limits. Duration: 14m.</p></div>);
-    case "maintenance-calendar":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Maintenance Calendar"}</span><div className="flex gap-1 flex-wrap">{Array.from({length:7},(_,i)=>(<div key={i} className={`w-6 h-6 rounded flex items-center justify-center text-[9px] font-medium ${i===2?"bg-warning/20 text-warning border border-warning/30":"bg-surface-elevated text-text-muted"}`}>{19+i}</div>))}</div></div>);
-    case "next-maintenance-countdown":
-      return (<div className="flex items-center gap-3"><div className="text-lg font-bold font-mono text-accent tabular-nums">02:14:30</div><div className="text-[10px] text-text-secondary">{label||"Until maintenance"}</div></div>);
-    case "maintenance-impact-list":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Affected Services"}</span>{["API v2","Webhooks","File uploads"].map(s=>(<div key={s} className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-warning"/><span className="text-text-primary">{s}</span></div>))}</div>);
-
-    // ── Version ───────────────────────────────────────────────────────────
-    case "version-timeline":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Version Timeline"}</span>{[{v:"v2.39.0",d:"Mar 18",t:"success"},{v:"v2.38.1",d:"Mar 10",t:"warning"},{v:"v2.38.0",d:"Mar 2",t:"text-muted"}].map(e=>(<div key={e.v} className="flex items-center gap-2"><div className={`h-1.5 w-1.5 rounded-full bg-${e.t}`}/><span className="font-mono text-text-primary">{e.v}</span><span className="text-text-muted ml-auto">{e.d}</span></div>))}</div>);
-    case "outdated-components-alert":
-      return (<div className="space-y-1">{[{n:"GitLab",c:"18.7",l:"18.9"},{n:"SonarQube",c:"25.x",l:"26.x"}].map(c=>(<div key={c.n} className="flex items-center gap-2 text-[10px] px-2 py-1 rounded bg-warning/10 border border-warning/20"><div className="h-1.5 w-1.5 rounded-full bg-warning shrink-0"/><span className="text-text-primary">{c.n}</span><span className="ml-auto text-warning font-mono">{c.c} → {c.l}</span></div>))}</div>);
-    case "version-comparison-table":
-      return (<div className="space-y-1">{[{n:"Portainer",c:"2.39.0",l:"2.39.0",ok:true},{n:"GitLab",c:"18.7.0",l:"18.9.0",ok:false}].map(r=>(<div key={r.n} className="flex items-center gap-2 text-[10px]"><span className="text-text-primary w-14 truncate">{r.n}</span><span className="font-mono text-text-secondary">{r.c}</span><span className="text-text-muted mx-1">→</span><span className={`font-mono ${r.ok?"text-success":"text-warning"}`}>{r.l}</span></div>))}</div>);
-    case "changelog-widget":
-      return (<div className="space-y-1.5 text-[10px]"><span className="text-text-secondary font-medium">{label||"Changelog"}</span>{[{v:"v2.39.0",n:"Security fixes + perf improvements"},{v:"v2.38.1",n:"Bug fixes"}].map(e=>(<div key={e.v} className="flex gap-2"><span className="font-mono text-accent shrink-0">{e.v}</span><span className="text-text-secondary">{e.n}</span></div>))}</div>);
-    case "security-advisory":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary font-medium">{label||"Security Advisories"}</span><div className="flex items-center gap-2 px-2 py-1 rounded bg-danger/10 border border-danger/20"><span className="text-[9px] font-bold text-danger uppercase">HIGH</span><span className="text-text-primary">CVE-2024-12345 — SQL injection</span></div></div>);
-
-    // ── Metrics & Data ────────────────────────────────────────────────────
-    case "custom-metric-chart":
-      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary">{label||"Custom Metric"}</div><svg viewBox="0 0 100 24" className="w-full h-6" preserveAspectRatio="none"><polyline fill="none" stroke="#6366f1" strokeWidth="1.5" points="0,20 12,16 24,14 36,17 48,11 60,9 72,12 84,8 100,6"/></svg></div>);
-    case "gauge":
-      return (<div className="flex flex-col items-center"><svg viewBox="0 0 60 34" className="w-16"><path d="M5 30 A 25 25 0 0 1 55 30" fill="none" stroke="#1f2937" strokeWidth="6" strokeLinecap="round"/><path d="M5 30 A 25 25 0 0 1 55 30" fill="none" stroke="#6366f1" strokeWidth="6" strokeLinecap="round" strokeDasharray="78.5" strokeDashoffset="20"/><text x="30" y="31" textAnchor="middle" className="text-[8px]" fill="currentColor" fontSize="8">97%</text></svg><div className="text-[9px] text-text-muted">{label||"Health"}</div></div>);
-    case "sparkline-row":
-      return (<div className="space-y-1">{["API","Web","DB"].map(n=>(<div key={n} className="flex items-center gap-2"><span className="text-[10px] text-text-secondary w-6">{n}</span><svg viewBox="0 0 60 12" className="flex-1 h-3" preserveAspectRatio="none"><polyline fill="none" stroke="#6366f1" strokeWidth="1" points="0,10 10,8 20,9 30,6 40,7 50,4 60,5"/></svg></div>))}</div>);
-    case "stats-grid":
-      return (<div className="grid grid-cols-3 gap-2">{[{l:"Uptime",v:"99.9%",c:"text-success"},{l:"Latency",v:"42ms",c:"text-text-primary"},{l:"Checks",v:"1.2k",c:"text-accent"}].map(s=>(<div key={s.l} className="text-center"><div className={`text-sm font-bold ${s.c} tabular-nums`}>{s.v}</div><div className="text-[9px] text-text-muted">{s.l}</div></div>))}</div>);
-    case "progress-ring":
-      return (<div className="flex items-center gap-3"><svg viewBox="0 0 36 36" className="w-12 h-12"><circle cx="18" cy="18" r="15" fill="none" stroke="#1f2937" strokeWidth="3"/><circle cx="18" cy="18" r="15" fill="none" stroke="#6366f1" strokeWidth="3" strokeDasharray="94.2" strokeDashoffset="6" strokeLinecap="round" transform="rotate(-90 18 18)"/></svg><div><div className="text-sm font-bold text-text-primary tabular-nums">99%</div><div className="text-[10px] text-text-muted">{label||"SLA"}</div></div></div>);
-    case "data-table":
-      return (<div className="space-y-1"><div className="flex text-[9px] text-text-muted border-b border-border pb-1 gap-2"><span className="flex-1">Name</span><span>Status</span><span>Latency</span></div>{[{n:"API",s:"Up",l:"12ms"},{n:"Web",s:"Up",l:"45ms"}].map(r=>(<div key={r.n} className="flex text-[10px] gap-2 py-0.5"><span className="flex-1 text-text-primary">{r.n}</span><span className="text-success">{r.s}</span><span className="text-text-secondary font-mono">{r.l}</span></div>))}</div>);
-    case "check-history-feed":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Check History"}</span>{[{t:"12:00",ok:true,ms:"42ms"},{t:"11:45",ok:true,ms:"38ms"},{t:"11:30",ok:false,ms:"—"}].map((r,i)=>(<div key={i} className="flex items-center gap-1.5"><div className={`h-1.5 w-1.5 rounded-full ${r.ok?"bg-success":"bg-danger"}`}/><span className="text-text-muted">{r.t}</span><span className={`ml-auto font-mono ${r.ok?"text-text-secondary":"text-danger"}`}>{r.ms}</span></div>))}</div>);
-    case "metric-comparison-row":
-      return (<div className="flex items-stretch gap-2">{[{l:"Uptime",v:"99.9%",c:"text-success"},{l:"P95",v:"110ms",c:"text-warning"},{l:"MTTR",v:"18m",c:"text-text-primary"}].map(m=>(<div key={m.l} className="flex-1 text-center"><div className={`text-sm font-bold tabular-nums ${m.c}`}>{m.v}</div><div className="text-[9px] text-text-muted">{m.l}</div></div>))}</div>);
-
-    // ── Multi-Env / Region / Deps ─────────────────────────────────────────
-    case "multi-environment-status":
-      return (<div className="grid grid-cols-3 gap-2">{[{e:"Prod",ok:true},{e:"Staging",ok:true},{e:"Dev",ok:false}].map(env=>(<div key={env.e} className={`rounded-lg border px-2 py-1.5 text-center ${env.ok?"border-success/20 bg-success/5":"border-warning/30 bg-warning/5"}`}><div className={`text-[10px] font-semibold ${env.ok?"text-success":"text-warning"}`}>{env.e}</div><div className={`text-[9px] ${env.ok?"text-success":"text-warning"}`}>{env.ok?"Operational":"Degraded"}</div></div>))}</div>);
-    case "region-status-map":
-      return (<div className="grid grid-cols-2 gap-1.5">{[{r:"EU West",ok:true},{r:"US East",ok:true},{r:"AP South",ok:false},{r:"US West",ok:true}].map(reg=>(<div key={reg.r} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-elevated border border-border/50 text-[10px]"><div className={`h-2 w-2 rounded-full ${reg.ok?"bg-success":"bg-danger"}`}/><span className="text-text-primary">{reg.r}</span></div>))}</div>);
-    case "third-party-dependencies":
-      return (<div className="space-y-1">{[{n:"Stripe",ok:true,ms:"120ms"},{n:"SendGrid",ok:true,ms:"95ms"},{n:"AWS S3",ok:false,ms:"—"}].map(d=>(<div key={d.n} className="flex items-center gap-2 text-[10px]"><div className={`h-1.5 w-1.5 rounded-full ${d.ok?"bg-success":"bg-danger"}`}/><span className="text-text-primary">{d.n}</span><span className={`ml-auto font-mono ${d.ok?"text-text-secondary":"text-danger"}`}>{d.ms}</span></div>))}</div>);
-    case "dependency-map":
-      return (<div className="relative h-full min-h-[60px]"><svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="xMidYMid meet"><circle cx="20" cy="25" r="8" fill="#22c55e" fillOpacity="0.2" stroke="#22c55e" strokeWidth="1.5"/><text x="20" y="26" textAnchor="middle" fill="currentColor" fontSize="4">API</text><circle cx="80" cy="15" r="7" fill="#22c55e" fillOpacity="0.2" stroke="#22c55e" strokeWidth="1.5"/><text x="80" y="16" textAnchor="middle" fill="currentColor" fontSize="4">DB</text><circle cx="80" cy="38" r="7" fill="#ef4444" fillOpacity="0.2" stroke="#ef4444" strokeWidth="1.5"/><text x="80" y="39" textAnchor="middle" fill="currentColor" fontSize="4">Redis</text><line x1="28" y1="21" x2="73" y2="17" stroke="#22c55e" strokeWidth="1" strokeOpacity="0.7"/><line x1="28" y1="28" x2="73" y2="36" stroke="#ef4444" strokeWidth="1" strokeOpacity="0.7" strokeDasharray="2,1"/></svg></div>);
-
-    // ── Content & Branding ────────────────────────────────────────────────
-    case "announcement-bar":
-      return (<div className="flex items-center gap-2 px-2 py-1 rounded bg-accent/10 border border-accent/20"><div className="h-1.5 w-1.5 rounded-full bg-accent shrink-0"/><span className="text-[10px] font-medium text-text-primary">{label||"Important announcement text"}</span></div>);
-    case "image-banner":
-      return (<div className="rounded-lg bg-surface-elevated border border-border flex items-center justify-center h-10"><span className="text-[10px] text-text-muted">🖼 {label||"Image / Banner"}</span></div>);
-    case "link-list":
-      return (<div className="space-y-1">{["Documentation","API Status","Changelog"].map(l=>(<div key={l} className="flex items-center gap-1.5 text-[10px]"><div className="h-1 w-1 rounded-full bg-accent/60"/><span className="text-accent hover:underline">{l}</span></div>))}</div>);
-    case "social-links":
-      return (<div className="flex items-center gap-3">{["GitHub","Twitter","Discord"].map(s=>(<div key={s} className="text-[10px] text-text-secondary flex items-center gap-1 px-2 py-1 rounded bg-surface-elevated border border-border/50">{s}</div>))}</div>);
-    case "embed-iframe":
-      return (<div className="rounded-lg bg-surface-elevated border border-border flex items-center justify-center h-12 border-dashed"><span className="text-[10px] text-text-muted">↗ {label||"Embedded content"}</span></div>);
-    case "video-embed":
-      return (<div className="rounded-lg bg-surface-elevated border border-border flex items-center justify-center h-10 border-dashed"><span className="text-[10px] text-text-muted">▶ {label||"Video"}</span></div>);
-    case "code-block":
-      return (<div className="rounded bg-bg border border-border px-2 py-1.5"><code className="text-[10px] font-mono text-accent">{"curl https://api.example.com/health"}</code></div>);
-    case "subscriber-form":
-      return (<div className="flex gap-1.5"><div className="flex-1 rounded-lg border border-border bg-bg px-2 py-1 text-[10px] text-text-muted">Email address</div><div className="rounded-lg bg-accent px-2 py-1 text-[10px] text-white font-medium">Subscribe</div></div>);
-    case "rss-feed-widget":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">RSS Feed</span><div className="flex items-center gap-1.5 text-accent"><span>⚡</span><span className="hover:underline">Subscribe to updates</span></div></div>);
-    case "faq-accordion":
-      return (<div className="space-y-1">{["What is your uptime SLA?","How do I report an issue?"].map(q=>(<div key={q} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-surface-elevated border border-border/50 text-[10px]"><span className="text-text-primary">{q}</span><span className="text-text-muted">▾</span></div>))}</div>);
-    case "countdown":
-      return (<div className="flex items-center gap-2"><div className="font-mono text-base font-bold text-accent tabular-nums">03:12:45</div><div className="text-[10px] text-text-secondary">{label||"Event countdown"}</div></div>);
-
-    // ── Layout & Navigation ───────────────────────────────────────────────
-    case "tab-container":
-      return (<div className="space-y-1"><div className="flex gap-1 border-b border-border pb-1">{["Overview","Details","Logs"].map((t,i)=>(<div key={t} className={`px-2 py-0.5 text-[10px] rounded-t font-medium ${i===0?"text-accent border-b-2 border-accent -mb-[5px]":"text-text-muted"}`}>{t}</div>))}</div><p className="text-[10px] text-text-secondary pt-1">Tab content appears here</p></div>);
-    case "collapsible-section":
-      return (<div className="space-y-1"><div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-surface-elevated border border-border text-[10px] cursor-pointer"><span className="font-medium text-text-primary">{label||"Section Title"}</span><span className="text-text-muted">▾</span></div></div>);
-    case "column-layout":
-      return (<div className="grid grid-cols-2 gap-2 h-full">{[0,1].map(i=>(<div key={i} className="rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-[10px] text-text-muted">Column {i+1}</span></div>))}</div>);
-    case "sticky-header":
-      return (<div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20"><div className="h-2 w-2 rounded-full bg-success animate-pulse"/><span className="text-[10px] font-semibold text-success">{label||"All Systems Operational"}</span></div>);
-    case "table-of-contents":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary font-medium">{label||"Contents"}</span>{["Status Overview","Incidents","Maintenance"].map((s,i)=>(<div key={s} className="flex items-center gap-1.5"><span className="text-text-muted">{i+1}.</span><span className="text-accent hover:underline">{s}</span></div>))}</div>);
-    case "page-navigation":
-      return (<div className="grid grid-cols-2 gap-1.5">{["Main Status","API Status"].map(p=>(<div key={p} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-elevated border border-border/50 text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success"/><span className="text-text-primary">{p}</span></div>))}</div>);
-    case "last-updated-footer":
-      return <div className="text-[10px] text-text-muted text-center">Last updated: just now · Auto-refreshes every 60s</div>;
-    case "offline-banner":
-      return (<div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-warning/10 border border-warning/20"><div className="h-2 w-2 rounded-full bg-warning shrink-0 animate-pulse"/><span className="text-[10px] font-medium text-warning">You are offline — showing cached data</span></div>);
-
-    default:
-      return (
-        <div className="flex items-center justify-center h-full min-h-[32px]">
-          <span className="text-[10px] text-text-secondary/50 italic">{WIDGET_PALETTE.find(p => p.type === type)?.label ?? type}</span>
-        </div>
-      );
-  }
-}
+import type {
+  Widget,
+  ViewportMode,
+  PageSettings,
+  PageLayout,
+  StatusPage,
+  Monitor as MonitorType,
+  TagOption,
+  FolderOption,
+  WidgetPaletteItem,
+  StatusTemplate,
+  VersionEntry,
+  ApiHistoryEntry,
+} from "./components/types";
+import {
+  WIDGET_PALETTE,
+  CATEGORIES,
+  ROW_H,
+  COL_COUNT,
+  MULTI_MODE_PRIMARY_WIDGETS,
+  NO_MONITOR_NEEDED_TYPES,
+  NEEDS_MONITOR_TYPES,
+  NEEDS_MONITORS_TYPES,
+  STATUS_TEMPLATES,
+} from "./components/constants";
+import {
+  needsMonitorConfig,
+  hasMappedMonitorRecord,
+  getConfigWarnings,
+  getMultiModeHelperText,
+  getWidgetConfigHints,
+  getDefaultMultiMonitorIds,
+  resolveCollisions,
+} from "./components/utils";
+import { PaletteWidget } from "./components/PaletteWidget";
+import { WidgetPreview } from "./components/WidgetPreview";
 
 interface CanvasWidgetProps {
   widget: Widget;
@@ -1101,7 +412,7 @@ function CanvasDropZone({ widgets, selectedId, selectedIds, isDraggingOverCanvas
 
 interface ConfigPanelProps {
   widget: Widget | null;
-  monitors: Monitor[];
+  monitors: MonitorType[];
   tags: TagOption[];
   folders: FolderOption[];
   onChange: (config: Widget["config"]) => void;
@@ -2437,15 +1748,6 @@ function ConfigPanel({ widget, monitors, tags, folders, onChange, onResize, onDe
   );
 }
 
-// ── Version History ───────────────────────────────────────────────────────
-
-interface VersionEntry {
-  ts: number;
-  widgetCount: number;
-  widgets: Widget[];
-  settings: PageSettings;
-}
-
 // ── Main page ────────────────────────────────────────────────────────────
 
 export default function StatusPageEditorPage() {
@@ -2466,7 +1768,7 @@ export default function StatusPageEditorPage() {
   const [activeCategory, setActiveCategory] = useState("Status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [monitors, setMonitors] = useState<MonitorType[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [folders, setFolders] = useState<FolderOption[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -2496,7 +1798,6 @@ export default function StatusPageEditorPage() {
   });
 
   // Server-side version history
-  interface ApiHistoryEntry { id: string; savedAt: string; label: string | null; layout: { widgets?: unknown[]; settings?: unknown } }
   const [apiHistory, setApiHistory] = useState<ApiHistoryEntry[]>([]);
   const [apiHistoryLoading, setApiHistoryLoading] = useState(false);
   const [restoringHistoryId, setRestoringHistoryId] = useState<string | null>(null);
@@ -2556,7 +1857,7 @@ export default function StatusPageEditorPage() {
 
   async function fetchMonitors() {
     try {
-      const data = await api<Monitor[]>("/v1/monitors");
+      const data = await api<MonitorType[]>("/v1/monitors");
       setMonitors(data);
     } catch {
       // Non-fatal
@@ -3166,47 +2467,7 @@ export default function StatusPageEditorPage() {
     }
   }
 
-  /**
-   * After placing/moving a widget, push any overlapping widgets downward
-   * so they don't overlap. Iterates until stable (max 100 passes).
-   */
-  function resolveCollisions(allWidgets: Widget[]): Widget[] {
-    let widgets = [...allWidgets];
-    const MAX_PASSES = 100;
-
-    for (let pass = 0; pass < MAX_PASSES; pass++) {
-      let changed = false;
-      // Sort by y then x so we process top-left first (the "fixed" anchor)
-      const sorted = [...widgets].sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
-
-      for (let i = 0; i < sorted.length; i++) {
-        const a = sorted[i];
-        for (let j = i + 1; j < sorted.length; j++) {
-          const b = sorted[j];
-          // Check if a and b overlap
-          const overlapX = a.x < b.x + b.w && a.x + a.w > b.x;
-          const overlapY = a.y < b.y + b.h && a.y + a.h > b.y;
-          if (overlapX && overlapY) {
-            // Push b down so it sits below a
-            const newY = a.y + a.h;
-            if (b.y !== newY) {
-              const idx = widgets.findIndex(w => w.id === b.id);
-              if (idx >= 0) {
-                widgets = [...widgets];
-                widgets[idx] = { ...widgets[idx], y: newY };
-                sorted[j] = { ...sorted[j], y: newY };
-                changed = true;
-              }
-            }
-          }
-        }
-      }
-      if (!changed) break;
-    }
-    return widgets;
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
+    function handleDragEnd(event: DragEndEvent) {
     setActiveDragId(null);
     setAlignGuides([]);
     setPaletteDropPreview(null);

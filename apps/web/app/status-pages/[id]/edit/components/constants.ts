@@ -1,0 +1,261 @@
+import {
+  Activity,
+  BarChart2,
+  AlertTriangle,
+  Zap,
+  Type,
+  Minus,
+  Clock,
+  TrendingUp,
+  CheckCircle,
+  Grid,
+  LayoutGrid,
+  Globe,
+  ExternalLink,
+  CalendarDays,
+  FileText,
+  Image,
+  Table2,
+  Rss,
+  Code2,
+  Play,
+  RefreshCw,
+  ChevronLeft,
+  GitFork,
+  Layers,
+  ShieldAlert,
+  ChevronUp,
+  AlignStartVertical,
+} from "lucide-react";
+import type { WidgetPaletteItem, StatusTemplate } from "./types";
+
+// ── Widget palette ─────────────────────────────────────────────────────────
+
+export const WIDGET_PALETTE: WidgetPaletteItem[] = [
+  { type: "overall-system-status", label: "Overall Status", description: "Hero operational / degraded / outage banner", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 2 },
+  { type: "current-status-badge", label: "Status Badge", description: "Green/yellow/red pill for a single monitor", icon: Zap, category: "Status", defaultW: 3, defaultH: 2 },
+  { type: "multi-monitor-status-grid", label: "Monitor Grid", description: "Grid of status badges for multiple monitors", icon: Grid, category: "Status", defaultW: 12, defaultH: 3 },
+  { type: "active-incident-banner", label: "Incident Banner", description: "Full-width banner when something is down", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 2 },
+  { type: "uptime-bar", label: "Uptime Bar", description: "Shows uptime % over a selectable period", icon: Activity, category: "Uptime", defaultW: 6, defaultH: 2 },
+  { type: "uptime-timeline", label: "Uptime Timeline", description: "90-day bar chart (green/red per day)", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
+  { type: "sla-summary", label: "SLA Summary", description: "SLA target vs actual for a period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
+  { type: "response-time-chart", label: "Response Time", description: "Sparkline or area chart of latency", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "response-time-heatmap", label: "Latency Heatmap", description: "Hour-of-day × day-of-week latency heatmap (GitHub-style)", icon: BarChart2, category: "Performance", defaultW: 12, defaultH: 4 },
+  { type: "check-history-feed", label: "Check History", description: "Live-updating log of recent check results", icon: Clock, category: "Performance", defaultW: 12, defaultH: 4 },
+  { type: "incident-history", label: "Incident History", description: "Paginated list of past incidents", icon: AlertTriangle, category: "Incidents", defaultW: 12, defaultH: 4 },
+  { type: "text-block", label: "Text Block", description: "Free text / markdown for announcements", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "metric-counter", label: "Metric Counter", description: "Single big stat (uptime, latency, checks, incidents) with optional suffix", icon: BarChart2, category: "Metrics", defaultW: 4, defaultH: 2 },
+  { type: "scheduled-maintenance", label: "Maintenance", description: "Shows upcoming maintenance windows", icon: Clock, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "monitor-group", label: "Monitor Group", description: "Group monitors by tag or folder with status overview", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
+  { type: "monitor-group-status", label: "Monitor Group Status", description: "Alias of monitor group widget for legacy layouts", icon: LayoutGrid, category: "Status", defaultW: 6, defaultH: 3 },
+  { type: "multi-status-badges", label: "Multi Status", description: "Multiple monitor status badges in a compact grid", icon: CheckCircle, category: "Status", defaultW: 12, defaultH: 3 },
+  { type: "version-status-grid", label: "Version Grid", description: "Grid showing current vs latest version for all monitors", icon: BarChart2, category: "Versions", defaultW: 12, defaultH: 4 },
+  { type: "version-check-badge", label: "Version Badge", description: "Single monitor version status badge", icon: CheckCircle, category: "Versions", defaultW: 6, defaultH: 2 },
+  { type: "update-summary", label: "Update Summary", description: "Overview: up-to-date / minor / major updates available", icon: TrendingUp, category: "Versions", defaultW: 12, defaultH: 2 },
+  { type: "component-status-list", label: "Component Status", description: "Per-service Operational / Degraded / Outage with overall header", icon: CheckCircle, category: "Status", defaultW: 8, defaultH: 4 },
+  { type: "rolling-uptime-cards", label: "Rolling Uptime", description: "Uptime % cards: 24h / 7d / 30d / 90d side by side", icon: Activity, category: "Uptime", defaultW: 12, defaultH: 2 },
+  { type: "status-history-ribbon", label: "Status Ribbon", description: "GitHub-style daily status bars per monitor for the last 90 days", icon: BarChart2, category: "Uptime", defaultW: 12, defaultH: 3 },
+  { type: "uptime-percentage-card", label: "Uptime %", description: "Big number uptime display with trend arrow vs previous period", icon: TrendingUp, category: "Uptime", defaultW: 4, defaultH: 2 },
+  { type: "service-health-matrix", label: "Health Matrix", description: "Monitors × environments/regions matrix table with status cells", icon: Grid, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "aggregate-health-score", label: "Health Score", description: "Weighted 0–100 health score gauge from all monitors", icon: Activity, category: "Status", defaultW: 4, defaultH: 3 },
+  { type: "latency-percentiles-card", label: "Latency Percentiles", description: "P50/P95/P99 latency with trend arrows vs previous period", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "downtime-log", label: "Downtime Log", description: "Chronological list of outage events with duration and timestamps", icon: Clock, category: "Incidents", defaultW: 8, defaultH: 4 },
+  { type: "active-incident-count", label: "Active Incidents", description: "Animated big-number counter of active (unresolved) incidents", icon: AlertTriangle, category: "Incidents", defaultW: 4, defaultH: 3 },
+  { type: "mttr-mttf-cards", label: "MTTR / MTTF", description: "Mean Time to Recovery and Mean Time to Failure side-by-side", icon: Activity, category: "Incidents", defaultW: 6, defaultH: 3 },
+  { type: "sla-compliance-table", label: "SLA Compliance", description: "Multi-monitor SLA pass/fail table for a configurable period", icon: TrendingUp, category: "SLA/Uptime", defaultW: 12, defaultH: 4 },
+  { type: "uptime-heatmap", label: "Uptime Heatmap", description: "7-day × 24-hour GitHub-style uptime grid per monitor", icon: BarChart2, category: "SLA/Uptime", defaultW: 12, defaultH: 3 },
+  { type: "incident-timeline", label: "Incident Timeline", description: "Chronological timeline with Investigating → Resolved status updates", icon: AlertTriangle, category: "Incidents", defaultW: 8, defaultH: 5 },
+  { type: "ssl-certificate-status", label: "SSL Certificate", description: "SSL cert expiry: domain, days remaining, issuer, grade", icon: CheckCircle, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "incident-severity-distribution", label: "Severity Distribution", description: "Donut chart: Critical / Major / Minor incidents over a period", icon: Activity, category: "Incidents", defaultW: 6, defaultH: 3 },
+  { type: "incident-duration-stats", label: "Incident Duration Stats", description: "Avg / Longest / Shortest incident duration over a configurable period", icon: Clock, category: "Incidents", defaultW: 6, defaultH: 3 },
+  { type: "post-mortem-card", label: "Post-Mortem Card", description: "RCA-style summary of the most recent resolved incident with timeline", icon: AlertTriangle, category: "Incidents", defaultW: 8, defaultH: 5 },
+  { type: "performance-trend", label: "Performance Trend", description: "Week-over-week latency change with sparkline", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "apdex-score", label: "Apdex Score", description: "Application Performance Index (0.0–1.0) with breakdown bar", icon: Activity, category: "Performance", defaultW: 6, defaultH: 4 },
+  { type: "throughput-counter", label: "Throughput Counter", description: "Checks per hour live counter with 24-bar sparkline", icon: BarChart2, category: "Performance", defaultW: 6, defaultH: 3 },
+  { type: "response-time-comparison", label: "Response Time Comparison", description: "Overlay line chart comparing latency across multiple services", icon: TrendingUp, category: "Performance", defaultW: 12, defaultH: 4 },
+  { type: "uptime-comparison-chart", label: "Uptime Comparison", description: "Horizontal bar chart comparing uptime % across monitors", icon: BarChart2, category: "Performance", defaultW: 8, defaultH: 4 },
+  { type: "next-maintenance-countdown", label: "Maintenance Countdown", description: "Countdown timer to the next scheduled maintenance window", icon: Clock, category: "Maintenance", defaultW: 6, defaultH: 3 },
+  { type: "maintenance-impact-list", label: "Maintenance Impact", description: "List of upcoming maintenance windows with affected services", icon: AlertTriangle, category: "Maintenance", defaultW: 8, defaultH: 4 },
+  { type: "version-timeline", label: "Version Timeline", description: "Chronological list of version updates detected across services", icon: TrendingUp, category: "Versions", defaultW: 8, defaultH: 5 },
+  { type: "outdated-components-alert", label: "Outdated Components", description: "Highlights monitors where current ≠ latest version with severity badges", icon: AlertTriangle, category: "Versions", defaultW: 8, defaultH: 4 },
+  { type: "version-comparison-table", label: "Version Comparison", description: "Side-by-side table: Service | Current | Latest | Status", icon: BarChart2, category: "Versions", defaultW: 10, defaultH: 4 },
+  { type: "dns-resolution-time", label: "DNS Resolution Time", description: "Avg DNS/response latency tracker with trend and per-monitor breakdown", icon: TrendingUp, category: "Performance", defaultW: 6, defaultH: 4 },
+  { type: "gauge", label: "Gauge / Speedometer", description: "Circular gauge for uptime%, SLA compliance%, or Apdex score", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
+  { type: "stats-grid", label: "Stats Grid", description: "2×2/3×3 grid of key metrics: uptime, incidents, response time, alerts", icon: Grid, category: "Metrics", defaultW: 12, defaultH: 3 },
+  { type: "metric-comparison-row", label: "Metric Comparison Row", description: "Horizontal strip of metric counters: uptime, latency, checks, incidents", icon: BarChart2, category: "Metrics", defaultW: 12, defaultH: 2 },
+  { type: "sparkline-row", label: "Sparkline Row", description: "Mini sparkline charts side by side for quick latency comparison across monitors", icon: TrendingUp, category: "Metrics", defaultW: 12, defaultH: 3 },
+  { type: "progress-ring", label: "Progress Ring", description: "Circular Apple Watch-style ring showing uptime%, SLA compliance, or custom value", icon: Activity, category: "Metrics", defaultW: 4, defaultH: 4 },
+  { type: "announcement-bar", label: "Announcement Bar", description: "Full-width colored info/warning/danger/success banner for important messages", icon: AlertTriangle, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "link-list", label: "Link List", description: "List of external links with icons: Docs, Support, Changelog, API Status", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "faq-accordion", label: "FAQ / Accordion", description: "Collapsible Q&A sections — config-driven, no monitor data needed", icon: Type, category: "Content", defaultW: 8, defaultH: 4 },
+  { type: "social-links", label: "Social Links", description: "Row of social media icon buttons (GitHub, Twitter/X, Discord, LinkedIn, etc.)", icon: Type, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "embed-iframe", label: "Embed / iFrame", description: "Embed external dashboards or Grafana panels in an iframe", icon: Type, category: "Content", defaultW: 12, defaultH: 6 },
+  { type: "subscriber-form", label: "Subscriber Form", description: "Email subscription form — let visitors subscribe to status updates", icon: Type, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "countdown", label: "Countdown", description: "Countdown timer to a planned event (maintenance end, product launch)", icon: Clock, category: "Content", defaultW: 6, defaultH: 3 },
+  { type: "last-updated-footer", label: "Last Updated Footer", description: "Displays the latest data refresh time with auto-refresh hint", icon: RefreshCw, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "divider", label: "Divider", description: "Visual separator or empty space", icon: Minus, category: "Content", defaultW: 12, defaultH: 1 },
+  { type: "maintenance-calendar", label: "Maintenance Calendar", description: "Month calendar view showing maintenance windows as colored day highlights", icon: CalendarDays, category: "Maintenance", defaultW: 6, defaultH: 4 },
+  { type: "changelog-widget", label: "Changelog Widget", description: "Shows current vs latest version info from version-check monitors", icon: FileText, category: "Versions", defaultW: 6, defaultH: 3 },
+  { type: "image-banner", label: "Image / Banner", description: "Display an image or banner with optional link and caption", icon: Image, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "data-table", label: "Data Table", description: "Tabular display of monitor data with configurable columns", icon: Table2, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "rss-feed-widget", label: "RSS Feed", description: "Shows an auto-generated RSS feed link for subscribers", icon: Rss, category: "Content", defaultW: 6, defaultH: 2 },
+  { type: "code-block", label: "Code Block", description: "Display a code snippet with syntax highlighting label", icon: Code2, category: "Content", defaultW: 8, defaultH: 3 },
+  { type: "video-embed", label: "Video Embed", description: "Embed a YouTube or Vimeo video", icon: Play, category: "Content", defaultW: 12, defaultH: 5 },
+  { type: "collapsible-section", label: "Collapsible Section", description: "Expandable/collapsible content section with a title header", icon: ChevronLeft, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "dependency-map", label: "Dependency Map", description: "Visual service dependency graph with live status on each node. Define edges between monitors in config.", icon: GitFork, category: "Status", defaultW: 12, defaultH: 5 },
+  { type: "multi-environment-status", label: "Multi-Environment Status", description: "Side-by-side status comparison across environments (prod/staging/dev). Configure envMonitors mapping.", icon: Layers, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "tab-container", label: "Tab Container", description: "Multiple tabs each showing configurable text/content sections.", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 4 },
+  { type: "region-status-map", label: "Region Status Map", description: "Status overview per geographic region. Configure regionMonitors mapping.", icon: Globe, category: "Status", defaultW: 12, defaultH: 4 },
+  { type: "third-party-dependencies", label: "Third-Party Dependencies", description: "Live status check of external services. Configure services array.", icon: ExternalLink, category: "Status", defaultW: 8, defaultH: 5 },
+  { type: "security-advisory", label: "Security Advisory", description: "GitHub Security Advisories for a package. Configure packageName.", icon: ShieldAlert, category: "Status", defaultW: 8, defaultH: 5 },
+  { type: "column-layout", label: "Column Layout", description: "2, 3, or 4 column text/content layout within a single row", icon: LayoutGrid, category: "Content", defaultW: 12, defaultH: 3 },
+  { type: "sticky-header", label: "Sticky Status Header", description: "Fixed top bar showing overall system status. Pin to top of page for always-visible status.", icon: ChevronUp, category: "Status", defaultW: 12, defaultH: 1 },
+  { type: "table-of-contents", label: "Table of Contents", description: "Numbered jump-link list for navigating page sections. Configure items as anchor links.", icon: AlignStartVertical, category: "Content", defaultW: 4, defaultH: 3 },
+  { type: "page-navigation", label: "Page Navigation", description: "Grid of links to other published status pages in your account.", icon: Globe, category: "Content", defaultW: 8, defaultH: 3 },
+  { type: "offline-banner", label: "Offline Banner", description: "Dismissible banner that auto-shows when the visitor's connection is lost.", icon: AlertTriangle, category: "Status", defaultW: 12, defaultH: 1 },
+  { type: "custom-metric-chart", label: "Custom Metric Chart", description: "Time-series chart for latency, uptime %, or check count. Choose line, bar, or area style.", icon: BarChart2, category: "Metrics", defaultW: 8, defaultH: 4 },
+];
+
+export const CATEGORIES = [...new Set(WIDGET_PALETTE.map((w) => w.category))];
+
+export const ROW_H = 80;
+export const COL_COUNT = 12;
+
+export const MULTI_MODE_PRIMARY_WIDGETS = new Set([
+  "uptime-bar",
+  "uptime-timeline",
+  "sla-summary",
+  "response-time-chart",
+  "version-check-badge",
+]);
+
+/** Widget types that require a monitor to be configured to show real data. */
+export const NEEDS_MONITOR_TYPES = new Set([
+  'uptime-bar', 'uptime-timeline', 'sla-summary', 'response-time-chart', 'response-time-heatmap',
+  'current-status-badge', 'rolling-uptime-cards', 'uptime-percentage-card', 'ssl-certificate-status',
+  'latency-percentiles-card', 'performance-trend', 'apdex-score', 'dns-resolution-time',
+  'uptime-heatmap', 'status-history-ribbon', 'gauge', 'progress-ring', 'throughput-counter',
+  'custom-metric-chart', 'changelog-widget', 'version-check-badge',
+]);
+
+/** Widget types that require monitorIds (array) to be configured. */
+export const NEEDS_MONITORS_TYPES = new Set([
+  'uptime-comparison-chart', 'response-time-comparison', 'sla-compliance-table',
+  'service-health-matrix', 'sparkline-row', 'component-status-list',
+  'aggregate-health-score', 'multi-environment-status',
+]);
+
+/**
+ * Widget types that do NOT need any monitor config — purely content/layout widgets.
+ * All other widget types will show a "⚠️ Configure" badge when no monitor is selected.
+ */
+export const NO_MONITOR_NEEDED_TYPES = new Set([
+  'text', 'text-block', 'divider', 'spacer', 'custom-header', 'announcement-bar',
+  'faq-accordion', 'link-list', 'social-links', 'embed-iframe', 'video-embed',
+  'code-block', 'countdown', 'table-of-contents', 'page-navigation', 'image-banner',
+  'column-layout', 'collapsible-section', 'tab-container', 'sticky-header',
+  'subscriber-form', 'subscriber-form-widget', 'rss-feed-widget', 'offline-banner',
+  'offline-banner-widget',
+  // These widgets aggregate all monitors or have their own scope — no per-monitor config needed
+  'overall-system-status', 'scheduled-maintenance', 'incident-history',
+  'check-history-feed', 'third-party-dependencies', 'security-advisory',
+]);
+
+// ── Template Gallery ────────────────────────────────────────────────────────
+
+export const STATUS_TEMPLATES: StatusTemplate[] = [
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Clean overall status + uptime bar. Perfect for simple status pages.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'uptime-bar', x: 0, y: 2, w: 12, h: 2, config: { periodDays: 30 } },
+    ],
+  },
+  {
+    id: 'full-dashboard',
+    name: 'Full Dashboard',
+    description: 'Comprehensive status page with uptime, performance, and incidents.',
+    preview: '📊',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-banner', x: 0, y: 2, w: 12, h: 2, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 4, w: 12, h: 2, config: {} },
+      { type: 'uptime-timeline', x: 0, y: 6, w: 8, h: 3, config: { periodDays: 90 } },
+      { type: 'response-time-chart', x: 8, y: 6, w: 4, h: 3, config: {} },
+      { type: 'component-status-list', x: 0, y: 9, w: 6, h: 4, config: {} },
+      { type: 'incident-history', x: 6, y: 9, w: 6, h: 4, config: {} },
+      { type: 'status-history-ribbon', x: 0, y: 13, w: 12, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'sla-report',
+    name: 'SLA Report',
+    description: 'SLA compliance, uptime percentages, and downtime statistics.',
+    preview: '📈',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'sla-compliance-table', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'rolling-uptime-cards', x: 0, y: 6, w: 12, h: 2, config: {} },
+      { type: 'uptime-heatmap', x: 0, y: 8, w: 12, h: 3, config: {} },
+      { type: 'mttr-mttf-cards', x: 0, y: 11, w: 6, h: 3, config: {} },
+      { type: 'downtime-log', x: 6, y: 11, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'incident-page',
+    name: 'Incident Page',
+    description: 'Focus on active incidents, timeline, and post-mortems.',
+    preview: '🚨',
+    widgets: [
+      { type: 'active-incident-banner', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'active-incident-count', x: 0, y: 2, w: 4, h: 3, config: {} },
+      { type: 'incident-timeline', x: 4, y: 2, w: 8, h: 5, config: {} },
+      { type: 'incident-history', x: 0, y: 7, w: 8, h: 4, config: {} },
+      { type: 'incident-severity-distribution', x: 8, y: 7, w: 4, h: 4, config: {} },
+      { type: 'post-mortem-card', x: 0, y: 11, w: 12, h: 5, config: {} },
+    ],
+  },
+  {
+    id: 'version-overview',
+    name: 'Version Overview',
+    description: 'Track versions of all your tools and services.',
+    preview: '🏷️',
+    widgets: [
+      { type: 'update-summary', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'version-status-grid', x: 0, y: 2, w: 12, h: 4, config: {} },
+      { type: 'outdated-components-alert', x: 0, y: 6, w: 6, h: 4, config: {} },
+      { type: 'version-timeline', x: 6, y: 6, w: 6, h: 4, config: {} },
+    ],
+  },
+  {
+    id: 'performance',
+    name: 'Performance',
+    description: 'Response times, latency percentiles, and performance trends.',
+    preview: '⚡',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'latency-percentiles-card', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'apdex-score', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'response-time-chart', x: 0, y: 5, w: 12, h: 3, config: {} },
+      { type: 'response-time-heatmap', x: 0, y: 8, w: 12, h: 4, config: {} },
+      { type: 'performance-trend', x: 0, y: 12, w: 6, h: 3, config: {} },
+      { type: 'throughput-counter', x: 6, y: 12, w: 6, h: 3, config: {} },
+    ],
+  },
+  {
+    id: 'maintenance',
+    name: 'Maintenance',
+    description: 'Scheduled maintenance windows and countdowns.',
+    preview: '🔧',
+    widgets: [
+      { type: 'overall-system-status', x: 0, y: 0, w: 12, h: 2, config: {} },
+      { type: 'scheduled-maintenance', x: 0, y: 2, w: 6, h: 3, config: {} },
+      { type: 'maintenance-calendar', x: 6, y: 2, w: 6, h: 3, config: {} },
+      { type: 'next-maintenance-countdown', x: 0, y: 5, w: 6, h: 3, config: {} },
+      { type: 'maintenance-impact-list', x: 6, y: 5, w: 6, h: 3, config: {} },
+    ],
+  },
+];

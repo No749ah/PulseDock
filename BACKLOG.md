@@ -1,5 +1,5 @@
 ## Status Summary (2026-03-24 07:15 UTC)
-- **Build/Test:** ✅ Clean build + 2678 API + 10 CLI + 12 Agent tests passing (2700 total)
+- **Build/Test:** ✅ Clean build + 2683 API + 10 CLI + 12 Agent tests passing (2705 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 14 routes 200
 - **Branch:** heartbeat/2026-03-24-midnight
@@ -957,7 +957,7 @@
 ### 🟠 Competitive Gaps (from 2026-03-20 analysis)
 
 - [x] **On-call rotation & escalation policies** - Define rotating on-call schedules (round-robin, weekly rotation). Incidents escalate to next person if not acknowledged in N minutes. Calendar view of who's on-call. Prisma models: OnCallSchedule, OnCallRotation, EscalationPolicy. Frontend `/oncall` page with Schedules + Escalation Policies tabs, full CRUD, PhoneCall nav icon.
-- [ ] **On-call ↔ Alert integration** - Wire escalation policies into alert pipeline: Monitor → EscalationPolicy relation, on-call person email notification on monitor failure, escalation policy selector in monitor create/edit UI.
+- [x] **On-call ↔ Alert integration** - Monitor → EscalationPolicy relation, AlertsService.escalateToOnCall() emails current on-call person on monitor failure, escalation policy dropdown in monitor create/edit UI. 5 new tests (2683 total). Graceful fallback when no policy/schedule/participants.
 - [~] **Synthetic / Browser checks** - BROWSER monitor type shipped: page fetch with browser User-Agent, 2xx/3xx status check, optional text assertion (case-insensitive), optional CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 unit tests. *(2026-03-21 - basic browser simulation; full JS-rendered check via Playwright sidecar remains as future work)*
 - [x] **SMS alert channel** - Twilio/Vonage/AWS SNS integration for SMS alerts. Config: phone number + provider + API key. Medium-priority for enterprise.
 - [x] **Grafana datasource plugin** - JSON API datasource compatible with Grafana's JSON plugin (https://github.com/grafana/grafana-json-datasource). Query monitor stats, uptime%, incident history from Grafana. Endpoints: /grafana/search, /grafana/query, /grafana/annotations.

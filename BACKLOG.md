@@ -1,11 +1,11 @@
-## Status Summary (2026-03-24 10:15 UTC)
+## Status Summary (2026-03-24 10:35 UTC)
 - **Build/Test:** ✅ Clean build + 2632 API + 119 Web + 10 CLI + 12 Agent tests passing (2773 total)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.2.0 + web running; public URL + all 14 routes 200; 0 TS errors
 - **Branch:** heartbeat/2026-03-24-midnight
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** All at wanted versions. Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes:** Public status page widget decomposition — widgets/index.tsx (5500→555 lines, split into 9 category files + shared.tsx). Fixed missing imports (levelLabel, formatRelative). Editor page refactor (4199→3460 lines).
+- **Last changes:** Massive codebase decomposition sprint — status-pages service (3662→787 lines, widget resolver + subscriber extracted), editor (3460→1790 lines, CanvasWidget/CanvasDropZone/ConfigPanel extracted), versions page (2118→794 lines, CreateVersionModal/EditVersionModal extracted), account page (2523→1968 lines, 4 cards extracted), monitor detail (1630→1431 lines, types + heatmap chart extracted). All tests green, zero TS errors.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

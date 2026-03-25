@@ -90,7 +90,7 @@ describe('IncidentsController', () => {
       const body = { title: 'Updated', status: IncidentStatus.IDENTIFIED };
       const result = await controller.update(req as never, 'inc-1', body as never);
       expect(service.update).toHaveBeenCalledWith('user-1', 'inc-1', body);
-      expect((result as typeof mockIncident).title).toBe('Updated');
+      expect((result as unknown as typeof mockIncident).title).toBe('Updated');
     });
   });
 

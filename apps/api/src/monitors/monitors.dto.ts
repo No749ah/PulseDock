@@ -124,6 +124,11 @@ export class CreateMonitorDto {
   @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
   autoIncidentSeverity?: string;
 
+  @ApiPropertyOptional({ description: 'Enable flap detection to suppress noisy alerts when monitor rapidly oscillates between up and down', example: true })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
+
 }
 
 export class UpdateMonitorDto {
@@ -208,6 +213,11 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
   autoIncidentSeverity?: string;
+
+  @ApiPropertyOptional({ description: 'Enable flap detection to suppress noisy alerts when monitor rapidly oscillates between up and down', example: true })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
 
 }
 

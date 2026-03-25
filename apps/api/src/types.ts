@@ -54,6 +54,9 @@ export interface Monitor {
   autoIncident: boolean;
   autoIncidentSeverity: string;
   activeAutoIncidentId: string | null;
+  isFlapping: boolean;
+  flapDetectionEnabled: boolean;
+  flapAlertedAt: string | null;
   createdAt: string;
 }
 

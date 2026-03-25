@@ -743,6 +743,33 @@ export function MonitorFormModal({
           )}
         </div>
 
+        {/* Flap Detection */}
+        <div className="border border-border rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Flap Detection</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Suppresses noisy alerts when a monitor rapidly oscillates between up and down. A single &ldquo;flapping&rdquo; alert is sent instead.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.flapDetectionEnabled ?? true}
+              onClick={() => onSetFormData({ ...formData, flapDetectionEnabled: !(formData.flapDetectionEnabled ?? true) })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                (formData.flapDetectionEnabled ?? true) ? "bg-accent" : "bg-surface-secondary"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                  (formData.flapDetectionEnabled ?? true) ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>
           {selectedTags.length > 0 && (

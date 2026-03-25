@@ -98,6 +98,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         autoIncident: true,
         autoIncidentSeverity: true,
         activeAutoIncidentId: true,
+        isFlapping: true,
+        flapDetectionEnabled: true,
+        flapAlertedAt: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -174,6 +177,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     autoIncident: boolean;
     autoIncidentSeverity: string;
     activeAutoIncidentId: string | null;
+    isFlapping?: boolean;
+    flapDetectionEnabled?: boolean;
+    flapAlertedAt?: Date | null;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -208,6 +214,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         autoIncident: monitor.autoIncident,
         autoIncidentSeverity: monitor.autoIncidentSeverity,
         activeAutoIncidentId: monitor.activeAutoIncidentId,
+        isFlapping: monitor.isFlapping ?? false,
+        flapDetectionEnabled: monitor.flapDetectionEnabled ?? true,
+        flapAlertedAt: monitor.flapAlertedAt ? monitor.flapAlertedAt.toISOString() : null,
       });
     } finally {
       this.queueDepth--;

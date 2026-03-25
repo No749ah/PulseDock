@@ -336,6 +336,14 @@ export default function MonitorDetailPage() {
                 <Badge variant={monitor.enabled ? "success" : "warning"}>
                   {monitor.enabled ? "Enabled" : "Disabled"}
                 </Badge>
+                {monitor.isFlapping && (
+                  <span
+                    title="This monitor is flapping — it is rapidly alternating between healthy and unhealthy states. Alerts are suppressed until it stabilizes."
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning border border-warning/30 animate-pulse cursor-help"
+                  >
+                    ⚡ Flapping
+                  </span>
+                )}
               </div>
               {/* Action buttons */}
               <div className="flex items-center gap-2 shrink-0">

@@ -39,6 +39,9 @@ export interface MonitorItem {
   autoIncident?: boolean;
   autoIncidentSeverity?: string;
   activeAutoIncidentId?: string | null;
+  isFlapping?: boolean;
+  flapDetectionEnabled?: boolean;
+  flapAlertedAt?: string | null;
 }
 
 export interface MonitorRun {
@@ -96,6 +99,7 @@ export type MonitorFormData = {
   slaPeriodDays: number;
   autoIncident: boolean;
   autoIncidentSeverity: string;
+  flapDetectionEnabled: boolean;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

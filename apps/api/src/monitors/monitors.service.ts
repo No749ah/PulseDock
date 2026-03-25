@@ -94,6 +94,9 @@ export class MonitorsService {
       autoIncident: m.autoIncident,
       autoIncidentSeverity: m.autoIncidentSeverity,
       activeAutoIncidentId: m.activeAutoIncidentId,
+      isFlapping: m.isFlapping,
+      flapDetectionEnabled: m.flapDetectionEnabled,
+      flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -125,6 +128,7 @@ export class MonitorsService {
     slaPeriodDays?: number;
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -153,6 +157,7 @@ export class MonitorsService {
         slaPeriodDays: body.slaPeriodDays ?? null,
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
+        flapDetectionEnabled: body.flapDetectionEnabled ?? true,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -197,6 +202,9 @@ export class MonitorsService {
       autoIncident: created.autoIncident,
       autoIncidentSeverity: created.autoIncidentSeverity,
       activeAutoIncidentId: created.activeAutoIncidentId,
+      isFlapping: created.isFlapping,
+      flapDetectionEnabled: created.flapDetectionEnabled,
+      flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -233,6 +241,7 @@ export class MonitorsService {
     slaPeriodDays?: number | null;
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -267,6 +276,7 @@ export class MonitorsService {
         ...(body.slaPeriodDays !== undefined ? { slaPeriodDays: body.slaPeriodDays } : {}),
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
+        ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
 
       },
     });
@@ -628,6 +638,9 @@ export class MonitorsService {
       autoIncident: monitor.autoIncident,
       autoIncidentSeverity: monitor.autoIncidentSeverity,
       activeAutoIncidentId: monitor.activeAutoIncidentId,
+      isFlapping: monitor.isFlapping,
+      flapDetectionEnabled: monitor.flapDetectionEnabled,
+      flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
     });
   }
 

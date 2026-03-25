@@ -246,12 +246,16 @@ export class ChecksService {
       }) => Promise<Array<{ level: string }>>;
     };
 
+    // Fetch recent runs — we need enough for both confirmations and flap detection (max 10).
+    const FLAP_WINDOW = 5; // look at last 5 runs for flap detection
+    const fetchCount = Math.max(confirmations, FLAP_WINDOW);
+
     let recentRuns: Array<{ level: string }> = [];
     if (typeof monitorRunModel.findMany === 'function') {
       recentRuns = await monitorRunModel.findMany({
         where: { monitorId: monitor.id },
         orderBy: { checkedAt: 'desc' },
-        take: confirmations,
+        take: fetchCount,
       });
     } else {
       const prevRun = await this.prisma.monitorRun.findFirst({
@@ -294,6 +298,54 @@ export class ChecksService {
     const levelChanged = !prev || prev.level !== run.level;
     const wasUnhealthy = prev && (prev.level === 'red' || prev.level === 'yellow');
     const isRecovery = run.level === 'green' && wasUnhealthy && levelChanged;
+
+    // ── Flap Detection ─────────────────────────────────────────────────────────────────
+    // A monitor is "flapping" when it rapidly alternates between healthy and unhealthy states.
+    // Detection: count state transitions in the last FLAP_WINDOW+1 runs (including current).
+    // If transitions >= FLAP_STATE_CHANGE_THRESHOLD → mark as flapping → suppress noise alerts.
+    // Flapping state clears automatically when the monitor is stable for FLAP_WINDOW runs.
+    const FLAP_STATE_CHANGE_THRESHOLD = 3; // ≥3 changes in last 5 runs = flapping
+    const flapWindowRuns = [{ level: run.level }, ...recentRuns.slice(0, FLAP_WINDOW - 1)];
+    let stateChanges = 0;
+    for (let i = 1; i < flapWindowRuns.length; i++) {
+      const isUnhealthy = (l: string) => l === 'red' || l === 'yellow';
+      const prevHealthy = !isUnhealthy(flapWindowRuns[i].level);
+      const currHealthy = !isUnhealthy(flapWindowRuns[i - 1].level);
+      if (prevHealthy !== currHealthy) stateChanges++;
+    }
+
+    const nowFlapping = (monitor.flapDetectionEnabled ?? true)
+      && flapWindowRuns.length >= 3
+      && stateChanges >= FLAP_STATE_CHANGE_THRESHOLD;
+    const wasFlapping = monitor.isFlapping ?? false;
+    const flapStateChanged = nowFlapping !== wasFlapping;
+
+    // Persist flap state change to DB (non-blocking, non-critical)
+    if (flapStateChanged) {
+      const now = new Date();
+      this.prisma.monitor
+        .update({
+          where: { id: monitor.id },
+          data: {
+            isFlapping: nowFlapping,
+            flapAlertedAt: nowFlapping ? now : null,
+          },
+        })
+        .catch((err: Error) =>
+          this.logger.warn(`[FlapDetection] Failed to persist flap state for monitor ${monitor.id}: ${err.message}`),
+        );
+
+      if (nowFlapping) {
+        this.logger.warn(
+          `[FlapDetection] Monitor ${monitor.id} (${monitor.name}) is now FLAPPING (${stateChanges} state changes in last ${flapWindowRuns.length} runs)`,
+        );
+      } else {
+        this.logger.log(
+          `[FlapDetection] Monitor ${monitor.id} (${monitor.name}) is no longer flapping — stable`,
+        );
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     // Confirmations check: only alert on failure if we have `confirmations` consecutive failures.
     // For confirmations=1 (default), alert immediately (existing behaviour).
@@ -349,13 +401,24 @@ export class ChecksService {
       }
     }
 
+    // Flap suppression: when a monitor is flapping, suppress failure alerts to avoid noise.
+    // Only send a "flapping started" notification once (when flapStateChanged && nowFlapping).
+    // Recoveries are always sent so users know when a flapping monitor stabilizes.
+    const flapSuppressed = nowFlapping && !flapStateChanged && (monitor.flapDetectionEnabled ?? true);
+
     // Call notifyMonitorFailure for every unhealthy run (after confirmation threshold)
     // AND for recoveries. The alerts service's notifyOn filter decides per-channel
     // whether to actually dispatch (ON_CHANGE, ALWAYS, FIRST_ONLY, DAILY_DIGEST, etc.)
-    if (!dependencySuppressed && (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations))) {
+    if (!dependencySuppressed && !flapSuppressed && (shouldAlertFailure || (isCurrentUnhealthy && consecutiveFailures >= confirmations))) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     } else if (isRecovery) {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
+    } else if (nowFlapping && flapStateChanged) {
+      // Notify once that flapping has started — use the existing failure path with flap context
+      const flapContext = { ...alertContext, isFlapping: true };
+      await this.alerts.notifyMonitorFailure(monitor, run, flapContext).catch((err: Error) =>
+        this.logger.warn(`[FlapDetection] Flap notification failed: ${err.message}`),
+      );
     }
 
     // Auto-incident: create incident when monitor goes down, resolve when it recovers

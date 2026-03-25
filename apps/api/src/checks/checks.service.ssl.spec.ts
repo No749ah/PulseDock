@@ -44,6 +44,9 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     autoIncident: false,
     autoIncidentSeverity: 'MEDIUM',
     activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     createdAt: new Date().toISOString(),
     ...overrides,
   };

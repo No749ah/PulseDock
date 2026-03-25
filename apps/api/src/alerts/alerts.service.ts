@@ -523,8 +523,8 @@ export class AlertsService {
 
     const levelEmoji = run.level === 'red' ? '🚨' : run.level === 'yellow' ? '⚠️' : '✅';
     let text = `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
-    if ((monitor as { runbookUrl?: string | null }).runbookUrl) {
-      text += ` | Runbook: ${(monitor as { runbookUrl?: string | null }).runbookUrl}`;
+    if (monitor.runbookUrl) {
+      text += ` | Runbook: ${monitor.runbookUrl}`;
     }
 
     this.realtime.alertTriggered(monitor.userId, {
@@ -542,10 +542,10 @@ export class AlertsService {
         await this.sendWithRetry(channel, text, {
           monitor: {
             ...monitor,
-            runbookUrl: (monitor as { runbookUrl?: string | null }).runbookUrl ?? undefined,
+            runbookUrl: monitor.runbookUrl ?? undefined,
           },
           run,
-          runbookUrl: (monitor as { runbookUrl?: string | null }).runbookUrl ?? undefined,
+          runbookUrl: monitor.runbookUrl ?? undefined,
         }, {
           monitorId: monitor.id,
           monitorName: monitor.name,

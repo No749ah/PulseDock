@@ -27,6 +27,9 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     autoIncident: false,
     autoIncidentSeverity: 'MEDIUM',
     activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     ...overrides,
   };
 }
@@ -5293,6 +5296,9 @@ describe('ChecksService — Auto-Incident', () => {
       autoIncident: true,
       autoIncidentSeverity: 'HIGH',
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     await service.runMonitor(monitor);
@@ -5324,6 +5330,9 @@ describe('ChecksService — Auto-Incident', () => {
       target: 'https://example.com',
       autoIncident: false,
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     await service.runMonitor(monitor);
@@ -5391,6 +5400,9 @@ describe('ChecksService — Auto-Incident', () => {
       target: 'https://example.com',
       autoIncident: true,
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     await service.runMonitor(monitor);
@@ -5413,6 +5425,9 @@ describe('ChecksService — Auto-Incident', () => {
       autoIncident: true,
       confirmations: 3,
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     await service.runMonitor(monitor);
@@ -5432,6 +5447,9 @@ describe('ChecksService — Auto-Incident', () => {
       autoIncident: true,
       autoIncidentSeverity: 'CRITICAL',
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     await service.runMonitor(monitor);
@@ -5452,11 +5470,121 @@ describe('ChecksService — Auto-Incident', () => {
       target: 'https://example.com',
       autoIncident: true,
       activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     });
 
     // Should NOT throw — auto-incident errors are non-fatal
     const run = await service.runMonitor(monitor);
     expect(run.ok).toBe(false);
     expect(run.level).toBe('red');
+  });
+});
+
+// ─── Flap Detection Tests ────────────────────────────────────────────────────
+
+describe('ChecksService — Flap Detection', () => {
+  function makeFlapPrisma(opts: {
+    previousRuns?: Array<{ level: string }>;
+    isFlapping?: boolean;
+    flapDetectionEnabled?: boolean;
+  } = {}) {
+    const runs = opts.previousRuns ?? [];
+    const p = makePrisma({ previousRun: runs[0] ? makeRun({ ok: runs[0].level !== 'red', level: runs[0].level as 'green' | 'red' | 'yellow' }) : null });
+    // Override findMany to return the flap window runs
+    if (runs.length > 0) {
+      p.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+    }
+    p.monitor.update = vi.fn().mockResolvedValue({});
+    return p;
+  }
+
+  function makeFlapMonitor(overrides: Partial<Parameters<typeof makeMonitor>[0]> = {}) {
+    return makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: false,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+      ...overrides,
+    });
+  }
+
+  it('does NOT mark monitor as flapping with stable runs (all green)', async () => {
+    const previousRuns = [
+      { level: 'green' }, { level: 'green' }, { level: 'green' }, { level: 'green' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    // monitor.update should NOT be called (no flap state change)
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('does NOT mark as flapping with < 3 runs in window (insufficient data)', async () => {
+    const previousRuns = [{ level: 'red' }, { level: 'green' }];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('marks monitor as flapping with 3+ state changes in last 5 runs', async () => {
+    // Pattern: red, green, red, green → 4 state changes = flapping
+    const previousRuns = [
+      { level: 'green' }, { level: 'red' }, { level: 'green' }, { level: 'red' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    // current run will be 'red' → pattern becomes: red, green, red, green, red
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('clears flapping state when monitor stabilizes', async () => {
+    // Monitor was flapping (isFlapping=true), now runs are all green → clear it
+    const previousRuns = [
+      { level: 'green' }, { level: 'green' }, { level: 'green' }, { level: 'green' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    // Monitor is currently marked as flapping
+    await service.runMonitor(makeFlapMonitor({ isFlapping: true }));
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: false, flapAlertedAt: null }) }),
+    );
+  });
+
+  it('does NOT detect flapping when flapDetectionEnabled is false', async () => {
+    // Same flapping pattern, but detection is disabled
+    const previousRuns = [
+      { level: 'green' }, { level: 'red' }, { level: 'green' }, { level: 'red' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor({ flapDetectionEnabled: false }));
+    // Should not update monitor for flap detection
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
   });
 });

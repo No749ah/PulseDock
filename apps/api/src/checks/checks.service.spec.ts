@@ -19,6 +19,8 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     timeoutMs: 5000,
     confirmations: 1,
     config: {},
+    description: null,
+    runbookUrl: null,
     slaTarget: null,
     slaPeriodDays: null,
     slaBreachAlertedAt: null,

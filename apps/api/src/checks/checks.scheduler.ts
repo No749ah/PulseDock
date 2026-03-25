@@ -89,6 +89,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         configJson: true,
         folderId: true,
         enabled: true,
+        description: true,
+        runbookUrl: true,
         createdAt: true,
         slaTarget: true,
         slaPeriodDays: true,
@@ -163,6 +165,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     configJson: unknown;
     folderId: string | null;
     enabled: boolean;
+    description?: string | null;
+    runbookUrl?: string | null;
     createdAt: Date;
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
@@ -195,6 +199,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         alertChannelIds: [],
         folderId: monitor.folderId,
         enabled: monitor.enabled,
+        description: monitor.description ?? null,
+        runbookUrl: monitor.runbookUrl ?? null,
         createdAt: monitor.createdAt.toISOString(),
         slaTarget: monitor.slaTarget ?? null,
         slaPeriodDays: monitor.slaPeriodDays ?? null,

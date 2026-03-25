@@ -619,6 +619,8 @@ export class MonitorsService {
       alertChannelIds: [],
       folderId: monitor.folderId,
       enabled: monitor.enabled,
+      description: monitor.description ?? null,
+      runbookUrl: monitor.runbookUrl ?? null,
       createdAt: monitor.createdAt.toISOString(),
       slaTarget: monitor.slaTarget ?? null,
       slaPeriodDays: monitor.slaPeriodDays ?? null,

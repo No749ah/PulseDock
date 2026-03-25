@@ -636,6 +636,7 @@ export default function IncidentsPage() {
                     title: i.title,
                     status: i.status,
                     severity: i.severity,
+                    autoCreated: i.autoCreated ? 'Yes' : 'No',
                     updatedAt: i.updatedAt,
                     monitors: i.monitors.map((m) => m.monitor.name).join('; '),
                   })))}

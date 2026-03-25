@@ -5300,6 +5300,7 @@ describe('ChecksService — Auto-Incident', () => {
     expect(createCall.data.userId).toBe('user-1');
     expect(createCall.data.severity).toBe('HIGH');
     expect(createCall.data.status).toBe('INVESTIGATING');
+    expect(createCall.data.autoCreated).toBe(true);
     expect(createCall.data.title).toContain('Test Monitor');
 
     // Should link the incident to the monitor

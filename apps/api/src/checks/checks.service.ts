@@ -441,6 +441,7 @@ export class ChecksService {
             userId: monitor.userId,
             title: `${monitor.name} is ${run.level === 'red' ? 'down' : 'degraded'}`,
             description: `Automatically created by PulseDock monitoring.\n\nCheck message: ${run.message}\n\nMonitor: ${monitor.target}`,
+            autoCreated: true,
             status: 'INVESTIGATING',
             severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
             updates: {

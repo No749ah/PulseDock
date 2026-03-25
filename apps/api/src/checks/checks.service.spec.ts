@@ -22,6 +22,9 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     slaTarget: null,
     slaPeriodDays: null,
     slaBreachAlertedAt: null,
+    autoIncident: false,
+    autoIncidentSeverity: 'MEDIUM',
+    activeAutoIncidentId: null,
     ...overrides,
   };
 }
@@ -77,6 +80,21 @@ function makePrisma(opts: {
     },
     monitorDependency: {
       findMany: vi.fn().mockResolvedValue(dependencies),
+    },
+    incident: {
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({
+          id: 'incident-auto-1',
+          userId: data.userId,
+          title: data.title,
+          status: data.status,
+          severity: data.severity,
+        }),
+      ),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    monitor: {
+      update: vi.fn().mockResolvedValue({}),
     },
   };
 }
@@ -5245,5 +5263,197 @@ describe('runBrowserCheck', () => {
     });
     const run = await service.runMonitor(monitor);
     expect(run.ok).toBe(true);
+  });
+});
+
+// ── Auto-Incident Tests ─────────────────────────────────────────────────────
+
+describe('ChecksService — Auto-Incident', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('creates an incident when autoIncident monitor fails', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      autoIncidentSeverity: 'HIGH',
+      activeAutoIncidentId: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).toHaveBeenCalledTimes(1);
+    const createCall = prisma.incident.create.mock.calls[0][0];
+    expect(createCall.data.userId).toBe('user-1');
+    expect(createCall.data.severity).toBe('HIGH');
+    expect(createCall.data.status).toBe('INVESTIGATING');
+    expect(createCall.data.title).toContain('Test Monitor');
+
+    // Should link the incident to the monitor
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mon-1' },
+        data: { activeAutoIncidentId: 'incident-auto-1' },
+      }),
+    );
+  });
+
+  it('does NOT create an incident when autoIncident is disabled', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: false,
+      activeAutoIncidentId: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('does NOT create a duplicate incident if one is already active', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: false, level: 'red' }), recentRuns: [{ level: 'red' }] });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: 'existing-incident-id',
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('resolves incident when monitor recovers', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: false, level: 'red' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: 'incident-to-resolve',
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'incident-to-resolve' },
+        data: expect.objectContaining({
+          status: 'RESOLVED',
+          resolvedAt: expect.any(Date),
+        }),
+      }),
+    );
+
+    // Should clear the active incident ID
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mon-1' },
+        data: { activeAutoIncidentId: null },
+      }),
+    );
+  });
+
+  it('does NOT resolve when monitor was already healthy', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.update).not.toHaveBeenCalled();
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('respects confirmation threshold before creating incident', async () => {
+    const prisma = makePrisma({
+      previousRun: makeRun({ ok: true, level: 'green' }),
+      recentRuns: [{ level: 'green' }],
+    });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      confirmations: 3,
+      activeAutoIncidentId: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    // With confirmations=3 and only 1 consecutive failure, should not create
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('uses configured severity in the created incident', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      autoIncidentSeverity: 'CRITICAL',
+      activeAutoIncidentId: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).toHaveBeenCalledTimes(1);
+    const createCall = prisma.incident.create.mock.calls[0][0];
+    expect(createCall.data.severity).toBe('CRITICAL');
+  });
+
+  it('handles auto-incident errors non-fatally', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    prisma.incident.create = vi.fn().mockRejectedValue(new Error('DB connection lost'));
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: null,
+    });
+
+    // Should NOT throw — auto-incident errors are non-fatal
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
   });
 });

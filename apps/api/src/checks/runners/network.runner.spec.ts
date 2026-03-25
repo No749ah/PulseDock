@@ -173,10 +173,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: futureDate.toUTCString() }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('example.com');
     expect(result.ok).toBe(true);
@@ -193,10 +193,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: soonDate.toUTCString() }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('example.com');
     expect(result.ok).toBe(true);
@@ -212,10 +212,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: criticalDate.toUTCString() }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('example.com');
     // ok=true (cert not yet expired), but level=red (critically close to expiry)
@@ -233,10 +233,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: pastDate.toUTCString() }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('example.com');
     expect(result.ok).toBe(false);
@@ -252,10 +252,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: undefined }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('example.com');
     expect(result.ok).toBe(false);
@@ -289,10 +289,10 @@ describe('runSslCheck', () => {
       getPeerCertificate: vi.fn().mockReturnValue({ valid_to: futureDate.toUTCString() }),
     } as unknown as TLSSocket;
 
-    vi.mocked(tls.connect).mockImplementation((_opts: unknown, cb?: () => void) => {
+    vi.mocked(tls.connect).mockImplementation(((_opts: unknown, cb?: () => void) => {
       if (cb) setTimeout(cb, 0);
       return mockSocket as ReturnType<typeof tls.connect>;
-    });
+    }) as any);
 
     const result = await runSslCheck('https://example.com/health');
     expect(result.ok).toBe(true);

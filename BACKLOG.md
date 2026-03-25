@@ -1,13 +1,13 @@
-## Status Summary (2026-03-25 10:12 UTC)
-- **Build/Test:** ✅ Clean build + 2895 API + 119 Web + 10 CLI + 12 Agent tests passing (3036 total, 3113 with new resolver specs)
+## Status Summary (2026-03-25 20:20 UTC)
+- **Build/Test:** ✅ Clean build + 3200 API + 429 Web + 10 CLI + 12 Agent = **3651 total** tests passing
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.3.0 + web running; public URL + all routes 200; 0 TS errors
-- **Branch:** heartbeat/2026-03-24-afternoon (working branch)
+- **Deployment:** ✅ API v1.3.0 + web running; public URL + all 11 routes 200; 0 TS errors
+- **Branch:** heartbeat/2026-03-25-auto-incidents (working branch)
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` with 7 live monitors — ready for Noah's visual review
 - **Quality:** ✅ Smoke test 27/27, code quality 8/8, 0 any types, 0 console.log, 0 TODOs
-- **Last changes:** Fixed tls.connect TS errors in network runner specs. Added layout, status, uptime resolver specs (+77 tests). Total: 3113.
+- **Last changes:** Auto-incident feature completed — autoCreated flag, 'Auto' badge in UI, CSV export field, 8 new tests (3651 total). DB migration applied.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -59,6 +59,8 @@
 *(next: continue status-page widgets - Region Status Map, Third-Party Dependencies, Security Advisory, Page-Level config items)*
 
 ## Recently Completed
+
+- [x] **SLA Error Budget Burn Rate Alerts (Google SRE model)** - Multi-window burn rate alerting: Critical (1h>=14.4×, 6h>=2.88×), High (1h>=6×, 6h>=1.2×), Warning (1h>=3×, 6h>=0.6×). Both windows must fire simultaneously (reduces false positives). Throttled 6h per monitor. New `slaBurnRateAlertedAt` Prisma field + migration. `notifyBurnRateAlert()` in alerts service with severity emoji. 9 new tests. *(2026-03-25)*
 
 - [x] **Security dependency hardening (Prisma advisory chain)** - Pinned `prisma`, `@prisma/client`, and `@prisma/adapter-pg` to `6.12.0` in API workspace to eliminate GHSA-38f7-945m-qr2g exposure via `@prisma/config`/`effect`. Lockfile refreshed; `npm audit --audit-level=high` now reports `0 vulnerabilities`.
 

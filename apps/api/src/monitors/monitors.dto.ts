@@ -16,6 +16,12 @@ export class CreateMonitorDto {
   @MaxLength(2048)
   description?: string;
 
+  @ApiPropertyOptional({ description: 'Optional URL to an incident runbook for this monitor', maxLength: 2048, example: 'https://wiki.example.com/runbooks/service-outage' })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  runbookUrl?: string;
+
   @ApiProperty({
     description: 'Target URL, host:port, GitHub repo slug, Docker image, etc. depending on type',
     maxLength: 1024,
@@ -108,6 +114,21 @@ export class CreateMonitorDto {
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
 
+  @ApiPropertyOptional({ description: 'Automatically create/resolve incidents when this monitor changes status', example: false })
+  @IsOptional()
+  @IsBoolean()
+  autoIncident?: boolean;
+
+  @ApiPropertyOptional({ description: 'Default incident severity for auto-created incidents', enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'], example: 'MEDIUM' })
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  autoIncidentSeverity?: string;
+
+  @ApiPropertyOptional({ description: 'Enable flap detection to suppress noisy alerts when monitor rapidly oscillates between up and down', example: true })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
+
 }
 
 export class UpdateMonitorDto {
@@ -122,6 +143,11 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(2048)
   description?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  runbookUrl?: string;
 
   @IsOptional()
   @IsString()
@@ -179,6 +205,19 @@ export class UpdateMonitorDto {
   @IsInt()
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  autoIncident?: boolean;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  autoIncidentSeverity?: string;
+
+  @ApiPropertyOptional({ description: 'Enable flap detection to suppress noisy alerts when monitor rapidly oscillates between up and down', example: true })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
 
 }
 

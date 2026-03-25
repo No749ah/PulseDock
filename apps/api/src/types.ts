@@ -46,9 +46,17 @@ export interface Monitor {
   alertChannelIds: string[];
   folderId: string | null;
   enabled: boolean;
+  description: string | null;
+  runbookUrl: string | null;
   slaTarget: number | null;
   slaPeriodDays: number | null;
   slaBreachAlertedAt: string | null;
+  autoIncident: boolean;
+  autoIncidentSeverity: string;
+  activeAutoIncidentId: string | null;
+  isFlapping: boolean;
+  flapDetectionEnabled: boolean;
+  flapAlertedAt: string | null;
   createdAt: string;
 }
 

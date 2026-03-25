@@ -89,10 +89,18 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         configJson: true,
         folderId: true,
         enabled: true,
+        description: true,
+        runbookUrl: true,
         createdAt: true,
         slaTarget: true,
         slaPeriodDays: true,
         slaBreachAlertedAt: true,
+        autoIncident: true,
+        autoIncidentSeverity: true,
+        activeAutoIncidentId: true,
+        isFlapping: true,
+        flapDetectionEnabled: true,
+        flapAlertedAt: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -160,10 +168,18 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     configJson: unknown;
     folderId: string | null;
     enabled: boolean;
+    description?: string | null;
+    runbookUrl?: string | null;
     createdAt: Date;
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
     slaBreachAlertedAt?: Date | null;
+    autoIncident: boolean;
+    autoIncidentSeverity: string;
+    activeAutoIncidentId: string | null;
+    isFlapping?: boolean;
+    flapDetectionEnabled?: boolean;
+    flapAlertedAt?: Date | null;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -189,10 +205,18 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         alertChannelIds: [],
         folderId: monitor.folderId,
         enabled: monitor.enabled,
+        description: monitor.description ?? null,
+        runbookUrl: monitor.runbookUrl ?? null,
         createdAt: monitor.createdAt.toISOString(),
         slaTarget: monitor.slaTarget ?? null,
         slaPeriodDays: monitor.slaPeriodDays ?? null,
         slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
+        autoIncident: monitor.autoIncident,
+        autoIncidentSeverity: monitor.autoIncidentSeverity,
+        activeAutoIncidentId: monitor.activeAutoIncidentId,
+        isFlapping: monitor.isFlapping ?? false,
+        flapDetectionEnabled: monitor.flapDetectionEnabled ?? true,
+        flapAlertedAt: monitor.flapAlertedAt ? monitor.flapAlertedAt.toISOString() : null,
       });
     } finally {
       this.queueDepth--;
@@ -295,6 +319,125 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
           periodDays,
         }));
       }
+    }
+  }
+
+  /**
+   * Every 30 minutes: check SLA error budget burn rates using the multi-window model.
+   *
+   * Fires when BOTH of these conditions are true simultaneously (reduces false positives):
+   *   - 1h burn rate  >= threshold (fast window: detects sudden spikes)
+   *   - 6h burn rate  >= threshold / 5 (slow window: confirms sustained degradation)
+   *
+   * Three severity tiers aligned with Google SRE thresholds:
+   *   - Critical (page now):   1h >= 14.4×  AND  6h >= 2.88× (burns 50% budget in 1h)
+   *   - High     (page soon):  1h >= 6×     AND  6h >= 1.2×  (burns 50% budget in 6h)
+   *   - Warning  (ticket):     1h >= 3×     AND  6h >= 0.6×  (burns 50% budget in 1d)
+   *
+   * At most one alert per monitor per 6 hours (prevents duplicate paging).
+   */
+  @Cron('*/30 * * * *')
+  async checkBurnRateAlerts() {
+    if (this.draining) return;
+    const monitors = await this.prisma.monitor.findMany({
+      where: { enabled: true, slaTarget: { not: null } },
+      select: {
+        id: true, name: true, userId: true,
+        slaTarget: true, slaPeriodDays: true,
+        slaBurnRateAlertedAt: true,
+      },
+    });
+
+    for (const monitor of monitors) {
+      if (monitor.slaTarget === null) continue;
+
+      // Throttle: at most one burn-rate alert per 6 hours
+      const now = new Date();
+      const hoursSinceLast = monitor.slaBurnRateAlertedAt
+        ? (now.getTime() - monitor.slaBurnRateAlertedAt.getTime()) / 3_600_000
+        : Infinity;
+      if (hoursSinceLast < 6) continue;
+
+      const periodDays = monitor.slaPeriodDays ?? 30;
+      const slaTarget = monitor.slaTarget;
+      const errorBudgetPct = 100 - slaTarget; // e.g. 0.1 for 99.9%
+      if (errorBudgetPct <= 0) continue;
+
+      // Load windowed runs in parallel
+      const now1h  = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+      const now6h  = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+      const nowFull = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+      const [runs1h, runs6h, runsFull] = await Promise.all([
+        this.prisma.monitorRun.findMany({
+          where: { monitorId: monitor.id, checkedAt: { gte: now1h } },
+          select: { ok: true },
+        }),
+        this.prisma.monitorRun.findMany({
+          where: { monitorId: monitor.id, checkedAt: { gte: now6h } },
+          select: { ok: true },
+        }),
+        this.prisma.monitorRun.findMany({
+          where: { monitorId: monitor.id, checkedAt: { gte: nowFull } },
+          select: { ok: true },
+        }),
+      ]);
+
+      // Not enough data to compute meaningful burn rates
+      if (runs1h.length < 2 || runsFull.length < 10) continue;
+
+      const errorRateFull = runsFull.filter((r) => !r.ok).length / runsFull.length;
+      const budgetConsumedPct = Math.min(100, (errorRateFull / (errorBudgetPct / 100)) * 100);
+
+      const calcRate = (runs: { ok: boolean }[], windowHours: number): number => {
+        if (runs.length === 0) return 0;
+        const errRate = runs.filter((r) => !r.ok).length / runs.length;
+        const sustainableErrRate = errorBudgetPct / 100;
+        const sustainableErrPerHour = sustainableErrRate / (periodDays * 24);
+        const actualErrPerHour = errRate / windowHours;
+        if (sustainableErrPerHour <= 0) return 0;
+        return actualErrPerHour / sustainableErrPerHour;
+      };
+
+      const burnRate1h = calcRate(runs1h, 1);
+      const burnRate6h = runs6h.length >= 2 ? calcRate(runs6h, 6) : 0;
+
+      // Determine if any severity tier triggers (both windows must fire)
+      let triggered = false;
+      if (burnRate1h >= 14.4 && burnRate6h >= 2.88) triggered = true;
+      else if (burnRate1h >= 6    && burnRate6h >= 1.2)  triggered = true;
+      else if (burnRate1h >= 3    && burnRate6h >= 0.6)  triggered = true;
+
+      if (!triggered) continue;
+
+      try {
+        await this.alertsService.notifyBurnRateAlert(
+          monitor.id,
+          monitor.name,
+          monitor.userId,
+          burnRate1h,
+          burnRate6h,
+          budgetConsumedPct,
+          slaTarget,
+        );
+      } catch (err) {
+        this.logger.error(`Burn-rate alert failed for monitor ${monitor.id}`, err instanceof Error ? err.message : String(err));
+      }
+
+      await this.prisma.monitor.update({
+        where: { id: monitor.id },
+        data: { slaBurnRateAlertedAt: now },
+      });
+
+      this.logger.log(JSON.stringify({
+        event: 'sla.burn_rate_alert',
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        burnRate1h: Math.round(burnRate1h * 10) / 10,
+        burnRate6h: Math.round(burnRate6h * 10) / 10,
+        budgetConsumedPct: Math.round(budgetConsumedPct * 10) / 10,
+        slaTarget,
+      }));
     }
   }
 

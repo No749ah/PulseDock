@@ -63,6 +63,31 @@ export class ReportsService {
   }
 
   /**
+   * Sends a test report immediately to the user's email.
+   * Uses weekly frequency (last 7 days) regardless of configured schedule.
+   * @param userId - Owner's user ID
+   */
+  async sendNow(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!user) throw new Error('User not found');
+
+    const data = await this.computeReportData(userId, 'weekly');
+    const dashboardUrl = (process.env.PUBLIC_URL ?? 'http://localhost:1234') + '/dashboard';
+
+    await this.mailer.sendUptimeReport(user.email, {
+      frequency: 'weekly',
+      periodLabel: 'Last 7 days',
+      ...data,
+      dashboardUrl,
+    });
+
+    this.logger.log(`[report-sent-now] userId=${userId}`);
+  }
+
+  /**
    * Cron job that runs every 15 minutes to dispatch scheduled uptime reports.
    * For each enabled report it checks whether it is due (matches configured hour/day
    * and respects the `lastSentAt` deduplication window), computes the report data,
@@ -144,7 +169,7 @@ export class ReportsService {
    * @param userId    - Owner's user ID
    * @param frequency - 'daily' (last 24 h) or 'weekly' (last 7 days)
    */
-  private async computeReportData(userId: string, frequency: string) {
+  async computeReportData(userId: string, frequency: string) {
     const periodMs = frequency === 'daily' ? 24 * 3_600_000 : 7 * 24 * 3_600_000;
     const since = new Date(Date.now() - periodMs);
 

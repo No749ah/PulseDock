@@ -11,6 +11,9 @@ export interface MonitorItem {
   slaPeriodDays?: number | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   description?: string | null;
+  isFlapping?: boolean;
+  flapDetectionEnabled?: boolean;
+  flapAlertedAt?: string | null;
 }
 
 export interface AlertChannelInfo {

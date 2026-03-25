@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { ReportsService } from './reports.service';
@@ -39,5 +39,13 @@ export class ReportsController {
   @ApiResponse({ status: 204, description: 'Report config deleted' })
   async deleteReport(@Req() req: AuthRequest) {
     await this.reportsService.deleteReport(req.user.id);
+  }
+
+  @Post('send-now')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Send test report now', description: 'Immediately sends a test uptime report (last 7 days) to the current user\'s email.' })
+  @ApiResponse({ status: 204, description: 'Report sent' })
+  async sendNow(@Req() req: AuthRequest) {
+    await this.reportsService.sendNow(req.user.id);
   }
 }

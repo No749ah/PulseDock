@@ -17,12 +17,26 @@ interface ScheduledReportsCardProps {
 
 export function ScheduledReportsCard({ scheduledReport, reportLoaded, userId, toastSuccess, toastError }: ScheduledReportsCardProps) {
   const [reportSaving, setReportSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
   const [reportForm, setReportForm] = useState<{ enabled: boolean; frequency: string; dayOfWeek: number; hourUtc: number }>({
     enabled: scheduledReport?.enabled ?? true,
     frequency: scheduledReport?.frequency ?? "weekly",
     dayOfWeek: scheduledReport?.dayOfWeek ?? 1,
     hourUtc: scheduledReport?.hourUtc ?? 8,
   });
+
+  const handleSendTestReport = async () => {
+    if (!userId) return;
+    try {
+      setSendingTest(true);
+      await api("/v1/reports/send-now", userId, { method: "POST" });
+      toastSuccess("Test report sent — check your email");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to send test report");
+    } finally {
+      setSendingTest(false);
+    }
+  };
 
   const handleSaveReport = async () => {
     if (!userId) return;
@@ -157,7 +171,16 @@ export function ScheduledReportsCard({ scheduledReport, reportLoaded, userId, to
             <p className="text-xs text-text-secondary">No reports sent yet — first report will arrive at the next scheduled time.</p>
           )}
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end gap-3 pt-2">
+            {reportForm.enabled && scheduledReport && (
+              <Button
+                variant="secondary"
+                onClick={handleSendTestReport}
+                disabled={sendingTest}
+              >
+                {sendingTest ? "Sending…" : "Send Test Report"}
+              </Button>
+            )}
             <Button onClick={handleSaveReport} disabled={reportSaving}>
               {reportSaving ? "Saving…" : "Save Report Settings"}
             </Button>

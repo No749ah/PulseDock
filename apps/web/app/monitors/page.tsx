@@ -94,6 +94,7 @@ function MonitorsPageInner() {
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
+    runbookUrl: string;
     type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
     target: string;
     intervalSec: number;
@@ -106,9 +107,12 @@ function MonitorsPageInner() {
     folderId: string;
     slaTarget: number | "";
     slaPeriodDays: number;
+    autoIncident: boolean;
+    autoIncidentSeverity: string;
+    flapDetectionEnabled: boolean;
   }>({
     name: "",
-    description: "",
+    description: "", runbookUrl: "",
     type: "HTTP",
     target: "",
     intervalSec: 60,
@@ -121,6 +125,9 @@ function MonitorsPageInner() {
     folderId: "",
     slaTarget: "",
     slaPeriodDays: 30,
+    autoIncident: false,
+    autoIncidentSeverity: "MEDIUM",
+    flapDetectionEnabled: true,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -506,6 +513,8 @@ function MonitorsPageInner() {
         method: "POST",
         body: JSON.stringify({
           name: formData.name,
+          description: formData.description || null,
+          runbookUrl: formData.runbookUrl || null,
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
@@ -516,11 +525,14 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           ...(formData.slaTarget !== "" ? { slaTarget: formData.slaTarget } : {}),
           slaPeriodDays: formData.slaPeriodDays,
+          autoIncident: formData.autoIncident,
+          autoIncidentSeverity: formData.autoIncidentSeverity,
+          flapDetectionEnabled: formData.flapDetectionEnabled,
 
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -545,6 +557,8 @@ function MonitorsPageInner() {
         method: "PATCH",
         body: JSON.stringify({
           name: formData.name,
+          description: formData.description || null,
+          runbookUrl: formData.runbookUrl || null,
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
@@ -555,6 +569,9 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           slaTarget: formData.slaTarget !== "" ? formData.slaTarget : null,
           slaPeriodDays: formData.slaPeriodDays,
+          autoIncident: formData.autoIncident,
+          autoIncidentSeverity: formData.autoIncidentSeverity,
+          flapDetectionEnabled: formData.flapDetectionEnabled,
         }),
       });
       setShowModal(false);
@@ -1068,7 +1085,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1237,7 +1254,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -1441,7 +1458,14 @@ function MonitorsPageInner() {
                             </button>
                           </TableCell>
                           <TableCell className="font-medium text-text-primary">
-                            <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate block max-w-[140px] sm:max-w-none">{monitor.name}</Link>
+                            <div className="flex items-center gap-1.5">
+                              <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate max-w-[120px] sm:max-w-none">{monitor.name}</Link>
+                              {monitor.isFlapping && (
+                                <span title="This monitor is flapping — rapidly alternating between up and down. Alerts are suppressed while flapping." className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 animate-pulse cursor-help whitespace-nowrap">
+                                  ⚡ Flapping
+                                </span>
+                              )}
+                            </div>
                             {monitor.folderId && (
                               <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded mr-1">
                                 {folders.find((f) => f.id === monitor.folderId)?.name}

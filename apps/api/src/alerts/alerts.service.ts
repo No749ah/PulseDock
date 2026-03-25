@@ -522,7 +522,10 @@ export class AlertsService {
     }));
 
     const levelEmoji = run.level === 'red' ? '🚨' : run.level === 'yellow' ? '⚠️' : '✅';
-    const text = `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
+    let text = `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
+    if (monitor.runbookUrl) {
+      text += ` | Runbook: ${monitor.runbookUrl}`;
+    }
 
     this.realtime.alertTriggered(monitor.userId, {
       monitor: {
@@ -536,7 +539,14 @@ export class AlertsService {
 
     for (const channel of channels) {
       try {
-        await this.sendWithRetry(channel, text, { monitor, run }, {
+        await this.sendWithRetry(channel, text, {
+          monitor: {
+            ...monitor,
+            runbookUrl: monitor.runbookUrl ?? undefined,
+          },
+          run,
+          runbookUrl: monitor.runbookUrl ?? undefined,
+        }, {
           monitorId: monitor.id,
           monitorName: monitor.name,
           trigger: run.level === 'green' ? 'monitor_recovery' : 'monitor_failure',
@@ -613,6 +623,37 @@ export class AlertsService {
         this.logger.error(`SLA alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
       }
     }
+  }
+
+  /**
+   * Sends a burn-rate alert when the error budget is being consumed too fast.
+   *
+   * Uses the multi-window model (1h short window + 6h long window) to reduce noise.
+   * Fires when both windows exceed the burn-rate threshold simultaneously.
+   *
+   * @param monitorId   - Monitor UUID
+   * @param monitorName - Human-readable name
+   * @param userId      - Owner user ID
+   * @param burnRate1h  - Error budget burn rate over the last 1 hour (1.0 = sustainable)
+   * @param burnRate6h  - Error budget burn rate over the last 6 hours
+   * @param budgetConsumedPct - Percentage of total error budget already consumed
+   * @param slaTarget   - SLA target % (e.g. 99.9)
+   */
+  async notifyBurnRateAlert(
+    monitorId: string,
+    monitorName: string,
+    userId: string,
+    burnRate1h: number,
+    burnRate6h: number,
+    budgetConsumedPct: number,
+    slaTarget: number,
+  ): Promise<void> {
+    const severity = burnRate1h >= 14.4 ? '🔴 Critical' : burnRate1h >= 6 ? '🟠 High' : '🟡 Elevated';
+    const text =
+      `${severity} Burn Rate Alert: ${monitorName} — error budget consuming ` +
+      `${burnRate1h.toFixed(1)}× faster than sustainable (1h), ${burnRate6h.toFixed(1)}× (6h). ` +
+      `Budget ${budgetConsumedPct.toFixed(1)}% consumed. SLA target: ${slaTarget}%`;
+    await this.sendSlaNotification(monitorId, monitorName, userId, text, 'sla_burn_rate');
   }
 
   /**

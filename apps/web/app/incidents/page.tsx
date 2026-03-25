@@ -47,6 +47,7 @@ type Incident = {
   description: string | null;
   status: IncidentStatus;
   severity: IncidentSeverity;
+  autoCreated: boolean;
   createdAt: string;
   updatedAt: string;
   updates: IncidentUpdate[];
@@ -635,6 +636,7 @@ export default function IncidentsPage() {
                     title: i.title,
                     status: i.status,
                     severity: i.severity,
+                    autoCreated: i.autoCreated ? 'Yes' : 'No',
                     updatedAt: i.updatedAt,
                     monitors: i.monitors.map((m) => m.monitor.name).join('; '),
                   })))}
@@ -769,6 +771,9 @@ function IncidentRow({
             <span className="font-semibold text-text-primary truncate">{incident.title}</span>
             <Badge className={statusColors[incident.status]}>{statusLabels[incident.status]}</Badge>
             <Badge className={severityColors[incident.severity]}>{severityLabels[incident.severity]}</Badge>
+            {incident.autoCreated && (
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Auto</Badge>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             {incident.description && (

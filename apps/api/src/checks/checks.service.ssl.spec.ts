@@ -36,9 +36,17 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     config: {},
     alertChannelIds: [],
     folderId: null,
+    description: null,
+    runbookUrl: null,
     slaTarget: null,
     slaPeriodDays: null,
     slaBreachAlertedAt: null,
+    autoIncident: false,
+    autoIncidentSeverity: 'MEDIUM',
+    activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     createdAt: new Date().toISOString(),
     ...overrides,
   };
@@ -51,6 +59,9 @@ function makeService() {
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: 'run-new', ...data, checkedAt: new Date() }),
       ),
+    },
+    monitorDependency: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
     monitor: {
       update: vi.fn().mockResolvedValue({}),

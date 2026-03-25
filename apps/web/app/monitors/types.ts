@@ -23,6 +23,7 @@ export interface MonitorItem {
   id: string;
   name: string;
   description?: string | null;
+  runbookUrl?: string | null;
   type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;
@@ -35,6 +36,12 @@ export interface MonitorItem {
   alertChannels?: AlertChannelSummary[];
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
+  autoIncident?: boolean;
+  autoIncidentSeverity?: string;
+  activeAutoIncidentId?: string | null;
+  isFlapping?: boolean;
+  flapDetectionEnabled?: boolean;
+  flapAlertedAt?: string | null;
 }
 
 export interface MonitorRun {
@@ -77,6 +84,7 @@ export interface MonitorPlugin {
 export type MonitorFormData = {
   name: string;
   description: string;
+  runbookUrl: string;
   type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;
@@ -89,6 +97,9 @@ export type MonitorFormData = {
   folderId: string;
   slaTarget: number | "";
   slaPeriodDays: number;
+  autoIncident: boolean;
+  autoIncidentSeverity: string;
+  flapDetectionEnabled: boolean;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

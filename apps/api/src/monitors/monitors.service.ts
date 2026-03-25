@@ -75,6 +75,8 @@ export class MonitorsService {
       id: m.id,
       userId: m.userId,
       name: m.name,
+      description: m.description,
+      runbookUrl: m.runbookUrl,
       type: m.type,
       target: m.target,
       intervalSec: m.intervalSec,
@@ -89,6 +91,12 @@ export class MonitorsService {
       slaTarget: m.slaTarget,
       slaPeriodDays: m.slaPeriodDays,
       slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: m.autoIncident,
+      autoIncidentSeverity: m.autoIncidentSeverity,
+      activeAutoIncidentId: m.activeAutoIncidentId,
+      isFlapping: m.isFlapping,
+      flapDetectionEnabled: m.flapDetectionEnabled,
+      flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -105,6 +113,7 @@ export class MonitorsService {
   async create(userId: string, body: {
     name: string;
     description?: string;
+    runbookUrl?: string;
     target: string;
     type: MonitorType;
     intervalSec?: number;
@@ -117,6 +126,9 @@ export class MonitorsService {
     enabled?: boolean;
     slaTarget?: number;
     slaPeriodDays?: number;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -132,6 +144,7 @@ export class MonitorsService {
         userId,
         name: body.name,
         description: body.description ?? null,
+        runbookUrl: body.runbookUrl ?? null,
         target: body.target,
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
@@ -142,6 +155,9 @@ export class MonitorsService {
         folderId: body.folderId ?? null,
         slaTarget: body.slaTarget ?? null,
         slaPeriodDays: body.slaPeriodDays ?? null,
+        autoIncident: body.autoIncident ?? false,
+        autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
+        flapDetectionEnabled: body.flapDetectionEnabled ?? true,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -168,6 +184,8 @@ export class MonitorsService {
       id: created.id,
       userId: created.userId,
       name: created.name,
+      description: created.description,
+      runbookUrl: created.runbookUrl,
       type: created.type,
       target: created.target,
       intervalSec: created.intervalSec,
@@ -181,6 +199,12 @@ export class MonitorsService {
       slaTarget: created.slaTarget,
       slaPeriodDays: created.slaPeriodDays,
       slaBreachAlertedAt: created.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: created.autoIncident,
+      autoIncidentSeverity: created.autoIncidentSeverity,
+      activeAutoIncidentId: created.activeAutoIncidentId,
+      isFlapping: created.isFlapping,
+      flapDetectionEnabled: created.flapDetectionEnabled,
+      flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -202,6 +226,7 @@ export class MonitorsService {
   async update(userId: string, monitorId: string, body: {
     name?: string;
     description?: string | null;
+    runbookUrl?: string | null;
     target?: string;
     type?: MonitorType;
     intervalSec?: number;
@@ -214,6 +239,9 @@ export class MonitorsService {
     tags?: string[];
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -235,6 +263,7 @@ export class MonitorsService {
       data: {
         name: body.name ?? current.name,
         ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.runbookUrl !== undefined ? { runbookUrl: body.runbookUrl } : {}),
         target: body.target ?? current.target,
         type: body.type ?? current.type,
         intervalSec: body.intervalSec ?? current.intervalSec,
@@ -245,6 +274,9 @@ export class MonitorsService {
         enabled: body.enabled ?? current.enabled,
         ...(body.slaTarget !== undefined ? { slaTarget: body.slaTarget } : {}),
         ...(body.slaPeriodDays !== undefined ? { slaPeriodDays: body.slaPeriodDays } : {}),
+        ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
+        ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
+        ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
 
       },
     });
@@ -597,10 +629,18 @@ export class MonitorsService {
       alertChannelIds: [],
       folderId: monitor.folderId,
       enabled: monitor.enabled,
+      description: monitor.description ?? null,
+      runbookUrl: monitor.runbookUrl ?? null,
       createdAt: monitor.createdAt.toISOString(),
       slaTarget: monitor.slaTarget ?? null,
       slaPeriodDays: monitor.slaPeriodDays ?? null,
       slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
+      autoIncident: monitor.autoIncident,
+      autoIncidentSeverity: monitor.autoIncidentSeverity,
+      activeAutoIncidentId: monitor.activeAutoIncidentId,
+      isFlapping: monitor.isFlapping,
+      flapDetectionEnabled: monitor.flapDetectionEnabled,
+      flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
     });
   }
 

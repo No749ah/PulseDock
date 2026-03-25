@@ -19,9 +19,17 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     timeoutMs: 5000,
     confirmations: 1,
     config: {},
+    description: null,
+    runbookUrl: null,
     slaTarget: null,
     slaPeriodDays: null,
     slaBreachAlertedAt: null,
+    autoIncident: false,
+    autoIncidentSeverity: 'MEDIUM',
+    activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
     ...overrides,
   };
 }
@@ -77,6 +85,21 @@ function makePrisma(opts: {
     },
     monitorDependency: {
       findMany: vi.fn().mockResolvedValue(dependencies),
+    },
+    incident: {
+      create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({
+          id: 'incident-auto-1',
+          userId: data.userId,
+          title: data.title,
+          status: data.status,
+          severity: data.severity,
+        }),
+      ),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    monitor: {
+      update: vi.fn().mockResolvedValue({}),
     },
   };
 }
@@ -5245,5 +5268,323 @@ describe('runBrowserCheck', () => {
     });
     const run = await service.runMonitor(monitor);
     expect(run.ok).toBe(true);
+  });
+});
+
+// ── Auto-Incident Tests ─────────────────────────────────────────────────────
+
+describe('ChecksService — Auto-Incident', () => {
+  let originalFetch: typeof globalThis.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('creates an incident when autoIncident monitor fails', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      autoIncidentSeverity: 'HIGH',
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).toHaveBeenCalledTimes(1);
+    const createCall = prisma.incident.create.mock.calls[0][0];
+    expect(createCall.data.userId).toBe('user-1');
+    expect(createCall.data.severity).toBe('HIGH');
+    expect(createCall.data.status).toBe('INVESTIGATING');
+    expect(createCall.data.autoCreated).toBe(true);
+    expect(createCall.data.title).toContain('Test Monitor');
+
+    // Should link the incident to the monitor
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mon-1' },
+        data: { activeAutoIncidentId: 'incident-auto-1' },
+      }),
+    );
+  });
+
+  it('does NOT create an incident when autoIncident is disabled', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: false,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('does NOT create a duplicate incident if one is already active', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: false, level: 'red' }), recentRuns: [{ level: 'red' }] });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: 'existing-incident-id',
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('resolves incident when monitor recovers', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: false, level: 'red' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: 'incident-to-resolve',
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'incident-to-resolve' },
+        data: expect.objectContaining({
+          status: 'RESOLVED',
+          resolvedAt: expect.any(Date),
+        }),
+      }),
+    );
+
+    // Should clear the active incident ID
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mon-1' },
+        data: { activeAutoIncidentId: null },
+      }),
+    );
+  });
+
+  it('does NOT resolve when monitor was already healthy', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.update).not.toHaveBeenCalled();
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('respects confirmation threshold before creating incident', async () => {
+    const prisma = makePrisma({
+      previousRun: makeRun({ ok: true, level: 'green' }),
+      recentRuns: [{ level: 'green' }],
+    });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      confirmations: 3,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    // With confirmations=3 and only 1 consecutive failure, should not create
+    expect(prisma.incident.create).not.toHaveBeenCalled();
+  });
+
+  it('uses configured severity in the created incident', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      autoIncidentSeverity: 'CRITICAL',
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    await service.runMonitor(monitor);
+
+    expect(prisma.incident.create).toHaveBeenCalledTimes(1);
+    const createCall = prisma.incident.create.mock.calls[0][0];
+    expect(createCall.data.severity).toBe('CRITICAL');
+  });
+
+  it('handles auto-incident errors non-fatally', async () => {
+    const prisma = makePrisma({ previousRun: makeRun({ ok: true, level: 'green' }) });
+    prisma.incident.create = vi.fn().mockRejectedValue(new Error('DB connection lost'));
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const monitor = makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: true,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+    });
+
+    // Should NOT throw — auto-incident errors are non-fatal
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+});
+
+// ─── Flap Detection Tests ────────────────────────────────────────────────────
+
+describe('ChecksService — Flap Detection', () => {
+  function makeFlapPrisma(opts: {
+    previousRuns?: Array<{ level: string }>;
+    isFlapping?: boolean;
+    flapDetectionEnabled?: boolean;
+  } = {}) {
+    const runs = opts.previousRuns ?? [];
+    const p = makePrisma({ previousRun: runs[0] ? makeRun({ ok: runs[0].level !== 'red', level: runs[0].level as 'green' | 'red' | 'yellow' }) : null });
+    // Override findMany to return the flap window runs
+    if (runs.length > 0) {
+      p.monitorRun.findMany = vi.fn().mockResolvedValue(runs);
+    }
+    p.monitor.update = vi.fn().mockResolvedValue({});
+    return p;
+  }
+
+  function makeFlapMonitor(overrides: Partial<Parameters<typeof makeMonitor>[0]> = {}) {
+    return makeMonitor({
+      type: 'HTTP',
+      target: 'https://example.com',
+      autoIncident: false,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: true,
+      flapAlertedAt: null,
+      ...overrides,
+    });
+  }
+
+  it('does NOT mark monitor as flapping with stable runs (all green)', async () => {
+    const previousRuns = [
+      { level: 'green' }, { level: 'green' }, { level: 'green' }, { level: 'green' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    // monitor.update should NOT be called (no flap state change)
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('does NOT mark as flapping with < 3 runs in window (insufficient data)', async () => {
+    const previousRuns = [{ level: 'red' }, { level: 'green' }];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('marks monitor as flapping with 3+ state changes in last 5 runs', async () => {
+    // Pattern: red, green, red, green → 4 state changes = flapping
+    const previousRuns = [
+      { level: 'green' }, { level: 'red' }, { level: 'green' }, { level: 'red' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    // current run will be 'red' → pattern becomes: red, green, red, green, red
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor());
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
+  });
+
+  it('clears flapping state when monitor stabilizes', async () => {
+    // Monitor was flapping (isFlapping=true), now runs are all green → clear it
+    const previousRuns = [
+      { level: 'green' }, { level: 'green' }, { level: 'green' }, { level: 'green' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    // Monitor is currently marked as flapping
+    await service.runMonitor(makeFlapMonitor({ isFlapping: true }));
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: false, flapAlertedAt: null }) }),
+    );
+  });
+
+  it('does NOT detect flapping when flapDetectionEnabled is false', async () => {
+    // Same flapping pattern, but detection is disabled
+    const previousRuns = [
+      { level: 'green' }, { level: 'red' }, { level: 'green' }, { level: 'red' },
+    ];
+    const prisma = makeFlapPrisma({ previousRuns });
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    await service.runMonitor(makeFlapMonitor({ flapDetectionEnabled: false }));
+    // Should not update monitor for flap detection
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
+    );
   });
 });

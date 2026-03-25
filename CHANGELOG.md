@@ -7,6 +7,46 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.3.0] — 2026-03-24
+
+### Added
+- **Status Page Index** — New `/status` index page listing all published status pages with live aggregate status (operational/degraded/outage) per page. `GET /v1/public/status-pages` API endpoint with batched monitor status queries.
+- **Widget Showcase** — 99 widgets deployed to `/status/widget-showcase` covering all categories with 7 live monitors for Noah's visual review.
+- **Loading Skeletons & Error Boundaries** — Added for incidents, maintenance, status-pages, reports, changelog, verify-email, and invite pages.
+- **Metadata Layouts** — SEO metadata for folders, reports, and changelog pages.
+- **Security Headers** — Comprehensive security headers added to web app (CSP, X-Frame-Options, HSTS, etc.).
+
+### Changed
+- **Major Codebase Decomposition** — Split large monolithic files into focused modules:
+  - `widget-data-resolver`: 2771 → 173 lines (split into 9 category resolvers)
+  - `monitors page`: 3664 → 1994 lines
+  - `versions page`: 2118 → 794 lines
+  - `status-page editor`: 4199 → 3460 lines
+  - `monitors service`: 2123 → 1665 lines (extracted version detection)
+  - `status-pages service`, `account page`, `monitor detail` decomposed
+  - `public status page widgets` split into 9 category files
+- **Status page grid** — Replaced fixed-height grid with auto-height flex rows for better visual layout.
+- **Dependency updates** — NestJS 11.1.17, Tailwind 4.2.2, vitest 4.1.1, TypeScript 5.7.3, nodemailer 8.0.3, rxjs 7.8.2.
+- **Next.js 16.2+** — Added `--webpack` flag for production builds (required by 16.2+).
+
+### Removed
+- **On-Call Feature** — Removed on-call schedules and escalation policies by Noah's request (-1973 lines). On-call rotation is out of scope for PulseDock.
+- **Bogus Registry Entries** — Removed 400 placeholder entries from tool registry. Registry now has 5009 verified unique tools.
+
+### Fixed
+- **CORS** — Removed hardcoded CORS origin, added `CORS_ORIGINS` env var for flexible configuration.
+- **LayoutWidgets** — Added missing `"use client"` directive for TabContainer `useState`.
+- **Redundant cache header** — Removed `_next/static` cache header that caused Next.js 16 warning.
+- **TypeScript** — Resolved 15 strict mode errors in test files.
+- **Public status page spacing** — Reduced excessive spacing on public status pages.
+
+### Tests
+- **Test Coverage Sprint** — API: 2637 (up from 1951), Web: 119 (up from 65), CLI: 10, Agent: 12. **Total: 2778.**
+- Branch coverage: 90%+ across all major services (alerts 96%, monitors 90%, status-pages 85%, checks 91%, settings 98%, reports 98%, organizations 100%).
+- Added coverage for: ScopeGuard, ToolRegistryController, dashboard, realtime, team modules, grafana, backup, plan, checker, alerts, redis-cache, mailer, cert-expiry plugin, scheduler SLA edge cases, web api helper, useDebounce, realtime socket, useCountUp, app controller, demo service.
+
+---
+
 ## [1.2.0] — 2026-03-23
 
 ### Added

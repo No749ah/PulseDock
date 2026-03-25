@@ -386,6 +386,111 @@ describe('StatusPagesService', () => {
     });
   });
 
+  // ── listPublicPages() ────────────────────────────────────────────────────
+
+  describe('listPublicPages()', () => {
+    it('returns only published pages with summary fields', async () => {
+      const now = new Date();
+      const pages = [
+        { slug: 'page-a', title: 'Page A', description: 'Desc A', layout: null, createdAt: now, updatedAt: now },
+        { slug: 'page-b', title: 'Page B', description: null, layout: null, createdAt: now, updatedAt: now },
+      ];
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue(pages);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result).toEqual([
+        { slug: 'page-a', title: 'Page A', description: 'Desc A', createdAt: now, updatedAt: now, status: 'unknown', monitorsTotal: 0, monitorsUp: 0 },
+        { slug: 'page-b', title: 'Page B', description: null, createdAt: now, updatedAt: now, status: 'unknown', monitorsTotal: 0, monitorsUp: 0 },
+      ]);
+      expect(prisma.publicStatusPage.findMany).toHaveBeenCalledWith({
+        where: { isPublished: true },
+        select: { slug: true, title: true, description: true, layout: true, createdAt: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+    });
+
+    it('returns operational status when all monitors are up', async () => {
+      const now = new Date();
+      const pages = [
+        {
+          slug: 'prod',
+          title: 'Production',
+          description: null,
+          layout: { widgets: [{ id: 'w1', type: 'uptime-bar', x: 0, y: 0, w: 6, h: 2, config: { monitorId: 'm1' } }, { id: 'w2', type: 'uptime-bar', x: 6, y: 0, w: 6, h: 2, config: { monitorId: 'm2' } }] },
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue(pages);
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'm1', runs: [{ ok: true }] },
+        { id: 'm2', runs: [{ ok: true }] },
+      ]);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result[0].status).toBe('operational');
+      expect(result[0].monitorsTotal).toBe(2);
+      expect(result[0].monitorsUp).toBe(2);
+    });
+
+    it('returns degraded status when some monitors are down', async () => {
+      const now = new Date();
+      const pages = [
+        {
+          slug: 'prod',
+          title: 'Production',
+          description: null,
+          layout: { widgets: [{ id: 'w1', type: 'uptime-bar', x: 0, y: 0, w: 6, h: 2, config: { monitorIds: ['m1', 'm2'] } }] },
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue(pages);
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'm1', runs: [{ ok: true }] },
+        { id: 'm2', runs: [{ ok: false }] },
+      ]);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result[0].status).toBe('degraded');
+      expect(result[0].monitorsUp).toBe(1);
+    });
+
+    it('returns outage status when all monitors are down', async () => {
+      const now = new Date();
+      const pages = [
+        {
+          slug: 'prod',
+          title: 'Production',
+          description: null,
+          layout: { widgets: [{ id: 'w1', type: 'uptime-bar', x: 0, y: 0, w: 6, h: 2, config: { monitorId: 'm1' } }] },
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue(pages);
+      prisma.monitor.findMany = vi.fn().mockResolvedValue([
+        { id: 'm1', runs: [{ ok: false }] },
+      ]);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result[0].status).toBe('outage');
+      expect(result[0].monitorsUp).toBe(0);
+    });
+
+    it('returns empty array when no pages are published', async () => {
+      prisma = makePrisma({});
+      prisma.publicStatusPage.findMany = vi.fn().mockResolvedValue([]);
+      service = makeService(prisma);
+      const result = await service.listPublicPages();
+      expect(result).toEqual([]);
+    });
+  });
+
   // ── findPublic() ──────────────────────────────────────────────────────────
 
   describe('findPublic()', () => {

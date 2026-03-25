@@ -223,6 +223,16 @@ export class StatusPagesController {
   // ── Public routes (no auth) ───────────────────────────────────────────────
   // IMPORTANT: static routes must come before parameterized :slug routes
 
+  @Get('public/status-pages')
+  @ApiOperation({
+    summary: 'List all published status pages (public)',
+    description: 'Returns basic info for all published status pages. No auth required.',
+  })
+  @ApiResponse({ status: 200, description: 'Array of published status page summaries.' })
+  listPublicPages() {
+    return this.statusPagesService.listPublicPages();
+  }
+
   @Get('public/status/unsubscribe')
   @ApiOperation({
     summary: 'Unsubscribe from status page updates (public)',

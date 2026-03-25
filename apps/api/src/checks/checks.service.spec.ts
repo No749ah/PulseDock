@@ -3726,26 +3726,22 @@ describe('private semver helpers — branch coverage', () => {
   // Line 122: isClearlyUnstableTag with null/undefined → return false
   // This is exercised when selectBestSemverTag filters tags with no prerelease info
   it('isClearlyUnstableTag returns false for falsy tag (line 122)', async () => {
-    const service = makeService();
-    // Access private method directly
-    const privateService = service as unknown as Record<string, (tag?: string | null) => boolean>;
-    expect(privateService.isClearlyUnstableTag(null)).toBe(false);
-    expect(privateService.isClearlyUnstableTag(undefined)).toBe(false);
-    expect(privateService.isClearlyUnstableTag('')).toBe(false);
+    const { isClearlyUnstableTag } = await import('./semver.util');
+    expect(isClearlyUnstableTag(null)).toBe(false);
+    expect(isClearlyUnstableTag(undefined)).toBe(false);
+    expect(isClearlyUnstableTag('')).toBe(false);
   });
 
   // Line 131: parseGitlabTarget when !projectPath after 'gitlab:' prefix
   it('parseGitlabTarget returns null for bare "gitlab:" prefix (line 131)', async () => {
-    const service = makeService();
-    const privateService = service as unknown as Record<string, (target: string, config: Record<string, unknown>) => unknown>;
-    const result = privateService.parseGitlabTarget('gitlab:', {});
+    const { parseGitlabTarget } = await import('./semver.util');
+    const result = parseGitlabTarget('gitlab:', {});
     expect(result).toBeNull();
   });
 
   it('parseGitlabTarget returns null for "gitlab: " (whitespace only after prefix)', async () => {
-    const service = makeService();
-    const privateService = service as unknown as Record<string, (target: string, config: Record<string, unknown>) => unknown>;
-    const result = privateService.parseGitlabTarget('gitlab:  ', {});
+    const { parseGitlabTarget } = await import('./semver.util');
+    const result = parseGitlabTarget('gitlab:  ', {});
     expect(result).toBeNull();
   });
 
@@ -3771,18 +3767,11 @@ describe('private semver helpers — branch coverage', () => {
 
   // Line 105 cond-expr[1]: classifyVersionStatus when cmp === null — same major but unparseable
   it('classifyVersionStatus returns yellow when cmp is null but same major detected (line 105)', async () => {
-    const service = makeService();
-    // Access classifyVersionStatus directly to control inputs precisely
-    const privateService = service as unknown as Record<string, (a: string, b: string) => string>;
+    const { classifyVersionStatus } = await import('./semver.util');
     // Use versions where normalizeVersion returns something with same major but compareSemver returns null
-    // This happens if one version is parseable and other is not — but wait, both need normalizeVersion to work for yellow
-    // Actually: if both normalizeVersion return something with the same major, but compareSemver returns null
-    // That's tricky via the public API. Let's test directly.
-    const result = privateService.classifyVersionStatus('1.0.0', '1.x.broken');
     // '1.x.broken' → normalizeVersion fails (no semver match) → cmp === null
-    // normalizeVersion('1.0.0')?.major === normalizeVersion('1.x.broken')?.major → null?.major → undefined === undefined → true? No...
-    // Actually normalizeVersion('1.x.broken') returns null, so .major is undefined
     // normalizeVersion('1.0.0')?.major === normalizeVersion('1.x.broken')?.major → 1 === undefined → false → 'red'
+    const result = classifyVersionStatus('1.0.0', '1.x.broken');
     expect(result).toBe('red');
   });
 });

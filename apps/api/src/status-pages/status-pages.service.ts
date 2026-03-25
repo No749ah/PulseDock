@@ -437,6 +437,93 @@ export class StatusPagesService {
    * @throws NotFoundException if the page does not exist or is not published
    * @throws UnauthorizedException if the page is password-protected and no/incorrect password is supplied
    */
+  /**
+   * List all published status pages (public summary only).
+   * Returns slug, title, description, and createdAt — no layout or monitor data.
+   */
+  async listPublicPages() {
+    const pages = await this.prisma.publicStatusPage.findMany({
+      where: { isPublished: true },
+      select: {
+        slug: true,
+        title: true,
+        description: true,
+        layout: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // Extract monitor IDs per page from layout JSON
+    const pageMonitorMap = new Map<string, Set<string>>();
+    const allMonitorIds = new Set<string>();
+
+    for (const page of pages) {
+      const rawLayout = page.layout as unknown;
+      const layout = (typeof rawLayout === 'string' ? JSON.parse(rawLayout) : rawLayout) as PageLayout | null;
+      const widgets: Widget[] = layout?.widgets ?? [];
+      const ids = new Set<string>();
+      for (const w of widgets) {
+        if (typeof w.config?.monitorId === 'string') ids.add(w.config.monitorId);
+        if (Array.isArray(w.config?.monitorIds)) {
+          for (const id of w.config.monitorIds) {
+            if (typeof id === 'string') ids.add(id);
+          }
+        }
+      }
+      pageMonitorMap.set(page.slug, ids);
+      ids.forEach((id) => allMonitorIds.add(id));
+    }
+
+    // Single batched query for all monitors across all pages
+    const monitorStatusMap = new Map<string, boolean | null>(); // id → ok (null = no runs)
+    if (allMonitorIds.size > 0) {
+      const monitors = await this.prisma.monitor.findMany({
+        where: { id: { in: [...allMonitorIds] } },
+        select: {
+          id: true,
+          runs: { orderBy: { checkedAt: 'desc' }, take: 1, select: { ok: true } },
+        },
+      });
+      for (const m of monitors) {
+        monitorStatusMap.set(m.id, m.runs.length > 0 ? m.runs[0].ok : null);
+      }
+    }
+
+    // Compute aggregate status per page
+    return pages.map((page) => {
+      const ids = pageMonitorMap.get(page.slug) ?? new Set();
+      let status: 'operational' | 'degraded' | 'outage' | 'unknown' = 'unknown';
+      let monitorsTotal = 0;
+      let monitorsUp = 0;
+
+      if (ids.size > 0) {
+        for (const id of ids) {
+          const ok = monitorStatusMap.get(id);
+          if (ok !== undefined) {
+            monitorsTotal++;
+            if (ok === true) monitorsUp++;
+          }
+        }
+        const monitorsDown = monitorsTotal - monitorsUp;
+        if (monitorsTotal === 0) {
+          status = 'unknown';
+        } else if (monitorsDown === 0 && monitorsUp > 0) {
+          status = 'operational';
+        } else if (monitorsDown === monitorsTotal) {
+          status = 'outage';
+        } else if (monitorsDown > 0) {
+          status = 'degraded';
+        }
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { layout: _layout, ...rest } = page;
+      return { ...rest, status, monitorsTotal, monitorsUp };
+    });
+  }
+
   async findPublic(slug: string, password?: string) {
     const page = await this.prisma.publicStatusPage.findUnique({ where: { slug } });
     if (!page || !page.isPublished) throw new NotFoundException('Status page not found or not published');

@@ -103,6 +103,7 @@ model Monitor {
   folderId      String?
   name          String
   description   String?     // Optional free-text notes/description for this monitor
+  runbookUrl    String?     // Optional link to incident runbook for this monitor
   type          MonitorType
   target        String
   intervalSec   Int         @default(60)

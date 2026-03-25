@@ -16,6 +16,12 @@ export class CreateMonitorDto {
   @MaxLength(2048)
   description?: string;
 
+  @ApiPropertyOptional({ description: 'Optional URL to an incident runbook for this monitor', maxLength: 2048, example: 'https://wiki.example.com/runbooks/service-outage' })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  runbookUrl?: string;
+
   @ApiProperty({
     description: 'Target URL, host:port, GitHub repo slug, Docker image, etc. depending on type',
     maxLength: 1024,
@@ -122,6 +128,11 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(2048)
   description?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  runbookUrl?: string;
 
   @IsOptional()
   @IsString()

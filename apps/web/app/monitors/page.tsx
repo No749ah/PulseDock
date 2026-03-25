@@ -94,6 +94,7 @@ function MonitorsPageInner() {
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
+    runbookUrl: string;
     type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
     target: string;
     intervalSec: number;
@@ -108,7 +109,7 @@ function MonitorsPageInner() {
     slaPeriodDays: number;
   }>({
     name: "",
-    description: "",
+    description: "", runbookUrl: "",
     type: "HTTP",
     target: "",
     intervalSec: 60,
@@ -506,6 +507,8 @@ function MonitorsPageInner() {
         method: "POST",
         body: JSON.stringify({
           name: formData.name,
+          description: formData.description || null,
+          runbookUrl: formData.runbookUrl || null,
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
@@ -520,7 +523,7 @@ function MonitorsPageInner() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -545,6 +548,8 @@ function MonitorsPageInner() {
         method: "PATCH",
         body: JSON.stringify({
           name: formData.name,
+          description: formData.description || null,
+          runbookUrl: formData.runbookUrl || null,
           type: formData.type,
           target: formData.target,
           intervalSec: formData.intervalSec,
@@ -1068,7 +1073,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1237,7 +1242,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);

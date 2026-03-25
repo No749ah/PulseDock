@@ -5,6 +5,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
   return {
     name: monitor.name,
     description: monitor.description ?? "",
+    runbookUrl: monitor.runbookUrl ?? "",
     type: monitor.type as MonitorFormData["type"],
     target: monitor.target,
     intervalSec: monitor.intervalSec,
@@ -53,6 +54,7 @@ export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataEx
     target: t.target,
     intervalSec: t.intervalSec,
     description: "",
+    runbookUrl: "",
     confirmations: 1,
     enabled: true,
     pluginId: t.pluginId ?? "",

@@ -23,6 +23,7 @@ export interface MonitorItem {
   id: string;
   name: string;
   description?: string | null;
+  runbookUrl?: string | null;
   type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;
@@ -77,6 +78,7 @@ export interface MonitorPlugin {
 export type MonitorFormData = {
   name: string;
   description: string;
+  runbookUrl: string;
   type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
   target: string;
   intervalSec: number;

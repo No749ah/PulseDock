@@ -75,6 +75,8 @@ export class MonitorsService {
       id: m.id,
       userId: m.userId,
       name: m.name,
+      description: m.description,
+      runbookUrl: m.runbookUrl,
       type: m.type,
       target: m.target,
       intervalSec: m.intervalSec,
@@ -105,6 +107,7 @@ export class MonitorsService {
   async create(userId: string, body: {
     name: string;
     description?: string;
+    runbookUrl?: string;
     target: string;
     type: MonitorType;
     intervalSec?: number;
@@ -132,6 +135,7 @@ export class MonitorsService {
         userId,
         name: body.name,
         description: body.description ?? null,
+        runbookUrl: body.runbookUrl ?? null,
         target: body.target,
         type: body.type,
         intervalSec: body.intervalSec ?? 60,
@@ -168,6 +172,8 @@ export class MonitorsService {
       id: created.id,
       userId: created.userId,
       name: created.name,
+      description: created.description,
+      runbookUrl: created.runbookUrl,
       type: created.type,
       target: created.target,
       intervalSec: created.intervalSec,
@@ -202,6 +208,7 @@ export class MonitorsService {
   async update(userId: string, monitorId: string, body: {
     name?: string;
     description?: string | null;
+    runbookUrl?: string | null;
     target?: string;
     type?: MonitorType;
     intervalSec?: number;
@@ -235,6 +242,7 @@ export class MonitorsService {
       data: {
         name: body.name ?? current.name,
         ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.runbookUrl !== undefined ? { runbookUrl: body.runbookUrl } : {}),
         target: body.target ?? current.target,
         type: body.type ?? current.type,
         intervalSec: body.intervalSec ?? current.intervalSec,

@@ -400,6 +400,16 @@ export default function MonitorDetailPage() {
             {monitor.description && (
               <p className="text-sm text-text-secondary">{monitor.description}</p>
             )}
+            {(monitor as { runbookUrl?: string | null }).runbookUrl && (
+              <a
+                href={(monitor as { runbookUrl?: string | null }).runbookUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+              >
+                📖 Runbook
+              </a>
+            )}
             {monitor.tags && monitor.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {monitor.tags.map((tag) => (

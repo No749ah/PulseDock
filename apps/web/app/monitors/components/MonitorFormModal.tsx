@@ -639,6 +639,31 @@ export function MonitorFormModal({
           </div>
         </div>
 
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
+          <input
+            type="text"
+            value={formData.description}
+            onChange={(e) => onSetFormData({ ...formData, description: e.target.value })}
+            className={inputClass}
+            placeholder="Optional notes about this monitor"
+          />
+        </div>
+
+        {/* Runbook URL */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">Runbook URL</label>
+          <input
+            type="url"
+            value={formData.runbookUrl}
+            onChange={(e) => onSetFormData({ ...formData, runbookUrl: e.target.value })}
+            className={inputClass}
+            placeholder="https://wiki.example.com/runbooks/service-outage"
+          />
+          <p className="mt-1 text-xs text-text-secondary">Optional. Link to your incident runbook — included in alert notifications.</p>
+        </div>
+
         {/* SLA Target */}
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">

@@ -7,6 +7,31 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.4.0] — 2026-03-25
+
+### Added
+- **Flap Detection** — Monitors now detect rapid oscillation between healthy/unhealthy states. When a monitor flips state ≥3 times in the last 5 runs, it enters "flapping" state: failure alerts are suppressed (noise reduction), a single 🔁 FLAPPING notification is sent, and the monitor shows an animated amber badge in the UI. Flapping clears automatically when the monitor stabilises. Configurable per-monitor toggle (`flapDetectionEnabled`).
+- **Auto-Create/Resolve Incidents** — Monitors can now automatically open and close incidents when status changes. Enable with `autoIncident` toggle per monitor; configure `autoIncidentSeverity` (CRITICAL/HIGH/MEDIUM/LOW). Auto-created incidents are tagged with an "Auto" badge in the UI and included in CSV export.
+- **SLA Error Budget Burn Rate Alerts** — Google SRE-style multi-window burn rate alerting. Critical threshold: 1h ≥14.4× + 6h ≥2.88× budget burn. High: 1h ≥6× + 6h ≥1.2×. Warning: 1h ≥3× + 6h ≥0.6×. Both windows must fire simultaneously to reduce false positives. Throttled 6h per monitor. New `slaBurnRateAlertedAt` field.
+- **Runbook URL** — Monitors can store a `runbookUrl` that is included in alert notifications and shown on the monitor detail page as a quick-access link for responders.
+- **Send Test Report Now** — New button in account settings to trigger an immediate test uptime report email without waiting for the scheduled send.
+
+### Fixed
+- **Flapping notification delivery log** — Fixed alert delivery log trigger for flap alerts so flap notifications are properly recorded in the delivery log.
+- **Auto-incident `autoCreated` flag** — Incidents created automatically now correctly have `autoCreated: true` persisted and exported in CSV output.
+- **TypeScript errors** — Resolved TS errors in `incidents.controller.spec.ts` and related test files.
+
+### Tests
+- **3208 API tests** (up from 2778), **10 CLI**, **12 Agent** — Total: **3230 tests passing**.
+- Added flap detection specs: stable runs, insufficient data, threshold crossing, state clear, detection-disabled.
+- Added 7 auto-incident tests: create, deduplication, resolve on recovery, confirmations interaction, severity mapping, error handling.
+- Added SLA burn rate alert tests (9 tests covering all severity levels, throttling, window logic).
+- Added extensive web component unit tests: Button, Card, Select, Skeleton, SortableTable, CopyButton, VersionDiff, PasswordStrength, MonitorStatusCell, Sparkline, CountUp, Badge, status-page editor utils (+300+ web tests).
+- Added resolver specs for incident/maintenance/SLA/performance/version/metric/layout/content/uptime resolvers.
+- Added semver utility specs (76 tests), timeUtils specs (53 tests), network runner specs.
+
+---
+
 ## [1.3.0] — 2026-03-24
 
 ### Added

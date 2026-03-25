@@ -45,6 +45,7 @@ function makeAlertsService() {
   return {
     notifySlaBreached: vi.fn().mockResolvedValue(undefined),
     notifySlaRecovered: vi.fn().mockResolvedValue(undefined),
+    notifyBurnRateAlert: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -581,6 +582,121 @@ describe('ChecksScheduler', () => {
           slaBreachAlertedAt: null,
         }),
       );
+    });
+  });
+
+  describe('checkBurnRateAlerts()', () => {
+    /** Helper: build N runs where `failCount` are failures */
+    function makeRuns(total: number, failCount: number): { ok: boolean }[] {
+      return Array.from({ length: total }, (_, i) => ({ ok: i >= failCount }));
+    }
+
+    it('does nothing when there are no SLA monitors', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when slaTarget is null', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: null, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('skips when throttle window has not expired (< 6h since last alert)', async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 3_600_000);
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: fiveHoursAgo,
+      }]);
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('skips when there are fewer than 2 runs in the 1h window', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      // 1h = 1 run, 6h = 5 runs, full = 10 runs — 1h window below threshold
+      prisma.monitorRun.findMany
+        .mockResolvedValueOnce(makeRuns(1, 1))   // 1h
+        .mockResolvedValueOnce(makeRuns(5, 4))   // 6h
+        .mockResolvedValueOnce(makeRuns(10, 8)); // full
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('skips when there are fewer than 10 runs in the full period', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      prisma.monitorRun.findMany
+        .mockResolvedValueOnce(makeRuns(5, 4))   // 1h
+        .mockResolvedValueOnce(makeRuns(8, 6))   // 6h
+        .mockResolvedValueOnce(makeRuns(9, 7));  // full — below 10 threshold
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('fires Critical burn-rate alert (>=14.4× 1h, >=2.88× 6h) and updates slaBurnRateAlertedAt', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'API', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      // 100% error rate for 1h and 6h → extreme burn rate
+      prisma.monitorRun.findMany
+        .mockResolvedValueOnce(makeRuns(60, 60))   // 1h: all fail
+        .mockResolvedValueOnce(makeRuns(360, 360)) // 6h: all fail
+        .mockResolvedValueOnce(makeRuns(200, 10)); // full period: mostly ok
+
+      await scheduler.checkBurnRateAlerts();
+
+      expect(alerts.notifyBurnRateAlert).toHaveBeenCalledOnce();
+      expect(prisma.monitor.update).toHaveBeenCalledWith({
+        where: { id: 'm1' },
+        data: { slaBurnRateAlertedAt: expect.any(Date) },
+      });
+    });
+
+    it('does not fire when burn rates are below all thresholds (normal traffic)', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      // 0% error rate → burn rate = 0
+      prisma.monitorRun.findMany
+        .mockResolvedValueOnce(makeRuns(60, 0))   // 1h
+        .mockResolvedValueOnce(makeRuns(360, 0))  // 6h
+        .mockResolvedValueOnce(makeRuns(200, 0)); // full
+
+      await scheduler.checkBurnRateAlerts();
+      expect(alerts.notifyBurnRateAlert).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when notifyBurnRateAlert rejects', async () => {
+      prisma.monitor.findMany.mockResolvedValue([{
+        id: 'm1', name: 'M', userId: 'u1',
+        slaTarget: 99.9, slaPeriodDays: 30, slaBurnRateAlertedAt: null,
+      }]);
+      prisma.monitorRun.findMany
+        .mockResolvedValueOnce(makeRuns(60, 60))
+        .mockResolvedValueOnce(makeRuns(360, 360))
+        .mockResolvedValueOnce(makeRuns(200, 10));
+      alerts.notifyBurnRateAlert.mockRejectedValueOnce(new Error('channel down'));
+
+      await expect(scheduler.checkBurnRateAlerts()).resolves.not.toThrow();
+    });
+
+    it('suppresses checkBurnRateAlerts after shutdown signal', async () => {
+      prisma.monitor.findMany.mockResolvedValue([]);
+      await scheduler.beforeApplicationShutdown();
+      await scheduler.checkBurnRateAlerts();
+      expect(prisma.monitor.findMany).not.toHaveBeenCalled();
     });
   });
 

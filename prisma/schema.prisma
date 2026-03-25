@@ -117,6 +117,7 @@ model Monitor {
   slaTarget           Float?
   slaPeriodDays       Int?        @default(30)
   slaBreachAlertedAt  DateTime?
+  slaBurnRateAlertedAt DateTime?  // last time a burn-rate alert fired
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

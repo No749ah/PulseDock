@@ -213,7 +213,9 @@ describe('Export — onExportCSV/onExportJSON callbacks', () => {
   });
 
   it('export callbacks are optional — undefined does not throw', () => {
-    const maybeExport: (() => void) | undefined = undefined;
-    expect(() => maybeExport?.()).not.toThrow();
+    const maybeExport = undefined as (() => void) | undefined;
+    expect(() => {
+      if (typeof maybeExport === 'function') maybeExport();
+    }).not.toThrow();
   });
 });

@@ -1,13 +1,13 @@
-## Status Summary (2026-03-25 08:35 UTC)
-- **Build/Test:** ✅ Clean build + 2758 API + 119 Web + 10 CLI + 12 Agent tests passing (2899 total)
+## Status Summary (2026-03-25 10:12 UTC)
+- **Build/Test:** ✅ Clean build + 2895 API + 119 Web + 10 CLI + 12 Agent tests passing (3036 total, 3113 with new resolver specs)
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.3.0 + web running; public URL + all routes 200; 0 TS errors
 - **Branch:** heartbeat/2026-03-24-afternoon (working branch)
 - **Registry:** 5009 tools, lint clean, 646 verified entries
-- **Deps:** nodemailer 8.0.4 (updated). Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
+- **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` with 7 live monitors — ready for Noah's visual review
 - **Quality:** ✅ Smoke test 27/27, code quality 8/8, 0 any types, 0 console.log, 0 TODOs
-- **Last changes:** Runner module specs for http/network/version (+80 tests, 2819→2899). Package versions bumped to 1.3.0.
+- **Last changes:** Fixed tls.connect TS errors in network runner specs. Added layout, status, uptime resolver specs (+77 tests). Total: 3113.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

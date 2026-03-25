@@ -91,6 +91,9 @@ export class MonitorsService {
       slaTarget: m.slaTarget,
       slaPeriodDays: m.slaPeriodDays,
       slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: m.autoIncident,
+      autoIncidentSeverity: m.autoIncidentSeverity,
+      activeAutoIncidentId: m.activeAutoIncidentId,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -120,6 +123,8 @@ export class MonitorsService {
     enabled?: boolean;
     slaTarget?: number;
     slaPeriodDays?: number;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -146,6 +151,8 @@ export class MonitorsService {
         folderId: body.folderId ?? null,
         slaTarget: body.slaTarget ?? null,
         slaPeriodDays: body.slaPeriodDays ?? null,
+        autoIncident: body.autoIncident ?? false,
+        autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -187,6 +194,9 @@ export class MonitorsService {
       slaTarget: created.slaTarget,
       slaPeriodDays: created.slaPeriodDays,
       slaBreachAlertedAt: created.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: created.autoIncident,
+      autoIncidentSeverity: created.autoIncidentSeverity,
+      activeAutoIncidentId: created.activeAutoIncidentId,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -221,6 +231,8 @@ export class MonitorsService {
     tags?: string[];
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -253,6 +265,8 @@ export class MonitorsService {
         enabled: body.enabled ?? current.enabled,
         ...(body.slaTarget !== undefined ? { slaTarget: body.slaTarget } : {}),
         ...(body.slaPeriodDays !== undefined ? { slaPeriodDays: body.slaPeriodDays } : {}),
+        ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
+        ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
 
       },
     });
@@ -609,6 +623,9 @@ export class MonitorsService {
       slaTarget: monitor.slaTarget ?? null,
       slaPeriodDays: monitor.slaPeriodDays ?? null,
       slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
+      autoIncident: monitor.autoIncident,
+      autoIncidentSeverity: monitor.autoIncidentSeverity,
+      activeAutoIncidentId: monitor.activeAutoIncidentId,
     });
   }
 

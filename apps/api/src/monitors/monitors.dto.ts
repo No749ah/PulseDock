@@ -114,6 +114,16 @@ export class CreateMonitorDto {
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
 
+  @ApiPropertyOptional({ description: 'Automatically create/resolve incidents when this monitor changes status', example: false })
+  @IsOptional()
+  @IsBoolean()
+  autoIncident?: boolean;
+
+  @ApiPropertyOptional({ description: 'Default incident severity for auto-created incidents', enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'], example: 'MEDIUM' })
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  autoIncidentSeverity?: string;
+
 }
 
 export class UpdateMonitorDto {
@@ -190,6 +200,14 @@ export class UpdateMonitorDto {
   @IsInt()
   @IsIn([7, 14, 30, 90])
   slaPeriodDays?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  autoIncident?: boolean;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  autoIncidentSeverity?: string;
 
 }
 

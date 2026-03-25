@@ -107,6 +107,8 @@ function MonitorsPageInner() {
     folderId: string;
     slaTarget: number | "";
     slaPeriodDays: number;
+    autoIncident: boolean;
+    autoIncidentSeverity: string;
   }>({
     name: "",
     description: "", runbookUrl: "",
@@ -122,6 +124,8 @@ function MonitorsPageInner() {
     folderId: "",
     slaTarget: "",
     slaPeriodDays: 30,
+    autoIncident: false,
+    autoIncidentSeverity: "MEDIUM",
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -519,11 +523,13 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           ...(formData.slaTarget !== "" ? { slaTarget: formData.slaTarget } : {}),
           slaPeriodDays: formData.slaPeriodDays,
+          autoIncident: formData.autoIncident,
+          autoIncidentSeverity: formData.autoIncidentSeverity,
 
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM" });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -560,6 +566,8 @@ function MonitorsPageInner() {
           folderId: formData.folderId || null,
           slaTarget: formData.slaTarget !== "" ? formData.slaTarget : null,
           slaPeriodDays: formData.slaPeriodDays,
+          autoIncident: formData.autoIncident,
+          autoIncidentSeverity: formData.autoIncidentSeverity,
         }),
       });
       setShowModal(false);
@@ -1073,7 +1081,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM" });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1242,7 +1250,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30 });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM" });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);

@@ -358,6 +358,11 @@ export class ChecksService {
       await this.alerts.notifyMonitorFailure(monitor, run, alertContext);
     }
 
+    // Auto-incident: create incident when monitor goes down, resolve when it recovers
+    if (monitor.autoIncident) {
+      await this.handleAutoIncident(monitor, run, shouldAlertFailure, isRecovery, consecutiveFailures, confirmations);
+    }
+
     this.realtime.monitorChecked(monitor.userId, {
       monitor: {
         id: monitor.id,
@@ -405,6 +410,92 @@ export class ChecksService {
 
   /**
    * Computes the current overall status of a published status page and fires its
+   /**
+   * Handles auto-incident lifecycle for a monitor check result.
+   * Creates an incident when a monitor first crosses the failure threshold,
+   * and auto-resolves the incident when the monitor recovers.
+   *
+   * @param monitor - The monitor (must have autoIncident=true)
+   * @param run - The current check result
+   * @param shouldAlertFailure - True if this run crosses the confirmation threshold for failure
+   * @param isRecovery - True if monitor just recovered to green
+   * @param consecutiveFailures - Number of consecutive failures including this one
+   * @param confirmations - The monitor's confirmation threshold
+   */
+  private async handleAutoIncident(
+    monitor: Monitor,
+    run: MonitorRun,
+    shouldAlertFailure: boolean,
+    isRecovery: boolean,
+    consecutiveFailures: number,
+    confirmations: number,
+  ): Promise<void> {
+    try {
+      const isCurrentUnhealthy = run.level === 'red' || run.level === 'yellow';
+
+      if (isCurrentUnhealthy && !monitor.activeAutoIncidentId && consecutiveFailures >= confirmations) {
+        // Monitor just went down and no active incident — create one
+        const severity = (monitor.autoIncidentSeverity as string) ?? 'MEDIUM';
+        const incident = await this.prisma.incident.create({
+          data: {
+            userId: monitor.userId,
+            title: `${monitor.name} is ${run.level === 'red' ? 'down' : 'degraded'}`,
+            description: `Automatically created by PulseDock monitoring.\n\nCheck message: ${run.message}\n\nMonitor: ${monitor.target}`,
+            status: 'INVESTIGATING',
+            severity: severity as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+            updates: {
+              create: {
+                body: `Monitor check failed: ${run.message}`,
+                status: 'INVESTIGATING',
+              },
+            },
+            monitors: {
+              create: {
+                monitorId: monitor.id,
+              },
+            },
+          },
+        });
+
+        await this.prisma.monitor.update({
+          where: { id: monitor.id },
+          data: { activeAutoIncidentId: incident.id },
+        });
+
+        this.logger.log(`[AutoIncident] Created incident ${incident.id} for monitor ${monitor.id} (${monitor.name})`);
+      } else if (isRecovery && monitor.activeAutoIncidentId) {
+        // Monitor recovered — auto-resolve the open incident
+        const incidentId = monitor.activeAutoIncidentId;
+        const now = new Date();
+
+        await this.prisma.incident.update({
+          where: { id: incidentId },
+          data: {
+            status: 'RESOLVED',
+            resolvedAt: now,
+            updates: {
+              create: {
+                body: `Monitor recovered automatically. Latency: ${run.latencyMs != null ? `${run.latencyMs}ms` : 'N/A'}`,
+                status: 'RESOLVED',
+              },
+            },
+          },
+        });
+
+        await this.prisma.monitor.update({
+          where: { id: monitor.id },
+          data: { activeAutoIncidentId: null },
+        });
+
+        this.logger.log(`[AutoIncident] Resolved incident ${incidentId} for monitor ${monitor.id} (${monitor.name})`);
+      }
+    } catch (err) {
+      // Non-fatal: auto-incident errors should never break the check pipeline
+      this.logger.warn(`[AutoIncident] Failed for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /**
    * notification webhook if the status has changed since the last notification.
    * @param page - Status page record (must include id, slug, notifyWebhookUrl, lastNotifiedStatus)
    * @param userId - Owner user ID for querying monitors

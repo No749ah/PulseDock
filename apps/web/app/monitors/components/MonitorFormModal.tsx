@@ -700,6 +700,49 @@ export function MonitorFormModal({
           <p className="mt-1 text-xs text-text-secondary">Rolling window for SLA uptime calculation.</p>
         </div>
 
+        {/* Auto-Incident */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Auto-Create Incidents</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Automatically create &amp; resolve incidents when this monitor changes status.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.autoIncident}
+              onClick={() => onSetFormData({ ...formData, autoIncident: !formData.autoIncident })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                formData.autoIncident ? "bg-accent" : "bg-surface-secondary"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                  formData.autoIncident ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+          {formData.autoIncident && (
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Incident Severity</label>
+              <select
+                value={formData.autoIncidentSeverity}
+                onChange={(e) => onSetFormData({ ...formData, autoIncidentSeverity: e.target.value })}
+                className="w-full rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="CRITICAL">🔴 Critical</option>
+                <option value="HIGH">🟠 High</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="LOW">🔵 Low</option>
+              </select>
+              <p className="mt-1 text-xs text-text-secondary">Severity assigned to auto-created incidents.</p>
+            </div>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>
           {selectedTags.length > 0 && (

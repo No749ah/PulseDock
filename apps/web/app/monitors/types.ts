@@ -36,6 +36,9 @@ export interface MonitorItem {
   alertChannels?: AlertChannelSummary[];
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
+  autoIncident?: boolean;
+  autoIncidentSeverity?: string;
+  activeAutoIncidentId?: string | null;
 }
 
 export interface MonitorRun {
@@ -91,6 +94,8 @@ export type MonitorFormData = {
   folderId: string;
   slaTarget: number | "";
   slaPeriodDays: number;
+  autoIncident: boolean;
+  autoIncidentSeverity: string;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

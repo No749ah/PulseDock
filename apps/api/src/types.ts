@@ -49,6 +49,9 @@ export interface Monitor {
   slaTarget: number | null;
   slaPeriodDays: number | null;
   slaBreachAlertedAt: string | null;
+  autoIncident: boolean;
+  autoIncidentSeverity: string;
+  activeAutoIncidentId: string | null;
   createdAt: string;
 }
 

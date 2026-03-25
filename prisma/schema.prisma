@@ -118,6 +118,9 @@ model Monitor {
   slaPeriodDays       Int?        @default(30)
   slaBreachAlertedAt  DateTime?
   slaBurnRateAlertedAt DateTime?  // last time a burn-rate alert fired
+  autoIncident        Boolean     @default(false) // auto-create/resolve incidents on status change
+  autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
+  activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

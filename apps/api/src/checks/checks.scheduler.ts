@@ -93,6 +93,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         slaTarget: true,
         slaPeriodDays: true,
         slaBreachAlertedAt: true,
+        autoIncident: true,
+        autoIncidentSeverity: true,
+        activeAutoIncidentId: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -164,6 +167,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     slaTarget?: number | null;
     slaPeriodDays?: number | null;
     slaBreachAlertedAt?: Date | null;
+    autoIncident: boolean;
+    autoIncidentSeverity: string;
+    activeAutoIncidentId: string | null;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -193,6 +199,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         slaTarget: monitor.slaTarget ?? null,
         slaPeriodDays: monitor.slaPeriodDays ?? null,
         slaBreachAlertedAt: monitor.slaBreachAlertedAt ? monitor.slaBreachAlertedAt.toISOString() : null,
+        autoIncident: monitor.autoIncident,
+        autoIncidentSeverity: monitor.autoIncidentSeverity,
+        activeAutoIncidentId: monitor.activeAutoIncidentId,
       });
     } finally {
       this.queueDepth--;

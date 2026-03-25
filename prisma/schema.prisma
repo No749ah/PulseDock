@@ -435,6 +435,7 @@ model Incident {
   status      IncidentStatus   @default(INVESTIGATING)
   severity    IncidentSeverity @default(MEDIUM)
   resolvedAt  DateTime?
+  autoCreated Boolean          @default(false) // true when auto-created by monitor check
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

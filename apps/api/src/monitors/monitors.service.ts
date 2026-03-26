@@ -604,7 +604,7 @@ export class MonitorsService {
    * @param action - One of: 'enable' | 'disable' | 'delete' | 'run'
    * @returns { ok, affected } with count of successfully processed monitors
    */
-  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag', tagId?: string) {
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations', tagId?: string, value?: number) {
     if (!ids.length) return { ok: true, affected: 0 };
     // Verify ownership of all IDs first
     const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
@@ -664,6 +664,28 @@ export class MonitorsService {
         await this.audit.log('monitor.bulk_remove_tag', userId, userId, { ids: ownedIds, tagId });
         return { ok: true, affected: result.count };
       }
+    }
+
+    // Bulk update interval / timeout / confirmations
+    if (action === 'update-interval' && value !== undefined) {
+      const safeValue = Math.max(10, Math.min(86400, Math.round(value)));
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { intervalSec: safeValue } });
+      await this.audit.log('monitor.bulk_update_interval', userId, userId, { ids: ownedIds, intervalSec: safeValue });
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'update-timeout' && value !== undefined) {
+      const safeValue = Math.max(1000, Math.min(60000, Math.round(value)));
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { timeoutMs: safeValue } });
+      await this.audit.log('monitor.bulk_update_timeout', userId, userId, { ids: ownedIds, timeoutMs: safeValue });
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    if (action === 'update-confirmations' && value !== undefined) {
+      const safeValue = Math.max(1, Math.min(10, Math.round(value)));
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { confirmations: safeValue } });
+      await this.audit.log('monitor.bulk_update_confirmations', userId, userId, { ids: ownedIds, confirmations: safeValue });
+      return { ok: true, affected: ownedIds.length };
     }
 
     return { ok: false, affected: 0 };

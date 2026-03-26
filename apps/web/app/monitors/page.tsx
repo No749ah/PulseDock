@@ -167,6 +167,7 @@ function MonitorsPageInner() {
   const lastSelectedIndexRef = useRef<number>(-1);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkTagId, setBulkTagId] = useState<string>("");
+  const [bulkValue, setBulkValue] = useState<string>("");
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
 
@@ -667,17 +668,24 @@ function MonitorsPageInner() {
     }
   };
 
-  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag") => {
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag" | "update-interval" | "update-timeout" | "update-confirmations") => {
     if (!selectedIds.size) return;
     if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
     if ((action === "add-tag" || action === "remove-tag") && !bulkTagId) {
       toastError("Please select a tag first");
       return;
     }
+    if ((action === "update-interval" || action === "update-timeout" || action === "update-confirmations") && !bulkValue) {
+      toastError("Please enter a value first");
+      return;
+    }
     setBulkLoading(true);
     try {
       const body: Record<string, unknown> = { ids: Array.from(selectedIds), action };
       if (action === "add-tag" || action === "remove-tag") body.tagId = bulkTagId;
+      if (action === "update-interval" || action === "update-timeout" || action === "update-confirmations") {
+        body.value = Number(bulkValue);
+      }
       const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
         method: "POST",
         body: JSON.stringify(body),
@@ -1368,6 +1376,22 @@ function MonitorsPageInner() {
                     </Button>
                   </div>
                 )}
+                <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+                    <input
+                      type="number"
+                      value={bulkValue}
+                      onChange={(e) => setBulkValue(e.target.value)}
+                      placeholder="value"
+                      className="w-16 text-xs px-2 py-1 bg-bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/50"
+                      aria-label="Bulk update value"
+                    />
+                    <Button size="sm" variant="secondary" onClick={() => handleBulkAction("update-interval")} disabled={bulkLoading || !bulkValue} className="text-xs" title="Set check interval (seconds)">
+                      Set interval
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => handleBulkAction("update-confirmations")} disabled={bulkLoading || !bulkValue} className="text-xs" title="Set required confirmations (1-10)">
+                      Set confirms
+                    </Button>
+                  </div>
                 <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
                   <Trash2 className="w-3.5 h-3.5" />Delete
                 </Button>

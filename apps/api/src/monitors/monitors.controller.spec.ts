@@ -97,7 +97,7 @@ describe('MonitorsController', () => {
   it('bulk() delegates to service.bulkAction', async () => {
     service.bulkAction.mockResolvedValue({ processed: 2 });
     const result = await controller.bulk(makeReq(), { ids: ['m-1', 'm-2'], action: 'enable' });
-    expect(service.bulkAction).toHaveBeenCalledWith('user-1', ['m-1', 'm-2'], 'enable', undefined);
+    expect(service.bulkAction).toHaveBeenCalledWith('user-1', ['m-1', 'm-2'], 'enable', undefined, undefined);
   });
 
   it('versionTest() delegates to service.testVersionConnection', async () => {

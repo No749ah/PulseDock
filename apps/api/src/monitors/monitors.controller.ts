@@ -127,7 +127,7 @@ export class MonitorsController {
   @ApiOperation({ summary: 'Bulk action on monitors', description: 'Apply enable, disable, delete, or run-now to multiple monitors at once.' })
   @ApiResponse({ status: 200, description: 'Bulk action applied.' })
   bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
-    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId);
+    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId, body.value);
   }
 
   @Post('version-test')

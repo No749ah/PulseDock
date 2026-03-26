@@ -245,6 +245,7 @@ model MonitorRun {
   latencyMs    Int?
   message      String
   responseBody String?  // First 500 chars of response body on failure, for debug
+  timingsJson  Json?    // HTTP timing breakdown: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)

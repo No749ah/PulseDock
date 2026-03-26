@@ -1030,6 +1030,7 @@ export class MonitorsService {
         message: r.message,
         level: r.level as 'green' | 'yellow' | 'red',
         responseBody: r.responseBody ?? null,
+        timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),

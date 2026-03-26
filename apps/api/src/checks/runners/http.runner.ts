@@ -1,18 +1,157 @@
 /**
  * HTTP and Browser check runners.
  * Extracted from ChecksService to keep the service focused on orchestration.
+ *
+ * Uses Node.js native http/https modules for HTTP checks to capture socket-level
+ * timing phases: DNS resolution, TCP connect, TLS handshake, TTFB, and download.
  */
 
-import type { PluginExecutionResult } from '../plugin.contracts';
+import * as https from 'https';
+import * as http from 'http';
+import type { IncomingMessage } from 'http';
+import type { PluginExecutionResult, Timings } from '../plugin.contracts';
 import { extractByPath } from '../version-extractor.util';
+
+interface TimedResult {
+  statusCode: number;
+  body: string;
+  latencyMs: number;
+  timings: Timings;
+}
+
+/**
+ * Performs a timed HTTP/HTTPS request using Node.js native modules.
+ * Captures DNS, TCP connect, TLS handshake, TTFB and download timing phases.
+ */
+function runTimedRequest(
+  url: string,
+  options: {
+    method: string;
+    timeoutMs: number;
+    headers: Record<string, string>;
+    body?: string;
+  },
+): Promise<TimedResult> {
+  return new Promise((resolve, reject) => {
+    const startMs = Date.now();
+    let dnsStart: number | null = null;
+    let dnsMs: number | null = null;
+    let tcpStart: number | null = null;
+    let tcpMs: number | null = null;
+    let tlsStart: number | null = null;
+    let tlsMs: number | null = null;
+    let ttfbMs: number | null = null;
+    let bodyStart: number | null = null;
+    let downloadMs: number | null = null;
+
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      reject(new Error(`Invalid URL: ${url}`));
+      return;
+    }
+
+    const isHttps = urlObj.protocol === 'https:';
+    const lib: typeof https | typeof http = isHttps ? https : http;
+
+    const requestOptions: https.RequestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port !== '' ? parseInt(urlObj.port, 10) : isHttps ? 443 : 80,
+      path: (urlObj.pathname || '/') + urlObj.search,
+      method: options.method,
+      headers: {
+        'User-Agent': 'PulseDock-Monitor/1.0',
+        ...options.headers,
+      },
+      timeout: options.timeoutMs,
+    };
+
+    const chunks: Buffer[] = [];
+
+    const req = lib.request(requestOptions, (res: IncomingMessage) => {
+      ttfbMs = Date.now() - startMs;
+      bodyStart = Date.now();
+
+      res.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+
+      res.on('end', () => {
+        downloadMs = bodyStart !== null ? Date.now() - bodyStart : null;
+        const latencyMs = Date.now() - startMs;
+        const body = Buffer.concat(chunks).toString('utf8');
+        const timings: Timings = {
+          dnsMs,
+          tcpMs,
+          tlsMs: isHttps ? tlsMs : null,
+          ttfbMs,
+          downloadMs,
+        };
+        resolve({
+          statusCode: res.statusCode ?? 0,
+          body,
+          latencyMs,
+          timings,
+        });
+      });
+
+      res.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
+
+    req.on('socket', (socket) => {
+      // DNS resolution start
+      dnsStart = Date.now();
+
+      socket.on('lookup', (_err: Error | null, _address: string) => {
+        if (dnsStart !== null) {
+          dnsMs = Date.now() - dnsStart;
+        }
+        tcpStart = Date.now();
+      });
+
+      socket.on('connect', () => {
+        if (tcpStart !== null) {
+          tcpMs = Date.now() - tcpStart;
+        } else if (dnsStart !== null) {
+          // lookup may not fire for cached DNS — measure from dnsStart
+          tcpMs = Date.now() - dnsStart;
+        }
+        if (isHttps) {
+          tlsStart = Date.now();
+        }
+      });
+
+      socket.on('secureConnect', () => {
+        if (tlsStart !== null) {
+          tlsMs = Date.now() - tlsStart;
+        }
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy(new Error(`Request timed out after ${options.timeoutMs}ms`));
+    });
+
+    req.on('error', (err: Error) => {
+      reject(err);
+    });
+
+    if (options.body && ['POST', 'PUT', 'PATCH'].includes(options.method)) {
+      req.write(options.body);
+    }
+
+    req.end();
+  });
+}
 
 export async function runHttpCheck(
   url: string,
   timeoutMs = 5000,
   config: Record<string, unknown> = {},
 ): Promise<PluginExecutionResult> {
-  const started = Date.now();
-
   const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
   const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
   const bodyJsonPath = typeof config['bodyJsonPath'] === 'string' && config['bodyJsonPath'].trim() ? config['bodyJsonPath'].trim() : undefined;
@@ -35,54 +174,48 @@ export async function runHttpCheck(
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const fetchOptions: RequestInit = {
+    const timedResult = await runTimedRequest(url, {
       method: safeMethod,
-      signal: controller.signal,
+      timeoutMs,
       headers: requestHeaders,
-    };
-    if (requestBody && ['POST', 'PUT', 'PATCH'].includes(safeMethod)) {
-      fetchOptions.body = requestBody;
-    }
-    const response = await fetch(url, fetchOptions);
-    clearTimeout(timeout);
-    const latencyMs = Date.now() - started;
+      body: requestBody,
+    });
+
+    const { statusCode, body, latencyMs, timings } = timedResult;
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
       const allowed = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
-      statusOk = allowed.includes(response.status);
+      statusOk = allowed.includes(statusCode);
     } else {
-      statusOk = response.ok;
+      statusOk = statusCode >= 200 && statusCode < 300;
     }
 
     if (!statusOk) {
-      const failBody = await response.text().catch(() => '');
       const expected = expectedStatus ? ` (expected ${Array.isArray(expectedStatus) ? expectedStatus.join('/') : expectedStatus})` : '';
       return {
         ok: false,
-        statusCode: response.status,
+        statusCode,
         latencyMs,
-        message: `HTTP ${response.status}${expected}`,
+        message: `HTTP ${statusCode}${expected}`,
         level: 'red' as const,
-        responseBody: failBody ? failBody.slice(0, 500) : null,
+        responseBody: body ? body.slice(0, 500) : null,
+        timings,
       };
     }
 
     if (needsBody) {
-      const body = await response.text().catch(() => '');
-
       if (bodyContains) {
         const found = body.toLowerCase().includes(bodyContains.toLowerCase());
         if (!found) {
           return {
             ok: false,
-            statusCode: response.status,
+            statusCode,
             latencyMs,
-            message: `HTTP ${response.status} — body does not contain "${bodyContains}"`,
+            message: `HTTP ${statusCode} — body does not contain "${bodyContains}"`,
             level: 'red' as const,
             responseBody: body.slice(0, 500) || null,
+            timings,
           };
         }
       }
@@ -94,11 +227,12 @@ export async function runHttpCheck(
         } catch {
           return {
             ok: false,
-            statusCode: response.status,
+            statusCode,
             latencyMs,
-            message: `HTTP ${response.status} — response is not valid JSON (cannot assert JSON path "${bodyJsonPath}")`,
+            message: `HTTP ${statusCode} — response is not valid JSON (cannot assert JSON path "${bodyJsonPath}")`,
             level: 'red' as const,
             responseBody: body.slice(0, 500) || null,
+            timings,
           };
         }
         const normalizedPath = bodyJsonPath.startsWith('$.') ? bodyJsonPath.slice(2) : bodyJsonPath.startsWith('$') ? bodyJsonPath.slice(1) : bodyJsonPath;
@@ -111,11 +245,12 @@ export async function runHttpCheck(
           const expectDesc = bodyJsonPathExpected ? `"${bodyJsonPathExpected}"` : 'truthy value';
           return {
             ok: false,
-            statusCode: response.status,
+            statusCode,
             latencyMs,
-            message: `HTTP ${response.status} — JSON path "${bodyJsonPath}" is ${actualStr ? `"${actualStr}"` : 'missing/falsy'} (expected ${expectDesc})`,
+            message: `HTTP ${statusCode} — JSON path "${bodyJsonPath}" is ${actualStr ? `"${actualStr}"` : 'missing/falsy'} (expected ${expectDesc})`,
             level: 'red' as const,
             responseBody: body.slice(0, 500) || null,
+            timings,
           };
         }
       }
@@ -124,10 +259,11 @@ export async function runHttpCheck(
         const assertDesc = bodyJsonPath ? `JSON path "${bodyJsonPath}" OK` : `body contains "${bodyContains}"`;
         return {
           ok: false,
-          statusCode: response.status,
+          statusCode,
           latencyMs,
           message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), ${assertDesc}`,
           level: 'yellow' as const,
+          timings,
         };
       }
       const okDesc = bodyJsonPath
@@ -135,37 +271,38 @@ export async function runHttpCheck(
         : `body contains "${bodyContains}"`;
       return {
         ok: true,
-        statusCode: response.status,
+        statusCode,
         latencyMs,
         message: `OK — ${okDesc}`,
         level: 'green' as const,
+        timings,
       };
     }
-
-    await response.text().catch(() => undefined);
 
     if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
       return {
         ok: false,
-        statusCode: response.status,
+        statusCode,
         latencyMs,
         message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms)`,
         level: 'yellow' as const,
+        timings,
       };
     }
 
     return {
       ok: true,
-      statusCode: response.status,
+      statusCode,
       latencyMs,
       message: 'OK',
       level: 'green' as const,
+      timings,
     };
   } catch (error) {
     return {
       ok: false,
       statusCode: 0,
-      latencyMs: Date.now() - started,
+      latencyMs: 0,
       message: error instanceof Error ? error.message : 'Request failed',
       level: 'red' as const,
     };
@@ -185,50 +322,46 @@ export async function runBrowserCheck(
       ? (config.browserStatusCodes as number[])
       : [];
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const start = Date.now();
 
   try {
-    const resp = await fetch(url, {
-      signal: controller.signal,
+    const timedResult = await runTimedRequest(url, {
+      method: 'GET',
+      timeoutMs,
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (compatible; PulseDock/1.0; +https://pulsedock.io) PulseDockBrowserCheck/1.0',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (compatible; PulseDock/1.0; +https://pulsedock.io) PulseDockBrowserCheck/1.0',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
       },
-      redirect: 'follow',
     });
 
-    const latencyMs = Date.now() - start;
-    clearTimeout(timer);
+    const { statusCode, body, latencyMs, timings } = timedResult;
 
     const statusOk =
       allowedCodes.length > 0
-        ? allowedCodes.includes(resp.status)
-        : resp.status >= 200 && resp.status < 400;
+        ? allowedCodes.includes(statusCode)
+        : statusCode >= 200 && statusCode < 400;
 
     if (!statusOk) {
       return {
         ok: false,
-        statusCode: resp.status,
+        statusCode,
         latencyMs,
-        message: `HTTP ${resp.status} — expected ${allowedCodes.length > 0 ? allowedCodes.join('/') : '2xx-3xx'}`,
-        level: resp.status >= 500 ? ('red' as const) : ('yellow' as const),
+        message: `HTTP ${statusCode} — expected ${allowedCodes.length > 0 ? allowedCodes.join('/') : '2xx-3xx'}`,
+        level: statusCode >= 500 ? ('red' as const) : ('yellow' as const),
+        timings,
       };
     }
 
     if (expectedText || selector) {
-      const body = await resp.text();
-
       if (expectedText && !body.toLowerCase().includes(expectedText.toLowerCase())) {
         return {
           ok: false,
-          statusCode: resp.status,
+          statusCode,
           latencyMs,
           message: `Expected text not found: "${expectedText}"`,
           level: 'red' as const,
+          timings,
         };
       }
 
@@ -237,10 +370,11 @@ export async function runBrowserCheck(
         if (!selectorPresent) {
           return {
             ok: false,
-            statusCode: resp.status,
+            statusCode,
             latencyMs,
             message: `Element not found: "${selector}"`,
             level: 'red' as const,
+            timings,
           };
         }
       }
@@ -248,15 +382,15 @@ export async function runBrowserCheck(
 
     return {
       ok: true,
-      statusCode: resp.status,
+      statusCode,
       latencyMs,
-      message: `${resp.status} OK${latencyMs > 0 ? ` (${latencyMs}ms)` : ''}`,
+      message: `${statusCode} OK${latencyMs > 0 ? ` (${latencyMs}ms)` : ''}`,
       level: 'green' as const,
+      timings,
     };
   } catch (err: unknown) {
-    clearTimeout(timer);
     const latencyMs = Date.now() - start;
-    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    const isTimeout = err instanceof Error && (err.message.includes('timed out') || err.name === 'AbortError');
     return {
       ok: false,
       statusCode: 0,

@@ -1,5 +1,13 @@
 import type { Monitor, MonitorLevel } from '../types';
 
+export interface Timings {
+  dnsMs: number | null;
+  tcpMs: number | null;
+  tlsMs: number | null;
+  ttfbMs: number | null;
+  downloadMs: number | null;
+}
+
 export interface PluginExecutionContext {
   monitor: Pick<Monitor, 'id' | 'name' | 'type' | 'target' | 'timeoutMs'>;
   config: Record<string, unknown>;
@@ -14,6 +22,8 @@ export interface PluginExecutionResult {
   level: MonitorLevel;
   /** First 500 chars of response body on failure, for debugging. Only populated on failed checks. */
   responseBody?: string | null;
+  /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only populated for HTTP/BROWSER checks. */
+  timings?: Timings | null;
 }
 
 export interface PluginConfigField {

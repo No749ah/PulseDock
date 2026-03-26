@@ -302,6 +302,10 @@ export class ChecksService {
         level: result.level,
         // Capture response body on failure for debugging (max 500 chars)
         responseBody: (result as PluginExecutionResult).responseBody ? (result as PluginExecutionResult).responseBody!.slice(0, 500) : null,
+        // HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download) for HTTP/BROWSER monitors
+        timingsJson: ((result as PluginExecutionResult).timings
+          ? ((result as PluginExecutionResult).timings as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull),
       },
     });
 

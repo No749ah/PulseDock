@@ -21,6 +21,7 @@ import type {
   AlertChannelInfo,
   MonitorDependency,
   MonitorRun,
+  RunTimings,
   UptimePeriod,
   UptimeStats,
   ErrorBudget,
@@ -51,6 +52,70 @@ interface DeliveryHistory {
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
+
+// ── Timing Waterfall ─────────────────────────────────────────────────────────
+
+interface TimingWaterfallProps {
+  timings: RunTimings;
+  totalMs: number | null;
+}
+
+interface TimingPhase {
+  label: string;
+  value: number | null;
+  color: string;
+}
+
+function TimingWaterfall({ timings, totalMs }: TimingWaterfallProps) {
+  const phases: TimingPhase[] = [
+    { label: "DNS", value: timings.dnsMs, color: "bg-blue-500" },
+    { label: "TCP", value: timings.tcpMs, color: "bg-green-500" },
+    { label: "TLS", value: timings.tlsMs, color: "bg-purple-500" },
+    { label: "TTFB", value: timings.ttfbMs, color: "bg-orange-500" },
+    { label: "Download", value: timings.downloadMs, color: "bg-cyan-500" },
+  ];
+
+  const total = totalMs ?? phases.reduce((sum, p) => sum + (p.value ?? 0), 0);
+  const maxMs = Math.max(...phases.map((p) => p.value ?? 0), 1);
+
+  return (
+    <div className="my-2 p-3 rounded-lg bg-surface-elevated border border-border text-xs">
+      <p className="text-text-muted mb-2 font-medium uppercase tracking-wide text-[10px]">Timing Breakdown</p>
+      <div className="space-y-1.5">
+        {phases.map((phase) => (
+          <div key={phase.label} className="flex items-center gap-2">
+            <span className="w-16 text-text-secondary text-right shrink-0">{phase.label}</span>
+            <div className="flex-1 flex items-center gap-2">
+              {phase.value !== null ? (
+                <>
+                  <div className="flex-1 bg-surface rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`${phase.color} h-2 rounded-full transition-all`}
+                      style={{ width: `${Math.max(2, (phase.value / maxMs) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-text-primary font-mono w-14 text-right shrink-0">{phase.value}ms</span>
+                </>
+              ) : (
+                <>
+                  <div className="flex-1 bg-surface rounded-full h-2" />
+                  <span className="text-text-muted font-mono w-14 text-right shrink-0">N/A</span>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1 border-t border-border mt-1">
+          <span className="w-16 text-text-muted text-right shrink-0">Total</span>
+          <div className="flex-1" />
+          <span className="text-text-primary font-mono font-semibold w-14 text-right shrink-0">{total}ms</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -121,6 +186,8 @@ export default function MonitorDetailPage() {
   const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
   const [runsTotal, setRunsTotal] = useState<number | null>(null);
   const [runsLoadingMore, setRunsLoadingMore] = useState(false);
+  // Timing waterfall — stores the expanded run ID (click to expand)
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -1670,11 +1737,29 @@ export default function MonitorDetailPage() {
                       </tr>
                     </TableHead>
                     <TableBody>
-                      {runs.map((run) => (
+                      {runs.map((run) => {
+                        const isExpanded = expandedRunId === run.id;
+                        const hasTimings = run.timings && (
+                          run.timings.dnsMs !== null ||
+                          run.timings.tcpMs !== null ||
+                          run.timings.tlsMs !== null ||
+                          run.timings.ttfbMs !== null ||
+                          run.timings.downloadMs !== null
+                        );
+                        const showWaterfall = hasTimings && (monitor?.type === "HTTP" || monitor?.type === "BROWSER");
+                        return (
                         <React.Fragment key={run.id}>
-                        <TableRow>
+                        <TableRow
+                          className={showWaterfall ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
+                          onClick={showWaterfall ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
+                        >
                           <TableCell className="text-xs text-text-secondary whitespace-nowrap">
-                            {relativeTime(run.checkedAt)}
+                            <span className="flex items-center gap-1">
+                              {relativeTime(run.checkedAt)}
+                              {showWaterfall && (
+                                <ChevronDown className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              )}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {run.level === "yellow" ? (
@@ -1698,6 +1783,13 @@ export default function MonitorDetailPage() {
                             {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
                           </TableCell>
                         </TableRow>
+                        {isExpanded && showWaterfall && run.timings && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                              <TimingWaterfall timings={run.timings} totalMs={run.latencyMs} />
+                            </TableCell>
+                          </TableRow>
+                        )}
                         {run.responseBody && (
                           <TableRow>
                             <TableCell colSpan={5} className="py-0 pb-2 px-4">
@@ -1706,7 +1798,8 @@ export default function MonitorDetailPage() {
                           </TableRow>
                         )}
                         </React.Fragment>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   {runsHasMore && (

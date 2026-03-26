@@ -79,6 +79,14 @@ export interface MonitorDependency {
   };
 }
 
+export interface RunTimings {
+  dnsMs: number | null;
+  tcpMs: number | null;
+  tlsMs: number | null;
+  ttfbMs: number | null;
+  downloadMs: number | null;
+}
+
 export interface MonitorRun {
   id: string;
   monitorId: string;
@@ -90,6 +98,8 @@ export interface MonitorRun {
   level?: string;
   /** First 500 chars of response body on failure, for debugging */
   responseBody?: string | null;
+  /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only for HTTP/BROWSER monitors. */
+  timings?: RunTimings | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

@@ -1,17 +1,15 @@
-## Status Summary (2026-03-26 11:50 UTC)
-- **Build/Test:** ✅ Clean build + 3371 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 11:14 UTC)
+- **Build/Test:** ✅ Clean build + 3381 API tests + 0 TS errors; all 16 routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-monitor-slo-improvements
+- **Branch:** heartbeat/2026-03-26-enterprise-features
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (10:35 cycle):**
-  - Dashboard SLO section: `GET /v1/monitors/slo-summary` + dashboard "SLO Health" section with 3-column ok/at-risk/breached summary and per-monitor table. 6 new tests.
-  - Monitor SLO/SLI: `GET /v1/monitors/:id/slo-report`, SloTab on detail page, sliLatencyTarget/Window in create/edit form. 11 tests.
-  - Alert Analytics: `GET /v1/alert-channels/analytics` — 30-day daily counts, top alerting monitors, channel reliability. Frontend `/alerts/analytics` page with nav link. 5 new tests.
-  - Total tests: 3371. Tags page at /monitors/tags. Escalation policies frontend + integration. Monitor cloning. Business-hours schedule. Alert storm protection. WebSocket on detail. Nav down-monitor badge.
+- **Last changes (11:14 cycle):**
+  - Dashboard Health Timeline: `GET /v1/dashboard/health-timeline?days=30` — per-day health score (% monitors green). Bar chart on dashboard with color coding, hover tooltips, avg score, trend indicator. 15 new tests.
+  - Total tests: 3381. Tags page at /monitors/tags. Escalation policies frontend + integration. Monitor cloning. Business-hours schedule. Alert storm protection. WebSocket on detail. Nav down-monitor badge.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

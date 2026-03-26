@@ -1301,6 +1301,9 @@ export default function MonitorDetailPage() {
                 }));
                 const avg = chartData.filter((pt) => pt.avgLatencyMs !== null).reduce((s, pt, _, a) => s + (pt.avgLatencyMs ?? 0) / a.length, 0);
                 const roundedAvg = avg > 0 ? Math.round(avg) : undefined;
+                // Compute overall P95 from chart points
+                const p95Values = chartData.filter((pt) => pt.p95LatencyMs !== null).map((pt) => pt.p95LatencyMs as number);
+                const roundedP95 = p95Values.length > 0 ? Math.round(p95Values.reduce((s, v) => s + v, 0) / p95Values.length) : undefined;
                 // Map events to nearest bucket
                 const chartStart = mappedData.length > 0 ? new Date(mappedData[0].checkedAt as string).getTime() : 0;
                 const chartEnd = mappedData.length > 0 ? new Date(mappedData[mappedData.length - 1].checkedAt as string).getTime() : 0;
@@ -1322,6 +1325,7 @@ export default function MonitorDetailPage() {
                     data={mappedData}
                     height={160}
                     avgLine={roundedAvg}
+                    p95Line={roundedP95}
                     color="#58a6ff"
                     marks={marks.length > 0 ? marks : undefined}
                   />

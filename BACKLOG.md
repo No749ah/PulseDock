@@ -1,15 +1,20 @@
-## Status Summary (2026-03-26 17:55 UTC)
-- **Build/Test:** ✅ Clean build + 3473 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 18:10 UTC)
+- **Build/Test:** ✅ Clean build + 3482 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
-- **Branch:** heartbeat/2026-03-26-noon
+- **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (17:55 UTC cycle):**
-  - **Custom HTTP headers for webhook channels** — Key-value editor (password inputs) in create/edit modal. Reserved headers protected. 2 new tests.
-  - **Webhook payload template preview** — `POST /v1/alert-channels/:id/preview-payload` renders template with sample data, returns `{ rendered, valid, error? }`. UI: preview panel with ✓/⚠ JSON indicator in create (client-side) + edit (server-side) forms.
-  - **Manual alert delivery retry** — `POST /v1/alert-channels/:id/retry-delivery/:id` and `retry-all-failed`. ↻ buttons in delivery history UI, auto-refresh after retry.
-  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding. 49 http.runner tests (incl. 3 timing-specific).
+- **Last changes (18:10 UTC cycle):**
+  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding.
+  - **Latency distribution + performance tab** — `GET /v1/monitors/:id/latency-distribution` (buckets, p50-p99, hourly heatmap). Performance tab on monitor detail with histogram, percentile cards, hourly heatmap.
+  - **Period-over-period comparison** — `GET /v1/monitors/:id/period-comparison` (current vs prior period uptime, avg/p95 latency, % deltas). "vs Previous Period" card in Performance tab with color-coded trend indicators.
+  - **CSV export with timing columns** — dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs columns added to check history CSV export.
+  - **Notification digest system** — hourly/daily digest queue with `POST /v1/notifications/digest-queue`, `GET /v1/notifications/digest-queue`. DigestQueueCard on account page.
+  - **Global search** — `GET /v1/search?q=` across monitors/incidents/alerts/status-pages. `/search` page with result categories.
+  - **Monitor check retries** — `retryCount` (0-3) with exponential backoff. Prisma migration + API + frontend.
+  - **Custom HTTP headers for webhook channels** — Key-value editor in create/edit modal. Reserved headers protected.
+  - **Webhook payload template preview** + **Manual alert delivery retry** — preview panel + ↻ retry buttons.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

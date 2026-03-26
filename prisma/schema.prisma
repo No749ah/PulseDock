@@ -72,6 +72,7 @@ model User {
   userPlan                UserPlan?
   monitorEvents           MonitorEvent[]
   acknowledgements        AlertAcknowledgement[]
+  alertRoutingRules       AlertRoutingRule[]
 }
 
 model Session {
@@ -266,6 +267,31 @@ model MonitorAlert {
   alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
 
   @@id([monitorId, alertChannelId])
+}
+
+model AlertRoutingRule {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  priority    Int      @default(0)
+
+  // Match conditions (all specified conditions must match — AND logic)
+  matchTags        String[]
+  matchTypes       String[]
+  matchFolderIds   String[]
+  matchLevels      String[]
+  matchMonitorIds  String[]
+
+  // Action
+  channelIds       String[]
+  overrideNotifyOn String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model InviteToken {

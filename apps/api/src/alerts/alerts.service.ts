@@ -481,8 +481,33 @@ export class AlertsService {
       return;
     }
 
+    // Load routing rules for this user, ordered by priority
+    const routingRules = await this.prisma.alertRoutingRule.findMany({
+      where: { userId: monitor.userId, enabled: true },
+      orderBy: { priority: 'asc' },
+    });
+
+    // Find matching rules for this monitor+run
+    const matchedRules = routingRules.filter(rule => {
+      if (rule.matchMonitorIds.length > 0 && !rule.matchMonitorIds.includes(monitor.id)) return false;
+      if (rule.matchTypes.length > 0 && !rule.matchTypes.includes(monitor.type)) return false;
+      if (rule.matchLevels.length > 0 && !rule.matchLevels.includes(run.level)) return false;
+      if (rule.matchFolderIds.length > 0 && (!monitor.folderId || !rule.matchFolderIds.includes(monitor.folderId))) return false;
+      return true;
+    });
+
+    // If any rules matched, collect channels from rules
+    let routedChannelIds: string[] | null = null;
+    if (matchedRules.length > 0) {
+      routedChannelIds = [...new Set(matchedRules.flatMap(r => r.channelIds))];
+      this.logger.log(`Routing alert for monitor ${monitor.id} via ${matchedRules.length} rules to channels: ${routedChannelIds.join(', ')}`);
+    }
+
     const links = await this.prisma.monitorAlert.findMany({
-      where: { monitorId: monitor.id },
+      where: {
+        monitorId: monitor.id,
+        ...(routedChannelIds !== null && { alertChannelId: { in: routedChannelIds } }),
+      },
       include: { alertChannel: true },
     });
 

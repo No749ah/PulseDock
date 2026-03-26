@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
 
@@ -201,5 +201,87 @@ describe('MonitorsService - getSloReport', () => {
 
     const report = await service.getSloReport('user-1', 'monitor-1');
     expect(report.latency).toBeUndefined();
+  });
+});
+
+describe('MonitorsService - getSloSummary', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let service: MonitorsService;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = makeService(prisma);
+  });
+
+  it('returns empty summary when no monitors have slaTarget', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await service.getSloSummary('user-1');
+    expect(result.monitors).toHaveLength(0);
+    expect(result.summary.total).toBe(0);
+  });
+
+  it('returns ok status for monitor meeting SLA', async () => {
+    prisma.monitor.findMany.mockResolvedValue([
+      makeMonitor({ slaTarget: 99.0, slaPeriodDays: 30 }),
+    ]);
+    // 1000 checks, 1 failed → 99.9% > 99.0% target
+    prisma.monitorRun.findMany.mockResolvedValue(
+      Array.from({ length: 1000 }, (_, i) => ({ ok: i >= 1 })),
+    );
+
+    const result = await service.getSloSummary('user-1');
+    expect(result.monitors[0].status).toBe('ok');
+    expect(result.summary.ok).toBe(1);
+    expect(result.summary.breached).toBe(0);
+  });
+
+  it('returns breached status for monitor below SLA target', async () => {
+    prisma.monitor.findMany.mockResolvedValue([
+      makeMonitor({ slaTarget: 99.9, slaPeriodDays: 30 }),
+    ]);
+    // 1000 checks, 5 failed → 99.5% < 99.9% → breached
+    prisma.monitorRun.findMany.mockResolvedValue(
+      Array.from({ length: 1000 }, (_, i) => ({ ok: i >= 5 })),
+    );
+
+    const result = await service.getSloSummary('user-1');
+    expect(result.monitors[0].status).toBe('breached');
+    expect(result.summary.breached).toBe(1);
+  });
+
+  it('summary counts are correct with mixed statuses', async () => {
+    const goodMonitor = makeMonitor({ id: 'm-1', slaTarget: 99.0 });
+    const badMonitor = makeMonitor({ id: 'm-2', slaTarget: 99.9 });
+    prisma.monitor.findMany.mockResolvedValue([goodMonitor, badMonitor]);
+
+    prisma.monitorRun.findMany
+      .mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ ok: i >= 1 }))) // m-1: 99.9% > 99.0%
+      .mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ ok: i >= 5 }))); // m-2: 99.5% < 99.9%
+
+    const result = await service.getSloSummary('user-1');
+    expect(result.summary.total).toBe(2);
+    expect(result.summary.ok).toBe(1);
+    expect(result.summary.breached).toBe(1);
+  });
+
+  it('returns actualUptime rounded to 4 decimal places', async () => {
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor({ slaTarget: 99.0 })]);
+    prisma.monitorRun.findMany.mockResolvedValue(
+      Array.from({ length: 3 }, (_, i) => ({ ok: i >= 1 })), // 2/3 = 66.6666...%
+    );
+
+    const result = await service.getSloSummary('user-1');
+    // 66.6667% rounded to 4 decimal places
+    expect(result.monitors[0].actualUptime).toBe(66.6667);
+  });
+
+  it('hasLatencySli is true when sliLatencyTarget is set', async () => {
+    prisma.monitor.findMany.mockResolvedValue([
+      makeMonitor({ slaTarget: 99.0, sliLatencyTarget: 500 }),
+    ]);
+    prisma.monitorRun.findMany.mockResolvedValue([{ ok: true }]);
+
+    const result = await service.getSloSummary('user-1');
+    expect(result.monitors[0].hasLatencySli).toBe(true);
   });
 });

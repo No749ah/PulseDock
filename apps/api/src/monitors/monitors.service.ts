@@ -2119,4 +2119,86 @@ export class MonitorsService {
       },
     };
   }
+
+  /**
+   * Returns a lightweight SLO summary for all monitors with an SLA target set.
+   * Used on the dashboard to show overall SLO health at a glance.
+   */
+  async getSloSummary(userId: string) {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        slaTarget: true,
+        slaPeriodDays: true,
+        sliLatencyTarget: true,
+        sliLatencyWindow: true,
+      },
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], summary: { total: 0, ok: 0, warning: 0, breached: 0 } };
+    }
+
+    const now = new Date();
+    const results = await Promise.all(
+      monitors.map(async (m) => {
+        try {
+          const periodDays = m.slaPeriodDays ?? 30;
+          const slaTarget = m.slaTarget ?? 99.9;
+          const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId: m.id, checkedAt: { gte: from } },
+            select: { ok: true },
+          });
+
+          const totalChecks = runs.length;
+          const okChecks = runs.filter((r) => r.ok).length;
+          const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+          const periodMinutes = periodDays * 24 * 60;
+          const budgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+          const burnedMinutes = totalChecks === 0 ? 0 : ((totalChecks - okChecks) / totalChecks) * periodMinutes;
+          const budgetRemainingPct = budgetMinutes === 0 ? 100 : Math.max(0, ((budgetMinutes - burnedMinutes) / budgetMinutes) * 100);
+
+          let status: 'ok' | 'warning' | 'breached';
+          if (actualUptime < slaTarget) {
+            status = 'breached';
+          } else if (budgetRemainingPct < 10) {
+            status = 'warning';
+          } else {
+            status = 'ok';
+          }
+
+          return {
+            monitorId: m.id,
+            name: m.name,
+            type: m.type,
+            slaTarget,
+            periodDays,
+            actualUptime: Math.round(actualUptime * 10000) / 10000,
+            totalChecks,
+            status,
+            budgetRemainingPct: Math.round(budgetRemainingPct * 10) / 10,
+            hasLatencySli: m.sliLatencyTarget != null,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    const summary = {
+      total: valid.length,
+      ok: valid.filter((r) => r.status === 'ok').length,
+      warning: valid.filter((r) => r.status === 'warning').length,
+      breached: valid.filter((r) => r.status === 'breached').length,
+    };
+
+    return { monitors: valid, summary };
+  }
 }

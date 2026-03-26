@@ -690,4 +690,12 @@ export class MonitorsController {
   getSloReport(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.monitorsService.getSloReport(req.user.id, id);
   }
+
+  @Get('slo-summary')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLO health summary', description: 'Returns a lightweight SLO status summary for all monitors with an SLA target configured. Used on the dashboard.' })
+  @ApiResponse({ status: 200, description: 'SLO summary returned.' })
+  getSloSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getSloSummary(req.user.id);
+  }
 }

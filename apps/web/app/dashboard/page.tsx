@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck, Zap } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck, Zap, Shield, AlertTriangle } from "lucide-react";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -99,6 +99,23 @@ export default function DashboardPage() {
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [runs, setRuns] = useState<MonitorRun[]>([]);
   const [versionItems, setVersionItems] = useState<VersionSummaryItem[]>([]);
+  interface SloMonitorSummary {
+    monitorId: string;
+    name: string;
+    type: string;
+    slaTarget: number;
+    periodDays: number;
+    actualUptime: number;
+    totalChecks: number;
+    status: "ok" | "warning" | "breached";
+    budgetRemainingPct: number;
+    hasLatencySli: boolean;
+  }
+  interface SloSummary {
+    monitors: SloMonitorSummary[];
+    summary: { total: number; ok: number; warning: number; breached: number };
+  }
+  const [sloSummary, setSloSummary] = useState<SloSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
@@ -117,14 +134,14 @@ export default function DashboardPage() {
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setTick] = useState(0); // force re-render for "last updated" text
 
-  const DEFAULT_SECTION_ORDER = ["uptime", "versions", "monitors"] as const;
+  const DEFAULT_SECTION_ORDER = ["uptime", "versions", "monitors", "slo"] as const;
   type SectionKey = (typeof DEFAULT_SECTION_ORDER)[number];
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(() => {
     try {
       const stored = localStorage.getItem("dashboard-section-order");
       if (stored) {
         const parsed = JSON.parse(stored) as string[];
-        if (Array.isArray(parsed) && parsed.length === 3) return parsed as SectionKey[];
+        if (Array.isArray(parsed) && parsed.length >= 3) return [...new Set([...parsed, "slo"])] as SectionKey[];
       }
     } catch { /* ignore */ }
     return [...DEFAULT_SECTION_ORDER];
@@ -180,6 +197,7 @@ export default function DashboardPage() {
     uptime: "Uptime Monitoring",
     versions: "Version Tracking",
     monitors: "Monitors",
+    slo: "SLO Health",
   };
 
   const timeRangeToMs: Record<string, number> = { "1h": 3600000, "6h": 21600000, "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
@@ -211,6 +229,9 @@ export default function DashboardPage() {
       setVersionItems(versionSummary.items ?? []);
       setStats(computeStats(monitorsData, runsData, versionSummary.items ?? []));
       setLastRefreshed(new Date());
+
+      // Non-critical: fetch SLO summary (won't block main render)
+      api<SloSummary>("/v1/monitors/slo-summary").then(setSloSummary).catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
     } finally {
@@ -809,6 +830,94 @@ export default function DashboardPage() {
                   )}
                 </div>
               
+            );
+          }
+
+          if (sectionKey === "slo") {
+            if (!sloSummary || sloSummary.summary.total === 0) return null;
+            const { summary, monitors: sloMonitors } = sloSummary;
+            return (
+              <div key="slo" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-accent" />
+                      SLO Health
+                    </h2>
+                    <p className="text-text-secondary text-sm mt-1">
+                      {summary.total} monitor{summary.total !== 1 ? "s" : ""} with SLA targets
+                    </p>
+                  </div>
+                  <Button variant="secondary" size="lg" onClick={() => router.push("/monitors")}>
+                    Manage SLOs →
+                  </Button>
+                </div>
+
+                {/* Summary bar */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="p-4 text-center">
+                    <div className="text-3xl font-bold text-green-400">{summary.ok}</div>
+                    <div className="text-xs text-text-muted mt-1">Meeting SLO</div>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <div className="text-3xl font-bold text-yellow-400">{summary.warning}</div>
+                    <div className="text-xs text-text-muted mt-1">At Risk</div>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <div className="text-3xl font-bold text-red-400">{summary.breached}</div>
+                    <div className="text-xs text-text-muted mt-1">Breached</div>
+                  </Card>
+                </div>
+
+                {/* Per-monitor SLO rows */}
+                <Card>
+                  <div className="divide-y divide-border">
+                    {sloMonitors.map((m) => (
+                      <div
+                        key={m.monitorId}
+                        className="flex items-center justify-between px-4 py-3 hover:bg-surface-elevated/40 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/monitors/${m.monitorId}`)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                            m.status === "ok" ? "bg-green-400" : m.status === "warning" ? "bg-yellow-400" : "bg-red-400"
+                          }`} />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-text-primary truncate">{m.name}</div>
+                            <div className="text-xs text-text-muted">Target: {m.slaTarget}% · {m.periodDays}d window</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0 ml-3">
+                          <div className="text-right hidden sm:block">
+                            <div className={`text-sm font-bold tabular-nums ${
+                              m.actualUptime >= m.slaTarget ? "text-green-400" : "text-red-400"
+                            }`}>
+                              {m.actualUptime.toFixed(2)}%
+                            </div>
+                            <div className="text-xs text-text-muted">actual</div>
+                          </div>
+                          <div className="hidden md:block text-right">
+                            <div className="text-sm text-text-secondary tabular-nums">{m.budgetRemainingPct.toFixed(0)}%</div>
+                            <div className="text-xs text-text-muted">budget left</div>
+                          </div>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                            m.status === "ok"
+                              ? "bg-green-500/10 text-green-400 border-green-500/20"
+                              : m.status === "warning"
+                              ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                              : "bg-red-500/10 text-red-400 border-red-500/20"
+                          }`}>
+                            {m.status === "ok" ? "OK" : m.status === "warning" ? "AT RISK" : "BREACHED"}
+                          </span>
+                          {m.hasLatencySli && (
+                            <AlertTriangle className="w-3.5 h-3.5 text-purple-400 shrink-0" title="Latency SLI configured" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
             );
           }
 

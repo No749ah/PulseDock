@@ -428,6 +428,9 @@ model NotificationPreference {
   quietHoursStart   Int      @default(22)
   quietHoursEnd     Int      @default(8)
   frequency         String   @default("instant")
+  alertStormProtection  Boolean  @default(false)  // suppress alerts when more than threshold fires in 10min
+  alertStormThreshold   Int      @default(10)     // max alerts per 10 minutes before storm mode
+  alertStormNotifiedAt  DateTime?                 // last time storm detection notification was sent
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

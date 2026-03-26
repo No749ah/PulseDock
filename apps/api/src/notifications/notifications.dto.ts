@@ -44,6 +44,18 @@ export class UpdateNotificationPreferenceDto {
   @IsOptional()
   @IsIn(['instant', 'hourly_digest', 'daily_digest'])
   frequency?: string;
+
+  @ApiPropertyOptional({ description: 'Enable alert storm protection — suppress alerts when too many fire in 10 minutes', example: false })
+  @IsOptional()
+  @IsBoolean()
+  alertStormProtection?: boolean;
+
+  @ApiPropertyOptional({ description: 'Max alerts per 10 minutes before storm mode activates (default: 10)', example: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  alertStormThreshold?: number;
 }
 
 export class NotificationPreferenceResponseDto {
@@ -55,6 +67,8 @@ export class NotificationPreferenceResponseDto {
   @ApiProperty() quietHoursStart!: number;
   @ApiProperty() quietHoursEnd!: number;
   @ApiProperty({ enum: ['instant', 'hourly_digest', 'daily_digest'] }) frequency!: string;
+  @ApiProperty() alertStormProtection!: boolean;
+  @ApiProperty() alertStormThreshold!: number;
   @ApiProperty() createdAt!: string;
   @ApiProperty() updatedAt!: string;
 }

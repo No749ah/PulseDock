@@ -68,6 +68,8 @@ export interface NotificationPreference {
   quietHoursStart: number;
   quietHoursEnd: number;
   frequency: string;
+  alertStormProtection: boolean;
+  alertStormThreshold: number;
 }
 
 export interface ScheduledReport {

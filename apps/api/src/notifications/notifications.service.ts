@@ -42,6 +42,8 @@ export class NotificationsService {
         ...(dto.quietHoursStart !== undefined && { quietHoursStart: dto.quietHoursStart }),
         ...(dto.quietHoursEnd !== undefined && { quietHoursEnd: dto.quietHoursEnd }),
         ...(dto.frequency !== undefined && { frequency: dto.frequency }),
+        ...(dto.alertStormProtection !== undefined && { alertStormProtection: dto.alertStormProtection }),
+        ...(dto.alertStormThreshold !== undefined && { alertStormThreshold: dto.alertStormThreshold }),
       },
       update: {
         ...(dto.notifyOnDown !== undefined && { notifyOnDown: dto.notifyOnDown }),
@@ -51,6 +53,8 @@ export class NotificationsService {
         ...(dto.quietHoursStart !== undefined && { quietHoursStart: dto.quietHoursStart }),
         ...(dto.quietHoursEnd !== undefined && { quietHoursEnd: dto.quietHoursEnd }),
         ...(dto.frequency !== undefined && { frequency: dto.frequency }),
+        ...(dto.alertStormProtection !== undefined && { alertStormProtection: dto.alertStormProtection }),
+        ...(dto.alertStormThreshold !== undefined && { alertStormThreshold: dto.alertStormThreshold }),
       },
     });
     return this.toDto(pref);
@@ -94,6 +98,44 @@ export class NotificationsService {
       if (inQuiet) return false;
     }
 
+    // Alert storm protection: if enabled, suppress alerts when too many have fired recently
+    if (pref.alertStormProtection) {
+      const threshold = pref.alertStormThreshold ?? 10;
+      const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+      // Count recent successful deliveries for this user in last 10 minutes
+      const recentAlertChannels = await this.prisma.alertChannel.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      const channelIds = recentAlertChannels.map((c) => c.id);
+
+      if (channelIds.length > 0) {
+        const recentCount = await this.prisma.alertDeliveryLog.count({
+          where: {
+            alertChannelId: { in: channelIds },
+            status: 'success',
+            createdAt: { gte: tenMinAgo },
+          },
+        });
+
+        if (recentCount >= threshold) {
+          // Storm detected — optionally notify once per 30 min
+          const stormNotifiedAt = pref.alertStormNotifiedAt;
+          const shouldNotifyStorm = !stormNotifiedAt || (Date.now() - stormNotifiedAt.getTime() > 30 * 60 * 1000);
+
+          if (shouldNotifyStorm) {
+            await this.prisma.notificationPreference.update({
+              where: { userId },
+              data: { alertStormNotifiedAt: new Date() },
+            }).catch(() => { /* non-critical */ });
+          }
+
+          return false;
+        }
+      }
+    }
+
     return true;
   }
 
@@ -106,6 +148,8 @@ export class NotificationsService {
     quietHoursStart: number;
     quietHoursEnd: number;
     frequency: string;
+    alertStormProtection?: boolean;
+    alertStormThreshold?: number;
     createdAt: Date;
     updatedAt: Date;
   }) {
@@ -118,6 +162,8 @@ export class NotificationsService {
       quietHoursStart: pref.quietHoursStart,
       quietHoursEnd: pref.quietHoursEnd,
       frequency: pref.frequency,
+      alertStormProtection: pref.alertStormProtection ?? false,
+      alertStormThreshold: pref.alertStormThreshold ?? 10,
       createdAt: pref.createdAt.toISOString(),
       updatedAt: pref.updatedAt.toISOString(),
     };

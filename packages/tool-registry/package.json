@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/tool-registry",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "private": true,
   "description": "PulseDock tool registry — versioned tool templates for version monitoring",
   "main": "src/index.ts",

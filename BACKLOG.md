@@ -1,13 +1,13 @@
-## Status Summary (2026-03-25 20:20 UTC)
-- **Build/Test:** ✅ Clean build + 3200 API + 429 Web + 10 CLI + 12 Agent = **3651 total** tests passing
+## Status Summary (2026-03-25 23:35 UTC)
+- **Build/Test:** ✅ Clean build + 3231 tests (3209 API + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.3.0 + web running; public URL + all 11 routes 200; 0 TS errors
-- **Branch:** heartbeat/2026-03-25-auto-incidents (working branch)
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
+- **Branch:** heartbeat/2026-03-26-improvements
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` with 7 live monitors — ready for Noah's visual review
-- **Quality:** ✅ Smoke test 27/27, code quality 8/8, 0 any types, 0 console.log, 0 TODOs
-- **Last changes:** Auto-incident feature completed — autoCreated flag, 'Auto' badge in UI, CSV export field, 8 new tests (3651 total). DB migration applied.
+- **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
+- **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
+- **Last changes:** Bumped all packages to v1.4.0. Added `flap` Grafana metric (per-run flap timeseries), `isFlapping` in `all_monitors.table` + public JSON API. Updated CHANGELOG.md with v1.4.0 entry. +2 new Grafana tests (3231 total).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

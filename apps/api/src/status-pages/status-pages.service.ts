@@ -724,6 +724,7 @@ export class StatusPagesService {
         id: true,
         name: true,
         type: true,
+        isFlapping: true,
         runs: {
           orderBy: { checkedAt: 'desc' },
           take: 1,
@@ -742,6 +743,7 @@ export class StatusPagesService {
         ok: latest?.ok ?? null,
         latencyMs: latest?.latencyMs ?? null,
         lastChecked: latest?.checkedAt ?? null,
+        isFlapping: m.isFlapping ?? false,
       };
     });
 

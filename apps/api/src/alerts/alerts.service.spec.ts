@@ -2137,4 +2137,48 @@ describe('AlertsService', () => {
     });
   });
 
+  describe('notifyMonitorFailure() — flapping context', () => {
+    it('sends a flapping notification with 🔁 emoji when isFlapping=true', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor(), makeRun({ level: 'red' }), { levelChanged: true, isFlapping: true });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      // Webhook payload should contain flapping text
+      expect(body.text ?? body.content ?? JSON.stringify(body)).toContain('FLAPPING');
+    });
+
+    it('uses monitor_flapping trigger in delivery log when isFlapping=true', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(makeMonitor(), makeRun({ level: 'red' }), { levelChanged: true, isFlapping: true });
+
+      // Delivery log should record monitor_flapping trigger
+      const createCall = prisma.alertDeliveryLog.create.mock?.calls?.[0]?.[0];
+      if (createCall) {
+        expect(createCall.data.trigger).toBe('monitor_flapping');
+      }
+    });
+
+    it('does not append runbook URL to flapping notification', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const monitorWithRunbook = { ...makeMonitor(), runbookUrl: 'https://runbooks.example.com/mon-1' };
+
+      await service.notifyMonitorFailure(monitorWithRunbook as never, makeRun({ level: 'red' }), { levelChanged: true, isFlapping: true });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).not.toContain('Runbook');
+      expect(text).toContain('FLAPPING');
+    });
+  });
+
 });

@@ -60,7 +60,7 @@ export class GrafanaService {
       take: 200,
     });
 
-    const metrics = ['uptime', 'latency', 'status'];
+    const metrics = ['uptime', 'latency', 'status', 'flap'];
     const targets: string[] = [];
 
     for (const monitor of monitors) {
@@ -127,6 +127,9 @@ export class GrafanaService {
         results.push(ts);
       } else if (metric === 'uptime') {
         const ts = await this.buildUptimeTimeseries(monitor.id, monitor.name, from, to);
+        results.push(ts);
+      } else if (metric === 'flap') {
+        const ts = await this.buildFlapTimeseries(monitor.id, monitor.name, from, to, body.maxDataPoints);
         results.push(ts);
       }
     }
@@ -290,10 +293,49 @@ export class GrafanaService {
     return { target: `${safeName}.uptime`, datapoints };
   }
 
+  /**
+   * Builds a time-series for flap status: 1 when the monitor is flapping at that point in time,
+   * 0 when stable. Detects state changes by scanning run-level transitions in window of 5.
+   * Returns a single current-value point (the monitor's live isFlapping state) at `to`.
+   * For historical trend, returns 1/0 per check based on state-change rate in a rolling window.
+   */
+  private async buildFlapTimeseries(
+    monitorId: string,
+    monitorName: string,
+    from: Date,
+    to: Date,
+    maxPoints: number,
+  ): Promise<TimeseriesResult> {
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: from, lte: to } },
+      select: { ok: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+      take: Math.min(maxPoints || 1000, 2000),
+    });
+
+    const safeName = monitorName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const FLAP_WINDOW = 5;
+    const FLAP_THRESHOLD = 3;
+
+    // For each run, look at the previous FLAP_WINDOW runs and detect flapping
+    const datapoints: Datapoint[] = runs.map((run, idx) => {
+      const windowStart = Math.max(0, idx - FLAP_WINDOW + 1);
+      const window = runs.slice(windowStart, idx + 1);
+      let changes = 0;
+      for (let i = 1; i < window.length; i++) {
+        if (window[i].ok !== window[i - 1].ok) changes++;
+      }
+      const isFlapping = window.length >= 3 && changes >= FLAP_THRESHOLD ? 1 : 0;
+      return [isFlapping, run.checkedAt.getTime()];
+    });
+
+    return { target: `${safeName}.flap`, datapoints };
+  }
+
   private async buildAllMonitorsTable(userId: string, from: Date, to: Date): Promise<TableResult> {
     const monitors = await this.prisma.monitor.findMany({
       where: { userId },
-      select: { id: true, name: true, type: true, target: true, enabled: true },
+      select: { id: true, name: true, type: true, target: true, enabled: true, isFlapping: true },
       orderBy: { name: 'asc' },
       take: 200,
     });
@@ -316,7 +358,7 @@ export class GrafanaService {
       const uptimePct = total > 0 ? Math.round((okCount / total) * 10000) / 100 : 0;
       const avgLatency = Math.round(stats._avg.latencyMs ?? 0);
 
-      rows.push([monitor.name, monitor.type, monitor.target ?? '', uptimePct, avgLatency, total, monitor.enabled ? 'enabled' : 'disabled']);
+      rows.push([monitor.name, monitor.type, monitor.target ?? '', uptimePct, avgLatency, total, monitor.enabled ? 'enabled' : 'disabled', monitor.isFlapping ? 'yes' : 'no']);
     }
 
     return {
@@ -329,6 +371,7 @@ export class GrafanaService {
         { text: 'Avg Latency ms', type: 'number' },
         { text: 'Total Checks', type: 'number' },
         { text: 'Status', type: 'string' },
+        { text: 'Flapping', type: 'string' },
       ],
       rows,
     };

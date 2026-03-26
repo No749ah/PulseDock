@@ -407,7 +407,7 @@ export class AlertsService {
    * @param run - The resulting check run (contains level, message, latencyMs)
    * @param context - Optional context: levelChanged, previousLevel, failureStreak
    */
-  async notifyMonitorFailure(monitor: Monitor, run: MonitorRun, context?: { levelChanged?: boolean; previousLevel?: string | null; failureStreak?: number }) {
+  async notifyMonitorFailure(monitor: Monitor, run: MonitorRun, context?: { levelChanged?: boolean; previousLevel?: string | null; failureStreak?: number; isFlapping?: boolean }) {
     // Suppress alerts during active maintenance windows
     const now = new Date();
     const activeMaintenance = await this.prisma.maintenanceWindow.findFirst({
@@ -521,9 +521,12 @@ export class AlertsService {
       createdAt: l.alertChannel.createdAt.toISOString(),
     }));
 
-    const levelEmoji = run.level === 'red' ? '🚨' : run.level === 'yellow' ? '⚠️' : '✅';
-    let text = `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
-    if (monitor.runbookUrl) {
+    const isFlapping = context?.isFlapping ?? false;
+    const levelEmoji = isFlapping ? '🔁' : run.level === 'red' ? '🚨' : run.level === 'yellow' ? '⚠️' : '✅';
+    let text = isFlapping
+      ? `🔁 PulseDock: ${monitor.name} is FLAPPING — rapidly alternating between up and down. Alerts suppressed until stable.`
+      : `${levelEmoji} PulseDock: ${monitor.name} is ${run.level.toUpperCase()} (${run.message})`;
+    if (!isFlapping && monitor.runbookUrl) {
       text += ` | Runbook: ${monitor.runbookUrl}`;
     }
 
@@ -549,7 +552,7 @@ export class AlertsService {
         }, {
           monitorId: monitor.id,
           monitorName: monitor.name,
-          trigger: run.level === 'green' ? 'monitor_recovery' : 'monitor_failure',
+          trigger: isFlapping ? 'monitor_flapping' : run.level === 'green' ? 'monitor_recovery' : 'monitor_failure',
         });
       } catch (error) {
         this.logger.error(`Alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));

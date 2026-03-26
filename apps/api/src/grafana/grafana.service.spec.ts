@@ -39,8 +39,9 @@ describe('GrafanaService', () => {
       expect(results).toContain('My_API.uptime');
       expect(results).toContain('My_API.latency');
       expect(results).toContain('My_API.status');
+      expect(results).toContain('My_API.flap');
       expect(results).toContain('My_DB.uptime');
-      expect(results).toHaveLength(6);
+      expect(results).toHaveLength(8);
     });
 
     it('filters by query string', async () => {
@@ -101,6 +102,35 @@ describe('GrafanaService', () => {
       expect(ts.datapoints[1][0]).toBe(0);
     });
 
+    it('returns flap timeseries (1=flapping, 0=stable)', async () => {
+      (mockPrisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'm1', name: 'My API' });
+      // Pattern: ok, fail, ok, fail, ok — 4 state changes → flapping at end
+      (mockPrisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { ok: true,  checkedAt: new Date('2026-03-20T10:00:00Z') },
+        { ok: false, checkedAt: new Date('2026-03-20T10:01:00Z') },
+        { ok: true,  checkedAt: new Date('2026-03-20T10:02:00Z') },
+        { ok: false, checkedAt: new Date('2026-03-20T10:03:00Z') },
+        { ok: true,  checkedAt: new Date('2026-03-20T10:04:00Z') },
+      ]);
+
+      const service = makeService();
+      const result = await service.query('user-1', {
+        range: { from: '2026-03-19T00:00:00Z', to: '2026-03-20T23:59:59Z' },
+        intervalMs: 60000,
+        maxDataPoints: 1000,
+        targets: [{ target: 'My_API.flap' }],
+      });
+
+      expect(result).toHaveLength(1);
+      const ts = result[0] as { target: string; datapoints: [number, number][] };
+      expect(ts.target).toBe('My_API.flap');
+      expect(ts.datapoints).toHaveLength(5);
+      // Last run has 4 state changes in 5-run window → flapping
+      expect(ts.datapoints[4][0]).toBe(1);
+      // First run has no prior context → not flapping
+      expect(ts.datapoints[0][0]).toBe(0);
+    });
+
     it('returns empty array when monitor not found', async () => {
       (mockPrisma.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
@@ -117,7 +147,7 @@ describe('GrafanaService', () => {
 
     it('returns all_monitors table', async () => {
       (mockPrisma.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true },
+        { id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true, isFlapping: false },
       ]);
       (mockPrisma.monitorRun.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({
         _count: { _all: 100 },

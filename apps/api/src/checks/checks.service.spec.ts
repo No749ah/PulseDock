@@ -5623,6 +5623,14 @@ describe('retryCount — automatic check retries on failure', () => {
         })),
         findFirst: vi.fn().mockResolvedValue(prevRun),
       },
+      monitorDependency: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      incident: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+        update: vi.fn().mockResolvedValue({}),
+      },
       monitor: {
         update: vi.fn().mockResolvedValue({}),
         findFirst: vi.fn().mockResolvedValue(null),

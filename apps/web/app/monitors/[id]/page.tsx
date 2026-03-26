@@ -771,7 +771,7 @@ export default function MonitorDetailPage() {
         </div>
 
         {/* SLO Tab Content */}
-        {activeMainTab === "slo" && (() => {
+        {activeMainTab === "slo" && ((): React.ReactNode => {
           const user = getUser();
           return user ? (
             <SloTab
@@ -816,8 +816,9 @@ export default function MonitorDetailPage() {
                 <p className="text-text-secondary text-sm">{String(certDetails.reason ?? "Certificate details unavailable")}</p>
               </div>
             )}
-            {!certLoading && certDetails?.available && (() => {
+            {!certLoading && Boolean(certDetails?.available) && ((): React.ReactNode => {
               const cert = certDetails;
+              if (!cert) return null;
               const status = String(cert.status ?? "unknown");
               const statusColors: Record<string, string> = {
                 valid: "text-success",
@@ -893,7 +894,7 @@ export default function MonitorDetailPage() {
                     </div>
 
                     {/* Serial */}
-                    {cert.serialNumber && (
+                    {Boolean(cert.serialNumber) && (
                       <div className="space-y-1.5 md:col-span-2">
                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Serial Number</p>
                         <p className="text-xs text-text-secondary font-mono">{String(cert.serialNumber)}</p>

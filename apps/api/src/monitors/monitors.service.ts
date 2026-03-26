@@ -1056,10 +1056,11 @@ export class MonitorsService {
       take: 10_000,
     });
 
-    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'responseBody'].join(',');
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseBody'].join(',');
     const rows = runs.map((r) => {
       const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
       const body = (r.responseBody ?? '').replace(/"/g, '""');
+      const timings = r.timingsJson as { dnsMs?: number | null; tcpMs?: number | null; tlsMs?: number | null; ttfbMs?: number | null; downloadMs?: number | null } | null;
       return [
         r.id,
         r.checkedAt.toISOString(),
@@ -1068,6 +1069,11 @@ export class MonitorsService {
         r.latencyMs ?? '',
         r.level ?? '',
         `"${msg}"`,
+        timings?.dnsMs ?? '',
+        timings?.tcpMs ?? '',
+        timings?.tlsMs ?? '',
+        timings?.ttfbMs ?? '',
+        timings?.downloadMs ?? '',
         body ? `"${body}"` : '',
       ].join(',');
     });
@@ -2365,6 +2371,64 @@ export class MonitorsService {
       totalChecks,
       successChecks,
       checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+    };
+  }
+
+  /**
+   * Returns a period-over-period comparison for a monitor's latency and uptime.
+   * Compares the current period (last N days) against the prior period (same length before that).
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to compare
+   * @param period - Comparison window: '24h' | '7d' | '30d'
+   */
+  async getPeriodComparison(userId: string, monitorId: string, period: '24h' | '7d' | '30d' = '7d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const now = Date.now();
+    const currentFrom = new Date(now - rangeMs);
+    const priorTo = new Date(now - rangeMs);
+    const priorFrom = new Date(now - 2 * rangeMs);
+
+    function computePeriodStats(runs: Array<{ ok: boolean; latencyMs: number | null }>) {
+      const total = runs.length;
+      const successes = runs.filter((r) => r.ok);
+      const uptime = total === 0 ? null : Math.round((successes.length / total) * 10000) / 100;
+      const latencies = successes.filter((r) => r.latencyMs !== null).map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const avg = latencies.length === 0 ? null : Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length);
+      const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.95 * latencies.length) - 1)];
+      const p50 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.5 * latencies.length) - 1)];
+      return { total, successCount: successes.length, uptime, avgMs: avg, p50Ms: p50, p95Ms: p95 };
+    }
+
+    const [currentRuns, priorRuns] = await Promise.all([
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: currentFrom } }, select: { ok: true, latencyMs: true } }),
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: priorFrom, lt: priorTo } }, select: { ok: true, latencyMs: true } }),
+    ]);
+
+    const current = computePeriodStats(currentRuns);
+    const prior = computePeriodStats(priorRuns);
+
+    function pctChange(curr: number | null, prev: number | null): number | null {
+      if (curr === null || prev === null || prev === 0) return null;
+      return Math.round(((curr - prev) / prev) * 1000) / 10;
+    }
+
+    return {
+      period,
+      current,
+      prior,
+      delta: {
+        uptimePct: pctChange(current.uptime, prior.uptime),
+        avgMsPct: pctChange(current.avgMs, prior.avgMs),
+        p95MsPct: pctChange(current.p95Ms, prior.p95Ms),
+      },
     };
   }
 }

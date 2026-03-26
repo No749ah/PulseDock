@@ -6099,3 +6099,82 @@ describe('getLatencyDistribution', () => {
     expect(gte).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 100);
   });
 });
+
+// ── getPeriodComparison ────────────────────────────────────────────────────────
+
+describe('getPeriodComparison', () => {
+  function makePrisma() {
+    return {
+      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'monitor-1' }) },
+      monitorRun: {
+        findMany: vi.fn(),
+      },
+    };
+  }
+
+  function makeService(p: ReturnType<typeof makePrisma>) {
+    return new MonitorsService(p as never, undefined as never);
+  }
+
+  it('returns current and prior period stats with delta', async () => {
+    const p = makePrisma();
+    const now = new Date();
+    // Current period: 3 ok runs
+    const currentRuns = [
+      { ok: true, latencyMs: 100 },
+      { ok: true, latencyMs: 200 },
+      { ok: false, latencyMs: null },
+    ];
+    // Prior period: 2 ok runs
+    const priorRuns = [
+      { ok: true, latencyMs: 150 },
+      { ok: true, latencyMs: 300 },
+    ];
+    p.monitorRun.findMany
+      .mockResolvedValueOnce(currentRuns)
+      .mockResolvedValueOnce(priorRuns);
+
+    const svc = makeService(p);
+    const result = await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+
+    expect(result.current.total).toBe(3);
+    expect(result.current.successCount).toBe(2);
+    expect(result.current.uptime).toBe(66.67);
+    expect(result.current.avgMs).toBe(150);
+    expect(result.prior.total).toBe(2);
+    expect(result.prior.successCount).toBe(2);
+    expect(result.prior.avgMs).toBe(225);
+    // delta: avg improved (150 vs 225 = -33.3%)
+    expect(result.delta.avgMsPct).not.toBeNull();
+    expect((result.delta.avgMsPct as number)).toBeLessThan(0); // lower is better
+  });
+
+  it('handles no prior data (empty prior)', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany
+      .mockResolvedValueOnce([{ ok: true, latencyMs: 100 }])
+      .mockResolvedValueOnce([]);
+    const svc = makeService(p);
+    const result = await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+    expect(result.prior.total).toBe(0);
+    expect(result.prior.uptime).toBeNull();
+    expect(result.delta.avgMsPct).toBeNull();
+    expect(result.delta.p95MsPct).toBeNull();
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await expect(svc.getPeriodComparison('user-1', 'bad-id', '7d')).rejects.toThrow(NotFoundException);
+  });
+
+  it('fetches two separate time windows', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+    // Should call findMany twice (current + prior)
+    expect(p.monitorRun.findMany).toHaveBeenCalledTimes(2);
+  });
+});

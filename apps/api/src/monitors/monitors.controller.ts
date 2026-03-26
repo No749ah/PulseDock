@@ -1111,4 +1111,23 @@ export class MonitorsController {
       : '7d';
     return this.monitorsService.getLatencyDistribution(req.user.id, id, safePeriod);
   }
+
+  @Get(':id/period-comparison')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Period-over-period latency and uptime comparison for a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d'], required: false, description: 'Comparison window (default: 7d)' })
+  @ApiResponse({ status: 200, description: 'Current vs prior period stats with % deltas' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getPeriodComparison(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period') period?: string,
+  ) {
+    const validPeriods = ['24h', '7d', '30d'] as const;
+    const safePeriod = validPeriods.includes(period as '24h' | '7d' | '30d')
+      ? (period as '24h' | '7d' | '30d')
+      : '7d';
+    return this.monitorsService.getPeriodComparison(req.user.id, id, safePeriod);
+  }
 }

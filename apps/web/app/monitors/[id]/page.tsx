@@ -87,6 +87,26 @@ interface LatencyDistributionData {
   checkedRange: string;
 }
 
+interface PeriodStats {
+  total: number;
+  successCount: number;
+  uptime: number | null;
+  avgMs: number | null;
+  p50Ms: number | null;
+  p95Ms: number | null;
+}
+
+interface PeriodComparisonData {
+  period: string;
+  current: PeriodStats;
+  prior: PeriodStats;
+  delta: {
+    uptimePct: number | null;
+    avgMsPct: number | null;
+    p95MsPct: number | null;
+  };
+}
+
 // ── Timing Waterfall ─────────────────────────────────────────────────────────
 
 interface TimingWaterfallProps {
@@ -186,6 +206,7 @@ export default function MonitorDetailPage() {
   const [perfLoading, setPerfLoading] = useState(false);
   const [perfError, setPerfError] = useState<string | null>(null);
   const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
+  const [perfComparison, setPerfComparison] = useState<PeriodComparisonData | null>(null);
 
   // Certificate details (SSL/HTTP monitors)
   const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
@@ -856,8 +877,12 @@ export default function MonitorDetailPage() {
                 setPerfLoading(true);
                 setPerfError(null);
                 try {
-                  const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id);
+                  const [data, comparison] = await Promise.all([
+                    api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id),
+                    api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${perfPeriod}`, user.id).catch(() => null),
+                  ]);
                   setPerfData(data);
+                  setPerfComparison(comparison);
                 } catch {
                   setPerfError("Failed to load performance data");
                 } finally {
@@ -932,8 +957,12 @@ export default function MonitorDetailPage() {
                     setPerfLoading(true);
                     setPerfError(null);
                     try {
-                      const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id);
+                      const [data, comparison] = await Promise.all([
+                        api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id),
+                        api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${p}`, user.id).catch(() => null),
+                      ]);
                       setPerfData(data);
+                      setPerfComparison(comparison);
                     } catch {
                       setPerfError("Failed to load performance data");
                     } finally {
@@ -1024,7 +1053,48 @@ export default function MonitorDetailPage() {
                   })}
                 </div>
 
-                {/* C. Hourly Heatmap */}
+                {/* C. Period Comparison */}
+                {perfComparison && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp className="w-4 h-4 text-accent" />
+                      <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                        vs. Previous {perfPeriod === "24h" ? "24 hours" : perfPeriod === "7d" ? "7 days" : "30 days"}
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {([
+                        { label: "Uptime", curr: perfComparison.current.uptime !== null ? `${perfComparison.current.uptime}%` : "—", delta: perfComparison.delta.uptimePct, higher: true },
+                        { label: "Avg Latency", curr: perfComparison.current.avgMs !== null ? `${perfComparison.current.avgMs}ms` : "—", delta: perfComparison.delta.avgMsPct, higher: false },
+                        { label: "P95 Latency", curr: perfComparison.current.p95Ms !== null ? `${perfComparison.current.p95Ms}ms` : "—", delta: perfComparison.delta.p95MsPct, higher: false },
+                      ] as Array<{ label: string; curr: string; delta: number | null; higher: boolean }>).map((metric) => {
+                        const improved = metric.delta !== null && (metric.higher ? metric.delta > 0 : metric.delta < 0);
+                        const degraded = metric.delta !== null && (metric.higher ? metric.delta < 0 : metric.delta > 0);
+                        const deltaColor = improved ? "text-green-400" : degraded ? "text-red-400" : "text-text-muted";
+                        const deltaPrefix = metric.delta !== null && metric.delta > 0 ? "+" : "";
+                        return (
+                          <div key={metric.label} className="text-center">
+                            <p className="text-xs text-text-muted mb-1">{metric.label}</p>
+                            <p className="text-lg font-bold text-text-primary tabular-nums">{metric.curr}</p>
+                            {metric.delta !== null ? (
+                              <p className={`text-xs font-medium tabular-nums ${deltaColor}`}>
+                                {deltaPrefix}{metric.delta}%
+                              </p>
+                            ) : (
+                              <p className="text-xs text-text-muted">No prior data</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-text-muted border-t border-border pt-2">
+                      <span>Current: {perfComparison.current.total} checks, {perfComparison.current.successCount} ok</span>
+                      <span>Prior: {perfComparison.prior.total} checks, {perfComparison.prior.successCount} ok</span>
+                    </div>
+                  </Card>
+                )}
+
+                {/* D. Hourly Heatmap */}
                 <Card className="p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Clock className="w-4 h-4 text-accent" />

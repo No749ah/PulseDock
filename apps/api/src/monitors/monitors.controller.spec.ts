@@ -466,6 +466,41 @@ describe('MonitorsController', () => {
   });
 });
 
+// ─── releaseNotes ─────────────────────────────────────────────────────────
+
+describe('MonitorsController.releaseNotes', () => {
+  function makePrismaForNotes(found: boolean, config: Record<string, unknown> = {}) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(found ? { id: 'mon-1', type: 'GIT_RELEASE', target: 'expressjs/express', configJson: { provider: 'github', target: 'expressjs/express', ...config } } : null),
+      },
+    };
+  }
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForNotes(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.releaseNotes(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns available:false for non-github provider', async () => {
+    const prisma = makePrismaForNotes(true, { provider: 'npm' });
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', type: 'GIT_RELEASE', target: 'express', configJson: { provider: 'npm', target: 'express' } });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.releaseNotes(makeReq(), 'mon-1') as { available: boolean };
+    expect(result.available).toBe(false);
+  });
+
+  it('returns available:false when target is unparseable', async () => {
+    const prisma = makePrismaForNotes(true);
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', type: 'GIT_RELEASE', target: 'notarepo', configJson: { provider: 'github', target: 'notarepo' } });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.releaseNotes(makeReq(), 'mon-1') as { available: boolean };
+    expect(result.available).toBe(false);
+  });
+});
+
 // ─── monitorIncidents ───────────────────────────────────────────────────────
 
 describe('MonitorsController.monitorIncidents', () => {

@@ -503,7 +503,91 @@ export class MonitorsController {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
   }
 
-  // ─── Linked Incidents ────────────────────────────────────────────────────
+  // ─── Release Notes ────────────────────────────────────────────────────────
+
+  @Get(':id/release-notes')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fetch release notes for a version monitor',
+    description:
+      'For GitHub-backed version monitors: fetches the release notes (body) of the latest release tag. Returns null for non-GitHub or non-version monitors.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'version', required: false, description: 'Specific version tag to fetch notes for (defaults to latest)' })
+  @ApiResponse({ status: 200, description: 'Release notes returned (or null if unavailable).' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async releaseNotes(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('version') version?: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true, type: true, target: true, configJson: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const config = (monitor.configJson as Record<string, unknown> | null) ?? {};
+    const provider = String(config['provider'] ?? '');
+
+    if (!['github'].includes(provider) || !['GIT_RELEASE', 'DOCKER_IMAGE'].includes(monitor.type)) {
+      return { available: false, reason: 'Release notes are only available for GitHub version monitors.' };
+    }
+
+    const target = String(config['target'] ?? monitor.target ?? '').trim();
+    // target is "owner/repo"
+    const parts = target.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '').split('/');
+    if (parts.length < 2) {
+      return { available: false, reason: 'Cannot parse repository from monitor target.' };
+    }
+    const [owner, repo] = parts;
+
+    const token = config['token'] ? String(config['token']) : (process.env.GITHUB_TOKEN ?? '');
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      let releaseUrl: string;
+      if (version) {
+        releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(version)}`;
+      } else {
+        releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+      }
+
+      const resp = await fetch(releaseUrl, { headers });
+      if (!resp.ok) {
+        return { available: false, reason: `GitHub API returned ${resp.status}` };
+      }
+
+      const release = await resp.json() as {
+        tag_name?: string;
+        name?: string;
+        body?: string;
+        published_at?: string;
+        html_url?: string;
+        prerelease?: boolean;
+        assets?: Array<{ name: string; download_count: number; size: number; browser_download_url: string }>;
+      };
+
+      return {
+        available: true,
+        version: release.tag_name ?? null,
+        releaseName: release.name ?? null,
+        body: release.body ? release.body.slice(0, 10000) : null,
+        publishedAt: release.published_at ?? null,
+        url: release.html_url ?? null,
+        prerelease: release.prerelease ?? false,
+        assetCount: release.assets?.length ?? 0,
+      };
+    } catch {
+      return { available: false, reason: 'Failed to fetch release notes from GitHub.' };
+    }
+  }
+
+// ─── Linked Incidents ────────────────────────────────────────────────────
 
   @Get(':id/incidents')
   @RequireScope(ApiKeyScope.READ)

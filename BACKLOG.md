@@ -1,4 +1,4 @@
-## Status Summary (2026-03-26 12:45 UTC)
+## Status Summary (2026-03-26 13:30 UTC)
 - **Build/Test:** ✅ Clean build + 3414 tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
@@ -7,16 +7,15 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (12:45 cycle):**
-  - Branch merge + new heartbeat branch
-  - responseBody on failed HTTP checks → debug in check history
-  - Alert routing rule simulation API + UI (dry-run before go-live)
-  - Fixed 25 TypeScript errors (spec files + web components) → code quality 8/8
-  - GET /v1/monitors/:id/incidents + Linked Incidents panel on detail page
-  - GET /v1/monitors/:id/release-notes (GitHub release body fetch)
-  - Versions page: Release Notes + Security Advisories (OSV.dev) panels
-  - Bulk update interval/timeout/confirmations actions
-  - Total tests: 3414.
+- **Last changes (13:30 noon cycle):**
+  - Branch merge (heartbeat/2026-03-26-monitor-debug-improvements → dev)
+  - **Global Search API** (`GET /v1/search?q=...`) — monitors, incidents, status pages, versions; 13 tests
+  - **Command Palette live search** — debounced 250ms, status dots, "View all N+ results →" link
+  - **Full-page /search** — URL-synced, grouped results, 20-per-category, keyboard accessible
+  - **Outage banner** — red pulsing strip at top of app when monitors are DOWN
+  - **`/` keyboard shortcut** — press `/` anywhere (not in input) to open command palette
+  - **ResponseBodyViewer** — JSON syntax highlighting, copy button, expand/collapse, on check history
+  - Total tests: 3427.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

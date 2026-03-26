@@ -1,15 +1,13 @@
-## Status Summary (2026-03-26 13:50 UTC)
+## Status Summary (2026-03-26 14:36 UTC)
 - **Build/Test:** ✅ Clean build + 3434 tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-noon
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (13:50 afternoon cycle):**
-  - **Webhook custom payload templates** — Mustache-style `{{variable}}` rendering in AlertsService; 8 variables (monitor.name, run.level, run.message, run.latencyMs, run.statusCode, timestamp, etc.); UI textarea in create/edit modal; HMAC signed on rendered body; 3 new tests
-  - **TLS Certificate Details endpoint** — `GET /v1/monitors/:id/certificate`; live TLS connect; returns subject/issuer/SANs/fingerprint/protocol/cipher/validity/grade; 4 new controller tests
-  - **Certificate tab on monitor detail page** — Shield icon tab for HTTP/SSL_CERT monitors; lazy-loaded; status banner with grade color; full cert metadata UI
-  - Total tests: 3434.
+- **Last changes (14:36 PM cycle):**
+  - **Alert Digest Queue** — Fixed critical gap where hourly_digest/daily_digest preference silently dropped notifications. Added NotificationQueueItem Prisma model + migration. NotificationsService: enqueueForDigest(), getPendingDigestItems(), markDigestItemsSent(). Cron jobs: hourly digest @5min past hour, daily digest @07:05 UTC, prune @04:00 UTC. AlertsService now queues notifications instead of dropping when frequency≠instant. API: GET/POST /v1/notification-preferences/digest-queue. 16 new tests.
+  - Total tests: 3450.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

@@ -324,11 +324,17 @@ describe('buildFormDataFromTemplate', () => {
   });
 
   it('passes through all valid monitor types', () => {
-    const validTypes = ['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'] as const;
+    const validTypes = ['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP'] as const;
     for (const type of validTypes) {
       const t = makeTemplate({ type });
       expect(buildFormDataFromTemplate(t).type).toBe(type);
     }
+  });
+
+  it('passes through BROWSER type (handled by utils even if not in MonitorTemplate interface)', () => {
+    // buildFormDataFromTemplate's safeType list includes BROWSER
+    const t = { ...makeTemplate(), type: 'BROWSER' } as unknown as MonitorTemplate;
+    expect(buildFormDataFromTemplate(t).type).toBe('BROWSER');
   });
 
   describe('DNS template config', () => {
@@ -338,12 +344,12 @@ describe('buildFormDataFromTemplate', () => {
     });
 
     it('maps dnsExpectedValue from config.expectedValue', () => {
-      const t = makeTemplate({ type: 'DNS', config: { expectedValue: 'mail.example.com' } });
+      const t = { ...makeTemplate({ type: 'DNS' }), config: { expectedValue: 'mail.example.com' } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).dnsExpectedValue).toBe('mail.example.com');
     });
 
     it('maps dnsTimeoutMs from config.timeoutMs', () => {
-      const t = makeTemplate({ type: 'DNS', config: { timeoutMs: 3000 } });
+      const t = { ...makeTemplate({ type: 'DNS' }), config: { timeoutMs: 3000 } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).dnsTimeoutMs).toBe(3000);
     });
   });
@@ -362,29 +368,29 @@ describe('buildFormDataFromTemplate', () => {
 
   describe('PING template config', () => {
     it('maps pingCount from config', () => {
-      const t = makeTemplate({ type: 'PING', config: { pingCount: 10 } });
+      const t = { ...makeTemplate({ type: 'PING' }), config: { pingCount: 10 } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).pingCount).toBe(10);
     });
 
     it('maps pingMaxLossPct from config.maxPacketLossPct', () => {
-      const t = makeTemplate({ type: 'PING', config: { maxPacketLossPct: 20 } });
+      const t = { ...makeTemplate({ type: 'PING' }), config: { maxPacketLossPct: 20 } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).pingMaxLossPct).toBe(20);
     });
   });
 
   describe('BROWSER template config', () => {
     it('maps browserExpectedText from config', () => {
-      const t = makeTemplate({ type: 'BROWSER', config: { browserExpectedText: 'Login' } });
+      const t = { ...makeTemplate(), config: { browserExpectedText: 'Login' } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).browserExpectedText).toBe('Login');
     });
 
     it('maps browserSelector from config', () => {
-      const t = makeTemplate({ type: 'BROWSER', config: { browserSelector: '.hero-section' } });
+      const t = { ...makeTemplate(), config: { browserSelector: '.hero-section' } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).browserSelector).toBe('.hero-section');
     });
 
     it('maps browserStatusCodesRaw from config.browserStatusCodes', () => {
-      const t = makeTemplate({ type: 'BROWSER', config: { browserStatusCodes: [200, 302] } });
+      const t = { ...makeTemplate(), config: { browserStatusCodes: [200, 302] } } as unknown as MonitorTemplate;
       expect(buildFormDataFromTemplate(t).browserStatusCodesRaw).toBe('200, 302');
     });
   });

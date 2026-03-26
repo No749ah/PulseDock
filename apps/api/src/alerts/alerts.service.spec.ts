@@ -2282,7 +2282,7 @@ describe('AlertsService', () => {
 
       await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 14.4, 3.0, 50, 99.9);
 
-      const createCall = (prisma.alertDeliveryLog as { create: { mock: { calls: { 0: { data: { trigger: string } } }[] } } }).create?.mock?.calls?.[0]?.[0];
+      const createCall = (prisma.alertDeliveryLog as unknown as { create: { mock: { calls: { 0: { data: { trigger: string } } }[] } } }).create?.mock?.calls?.[0]?.[0];
       if (createCall) {
         expect(createCall.data.trigger).toBe('sla_burn_rate');
       }

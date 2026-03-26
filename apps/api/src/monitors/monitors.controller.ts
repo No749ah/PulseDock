@@ -1093,6 +1093,28 @@ export class MonitorsController {
     return this.monitorsService.getSloSummary(req.user.id);
   }
 
+  @Get(':id/status-transitions')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get status transition history for a monitor',
+    description: 'Returns a list of level-change events (green→red, red→green, etc.) over the given period. Useful for incident root-cause analysis and post-mortems. Includes summary stats: total outages, total downtime, MTTR, MTBF.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d'], required: false, description: 'Lookback window (default 7d)' })
+  @ApiResponse({ status: 200, description: 'Status transition list and summary returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getStatusTransitions(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period') period?: string,
+  ) {
+    const validPeriods = ['24h', '7d', '30d'] as const;
+    const safePeriod = validPeriods.includes(period as '24h' | '7d' | '30d')
+      ? (period as '24h' | '7d' | '30d')
+      : '7d';
+    return this.monitorsService.getStatusTransitions(req.user.id, id, safePeriod);
+  }
+
   @Get(':id/latency-distribution')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Get latency distribution and hourly patterns for a monitor' })

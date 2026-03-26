@@ -6005,6 +6005,91 @@ describe('importExternal — message pluralization', () => {
   });
 });
 
+// ── getStatusTransitions ──────────────────────────────────────────────────────
+
+describe('getStatusTransitions', () => {
+  it('returns empty transitions with zero summary when no runs exist', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(0);
+    expect(result.summary.totalOutages).toBe(0);
+    expect(result.summary.totalDowntimeSec).toBe(0);
+    expect(result.totalRuns).toBe(0);
+  });
+
+  it('detects green→red transition (outage)', async () => {
+    const p = makePrisma();
+    const t0 = new Date('2026-03-26T10:00:00Z');
+    const t1 = new Date('2026-03-26T10:05:00Z');
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: t0 },
+      { ok: false, level: 'red', message: 'Connection refused', latencyMs: null, checkedAt: t1 },
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(1);
+    expect(result.transitions[0].from).toBe('green');
+    expect(result.transitions[0].to).toBe('red');
+    expect(result.transitions[0].message).toBe('Connection refused');
+    expect(result.summary.totalOutages).toBe(1);
+  });
+
+  it('detects red→green recovery and computes downtime', async () => {
+    const p = makePrisma();
+    const t0 = new Date('2026-03-26T10:00:00Z');
+    const t1 = new Date('2026-03-26T10:05:00Z');
+    const t2 = new Date('2026-03-26T10:10:00Z'); // recovery after 5 min
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: t0 },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: t1 },
+      { ok: true, level: 'green', message: 'recovered', latencyMs: 60, checkedAt: t2 },
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(2);
+    const recovery = result.transitions[1];
+    expect(recovery.from).toBe('red');
+    expect(recovery.to).toBe('green');
+    expect(recovery.durationSec).toBe(300); // 5 minutes
+    expect(result.summary.totalDowntimeSec).toBe(300);
+    expect(result.summary.avgRecoveryTimeSec).toBe(300);
+  });
+
+  it('computes MTBF from multiple outages', async () => {
+    const p = makePrisma();
+    // Two outages: at T=0 and T=60min
+    const runs = [
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T09:00:00Z') },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: new Date('2026-03-26T09:05:00Z') },
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T09:10:00Z') },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: new Date('2026-03-26T10:05:00Z') }, // 60min later
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T10:10:00Z') },
+    ];
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.summary.totalOutages).toBe(2);
+    expect(result.summary.mtbfSec).toBe(3600); // 60 min between outages
+  });
+
+  it('respects the period filter by passing correct since date', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const before = Date.now();
+    await svc.getStatusTransitions('user-1', 'monitor-1', '24h');
+    const after = Date.now();
+    const call = (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+      where: { checkedAt: { gte: Date } };
+    };
+    const gte = call.where.checkedAt.gte.getTime();
+    expect(gte).toBeGreaterThanOrEqual(before - 24 * 60 * 60 * 1000 - 100);
+    expect(gte).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 100);
+  });
+});
+
 // ── getLatencyDistribution ────────────────────────────────────────────────────
 
 describe('getLatencyDistribution', () => {

@@ -87,6 +87,31 @@ interface LatencyDistributionData {
   checkedRange: string;
 }
 
+// ── Status Transitions Types ──────────────────────────────────────────────────
+
+interface StatusTransition {
+  from: string;
+  to: string;
+  at: string;
+  message: string | null;
+  latencyMs: number | null;
+  durationSec: number | null;
+}
+
+interface StatusTransitionsData {
+  transitions: StatusTransition[];
+  summary: {
+    totalOutages: number;
+    totalDowntimeSec: number;
+    avgRecoveryTimeSec: number | null;
+    mtbfSec: number | null;
+  };
+  period: string;
+  checkedRange: string;
+  totalRuns: number;
+  currentStatus: string;
+}
+
 interface PeriodStats {
   total: number;
   successCount: number;
@@ -206,6 +231,7 @@ export default function MonitorDetailPage() {
   const [perfLoading, setPerfLoading] = useState(false);
   const [perfError, setPerfError] = useState<string | null>(null);
   const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
+  const [transitionsData, setTransitionsData] = useState<StatusTransitionsData | null>(null);
   const [perfComparison, setPerfComparison] = useState<PeriodComparisonData | null>(null);
 
   // Certificate details (SSL/HTTP monitors)
@@ -877,12 +903,14 @@ export default function MonitorDetailPage() {
                 setPerfLoading(true);
                 setPerfError(null);
                 try {
-                  const [data, comparison] = await Promise.all([
+                  const [data, comparison, txData] = await Promise.all([
                     api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id),
                     api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${perfPeriod}`, user.id).catch(() => null),
+                    api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${perfPeriod}`, user.id).catch(() => null),
                   ]);
                   setPerfData(data);
                   setPerfComparison(comparison);
+                  setTransitionsData(txData);
                 } catch {
                   setPerfError("Failed to load performance data");
                 } finally {
@@ -957,12 +985,14 @@ export default function MonitorDetailPage() {
                     setPerfLoading(true);
                     setPerfError(null);
                     try {
-                      const [data, comparison] = await Promise.all([
+                      const [data, comparison, txData] = await Promise.all([
                         api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id),
                         api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${p}`, user.id).catch(() => null),
+                        api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${p}`, user.id).catch(() => null),
                       ]);
                       setPerfData(data);
                       setPerfComparison(comparison);
+                      setTransitionsData(txData);
                     } catch {
                       setPerfError("Failed to load performance data");
                     } finally {
@@ -1140,6 +1170,67 @@ export default function MonitorDetailPage() {
                     <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-500/60" /> Very Slow (&gt;1s)</span>
                   </div>
                 </Card>
+
+                {/* E. Status Transitions Timeline */}
+                {transitionsData && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertCircle className="w-4 h-4 text-accent" />
+                      <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Status Transitions</h2>
+                      <span className="ml-auto text-xs text-text-muted">{transitionsData.checkedRange}</span>
+                    </div>
+                    {/* Summary stats */}
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: "Outages", value: String(transitionsData.summary.totalOutages), color: transitionsData.summary.totalOutages > 0 ? "text-danger" : "text-success" },
+                        { label: "Total Downtime", value: transitionsData.summary.totalDowntimeSec > 0 ? formatDuration(transitionsData.summary.totalDowntimeSec) : "0s", color: "text-text-primary" },
+                        { label: "Avg Recovery (MTTR)", value: transitionsData.summary.avgRecoveryTimeSec !== null ? formatDuration(transitionsData.summary.avgRecoveryTimeSec) : "—", color: "text-text-primary" },
+                        { label: "MTBF", value: transitionsData.summary.mtbfSec !== null ? formatDuration(transitionsData.summary.mtbfSec) : "—", color: "text-text-primary" },
+                      ].map((stat) => (
+                        <div key={stat.label} className="text-center p-2 rounded-lg bg-white/3">
+                          <p className="text-[10px] text-text-muted mb-1 uppercase tracking-wider">{stat.label}</p>
+                          <p className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {transitionsData.transitions.length === 0 ? (
+                      <p className="text-text-muted text-sm text-center py-4">No status changes in this period — monitor has been stable. ✓</p>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-[18px] top-0 bottom-0 w-px bg-white/10" />
+                        <div className="space-y-3">
+                          {transitionsData.transitions.map((t, i) => {
+                            const isDown = t.to !== "green";
+                            const dotColor = t.to === "green" ? "bg-success" : t.to === "yellow" ? "bg-warning" : "bg-danger";
+                            const textColor = t.to === "green" ? "text-success" : t.to === "yellow" ? "text-warning" : "text-danger";
+                            const arrow = `${t.from} → ${t.to}`;
+                            return (
+                              <div key={i} className="flex items-start gap-3 pl-1">
+                                <div className={`w-4 h-4 rounded-full ${dotColor} shrink-0 mt-0.5 ring-2 ring-surface`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-xs font-semibold capitalize ${textColor}`}>{isDown ? "Outage" : "Recovery"}</span>
+                                    <span className="text-[10px] text-text-muted font-mono">{arrow}</span>
+                                    {t.durationSec !== null && (
+                                      <span className="text-[10px] text-text-muted">· was {t.from} for {formatDuration(t.durationSec)}</span>
+                                    )}
+                                    <span className="ml-auto text-[10px] text-text-muted shrink-0">{relativeTime(t.at)}</span>
+                                  </div>
+                                  {t.message && (
+                                    <p className="text-[11px] text-text-secondary mt-0.5 truncate">{t.message}</p>
+                                  )}
+                                  {t.latencyMs !== null && (
+                                    <p className="text-[10px] text-text-muted">{t.latencyMs}ms</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )}
               </>
             )}
           </div>

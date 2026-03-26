@@ -31,6 +31,10 @@ export interface AlertChannel {
   type: AlertChannelType;
   config: Record<string, unknown>;
   createdAt: string;
+  alertGrouping: boolean;
+  groupWindowSec: number;
+  groupByFolder: boolean;
+  groupByTag: boolean;
 }
 
 export interface Monitor {

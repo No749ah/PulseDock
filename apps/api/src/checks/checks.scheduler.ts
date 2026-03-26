@@ -526,6 +526,19 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
   }
 
   /**
+   * Every minute: flush expired alert groups whose window has passed.
+   * Sends grouped summary alerts for any pending groups with >=2 monitors.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async flushExpiredAlertGroups() {
+    try {
+      await this.alertsService.flushExpiredAlertGroups();
+    } catch (err) {
+      this.logger.error('Failed to flush expired alert groups', err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  /**
    * Daily cleanup: delete MonitorRun records older than RUN_RETENTION_DAYS.
    * Runs at 03:00 UTC to avoid overlapping with peak traffic.
    * Controlled by RUN_RETENTION_DAYS env var (default: 90 days, minimum: 1 day).

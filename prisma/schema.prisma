@@ -75,6 +75,7 @@ model User {
   acknowledgements        AlertAcknowledgement[]
   alertRoutingRules       AlertRoutingRule[]
   escalationPolicies      EscalationPolicy[]
+  alertGroups             AlertGroup[]
 }
 
 model Session {
@@ -258,16 +259,21 @@ model MonitorRun {
 }
 
 model AlertChannel {
-  id         String   @id @default(cuid())
-  userId     String
-  name       String
-  type       String
-  configJson Json
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  type             String
+  configJson       Json
+  createdAt        DateTime @default(now())
+  alertGrouping    Boolean  @default(false)  // enable alert grouping for this channel
+  groupWindowSec   Int      @default(300)    // window in seconds to group related alerts (default 5min)
+  groupByFolder    Boolean  @default(true)   // group alerts from same folder
+  groupByTag       Boolean  @default(false)  // group alerts from same tag
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
   deliveryLogs  AlertDeliveryLog[]
+  alertGroups   AlertGroup[]
 }
 
 model MonitorAlert {
@@ -591,15 +597,35 @@ model AlertDeliveryLog {
   monitorId      String?
   monitorName    String?
   status         String   // "success" | "failed"
-  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test"
+  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test" | "grouped_alert"
   errorMessage   String?
   durationMs     Int?
   createdAt      DateTime @default(now())
+  isGrouped      Boolean  @default(false)
+  groupedCount   Int      @default(0)
 
   alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
 
   @@index([alertChannelId])
   @@index([alertChannelId, createdAt])
+}
+
+model AlertGroup {
+  id           String    @id @default(cuid())
+  userId       String
+  channelId    String
+  groupKey     String    // e.g. "folder:folderId" or "tag:tagId" or "none"
+  monitorIds   String    // JSON array of monitor IDs in this group
+  firstAlertAt DateTime  @default(now())
+  lastAlertAt  DateTime  @default(now())
+  sentAt       DateTime? // when the grouped alert was sent, null = pending
+  level        String    @default("red")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel AlertChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channelId, groupKey])
+  @@index([userId, sentAt])
 }
 
 model UserSettings {

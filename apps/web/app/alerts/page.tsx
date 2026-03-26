@@ -27,6 +27,10 @@ type AlertChannel = {
   config: Record<string, unknown>;
   createdAt: string;
   lastTriggeredAt?: string | null;
+  alertGrouping?: boolean;
+  groupWindowSec?: number;
+  groupByFolder?: boolean;
+  groupByTag?: boolean;
 };
 
 function ChannelTypeIcon({ type }: { type: AlertType }) {
@@ -73,6 +77,8 @@ type DeliveryLog = {
   errorMessage: string | null;
   durationMs: number | null;
   createdAt: string;
+  isGrouped?: boolean;
+  groupedCount?: number;
 };
 
 type DeliveryHistory = {
@@ -142,6 +148,16 @@ export default function AlertsPage() {
   const [editParseMode, setEditParseMode] = useState('HTML');
   const [editPayloadTemplate, setEditPayloadTemplate] = useState('');
   const [editCustomHeaders, setEditCustomHeaders] = useState<Array<{key: string; value: string}>>([]);
+  // Alert grouping state (create form)
+  const [createAlertGrouping, setCreateAlertGrouping] = useState(false);
+  const [createGroupWindowMin, setCreateGroupWindowMin] = useState(5);
+  const [createGroupByFolder, setCreateGroupByFolder] = useState(true);
+  const [createGroupByTag, setCreateGroupByTag] = useState(false);
+  // Alert grouping state (edit form)
+  const [editAlertGrouping, setEditAlertGrouping] = useState(false);
+  const [editGroupWindowMin, setEditGroupWindowMin] = useState(5);
+  const [editGroupByFolder, setEditGroupByFolder] = useState(true);
+  const [editGroupByTag, setEditGroupByTag] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -181,6 +197,10 @@ export default function AlertsPage() {
     setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '', customHeaders: [] });
     setCreatePreviewVisible(false);
     setCreatePreviewResult(null);
+    setCreateAlertGrouping(false);
+    setCreateGroupWindowMin(5);
+    setCreateGroupByFolder(true);
+    setCreateGroupByTag(false);
   }
 
   function previewCreateTemplate(template: string) {
@@ -332,7 +352,18 @@ export default function AlertsPage() {
   async function createChannel() {
     try {
       const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode, payloadTemplate: form.payloadTemplate, customHeaders: form.customHeaders });
-      await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
+      await api('/v1/alert-channels', undefined, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name,
+          type: form.type,
+          config,
+          alertGrouping: createAlertGrouping,
+          groupWindowSec: createGroupWindowMin * 60,
+          groupByFolder: createGroupByFolder,
+          groupByTag: createGroupByTag,
+        }),
+      });
       setWizardOpen(false);
       resetCreateForm();
       await load();
@@ -435,6 +466,10 @@ export default function AlertsPage() {
     }
     setEditPreviewVisible(false);
     setEditPreviewResult(null);
+    setEditAlertGrouping(channel.alertGrouping ?? false);
+    setEditGroupWindowMin(Math.round((channel.groupWindowSec ?? 300) / 60));
+    setEditGroupByFolder(channel.groupByFolder ?? true);
+    setEditGroupByTag(channel.groupByTag ?? false);
     setEditOpen(true);
   }
 
@@ -444,7 +479,14 @@ export default function AlertsPage() {
       const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode, payloadTemplate: editPayloadTemplate, customHeaders: editCustomHeaders });
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
-        body: JSON.stringify({ name: editName, config }),
+        body: JSON.stringify({
+          name: editName,
+          config,
+          alertGrouping: editAlertGrouping,
+          groupWindowSec: editGroupWindowMin * 60,
+          groupByFolder: editGroupByFolder,
+          groupByTag: editGroupByTag,
+        }),
       });
       setEditOpen(false);
       await load();

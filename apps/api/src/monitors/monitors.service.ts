@@ -2431,4 +2431,124 @@ export class MonitorsService {
       },
     };
   }
+
+  // ─── Status Transitions ───────────────────────────────────────────────────
+
+  /**
+   * Returns a list of status transition events for a monitor over a given period.
+   * Each transition represents a change in health level (e.g. green → red, red → green).
+   * Useful for post-mortem analysis and incident root-cause investigation.
+   *
+   * @param userId    - Authenticated user ID (ownership check)
+   * @param monitorId - Monitor ID
+   * @param period    - Lookback window: 24h | 7d | 30d (default 7d)
+   * @returns List of transitions + summary stats (total outages, total downtime, MTTR, MTBF)
+   */
+  async getStatusTransitions(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true, name: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const since = new Date(Date.now() - rangeMs);
+
+    // Load all runs in period, ordered oldest→newest
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since } },
+      select: { ok: true, level: true, message: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    if (runs.length === 0) {
+      return {
+        transitions: [],
+        summary: { totalOutages: 0, totalDowntimeSec: 0, avgRecoveryTimeSec: null, mtbfSec: null },
+        period,
+        totalRuns: 0,
+      };
+    }
+
+    // Walk the run list and detect level changes
+    type Transition = {
+      from: string;
+      to: string;
+      at: string;
+      message: string | null;
+      latencyMs: number | null;
+      durationSec: number | null; // duration in previous state
+    };
+
+    const transitions: Transition[] = [];
+    let prevLevel = runs[0].level ?? (runs[0].ok ? 'green' : 'red');
+    let prevAt = new Date(runs[0].checkedAt).getTime();
+
+    for (let i = 1; i < runs.length; i++) {
+      const run = runs[i];
+      const currentLevel = run.level ?? (run.ok ? 'green' : 'red');
+      const currentAt = new Date(run.checkedAt).getTime();
+
+      if (currentLevel !== prevLevel) {
+        transitions.push({
+          from: prevLevel,
+          to: currentLevel,
+          at: new Date(currentAt).toISOString(),
+          message: run.message ?? null,
+          latencyMs: run.latencyMs ?? null,
+          durationSec: Math.round((currentAt - prevAt) / 1000),
+        });
+        prevLevel = currentLevel;
+        prevAt = currentAt;
+      }
+    }
+
+    // Summary stats
+    const outageTransitions = transitions.filter((t) => t.from === 'green' && t.to !== 'green');
+    const recoveryTransitions = transitions.filter((t) => t.from !== 'green' && t.to === 'green');
+
+    const totalOutages = outageTransitions.length;
+
+    // Total downtime: sum of durations of non-green → green transitions
+    const totalDowntimeSec = recoveryTransitions.reduce((sum, t) => sum + (t.durationSec ?? 0), 0);
+
+    const avgRecoveryTimeSec = recoveryTransitions.length > 0
+      ? Math.round(totalDowntimeSec / recoveryTransitions.length)
+      : null;
+
+    // MTBF: time between outage starts
+    let mtbfSec: number | null = null;
+    if (outageTransitions.length >= 2) {
+      const outageTimestamps = outageTransitions.map((t) => new Date(t.at).getTime());
+      let intervalSum = 0;
+      for (let i = 1; i < outageTimestamps.length; i++) {
+        intervalSum += outageTimestamps[i] - outageTimestamps[i - 1];
+      }
+      mtbfSec = Math.round(intervalSum / (outageTimestamps.length - 1) / 1000);
+    }
+
+    const checkedRangeMap: Record<string, string> = {
+      '24h': 'Last 24 hours',
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+    };
+
+    return {
+      transitions,
+      summary: { totalOutages, totalDowntimeSec, avgRecoveryTimeSec, mtbfSec },
+      period,
+      checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+      totalRuns: runs.length,
+      currentStatus: prevLevel,
+    };
+  }
 }

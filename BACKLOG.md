@@ -1,5 +1,5 @@
-## Status Summary (2026-03-26 03:23 UTC)
-- **Build/Test:** ✅ Clean build + 3953 tests (3230 API + 701 Web + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 04:14 UTC)
+- **Build/Test:** ✅ Clean build + 3969 tests (3254 API + 693 Web + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
 - **Branch:** heartbeat/2026-03-26-midnight
@@ -7,7 +7,7 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes:** +156 new tests: monitors/utils (63), monitors/constants (31), widget shared utils (21), status-page editor getMultiModeHelperText+getWidgetConfigHints (19), notifyBurnRateAlert alerts service (8). Web tests: 558 → 701. Total: 3797 → 3953.
+- **Last changes:** Fixed TS2352 in alerts.service.spec.ts. Added 16 version-detection edge case tests: APT stable/pre-release selection, Helm/Maven HTTP failure + missing version paths, Docker Hub prefix logic (library/ vs namespace/), cargo newest_version fallback, GitHub vs Docker suggestion sets. API tests: 3230 → 3254. Total: 3953 → 3969.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

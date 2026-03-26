@@ -1,5 +1,5 @@
-## Status Summary (2026-03-26 09:35 UTC)
-- **Build/Test:** ✅ Clean build + 3319 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 09:50 UTC)
+- **Build/Test:** ✅ Clean build + 3328 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
 - **Branch:** heartbeat/2026-03-26-monitor-slo-improvements
@@ -10,7 +10,10 @@
 - **Last changes (09:35 cycle):**
   - Alert acknowledgement + monitor muting: `POST/DELETE /v1/monitors/:id/mute`, `POST/DELETE /v1/monitors/:id/acknowledge`. Badges on monitor list/detail. Auto-clear ack on recovery. 10 new tests.
   - Alert routing rules complete: `GET/POST/PATCH/DELETE /v1/alert-routing-rules`, matchTags wired, frontend `/alerts/routing` page, "Routing Rules" nav link. 9 new tests.
-  - Latency anomaly detection: `anomalyDetection` + `anomalyMultiplier` fields on Monitor. P95 baseline auto-computed from 7-day history. Upgrades green→yellow when latency > N×P95. Toggle in monitor form. 10 P95 tests → 3319 total.
+  - Latency anomaly detection: `anomalyDetection` + `anomalyMultiplier` fields on Monitor. P95 baseline auto-computed from 7-day history. Upgrades green→yellow when latency > N×P95. Toggle in monitor form. 10 P95 tests.
+  - Alert storm protection: `alertStormProtection` + `alertStormThreshold` on NotificationPreference. Suppresses alerts when >N fire in 10min. Once-per-30min storm notification. UI in Account > Notifications. 9 tests.
+  - GET /v1/monitors/:id single endpoint: returns mute/ack/anomaly state. Monitor detail page now fetches directly (faster loads, always-fresh data).
+  - Total tests: 3328.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

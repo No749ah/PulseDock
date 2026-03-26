@@ -794,6 +794,59 @@ export default function AlertsPage() {
               </div>
             )}
 
+            {wizardStep === 1 && (
+              <div className="mt-4 border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Alert Grouping</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Enable alert grouping</p>
+                    <p className="text-xs text-text-secondary">Suppress alert storms by batching failures into one notification</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCreateAlertGrouping(!createAlertGrouping)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${createAlertGrouping ? 'bg-accent' : 'bg-border'}`}
+                    role="switch"
+                    aria-checked={createAlertGrouping}
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${createAlertGrouping ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                {createAlertGrouping && (
+                  <div className="space-y-3 pl-2 border-l border-border">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Window (minutes)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={1440}
+                        className={inputClass}
+                        value={createGroupWindowMin}
+                        onChange={(e) => setCreateGroupWindowMin(Math.max(1, Math.min(1440, Number(e.target.value))))}
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">Alerts within this window are candidates for grouping. Default: 5 minutes.</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-secondary mb-2">Group by</p>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={createGroupByFolder} onChange={(e) => setCreateGroupByFolder(e.target.checked)} className="rounded border-border" />
+                          <span className="text-sm text-text-primary">Folder <span className="text-text-secondary">(group monitors in the same folder)</span></span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={createGroupByTag} onChange={(e) => setCreateGroupByTag(e.target.checked)} className="rounded border-border" />
+                          <span className="text-sm text-text-primary">Tag <span className="text-text-secondary">(group monitors with the same tag)</span></span>
+                        </label>
+                      </div>
+                    </div>
+                    <p className="text-xs text-text-secondary bg-surface-elevated rounded-lg px-3 py-2">
+                      <strong>How it works:</strong> When 3+ monitors fail within the window, one grouped alert is sent instead of individual ones. After the window expires, pending groups with 2+ monitors are also flushed.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {wizardStep === 2 && (
               <div className="space-y-2">
                 <p className="font-semibold text-text-primary">Step 3/3 · Review</p>
@@ -1017,6 +1070,58 @@ export default function AlertsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Alert Grouping Section — shown for all channel types */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Alert Grouping</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Enable alert grouping</p>
+                    <p className="text-xs text-text-secondary">Suppress alert storms by batching failures into one notification</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditAlertGrouping(!editAlertGrouping)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editAlertGrouping ? 'bg-accent' : 'bg-border'}`}
+                    role="switch"
+                    aria-checked={editAlertGrouping}
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editAlertGrouping ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                {editAlertGrouping && (
+                  <div className="space-y-3 pl-2 border-l border-border">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Window (minutes)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={1440}
+                        className={inputClass}
+                        value={editGroupWindowMin}
+                        onChange={(e) => setEditGroupWindowMin(Math.max(1, Math.min(1440, Number(e.target.value))))}
+                      />
+                      <p className="mt-1 text-xs text-text-secondary">Alerts within this window are candidates for grouping. Default: 5 minutes.</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-secondary mb-2">Group by</p>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={editGroupByFolder} onChange={(e) => setEditGroupByFolder(e.target.checked)} className="rounded border-border" />
+                          <span className="text-sm text-text-primary">Folder <span className="text-text-secondary">(group monitors in the same folder)</span></span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={editGroupByTag} onChange={(e) => setEditGroupByTag(e.target.checked)} className="rounded border-border" />
+                          <span className="text-sm text-text-primary">Tag <span className="text-text-secondary">(group monitors with the same tag)</span></span>
+                        </label>
+                      </div>
+                    </div>
+                    <p className="text-xs text-text-secondary bg-surface-elevated rounded-lg px-3 py-2">
+                      <strong>How it works:</strong> When 3+ monitors fail within the window, one grouped alert is sent instead of individual ones. After the window expires, pending groups with 2+ monitors are also flushed.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </Modal>
 
@@ -1072,24 +1177,32 @@ export default function AlertsPage() {
                     )}
                     <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
                       {deliveryHistory.deliveries.map((d) => (
-                        <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
+                        <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.isGrouped ? 'bg-warning/5 border-warning/20' : d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
                           <div className="mt-0.5 shrink-0">
-                            {d.status === 'success'
+                            {d.isGrouped
+                              ? <span className="text-base leading-none">⚡</span>
+                              : d.status === 'success'
                               ? <CheckCircle2 className="w-4 h-4 text-success" />
                               : <XCircle className="w-4 h-4 text-danger" />
                             }
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
-                                {d.status}
-                              </span>
-                              {d.trigger && (
+                              {d.isGrouped ? (
+                                <span className="text-xs font-semibold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                                  ⚡ Grouped ({d.groupedCount} monitors)
+                                </span>
+                              ) : (
+                                <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
+                                  {d.status}
+                                </span>
+                              )}
+                              {d.trigger && !d.isGrouped && (
                                 <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
                                   {d.trigger.replace('_', ' ')}
                                 </span>
                               )}
-                              {d.monitorName && (
+                              {d.monitorName && !d.isGrouped && (
                                 <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
                               )}
                             </div>

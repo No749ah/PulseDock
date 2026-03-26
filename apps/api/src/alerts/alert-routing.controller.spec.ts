@@ -119,3 +119,82 @@ describe('AlertRoutingController', () => {
     await expect(ctrl.reorder(makeReq(), { ids: ['rule-1', 'rule-foreign'] })).rejects.toThrow(ForbiddenException);
   });
 });
+
+describe('AlertRoutingController.simulate', () => {
+  const baseMonitor = {
+    id: 'mon-1', name: 'API Health', type: 'HTTP', folderId: null,
+  };
+  const baseChannel = { id: 'ch-1', name: 'Slack #alerts', type: 'SLACK' };
+  const baseRule = {
+    id: 'rule-1', userId: 'user-1', name: 'HTTP Errors', enabled: true, priority: 0,
+    matchMonitorIds: [], matchTypes: ['HTTP'], matchLevels: ['red'], matchFolderIds: [], matchTags: [],
+    channelIds: ['ch-1'], overrideNotifyOn: null,
+  };
+
+  function makeSimPrisma() {
+    return {
+      monitor: { findFirst: vi.fn().mockResolvedValue(baseMonitor) },
+      alertRoutingRule: { findMany: vi.fn().mockResolvedValue([baseRule]) },
+      monitorTag: { findMany: vi.fn().mockResolvedValue([]) },
+      alertChannel: { findMany: vi.fn().mockResolvedValue([baseChannel]) },
+      monitorAlert: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+  }
+
+  it('returns matched rules and routed channels for a matching scenario', async () => {
+    const prisma = makeSimPrisma();
+    const ctrl = new AlertRoutingController(prisma as never);
+    const result = await ctrl.simulate(makeReq(), { monitorId: 'mon-1', level: 'red' });
+    expect(result.matchedRulesCount).toBe(1);
+    expect(result.routedChannels).toHaveLength(1);
+    expect(result.routedChannels[0].name).toBe('Slack #alerts');
+    expect(result.fallback).toBeNull();
+  });
+
+  it('returns fallback when no rules match', async () => {
+    const prisma = makeSimPrisma();
+    prisma.alertRoutingRule.findMany.mockResolvedValue([]);
+    prisma.monitorAlert.findMany.mockResolvedValue([{
+      monitorId: 'mon-1', alertChannelId: 'ch-1',
+      alertChannel: baseChannel,
+    }]);
+    const ctrl = new AlertRoutingController(prisma as never);
+    const result = await ctrl.simulate(makeReq(), { monitorId: 'mon-1', level: 'red' });
+    expect(result.matchedRulesCount).toBe(0);
+    expect(result.fallback).not.toBeNull();
+    expect(result.fallback!.active).toBe(true);
+    expect(result.fallback!.channels).toHaveLength(1);
+  });
+
+  it('returns 404 when monitor not found', async () => {
+    const prisma = makeSimPrisma();
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    const ctrl = new AlertRoutingController(prisma as never);
+    await expect(ctrl.simulate(makeReq(), { monitorId: 'bad-id', level: 'red' })).rejects.toThrow(NotFoundException);
+  });
+
+  it('marks rule as not-matched when level filter does not apply', async () => {
+    const prisma = makeSimPrisma();
+    prisma.alertRoutingRule.findMany.mockResolvedValue([{
+      ...baseRule, matchLevels: ['yellow'], // only yellow, but we simulate red
+    }]);
+    const ctrl = new AlertRoutingController(prisma as never);
+    const result = await ctrl.simulate(makeReq(), { monitorId: 'mon-1', level: 'red' });
+    expect(result.matchedRulesCount).toBe(0);
+    expect(result.routing[0].matched).toBe(false);
+    expect(result.routing[0].checks.some((c) => c.condition === 'matchLevels' && !c.passed)).toBe(true);
+  });
+
+  it('includes tag matching in check trace', async () => {
+    const prisma = makeSimPrisma();
+    prisma.alertRoutingRule.findMany.mockResolvedValue([{
+      ...baseRule, matchTags: ['production'], matchTypes: [], matchLevels: [],
+    }]);
+    prisma.monitorTag.findMany.mockResolvedValue([{ tag: { name: 'production' } }]);
+    const ctrl = new AlertRoutingController(prisma as never);
+    const result = await ctrl.simulate(makeReq(), { monitorId: 'mon-1', level: 'red' });
+    expect(result.matchedRulesCount).toBe(1);
+    const tagCheck = result.routing[0].checks.find((c) => c.condition === 'matchTags');
+    expect(tagCheck?.passed).toBe(true);
+  });
+});

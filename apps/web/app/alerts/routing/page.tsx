@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, AlertTriangle, Save } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, AlertTriangle, Save, FlaskConical, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { AppFrame } from "../../../components/app-frame";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Badge } from "../../components/Badge";
+import { Modal } from "../../components/Modal";
 import { getUser } from "../../../components/auth";
 import { api } from "../../../lib/api";
 import { useToast } from "../../../components/ui/toast";
@@ -44,6 +45,24 @@ interface MonitorItem {
 interface Folder {
   id: string;
   name: string;
+}
+
+interface SimulateResult {
+  monitor: { id: string; name: string; type: string };
+  simulatedLevel: string;
+  monitorTags: string[];
+  totalRules: number;
+  matchedRulesCount: number;
+  routing: Array<{
+    ruleId: string;
+    ruleName: string;
+    priority: number;
+    matched: boolean;
+    checks: Array<{ condition: string; passed: boolean; reason: string }>;
+    channelIds: string[];
+  }>;
+  routedChannels: Array<{ id: string; name: string; type: string }>;
+  fallback: { active: boolean; description: string; channels: Array<{ id: string; name: string; type: string }> } | null;
 }
 
 const MONITOR_TYPES = ["HTTP", "GIT_RELEASE", "DOCKER_IMAGE", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"];
@@ -204,6 +223,12 @@ export default function AlertRoutingPage() {
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showSimulate, setShowSimulate] = useState(false);
+  const [simMonitorId, setSimMonitorId] = useState("");
+  const [simLevel, setSimLevel] = useState("red");
+  const [simLoading, setSimLoading] = useState(false);
+  const [simResult, setSimResult] = useState<SimulateResult | null>(null);
+  const [simError, setSimError] = useState("");
 
   useEffect(() => {
     const user = getUser();
@@ -269,6 +294,23 @@ export default function AlertRoutingPage() {
     } catch (e) { toast("Failed to reorder", "error"); }
   };
 
+  const handleSimulate = async () => {
+    if (!simMonitorId) { setSimError("Select a monitor to simulate"); return; }
+    const user = getUser(); if (!user) return;
+    setSimLoading(true); setSimError(""); setSimResult(null);
+    try {
+      const result = await api<SimulateResult>("/v1/alert-routing-rules/simulate", user.id, {
+        method: "POST",
+        body: JSON.stringify({ monitorId: simMonitorId, level: simLevel }),
+      });
+      setSimResult(result);
+    } catch (e) {
+      setSimError(e instanceof Error ? e.message : "Simulation failed");
+    } finally {
+      setSimLoading(false);
+    }
+  };
+
   const getChannelName = (id: string) => channels.find((c) => c.id === id)?.name ?? id.slice(0, 8) + "…";
 
   function RuleMatchSummary({ rule }: { rule: RoutingRule }) {
@@ -289,7 +331,12 @@ export default function AlertRoutingPage() {
             <h1 className="text-2xl font-bold text-text-primary">Alert Routing Rules</h1>
             <p className="text-sm text-text-secondary mt-1">Route alerts to specific channels based on monitor type, level, tags, or folder. Rules are evaluated in priority order — first match wins.</p>
           </div>
-          <Button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 shrink-0"><Plus className="w-4 h-4" />New Rule</Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="secondary" onClick={() => { setSimResult(null); setSimError(""); setShowSimulate(true); }} className="flex items-center gap-1.5">
+              <FlaskConical className="w-4 h-4" />Simulate
+            </Button>
+            <Button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5"><Plus className="w-4 h-4" />New Rule</Button>
+          </div>
         </div>
 
         {error && (
@@ -373,6 +420,141 @@ export default function AlertRoutingPage() {
           </ul>
         </Card>
       </div>
+
+      {/* Simulate Modal */}
+      <Modal open={showSimulate} onClose={() => setShowSimulate(false)} title="Simulate Alert Routing">
+        <div className="space-y-5">
+          <p className="text-sm text-text-secondary">
+            Select a monitor and alert level to see which routing rules would match and which channels would receive the alert — without sending any actual notifications.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Monitor</label>
+              <select
+                value={simMonitorId}
+                onChange={(e) => { setSimMonitorId(e.target.value); setSimResult(null); }}
+                className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">Select monitor…</option>
+                {monitors.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} ({m.type})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Alert Level</label>
+              <div className="flex gap-2">
+                {[
+                  { value: "red", label: "🔴 Down", cls: "border-danger/50 text-danger bg-danger/5" },
+                  { value: "yellow", label: "🟡 Degraded", cls: "border-warning/50 text-warning bg-warning/5" },
+                  { value: "green", label: "🟢 Recovery", cls: "border-success/50 text-success bg-success/5" },
+                ].map(({ value, label, cls }) => (
+                  <button
+                    key={value}
+                    onClick={() => { setSimLevel(value); setSimResult(null); }}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${simLevel === value ? cls : "border-border text-text-secondary hover:border-border-strong"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {simError && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0" />{simError}
+            </div>
+          )}
+
+          <Button onClick={handleSimulate} disabled={simLoading || !simMonitorId} className="w-full flex items-center justify-center gap-2">
+            {simLoading ? (
+              <><div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Simulating…</>
+            ) : (
+              <><FlaskConical className="w-4 h-4" />Run Simulation</>
+            )}
+          </Button>
+
+          {simResult && (
+            <div className="space-y-4 pt-2 border-t border-border">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-text-primary">{simResult.monitor.name}</p>
+                  <p className="text-xs text-text-muted">{simResult.monitor.type} · Level: <span className={simResult.simulatedLevel === "red" ? "text-danger" : simResult.simulatedLevel === "yellow" ? "text-warning" : "text-success"}>{simResult.simulatedLevel}</span></p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-text-primary">{simResult.matchedRulesCount}/{simResult.totalRules}</p>
+                  <p className="text-xs text-text-muted">rules matched</p>
+                </div>
+              </div>
+
+              {simResult.matchedRulesCount > 0 ? (
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">Routed to channels:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {simResult.routedChannels.map((ch) => (
+                      <span key={ch.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-accent/10 text-accent border border-accent/20 font-medium">
+                        {ch.name}
+                        <span className="text-accent/60">({ch.type})</span>
+                      </span>
+                    ))}
+                    {simResult.routedChannels.length === 0 && (
+                      <span className="text-xs text-danger">⚠ Matched rules have no channels assigned</span>
+                    )}
+                  </div>
+                </div>
+              ) : simResult.fallback ? (
+                <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                  <p className="text-xs text-text-secondary mb-2">{simResult.fallback.description}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {simResult.fallback.channels.map((ch) => (
+                      <span key={ch.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-surface text-text-primary border border-border">
+                        {ch.name} <span className="text-text-muted">({ch.type})</span>
+                      </span>
+                    ))}
+                    {simResult.fallback.channels.length === 0 && (
+                      <span className="text-xs text-danger">No channels linked to this monitor — alert would not be sent</span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {simResult.routing.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">Rule evaluation trace:</p>
+                  <div className="space-y-2">
+                    {simResult.routing.map((r) => (
+                      <div key={r.ruleId} className={`px-3 py-2.5 rounded-lg border text-xs ${r.matched ? "border-success/30 bg-success/5" : "border-border bg-surface-elevated/30"}`}>
+                        <div className="flex items-center gap-2">
+                          {r.matched ? <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-text-muted shrink-0" />}
+                          <span className={`font-medium ${r.matched ? "text-success" : "text-text-secondary"}`}>#{r.priority + 1} {r.ruleName}</span>
+                          {r.matched && r.channelIds.length > 0 && (
+                            <span className="ml-auto text-text-muted flex items-center gap-1">
+                              <ArrowRight className="w-3 h-3" />
+                              {r.channelIds.map((cid) => getChannelName(cid)).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        {r.checks.length > 0 && !r.matched && (
+                          <div className="mt-1.5 pl-5 space-y-0.5">
+                            {r.checks.filter((c) => !c.passed).map((c, i) => (
+                              <p key={i} className="text-text-muted">{c.reason}</p>
+                            ))}
+                          </div>
+                        )}
+                        {r.checks.length === 0 && r.matched && (
+                          <p className="mt-1 pl-5 text-text-muted">No conditions — matches all alerts</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
     </AppFrame>
   );
 }

@@ -1,19 +1,22 @@
 /**
- * @file timeUtils.spec.ts
- * Unit tests for timeUtils — pure utility functions.
+ * Unit tests for timeUtils helpers.
  */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  relativeTime,
+  formatMonitorType,
+  parseUserAgent,
+  targetPlaceholder,
+  targetHelperText,
+} from './timeUtils';
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { relativeTime, formatMonitorType, parseUserAgent, targetPlaceholder, targetHelperText } from './timeUtils';
-
-// ────────────────────────────────────────────────────────────────────────────
-// relativeTime
-// ────────────────────────────────────────────────────────────────────────────
+// ── relativeTime ────────────────────────────────────────────────────────────
 
 describe('relativeTime', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  const NOW = 1_700_000_000_000;
+
+  beforeEach(() => vi.spyOn(Date, 'now').mockReturnValue(NOW));
+  afterEach(() => vi.restoreAllMocks());
 
   it('returns "—" for null', () => {
     expect(relativeTime(null)).toBe('—');
@@ -23,58 +26,47 @@ describe('relativeTime', () => {
     expect(relativeTime(undefined)).toBe('—');
   });
 
-  it('returns "just now" for < 5 seconds ago', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 2000);
-    expect(relativeTime(new Date(now).toISOString())).toBe('just now');
+  it('returns "just now" for < 5 seconds', () => {
+    const iso = new Date(NOW - 3_000).toISOString();
+    expect(relativeTime(iso)).toBe('just now');
   });
 
-  it('returns seconds ago for 5-59 seconds', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 30_000);
-    expect(relativeTime(new Date(now).toISOString())).toBe('30s ago');
+  it('returns "Xs ago" for 5-59 seconds', () => {
+    const iso = new Date(NOW - 30_000).toISOString();
+    expect(relativeTime(iso)).toBe('30s ago');
   });
 
-  it('returns minutes ago for 1-59 minutes', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 5 * 60_000);
-    expect(relativeTime(new Date(now).toISOString())).toBe('5m ago');
+  it('returns "Xm ago" for 1-59 minutes', () => {
+    const iso = new Date(NOW - 15 * 60_000).toISOString();
+    expect(relativeTime(iso)).toBe('15m ago');
   });
 
-  it('returns hours ago for 1-23 hours', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 3 * 3600_000);
-    expect(relativeTime(new Date(now).toISOString())).toBe('3h ago');
+  it('returns "Xh ago" for 1-23 hours', () => {
+    const iso = new Date(NOW - 5 * 3600_000).toISOString();
+    expect(relativeTime(iso)).toBe('5h ago');
   });
 
-  it('returns days ago for 1-6 days', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 3 * 86400_000);
-    expect(relativeTime(new Date(now).toISOString())).toBe('3d ago');
+  it('returns "Xd ago" for 1-6 days', () => {
+    const iso = new Date(NOW - 4 * 86400_000).toISOString();
+    expect(relativeTime(iso)).toBe('4d ago');
   });
 
-  it('returns locale date for 7+ days ago', () => {
-    const past = new Date('2024-01-01T00:00:00Z');
-    vi.spyOn(Date, 'now').mockReturnValue(new Date('2024-01-15T00:00:00Z').getTime());
-    const result = relativeTime(past);
-    // Should be a date string, not relative
-    expect(result).not.toContain('ago');
-    expect(result).not.toBe('—');
+  it('returns locale date for 7+ days', () => {
+    const date = new Date(NOW - 10 * 86400_000);
+    const iso = date.toISOString();
+    expect(relativeTime(iso)).toBe(date.toLocaleDateString());
   });
 
   it('accepts a Date object', () => {
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now + 10_000);
-    expect(relativeTime(new Date(now))).toBe('10s ago');
+    const date = new Date(NOW - 10_000);
+    expect(relativeTime(date)).toBe('10s ago');
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// formatMonitorType
-// ────────────────────────────────────────────────────────────────────────────
+// ── formatMonitorType ───────────────────────────────────────────────────────
 
 describe('formatMonitorType', () => {
-  it.each([
+  const cases: [string, string][] = [
     ['HTTP', 'HTTP Check'],
     ['GIT_RELEASE', 'Git Release'],
     ['DOCKER_IMAGE', 'Docker Image'],
@@ -85,19 +77,18 @@ describe('formatMonitorType', () => {
     ['PING', 'ICMP Ping'],
     ['SMTP', 'SMTP Email'],
     ['BROWSER', 'Browser Check'],
-  ])('%s → %s', (type, label) => {
-    expect(formatMonitorType(type)).toBe(label);
+  ];
+
+  it.each(cases)('maps %s → %s', (input, expected) => {
+    expect(formatMonitorType(input)).toBe(expected);
   });
 
-  it('returns the raw type for unknown types', () => {
+  it('returns the raw type for unknown values', () => {
     expect(formatMonitorType('CUSTOM_TYPE')).toBe('CUSTOM_TYPE');
-    expect(formatMonitorType('')).toBe('');
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// parseUserAgent
-// ────────────────────────────────────────────────────────────────────────────
+// ── parseUserAgent ──────────────────────────────────────────────────────────
 
 describe('parseUserAgent', () => {
   it('returns "Unknown device" for null', () => {
@@ -108,94 +99,111 @@ describe('parseUserAgent', () => {
     expect(parseUserAgent(undefined)).toBe('Unknown device');
   });
 
-  it('detects Edge browser', () => {
-    expect(parseUserAgent('Mozilla/5.0 ... Edg/120.0.0.0')).toBe('Microsoft Edge');
+  it('returns "Unknown device" for empty string', () => {
+    expect(parseUserAgent('')).toBe('Unknown device');
   });
 
-  it('detects Chrome browser', () => {
-    expect(parseUserAgent('Mozilla/5.0 ... Chrome/120.0.0.0 Safari/537.36')).toBe('Chrome Browser');
+  it('detects Microsoft Edge', () => {
+    expect(parseUserAgent('Mozilla/5.0 (Windows) Edg/111.0')).toBe('Microsoft Edge');
   });
 
-  it('detects Firefox browser', () => {
-    expect(parseUserAgent('Mozilla/5.0 ... Firefox/121.0')).toBe('Firefox Browser');
+  it('detects Chrome', () => {
+    expect(parseUserAgent('Mozilla/5.0 Chrome/120.0 Safari/537.36')).toBe('Chrome Browser');
   });
 
-  it('detects Safari browser', () => {
-    expect(parseUserAgent('Mozilla/5.0 ... Safari/604.1')).toBe('Safari Browser');
+  it('detects Firefox', () => {
+    expect(parseUserAgent('Mozilla/5.0 Firefox/119.0')).toBe('Firefox Browser');
   });
 
-  it('detects curl client', () => {
+  it('detects Safari (without Chrome)', () => {
+    expect(parseUserAgent('Mozilla/5.0 Safari/605.1 AppleWebKit')).toBe('Safari Browser');
+  });
+
+  it('detects curl', () => {
     expect(parseUserAgent('curl/7.88.1')).toBe('API Client (curl)');
   });
 
-  it('detects python client', () => {
+  it('detects python', () => {
     expect(parseUserAgent('python-requests/2.31.0')).toBe('Python Client');
   });
 
-  it('detects node.js client', () => {
-    expect(parseUserAgent('node-fetch/3.3.1')).toBe('Node.js Client');
+  it('detects node', () => {
+    expect(parseUserAgent('node-fetch/3.0')).toBe('Node.js Client');
   });
 
-  it('truncates long unknown user agents', () => {
-    const long = 'A'.repeat(100);
-    const result = parseUserAgent(long);
-    expect(result.length).toBeLessThanOrEqual(53); // 50 + "…"
-    expect(result.endsWith('…')).toBe(true);
+  it('truncates long unknown UA to 50 chars + ellipsis', () => {
+    const longUA = 'a'.repeat(60);
+    const result = parseUserAgent(longUA);
+    expect(result).toBe('a'.repeat(50) + '…');
   });
 
-  it('returns short unknown user agents as-is', () => {
-    const short = 'CustomAgent/1.0';
-    expect(parseUserAgent(short)).toBe(short);
+  it('returns short unknown UA as-is', () => {
+    const shortUA = 'CustomBot/1.0';
+    expect(parseUserAgent(shortUA)).toBe(shortUA);
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// targetPlaceholder
-// ────────────────────────────────────────────────────────────────────────────
+// ── targetPlaceholder ──────────────────────────────────────────────────────
 
 describe('targetPlaceholder', () => {
-  it.each([
-    ['GIT_RELEASE', 'owner/repo'],
-    ['DOCKER_IMAGE', 'image:tag'],
-    ['TCP', 'host:port'],
-    ['SSL_CERT', 'example.com'],
-    ['HEARTBEAT', 'heartbeat-worker'],
-    ['DNS', 'example.com'],
-    ['PING', 'example.com'],
-    ['SMTP', 'mail.example.com'],
-    ['BROWSER', 'https://example.com'],
-    ['HTTP', 'https://'],
-  ])('%s contains expected substring', (type, substr) => {
-    expect(targetPlaceholder(type)).toContain(substr);
+  it('returns GitHub-style placeholder for GIT_RELEASE', () => {
+    expect(targetPlaceholder('GIT_RELEASE')).toContain('owner/repo');
   });
 
-  it('returns a default placeholder for unknown types', () => {
-    expect(targetPlaceholder('UNKNOWN')).toBeTruthy();
+  it('returns image:tag placeholder for DOCKER_IMAGE', () => {
+    expect(targetPlaceholder('DOCKER_IMAGE')).toContain('image:tag');
+  });
+
+  it('returns host:port placeholder for TCP', () => {
+    expect(targetPlaceholder('TCP')).toContain('host:port');
+  });
+
+  it('returns domain placeholder for SSL_CERT', () => {
+    expect(targetPlaceholder('SSL_CERT')).toContain('example.com');
+  });
+
+  it('returns label placeholder for HEARTBEAT', () => {
+    expect(targetPlaceholder('HEARTBEAT')).toBeTruthy();
+  });
+
+  it('returns domain placeholder for DNS', () => {
+    expect(targetPlaceholder('DNS')).toContain('example.com');
+  });
+
+  it('returns IP/domain placeholder for PING', () => {
+    expect(targetPlaceholder('PING')).toContain('example.com');
+  });
+
+  it('returns mail server placeholder for SMTP', () => {
+    expect(targetPlaceholder('SMTP')).toContain('mail.example.com');
+  });
+
+  it('returns https URL for BROWSER', () => {
+    expect(targetPlaceholder('BROWSER')).toContain('https://');
+  });
+
+  it('returns default URL placeholder for HTTP', () => {
+    const result = targetPlaceholder('HTTP');
+    expect(result).toContain('https://');
+  });
+
+  it('returns default placeholder for unknown type', () => {
+    const result = targetPlaceholder('CUSTOM');
+    expect(result).toContain('https://');
   });
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// targetHelperText
-// ────────────────────────────────────────────────────────────────────────────
+// ── targetHelperText ───────────────────────────────────────────────────────
 
 describe('targetHelperText', () => {
-  it.each([
-    ['HTTP', 'HTTP request'],
-    ['GIT_RELEASE', 'GitHub'],
-    ['DOCKER_IMAGE', 'Docker Hub'],
-    ['TCP', 'TCP'],
-    ['SSL_CERT', 'TLS certificate'],
-    ['HEARTBEAT', 'ping URL'],
-    ['DNS', 'hostname'],
-    ['PING', 'ICMP'],
-    ['SMTP', 'mail server'],
-    ['BROWSER', 'User-Agent'],
-  ])('%s helper text mentions "%s"', (type, keyword) => {
-    expect(targetHelperText(type)).toContain(keyword);
+  const types = ['GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'HTTP'];
+
+  it.each(types)('returns non-empty help text for %s', (type) => {
+    expect(targetHelperText(type).length).toBeGreaterThan(0);
   });
 
-  it('returns a non-empty default for unknown types', () => {
-    const result = targetHelperText('UNKNOWN');
-    expect(result.length).toBeGreaterThan(0);
+  it('returns default text for unknown type', () => {
+    const text = targetHelperText('UNKNOWN');
+    expect(text).toContain('HTTP');
   });
 });

@@ -136,6 +136,7 @@ export function CommandPalette() {
 
   const allCommands = useCallback((): CommandItem[] => [
     // Navigation
+    { id: "nav-search", label: "Search Page", description: "Full-page search results", icon: Search, group: "Navigation", keywords: ["find", "lookup", "search", "query"], shortcut: "G /", action: () => router.push("/search") },
     { id: "nav-dashboard", label: "Dashboard", description: "Go to dashboard", icon: LayoutDashboard, group: "Navigation", keywords: ["home", "overview"], shortcut: "G D", action: () => router.push("/dashboard") },
     { id: "nav-monitors", label: "Monitors", description: "Uptime checks", icon: Monitor, group: "Navigation", keywords: ["uptime", "http", "tcp"], shortcut: "G M", action: () => router.push("/monitors") },
     { id: "nav-alerts", label: "Alerts", description: "Alert channels & rules", icon: Bell, group: "Navigation", keywords: ["notifications", "pagerduty", "slack"], shortcut: "G A", action: () => router.push("/alerts") },
@@ -454,9 +455,12 @@ export function CommandPalette() {
           <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 border border-border rounded bg-surface-elevated">↵</kbd> select</span>
           <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 border border-border rounded bg-surface-elevated">ESC</kbd> close</span>
           {query.length >= 2 && (
-            <span className="ml-auto text-accent">
-              {searchResults.length > 0 ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}` : searching ? "searching…" : "no results"}
-            </span>
+            <button
+              className="ml-auto text-accent hover:underline"
+              onClick={() => { closePalette(); router.push(`/search?q=${encodeURIComponent(query)}`); }}
+            >
+              {searchResults.length > 0 ? `View all ${searchResults.length}+ results →` : searching ? "searching…" : "Search page →"}
+            </button>
           )}
         </div>
       </div>

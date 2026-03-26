@@ -1,11 +1,13 @@
-## Status Summary (2026-03-26 21:21 UTC)
-- **Build/Test:** ✅ Clean build + 3525 API + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 22:30 UTC)
+- **Build/Test:** ✅ Clean build + 3536 API + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (21:21 UTC cycle):**
+- **Last changes (22:30 UTC cycle):**
+  - **DNS Record Change Detection** — `detectChanges` option on DNS monitors. Stores resolved records as `dnsBaseline` on first check. Alerts red when records are added or removed vs baseline (sorted, order-independent comparison). `POST /v1/monitors/:id/dns-baseline/reset` clears baseline. Monitor detail shows baseline records + set date + Reset button. Create/edit form has "Alert on record change" toggle. 11 new tests → 3558 total.
+- **Previous (21:21 UTC cycle):**
   - **Fix whois.runner.spec.ts ESM spy error** — `vi.spyOn(net, 'createConnection')` is non-configurable in ESM. Rewrote 10 failing tests using `vi.hoisted()` + `vi.mock('node:net', ...)` factory. All 17 tests green.
   - **WHOIS Domain tab in monitor detail** — New "Domain" tab for WHOIS monitors: expiry countdown, color-coded banner (green/yellow/red), progress bar, threshold config display, check history with parsed days-remaining.
   - **Fix TypeScript WHOIS type gaps** — Added `WHOIS` to `MonitorItem.type` union in `types.ts`, `[id]/components/types.ts`, and `MonitorFormData.type` union. 0 TS errors.

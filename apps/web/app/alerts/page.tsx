@@ -121,6 +121,8 @@ export default function AlertsPage() {
     username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '',
     // Telegram extras
     parseMode: 'HTML',
+    // Webhook extras
+    payloadTemplate: '',
   });
 
   const [editOpen, setEditOpen] = useState(false);
@@ -137,6 +139,7 @@ export default function AlertsPage() {
   const [editMentionUserId, setEditMentionUserId] = useState('');
   const [editMessageTemplate, setEditMessageTemplate] = useState('');
   const [editParseMode, setEditParseMode] = useState('HTML');
+  const [editPayloadTemplate, setEditPayloadTemplate] = useState('');
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -160,7 +163,7 @@ export default function AlertsPage() {
 
   function resetCreateForm() {
     setWizardStep(0);
-    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML' });
+    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '' });
   }
 
   function next() {
@@ -172,7 +175,7 @@ export default function AlertsPage() {
   }
 
   function buildConfig(type: AlertType, a: string, b: string, secret?: string, extras?: {
-    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string;
+    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string; payloadTemplate?: string;
   }) {
     if (type === 'discord') {
       const cfg: Record<string, string> = { webhookUrl: a };
@@ -187,6 +190,7 @@ export default function AlertsPage() {
     if (type === 'webhook') {
       const cfg: Record<string, string> = { url: a };
       if (secret?.trim()) cfg.secret = secret.trim();
+      if (extras?.payloadTemplate?.trim()) cfg.payloadTemplate = extras.payloadTemplate.trim();
       return cfg;
     }
     if (type === 'telegram') {
@@ -202,7 +206,7 @@ export default function AlertsPage() {
 
   async function createChannel() {
     try {
-      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode });
+      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode, payloadTemplate: form.payloadTemplate });
       await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
       setWizardOpen(false);
       resetCreateForm();
@@ -277,6 +281,7 @@ export default function AlertsPage() {
       setEditA(String(channel.config.url ?? ''));
       setEditB('');
       setEditSecret(String(channel.config.secret ?? ''));
+      setEditPayloadTemplate(String(channel.config.payloadTemplate ?? ''));
     } else if (channel.type === 'telegram') {
       setEditA(String(channel.config.botToken ?? ''));
       setEditB(String(channel.config.chatId ?? ''));
@@ -304,7 +309,7 @@ export default function AlertsPage() {
   async function saveEdit() {
     if (!selected) return;
     try {
-      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode });
+      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode, payloadTemplate: editPayloadTemplate });
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
         body: JSON.stringify({ name: editName, config }),
@@ -470,15 +475,32 @@ export default function AlertsPage() {
                   </>
                 )}
                 {form.type === 'webhook' && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                      Signing secret <span className="text-text-secondary font-normal">(optional)</span>
-                    </label>
-                    <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
-                    <p className="mt-1.5 text-xs text-text-secondary">
-                      {brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
-                    </p>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                        Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        {brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                        Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <textarea
+                        className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
+                        placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
+                        value={form.payloadTemplate}
+                        onChange={(e) => setForm({ ...form, payloadTemplate: e.target.value })}
+                        spellCheck={false}
+                      />
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
+                      </p>
+                    </div>
+                  </>
                 )}
                 {form.type === 'discord' && (
                   <>
@@ -591,13 +613,30 @@ export default function AlertsPage() {
                 </>
               )}
               {selected?.type === 'webhook' && (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    Signing secret <span className="text-text-secondary font-normal">(optional)</span>
-                  </label>
-                  <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
-                  <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
+                    <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
+                      placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
+                      value={editPayloadTemplate}
+                      onChange={(e) => setEditPayloadTemplate(e.target.value)}
+                      spellCheck={false}
+                    />
+                    <p className="mt-1.5 text-xs text-text-secondary">
+                      Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
+                    </p>
+                  </div>
+                </>
               )}
               {selected?.type === 'discord' && (
                 <div className="border-t border-border pt-3">

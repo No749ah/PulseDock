@@ -98,6 +98,39 @@ export class AlertsService {
   }
 
   /**
+   * Renders a Mustache-style payload template string with alert context variables.
+   * Supports: {{monitor.name}}, {{monitor.type}}, {{monitor.target}}, {{monitor.runbookUrl}},
+   *           {{run.level}}, {{run.message}}, {{run.latencyMs}}, {{run.checkedAt}},
+   *           {{run.statusCode}}, {{run.ok}}, {{text}}, {{timestamp}}, {{channelName}}
+   *
+   * @param template - The template string with {{variable}} placeholders
+   * @param ctx - Rendering context containing monitor, run, and text data
+   * @returns Rendered string with all known placeholders substituted
+   */
+  private renderPayloadTemplate(template: string, ctx: { text: string; channel: AlertChannel; extra?: unknown }): string {
+    const extra = ctx.extra as { monitor?: Record<string, unknown>; run?: Record<string, unknown> } | undefined;
+    const monitor = extra?.monitor ?? {};
+    const run = extra?.run ?? {};
+    const vars: Record<string, string> = {
+      text: ctx.text,
+      timestamp: new Date().toISOString(),
+      channelName: ctx.channel.name,
+      'monitor.name': String(monitor.name ?? ''),
+      'monitor.type': String(monitor.type ?? ''),
+      'monitor.target': String(monitor.target ?? ''),
+      'monitor.runbookUrl': String(monitor.runbookUrl ?? ''),
+      'monitor.id': String(monitor.id ?? ''),
+      'run.level': String(run.level ?? ''),
+      'run.message': String(run.message ?? ''),
+      'run.latencyMs': String(run.latencyMs ?? ''),
+      'run.checkedAt': String(run.checkedAt ?? ''),
+      'run.statusCode': String(run.statusCode ?? ''),
+      'run.ok': String(run.ok ?? ''),
+    };
+    return template.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, key: string) => vars[key] ?? '');
+  }
+
+  /**
    * Sends an alert through a concrete channel transport.
    * Supports webhook, Discord, Slack, Telegram, and email channel types.
    *
@@ -109,7 +142,18 @@ export class AlertsService {
    */
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
-      const body = JSON.stringify({ text, extra });
+      // Use custom payload template if configured, otherwise fall back to default payload
+      let body: string;
+      if (typeof channel.config.payloadTemplate === 'string' && channel.config.payloadTemplate.trim().length > 0) {
+        try {
+          body = this.renderPayloadTemplate(channel.config.payloadTemplate, { text, channel, extra });
+        } catch {
+          // Template render failed — fall back to default payload
+          body = JSON.stringify({ text, extra });
+        }
+      } else {
+        body = JSON.stringify({ text, extra });
+      }
       const headers: Record<string, string> = { 'content-type': 'application/json' };
 
       if (typeof channel.config.secret === 'string' && channel.config.secret.length > 0) {

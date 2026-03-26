@@ -1630,6 +1630,11 @@ export default function MonitorDetailPage() {
                     </span>
                     <span className="text-sm text-text-primary flex-1 truncate">{ac.alertChannel.name}</span>
                     <span className="text-xs text-text-muted">{notifyLabels[ac.notifyOn] ?? ac.notifyOn}</span>
+                    {ac.escalationPolicy && (
+                      <span className="text-[10px] text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-1.5 py-0.5" title={`Escalation: ${ac.escalationPolicy.name}`}>
+                        ↗ {ac.escalationPolicy.name}
+                      </span>
+                    )}
                   </div>
                 );
               })}

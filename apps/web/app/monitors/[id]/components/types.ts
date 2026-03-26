@@ -61,6 +61,8 @@ export interface AlertChannelInfo {
     name: string;
     type: string;
   };
+  escalationPolicyId?: string | null;
+  escalationPolicy?: { id: string; name: string } | null;
 }
 
 export interface MonitorDependency {

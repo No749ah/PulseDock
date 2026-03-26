@@ -686,13 +686,17 @@ export class MonitorsService {
     });
 
     return assignments.map((a) => ({
+      // Legacy flat fields for backward compatibility
       id: a.alertChannel.id,
-      alertChannelId: a.alertChannelId,
       name: a.alertChannel.name,
       type: a.alertChannel.type,
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
       notifyOn: a.notifyOn,
+      // Nested shape expected by frontend
+      alertChannelId: a.alertChannelId,
+      alertChannel: { id: a.alertChannel.id, name: a.alertChannel.name, type: a.alertChannel.type },
+      // Escalation
       escalationPolicyId: a.escalationPolicyId ?? null,
       escalationPolicy: a.escalationPolicy ? { id: a.escalationPolicy.id, name: a.escalationPolicy.name } : null,
     }));

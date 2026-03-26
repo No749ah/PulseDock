@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -27,6 +27,25 @@ import type {
   MonitorEvent,
   ChartPoint,
 } from "./components/types";
+
+interface AlertDelivery {
+  id: string;
+  channelId: string;
+  channelName: string;
+  channelType: string;
+  status: "success" | "failed";
+  trigger: string | null;
+  errorMessage: string | null;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+interface DeliveryHistory {
+  total: number;
+  successCount: number;
+  failedCount: number;
+  deliveries: AlertDelivery[];
+}
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 
@@ -58,12 +77,29 @@ export default function MonitorDetailPage() {
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
 
+  // Alert delivery history
+  const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
+
+  // Mute & Acknowledge
+  const [showMuteMenu, setShowMuteMenu] = useState(false);
+  const [muteLoading, setMuteLoading] = useState(false);
+  const [showAckModal, setShowAckModal] = useState(false);
+  const [ackNote, setAckNote] = useState("");
+  const [ackLoading, setAckLoading] = useState(false);
+
   // Timeline events/annotations
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [newEventMsg, setNewEventMsg] = useState("");
   const [newEventType, setNewEventType] = useState<"deploy"|"note"|"incident"|"maintenance"|"config">("note");
   const [addingEvent, setAddingEvent] = useState(false);
   const [eventError, setEventError] = useState("");
+
+  // Check history pagination + filter
+  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed">("all");
+  const [runsHasMore, setRunsHasMore] = useState(false);
+  const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
+  const [runsTotal, setRunsTotal] = useState<number | null>(null);
+  const [runsLoadingMore, setRunsLoadingMore] = useState(false);
 
   useEffect(() => {
     const user = getUser();
@@ -76,12 +112,13 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRuns, alertChs, deps, evts] = await Promise.all([
+        const [monitors, monitorRunsPage, alertChs, deps, evts, deliveries] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
-          api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user!.id),
+          api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
           api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
+          api<DeliveryHistory>(`/v1/monitors/${id}/deliveries`, user!.id).catch(() => null),
         ]);
         const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
@@ -89,10 +126,14 @@ export default function MonitorDetailPage() {
           return;
         }
         setMonitor(found);
-        setRuns(monitorRuns);
+        setRuns(monitorRunsPage.runs);
+        setRunsHasMore(monitorRunsPage.hasMore);
+        setRunsNextCursor(monitorRunsPage.nextCursor);
+        setRunsTotal(monitorRunsPage.total);
         setAlertChannels(alertChs);
         setDependencies(deps);
         setEvents(evts);
+        setDeliveryHistory(deliveries);
         setAllMonitors(monitors);
         // Fetch error budget if SLA target is set
         if (found.slaTarget) {
@@ -160,6 +201,47 @@ export default function MonitorDetailPage() {
     }
   }, [loading, monitor, chartPeriod, loadChartData]);
 
+  // Load runs with optional status filter (resets pagination)
+  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed") => {
+    const user = getUser();
+    if (!user) return;
+    setRunsStatusFilter(statusFilter);
+    try {
+      const qs = statusFilter !== "all" ? `&status=${statusFilter}` : "";
+      const page = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(
+        `/v1/monitors/${id}/runs?limit=100${qs}`,
+        user.id,
+      );
+      setRuns(page.runs);
+      setRunsHasMore(page.hasMore);
+      setRunsNextCursor(page.nextCursor);
+      setRunsTotal(page.total);
+    } catch {
+      // non-fatal
+    }
+  }, [id]);
+
+  // Append next page of runs (cursor pagination)
+  const loadMoreRuns = useCallback(async () => {
+    const user = getUser();
+    if (!user || !runsNextCursor || runsLoadingMore) return;
+    setRunsLoadingMore(true);
+    try {
+      const qs = runsStatusFilter !== "all" ? `&status=${runsStatusFilter}` : "";
+      const page = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(
+        `/v1/monitors/${id}/runs?limit=100&before=${encodeURIComponent(runsNextCursor)}${qs}`,
+        user.id,
+      );
+      setRuns((prev) => [...prev, ...page.runs]);
+      setRunsHasMore(page.hasMore);
+      setRunsNextCursor(page.nextCursor);
+    } catch {
+      // non-fatal
+    } finally {
+      setRunsLoadingMore(false);
+    }
+  }, [id, runsNextCursor, runsLoadingMore, runsStatusFilter]);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -176,8 +258,11 @@ export default function MonitorDetailPage() {
       // Reload runs after a brief delay
       setTimeout(async () => {
         try {
-          const updated = await api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user.id);
-          setRuns(updated);
+          const updatedPage = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100${runsStatusFilter !== "all" ? `&status=${runsStatusFilter}` : ""}`, user.id);
+          setRuns(updatedPage.runs);
+          setRunsHasMore(updatedPage.hasMore);
+          setRunsNextCursor(updatedPage.nextCursor);
+          setRunsTotal(updatedPage.total);
           loadUptime(uptimePeriod);
         } catch {
           // Non-fatal
@@ -267,6 +352,76 @@ export default function MonitorDetailPage() {
     }
   };
 
+  const handleMute = async (minutes: number) => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setMuteLoading(true);
+    setShowMuteMenu(false);
+    try {
+      const result = await api<{ mutedUntil: string }>(`/v1/monitors/${id}/mute`, user.id, {
+        method: "POST",
+        body: JSON.stringify({ minutes }),
+      });
+      setMonitor((prev) => prev ? { ...prev, mutedUntil: result.mutedUntil } : prev);
+      setToast(`Monitor muted for ${minutes < 60 ? `${minutes} min` : `${minutes / 60}h`}`);
+      setTimeout(() => setToast(""), 3000);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to mute monitor");
+    } finally {
+      setMuteLoading(false);
+    }
+  };
+
+  const handleUnmute = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setMuteLoading(true);
+    try {
+      await api(`/v1/monitors/${id}/mute`, user.id, { method: "DELETE" });
+      setMonitor((prev) => prev ? { ...prev, mutedUntil: null } : prev);
+      setToast("Monitor unmuted");
+      setTimeout(() => setToast(""), 3000);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to unmute monitor");
+    } finally {
+      setMuteLoading(false);
+    }
+  };
+
+  const handleAcknowledge = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setAckLoading(true);
+    try {
+      await api(`/v1/monitors/${id}/acknowledge`, user.id, {
+        method: "POST",
+        body: JSON.stringify({ note: ackNote || undefined }),
+      });
+      setMonitor((prev) => prev ? { ...prev, isAcknowledged: true } : prev);
+      setAckNote("");
+      setShowAckModal(false);
+      setToast("Alert acknowledged");
+      setTimeout(() => setToast(""), 3000);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to acknowledge alert");
+    } finally {
+      setAckLoading(false);
+    }
+  };
+
+  const handleClearAck = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    try {
+      await api(`/v1/monitors/${id}/acknowledge`, user.id, { method: "DELETE" });
+      setMonitor((prev) => prev ? { ...prev, isAcknowledged: false } : prev);
+      setToast("Acknowledgement cleared");
+      setTimeout(() => setToast(""), 3000);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to clear acknowledgement");
+    }
+  };
+
   if (loading) {
     return (
       <AppFrame title="Monitor Detail">
@@ -344,9 +499,67 @@ export default function MonitorDetailPage() {
                     ⚡ Flapping
                   </span>
                 )}
+                {/* Muted badge */}
+                {monitor.mutedUntil && new Date(monitor.mutedUntil) > new Date() && (
+                  <button
+                    onClick={handleUnmute}
+                    title="Click to unmute"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:border-amber-400/60 transition-colors"
+                  >
+                    🔇 Muted until {new Date(monitor.mutedUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </button>
+                )}
+                {/* Acknowledged badge */}
+                {monitor.isAcknowledged && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                      🔔 Acknowledged
+                    </span>
+                    <button
+                      onClick={handleClearAck}
+                      className="text-xs text-text-muted hover:text-text-secondary underline underline-offset-2"
+                    >
+                      Clear
+                    </button>
+                  </span>
+                )}
               </div>
               {/* Action buttons */}
               <div className="flex items-center gap-2 shrink-0">
+                {/* Mute button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMuteMenu((v) => !v)}
+                    disabled={muteLoading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-400/80 hover:text-amber-400 hover:border-amber-400/50 transition-colors"
+                    title="Mute alerts for this monitor"
+                  >
+                    🔇 Mute
+                  </button>
+                  {showMuteMenu && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-xl border border-border bg-surface-elevated shadow-lg overflow-hidden">
+                      {[{ label: "30 min", minutes: 30 }, { label: "1 hour", minutes: 60 }, { label: "4 hours", minutes: 240 }, { label: "24 hours", minutes: 1440 }].map(({ label, minutes }) => (
+                        <button
+                          key={minutes}
+                          onClick={() => handleMute(minutes)}
+                          className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-surface hover:text-text-primary transition-colors"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Acknowledge button (only when failing/degraded) */}
+                {!monitor.isAcknowledged && lastRun && !lastRun.ok && (
+                  <button
+                    onClick={() => setShowAckModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400/80 hover:text-blue-400 hover:border-blue-400/50 transition-colors"
+                    title="Acknowledge this alert"
+                  >
+                    🔔 Acknowledge
+                  </button>
+                )}
                 <Button
                   size="sm"
                   variant="secondary"
@@ -1113,61 +1326,131 @@ export default function MonitorDetailPage() {
         )}
 
         {/* Run history table */}
-        
           <Card className="p-0">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                Recent Checks
-              </h2>
-              <span className="text-xs text-text-muted">{Math.min(runs.length, 50)} of {runs.length} shown</span>
+            <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                  Check History
+                </h2>
+                {runsTotal !== null && (
+                  <span className="text-xs text-text-muted">
+                    {runs.length} of {runsTotal} {runsStatusFilter !== "all" ? `(${runsStatusFilter} only)` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Status filter pills */}
+                <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-surface">
+                  {(["all", "ok", "failed"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => loadFilteredRuns(f)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                        runsStatusFilter === f
+                          ? "bg-surface-elevated text-text-primary shadow-sm"
+                          : "text-text-muted hover:text-text-secondary"
+                      }`}
+                    >
+                      {f === "all" ? "All" : f === "ok" ? "OK" : "Failed"}
+                    </button>
+                  ))}
+                </div>
+                {/* Export CSV */}
+                {runs.length > 0 && (
+                  <button
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border hover:border-border-strong transition-colors"
+                    title="Export all check history as CSV (up to 10,000 runs)"
+                    onClick={async () => {
+                      try {
+                        const { API_BASE } = await import('../../../lib/api');
+                        const fetchRes = await fetch(`${API_BASE}/v1/monitors/${id}/runs/export`, {
+                          credentials: 'include',
+                          cache: 'no-store',
+                        });
+                        if (!fetchRes.ok) return;
+                        const blob = await fetchRes.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const monitorName = monitor?.name ?? id;
+                        const dateStr = new Date().toISOString().slice(0, 10);
+                        a.href = url;
+                        a.download = `pulsedock-runs-${monitorName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${dateStr}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch {
+                        // silently fail
+                      }
+                    }}
+                  >
+                    <Download className="w-3 h-3" />
+                    Export CSV
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               {runs.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
-                  No runs yet — this monitor hasn&apos;t checked yet.
+                  {runsStatusFilter !== "all"
+                    ? `No ${runsStatusFilter === "ok" ? "successful" : "failed"} checks found.`
+                    : "No runs yet — this monitor hasn't checked yet."}
                 </div>
               ) : (
-                <Table>
-                  <TableHead>
-                    <tr>
-                      <TableHeader>Time</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Latency</TableHeader>
-                      <TableHeader>HTTP Code</TableHeader>
-                      <TableHeader>Message</TableHeader>
-                    </tr>
-                  </TableHead>
-                  <TableBody>
-                    {runs.slice(0, 50).map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className="text-xs text-text-secondary whitespace-nowrap">
-                          {relativeTime(run.checkedAt)}
-                        </TableCell>
-                        <TableCell>
-                          {run.level === "yellow" ? (
-                            <Badge variant="warning">Degraded</Badge>
-                          ) : run.ok ? (
-                            <Badge variant="success">OK</Badge>
-                          ) : (
-                            <Badge variant="danger">Failed</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm font-mono text-text-secondary">
-                          {run.latencyMs !== null ? `${run.latencyMs}ms` : "—"}
-                        </TableCell>
-                        <TableCell className="text-sm font-mono text-text-secondary">
-                          {run.statusCode || "—"}
-                        </TableCell>
-                        <TableCell
-                          className="text-sm text-text-secondary max-w-[300px] truncate"
-                          title={run.message}
-                        >
-                          {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  <Table>
+                    <TableHead>
+                      <tr>
+                        <TableHeader>Time</TableHeader>
+                        <TableHeader>Status</TableHeader>
+                        <TableHeader>Latency</TableHeader>
+                        <TableHeader>HTTP Code</TableHeader>
+                        <TableHeader>Message</TableHeader>
+                      </tr>
+                    </TableHead>
+                    <TableBody>
+                      {runs.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="text-xs text-text-secondary whitespace-nowrap">
+                            {relativeTime(run.checkedAt)}
+                          </TableCell>
+                          <TableCell>
+                            {run.level === "yellow" ? (
+                              <Badge variant="warning">Degraded</Badge>
+                            ) : run.ok ? (
+                              <Badge variant="success">OK</Badge>
+                            ) : (
+                              <Badge variant="danger">Failed</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-text-secondary">
+                            {run.latencyMs !== null ? `${run.latencyMs}ms` : "—"}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-text-secondary">
+                            {run.statusCode || "—"}
+                          </TableCell>
+                          <TableCell
+                            className="text-sm text-text-secondary max-w-[300px] truncate"
+                            title={run.message}
+                          >
+                            {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {runsHasMore && (
+                    <div className="px-4 py-3 border-t border-border flex items-center justify-center">
+                      <button
+                        onClick={loadMoreRuns}
+                        disabled={runsLoadingMore}
+                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border hover:border-border-strong transition-colors disabled:opacity-50"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        {runsLoadingMore ? "Loading…" : "Load more"}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Card>
@@ -1443,7 +1726,128 @@ export default function MonitorDetailPage() {
           )}
         </Card>
 
+        {/* Alert Delivery History */}
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Notifications
+            </h2>
+            {deliveryHistory && (
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span className="text-success">{deliveryHistory.successCount} ok</span>
+                {deliveryHistory.failedCount > 0 && (
+                  <span className="text-error">{deliveryHistory.failedCount} failed</span>
+                )}
+                <span>/ {deliveryHistory.total} total</span>
+              </div>
+            )}
+          </div>
+
+          {!deliveryHistory || deliveryHistory.deliveries.length === 0 ? (
+            <p className="text-xs text-text-muted text-center py-4">No alert deliveries yet for this monitor.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Timestamp</TableHeader>
+                    <TableHeader>Channel</TableHeader>
+                    <TableHeader>Type</TableHeader>
+                    <TableHeader>Trigger</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader>Duration</TableHeader>
+                    <TableHeader>Error</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {deliveryHistory.deliveries.map((d) => {
+                    const triggerLabel =
+                      d.trigger === "monitor_failure" ? "Failure"
+                      : d.trigger === "monitor_recovery" ? "Recovery"
+                      : d.trigger === "test" ? "Test"
+                      : d.trigger ? d.trigger.charAt(0).toUpperCase() + d.trigger.slice(1)
+                      : "—";
+
+                    const channelTypeBadgeColors: Record<string, string> = {
+                      slack: "bg-green-500/15 text-green-400 border-green-500/30",
+                      discord: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+                      email: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                      webhook: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+                      telegram: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+                      pagerduty: "bg-green-600/15 text-green-500 border-green-600/30",
+                      opsgenie: "bg-orange-600/15 text-orange-500 border-orange-600/30",
+                      sms: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+                    };
+                    const channelTypeCls = channelTypeBadgeColors[d.channelType] ?? "bg-surface-elevated text-text-muted border-border";
+
+                    return (
+                      <TableRow key={d.id}>
+                        <TableCell className="text-xs text-text-muted whitespace-nowrap">{relativeTime(d.createdAt)}</TableCell>
+                        <TableCell className="text-sm text-text-primary">{d.channelName}</TableCell>
+                        <TableCell>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider ${channelTypeCls}`}>
+                            {d.channelType}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-text-secondary">{triggerLabel}</TableCell>
+                        <TableCell>
+                          {d.status === "success" ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider bg-success/15 text-success border-success/30">
+                              Success
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider bg-error/15 text-error border-error/30">
+                              Failed
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-text-muted">
+                          {d.durationMs != null ? `${d.durationMs}ms` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-error max-w-[200px] truncate" title={d.errorMessage ?? undefined}>
+                          {d.errorMessage ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
+
       </div>
+
+      {/* Acknowledge Modal */}
+      {showAckModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowAckModal(false)}>
+          <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-surface-elevated shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-text-primary mb-1">Acknowledge Alert</h2>
+            <p className="text-sm text-text-secondary mb-4">
+              Acknowledge this alert to suppress further notifications until the monitor recovers or you clear it manually.
+            </p>
+            <textarea
+              value={ackNote}
+              onChange={(e) => setAckNote(e.target.value)}
+              placeholder="Optional note (e.g. 'Investigating — known issue')"
+              maxLength={500}
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent mb-4"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button onClick={() => setShowAckModal(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
+              <button
+                onClick={handleAcknowledge}
+                disabled={ackLoading}
+                className="px-4 py-2 text-sm font-medium rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50"
+              >
+                {ackLoading ? "Acknowledging…" : "Acknowledge"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppFrame>
   );
 }

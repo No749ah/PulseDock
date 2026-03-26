@@ -398,6 +398,87 @@ describe('metric resolver — progress-ring', () => {
     );
     expect(result.value).toBe(72);
   });
+
+  it('clamps customValue to 0-100 range', async () => {
+    const prisma = makePrisma();
+    const resultOver = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { metricType: 'custom', customValue: 150 }), undefined,
+    );
+    expect(resultOver.value).toBe(100);
+    const resultUnder = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { metricType: 'custom', customValue: -10 }), undefined,
+    );
+    expect(resultUnder.value).toBe(0);
+  });
+
+  it('uses default customValue=100 when not set in custom metricType', async () => {
+    const prisma = makePrisma();
+    const result = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { metricType: 'custom' }), undefined,
+    );
+    expect(result.value).toBe(100);
+  });
+
+  it('returns SLA compliance value for metricType=sla', async () => {
+    const monitors = [{ id: 'm1' }];
+    const runs = Array(99).fill({ level: 'green' }).concat(Array(1).fill({ level: 'red' }));
+    const findMany = vi.fn()
+      .mockResolvedValueOnce(monitors)
+      .mockResolvedValueOnce(runs);
+    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const result = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { monitorId, metricType: 'sla', slaTarget: 99 }), undefined,
+    );
+    // 99% actual / 99% target = 100% compliance
+    expect(result.value).toBeDefined();
+    expect(result.label).toBe('SLA Compliance');
+  });
+
+  it('resolves scope from monitorIds array (not single monitorId)', async () => {
+    const monitors = [{ id: 'm1' }, { id: 'm2' }];
+    const runs = Array(80).fill({ level: 'green' }).concat(Array(20).fill({ level: 'red' }));
+    const findMany = vi.fn()
+      .mockResolvedValueOnce(monitors)
+      .mockResolvedValueOnce(runs);
+    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const result = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { monitorIds: ['m1', 'm2'] }), undefined,
+    );
+    expect(result.value).toBe(80);
+  });
+
+  it('assigns yellow color for value in 95-99 range', async () => {
+    const monitors = [{ id: 'm1' }];
+    const runs = Array(97).fill({ level: 'green' }).concat(Array(3).fill({ level: 'red' }));
+    const findMany = vi.fn()
+      .mockResolvedValueOnce(monitors)
+      .mockResolvedValueOnce(runs);
+    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const result = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { monitorId }), undefined,
+    );
+    expect(result.color).toBe('yellow');
+  });
+
+  it('assigns red color for value below 95', async () => {
+    const monitors = [{ id: 'm1' }];
+    const runs = Array(90).fill({ level: 'green' }).concat(Array(10).fill({ level: 'red' }));
+    const findMany = vi.fn()
+      .mockResolvedValueOnce(monitors)
+      .mockResolvedValueOnce(runs);
+    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const result = await resolveMetricWidget(
+      prisma, noopCache, userId,
+      makeWidget('progress-ring', { monitorId, metricType: 'uptime' }), undefined,
+    );
+    expect(result.color).toBe('red'); // 90% is below 95 threshold → red
+  });
 });
 
 // ── sparkline-row ─────────────────────────────────────────────────────────────

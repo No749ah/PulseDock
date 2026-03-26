@@ -71,6 +71,8 @@ model User {
   orgMemberships          OrgMember[]
   userPlan                UserPlan?
   monitorEvents           MonitorEvent[]
+  acknowledgements        AlertAcknowledgement[]
+  alertRoutingRules       AlertRoutingRule[]
 }
 
 model Session {
@@ -121,6 +123,7 @@ model Monitor {
   autoIncident        Boolean     @default(false) // auto-create/resolve incidents on status change
   autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
   activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
+  mutedUntil          DateTime?   // if set and in future, all alerts suppressed
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -136,11 +139,29 @@ model Monitor {
   // Monitors that depend on this monitor
   dependents    MonitorDependency[] @relation("DependencyMonitor")
   events        MonitorEvent[]
+  acknowledgements AlertAcknowledgement[]
 
 
   @@index([userId])
   @@index([enabled])
   @@index([userId, enabled])
+}
+
+model AlertAcknowledgement {
+  id             String    @id @default(cuid())
+  monitorId      String
+  userId         String
+  note           String?
+  acknowledgedAt DateTime  @default(now())
+  clearedAt      DateTime? // null = still active
+  createdAt      DateTime  @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId])
+  @@index([userId])
+  @@index([monitorId, clearedAt])
 }
 
 /// Monitor dependency: when the "dependency" monitor is down, suppress alerts on the "dependent" monitor
@@ -246,6 +267,31 @@ model MonitorAlert {
   alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
 
   @@id([monitorId, alertChannelId])
+}
+
+model AlertRoutingRule {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  priority    Int      @default(0)
+
+  // Match conditions (all specified conditions must match — AND logic)
+  matchTags        String[]
+  matchTypes       String[]
+  matchFolderIds   String[]
+  matchLevels      String[]
+  matchMonitorIds  String[]
+
+  // Action
+  channelIds       String[]
+  overrideNotifyOn String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model InviteToken {

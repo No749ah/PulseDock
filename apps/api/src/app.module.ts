@@ -12,6 +12,7 @@ import { MonitorsService } from './monitors/monitors.service';
 import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
+import { AlertRoutingController } from './alerts/alert-routing.controller';
 import { ChecksService } from './checks/checks.service';
 import { ChecksScheduler } from './checks/checks.scheduler';
 import { HeartbeatController } from './checks/heartbeat.controller';
@@ -79,6 +80,7 @@ import { DemoService } from './demo/demo.service';
     AuthController,
     MonitorsController,
     AlertsController,
+    AlertRoutingController,
     HeartbeatController,
     PluginsController,
     DashboardController,

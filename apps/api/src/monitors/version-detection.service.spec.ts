@@ -300,5 +300,183 @@ describe('VersionDetectionService', () => {
       expect(result.strategy).toBe('manual');
       expect(result.suggestions).toBeDefined();
     });
+
+    it('returns github suggestions (not docker) for non-docker providers', async () => {
+      mockFetch(async () => new Response('', { status: 500 }));
+
+      const result = await service.discoverCurrentVersion({
+        provider: 'github',
+        target: 'owner/repo',
+      });
+      expect(result.currentVersion).toBeNull();
+      expect(result.strategy).toBe('manual');
+      expect(result.suggestions).toContain('v1.0.0');
+      expect(result.suggestions).not.toContain('latest');
+    });
+
+    it('returns docker suggestions for docker provider', async () => {
+      mockFetch(async () => new Response('', { status: 500 }));
+
+      const result = await service.discoverCurrentVersion({
+        provider: 'docker',
+        target: 'myimage',
+      });
+      expect(result.suggestions).toContain('latest');
+      expect(result.suggestions).toContain('stable');
+    });
+  });
+
+  // ── testVersionConnection — additional edge cases ─────────────────────────
+
+  describe('testVersionConnection() — additional branches', () => {
+    it('returns null latestVersion for APT when only pre-release versions found', async () => {
+      mockFetch(async () => jsonResponse({
+        versions: [
+          { version: '2.0.0-alpha', suites: ['sid'] },
+          { version: '1.0.0-rc1', suites: ['testing'] },
+        ],
+      }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'apt', target: 'libssl', token: '' });
+      expect(result.ok).toBe(true);
+      // No stable version found, falls back to first version
+      expect(result.latestVersion).toBe('2.0.0-alpha');
+    });
+
+    it('prefers stable APT version over pre-release', async () => {
+      mockFetch(async () => jsonResponse({
+        versions: [
+          { version: '2.0.0-beta', suites: ['sid'] },
+          { version: '1.9.8', suites: ['stable'] },
+          { version: '1.9.7', suites: ['oldstable'] },
+        ],
+      }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'apt', target: 'libssl', token: '' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('1.9.8');
+    });
+
+    it('handles empty APT versions array', async () => {
+      mockFetch(async () => jsonResponse({ versions: [] }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'apt', target: 'somepackage', token: '' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBeNull();
+    });
+
+    it('returns cargo newest_version fallback when max_stable_version is absent', async () => {
+      mockFetch(async () => jsonResponse({
+        crate: { newest_version: '0.9.0' },
+      }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'cargo', target: 'tokio', token: '' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('0.9.0');
+    });
+
+    it('handles Docker Hub API error (non-ok response)', async () => {
+      mockFetch(async () => new Response('{}', { status: 429 }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'docker', target: 'nginx', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('429');
+    });
+
+    it('adds library/ prefix for Docker Hub image without namespace', async () => {
+      let requestedUrl = '';
+      mockFetch(async (url) => {
+        requestedUrl = url;
+        return jsonResponse({ results: [{ name: 'latest' }] });
+      });
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'docker', target: 'nginx', token: '' });
+      expect(requestedUrl).toContain('library/nginx');
+    });
+
+    it('uses provided namespace for Docker Hub image with slash', async () => {
+      let requestedUrl = '';
+      mockFetch(async (url) => {
+        requestedUrl = url;
+        return jsonResponse({ results: [{ name: '2.0' }] });
+      });
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'docker', target: 'bitnami/nginx', token: '' });
+      expect(requestedUrl).toContain('bitnami/nginx');
+      expect(requestedUrl).not.toContain('library/bitnami/nginx');
+    });
+
+    it('returns error for HTTP failure on npm', async () => {
+      mockFetch(async () => new Response('{}', { status: 503 }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'npm', target: 'express', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('503');
+    });
+
+    it('returns error for PyPI HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 404 }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'pypi', target: 'requests', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('404');
+    });
+
+    it('returns error for Maven HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 500 }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'maven', target: 'org.springframework:spring-core', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('500');
+    });
+
+    it('returns error when Maven response has no docs', async () => {
+      mockFetch(async () => jsonResponse({ response: { docs: [] } }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'maven', target: 'com.example:my-artifact', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('No Maven artifact');
+    });
+
+    it('returns error for Helm HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 404 }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'helm', target: 'bitnami/redis', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('404');
+    });
+
+    it('returns error when Helm response has no version', async () => {
+      mockFetch(async () => jsonResponse({ readme: 'no version field here' }));
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'helm', target: 'stable/redis', token: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('No Helm chart version');
+    });
+
+    it('returns GitLab null latestVersion when tag_name missing', async () => {
+      mockFetch(async (url) => {
+        if (url.includes('gitlab')) return jsonResponse({});
+        return new Response('', { status: 404 });
+      });
+
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'gitlab', target: 'gitlab.com/org/repo', token: '' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBeNull();
+    });
   });
 });

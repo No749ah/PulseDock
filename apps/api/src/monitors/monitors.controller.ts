@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../common/auth.guard';
@@ -7,7 +8,10 @@ import { ScopeGuard } from '../common/scope.guard';
 import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
+import { PrismaService } from '../common/prisma.service';
 import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { MuteMonitorDto } from './dto/mute-monitor.dto';
+import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -17,6 +21,7 @@ export class MonitorsController {
   constructor(
     private readonly monitorsService: MonitorsService,
     private readonly planService: PlanService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -157,11 +162,42 @@ export class MonitorsController {
   }
 
   @Get(':id/runs')
-  @ApiOperation({ summary: 'Check run history for a monitor' })
+  @ApiOperation({
+    summary: 'Check run history for a monitor',
+    description: 'Returns paginated check run history. Supports status filter (all/ok/failed) and cursor-based pagination via `before` (checkedAt ISO timestamp of oldest run on current page).',
+  })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max runs to return (1-500, default 100)' })
+  @ApiQuery({ name: 'before', required: false, description: 'Cursor: return runs older than this checkedAt ISO timestamp' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed (default: all)' })
   @ApiResponse({ status: 200, description: 'Run history returned.' })
-  monitorRuns(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return this.monitorsService.monitorRuns(req.user.id, id);
+  monitorRuns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.monitorsService.monitorRuns(req.user.id, id, { limit, before, status });
+  }
+
+  @Get(':id/runs/export')
+  @ApiOperation({
+    summary: 'Export check run history as CSV',
+    description: 'Exports all check run history for a monitor as a CSV file (up to 10,000 most recent runs). Useful for audits, SLA reports, and offline analysis.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'CSV file download.' })
+  async exportMonitorRuns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { csv, filename } = await this.monitorsService.exportMonitorRuns(req.user.id, id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(csv);
   }
 
   @Get(':id/error-budget')
@@ -432,5 +468,189 @@ export class MonitorsController {
     @Param('eventId') eventId: string,
   ) {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
+  }
+
+  // ─── Alert Delivery History ───────────────────────────────────────────────
+
+  @Get(':id/deliveries')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Alert delivery history for a monitor',
+    description: 'Returns the last 100 alert delivery log entries for a specific monitor, including channel info, status, trigger, and duration.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Delivery history returned.',
+    schema: {
+      example: {
+        total: 5,
+        successCount: 4,
+        failedCount: 1,
+        deliveries: [
+          {
+            id: 'clxyz',
+            channelId: 'ch-1',
+            channelName: 'Slack Alerts',
+            channelType: 'slack',
+            status: 'success',
+            trigger: 'monitor_failure',
+            errorMessage: null,
+            durationMs: 145,
+            createdAt: '2026-03-26T08:00:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async listDeliveries(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { monitorId: id },
+      include: { alertChannel: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const deliveries = logs.map((log) => ({
+      id: log.id,
+      channelId: log.alertChannelId,
+      channelName: log.alertChannel.name,
+      channelType: log.alertChannel.type,
+      status: log.status,
+      trigger: log.trigger ?? null,
+      errorMessage: log.errorMessage ?? null,
+      durationMs: log.durationMs ?? null,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
+    const successCount = deliveries.filter((d) => d.status === 'success').length;
+    const failedCount = deliveries.filter((d) => d.status === 'failed').length;
+
+    return {
+      total: deliveries.length,
+      successCount,
+      failedCount,
+      deliveries,
+    };
+  }
+
+  // ─── Mute ─────────────────────────────────────────────────────────────────
+
+  @Post(':id/mute')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Mute monitor alerts', description: 'Suppress all alerts for this monitor for the specified number of minutes (1-1440).' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor muted. Returns mutedUntil timestamp.' })
+  @ApiResponse({ status: 400, description: 'Invalid minutes value.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async muteMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: MuteMonitorDto,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const mutedUntil = new Date(Date.now() + body.minutes * 60_000);
+    await this.prisma.monitor.update({ where: { id }, data: { mutedUntil } });
+    return { mutedUntil: mutedUntil.toISOString() };
+  }
+
+  @Delete(':id/mute')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Unmute monitor', description: 'Clear the mute on a monitor, re-enabling alert delivery.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor unmuted.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async unmuteMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    await this.prisma.monitor.update({ where: { id }, data: { mutedUntil: null } });
+    return { mutedUntil: null };
+  }
+
+  // ─── Acknowledge ──────────────────────────────────────────────────────────
+
+  @Post(':id/acknowledge')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Acknowledge monitor alert', description: 'Create an acknowledgement for the current alert on this monitor, suppressing further notifications until cleared or the monitor recovers.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Acknowledgement created.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async acknowledgeMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: AcknowledgeMonitorDto,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const ack = await this.prisma.alertAcknowledgement.create({
+      data: {
+        monitorId: id,
+        userId: req.user.id,
+        note: body.note ?? null,
+        clearedAt: null,
+      },
+    });
+
+    return {
+      id: ack.id,
+      monitorId: ack.monitorId,
+      userId: ack.userId,
+      note: ack.note,
+      acknowledgedAt: ack.acknowledgedAt.toISOString(),
+      clearedAt: null,
+      createdAt: ack.createdAt.toISOString(),
+    };
+  }
+
+  @Delete(':id/acknowledge')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Clear monitor acknowledgement', description: 'Clear the active acknowledgement on this monitor, re-enabling alert notifications.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Acknowledgement cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor or active acknowledgement not found.' })
+  async clearAcknowledgement(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const activeAck = await this.prisma.alertAcknowledgement.findFirst({
+      where: { monitorId: id, clearedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeAck) throw new NotFoundException('No active acknowledgement found');
+
+    const updated = await this.prisma.alertAcknowledgement.update({
+      where: { id: activeAck.id },
+      data: { clearedAt: new Date() },
+    });
+
+    return {
+      id: updated.id,
+      monitorId: updated.monitorId,
+      userId: updated.userId,
+      note: updated.note,
+      acknowledgedAt: updated.acknowledgedAt.toISOString(),
+      clearedAt: updated.clearedAt!.toISOString(),
+      createdAt: updated.createdAt.toISOString(),
+    };
   }
 }

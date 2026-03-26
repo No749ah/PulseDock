@@ -14,6 +14,8 @@ export interface MonitorItem {
   isFlapping?: boolean;
   flapDetectionEnabled?: boolean;
   flapAlertedAt?: string | null;
+  mutedUntil?: string | null;
+  isAcknowledged?: boolean;
 }
 
 export interface AlertChannelInfo {

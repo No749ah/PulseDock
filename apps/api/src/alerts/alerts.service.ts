@@ -425,6 +425,30 @@ export class AlertsService {
       return;
     }
 
+    // Suppress alerts if monitor is muted
+    const mutedUntil = monitor.mutedUntil ? new Date(monitor.mutedUntil) : null;
+    if (mutedUntil && mutedUntil > now) {
+      this.logger.log(`Monitor ${monitor.id} is muted until ${mutedUntil.toISOString()}, suppressing alert`);
+      return;
+    }
+
+    // On recovery, auto-clear active acknowledgements
+    if (run.level === 'green') {
+      await this.prisma.alertAcknowledgement.updateMany({
+        where: { monitorId: monitor.id, clearedAt: null },
+        data: { clearedAt: now },
+      });
+    } else {
+      // Suppress alerts if monitor has an active acknowledgement (only for non-recovery)
+      const activeAck = await this.prisma.alertAcknowledgement.findFirst({
+        where: { monitorId: monitor.id, clearedAt: null },
+      });
+      if (activeAck) {
+        this.logger.log(`Monitor ${monitor.id} alert is acknowledged, suppressing`);
+        return;
+      }
+    }
+
     // Suppress alerts if any dependency monitor is currently down
     const deps = await this.prisma.monitorDependency.findMany({
       where: { monitorId: monitor.id },
@@ -457,8 +481,43 @@ export class AlertsService {
       return;
     }
 
+    // Load routing rules for this user, ordered by priority
+    const routingRules = await this.prisma.alertRoutingRule.findMany({
+      where: { userId: monitor.userId, enabled: true },
+      orderBy: { priority: 'asc' },
+    });
+
+    // Find matching rules for this monitor+run (load tags for tag-based matching)
+    let monitorTagNames: string[] = [];
+    if (routingRules.some(r => r.matchTags.length > 0)) {
+      const tagRows = await this.prisma.monitorTag.findMany({
+        where: { monitorId: monitor.id },
+        include: { tag: { select: { name: true } } },
+      });
+      monitorTagNames = tagRows.map(t => t.tag.name);
+    }
+
+    const matchedRules = routingRules.filter(rule => {
+      if (rule.matchMonitorIds.length > 0 && !rule.matchMonitorIds.includes(monitor.id)) return false;
+      if (rule.matchTypes.length > 0 && !rule.matchTypes.includes(monitor.type)) return false;
+      if (rule.matchLevels.length > 0 && !rule.matchLevels.includes(run.level)) return false;
+      if (rule.matchFolderIds.length > 0 && (!monitor.folderId || !rule.matchFolderIds.includes(monitor.folderId))) return false;
+      if (rule.matchTags.length > 0 && !rule.matchTags.some(t => monitorTagNames.includes(t))) return false;
+      return true;
+    });
+
+    // If any rules matched, collect channels from rules
+    let routedChannelIds: string[] | null = null;
+    if (matchedRules.length > 0) {
+      routedChannelIds = [...new Set(matchedRules.flatMap(r => r.channelIds))];
+      this.logger.log(`Routing alert for monitor ${monitor.id} via ${matchedRules.length} rules to channels: ${routedChannelIds.join(', ')}`);
+    }
+
     const links = await this.prisma.monitorAlert.findMany({
-      where: { monitorId: monitor.id },
+      where: {
+        monitorId: monitor.id,
+        ...(routedChannelIds !== null && { alertChannelId: { in: routedChannelIds } }),
+      },
       include: { alertChannel: true },
     });
 

@@ -120,6 +120,55 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get('deliveries')
+  @ApiOperation({
+    summary: 'Get global alert delivery history',
+    description: 'Returns recent delivery logs across all alert channels for the authenticated user.'
+  })
+  @ApiResponse({ status: 200, description: 'Global delivery logs returned.' })
+  async globalDeliveries(@Req() req: { user: { id: string } }) {
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      select: { id: true, name: true, type: true },
+    });
+    const channelIds = channels.map(c => c.id);
+    const channelMap = new Map(channels.map(c => [c.id, { name: c.name, type: c.type }]));
+
+    if (channelIds.length === 0) {
+      return { total: 0, successCount: 0, failedCount: 0, deliveries: [] };
+    }
+
+    const [logs, total, successCount, failedCount] = await Promise.all([
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: { in: channelIds } },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds } } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds }, status: 'success' } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds }, status: 'failed' } }),
+    ]);
+
+    return {
+      total,
+      successCount,
+      failedCount,
+      deliveries: logs.map(l => ({
+        id: l.id,
+        channelId: l.alertChannelId,
+        channelName: channelMap.get(l.alertChannelId)?.name ?? 'Unknown',
+        channelType: channelMap.get(l.alertChannelId)?.type ?? 'unknown',
+        status: l.status,
+        trigger: l.trigger,
+        monitorId: l.monitorId,
+        monitorName: l.monitorName,
+        errorMessage: l.errorMessage,
+        durationMs: l.durationMs,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    };
+  }
+
   @Get(':id/deliveries')
   @ApiOperation({ summary: 'Get alert delivery history', description: 'Returns the last 50 delivery log entries for a specific alert channel.' })
   @ApiParam({ name: 'id', description: 'Alert channel ID' })
@@ -174,5 +223,48 @@ export class AlertsController {
       createdAt: channel.createdAt.toISOString(),
     });
     return { ok: true };
+  }
+
+  @Post('test-all')
+  @ApiOperation({
+    summary: 'Test all alert channels',
+    description:
+      'Sends a test notification through every alert channel owned by the user. ' +
+      'Returns a result per channel: ok=true if the test passed, ok=false with an error message on failure.',
+  })
+  @ApiResponse({ status: 200, description: 'Test results per channel.' })
+  async testAll(@Req() req: { user: { id: string } }) {
+    const channels = await this.prisma.alertChannel.findMany({ where: { userId: req.user.id } });
+
+    const results = await Promise.allSettled(
+      channels.map(async (channel) => {
+        try {
+          await this.alertsService.notifyTest({
+            id: channel.id,
+            userId: channel.userId,
+            name: channel.name,
+            type: channel.type as AlertChannelType,
+            config: (channel.configJson as Record<string, unknown>) ?? {},
+            createdAt: channel.createdAt.toISOString(),
+          });
+          return { channelId: channel.id, name: channel.name, type: channel.type, ok: true, error: null };
+        } catch (err) {
+          return {
+            channelId: channel.id,
+            name: channel.name,
+            type: channel.type,
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      }),
+    );
+
+    await this.audit.log('alert_channel.test_all', req.user.id, req.user.id, { channelCount: channels.length });
+
+    return {
+      tested: channels.length,
+      results: results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: String((r as PromiseRejectedResult).reason) })),
+    };
   }
 }

@@ -18,6 +18,7 @@ function makeMonitorsService() {
     listPlugins: vi.fn(),
     getRecentRuns: vi.fn(),
     monitorRuns: vi.fn(),
+    exportMonitorRuns: vi.fn(),
     monitorUptime: vi.fn(),
     monitorChart: vi.fn(),
     versionSummary: vi.fn(),
@@ -130,10 +131,27 @@ describe('MonitorsController', () => {
     expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 10, undefined);
   });
 
-  it('monitorRuns() delegates to service.monitorRuns', async () => {
-    service.monitorRuns.mockResolvedValue([]);
-    await controller.monitorRuns(makeReq(), 'm-1');
-    expect(service.monitorRuns).toHaveBeenCalledWith('user-1', 'm-1');
+  it('monitorRuns() delegates to service.monitorRuns with opts', async () => {
+    service.monitorRuns.mockResolvedValue({ runs: [], hasMore: false, total: 0, nextCursor: null });
+    await controller.monitorRuns(makeReq(), 'm-1', '100', undefined, 'all');
+    expect(service.monitorRuns).toHaveBeenCalledWith('user-1', 'm-1', { limit: '100', before: undefined, status: 'all' });
+  });
+
+  it('exportMonitorRuns() sends CSV with correct headers', async () => {
+    service.exportMonitorRuns.mockResolvedValue({
+      csv: 'id,checkedAt,ok\nrun-1,2026-01-01T00:00:00Z,1',
+      filename: 'pulsedock-runs-test-2026-01-01.csv',
+      monitorName: 'Test Monitor',
+    });
+    const res = {
+      setHeader: vi.fn(),
+      send: vi.fn(),
+    } as unknown as import('express').Response;
+    await controller.exportMonitorRuns(makeReq(), 'm-1', res);
+    expect(service.exportMonitorRuns).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="pulsedock-runs-test-2026-01-01.csv"');
+    expect(res.send).toHaveBeenCalledWith('id,checkedAt,ok\nrun-1,2026-01-01T00:00:00Z,1');
   });
 
   it('versionSummary() delegates to service.versionSummary', async () => {
@@ -344,5 +362,75 @@ describe('MonitorsController', () => {
     const since = '2026-01-01T00:00:00Z';
     await controller.getRecentRuns(makeReq(), '5', since);
     expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 5, new Date(since));
+  });
+
+  // ── listDeliveries() ──────────────────────────────────────────────────
+
+  it('listDeliveries() returns delivery history with counts', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const createdAt = new Date('2026-03-26T08:00:00Z');
+    const mockPrisma = {
+      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm-1', userId: 'user-1', name: 'My Monitor' }) },
+      alertDeliveryLog: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'log-1',
+            alertChannelId: 'ch-1',
+            monitorId: 'm-1',
+            status: 'success',
+            trigger: 'monitor_failure',
+            errorMessage: null,
+            durationMs: 145,
+            createdAt,
+            alertChannel: { id: 'ch-1', name: 'Slack Alerts', type: 'slack' },
+          },
+          {
+            id: 'log-2',
+            alertChannelId: 'ch-1',
+            monitorId: 'm-1',
+            status: 'failed',
+            trigger: 'monitor_recovery',
+            errorMessage: 'Timeout',
+            durationMs: 5000,
+            createdAt,
+            alertChannel: { id: 'ch-1', name: 'Slack Alerts', type: 'slack' },
+          },
+        ]),
+      },
+    };
+    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const result = await ctrl.listDeliveries(makeReq(), 'm-1') as Record<string, unknown>;
+    expect(mockPrisma.monitor.findFirst).toHaveBeenCalledWith({ where: { id: 'm-1', userId: 'user-1' } });
+    expect(result['total']).toBe(2);
+    expect(result['successCount']).toBe(1);
+    expect(result['failedCount']).toBe(1);
+    const deliveries = result['deliveries'] as Array<Record<string, unknown>>;
+    expect(deliveries[0]['channelName']).toBe('Slack Alerts');
+    expect(deliveries[0]['channelType']).toBe('slack');
+    expect(deliveries[0]['status']).toBe('success');
+    expect(deliveries[1]['errorMessage']).toBe('Timeout');
+  });
+
+  it('listDeliveries() throws NotFoundException when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const mockPrisma = {
+      monitor: { findFirst: vi.fn().mockResolvedValue(null) },
+      alertDeliveryLog: { findMany: vi.fn() },
+    };
+    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    await expect(ctrl.listDeliveries(makeReq(), 'no-such-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('listDeliveries() returns empty deliveries when none exist', async () => {
+    const mockPrisma = {
+      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm-1', userId: 'user-1' }) },
+      alertDeliveryLog: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const result = await ctrl.listDeliveries(makeReq(), 'm-1') as Record<string, unknown>;
+    expect(result['total']).toBe(0);
+    expect(result['successCount']).toBe(0);
+    expect(result['failedCount']).toBe(0);
+    expect(result['deliveries']).toEqual([]);
   });
 });

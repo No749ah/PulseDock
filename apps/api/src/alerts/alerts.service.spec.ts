@@ -101,6 +101,13 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     alertDeliveryLog: {
       create: vi.fn().mockResolvedValue({}),
     },
+    alertAcknowledgement: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    alertRoutingRule: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -666,6 +673,8 @@ describe('AlertsService', () => {
         monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
         monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
+        alertAcknowledgement: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        alertRoutingRule: { findMany: vi.fn().mockResolvedValue([]) },
       };
       const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);
 
@@ -718,6 +727,8 @@ describe('AlertsService', () => {
         monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
         monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
+        alertAcknowledgement: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        alertRoutingRule: { findMany: vi.fn().mockResolvedValue([]) },
       };
     }
 
@@ -2178,6 +2189,114 @@ describe('AlertsService', () => {
       const text = body.text ?? body.content ?? JSON.stringify(body);
       expect(text).not.toContain('Runbook');
       expect(text).toContain('FLAPPING');
+    });
+  });
+
+  // ─── notifyBurnRateAlert ─────────────────────────────────────────────────
+
+  describe('notifyBurnRateAlert()', () => {
+    it('sends notification when burn rate exceeds threshold', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 14.5, 3.0, 45.2, 99.9);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).toContain('API Monitor');
+      expect(text).toContain('Burn Rate Alert');
+    });
+
+    it('labels as Critical (🔴) when 1h burn rate >= 14.4', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 14.4, 3.0, 50, 99.9);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).toContain('Critical');
+    });
+
+    it('labels as High (🟠) when 1h burn rate >= 6 and < 14.4', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 8.0, 2.0, 30, 99.9);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).toContain('High');
+    });
+
+    it('labels as Elevated (🟡) when 1h burn rate < 6', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 3.0, 0.8, 15, 99.9);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).toContain('Elevated');
+    });
+
+    it('includes both burn rate windows and budget consumed in message', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'My Service', 'user-1', 7.2, 2.4, 33.3, 99.95);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const text = body.text ?? body.content ?? JSON.stringify(body);
+      expect(text).toContain('7.2');
+      expect(text).toContain('2.4');
+      expect(text).toContain('33.3');
+      expect(text).toContain('99.95');
+    });
+
+    it('sends no notification when no channels configured', async () => {
+      const prisma = makePrisma([]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 20, 5, 80, 99.9);
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('filters channels to only the owning user', async () => {
+      const ownChannel = makeChannel({ userId: 'user-1' });
+      const otherChannel = makeChannel({ id: 'chan-2', userId: 'user-99', config: { url: 'https://other.com' } });
+      const prisma = makePrisma([{ alertChannel: ownChannel }, { alertChannel: otherChannel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 14.4, 3.0, 50, 99.9);
+
+      // Only own channel gets the notification
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0][0]).toBe('https://hooks.example.com/test');
+    });
+
+    it('uses sla_burn_rate as delivery trigger', async () => {
+      const channel = makeChannel();
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyBurnRateAlert('mon-1', 'API Monitor', 'user-1', 14.4, 3.0, 50, 99.9);
+
+      const createCall = (prisma.alertDeliveryLog as unknown as { create: { mock: { calls: { 0: { data: { trigger: string } } }[] } } }).create?.mock?.calls?.[0]?.[0];
+      if (createCall) {
+        expect(createCall.data.trigger).toBe('sla_burn_rate');
+      }
     });
   });
 

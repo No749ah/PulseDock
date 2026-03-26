@@ -27,6 +27,25 @@ import type {
   MonitorEvent,
   ChartPoint,
 } from "./components/types";
+
+interface AlertDelivery {
+  id: string;
+  channelId: string;
+  channelName: string;
+  channelType: string;
+  status: "success" | "failed";
+  trigger: string | null;
+  errorMessage: string | null;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+interface DeliveryHistory {
+  total: number;
+  successCount: number;
+  failedCount: number;
+  deliveries: AlertDelivery[];
+}
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 
@@ -58,6 +77,9 @@ export default function MonitorDetailPage() {
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
 
+  // Alert delivery history
+  const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
+
   // Timeline events/annotations
   const [events, setEvents] = useState<MonitorEvent[]>([]);
   const [newEventMsg, setNewEventMsg] = useState("");
@@ -83,12 +105,13 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRunsPage, alertChs, deps, evts] = await Promise.all([
+        const [monitors, monitorRunsPage, alertChs, deps, evts, deliveries] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
           api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
           api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
+          api<DeliveryHistory>(`/v1/monitors/${id}/deliveries`, user!.id).catch(() => null),
         ]);
         const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
@@ -103,6 +126,7 @@ export default function MonitorDetailPage() {
         setAlertChannels(alertChs);
         setDependencies(deps);
         setEvents(evts);
+        setDeliveryHistory(deliveries);
         setAllMonitors(monitors);
         // Fetch error budget if SLA target is set
         if (found.slaTarget) {
@@ -1563,6 +1587,97 @@ export default function MonitorDetailPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </Card>
+
+        {/* Alert Delivery History */}
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Notifications
+            </h2>
+            {deliveryHistory && (
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span className="text-success">{deliveryHistory.successCount} ok</span>
+                {deliveryHistory.failedCount > 0 && (
+                  <span className="text-error">{deliveryHistory.failedCount} failed</span>
+                )}
+                <span>/ {deliveryHistory.total} total</span>
+              </div>
+            )}
+          </div>
+
+          {!deliveryHistory || deliveryHistory.deliveries.length === 0 ? (
+            <p className="text-xs text-text-muted text-center py-4">No alert deliveries yet for this monitor.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Timestamp</TableHeader>
+                    <TableHeader>Channel</TableHeader>
+                    <TableHeader>Type</TableHeader>
+                    <TableHeader>Trigger</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader>Duration</TableHeader>
+                    <TableHeader>Error</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {deliveryHistory.deliveries.map((d) => {
+                    const triggerLabel =
+                      d.trigger === "monitor_failure" ? "Failure"
+                      : d.trigger === "monitor_recovery" ? "Recovery"
+                      : d.trigger === "test" ? "Test"
+                      : d.trigger ? d.trigger.charAt(0).toUpperCase() + d.trigger.slice(1)
+                      : "—";
+
+                    const channelTypeBadgeColors: Record<string, string> = {
+                      slack: "bg-green-500/15 text-green-400 border-green-500/30",
+                      discord: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+                      email: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                      webhook: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+                      telegram: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+                      pagerduty: "bg-green-600/15 text-green-500 border-green-600/30",
+                      opsgenie: "bg-orange-600/15 text-orange-500 border-orange-600/30",
+                      sms: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+                    };
+                    const channelTypeCls = channelTypeBadgeColors[d.channelType] ?? "bg-surface-elevated text-text-muted border-border";
+
+                    return (
+                      <TableRow key={d.id}>
+                        <TableCell className="text-xs text-text-muted whitespace-nowrap">{relativeTime(d.createdAt)}</TableCell>
+                        <TableCell className="text-sm text-text-primary">{d.channelName}</TableCell>
+                        <TableCell>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider ${channelTypeCls}`}>
+                            {d.channelType}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-text-secondary">{triggerLabel}</TableCell>
+                        <TableCell>
+                          {d.status === "success" ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider bg-success/15 text-success border-success/30">
+                              Success
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider bg-error/15 text-error border-error/30">
+                              Failed
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-text-muted">
+                          {d.durationMs != null ? `${d.durationMs}ms` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-error max-w-[200px] truncate" title={d.errorMessage ?? undefined}>
+                          {d.errorMessage ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
         </Card>

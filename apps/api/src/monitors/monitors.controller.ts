@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -8,6 +8,7 @@ import { ScopeGuard } from '../common/scope.guard';
 import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
+import { PrismaService } from '../common/prisma.service';
 import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 
 @ApiTags('Monitors')
@@ -18,6 +19,7 @@ export class MonitorsController {
   constructor(
     private readonly monitorsService: MonitorsService,
     private readonly planService: PlanService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -464,5 +466,76 @@ export class MonitorsController {
     @Param('eventId') eventId: string,
   ) {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
+  }
+
+  // ─── Alert Delivery History ───────────────────────────────────────────────
+
+  @Get(':id/deliveries')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Alert delivery history for a monitor',
+    description: 'Returns the last 100 alert delivery log entries for a specific monitor, including channel info, status, trigger, and duration.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Delivery history returned.',
+    schema: {
+      example: {
+        total: 5,
+        successCount: 4,
+        failedCount: 1,
+        deliveries: [
+          {
+            id: 'clxyz',
+            channelId: 'ch-1',
+            channelName: 'Slack Alerts',
+            channelType: 'slack',
+            status: 'success',
+            trigger: 'monitor_failure',
+            errorMessage: null,
+            durationMs: 145,
+            createdAt: '2026-03-26T08:00:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async listDeliveries(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { monitorId: id },
+      include: { alertChannel: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const deliveries = logs.map((log) => ({
+      id: log.id,
+      channelId: log.alertChannelId,
+      channelName: log.alertChannel.name,
+      channelType: log.alertChannel.type,
+      status: log.status,
+      trigger: log.trigger ?? null,
+      errorMessage: log.errorMessage ?? null,
+      durationMs: log.durationMs ?? null,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
+    const successCount = deliveries.filter((d) => d.status === 'success').length;
+    const failedCount = deliveries.filter((d) => d.status === 'failed').length;
+
+    return {
+      total: deliveries.length,
+      successCount,
+      failedCount,
+      deliveries,
+    };
   }
 }

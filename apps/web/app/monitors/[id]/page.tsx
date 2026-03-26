@@ -50,6 +50,7 @@ interface DeliveryHistory {
 }
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
+import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -1531,9 +1532,7 @@ export default function MonitorDetailPage() {
                         {run.responseBody && (
                           <TableRow>
                             <TableCell colSpan={5} className="py-0 pb-2 px-4">
-                              <div className="bg-surface-elevated/60 border border-border/50 rounded-md px-3 py-2 text-xs font-mono text-text-secondary whitespace-pre-wrap break-all max-h-28 overflow-y-auto">
-                                <span className="text-text-muted select-none mr-2">response body:</span>{run.responseBody}
-                              </div>
+                              <ResponseBodyViewer body={run.responseBody} />
                             </TableCell>
                           </TableRow>
                         )}

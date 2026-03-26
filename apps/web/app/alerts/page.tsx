@@ -140,6 +140,7 @@ export default function AlertsPage() {
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [testingAll, setTestingAll] = useState(false);
 
   useEffect(() => {
     const user = getUser();
@@ -218,6 +219,30 @@ export default function AlertsPage() {
       success(`Test notification sent to ${channel.name}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'Test failed');
+    }
+  }
+
+  async function testAllChannels() {
+    if (channels.length === 0) return;
+    setTestingAll(true);
+    try {
+      const result = await api<{ tested: number; results: Array<{ channelId: string; name: string; type: string; ok: boolean; error: string | null }> }>(
+        '/v1/alert-channels/test-all',
+        undefined,
+        { method: 'POST' },
+      );
+      const passed = result.results.filter((r) => r.ok).length;
+      const failed = result.results.filter((r) => !r.ok).length;
+      if (failed === 0) {
+        success(`All ${passed} channel${passed !== 1 ? 's' : ''} responded successfully`);
+      } else {
+        const failedNames = result.results.filter((r) => !r.ok).map((r) => r.name).join(', ');
+        toastError(`${failed} channel${failed !== 1 ? 's' : ''} failed: ${failedNames}`);
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Bulk test failed');
+    } finally {
+      setTestingAll(false);
     }
   }
 
@@ -738,6 +763,14 @@ export default function AlertsPage() {
                     </div>
                   )}
                 </div>
+              )}
+              {channels.length > 0 && (
+                <Button variant="secondary" size="lg" onClick={testAllChannels} disabled={testingAll}>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    {testingAll ? 'Testing…' : 'Test All'}
+                  </span>
+                </Button>
               )}
               <Link href="/alerts/history">
                 <Button variant="secondary" size="lg">

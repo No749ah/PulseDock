@@ -1,13 +1,13 @@
-## Status Summary (2026-03-26 04:14 UTC)
-- **Build/Test:** ✅ Clean build + 3969 tests (3254 API + 693 Web + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 05:18 UTC)
+- **Build/Test:** ✅ Clean build + 3258 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-midnight
+- **Branch:** heartbeat/2026-03-26-alert-delivery-history
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes:** Fixed TS2352 in alerts.service.spec.ts. Added 16 version-detection edge case tests: APT stable/pre-release selection, Helm/Maven HTTP failure + missing version paths, Docker Hub prefix logic (library/ vs namespace/), cargo newest_version fallback, GitHub vs Docker suggestion sets. API tests: 3230 → 3254. Total: 3953 → 3969.
+- **Last changes:** Added global alert delivery history: `GET /v1/alert-channels/deliveries` endpoint (aggregate stats + up to 200 recent logs across all channels), `/alerts/history` frontend page (stats cards, status/search filters, delivery table), "View History" button on alerts page. 4 new tests.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

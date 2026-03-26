@@ -487,3 +487,78 @@ describe('AlertsController', () => {
     });
   });
 });
+
+// ─── testAll() ───────────────────────────────────────────────────────────────
+
+describe('testAll()', () => {
+  async function makeCtrl(prismaOverride?: object, alertsServiceOverride?: object) {
+    const p = prismaOverride ?? makePrisma();
+    const a = alertsServiceOverride ?? makeAlertsService();
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AlertsController],
+      providers: [
+        { provide: PrismaService, useValue: p },
+        { provide: AlertsService, useValue: a },
+        { provide: AuditService, useValue: makeAuditService() },
+        { provide: PlanService, useValue: mockPlanService },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useClass(MockAuthGuard)
+      .compile();
+    return module.get<AlertsController>(AlertsController);
+  }
+
+  it('returns tested count and results for owned channels', async () => {
+    const ctrl = await makeCtrl();
+    const result = await ctrl.testAll(req as never);
+    expect(result.tested).toBe(1);
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({ channelId: 'ch-1', ok: true, error: null });
+  });
+
+  it('returns tested=0 when user has no channels', async () => {
+    const p = {
+      alertChannel: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const ctrl = await makeCtrl(p);
+    const result = await ctrl.testAll(req as never);
+    expect(result.tested).toBe(0);
+    expect(result.results).toHaveLength(0);
+  });
+
+  it('marks a channel as ok=false with error message when notifyTest throws', async () => {
+    const failingAlerts = { notifyTest: vi.fn().mockRejectedValue(new Error('Webhook timeout')) };
+    const ctrl = await makeCtrl(undefined, failingAlerts);
+    const result = await ctrl.testAll(req as never);
+    expect(result.results[0].ok).toBe(false);
+    expect(result.results[0].error).toBe('Webhook timeout');
+  });
+
+  it('handles mixed success/failure across multiple channels', async () => {
+    const channels = [
+      makeChannel({ id: 'ch-1', name: 'Discord' }),
+      makeChannel({ id: 'ch-2', name: 'Slack', type: 'slack' }),
+    ];
+    const p = {
+      alertChannel: { findMany: vi.fn().mockResolvedValue(channels) },
+    };
+    let callCount = 0;
+    const mixedAlerts = {
+      notifyTest: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return Promise.resolve();
+        return Promise.reject(new Error('Slack error'));
+      }),
+    };
+    const ctrl = await makeCtrl(p, mixedAlerts);
+    const result = await ctrl.testAll(req as never);
+    expect(result.tested).toBe(2);
+    const results = result.results as Array<{ channelId?: string; ok: boolean; error: string | null }>;
+    const discordResult = results.find((r) => r.channelId === 'ch-1');
+    const slackResult = results.find((r) => r.channelId === 'ch-2');
+    expect(discordResult?.ok).toBe(true);
+    expect(slackResult?.ok).toBe(false);
+    expect(slackResult?.error).toBe('Slack error');
+  });
+});

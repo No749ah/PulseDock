@@ -445,3 +445,190 @@ describe('resolveCollisions', () => {
     expect(result[0].y).toBe(0);
   });
 });
+
+// ─── Inline: getMultiModeHelperText + getWidgetConfigHints ───────────────────
+
+const MULTI_MODE_PRIMARY_WIDGETS_TEST = new Set([
+  "uptime-bar",
+  "uptime-timeline",
+  "sla-summary",
+  "response-time-chart",
+  "version-check-badge",
+]);
+
+function getMultiModeHelperText(widgetType: string): string {
+  if (MULTI_MODE_PRIMARY_WIDGETS_TEST.has(widgetType)) {
+    return "This widget uses the first selected monitor as its primary series in multi-monitor mode.";
+  }
+  return "This widget will render data for all selected monitors.";
+}
+
+function getWidgetConfigHints(widgetType: string): string[] {
+  switch (widgetType) {
+    case "embed-iframe":
+      return [
+        "Use a full HTTPS URL and a source that allows iFrame embedding.",
+        "If the widget stays blank on public pages, check X-Frame-Options/CSP on the target site.",
+      ];
+    case "security-advisory":
+      return [
+        "Use the real package name from your ecosystem (for example: express, requests, serde).",
+        "Set ecosystem when names overlap across package managers.",
+      ];
+    case "dependency-map":
+      return [
+        "Edges use monitor IDs, not names.",
+        "Format: { source, target, label? }.",
+      ];
+    case "multi-environment-status":
+    case "region-status-map":
+      return [
+        "Use monitor IDs in each group list.",
+        "Groups with empty arrays render as no-data until monitors are added.",
+      ];
+    case "third-party-dependencies":
+      return [
+        "Each service runs a lightweight HEAD request.",
+        "Use stable health/status endpoints for best results.",
+      ];
+    case "table-of-contents":
+      return [
+        "Anchors must match element IDs on your page.",
+        "Use short, lowercase IDs like 'incidents' or 'uptime'.",
+      ];
+    case "tab-container":
+      return [
+        "Use a tabs array with { title, content } items.",
+        "Keep content concise for mobile readability.",
+      ];
+    case "column-layout":
+      return [
+        "Use items as an array of { heading?, body }.",
+        "For readability, keep body text short per column.",
+      ];
+    case "custom-metric-chart":
+      return [
+        "Select a monitor first, then tune metric + chart type.",
+        "Use line/area for trends and bar for discrete comparisons.",
+      ];
+    default:
+      return [];
+  }
+}
+
+// ─── Tests: getMultiModeHelperText ───────────────────────────────────────────
+
+describe('getMultiModeHelperText', () => {
+  it('returns primary-series message for uptime-bar', () => {
+    expect(getMultiModeHelperText('uptime-bar')).toContain('primary series');
+  });
+
+  it('returns primary-series message for uptime-timeline', () => {
+    expect(getMultiModeHelperText('uptime-timeline')).toContain('primary series');
+  });
+
+  it('returns primary-series message for sla-summary', () => {
+    expect(getMultiModeHelperText('sla-summary')).toContain('primary series');
+  });
+
+  it('returns primary-series message for response-time-chart', () => {
+    expect(getMultiModeHelperText('response-time-chart')).toContain('primary series');
+  });
+
+  it('returns primary-series message for version-check-badge', () => {
+    expect(getMultiModeHelperText('version-check-badge')).toContain('primary series');
+  });
+
+  it('returns all-monitors message for non-primary widget types', () => {
+    const result = getMultiModeHelperText('current-status-badge');
+    expect(result).toContain('all selected monitors');
+  });
+
+  it('returns all-monitors message for unknown widget types', () => {
+    expect(getMultiModeHelperText('unknown-widget')).toContain('all selected monitors');
+  });
+
+  it('returns all-monitors message for text-block (content widget)', () => {
+    expect(getMultiModeHelperText('text-block')).toContain('all selected monitors');
+  });
+});
+
+// ─── Tests: getWidgetConfigHints ─────────────────────────────────────────────
+
+describe('getWidgetConfigHints', () => {
+  it('returns empty array for unknown widget types', () => {
+    expect(getWidgetConfigHints('uptime-bar')).toEqual([]);
+    expect(getWidgetConfigHints('text-block')).toEqual([]);
+    expect(getWidgetConfigHints('unknown')).toEqual([]);
+  });
+
+  it('returns hints for embed-iframe', () => {
+    const hints = getWidgetConfigHints('embed-iframe');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('HTTPS URL');
+    expect(hints[1]).toContain('X-Frame-Options');
+  });
+
+  it('returns hints for security-advisory', () => {
+    const hints = getWidgetConfigHints('security-advisory');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('package name');
+  });
+
+  it('returns hints for dependency-map', () => {
+    const hints = getWidgetConfigHints('dependency-map');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('monitor IDs');
+  });
+
+  it('returns same hints for multi-environment-status and region-status-map', () => {
+    const envHints = getWidgetConfigHints('multi-environment-status');
+    const regionHints = getWidgetConfigHints('region-status-map');
+    expect(envHints).toEqual(regionHints);
+    expect(envHints[0]).toContain('monitor IDs');
+  });
+
+  it('returns hints for third-party-dependencies', () => {
+    const hints = getWidgetConfigHints('third-party-dependencies');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('HEAD request');
+  });
+
+  it('returns hints for table-of-contents', () => {
+    const hints = getWidgetConfigHints('table-of-contents');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('Anchors');
+  });
+
+  it('returns hints for tab-container', () => {
+    const hints = getWidgetConfigHints('tab-container');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('tabs array');
+  });
+
+  it('returns hints for column-layout', () => {
+    const hints = getWidgetConfigHints('column-layout');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('items');
+  });
+
+  it('returns hints for custom-metric-chart', () => {
+    const hints = getWidgetConfigHints('custom-metric-chart');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('monitor first');
+  });
+
+  it('all hint arrays contain non-empty strings', () => {
+    const types = ['embed-iframe', 'security-advisory', 'dependency-map', 'multi-environment-status',
+      'region-status-map', 'third-party-dependencies', 'table-of-contents', 'tab-container',
+      'column-layout', 'custom-metric-chart'];
+    for (const type of types) {
+      const hints = getWidgetConfigHints(type);
+      expect(hints.length).toBeGreaterThan(0);
+      for (const hint of hints) {
+        expect(typeof hint).toBe('string');
+        expect(hint.length).toBeGreaterThan(0);
+      }
+    }
+  });
+});

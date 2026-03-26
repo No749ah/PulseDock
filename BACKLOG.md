@@ -1,13 +1,13 @@
-## Status Summary (2026-03-26 08:40 UTC)
-- **Build/Test:** ✅ Clean build + 3277 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 09:05 UTC)
+- **Build/Test:** ✅ Clean build + 3299 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-alert-delivery-history
+- **Branch:** heartbeat/2026-03-26-monitor-slo-improvements
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (08:40 cycle):** Alert acknowledgement + monitor muting: `POST/DELETE /v1/monitors/:id/mute`, `POST/DELETE /v1/monitors/:id/acknowledge`. Mute/ack badges on monitor list + detail pages. Alert suppression when muted or acknowledged. Auto-clear ack on recovery. 10 new tests → 3277 total.
+- **Last changes (09:05 cycle):** Alert routing rules: `GET/POST/PATCH/DELETE /v1/alert-routing-rules`, match by type/level/folder/monitorId, channel override. Frontend at `/alerts/routing`. Wired into AlertsService. 22 new tests → 3299 total.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -22,7 +22,9 @@
 
 ## In Progress
 
-- [ ] **Alert Routing Rules** — Rules-based conditional alert routing: match monitors by type/level/folder/ID, route to specific channels. API CRUD + reorder + toggle. Frontend page at `/alerts/routing`. Wired into AlertsService to intercept channel resolution. *(2026-03-26: in progress)*
+- [x] **Alert Routing Rules** — Rules-based conditional alert routing: match monitors by type/level/folder/ID, route to specific channels. API CRUD + reorder + toggle. Frontend page at `/alerts/routing`. Wired into AlertsService. 22 new tests → 3299 total. *(2026-03-26)*
+
+- [ ] **Monitor SLO/SLI Enhancements** — Latency SLI (p95 target), `GET /v1/monitors/:id/slo-report` with uptime+latency+error budget analysis, SLO tab on monitor detail page, SLO config in create/edit modal. *(2026-03-26: in progress)*
 
 - [x] **🔴 Status Page Widget Full Audit & Visual Review (HIGH PRIORITY — Noah)** - Systematisch ALLE Status-Page Widget-Typen durchgehen, auf einer Test-Statuspage hinzufügen, komplett konfigurieren und visuell überprüfen. Ziel: Noah kann die fertige Seite anschauen und entscheiden ob jedes Widget gut aussieht und Sinn macht. *(2026-03-24: 99 widgets deployed to `/status/widget-showcase` covering all categories. 7 monitors created with live data. Fixed missing `"use client"` in LayoutWidgets.tsx. Page live at https://oc-dev-test.no749ah.com/status/widget-showcase for Noah's review.)*
 

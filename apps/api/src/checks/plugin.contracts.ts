@@ -12,6 +12,8 @@ export interface PluginExecutionResult {
   latencyMs: number | null;
   message: string;
   level: MonitorLevel;
+  /** First 500 chars of response body on failure, for debugging. Only populated on failed checks. */
+  responseBody?: string | null;
 }
 
 export interface PluginConfigField {

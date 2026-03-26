@@ -310,3 +310,67 @@ describe('runBrowserCheck', () => {
     expect(ua).toContain('PulseDock');
   });
 });
+
+// ── responseBody capture ─────────────────────────────────────────────────────
+
+describe('runHttpCheck — responseBody capture', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => { fetchSpy = vi.spyOn(globalThis, 'fetch' as keyof typeof globalThis); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('captures responseBody on HTTP status failure', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(503, '{"error":"Service Unavailable"}', false));
+    const result = await runHttpCheck('https://example.com');
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toBe('{"error":"Service Unavailable"}');
+  });
+
+  it('captures responseBody on expectedStatus mismatch', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(400, '{"code":"BAD_REQUEST"}', false));
+    const result = await runHttpCheck('https://example.com', 5000, { expectedStatus: 200 });
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toBe('{"code":"BAD_REQUEST"}');
+  });
+
+  it('captures responseBody when bodyContains assertion fails', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(200, '{"status":"error"}'));
+    const result = await runHttpCheck('https://example.com', 5000, { bodyContains: 'ok' });
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toBe('{"status":"error"}');
+  });
+
+  it('captures responseBody when bodyJsonPath assertion fails', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(200, '{"status":"error"}'));
+    const result = await runHttpCheck('https://example.com', 5000, {
+      bodyJsonPath: '$.status',
+      bodyJsonPathExpected: 'ok',
+    });
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toBeDefined();
+    expect(result.responseBody).toContain('error');
+  });
+
+  it('captures responseBody when response is not valid JSON for bodyJsonPath check', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(200, '<html>not json</html>'));
+    const result = await runHttpCheck('https://example.com', 5000, { bodyJsonPath: '$.status' });
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toContain('<html>');
+  });
+
+  it('truncates responseBody to 500 chars', async () => {
+    const longBody = 'x'.repeat(1000);
+    fetchSpy.mockResolvedValue(makeResponse(500, longBody, false));
+    const result = await runHttpCheck('https://example.com');
+    expect(result.ok).toBe(false);
+    expect(result.responseBody).toBeDefined();
+    expect(result.responseBody!.length).toBe(500);
+  });
+
+  it('does not include responseBody on successful check', async () => {
+    fetchSpy.mockResolvedValue(makeResponse(200, 'OK'));
+    const result = await runHttpCheck('https://example.com');
+    expect(result.ok).toBe(true);
+    expect(result.responseBody).toBeUndefined();
+  });
+});

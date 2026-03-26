@@ -58,7 +58,7 @@ export async function runHttpCheck(
     }
 
     if (!statusOk) {
-      await response.text().catch(() => undefined);
+      const failBody = await response.text().catch(() => '');
       const expected = expectedStatus ? ` (expected ${Array.isArray(expectedStatus) ? expectedStatus.join('/') : expectedStatus})` : '';
       return {
         ok: false,
@@ -66,6 +66,7 @@ export async function runHttpCheck(
         latencyMs,
         message: `HTTP ${response.status}${expected}`,
         level: 'red' as const,
+        responseBody: failBody ? failBody.slice(0, 500) : null,
       };
     }
 
@@ -81,6 +82,7 @@ export async function runHttpCheck(
             latencyMs,
             message: `HTTP ${response.status} — body does not contain "${bodyContains}"`,
             level: 'red' as const,
+            responseBody: body.slice(0, 500) || null,
           };
         }
       }
@@ -96,6 +98,7 @@ export async function runHttpCheck(
             latencyMs,
             message: `HTTP ${response.status} — response is not valid JSON (cannot assert JSON path "${bodyJsonPath}")`,
             level: 'red' as const,
+            responseBody: body.slice(0, 500) || null,
           };
         }
         const normalizedPath = bodyJsonPath.startsWith('$.') ? bodyJsonPath.slice(2) : bodyJsonPath.startsWith('$') ? bodyJsonPath.slice(1) : bodyJsonPath;
@@ -112,6 +115,7 @@ export async function runHttpCheck(
             latencyMs,
             message: `HTTP ${response.status} — JSON path "${bodyJsonPath}" is ${actualStr ? `"${actualStr}"` : 'missing/falsy'} (expected ${expectDesc})`,
             level: 'red' as const,
+            responseBody: body.slice(0, 500) || null,
           };
         }
       }

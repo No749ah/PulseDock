@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi } from "lucide-react";
@@ -1487,7 +1487,8 @@ export default function MonitorDetailPage() {
                     </TableHead>
                     <TableBody>
                       {runs.map((run) => (
-                        <TableRow key={run.id}>
+                        <React.Fragment key={run.id}>
+                        <TableRow>
                           <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                             {relativeTime(run.checkedAt)}
                           </TableCell>
@@ -1513,6 +1514,16 @@ export default function MonitorDetailPage() {
                             {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
                           </TableCell>
                         </TableRow>
+                        {run.responseBody && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                              <div className="bg-surface-elevated/60 border border-border/50 rounded-md px-3 py-2 text-xs font-mono text-text-secondary whitespace-pre-wrap break-all max-h-28 overflow-y-auto">
+                                <span className="text-text-muted select-none mr-2">response body:</span>{run.responseBody}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </React.Fragment>
                       ))}
                     </TableBody>
                   </Table>

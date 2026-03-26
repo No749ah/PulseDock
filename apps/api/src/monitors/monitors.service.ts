@@ -997,6 +997,7 @@ export class MonitorsService {
         latencyMs: r.latencyMs,
         message: r.message,
         level: r.level as 'green' | 'yellow' | 'red',
+        responseBody: r.responseBody ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
@@ -1022,9 +1023,10 @@ export class MonitorsService {
       take: 10_000,
     });
 
-    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message'].join(',');
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'responseBody'].join(',');
     const rows = runs.map((r) => {
       const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
+      const body = (r.responseBody ?? '').replace(/"/g, '""');
       return [
         r.id,
         r.checkedAt.toISOString(),
@@ -1033,6 +1035,7 @@ export class MonitorsService {
         r.latencyMs ?? '',
         r.level ?? '',
         `"${msg}"`,
+        body ? `"${body}"` : '',
       ].join(',');
     });
 

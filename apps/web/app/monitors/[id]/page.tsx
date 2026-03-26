@@ -53,6 +53,40 @@ import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
 
+// ── Latency Distribution Types ───────────────────────────────────────────────
+
+interface LatencyBucket {
+  rangeLabel: string;
+  from: number;
+  to: number;
+  count: number;
+  pct: number;
+}
+
+interface LatencyPercentiles {
+  p50: number | null;
+  p75: number | null;
+  p90: number | null;
+  p95: number | null;
+  p99: number | null;
+}
+
+interface HourlyAvgEntry {
+  hour: number;
+  avgMs: number | null;
+  p95Ms: number | null;
+  count: number;
+}
+
+interface LatencyDistributionData {
+  buckets: LatencyBucket[];
+  percentiles: LatencyPercentiles;
+  hourlyAvg: HourlyAvgEntry[];
+  totalChecks: number;
+  successChecks: number;
+  checkedRange: string;
+}
+
 // ── Timing Waterfall ─────────────────────────────────────────────────────────
 
 interface TimingWaterfallProps {
@@ -145,7 +179,13 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "certificate">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate">("overview");
+
+  // Performance / Latency distribution
+  const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
+  const [perfLoading, setPerfLoading] = useState(false);
+  const [perfError, setPerfError] = useState<string | null>(null);
+  const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
 
   // Certificate details (SSL/HTTP monitors)
   const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
@@ -807,6 +847,33 @@ export default function MonitorDetailPage() {
             <Gauge className="w-3.5 h-3.5" />
             SLO / SLI
           </button>
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER" || monitor.type === "TCP") && (
+            <button
+              onClick={async () => {
+                setActiveMainTab("performance");
+                const user = getUser();
+                if (!user) return;
+                setPerfLoading(true);
+                setPerfError(null);
+                try {
+                  const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id);
+                  setPerfData(data);
+                } catch {
+                  setPerfError("Failed to load performance data");
+                } finally {
+                  setPerfLoading(false);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "performance"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Performance
+            </button>
+          )}
           {(monitor.type === "HTTP" || monitor.type === "SSL_CERT" || monitor.type === "BROWSER") && (
             <button
               onClick={async () => {
@@ -848,6 +915,165 @@ export default function MonitorDetailPage() {
             />
           ) : null;
         })()}
+
+        {/* Performance Tab Content */}
+        {activeMainTab === "performance" && (
+          <div className="space-y-4">
+            {/* Period Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium">Period:</span>
+              {(["24h", "7d", "30d"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={async () => {
+                    setPerfPeriod(p);
+                    const user = getUser();
+                    if (!user) return;
+                    setPerfLoading(true);
+                    setPerfError(null);
+                    try {
+                      const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id);
+                      setPerfData(data);
+                    } catch {
+                      setPerfError("Failed to load performance data");
+                    } finally {
+                      setPerfLoading(false);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    perfPeriod === p
+                      ? "bg-accent text-white"
+                      : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              {perfData && (
+                <span className="ml-auto text-xs text-text-muted">{perfData.checkedRange} · {perfData.successChecks} successful checks</span>
+              )}
+            </div>
+
+            {perfLoading && (
+              <Card className="p-8 text-center text-text-muted text-sm">Loading performance data…</Card>
+            )}
+            {perfError && !perfLoading && (
+              <Card className="p-8 text-center text-danger text-sm">{perfError}</Card>
+            )}
+            {perfData && !perfLoading && (
+              <>
+                {/* A. Latency Distribution Histogram */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-4 h-4 text-accent" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Latency Distribution</h2>
+                  </div>
+                  {perfData.successChecks === 0 ? (
+                    <p className="text-text-muted text-sm text-center py-4">No successful checks in this period.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {perfData.buckets.map((bucket) => {
+                        const maxCount = Math.max(...perfData.buckets.map((b) => b.count), 1);
+                        const widthPct = (bucket.count / maxCount) * 100;
+                        const barColor =
+                          bucket.to !== -1 && bucket.to <= 200
+                            ? "bg-green-500"
+                            : bucket.to !== -1 && bucket.to <= 500
+                            ? "bg-yellow-500"
+                            : bucket.to !== -1 && bucket.to <= 1000
+                            ? "bg-orange-500"
+                            : "bg-red-500";
+                        return (
+                          <div key={bucket.rangeLabel} className="flex items-center gap-2 text-xs">
+                            <span className="w-20 text-text-muted text-right shrink-0 font-mono">{bucket.rangeLabel}</span>
+                            <div className="flex-1 bg-white/5 rounded-full h-5 overflow-hidden">
+                              <div
+                                className={`${barColor} h-5 rounded-full transition-all`}
+                                style={{ width: `${Math.max(bucket.count > 0 ? 2 : 0, widthPct)}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-right text-text-secondary tabular-nums shrink-0">{bucket.count}</span>
+                            <span className="w-12 text-right text-text-muted tabular-nums shrink-0">({bucket.pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Card>
+
+                {/* B. Percentile Cards */}
+                <div className="grid grid-cols-5 gap-2">
+                  {(["p50", "p75", "p90", "p95", "p99"] as const).map((key) => {
+                    const val = perfData.percentiles[key];
+                    const color =
+                      val === null
+                        ? "text-text-muted"
+                        : val < 200
+                        ? "text-green-400"
+                        : val < 500
+                        ? "text-yellow-400"
+                        : "text-red-400";
+                    return (
+                      <Card key={key} className="p-3 text-center">
+                        <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">{key.toUpperCase()}</p>
+                        <p className={`text-lg font-bold tabular-nums ${color}`}>
+                          {val !== null ? `${val}ms` : "—"}
+                        </p>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* C. Hourly Heatmap */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-4 h-4 text-accent" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Hourly Latency Pattern (UTC)</h2>
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {perfData.hourlyAvg.map((h) => {
+                      const bg =
+                        h.count === 0
+                          ? "bg-white/5"
+                          : h.avgMs === null
+                          ? "bg-white/5"
+                          : h.avgMs < 200
+                          ? "bg-green-500/60"
+                          : h.avgMs < 500
+                          ? "bg-yellow-500/60"
+                          : h.avgMs < 1000
+                          ? "bg-orange-500/60"
+                          : "bg-red-500/60";
+                      const tooltip =
+                        h.count === 0
+                          ? `Hour ${h.hour}:00 UTC — No data`
+                          : `Hour ${h.hour}:00 UTC\nAvg: ${h.avgMs}ms\nP95: ${h.p95Ms}ms\nChecks: ${h.count}`;
+                      return (
+                        <div key={h.hour} className="flex flex-col items-center gap-0.5">
+                          <div
+                            title={tooltip}
+                            className={`w-7 h-7 rounded ${bg} cursor-default transition-colors hover:ring-1 hover:ring-white/30`}
+                          />
+                          {h.hour % 6 === 0 && (
+                            <span className="text-[9px] text-text-muted">{h.hour}</span>
+                          )}
+                          {h.hour % 6 !== 0 && <span className="text-[9px] text-transparent">·</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-3 mt-3 text-[10px] text-text-muted">
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-white/5" /> No data</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-green-500/60" /> Fast (&lt;200ms)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-yellow-500/60" /> Medium (200-500ms)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-orange-500/60" /> Slow (500ms-1s)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-500/60" /> Very Slow (&gt;1s)</span>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Certificate Tab Content */}
         {activeMainTab === "certificate" && (

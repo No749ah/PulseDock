@@ -1092,4 +1092,23 @@ export class MonitorsController {
   getSloSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.getSloSummary(req.user.id);
   }
+
+  @Get(':id/latency-distribution')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Get latency distribution and hourly patterns for a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d'], required: false })
+  @ApiResponse({ status: 200, description: 'Latency distribution data' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getLatencyDistribution(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period') period?: string,
+  ) {
+    const validPeriods = ['24h', '7d', '30d'] as const;
+    const safePeriod = validPeriods.includes(period as '24h' | '7d' | '30d')
+      ? (period as '24h' | '7d' | '30d')
+      : '7d';
+    return this.monitorsService.getLatencyDistribution(req.user.id, id, safePeriod);
+  }
 }

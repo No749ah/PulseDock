@@ -6004,3 +6004,98 @@ describe('importExternal — message pluralization', () => {
     expect(result.message).toBeTruthy();
   });
 });
+
+// ── getLatencyDistribution ────────────────────────────────────────────────────
+
+describe('getLatencyDistribution', () => {
+  it('returns correct bucket counts for given latency values', async () => {
+    const p = makePrisma();
+    const now = new Date();
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, latencyMs: 30, checkedAt: now },   // 0-50ms
+      { ok: true, latencyMs: 75, checkedAt: now },   // 50-100ms
+      { ok: true, latencyMs: 150, checkedAt: now },  // 100-200ms
+      { ok: true, latencyMs: 300, checkedAt: now },  // 200-500ms
+      { ok: true, latencyMs: 700, checkedAt: now },  // 500-1s
+      { ok: true, latencyMs: 1500, checkedAt: now }, // 1-2s
+      { ok: false, latencyMs: 50, checkedAt: now },  // failed — excluded
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getLatencyDistribution('user-1', 'monitor-1', '7d');
+    expect(result.buckets[0]).toMatchObject({ rangeLabel: '0-50ms', count: 1 });
+    expect(result.buckets[1]).toMatchObject({ rangeLabel: '50-100ms', count: 1 });
+    expect(result.buckets[2]).toMatchObject({ rangeLabel: '100-200ms', count: 1 });
+    expect(result.buckets[3]).toMatchObject({ rangeLabel: '200-500ms', count: 1 });
+    expect(result.buckets[4]).toMatchObject({ rangeLabel: '500-1s', count: 1 });
+    expect(result.buckets[5]).toMatchObject({ rangeLabel: '1-2s', count: 1 });
+    expect(result.successChecks).toBe(6);
+    expect(result.totalChecks).toBe(7); // all runs (6 ok + 1 failed)
+  });
+
+  it('computes percentiles correctly (p50, p95)', async () => {
+    const p = makePrisma();
+    const now = new Date();
+    // 10 values: 10,20,30,40,50,60,70,80,90,100
+    const runs = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((ms) => ({
+      ok: true, latencyMs: ms, checkedAt: now,
+    }));
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.getLatencyDistribution('user-1', 'monitor-1', '7d');
+    expect(result.percentiles.p50).toBe(50);
+    expect(result.percentiles.p95).toBe(100);
+    expect(result.percentiles.p99).toBe(100);
+  });
+
+  it('groups runs by hour correctly (UTC)', async () => {
+    const p = makePrisma();
+    const runAt = (h: number) => new Date(`2026-03-26T${String(h).padStart(2, '0')}:00:00Z`);
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, latencyMs: 100, checkedAt: runAt(3) },
+      { ok: true, latencyMs: 200, checkedAt: runAt(3) },
+      { ok: true, latencyMs: 50, checkedAt: runAt(14) },
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getLatencyDistribution('user-1', 'monitor-1', '7d');
+    const hour3 = result.hourlyAvg[3];
+    const hour14 = result.hourlyAvg[14];
+    expect(hour3.count).toBe(2);
+    expect(hour3.avgMs).toBe(150);
+    expect(hour14.count).toBe(1);
+    expect(hour14.avgMs).toBe(50);
+    // Spot-check an empty hour
+    expect(result.hourlyAvg[0].count).toBe(0);
+    expect(result.hourlyAvg[0].avgMs).toBeNull();
+  });
+
+  it('returns empty response gracefully when no runs exist', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.getLatencyDistribution('user-1', 'monitor-1', '7d');
+    expect(result.totalChecks).toBe(0);
+    expect(result.successChecks).toBe(0);
+    expect(result.percentiles.p50).toBeNull();
+    expect(result.percentiles.p95).toBeNull();
+    expect(result.buckets.every((b) => b.count === 0)).toBe(true);
+    expect(result.hourlyAvg).toHaveLength(24);
+    expect(result.hourlyAvg.every((h) => h.avgMs === null)).toBe(true);
+  });
+
+  it('respects the period filter by passing correct since date to prisma', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const before = Date.now();
+    await svc.getLatencyDistribution('user-1', 'monitor-1', '24h');
+    const after = Date.now();
+
+    const call = (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+      where: { checkedAt: { gte: Date } };
+    };
+    const gte = call.where.checkedAt.gte.getTime();
+    // Should be approx 24h ago
+    expect(gte).toBeGreaterThanOrEqual(before - 24 * 60 * 60 * 1000 - 100);
+    expect(gte).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 100);
+  });
+});

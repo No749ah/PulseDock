@@ -120,6 +120,55 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get('deliveries')
+  @ApiOperation({
+    summary: 'Get global alert delivery history',
+    description: 'Returns recent delivery logs across all alert channels for the authenticated user.'
+  })
+  @ApiResponse({ status: 200, description: 'Global delivery logs returned.' })
+  async globalDeliveries(@Req() req: { user: { id: string } }) {
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      select: { id: true, name: true, type: true },
+    });
+    const channelIds = channels.map(c => c.id);
+    const channelMap = new Map(channels.map(c => [c.id, { name: c.name, type: c.type }]));
+
+    if (channelIds.length === 0) {
+      return { total: 0, successCount: 0, failedCount: 0, deliveries: [] };
+    }
+
+    const [logs, total, successCount, failedCount] = await Promise.all([
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: { in: channelIds } },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds } } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds }, status: 'success' } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: { in: channelIds }, status: 'failed' } }),
+    ]);
+
+    return {
+      total,
+      successCount,
+      failedCount,
+      deliveries: logs.map(l => ({
+        id: l.id,
+        channelId: l.alertChannelId,
+        channelName: channelMap.get(l.alertChannelId)?.name ?? 'Unknown',
+        channelType: channelMap.get(l.alertChannelId)?.type ?? 'unknown',
+        status: l.status,
+        trigger: l.trigger,
+        monitorId: l.monitorId,
+        monitorName: l.monitorName,
+        errorMessage: l.errorMessage,
+        durationMs: l.durationMs,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    };
+  }
+
   @Get(':id/deliveries')
   @ApiOperation({ summary: 'Get alert delivery history', description: 'Returns the last 50 delivery log entries for a specific alert channel.' })
   @ApiParam({ name: 'id', description: 'Alert channel ID' })

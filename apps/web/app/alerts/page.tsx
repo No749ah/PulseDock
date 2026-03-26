@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
@@ -738,6 +739,11 @@ export default function AlertsPage() {
                   )}
                 </div>
               )}
+              <Link href="/alerts/history">
+                <Button variant="secondary" size="lg">
+                  <span className="flex items-center gap-2"><Activity className="w-4 h-4" /> View History</span>
+                </Button>
+              </Link>
               <Button size="lg" onClick={() => { resetCreateForm(); setWizardOpen(true); }}>
                 <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create channel</span>
               </Button>

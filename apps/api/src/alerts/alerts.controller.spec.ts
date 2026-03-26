@@ -260,6 +260,124 @@ describe('AlertsController', () => {
     });
   });
 
+  // ─── globalDeliveries() ────────────────────────────────────────────────────
+
+  describe('globalDeliveries()', () => {
+    const makeLog = (overrides: Record<string, unknown> = {}) => ({
+      id: 'log-1',
+      alertChannelId: 'ch-1',
+      monitorId: 'mon-1',
+      monitorName: 'API Monitor',
+      status: 'success',
+      trigger: 'monitor_failure',
+      errorMessage: null,
+      durationMs: 80,
+      createdAt: new Date('2026-03-20T12:00:00Z'),
+      ...overrides,
+    });
+
+    it('returns empty result when user has no channels', async () => {
+      await buildModule(null);
+      const result = await controller.globalDeliveries(req as never);
+      expect(result).toEqual({ total: 0, successCount: 0, failedCount: 0, deliveries: [] });
+    });
+
+    it('returns aggregated deliveries across multiple channels', async () => {
+      const ch2 = makeChannel({ id: 'ch-2', name: 'Slack Channel', type: 'slack' });
+      const customPrisma = {
+        ...makePrisma(),
+        alertChannel: {
+          ...makePrisma().alertChannel,
+          findMany: vi.fn().mockResolvedValue([makeChannel(), ch2]),
+        },
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([
+            makeLog({ alertChannelId: 'ch-1' }),
+            makeLog({ id: 'log-2', alertChannelId: 'ch-2', status: 'failed' }),
+          ]),
+          count: vi.fn()
+            .mockResolvedValueOnce(10) // total
+            .mockResolvedValueOnce(7)  // successCount
+            .mockResolvedValueOnce(3), // failedCount
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.globalDeliveries(req as never);
+      expect(result.total).toBe(10);
+      expect(result.successCount).toBe(7);
+      expect(result.failedCount).toBe(3);
+      expect(result.deliveries).toHaveLength(2);
+    });
+
+    it('maps channel name and type from channelMap', async () => {
+      const customPrisma = {
+        ...makePrisma(),
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([makeLog({ alertChannelId: 'ch-1' })]),
+          count: vi.fn().mockResolvedValue(1),
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.globalDeliveries(req as never);
+      expect(result.deliveries[0].channelName).toBe('My Discord');
+      expect(result.deliveries[0].channelType).toBe('discord');
+      expect(result.deliveries[0].channelId).toBe('ch-1');
+    });
+
+    it('falls back to Unknown/unknown for unrecognized channelId', async () => {
+      const customPrisma = {
+        ...makePrisma(),
+        alertDeliveryLog: {
+          findMany: vi.fn().mockResolvedValue([makeLog({ alertChannelId: 'ch-unknown' })]),
+          count: vi.fn().mockResolvedValue(1),
+        },
+      };
+      const module: TestingModule = await Test.createTestingModule({
+        controllers: [AlertsController],
+        providers: [
+          { provide: PrismaService, useValue: customPrisma },
+          { provide: AlertsService, useValue: makeAlertsService() },
+          { provide: AuditService, useValue: makeAuditService() },
+          { provide: PlanService, useValue: mockPlanService },
+        ],
+      })
+        .overrideGuard(AuthGuard)
+        .useClass(MockAuthGuard)
+        .compile();
+      const ctrl = module.get<AlertsController>(AlertsController);
+
+      const result = await ctrl.globalDeliveries(req as never);
+      expect(result.deliveries[0].channelName).toBe('Unknown');
+      expect(result.deliveries[0].channelType).toBe('unknown');
+    });
+  });
+
   // ─── deliveries() ──────────────────────────────────────────────────────────
 
   describe('deliveries()', () => {

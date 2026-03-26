@@ -33,6 +33,16 @@ export class MonitorsController {
     return this.monitorsService.list(req.user.id, tag);
   }
 
+  @Get(':id')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Get a single monitor', description: 'Returns full monitor details including mute status and active acknowledgement.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async getOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getOne(req.user.id, id);
+  }
+
   @Post()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequireScope(ApiKeyScope.WRITE)
@@ -64,6 +74,23 @@ export class MonitorsController {
   @ApiResponse({ status: 404, description: 'Monitor not found.' })
   update(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: UpdateMonitorDto) {
     return this.monitorsService.update(req.user.id, id, body);
+  }
+
+  @Post(':id/clone')
+  @HttpCode(201)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Clone a monitor', description: 'Duplicate an existing monitor, including its config, alert channel assignments, and tags. The clone is created as disabled with "Copy of <name>".' })
+  @ApiParam({ name: 'id', description: 'Monitor ID to clone' })
+  @ApiResponse({ status: 201, description: 'Cloned monitor returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  @ApiResponse({ status: 403, description: 'Plan monitor limit reached.' })
+  async clone(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    const check = await this.planService.checkLimit(req.user.id, 'monitors');
+    if (!check.allowed) {
+      throw new ForbiddenException({ message: 'Plan limit reached', code: 'PLAN_LIMIT', resource: 'monitors' });
+    }
+    return this.monitorsService.clone(req.user.id, id);
   }
 
   @Delete(':id')
@@ -348,13 +375,19 @@ export class MonitorsController {
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiParam({ name: 'channelId', description: 'Alert channel ID' })
   @ApiResponse({ status: 200, description: 'notifyOn updated.' })
-  updateAlert(
+  async updateAlert(
     @Req() req: { user: { id: string } },
     @Param('id') id: string,
     @Param('channelId') channelId: string,
-    @Body() body: { notifyOn: string },
+    @Body() body: { notifyOn?: string; escalationPolicyId?: string | null },
   ) {
-    return this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
+    if (body.notifyOn !== undefined) {
+      await this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
+    }
+    if ('escalationPolicyId' in body) {
+      await this.monitorsService.updateMonitorAlertEscalationPolicy(req.user.id, id, channelId, body.escalationPolicyId ?? null);
+    }
+    return { ok: true };
   }
 
   @Delete(':id/alerts/:channelId')
@@ -652,5 +685,23 @@ export class MonitorsController {
       clearedAt: updated.clearedAt!.toISOString(),
       createdAt: updated.createdAt.toISOString(),
     };
+  }
+
+  @Get(':id/slo-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLO/SLI report', description: 'Returns the SLO report for a monitor, including uptime SLO, latency SLI (if configured), and error budget overview.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'SLO report returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getSloReport(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getSloReport(req.user.id, id);
+  }
+
+  @Get('slo-summary')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLO health summary', description: 'Returns a lightweight SLO status summary for all monitors with an SLA target configured. Used on the dashboard.' })
+  @ApiResponse({ status: 200, description: 'SLO summary returned.' })
+  getSloSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getSloSummary(req.user.id);
   }
 }

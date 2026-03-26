@@ -98,10 +98,78 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
-      isAcknowledged: (m as any).acknowledgements?.length > 0,
+      anomalyDetection: m.anomalyDetection,
+      anomalyMultiplier: m.anomalyMultiplier,
+      scheduleEnabled: m.scheduleEnabled,
+      scheduleDays: m.scheduleDays,
+      scheduleStartHour: m.scheduleStartHour,
+      scheduleEndHour: m.scheduleEndHour,
+      sliLatencyTarget: m.sliLatencyTarget ?? null,
+      sliLatencyWindow: m.sliLatencyWindow,
+      isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
     }));
+  }
+
+  /**
+   * Returns a single monitor by ID with full detail including mute state, active acknowledgement, and tags.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor ID to retrieve
+   */
+  async getOne(userId: string, monitorId: string) {
+    const m = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        monitorTags: { include: { tag: true } },
+        runs: { take: 1, orderBy: { checkedAt: 'desc' } },
+        acknowledgements: { where: { clearedAt: null }, take: 1, orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!m) throw new NotFoundException('monitor not found');
+
+    return {
+      id: m.id,
+      userId: m.userId,
+      name: m.name,
+      description: m.description,
+      runbookUrl: m.runbookUrl,
+      type: m.type,
+      target: m.target,
+      intervalSec: m.intervalSec,
+      timeoutMs: m.timeoutMs,
+      confirmations: m.confirmations,
+      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
+      alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
+      alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
+      folderId: m.folderId,
+      tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
+      enabled: m.enabled,
+      slaTarget: m.slaTarget,
+      slaPeriodDays: m.slaPeriodDays,
+      slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: m.autoIncident,
+      autoIncidentSeverity: m.autoIncidentSeverity,
+      activeAutoIncidentId: m.activeAutoIncidentId,
+      isFlapping: m.isFlapping,
+      flapDetectionEnabled: m.flapDetectionEnabled,
+      flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      isAcknowledged: m.acknowledgements.length > 0,
+      activeAck: m.acknowledgements[0] ? {
+        id: m.acknowledgements[0].id,
+        note: m.acknowledgements[0].note,
+        acknowledgedAt: m.acknowledgements[0].acknowledgedAt.toISOString(),
+      } : null,
+      anomalyDetection: m.anomalyDetection,
+      anomalyMultiplier: m.anomalyMultiplier,
+      scheduleEnabled: m.scheduleEnabled,
+      scheduleDays: m.scheduleDays,
+      scheduleStartHour: m.scheduleStartHour,
+      scheduleEndHour: m.scheduleEndHour,
+      createdAt: m.createdAt.toISOString(),
+    };
   }
 
   /**
@@ -131,6 +199,14 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
+    sliLatencyTarget?: number;
+    sliLatencyWindow?: number;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -157,9 +233,17 @@ export class MonitorsService {
         folderId: body.folderId ?? null,
         slaTarget: body.slaTarget ?? null,
         slaPeriodDays: body.slaPeriodDays ?? null,
+        sliLatencyTarget: body.sliLatencyTarget ?? null,
+        sliLatencyWindow: body.sliLatencyWindow ?? 7,
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
+        anomalyDetection: body.anomalyDetection ?? false,
+        anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
+        scheduleEnabled: body.scheduleEnabled ?? false,
+        scheduleDays: body.scheduleDays ?? '1,2,3,4,5',
+        scheduleStartHour: body.scheduleStartHour ?? 8,
+        scheduleEndHour: body.scheduleEndHour ?? 18,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -207,6 +291,14 @@ export class MonitorsService {
       isFlapping: created.isFlapping,
       flapDetectionEnabled: created.flapDetectionEnabled,
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
+      anomalyDetection: created.anomalyDetection,
+      anomalyMultiplier: created.anomalyMultiplier,
+      scheduleEnabled: created.scheduleEnabled,
+      scheduleDays: created.scheduleDays,
+      scheduleStartHour: created.scheduleStartHour,
+      scheduleEndHour: created.scheduleEndHour,
+      sliLatencyTarget: created.sliLatencyTarget ?? null,
+      sliLatencyWindow: created.sliLatencyWindow,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -244,6 +336,14 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
+    sliLatencyTarget?: number | null;
+    sliLatencyWindow?: number;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -279,7 +379,14 @@ export class MonitorsService {
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
-
+        ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
+        ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
+        ...(body.scheduleEnabled !== undefined ? { scheduleEnabled: body.scheduleEnabled } : {}),
+        ...(body.scheduleDays !== undefined ? { scheduleDays: body.scheduleDays } : {}),
+        ...(body.scheduleStartHour !== undefined ? { scheduleStartHour: body.scheduleStartHour } : {}),
+        ...(body.scheduleEndHour !== undefined ? { scheduleEndHour: body.scheduleEndHour } : {}),
+        ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
+        ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
       },
     });
 
@@ -399,6 +506,97 @@ export class MonitorsService {
   }
 
   /**
+   * Clones a monitor: creates a copy with the same config, alert channels, and tags.
+   * The clone is created as disabled to avoid accidental alerting, with "Copy of <name>".
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The source monitor ID to clone
+   * @returns The newly created monitor clone
+   */
+  async clone(userId: string, monitorId: string) {
+    const source = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      include: {
+        monitorAlerts: true,
+        monitorTags: true,
+      },
+    });
+    if (!source) throw new NotFoundException('monitor not found');
+
+    const cloned = await this.prisma.monitor.create({
+      data: {
+        userId,
+        name: `Copy of ${source.name}`,
+        description: source.description,
+        runbookUrl: source.runbookUrl,
+        type: source.type,
+        target: source.target,
+        intervalSec: source.intervalSec,
+        timeoutMs: source.timeoutMs,
+        confirmations: source.confirmations,
+        configJson: source.configJson ?? Prisma.DbNull,
+        enabled: false, // start disabled — user enables when ready
+        folderId: source.folderId,
+        slaTarget: source.slaTarget,
+        slaPeriodDays: source.slaPeriodDays,
+        autoIncident: source.autoIncident,
+        autoIncidentSeverity: source.autoIncidentSeverity,
+        flapDetectionEnabled: source.flapDetectionEnabled,
+        anomalyDetection: source.anomalyDetection,
+        anomalyMultiplier: source.anomalyMultiplier,
+        monitorAlerts: {
+          create: source.monitorAlerts.map((a) => ({
+            alertChannelId: a.alertChannelId,
+            notifyOn: a.notifyOn,
+          })),
+        },
+        monitorTags: {
+          create: source.monitorTags.map((t) => ({ tagId: t.tagId })),
+        },
+      },
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        monitorTags: { include: { tag: true } },
+      },
+    });
+
+    await this.audit.log('monitor.clone', userId, userId, { sourceId: monitorId, cloneId: cloned.id });
+    this.realtime.monitorCreated(userId, { id: cloned.id, name: cloned.name });
+
+    return {
+      id: cloned.id,
+      userId: cloned.userId,
+      name: cloned.name,
+      description: cloned.description,
+      runbookUrl: cloned.runbookUrl,
+      type: cloned.type,
+      target: cloned.target,
+      intervalSec: cloned.intervalSec,
+      timeoutMs: cloned.timeoutMs,
+      confirmations: cloned.confirmations,
+      config: this.sanitizeConfig((cloned.configJson as Record<string, unknown> | null) ?? {}, cloned.type as MonitorType),
+      alertChannelIds: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { name: string; type: string } }[] }).monitorAlerts?.map((ma) => ma.alertChannelId) ?? [],
+      alertChannels: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { id?: string; name: string; type: string } }[] }).monitorAlerts?.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })) ?? [],
+      folderId: cloned.folderId,
+      tags: (cloned as typeof cloned & { monitorTags?: { tag: { id: string; name: string; color: string } }[] }).monitorTags?.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })) ?? [],
+      enabled: cloned.enabled,
+      slaTarget: cloned.slaTarget,
+      slaPeriodDays: cloned.slaPeriodDays,
+      slaBreachAlertedAt: null,
+      autoIncident: cloned.autoIncident,
+      autoIncidentSeverity: cloned.autoIncidentSeverity,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: cloned.flapDetectionEnabled,
+      flapAlertedAt: null,
+      mutedUntil: null,
+      isAcknowledged: false,
+      anomalyDetection: cloned.anomalyDetection,
+      anomalyMultiplier: cloned.anomalyMultiplier,
+      createdAt: cloned.createdAt.toISOString(),
+    };
+  }
+
+  /**
    * Performs a bulk action (enable, disable, delete, or run) on multiple monitors.
    * Verifies ownership of all IDs before executing; silently skips unowned IDs.
    * @param userId - The authenticated user's ID
@@ -484,16 +682,23 @@ export class MonitorsService {
 
     const assignments = await this.prisma.monitorAlert.findMany({
       where: { monitorId },
-      include: { alertChannel: true },
+      include: { alertChannel: true, escalationPolicy: { select: { id: true, name: true } } },
     });
 
     return assignments.map((a) => ({
+      // Legacy flat fields for backward compatibility
       id: a.alertChannel.id,
       name: a.alertChannel.name,
       type: a.alertChannel.type,
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
       notifyOn: a.notifyOn,
+      // Nested shape expected by frontend
+      alertChannelId: a.alertChannelId,
+      alertChannel: { id: a.alertChannel.id, name: a.alertChannel.name, type: a.alertChannel.type },
+      // Escalation
+      escalationPolicyId: a.escalationPolicyId ?? null,
+      escalationPolicy: a.escalationPolicy ? { id: a.escalationPolicy.id, name: a.escalationPolicy.name } : null,
     }));
   }
 
@@ -564,6 +769,31 @@ export class MonitorsService {
    * @returns { ok: true } on success
    * @throws NotFoundException if monitor not owned by user
    */
+  /**
+   * Assigns or clears an escalation policy for a monitor alert channel link.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor ID
+   * @param channelId - The alert channel ID
+   * @param policyId - The escalation policy ID, or null to clear
+   */
+  async updateMonitorAlertEscalationPolicy(userId: string, monitorId: string, channelId: string, policyId: string | null) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    if (policyId !== null) {
+      const policy = await this.prisma.escalationPolicy.findFirst({ where: { id: policyId, userId } });
+      if (!policy) throw new NotFoundException('escalation policy not found');
+    }
+
+    await this.prisma.monitorAlert.update({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      data: { escalationPolicyId: policyId },
+    });
+
+    await this.audit.log('monitor.alert.escalation_set', userId, userId, { monitorId, channelId, policyId });
+    return { ok: true };
+  }
+
   async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
@@ -644,6 +874,12 @@ export class MonitorsService {
       flapDetectionEnabled: monitor.flapDetectionEnabled,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
+      anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
+      anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+      scheduleEnabled: (monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled ?? false,
+      scheduleDays: (monitor as typeof monitor & { scheduleDays?: string }).scheduleDays ?? '1,2,3,4,5',
+      scheduleStartHour: (monitor as typeof monitor & { scheduleStartHour?: number }).scheduleStartHour ?? 8,
+      scheduleEndHour: (monitor as typeof monitor & { scheduleEndHour?: number }).scheduleEndHour ?? 18,
     });
   }
 
@@ -1772,5 +2008,229 @@ export class MonitorsService {
         : Math.round((scores.reduce((sum, s) => sum + s.score, 0) / scores.length) * 10) / 10;
 
     return { scores, overall: { avg, ...gradeCount } };
+  }
+
+  /**
+   * Returns the SLO/SLI report for a given monitor.
+   * Includes uptime SLO, latency SLI (if configured), and error budget overview.
+   */
+  async getSloReport(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays = monitor.slaPeriodDays ?? 30;
+    const slaTarget = monitor.slaTarget ?? 99.9;
+    const now = new Date();
+    const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    // --- Uptime SLO ---
+    const uptimeRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: from } },
+      select: { ok: true, checkedAt: true },
+    });
+
+    const totalChecks = uptimeRuns.length;
+    const okChecks = uptimeRuns.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - okChecks;
+    const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+    const periodMinutes = periodDays * 24 * 60;
+    const uptimeBudgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+    const uptimeBurnedMinutes = totalChecks === 0 ? 0 : (failedChecks / totalChecks) * periodMinutes;
+    const uptimeRemainingMinutes = uptimeBudgetMinutes - uptimeBurnedMinutes;
+    const uptimeBurnRate = uptimeBudgetMinutes === 0 ? 0 : uptimeBurnedMinutes / uptimeBudgetMinutes;
+
+    let uptimeStatus: 'ok' | 'warning' | 'breached';
+    if (actualUptime < slaTarget) {
+      uptimeStatus = 'breached';
+    } else if (uptimeRemainingMinutes < uptimeBudgetMinutes * 0.1) {
+      uptimeStatus = 'warning';
+    } else {
+      uptimeStatus = 'ok';
+    }
+
+    // --- Latency SLI ---
+    let latencyResult: {
+      target: number;
+      p50: number;
+      p95: number;
+      p99: number;
+      status: 'ok' | 'warning' | 'breached';
+      window: number;
+      totalChecks: number;
+      exceedingChecks: number;
+    } | null = null;
+
+    let latencyBudgetPct = 5.0;
+    let latencyBurnedPct = 0;
+    let latencyBurnRate = 0;
+
+    if (monitor.sliLatencyTarget) {
+      const latencyWindow = monitor.sliLatencyWindow ?? 7;
+      const latencyFrom = new Date(now.getTime() - latencyWindow * 24 * 60 * 60 * 1000);
+
+      const latencyRuns = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: latencyFrom }, latencyMs: { not: null } },
+        select: { latencyMs: true },
+        orderBy: { latencyMs: 'asc' },
+      });
+
+      const latencies = latencyRuns.map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const latTotal = latencies.length;
+
+      const getPercentile = (arr: number[], pct: number): number => {
+        if (arr.length === 0) return 0;
+        const idx = Math.ceil((pct / 100) * arr.length) - 1;
+        return arr[Math.max(0, Math.min(idx, arr.length - 1))];
+      };
+
+      const p50 = getPercentile(latencies, 50);
+      const p95 = getPercentile(latencies, 95);
+      const p99 = getPercentile(latencies, 99);
+      const exceedingChecks = latencies.filter((l) => l >= monitor.sliLatencyTarget!).length;
+
+      let latencyStatus: 'ok' | 'warning' | 'breached';
+      if (p95 >= monitor.sliLatencyTarget) {
+        latencyStatus = 'breached';
+      } else if (p95 >= monitor.sliLatencyTarget * 0.85) {
+        latencyStatus = 'warning';
+      } else {
+        latencyStatus = 'ok';
+      }
+
+      latencyBudgetPct = 5.0;
+      latencyBurnedPct = latTotal === 0 ? 0 : (exceedingChecks / latTotal) * 100;
+      latencyBurnRate = latencyBudgetPct === 0 ? 0 : latencyBurnedPct / latencyBudgetPct;
+
+      latencyResult = {
+        target: monitor.sliLatencyTarget,
+        p50,
+        p95,
+        p99,
+        status: latencyStatus,
+        window: latencyWindow,
+        totalChecks: latTotal,
+        exceedingChecks,
+      };
+    }
+
+    // --- Overall Health ---
+    let overallHealth: 'ok' | 'warning' | 'breached';
+    if (uptimeStatus === 'breached' || (latencyResult && latencyResult.status === 'breached')) {
+      overallHealth = 'breached';
+    } else if (uptimeStatus === 'warning' || (latencyResult && latencyResult.status === 'warning')) {
+      overallHealth = 'warning';
+    } else {
+      overallHealth = 'ok';
+    }
+
+    return {
+      monitorId,
+      period: {
+        days: periodDays,
+        from: from.toISOString(),
+        to: now.toISOString(),
+      },
+      uptime: {
+        target: slaTarget,
+        actual: Math.round(actualUptime * 10000) / 10000,
+        status: uptimeStatus,
+        totalChecks,
+        failedChecks,
+        remainingBudgetMinutes: Math.round(uptimeRemainingMinutes * 100) / 100,
+      },
+      ...(latencyResult ? { latency: latencyResult } : {}),
+      errorBudget: {
+        uptimeBudgetMinutes: Math.round(uptimeBudgetMinutes * 100) / 100,
+        uptimeBurnedMinutes: Math.round(uptimeBurnedMinutes * 100) / 100,
+        uptimeBurnRate: Math.round(uptimeBurnRate * 100) / 100,
+        latencyBudgetPct: Math.round(latencyBudgetPct * 100) / 100,
+        latencyBurnedPct: Math.round(latencyBurnedPct * 100) / 100,
+        latencyBurnRate: Math.round(latencyBurnRate * 100) / 100,
+        overallHealth,
+      },
+    };
+  }
+
+  /**
+   * Returns a lightweight SLO summary for all monitors with an SLA target set.
+   * Used on the dashboard to show overall SLO health at a glance.
+   */
+  async getSloSummary(userId: string) {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        slaTarget: true,
+        slaPeriodDays: true,
+        sliLatencyTarget: true,
+        sliLatencyWindow: true,
+      },
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], summary: { total: 0, ok: 0, warning: 0, breached: 0 } };
+    }
+
+    const now = new Date();
+    const results = await Promise.all(
+      monitors.map(async (m) => {
+        try {
+          const periodDays = m.slaPeriodDays ?? 30;
+          const slaTarget = m.slaTarget ?? 99.9;
+          const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId: m.id, checkedAt: { gte: from } },
+            select: { ok: true },
+          });
+
+          const totalChecks = runs.length;
+          const okChecks = runs.filter((r) => r.ok).length;
+          const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+          const periodMinutes = periodDays * 24 * 60;
+          const budgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+          const burnedMinutes = totalChecks === 0 ? 0 : ((totalChecks - okChecks) / totalChecks) * periodMinutes;
+          const budgetRemainingPct = budgetMinutes === 0 ? 100 : Math.max(0, ((budgetMinutes - burnedMinutes) / budgetMinutes) * 100);
+
+          let status: 'ok' | 'warning' | 'breached';
+          if (actualUptime < slaTarget) {
+            status = 'breached';
+          } else if (budgetRemainingPct < 10) {
+            status = 'warning';
+          } else {
+            status = 'ok';
+          }
+
+          return {
+            monitorId: m.id,
+            name: m.name,
+            type: m.type,
+            slaTarget,
+            periodDays,
+            actualUptime: Math.round(actualUptime * 10000) / 10000,
+            totalChecks,
+            status,
+            budgetRemainingPct: Math.round(budgetRemainingPct * 10) / 10,
+            hasLatencySli: m.sliLatencyTarget != null,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    const summary = {
+      total: valid.length,
+      ok: valid.filter((r) => r.status === 'ok').length,
+      warning: valid.filter((r) => r.status === 'warning').length,
+      breached: valid.filter((r) => r.status === 'breached').length,
+    };
+
+    return { monitors: valid, summary };
   }
 }

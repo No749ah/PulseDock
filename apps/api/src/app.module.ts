@@ -67,6 +67,8 @@ import { GrafanaService } from './grafana/grafana.service';
 import { RedisCacheService } from './common/redis-cache.service';
 import { DemoController } from './demo/demo.controller';
 import { DemoService } from './demo/demo.service';
+import { EscalationController } from './escalation/escalation.controller';
+import { EscalationService } from './escalation/escalation.service';
 
 @Module({
   imports: [
@@ -109,6 +111,7 @@ import { DemoService } from './demo/demo.service';
 
     OrganizationsController,
     DemoController,
+    EscalationController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -143,6 +146,7 @@ import { DemoService } from './demo/demo.service';
     OrganizationsService,
     RedisCacheService,
     DemoService,
+    EscalationService,
   ],
 })
 export class AppModule implements NestModule {

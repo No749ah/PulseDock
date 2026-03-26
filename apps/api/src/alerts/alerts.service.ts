@@ -432,11 +432,16 @@ export class AlertsService {
       return;
     }
 
-    // On recovery, auto-clear active acknowledgements
+    // On recovery, auto-clear active acknowledgements and reset escalation state
     if (run.level === 'green') {
       await this.prisma.alertAcknowledgement.updateMany({
         where: { monitorId: monitor.id, clearedAt: null },
         data: { clearedAt: now },
+      });
+      // Reset escalation step counters so the next outage starts fresh
+      await this.prisma.monitorAlert.updateMany({
+        where: { monitorId: monitor.id, escalationStep: { gt: 0 } },
+        data: { escalationStep: 0, escalatedAt: null },
       });
     } else {
       // Suppress alerts if monitor has an active acknowledgement (only for non-recovery)
@@ -727,5 +732,30 @@ export class AlertsService {
   async notifyTest(channel: AlertChannel) {
     const text = '✅ PulseDock test notification: this channel is configured correctly.';
     await this.sendWithRetry(channel, text, { test: true, at: new Date().toISOString() }, { trigger: 'test' });
+  }
+
+  /**
+   * Send an alert to a specific channel with retry logic.
+   * Exposed for use by the escalation service.
+   *
+   * @param channel - The channel to notify
+   * @param text - Alert message text
+   * @param extra - Optional extra context (forwarded to delivery)
+   * @param monitorId - Optional monitor ID for delivery log
+   * @param monitorName - Optional monitor name for delivery log
+   */
+  async sendToChannel(
+    channel: AlertChannel,
+    text: string,
+    extra?: unknown,
+    monitorId?: string,
+    monitorName?: string,
+  ): Promise<void> {
+    await this.sendWithRetry(
+      channel,
+      text,
+      extra,
+      { monitorId, monitorName, trigger: 'escalation' },
+    );
   }
 }

@@ -282,6 +282,55 @@ export class ChecksService {
       },
     });
 
+    // ── Anomaly Detection ─────────────────────────────────────────────────────────────
+    // If anomalyDetection is enabled and the run succeeded (green) with high latency,
+    // compute P95 of last 7 days of latency data and upgrade level to yellow if exceeded.
+    let anomalyLevel: string = created.level;
+    let anomalyMessage: string = created.message;
+    const monitorWithAnomaly = monitor as typeof monitor & { anomalyDetection?: boolean; anomalyMultiplier?: number };
+    if (
+      monitorWithAnomaly.anomalyDetection &&
+      created.ok &&
+      created.latencyMs !== null &&
+      created.latencyMs > 0
+    ) {
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const recentLatencies = await this.prisma.monitorRun.findMany({
+          where: {
+            monitorId: monitor.id,
+            checkedAt: { gte: sevenDaysAgo },
+            ok: true,
+            latencyMs: { not: null },
+          },
+          select: { latencyMs: true },
+          orderBy: { checkedAt: 'desc' },
+          take: 500,
+        });
+        if (recentLatencies.length >= 10) {
+          const sortedLatencies = recentLatencies
+            .map((r) => r.latencyMs as number)
+            .filter((l) => l > 0)
+            .sort((a, b) => a - b);
+          const p95Index = Math.floor(sortedLatencies.length * 0.95);
+          const p95Baseline = sortedLatencies[p95Index] ?? sortedLatencies[sortedLatencies.length - 1];
+          const multiplier = monitorWithAnomaly.anomalyMultiplier ?? 2.0;
+          const threshold = p95Baseline * multiplier;
+          if (created.latencyMs > threshold) {
+            anomalyLevel = 'yellow';
+            anomalyMessage = `Anomaly: ${created.latencyMs}ms exceeds ${multiplier}× P95 baseline (${Math.round(p95Baseline)}ms → threshold ${Math.round(threshold)}ms). ${created.message}`;
+            this.logger.warn(
+              `[AnomalyDetection] Monitor ${monitor.id} latency spike: ${created.latencyMs}ms > ${Math.round(threshold)}ms threshold (${multiplier}× P95 ${Math.round(p95Baseline)}ms)`,
+            );
+          }
+        }
+      } catch (err) {
+        // Non-fatal: anomaly detection failure should never break normal alerting
+        this.logger.warn(`[AnomalyDetection] Check failed for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
     const run: MonitorRun = {
       id: created.id,
       userId: created.userId,
@@ -291,8 +340,8 @@ export class ChecksService {
       ok: created.ok,
       statusCode: created.status,
       latencyMs: created.latencyMs,
-      message: created.message,
-      level: created.level as 'green' | 'yellow' | 'red',
+      message: anomalyMessage,
+      level: anomalyLevel as 'green' | 'yellow' | 'red',
     };
 
     const levelChanged = !prev || prev.level !== run.level;

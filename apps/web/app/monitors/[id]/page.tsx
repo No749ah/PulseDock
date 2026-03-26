@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
+import { createRealtimeSocket } from "../../../lib/realtime";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
 import { Card } from "../../components/Card";
@@ -27,6 +28,7 @@ import type {
   MonitorEvent,
   ChartPoint,
 } from "./components/types";
+import { SloTab } from "./components/SloTab";
 
 interface AlertDelivery {
   id: string;
@@ -68,6 +70,7 @@ export default function MonitorDetailPage() {
   const [running, setRunning] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [toast, setToast] = useState("");
+  const [liveConnected, setLiveConnected] = useState(false);
   const [alertChannels, setAlertChannels] = useState<AlertChannelInfo[]>([]);
   const [dependencies, setDependencies] = useState<MonitorDependency[]>([]);
   const [allMonitors, setAllMonitors] = useState<MonitorItem[]>([]);
@@ -76,6 +79,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo">("overview");
 
   // Alert delivery history
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
@@ -112,15 +116,15 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRunsPage, alertChs, deps, evts, deliveries] = await Promise.all([
-          api<MonitorItem[]>("/v1/monitors", user!.id),
+        const [found, monitorRunsPage, alertChs, deps, evts, deliveries, allMonitors] = await Promise.all([
+          api<MonitorItem>(`/v1/monitors/${id}`, user!.id).catch(() => null),
           api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
           api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
           api<DeliveryHistory>(`/v1/monitors/${id}/deliveries`, user!.id).catch(() => null),
+          api<MonitorItem[]>("/v1/monitors", user!.id).catch(() => [] as MonitorItem[]),
         ]);
-        const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
           router.push("/monitors");
           return;
@@ -134,7 +138,7 @@ export default function MonitorDetailPage() {
         setDependencies(deps);
         setEvents(evts);
         setDeliveryHistory(deliveries);
-        setAllMonitors(monitors);
+        setAllMonitors(allMonitors);
         // Fetch error budget if SLA target is set
         if (found.slaTarget) {
           api<ErrorBudget>(`/v1/monitors/${id}/error-budget?period=30d`, user!.id)
@@ -154,6 +158,27 @@ export default function MonitorDetailPage() {
 
     load();
   }, [id, router]);
+
+  // Live updates via WebSocket: prepend new runs to the check history
+  useEffect(() => {
+    const user = getUser();
+    if (!user || !id) return;
+    const socket = createRealtimeSocket(user.id);
+    socket.on("connect", () => {
+      socket.emit("subscribe", { userId: user.id });
+      setLiveConnected(true);
+    });
+    socket.on("disconnect", () => setLiveConnected(false));
+    socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
+      if (payload.run?.monitorId !== id) return;
+      setRuns((prev) => [payload.run, ...prev.slice(0, 199)]);
+      // Also refresh monitor mute/ack state
+      api<MonitorItem>(`/v1/monitors/${id}`, user.id)
+        .then((m) => setMonitor((prev) => prev ? { ...prev, mutedUntil: m.mutedUntil, isAcknowledged: m.isAcknowledged } : prev))
+        .catch(() => { /* non-critical */ });
+    });
+    return () => { socket.disconnect(); setLiveConnected(false); };
+  }, [id]);
 
   const loadUptime = useCallback(
     async (period: UptimePeriod) => {
@@ -491,6 +516,12 @@ export default function MonitorDetailPage() {
                 <Badge variant={monitor.enabled ? "success" : "warning"}>
                   {monitor.enabled ? "Enabled" : "Disabled"}
                 </Badge>
+                {liveConnected && (
+                  <span title="Live updates active" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/20">
+                    <Wifi className="w-3 h-3" />
+                    Live
+                  </span>
+                )}
                 {monitor.isFlapping && (
                   <span
                     title="This monitor is flapping — it is rapidly alternating between healthy and unhealthy states. Alerts are suppressed until it stabilizes."
@@ -512,8 +543,14 @@ export default function MonitorDetailPage() {
                 {/* Acknowledged badge */}
                 {monitor.isAcknowledged && (
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                    <span
+                      title={(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck?.note ?? "Alert acknowledged"}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 cursor-help"
+                    >
                       🔔 Acknowledged
+                      {(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck?.note && (
+                        <span className="opacity-70 max-w-[120px] truncate">&nbsp;— {(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck!.note}</span>
+                      )}
                     </span>
                     <button
                       onClick={handleClearAck}
@@ -661,8 +698,45 @@ export default function MonitorDetailPage() {
           </div>
         )}
 
+        {/* Main Tab Navigation */}
+        <div className="flex gap-1 p-1 bg-white/3 border border-white/8 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveMainTab("overview")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              activeMainTab === "overview"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveMainTab("slo")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "slo"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            SLO / SLI
+          </button>
+        </div>
+
+        {/* SLO Tab Content */}
+        {activeMainTab === "slo" && (() => {
+          const user = getUser();
+          return user ? (
+            <SloTab
+              monitor={monitor}
+              userId={user.id}
+              onMonitorUpdated={(updated) => setMonitor((prev) => prev ? { ...prev, ...updated } : prev)}
+            />
+          ) : null;
+        })()}
+
         {/* SLA Stats — with period selector */}
-        
+        {activeMainTab === "overview" && (<>
           <Card className="p-4 space-y-4">
             {/* Period selector */}
             <div className="flex items-center justify-between">
@@ -1227,6 +1301,9 @@ export default function MonitorDetailPage() {
                 }));
                 const avg = chartData.filter((pt) => pt.avgLatencyMs !== null).reduce((s, pt, _, a) => s + (pt.avgLatencyMs ?? 0) / a.length, 0);
                 const roundedAvg = avg > 0 ? Math.round(avg) : undefined;
+                // Compute overall P95 from chart points
+                const p95Values = chartData.filter((pt) => pt.p95LatencyMs !== null).map((pt) => pt.p95LatencyMs as number);
+                const roundedP95 = p95Values.length > 0 ? Math.round(p95Values.reduce((s, v) => s + v, 0) / p95Values.length) : undefined;
                 // Map events to nearest bucket
                 const chartStart = mappedData.length > 0 ? new Date(mappedData[0].checkedAt as string).getTime() : 0;
                 const chartEnd = mappedData.length > 0 ? new Date(mappedData[mappedData.length - 1].checkedAt as string).getTime() : 0;
@@ -1248,6 +1325,7 @@ export default function MonitorDetailPage() {
                     data={mappedData}
                     height={160}
                     avgLine={roundedAvg}
+                    p95Line={roundedP95}
                     color="#58a6ff"
                     marks={marks.length > 0 ? marks : undefined}
                   />
@@ -1551,11 +1629,33 @@ export default function MonitorDetailPage() {
                 const colorClass = typeColors[ac.alertChannel.type] ?? "text-text-secondary bg-surface-elevated border-border";
                 return (
                   <div key={ac.alertChannelId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-elevated border border-border">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${colorClass}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${colorClass} shrink-0`}>
                       {ac.alertChannel.type}
                     </span>
                     <span className="text-sm text-text-primary flex-1 truncate">{ac.alertChannel.name}</span>
-                    <span className="text-xs text-text-muted">{notifyLabels[ac.notifyOn] ?? ac.notifyOn}</span>
+                    <select
+                      value={ac.notifyOn}
+                      onChange={async (e) => {
+                        const user = getUser();
+                        if (!user) return;
+                        try {
+                          await api(`/v1/monitors/${id}/alerts/${ac.alertChannelId}`, user.id, {
+                            method: "PATCH",
+                            body: JSON.stringify({ notifyOn: e.target.value }),
+                          });
+                          setAlertChannels((prev) => prev.map((x) => x.alertChannelId === ac.alertChannelId ? { ...x, notifyOn: e.target.value } : x));
+                        } catch { /* non-critical */ }
+                      }}
+                      className="text-xs text-text-muted bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                      title="Change notification trigger"
+                    >
+                      {Object.entries(notifyLabels).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+                    </select>
+                    {ac.escalationPolicy && (
+                      <span className="text-[10px] text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-1.5 py-0.5 shrink-0" title={`Escalation: ${ac.escalationPolicy.name}`}>
+                        ↗ {ac.escalationPolicy.name}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -1816,6 +1916,7 @@ export default function MonitorDetailPage() {
             </div>
           )}
         </Card>
+        </>)}
 
       </div>
 

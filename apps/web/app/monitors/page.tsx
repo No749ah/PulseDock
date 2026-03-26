@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -110,6 +110,10 @@ function MonitorsPageInner() {
     autoIncident: boolean;
     autoIncidentSeverity: string;
     flapDetectionEnabled: boolean;
+    anomalyDetection: boolean;
+    anomalyMultiplier: number;
+    sliLatencyTarget: number | "";
+    sliLatencyWindow: number;
   }>({
     name: "",
     description: "", runbookUrl: "",
@@ -128,6 +132,14 @@ function MonitorsPageInner() {
     autoIncident: false,
     autoIncidentSeverity: "MEDIUM",
     flapDetectionEnabled: true,
+    anomalyDetection: false,
+    anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18,
+    sliLatencyTarget: "",
+    sliLatencyWindow: 7,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -528,11 +540,22 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
-
+          anomalyDetection: formData.anomalyDetection,
+          anomalyMultiplier: formData.anomalyMultiplier,
+          scheduleEnabled: formData.scheduleEnabled,
+          scheduleDays: formData.scheduleDays,
+          scheduleStartHour: formData.scheduleStartHour,
+          scheduleEndHour: formData.scheduleEndHour,
+          ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
+          sliLatencyWindow: formData.sliLatencyWindow,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -572,6 +595,14 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          anomalyDetection: formData.anomalyDetection,
+          anomalyMultiplier: formData.anomalyMultiplier,
+          scheduleEnabled: formData.scheduleEnabled,
+          scheduleDays: formData.scheduleDays,
+          scheduleStartHour: formData.scheduleStartHour,
+          scheduleEndHour: formData.scheduleEndHour,
+          sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
+          sliLatencyWindow: formData.sliLatencyWindow,
         }),
       });
       setShowModal(false);
@@ -677,6 +708,16 @@ function MonitorsPageInner() {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
     } finally {
       setBulkLoading(false);
+    }
+  };
+
+  const handleClone = async (monitorId: string) => {
+    try {
+      const cloned = await api<MonitorItem>(`/v1/monitors/${monitorId}/clone`, user?.id, { method: "POST" });
+      setMonitors((prev) => [cloned, ...prev]);
+      success(`Cloned as "${cloned.name}"`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to clone monitor");
     }
   };
 
@@ -1085,7 +1126,11 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1254,7 +1299,11 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -1475,6 +1524,11 @@ function MonitorsPageInner() {
                                   🔔
                                 </span>
                               )}
+                              {(monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled && (
+                                <span title="Business hours schedule active" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30 whitespace-nowrap">
+                                  📅
+                                </span>
+                              )}
                             </div>
                             {monitor.folderId && (
                               <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded mr-1">
@@ -1617,6 +1671,9 @@ function MonitorsPageInner() {
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleCheckNow(monitor.id)} disabled={checkingNowId === monitor.id || !monitor.enabled} className="text-text-secondary hover:text-accent" aria-label={`Run check now for ${monitor.name}`} title="Run check now">
                                 <PlayCircle className={`w-4 h-4 ${checkingNowId === monitor.id ? "animate-pulse" : ""}`} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleClone(monitor.id)} className="text-text-secondary hover:text-accent" aria-label={`Clone monitor ${monitor.name}`} title="Clone monitor">
+                                <Copy className="w-4 h-4" />
                               </Button>
                               <div className="relative">
                                 <Button variant="ghost" size="sm" onClick={() => setSnoozeMenuId(snoozeMenuId === monitor.id ? null : monitor.id)} className="text-text-secondary hover:text-warning" aria-label={`Snooze alerts for ${monitor.name}`} title="Snooze alerts">

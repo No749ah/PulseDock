@@ -60,6 +60,8 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
+      { href: '/alerts/escalation', label: 'Escalation', icon: AlertOctagon },
+      { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
 
@@ -121,6 +123,7 @@ export function AppFrame({
     incidentTitle?: string; maintenanceName?: string;
   }>>([]);
   const [activeIncidentCount, setActiveIncidentCount] = useState(0);
+  const [downMonitorCount, setDownMonitorCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -149,6 +152,9 @@ export function AppFrame({
       const activeIncidents = (incidents as Array<{ id: string; title: string; status: string; severity: string; createdAt: string }>)
         .filter((i) => i.status !== 'resolved');
       setActiveIncidentCount(activeIncidents.length);
+      // Count unique failing uptime monitors (level=red) in recent runs
+      const failingMonitorIds = new Set(runs.filter((r) => r.level === 'red' && !VERSION_TYPES.has(r.monitorType ?? '')).map((r) => r.monitorId).filter(Boolean));
+      setDownMonitorCount(failingMonitorIds.size);
 
       const incidentNotifs = activeIncidents.slice(0, 3).map((i) => ({
         id: `incident-${i.id}`,
@@ -301,6 +307,11 @@ export function AppFrame({
                             className={['w-4 h-4', isActive ? 'text-accent' : 'text-text-secondary'].join(' ')}
                           />
                           {item.label}
+                          {item.href === '/monitors' && downMonitorCount > 0 && (
+                            <span className="ml-auto flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
+                              {downMonitorCount > 9 ? '9+' : downMonitorCount}
+                            </span>
+                          )}
                         </Link>
                       </li>
                     );

@@ -39,6 +39,8 @@ function makeMonitorsService() {
     getHealthScore: vi.fn(),
     getHealthSummary: vi.fn(),
     getErrorBudget: vi.fn(),
+    clone: vi.fn(),
+    getOne: vi.fn(),
   };
 }
 
@@ -432,5 +434,34 @@ describe('MonitorsController', () => {
     expect(result['successCount']).toBe(0);
     expect(result['failedCount']).toBe(0);
     expect(result['deliveries']).toEqual([]);
+  });
+
+  // ─── Clone ─────────────────────────────────────────────────────────────────
+
+  it('clone() calls service.clone and returns cloned monitor', async () => {
+    const cloneResult = { id: 'clone-1', name: 'Copy of My Monitor', enabled: false, createdAt: new Date().toISOString() };
+    service.clone = vi.fn().mockResolvedValue(cloneResult);
+    const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 1, limit: -1, plan: 'COMMUNITY' }) };
+    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const result = await ctrl.clone(makeReq(), 'm-1') as Record<string, unknown>;
+    expect(service.clone).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(result['name']).toBe('Copy of My Monitor');
+    expect(result['enabled']).toBe(false);
+  });
+
+  it('clone() throws ForbiddenException when plan limit reached', async () => {
+    const { ForbiddenException } = await import('@nestjs/common');
+    const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 5, limit: 5, plan: 'FREE' }) };
+    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    await expect(ctrl.clone(makeReq(), 'm-1')).rejects.toThrow(ForbiddenException);
+    expect(service.clone).not.toHaveBeenCalled();
+  });
+
+  it('getOne() delegates to service.getOne', async () => {
+    const monitorDetail = { id: 'm-1', name: 'My Monitor', mutedUntil: null, isAcknowledged: false };
+    service.getOne = vi.fn().mockResolvedValue(monitorDetail);
+    const result = await controller.getOne(makeReq(), 'm-1');
+    expect(service.getOne).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(result).toEqual(monitorDetail);
   });
 });

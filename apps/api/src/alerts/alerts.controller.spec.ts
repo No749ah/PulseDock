@@ -562,3 +562,113 @@ describe('testAll()', () => {
     expect(slackResult?.error).toBe('Slack error');
   });
 });
+
+// ─── analytics() ─────────────────────────────────────────────────────────────
+
+describe('AlertsController analytics()', () => {
+  class MockAuthGuard implements CanActivate {
+    canActivate(_ctx: ExecutionContext): boolean { return true; }
+  }
+
+  const req = { user: { id: 'user-1' } };
+
+  function makeLog(overrides: Record<string, unknown> = {}) {
+    return {
+      alertChannelId: 'ch-1',
+      status: 'success',
+      monitorId: 'mon-1',
+      monitorName: 'API Monitor',
+      durationMs: 50,
+      createdAt: new Date(),
+      ...overrides,
+    };
+  }
+
+  async function buildAnalyticsCtrl(logs: ReturnType<typeof makeLog>[] = [], channels = [makeChannel()]) {
+    const prisma = {
+      alertChannel: {
+        findMany: vi.fn().mockResolvedValue(channels),
+      },
+      alertDeliveryLog: {
+        findMany: vi.fn().mockResolvedValue(logs),
+      },
+      monitorAlert: { deleteMany: vi.fn() },
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AlertsController],
+      providers: [
+        { provide: PrismaService, useValue: prisma },
+        { provide: AlertsService, useValue: { notifyTest: vi.fn() } },
+        { provide: AuditService, useValue: { log: vi.fn() } },
+        { provide: PlanService, useValue: mockPlanService },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useClass(MockAuthGuard)
+      .compile();
+    return module.get<AlertsController>(AlertsController);
+  }
+
+  it('returns empty analytics when user has no channels', async () => {
+    const ctrl = await buildAnalyticsCtrl([], []);
+    const result = await ctrl.analytics(req as never);
+    expect(result.totals).toEqual({ success: 0, failed: 0, total: 0 });
+    expect(result.dailyCounts).toHaveLength(0);
+    expect(result.topMonitors).toHaveLength(0);
+    expect(result.channelStats).toHaveLength(0);
+  });
+
+  it('returns 30-day daily count buckets', async () => {
+    const logs = [makeLog({ status: 'success' }), makeLog({ status: 'failed' })];
+    const ctrl = await buildAnalyticsCtrl(logs);
+    const result = await ctrl.analytics(req as never);
+    expect(result.dailyCounts).toHaveLength(30);
+    const today = new Date().toISOString().slice(0, 10);
+    const todayBucket = result.dailyCounts.find((d: { date: string }) => d.date === today);
+    expect(todayBucket).toBeDefined();
+    expect(todayBucket.total).toBe(2);
+    expect(todayBucket.success).toBe(1);
+    expect(todayBucket.failed).toBe(1);
+  });
+
+  it('computes correct totals', async () => {
+    const logs = [
+      makeLog({ status: 'success' }),
+      makeLog({ status: 'success' }),
+      makeLog({ status: 'failed' }),
+    ];
+    const ctrl = await buildAnalyticsCtrl(logs);
+    const result = await ctrl.analytics(req as never);
+    expect(result.totals.total).toBe(3);
+    expect(result.totals.success).toBe(2);
+    expect(result.totals.failed).toBe(1);
+  });
+
+  it('aggregates top monitors sorted by count desc', async () => {
+    const logs = [
+      makeLog({ monitorId: 'mon-a', monitorName: 'Alpha', status: 'success' }),
+      makeLog({ monitorId: 'mon-a', monitorName: 'Alpha', status: 'success' }),
+      makeLog({ monitorId: 'mon-b', monitorName: 'Beta', status: 'failed' }),
+    ];
+    const ctrl = await buildAnalyticsCtrl(logs);
+    const result = await ctrl.analytics(req as never);
+    expect(result.topMonitors[0].monitorId).toBe('mon-a');
+    expect(result.topMonitors[0].count).toBe(2);
+    expect(result.topMonitors[1].monitorId).toBe('mon-b');
+    expect(result.topMonitors[1].failed).toBe(1);
+  });
+
+  it('computes channel success rate correctly', async () => {
+    const logs = [
+      makeLog({ status: 'success', durationMs: 40 }),
+      makeLog({ status: 'success', durationMs: 60 }),
+      makeLog({ status: 'failed', durationMs: 0 }),
+    ];
+    const ctrl = await buildAnalyticsCtrl(logs);
+    const result = await ctrl.analytics(req as never);
+    const stat = result.channelStats[0];
+    expect(stat.successRate).toBeCloseTo(66.7, 0);
+    expect(stat.totalDeliveries).toBe(3);
+    expect(stat.avgDurationMs).toBe(50); // avg of 40 and 60 (failed durationMs=0 still counted)
+  });
+});

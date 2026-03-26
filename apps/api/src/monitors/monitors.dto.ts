@@ -129,6 +129,56 @@ export class CreateMonitorDto {
   @IsBoolean()
   flapDetectionEnabled?: boolean;
 
+  @ApiPropertyOptional({ description: 'Enable dynamic latency anomaly detection — fires a degraded alert when response time exceeds multiplier × P95 of last 7 days', example: false })
+  @IsOptional()
+  @IsBoolean()
+  anomalyDetection?: boolean;
+
+  @ApiPropertyOptional({ description: 'Multiplier for anomaly detection threshold (default: 2.0 = alert when latency > 2× P95 baseline)', example: 2.0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1.1)
+  @Max(10)
+  anomalyMultiplier?: number;
+
+  @ApiPropertyOptional({ description: 'Target p95 latency in ms for the Latency SLI. If set, p95 of responses must be below this value.', minimum: 1, maximum: 60000, example: 500 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  sliLatencyTarget?: number;
+
+  @ApiPropertyOptional({ description: 'Rolling window in days for the Latency SLI calculation (1–90)', minimum: 1, maximum: 90, example: 7 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  sliLatencyWindow?: number;
+
+  @ApiPropertyOptional({ description: 'Enable schedule-based checking (only run during configured window)', example: false })
+  @IsOptional()
+  @IsBoolean()
+  scheduleEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Comma-separated days of week (0=Sun..6=Sat). Default: "1,2,3,4,5"', example: '1,2,3,4,5' })
+  @IsOptional()
+  @IsString()
+  scheduleDays?: string;
+
+  @ApiPropertyOptional({ description: 'UTC hour to start checks (0-23)', example: 8 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @ApiPropertyOptional({ description: 'UTC hour to stop checks (0-23)', example: 18 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -218,6 +268,48 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsBoolean()
   flapDetectionEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  anomalyDetection?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1.1)
+  @Max(10)
+  anomalyMultiplier?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  sliLatencyTarget?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  sliLatencyWindow?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  scheduleEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  scheduleDays?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
 
 }
 

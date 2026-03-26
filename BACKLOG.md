@@ -1,4 +1,4 @@
-## Status Summary (2026-03-26 09:50 UTC)
+## Status Summary (2026-03-26 10:45 UTC)
 - **Build/Test:** ✅ Clean build + 3328 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
@@ -7,13 +7,10 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (09:35 cycle):**
-  - Alert acknowledgement + monitor muting: `POST/DELETE /v1/monitors/:id/mute`, `POST/DELETE /v1/monitors/:id/acknowledge`. Badges on monitor list/detail. Auto-clear ack on recovery. 10 new tests.
-  - Alert routing rules complete: `GET/POST/PATCH/DELETE /v1/alert-routing-rules`, matchTags wired, frontend `/alerts/routing` page, "Routing Rules" nav link. 9 new tests.
-  - Latency anomaly detection: `anomalyDetection` + `anomalyMultiplier` fields on Monitor. P95 baseline auto-computed from 7-day history. Upgrades green→yellow when latency > N×P95. Toggle in monitor form. 10 P95 tests.
-  - Alert storm protection: `alertStormProtection` + `alertStormThreshold` on NotificationPreference. Suppresses alerts when >N fire in 10min. Once-per-30min storm notification. UI in Account > Notifications. 9 tests.
-  - GET /v1/monitors/:id single endpoint: returns mute/ack/anomaly state. Monitor detail page now fetches directly (faster loads, always-fresh data).
-  - Total tests: 3328.
+- **Last changes (10:45 cycle):**
+  - Monitor SLO/SLI: `GET /v1/monitors/:id/slo-report`, SloTab on detail page, sliLatencyTarget/Window in create/edit form. 11 tests.
+  - Alert Analytics: `GET /v1/alert-channels/analytics` — 30-day daily counts, top alerting monitors, channel reliability. Frontend `/alerts/analytics` page with nav link. 5 new tests.
+  - Total tests: 3333.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -32,7 +29,7 @@
 
 - [x] **Alert Acknowledgement + Monitor Muting** — `POST/DELETE /v1/monitors/:id/mute` (1–1440 min), `POST/DELETE /v1/monitors/:id/acknowledge`. Suppresses alerts when muted/acknowledged. Auto-clear ack on recovery. Badges on monitors list + detail. 10 tests. *(2026-03-26)*
 - [x] **Latency Anomaly Detection** — `anomalyDetection` + `anomalyMultiplier` on Monitor. P95 of last 7 days auto-computed. Upgrades check green→yellow when latency > N×P95. Toggle in monitor form. 10 P95 unit tests. *(2026-03-26)*
-- [ ] **Monitor SLO/SLI Enhancements** — Latency SLI (p95 target), `GET /v1/monitors/:id/slo-report` with uptime+latency+error budget analysis, SLO tab on monitor detail page, SLO config in create/edit modal. *(2026-03-26: partially in progress — sliLatencyTarget/Window fields added to schema)*
+- [x] **Monitor SLO/SLI Enhancements** — Latency SLI (p95 target), `GET /v1/monitors/:id/slo-report` with uptime+latency+error budget analysis, SLO tab on monitor detail page, SLO config in create/edit modal. 11 tests. *(2026-03-26)*
 
 - [x] **🔴 Status Page Widget Full Audit & Visual Review (HIGH PRIORITY — Noah)** - Systematisch ALLE Status-Page Widget-Typen durchgehen, auf einer Test-Statuspage hinzufügen, komplett konfigurieren und visuell überprüfen. Ziel: Noah kann die fertige Seite anschauen und entscheiden ob jedes Widget gut aussieht und Sinn macht. *(2026-03-24: 99 widgets deployed to `/status/widget-showcase` covering all categories. 7 monitors created with live data. Fixed missing `"use client"` in LayoutWidgets.tsx. Page live at https://oc-dev-test.no749ah.com/status/widget-showcase for Noah's review.)*
 

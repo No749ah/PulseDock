@@ -120,6 +120,96 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get('analytics')
+  @ApiOperation({
+    summary: 'Get alert delivery analytics',
+    description: 'Returns aggregated analytics from alert delivery logs: daily counts, top alerting monitors, channel reliability stats.',
+  })
+  @ApiResponse({ status: 200, description: 'Alert analytics returned.' })
+  async analytics(@Req() req: { user: { id: string } }) {
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      select: { id: true, name: true, type: true },
+    });
+    const channelIds = channels.map((c) => c.id);
+
+    if (channelIds.length === 0) {
+      return { dailyCounts: [], topMonitors: [], channelStats: [], totals: { success: 0, failed: 0, total: 0 } };
+    }
+
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Fetch all delivery logs for the past 30 days
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { alertChannelId: { in: channelIds }, createdAt: { gte: since30d } },
+      select: { alertChannelId: true, status: true, monitorId: true, monitorName: true, createdAt: true, durationMs: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Daily counts (last 30 days)
+    const dayBuckets = new Map<string, { success: number; failed: number }>();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      dayBuckets.set(key, { success: 0, failed: 0 });
+    }
+    for (const log of logs) {
+      const key = log.createdAt.toISOString().slice(0, 10);
+      const bucket = dayBuckets.get(key);
+      if (bucket) {
+        if (log.status === 'success') bucket.success++;
+        else bucket.failed++;
+      }
+    }
+    const dailyCounts = Array.from(dayBuckets.entries()).map(([date, counts]) => ({ date, ...counts, total: counts.success + counts.failed }));
+
+    // Top alerting monitors
+    const monitorCounts = new Map<string, { monitorId: string; monitorName: string; count: number; failed: number }>();
+    for (const log of logs) {
+      if (!log.monitorId) continue;
+      const key = log.monitorId;
+      const entry = monitorCounts.get(key) ?? { monitorId: log.monitorId, monitorName: log.monitorName ?? log.monitorId, count: 0, failed: 0 };
+      entry.count++;
+      if (log.status === 'failed') entry.failed++;
+      monitorCounts.set(key, entry);
+    }
+    const topMonitors = Array.from(monitorCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Channel reliability stats
+    const channelMap = new Map(channels.map((c) => [c.id, c]));
+    const channelCounts = new Map<string, { success: number; failed: number; totalMs: number; count: number }>();
+    for (const log of logs) {
+      const entry = channelCounts.get(log.alertChannelId) ?? { success: 0, failed: 0, totalMs: 0, count: 0 };
+      if (log.status === 'success') entry.success++;
+      else entry.failed++;
+      if (log.durationMs) { entry.totalMs += log.durationMs; entry.count++; }
+      channelCounts.set(log.alertChannelId, entry);
+    }
+    const channelStats = channels.map((ch) => {
+      const counts = channelCounts.get(ch.id) ?? { success: 0, failed: 0, totalMs: 0, count: 0 };
+      const total = counts.success + counts.failed;
+      return {
+        channelId: ch.id,
+        channelName: ch.name,
+        channelType: ch.type,
+        successRate: total === 0 ? 100 : Math.round((counts.success / total) * 1000) / 10,
+        totalDeliveries: total,
+        successCount: counts.success,
+        failedCount: counts.failed,
+        avgDurationMs: counts.count === 0 ? null : Math.round(counts.totalMs / counts.count),
+      };
+    }).filter((c) => c.totalDeliveries > 0);
+
+    const totals = logs.reduce(
+      (acc, l) => { if (l.status === 'success') acc.success++; else acc.failed++; acc.total++; return acc; },
+      { success: 0, failed: 0, total: 0 },
+    );
+
+    return { dailyCounts, topMonitors, channelStats, totals };
+  }
+
   @Get('deliveries')
   @ApiOperation({
     summary: 'Get global alert delivery history',

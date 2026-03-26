@@ -60,6 +60,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
       { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
+      { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
 

@@ -1,13 +1,13 @@
-## Status Summary (2026-03-25 23:35 UTC)
-- **Build/Test:** ✅ Clean build + 3231 tests (3209 API + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 00:19 UTC)
+- **Build/Test:** ✅ Clean build + 3696 tests (3217 API + 457 Web + 10 CLI + 12 Agent) + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-improvements
+- **Branch:** heartbeat/2026-03-26-midnight
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes:** Bumped all packages to v1.4.0. Added `flap` Grafana metric (per-run flap timeseries), `isFlapping` in `all_monitors.table` + public JSON API. Updated CHANGELOG.md with v1.4.0 entry. +2 new Grafana tests (3231 total).
+- **Last changes:** Branch rotation (heartbeat/2026-03-26-improvements → heartbeat/2026-03-26-midnight). Added per-monitor check history CSV export (GET /v1/monitors/:id/runs/export, up to 10k runs) + Export CSV button on monitor detail page. Added 28 Modal unit tests + 8 export service/controller tests (total 3696).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -965,7 +965,7 @@
 - [x] **UX self-review** - Added automated `npm run ux:review` (`scripts/ux-review.mjs`): captures full-page screenshots across desktop/tablet/mobile in light+dark modes, verifies HTTP status per route, runs keyboard Tab-focus sanity checks, and writes a JSON report + artifacts under `artifacts/ux-review/<timestamp>/` for before/after comparisons.
 - [x] **Architecture review** - Monthly: evaluate if patterns still make sense, identify tech debt, plan refactors. Review: API consistency, DB query performance (EXPLAIN ANALYZE hot paths), caching strategy, error handling completeness. *(2026-03-21: Redis cache layer implemented for status-page widget data - RedisCacheService with 30s TTL, graceful degradation, pattern invalidation on layout save. ioredis@5.10.1. 5 unit tests. Completes caching strategy audit.)*
 - [~] **Competitive analysis** - Study: Uptime Kuma, Better Stack, Instatus, Atlassian Statuspage, Pingdom, Datadog, Grafana Cloud. *(2026-03-20: Identified gaps: on-call rotation, SMS alerts, synthetic/browser checks, Grafana datasource. Prometheus endpoint added for Grafana integration.)*
-- [ ] **User experience testing** - After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review.
+- [~] **User experience testing** - After Noah tests: track every friction point, error, confusion. Fix immediately. Pattern: if Noah reports it → it's P0. If Noah almost reports it → it should've been caught in self-review. *(Widget showcase live at /status/widget-showcase for review. All 11 pages 200. Export CSV added to monitor detail.)*
 
 ### P2 - Enterprise Features (Beyond Monitoring)
 

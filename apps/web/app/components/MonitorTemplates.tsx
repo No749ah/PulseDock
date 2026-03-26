@@ -724,7 +724,7 @@ const MAIL_COMMUNICATION_TEMPLATES: MonitorTemplate[] = [
   {
     label: "Mattermost",
     description: "Mattermost team messaging system ping",
-    name: "Mattermost Health",
+    name: "Mattermost Ping",
     type: "HTTP",
     target: "https://your-mattermost.example.com/api/v4/system/ping",
     intervalSec: 60,
@@ -865,7 +865,7 @@ const AI_ML_TEMPLATES: MonitorTemplate[] = [
   {
     label: "n8n AI",
     description: "n8n workflow automation with AI nodes health",
-    name: "n8n Health",
+    name: "n8n AI Health",
     type: "HTTP",
     target: "https://your-n8n.example.com/healthz",
     intervalSec: 120,
@@ -877,7 +877,7 @@ const STORAGE_BACKUP_TEMPLATES: MonitorTemplate[] = [
   {
     label: "MinIO",
     description: "MinIO S3-compatible object storage live health",
-    name: "MinIO Health",
+    name: "MinIO Live Health",
     type: "HTTP",
     target: "https://your-minio.example.com/minio/health/live",
     intervalSec: 60,
@@ -886,7 +886,7 @@ const STORAGE_BACKUP_TEMPLATES: MonitorTemplate[] = [
   {
     label: "Nextcloud",
     description: "Nextcloud cloud storage status endpoint",
-    name: "Nextcloud Health",
+    name: "Nextcloud Storage Health",
     type: "HTTP",
     target: "https://your-nextcloud.example.com/status.php",
     intervalSec: 60,
@@ -1045,7 +1045,7 @@ const IOT_HOME_TEMPLATES: MonitorTemplate[] = [
   {
     label: "Home Assistant",
     description: "Home Assistant API status (requires Bearer token)",
-    name: "Home Assistant Health",
+    name: "Home Assistant API Health",
     type: "HTTP",
     target: "https://your-homeassistant.example.com/api/",
     intervalSec: 60,
@@ -1414,7 +1414,7 @@ const VPN_REMOTE_TEMPLATES: MonitorTemplate[] = [
   {
     label: "Headscale",
     description: "Headscale self-hosted Tailscale control server",
-    name: "Headscale Health",
+    name: "Headscale VPN Health",
     type: "HTTP",
     target: "https://your-headscale.example.com/health",
     intervalSec: 60,

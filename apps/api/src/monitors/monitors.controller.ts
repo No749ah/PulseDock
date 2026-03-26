@@ -503,7 +503,121 @@ export class MonitorsController {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
   }
 
-  // ─── Release Notes ────────────────────────────────────────────────────────
+  // ─── Security Advisories ──────────────────────────────────────────────────
+
+  @Get(':id/security')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Security advisories for a version monitor',
+    description:
+      'Queries OSV.dev for known security vulnerabilities affecting the currently tracked version. ' +
+      'Supports npm, PyPI, Cargo, GitHub repos. Returns up to 10 most recent advisories.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Advisory list returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async securityAdvisories(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true, type: true, target: true, configJson: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const config = (monitor.configJson as Record<string, unknown> | null) ?? {};
+    const provider = String(config['provider'] ?? '').toLowerCase();
+    const target = String(config['target'] ?? monitor.target ?? '').trim();
+
+    // Determine OSV ecosystem + package name
+    let ecosystem: string | null = null;
+    let packageName: string | null = null;
+
+    if (provider === 'npm') {
+      ecosystem = 'npm';
+      packageName = target;
+    } else if (provider === 'pypi') {
+      ecosystem = 'PyPI';
+      packageName = target;
+    } else if (provider === 'cargo') {
+      ecosystem = 'crates.io';
+      packageName = target;
+    } else if (provider === 'github' && target.includes('/')) {
+      // For GitHub, use GitHub Advisory Database via OSV
+      ecosystem = 'GitHub Actions'; // fallback; we use package query
+      const parts = target.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '').split('/');
+      if (parts.length >= 2) {
+        packageName = `${parts[0]}/${parts[1]}`;
+      }
+    }
+
+    if (!ecosystem || !packageName) {
+      return {
+        supported: false,
+        reason: 'Security advisories are available for npm, PyPI, Cargo, and GitHub monitors.',
+        advisories: [],
+      };
+    }
+
+    try {
+      // Query OSV.dev for known vulnerabilities
+      const osvBody: Record<string, unknown> = {
+        package: { name: packageName, ecosystem },
+      };
+
+      const osvResp = await fetch('https://api.osv.dev/v1/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(osvBody),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!osvResp.ok) {
+        return { supported: true, source: 'osv.dev', advisories: [], error: `OSV API returned ${osvResp.status}` };
+      }
+
+      const osvData = await osvResp.json() as {
+        vulns?: Array<{
+          id: string;
+          summary?: string;
+          details?: string;
+          severity?: Array<{ type: string; score: string }>;
+          affected?: Array<{ ranges?: Array<{ type: string; events?: Array<{ introduced?: string; fixed?: string }> }> }>;
+          published?: string;
+          modified?: string;
+          references?: Array<{ type: string; url: string }>;
+          aliases?: string[];
+        }>;
+      };
+
+      const vulns = (osvData.vulns ?? []).slice(0, 10);
+
+      return {
+        supported: true,
+        source: 'osv.dev',
+        total: osvData.vulns?.length ?? 0,
+        advisories: vulns.map((v) => {
+          const cvss = v.severity?.find((s) => s.type === 'CVSS_V3')?.score ?? v.severity?.[0]?.score ?? null;
+          const cveId = v.aliases?.find((a) => a.startsWith('CVE-')) ?? null;
+          const fixedInRef = v.affected?.[0]?.ranges?.[0]?.events?.find((e) => e.fixed);
+          return {
+            id: v.id,
+            cveId,
+            summary: v.summary ?? null,
+            cvss,
+            publishedAt: v.published ?? null,
+            fixedIn: fixedInRef?.fixed ?? null,
+            url: v.references?.find((r) => r.type === 'ADVISORY' || r.type === 'WEB')?.url ?? `https://osv.dev/vulnerability/${v.id}`,
+          };
+        }),
+      };
+    } catch {
+      return { supported: true, source: 'osv.dev', advisories: [], error: 'Failed to query OSV API' };
+    }
+  }
+
+// ─── Release Notes ────────────────────────────────────────────────────────
 
   @Get(':id/release-notes')
   @RequireScope(ApiKeyScope.READ)

@@ -466,6 +466,39 @@ describe('MonitorsController', () => {
   });
 });
 
+// ─── securityAdvisories ───────────────────────────────────────────────────
+
+describe('MonitorsController.securityAdvisories', () => {
+  function makePrismaForSec(found: boolean, config: Record<string, unknown> = {}) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(found ? { id: 'mon-1', type: 'GIT_RELEASE', target: 'express', configJson: config } : null),
+      },
+    };
+  }
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForSec(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.securityAdvisories(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns supported:false for docker provider', async () => {
+    const prisma = makePrismaForSec(true, { provider: 'docker', target: 'nginx' });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.securityAdvisories(makeReq(), 'mon-1') as { supported: boolean };
+    expect(result.supported).toBe(false);
+  });
+
+  it('returns supported:false for helm provider', async () => {
+    const prisma = makePrismaForSec(true, { provider: 'helm', target: 'some/chart' });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.securityAdvisories(makeReq(), 'mon-1') as { supported: boolean };
+    expect(result.supported).toBe(false);
+  });
+});
+
 // ─── releaseNotes ─────────────────────────────────────────────────────────
 
 describe('MonitorsController.releaseNotes', () => {
@@ -520,7 +553,8 @@ describe('MonitorsController.monitorIncidents', () => {
     },
   };
 
-  function makePrismaForIncidents(monitorFound = true, links = [mockIncidentLink]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function makePrismaForIncidents(monitorFound = true, links: any[] = [mockIncidentLink]) {
     return {
       monitor: {
         findFirst: vi.fn().mockResolvedValue(monitorFound ? { id: 'mon-1' } : null),
@@ -558,7 +592,7 @@ describe('MonitorsController.monitorIncidents', () => {
   });
 
   it('open incident has durationSec null', async () => {
-    const openLink = { ...mockIncidentLink, incident: { ...mockIncidentLink.incident, status: 'INVESTIGATING', resolvedAt: null } };
+    const openLink = { monitorId: 'mon-1', incident: { id: 'inc-1', title: 'API down', status: 'INVESTIGATING', severity: 'HIGH', autoCreated: true, createdAt: now, resolvedAt: null as null | Date } };
     const prisma = makePrismaForIncidents(true, [openLink]);
     const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
     const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;

@@ -1465,6 +1465,16 @@ function MonitorsPageInner() {
                                   ⚡ Flapping
                                 </span>
                               )}
+                              {(monitor as typeof monitor & { mutedUntil?: string | null }).mutedUntil && new Date((monitor as typeof monitor & { mutedUntil?: string | null }).mutedUntil!) > new Date() && (
+                                <span title="Alerts muted" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                                  🔇
+                                </span>
+                              )}
+                              {(monitor as typeof monitor & { isAcknowledged?: boolean }).isAcknowledged && (
+                                <span title="Alert acknowledged" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                                  🔔
+                                </span>
+                              )}
                             </div>
                             {monitor.folderId && (
                               <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded mr-1">

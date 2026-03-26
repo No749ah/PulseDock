@@ -10,6 +10,8 @@ import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
 import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { MuteMonitorDto } from './dto/mute-monitor.dto';
+import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -536,6 +538,119 @@ export class MonitorsController {
       successCount,
       failedCount,
       deliveries,
+    };
+  }
+
+  // ─── Mute ─────────────────────────────────────────────────────────────────
+
+  @Post(':id/mute')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Mute monitor alerts', description: 'Suppress all alerts for this monitor for the specified number of minutes (1-1440).' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor muted. Returns mutedUntil timestamp.' })
+  @ApiResponse({ status: 400, description: 'Invalid minutes value.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async muteMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: MuteMonitorDto,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const mutedUntil = new Date(Date.now() + body.minutes * 60_000);
+    await this.prisma.monitor.update({ where: { id }, data: { mutedUntil } });
+    return { mutedUntil: mutedUntil.toISOString() };
+  }
+
+  @Delete(':id/mute')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Unmute monitor', description: 'Clear the mute on a monitor, re-enabling alert delivery.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor unmuted.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async unmuteMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    await this.prisma.monitor.update({ where: { id }, data: { mutedUntil: null } });
+    return { mutedUntil: null };
+  }
+
+  // ─── Acknowledge ──────────────────────────────────────────────────────────
+
+  @Post(':id/acknowledge')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Acknowledge monitor alert', description: 'Create an acknowledgement for the current alert on this monitor, suppressing further notifications until cleared or the monitor recovers.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Acknowledgement created.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async acknowledgeMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: AcknowledgeMonitorDto,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const ack = await this.prisma.alertAcknowledgement.create({
+      data: {
+        monitorId: id,
+        userId: req.user.id,
+        note: body.note ?? null,
+        clearedAt: null,
+      },
+    });
+
+    return {
+      id: ack.id,
+      monitorId: ack.monitorId,
+      userId: ack.userId,
+      note: ack.note,
+      acknowledgedAt: ack.acknowledgedAt.toISOString(),
+      clearedAt: null,
+      createdAt: ack.createdAt.toISOString(),
+    };
+  }
+
+  @Delete(':id/acknowledge')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Clear monitor acknowledgement', description: 'Clear the active acknowledgement on this monitor, re-enabling alert notifications.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Acknowledgement cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor or active acknowledgement not found.' })
+  async clearAcknowledgement(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const activeAck = await this.prisma.alertAcknowledgement.findFirst({
+      where: { monitorId: id, clearedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeAck) throw new NotFoundException('No active acknowledgement found');
+
+    const updated = await this.prisma.alertAcknowledgement.update({
+      where: { id: activeAck.id },
+      data: { clearedAt: new Date() },
+    });
+
+    return {
+      id: updated.id,
+      monitorId: updated.monitorId,
+      userId: updated.userId,
+      note: updated.note,
+      acknowledgedAt: updated.acknowledgedAt.toISOString(),
+      clearedAt: updated.clearedAt!.toISOString(),
+      createdAt: updated.createdAt.toISOString(),
     };
   }
 }

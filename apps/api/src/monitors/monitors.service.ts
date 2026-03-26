@@ -67,7 +67,7 @@ export class MonitorsService {
         monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
         monitorTags: { include: { tag: true } },
         runs: { take: 1, orderBy: { checkedAt: 'desc' } },
-
+        acknowledgements: { where: { clearedAt: null }, take: 1 },
       },
     });
 
@@ -97,6 +97,8 @@ export class MonitorsService {
       isFlapping: m.isFlapping,
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      isAcknowledged: (m as any).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -641,6 +643,7 @@ export class MonitorsService {
       isFlapping: monitor.isFlapping,
       flapDetectionEnabled: monitor.flapDetectionEnabled,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
+      mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
     });
   }
 

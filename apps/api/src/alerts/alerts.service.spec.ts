@@ -101,6 +101,10 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     alertDeliveryLog: {
       create: vi.fn().mockResolvedValue({}),
     },
+    alertAcknowledgement: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
 }
 
@@ -666,6 +670,7 @@ describe('AlertsService', () => {
         monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
         monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
+        alertAcknowledgement: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       };
       const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);
 
@@ -718,6 +723,7 @@ describe('AlertsService', () => {
         monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
         monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
+        alertAcknowledgement: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       };
     }
 

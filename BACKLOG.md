@@ -1,5 +1,5 @@
-## Status Summary (2026-03-26 07:15 UTC)
-- **Build/Test:** ✅ Clean build + 3264 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 08:15 UTC)
+- **Build/Test:** ✅ Clean build + 3267 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
 - **Branch:** heartbeat/2026-03-26-alert-delivery-history
@@ -7,7 +7,7 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (07:02 cycle):** Committed pending alert delivery history feature. Added paginated check history: `GET /v1/monitors/:id/runs` now supports `limit`, `before` (cursor), `status` (all/ok/failed) params; returns `{ runs, hasMore, total, nextCursor }`. Monitor detail page: status filter pills (All/OK/Failed) + Load More button. 3 new service tests + controller test updated. 3264 total API tests.
+- **Last changes (08:15 cycle):** Per-monitor alert delivery history: `GET /v1/monitors/:id/deliveries` returns last 100 deliveries with channel name/type, status, trigger, duration. Monitor detail page has "Notifications" tab showing table with green/red badges. 3 new tests → 3267 total.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

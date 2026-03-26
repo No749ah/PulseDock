@@ -425,6 +425,30 @@ export class AlertsService {
       return;
     }
 
+    // Suppress alerts if monitor is muted
+    const mutedUntil = monitor.mutedUntil ? new Date(monitor.mutedUntil) : null;
+    if (mutedUntil && mutedUntil > now) {
+      this.logger.log(`Monitor ${monitor.id} is muted until ${mutedUntil.toISOString()}, suppressing alert`);
+      return;
+    }
+
+    // On recovery, auto-clear active acknowledgements
+    if (run.level === 'green') {
+      await this.prisma.alertAcknowledgement.updateMany({
+        where: { monitorId: monitor.id, clearedAt: null },
+        data: { clearedAt: now },
+      });
+    } else {
+      // Suppress alerts if monitor has an active acknowledgement (only for non-recovery)
+      const activeAck = await this.prisma.alertAcknowledgement.findFirst({
+        where: { monitorId: monitor.id, clearedAt: null },
+      });
+      if (activeAck) {
+        this.logger.log(`Monitor ${monitor.id} alert is acknowledged, suppressing`);
+        return;
+      }
+    }
+
     // Suppress alerts if any dependency monitor is currently down
     const deps = await this.prisma.monitorDependency.findMany({
       where: { monitorId: monitor.id },

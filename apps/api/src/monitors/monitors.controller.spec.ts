@@ -601,3 +601,65 @@ describe('MonitorsController.monitorIncidents', () => {
     expect(incidents[0]['status']).toBe('INVESTIGATING');
   });
 });
+
+// ── Certificate details ──────────────────────────────────────────────────────
+
+describe('certificateDetails()', () => {
+  function makePrismaForCert(found: boolean, type = 'SSL_CERT') {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(
+          found ? { id: 'mon-1', type, target: 'example.com', timeoutMs: 5000 } : null,
+        ),
+      },
+    };
+  }
+
+  it('throws 404 when monitor not found', async () => {
+    const prisma = makePrismaForCert(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.certificateDetails(makeReq(), 'missing')).rejects.toThrow('Monitor not found');
+  });
+
+  it('returns supported=false for non-TLS monitor types', async () => {
+    const prisma = makePrismaForCert(true, 'TCP');
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.certificateDetails(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['supported']).toBe(false);
+    expect(String(result['reason'])).toContain('TCP');
+  });
+
+  it('returns supported=false for invalid hostname', async () => {
+    const prisma = {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'mon-1', type: 'SSL_CERT', target: 'not a valid url !!', timeoutMs: 5000 }),
+      },
+    };
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.certificateDetails(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['supported']).toBe(false);
+    expect(String(result['reason'])).toContain('hostname');
+  });
+
+  it('attempts TLS connect for SSL_CERT monitor', async () => {
+    // Mock tls.connect to immediately error (no real network in tests)
+    const { connect } = await import('tls');
+    const connectSpy = vi.spyOn({ connect } as unknown as typeof import('tls'), 'connect').mockImplementation(
+      (_opts: unknown, _cb?: unknown) => {
+        const sock = {
+          setTimeout: vi.fn(),
+          on: vi.fn((event: string, cb: (err: Error) => void) => { if (event === 'error') cb(new Error('ECONNREFUSED')); return sock; }),
+          end: vi.fn(),
+          destroy: vi.fn(),
+        };
+        return sock as unknown as ReturnType<typeof connect>;
+      },
+    );
+    const prisma = makePrismaForCert(true, 'SSL_CERT');
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.certificateDetails(makeReq(), 'mon-1') as Record<string, unknown>;
+    // Should return available=false with the connection error reason
+    expect(result['supported']).toBe(true);
+    connectSpy.mockRestore();
+  });
+});

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -80,7 +80,11 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "certificate">("overview");
+
+  // Certificate details (SSL/HTTP monitors)
+  const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
 
   // Alert delivery history
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
@@ -736,6 +740,34 @@ export default function MonitorDetailPage() {
             <Gauge className="w-3.5 h-3.5" />
             SLO / SLI
           </button>
+          {(monitor.type === "HTTP" || monitor.type === "SSL_CERT" || monitor.type === "BROWSER") && (
+            <button
+              onClick={async () => {
+                setActiveMainTab("certificate");
+                if (!certDetails && !certLoading) {
+                  const user = getUser();
+                  if (!user) return;
+                  setCertLoading(true);
+                  try {
+                    const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
+                    setCertDetails(data);
+                  } catch {
+                    setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
+                  } finally {
+                    setCertLoading(false);
+                  }
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "certificate"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Certificate
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
@@ -749,6 +781,142 @@ export default function MonitorDetailPage() {
             />
           ) : null;
         })()}
+
+        {/* Certificate Tab Content */}
+        {activeMainTab === "certificate" && (
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">TLS Certificate Details</h2>
+              <button
+                onClick={async () => {
+                  const user = getUser();
+                  if (!user) return;
+                  setCertLoading(true);
+                  try {
+                    const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
+                    setCertDetails(data);
+                  } catch {
+                    setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
+                  } finally {
+                    setCertLoading(false);
+                  }
+                }}
+                className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
+                disabled={certLoading}
+              >
+                {certLoading ? "Loading…" : "↻ Refresh"}
+              </button>
+            </div>
+            {certLoading && (
+              <div className="text-center py-8 text-text-muted text-sm">Fetching live certificate data…</div>
+            )}
+            {!certLoading && certDetails && !(certDetails.available as boolean) && (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">{String(certDetails.reason ?? "Certificate details unavailable")}</p>
+              </div>
+            )}
+            {!certLoading && certDetails?.available && (() => {
+              const cert = certDetails;
+              const status = String(cert.status ?? "unknown");
+              const statusColors: Record<string, string> = {
+                valid: "text-success",
+                expiring: "text-yellow-400",
+                critical: "text-danger",
+                expired: "text-danger",
+              };
+              const gradeColors: Record<string, string> = {
+                good: "bg-success/15 text-success border-success/30",
+                fair: "bg-yellow-400/15 text-yellow-400 border-yellow-400/30",
+                warning: "bg-yellow-400/15 text-yellow-400 border-yellow-400/30",
+                critical: "bg-danger/15 text-danger border-danger/30",
+                expired: "bg-danger/15 text-danger border-danger/30",
+              };
+              const daysLeft = Number(cert.daysRemaining ?? 0);
+              const sans = Array.isArray(cert.sans) ? cert.sans as string[] : [];
+              const subject = cert.subject as { CN?: string; O?: string } | null;
+              const issuer = cert.issuer as { CN?: string; O?: string } | null;
+              const cipher = cert.cipher as { name?: string; version?: string } | null;
+              return (
+                <div className="space-y-4">
+                  {/* Status banner */}
+                  <div className={`flex items-center gap-3 p-3 rounded-xl border ${gradeColors[String(cert.grade ?? "good")]}`}>
+                    <Shield className="w-5 h-5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm capitalize">{status === "valid" ? "Valid Certificate" : status === "expiring" ? `Expiring Soon — ${daysLeft} days left` : status === "critical" ? `Critical — Only ${daysLeft} days left!` : "Certificate Expired"}</p>
+                      <p className="text-xs opacity-75">{String(cert.hostname ?? "")} · Checked in {Number(cert.latencyMs ?? 0)}ms</p>
+                    </div>
+                    <span className={`ml-auto text-xs font-bold uppercase tracking-wide ${statusColors[status]}`}>{String(cert.grade ?? "—").toUpperCase()}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Subject */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Subject</p>
+                      <p className="text-sm text-text-primary">{subject?.CN ?? "—"}</p>
+                      {subject?.O && <p className="text-xs text-text-secondary">{subject.O}</p>}
+                    </div>
+
+                    {/* Issuer */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Issuer</p>
+                      <p className="text-sm text-text-primary">{issuer?.CN ?? "—"}</p>
+                      {issuer?.O && <p className="text-xs text-text-secondary">{issuer.O}</p>}
+                    </div>
+
+                    {/* Validity */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Valid From</p>
+                      <p className="text-sm text-text-primary">{cert.validFrom ? new Date(String(cert.validFrom)).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Valid To</p>
+                      <p className={`text-sm font-medium ${statusColors[status] ?? "text-text-primary"}`}>{cert.validTo ? new Date(String(cert.validTo)).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</p>
+                    </div>
+
+                    {/* Protocol */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">TLS Protocol</p>
+                      <p className="text-sm text-text-primary font-mono">{String(cert.protocol ?? "—")}</p>
+                    </div>
+
+                    {/* Cipher */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Cipher Suite</p>
+                      <p className="text-sm text-text-primary font-mono text-xs break-all">{cipher?.name ?? "—"}</p>
+                    </div>
+
+                    {/* Fingerprint */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">SHA-256 Fingerprint</p>
+                      <p className="text-xs text-text-secondary font-mono break-all">{String(cert.fingerprint ?? "—")}</p>
+                    </div>
+
+                    {/* Serial */}
+                    {cert.serialNumber && (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Serial Number</p>
+                        <p className="text-xs text-text-secondary font-mono">{String(cert.serialNumber)}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SANs */}
+                  {sans.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Subject Alternative Names ({sans.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sans.map((san, i) => (
+                          <span key={i} className="px-2 py-0.5 text-xs rounded-md bg-surface-elevated border border-border text-text-secondary font-mono">{san}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </Card>
+        )}
 
         {/* SLA Stats — with period selector */}
         {activeMainTab === "overview" && (<>

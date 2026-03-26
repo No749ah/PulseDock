@@ -1,3 +1,4 @@
+import * as tls from 'tls';
 import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -828,6 +829,137 @@ export class MonitorsController {
       failedCount,
       deliveries,
     };
+  }
+
+  // ─── Certificate Details ──────────────────────────────────────────────────
+
+  @Get(':id/certificate')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Live TLS certificate details for a monitor',
+    description:
+      'Fetches the live TLS certificate for the monitor target. Works for HTTP and SSL_CERT monitors. ' +
+      'Returns subject, issuer, SANs, validity dates, days remaining, fingerprint, and TLS protocol.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Certificate details returned.' })
+  @ApiResponse({ status: 400, description: 'Monitor type does not support certificate inspection.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async certificateDetails(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true, type: true, target: true, timeoutMs: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const supportedTypes = ['HTTP', 'SSL_CERT', 'BROWSER'];
+    if (!supportedTypes.includes(monitor.type)) {
+      return {
+        supported: false,
+        reason: `Certificate inspection is only available for HTTP and SSL_CERT monitors (got ${monitor.type}).`,
+      };
+    }
+
+    // Extract hostname from target
+    let hostname: string;
+    try {
+      const raw = monitor.target.startsWith('http') ? monitor.target : `https://${monitor.target}`;
+      hostname = new URL(raw).hostname;
+    } catch {
+      return { supported: false, reason: 'Cannot parse hostname from monitor target.' };
+    }
+
+    const timeoutMs = Math.min(monitor.timeoutMs ?? 10000, 15000);
+    const started = Date.now();
+
+    return new Promise<Record<string, unknown>>((resolve) => {
+      const socket = tls.connect(
+        { host: hostname, port: 443, servername: hostname, rejectUnauthorized: false, timeout: timeoutMs },
+        () => {
+          const cert = socket.getPeerCertificate(true);
+          const protocol = socket.getProtocol() ?? null;
+          const cipher = socket.getCipher();
+          socket.end();
+
+          const latencyMs = Date.now() - started;
+
+          if (!cert || !cert.valid_to) {
+            resolve({ supported: true, available: false, reason: 'Certificate metadata unavailable', latencyMs });
+            return;
+          }
+
+          const validFrom = new Date(cert.valid_from);
+          const validTo = new Date(cert.valid_to);
+          const daysRemaining = Math.floor((validTo.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+
+          // Subject
+          const subjectCN = Array.isArray(cert.subject?.CN) ? cert.subject.CN[0] : (cert.subject?.CN ?? null);
+          const subjectO = Array.isArray(cert.subject?.O) ? cert.subject.O[0] : (cert.subject?.O ?? null);
+
+          // Issuer
+          const issuerCN = Array.isArray(cert.issuer?.CN) ? cert.issuer.CN[0] : (cert.issuer?.CN ?? null);
+          const issuerO = Array.isArray(cert.issuer?.O) ? cert.issuer.O[0] : (cert.issuer?.O ?? null);
+
+          // SANs
+          const sanString = (cert.subjectaltname ?? '') as string;
+          const sans = sanString
+            ? sanString.split(', ').map((s) => s.replace(/^DNS:|^IP Address:/i, '').trim()).filter(Boolean)
+            : [];
+
+          // Fingerprint
+          const fingerprint = cert.fingerprint256 ?? cert.fingerprint ?? null;
+
+          // Serial number
+          const serialNumber = cert.serialNumber ?? null;
+
+          // Key usage
+          const keyUsage = cert.ext_key_usage ? (cert.ext_key_usage as string[]) : [];
+
+          // Issuer cert (chain depth indicator)
+          const isCA = !!(cert.issuerCertificate && cert.issuerCertificate !== cert);
+
+          const grade =
+            daysRemaining < 0 ? 'expired' :
+            daysRemaining <= 7 ? 'critical' :
+            daysRemaining <= 30 ? 'warning' :
+            protocol?.startsWith('TLSv1.3') || protocol?.startsWith('TLSv1.2') ? 'good' :
+            'fair';
+
+          resolve({
+            supported: true,
+            available: true,
+            latencyMs,
+            hostname,
+            subject: { CN: subjectCN, O: subjectO },
+            issuer: { CN: issuerCN, O: issuerO },
+            sans,
+            validFrom: validFrom.toISOString(),
+            validTo: validTo.toISOString(),
+            daysRemaining,
+            fingerprint,
+            serialNumber,
+            keyUsage,
+            protocol,
+            cipher: cipher ? { name: cipher.name, version: cipher.version } : null,
+            isChained: isCA,
+            grade,
+            status: daysRemaining < 0 ? 'expired' : daysRemaining <= 7 ? 'critical' : daysRemaining <= 30 ? 'expiring' : 'valid',
+          });
+        },
+      );
+
+      socket.setTimeout(timeoutMs, () => {
+        socket.destroy();
+        resolve({ supported: true, available: false, reason: 'TLS connection timed out', latencyMs: Date.now() - started });
+      });
+
+      socket.on('error', (err) => {
+        resolve({ supported: true, available: false, reason: err.message, latencyMs: Date.now() - started });
+      });
+    });
   }
 
   // ─── Mute ─────────────────────────────────────────────────────────────────

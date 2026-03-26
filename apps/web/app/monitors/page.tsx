@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -692,6 +692,16 @@ function MonitorsPageInner() {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
     } finally {
       setBulkLoading(false);
+    }
+  };
+
+  const handleClone = async (monitorId: string) => {
+    try {
+      const cloned = await api<MonitorItem>(`/v1/monitors/${monitorId}/clone`, user?.id, { method: "POST" });
+      setMonitors((prev) => [cloned, ...prev]);
+      success(`Cloned as "${cloned.name}"`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to clone monitor");
     }
   };
 
@@ -1632,6 +1642,9 @@ function MonitorsPageInner() {
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleCheckNow(monitor.id)} disabled={checkingNowId === monitor.id || !monitor.enabled} className="text-text-secondary hover:text-accent" aria-label={`Run check now for ${monitor.name}`} title="Run check now">
                                 <PlayCircle className={`w-4 h-4 ${checkingNowId === monitor.id ? "animate-pulse" : ""}`} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleClone(monitor.id)} className="text-text-secondary hover:text-accent" aria-label={`Clone monitor ${monitor.name}`} title="Clone monitor">
+                                <Copy className="w-4 h-4" />
                               </Button>
                               <div className="relative">
                                 <Button variant="ghost" size="sm" onClick={() => setSnoozeMenuId(snoozeMenuId === monitor.id ? null : monitor.id)} className="text-text-secondary hover:text-warning" aria-label={`Snooze alerts for ${monitor.name}`} title="Snooze alerts">

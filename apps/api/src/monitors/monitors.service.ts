@@ -102,7 +102,7 @@ export class MonitorsService {
       anomalyMultiplier: m.anomalyMultiplier,
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
-      isAcknowledged: (m as any).acknowledgements?.length > 0,
+      isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -475,6 +475,97 @@ export class MonitorsService {
     await this.audit.log('monitor.delete', userId, userId, { monitorId });
     this.realtime.monitorDeleted(userId, { id: monitorId });
     return { ok: true };
+  }
+
+  /**
+   * Clones a monitor: creates a copy with the same config, alert channels, and tags.
+   * The clone is created as disabled to avoid accidental alerting, with "Copy of <name>".
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The source monitor ID to clone
+   * @returns The newly created monitor clone
+   */
+  async clone(userId: string, monitorId: string) {
+    const source = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      include: {
+        monitorAlerts: true,
+        monitorTags: true,
+      },
+    });
+    if (!source) throw new NotFoundException('monitor not found');
+
+    const cloned = await this.prisma.monitor.create({
+      data: {
+        userId,
+        name: `Copy of ${source.name}`,
+        description: source.description,
+        runbookUrl: source.runbookUrl,
+        type: source.type,
+        target: source.target,
+        intervalSec: source.intervalSec,
+        timeoutMs: source.timeoutMs,
+        confirmations: source.confirmations,
+        configJson: source.configJson ?? Prisma.DbNull,
+        enabled: false, // start disabled — user enables when ready
+        folderId: source.folderId,
+        slaTarget: source.slaTarget,
+        slaPeriodDays: source.slaPeriodDays,
+        autoIncident: source.autoIncident,
+        autoIncidentSeverity: source.autoIncidentSeverity,
+        flapDetectionEnabled: source.flapDetectionEnabled,
+        anomalyDetection: source.anomalyDetection,
+        anomalyMultiplier: source.anomalyMultiplier,
+        monitorAlerts: {
+          create: source.monitorAlerts.map((a) => ({
+            alertChannelId: a.alertChannelId,
+            notifyOn: a.notifyOn,
+          })),
+        },
+        monitorTags: {
+          create: source.monitorTags.map((t) => ({ tagId: t.tagId })),
+        },
+      },
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        monitorTags: { include: { tag: true } },
+      },
+    });
+
+    await this.audit.log('monitor.clone', userId, userId, { sourceId: monitorId, cloneId: cloned.id });
+    this.realtime.monitorCreated(userId, { id: cloned.id, name: cloned.name });
+
+    return {
+      id: cloned.id,
+      userId: cloned.userId,
+      name: cloned.name,
+      description: cloned.description,
+      runbookUrl: cloned.runbookUrl,
+      type: cloned.type,
+      target: cloned.target,
+      intervalSec: cloned.intervalSec,
+      timeoutMs: cloned.timeoutMs,
+      confirmations: cloned.confirmations,
+      config: this.sanitizeConfig((cloned.configJson as Record<string, unknown> | null) ?? {}, cloned.type as MonitorType),
+      alertChannelIds: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { name: string; type: string } }[] }).monitorAlerts?.map((ma) => ma.alertChannelId) ?? [],
+      alertChannels: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { id?: string; name: string; type: string } }[] }).monitorAlerts?.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })) ?? [],
+      folderId: cloned.folderId,
+      tags: (cloned as typeof cloned & { monitorTags?: { tag: { id: string; name: string; color: string } }[] }).monitorTags?.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })) ?? [],
+      enabled: cloned.enabled,
+      slaTarget: cloned.slaTarget,
+      slaPeriodDays: cloned.slaPeriodDays,
+      slaBreachAlertedAt: null,
+      autoIncident: cloned.autoIncident,
+      autoIncidentSeverity: cloned.autoIncidentSeverity,
+      activeAutoIncidentId: null,
+      isFlapping: false,
+      flapDetectionEnabled: cloned.flapDetectionEnabled,
+      flapAlertedAt: null,
+      mutedUntil: null,
+      isAcknowledged: false,
+      anomalyDetection: cloned.anomalyDetection,
+      anomalyMultiplier: cloned.anomalyMultiplier,
+      createdAt: cloned.createdAt.toISOString(),
+    };
   }
 
   /**

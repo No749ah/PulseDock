@@ -76,6 +76,23 @@ export class MonitorsController {
     return this.monitorsService.update(req.user.id, id, body);
   }
 
+  @Post(':id/clone')
+  @HttpCode(201)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Clone a monitor', description: 'Duplicate an existing monitor, including its config, alert channel assignments, and tags. The clone is created as disabled with "Copy of <name>".' })
+  @ApiParam({ name: 'id', description: 'Monitor ID to clone' })
+  @ApiResponse({ status: 201, description: 'Cloned monitor returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  @ApiResponse({ status: 403, description: 'Plan monitor limit reached.' })
+  async clone(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    const check = await this.planService.checkLimit(req.user.id, 'monitors');
+    if (!check.allowed) {
+      throw new ForbiddenException({ message: 'Plan limit reached', code: 'PLAN_LIMIT', resource: 'monitors' });
+    }
+    return this.monitorsService.clone(req.user.id, id);
+  }
+
   @Delete(':id')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequireScope(ApiKeyScope.WRITE)

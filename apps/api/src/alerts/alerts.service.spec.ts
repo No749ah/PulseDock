@@ -511,6 +511,42 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── webhook custom headers ────────────────────────────────────────────────────
+
+  describe('webhook custom headers', () => {
+    it('merges custom headers into webhook delivery', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'webhook',
+        config: { url: 'https://example.com/hook', customHeaders: { 'Authorization': 'Bearer tok', 'X-App-ID': '42' } },
+      });
+      fetchMock.mockResolvedValueOnce({ ok: true });
+      await (service as any).send(channel, 'Monitor is down', {});
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://example.com/hook',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Authorization': 'Bearer tok', 'X-App-ID': '42' }),
+        }),
+      );
+    });
+
+    it('does not allow overriding reserved headers', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'webhook',
+        config: { url: 'https://example.com/hook', customHeaders: { 'content-type': 'text/plain', 'X-Custom': 'ok' } },
+      });
+      fetchMock.mockResolvedValueOnce({ ok: true });
+      await (service as any).send(channel, 'Monitor is down', {});
+      const call = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      const headers = call?.headers as Record<string, string>;
+      expect(headers['content-type']).toBe('application/json'); // not overridden
+      expect(headers['X-Custom']).toBe('ok');
+    });
+  });
+
   // ── webhook HMAC signing ─────────────────────────────────────────────────────
 
   describe('webhook HMAC signing', () => {

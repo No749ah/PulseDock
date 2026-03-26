@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -123,6 +123,7 @@ export default function AlertsPage() {
     parseMode: 'HTML',
     // Webhook extras
     payloadTemplate: '',
+    customHeaders: [] as Array<{key: string; value: string}>,
   });
 
   const [editOpen, setEditOpen] = useState(false);
@@ -140,6 +141,7 @@ export default function AlertsPage() {
   const [editMessageTemplate, setEditMessageTemplate] = useState('');
   const [editParseMode, setEditParseMode] = useState('HTML');
   const [editPayloadTemplate, setEditPayloadTemplate] = useState('');
+  const [editCustomHeaders, setEditCustomHeaders] = useState<Array<{key: string; value: string}>>([]);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -163,7 +165,7 @@ export default function AlertsPage() {
 
   function resetCreateForm() {
     setWizardStep(0);
-    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '' });
+    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '', customHeaders: [] });
   }
 
   function next() {
@@ -175,10 +177,10 @@ export default function AlertsPage() {
   }
 
   function buildConfig(type: AlertType, a: string, b: string, secret?: string, extras?: {
-    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string; payloadTemplate?: string;
-  }) {
+    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string; payloadTemplate?: string; customHeaders?: Array<{key: string; value: string}>;
+  }): Record<string, unknown> {
     if (type === 'discord') {
-      const cfg: Record<string, string> = { webhookUrl: a };
+      const cfg: Record<string, unknown> = { webhookUrl: a };
       if (extras?.username?.trim()) cfg.username = extras.username.trim();
       if (extras?.avatarUrl?.trim()) cfg.avatarUrl = extras.avatarUrl.trim();
       if (extras?.mentionRoleId?.trim()) cfg.mentionRoleId = extras.mentionRoleId.trim();
@@ -188,13 +190,20 @@ export default function AlertsPage() {
     }
     if (type === 'slack') return { webhookUrl: a };
     if (type === 'webhook') {
-      const cfg: Record<string, string> = { url: a };
+      const cfg: Record<string, unknown> = { url: a };
       if (secret?.trim()) cfg.secret = secret.trim();
       if (extras?.payloadTemplate?.trim()) cfg.payloadTemplate = extras.payloadTemplate.trim();
+      if (extras?.customHeaders?.length) {
+        const headers: Record<string, string> = {};
+        for (const h of extras.customHeaders) {
+          if (h.key.trim()) headers[h.key.trim()] = h.value;
+        }
+        if (Object.keys(headers).length > 0) cfg.customHeaders = headers;
+      }
       return cfg;
     }
     if (type === 'telegram') {
-      const cfg: Record<string, string> = { botToken: a, chatId: b };
+      const cfg: Record<string, unknown> = { botToken: a, chatId: b };
       if (extras?.parseMode) cfg.parseMode = extras.parseMode;
       return cfg;
     }
@@ -206,7 +215,7 @@ export default function AlertsPage() {
 
   async function createChannel() {
     try {
-      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode, payloadTemplate: form.payloadTemplate });
+      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode, payloadTemplate: form.payloadTemplate, customHeaders: form.customHeaders });
       await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
       setWizardOpen(false);
       resetCreateForm();
@@ -282,6 +291,11 @@ export default function AlertsPage() {
       setEditB('');
       setEditSecret(String(channel.config.secret ?? ''));
       setEditPayloadTemplate(String(channel.config.payloadTemplate ?? ''));
+      if (channel.config.customHeaders && typeof channel.config.customHeaders === 'object') {
+        setEditCustomHeaders(Object.entries(channel.config.customHeaders as Record<string, string>).map(([key, value]) => ({ key, value })));
+      } else {
+        setEditCustomHeaders([]);
+      }
     } else if (channel.type === 'telegram') {
       setEditA(String(channel.config.botToken ?? ''));
       setEditB(String(channel.config.chatId ?? ''));
@@ -309,7 +323,7 @@ export default function AlertsPage() {
   async function saveEdit() {
     if (!selected) return;
     try {
-      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode, payloadTemplate: editPayloadTemplate });
+      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode, payloadTemplate: editPayloadTemplate, customHeaders: editCustomHeaders });
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
         body: JSON.stringify({ name: editName, config }),
@@ -500,6 +514,56 @@ export default function AlertsPage() {
                         Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
                       </p>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                        Custom headers <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <div className="space-y-2">
+                        {form.customHeaders.map((h, i) => (
+                          <div key={i} className="flex gap-2 items-center">
+                            <input
+                              className={`${inputClass} flex-1`}
+                              placeholder="Header name"
+                              value={h.key}
+                              onChange={(e) => {
+                                const updated = [...form.customHeaders];
+                                updated[i] = { ...updated[i], key: e.target.value };
+                                setForm({ ...form, customHeaders: updated });
+                              }}
+                            />
+                            <input
+                              className={`${inputClass} flex-1`}
+                              type="password"
+                              placeholder="Value"
+                              value={h.value}
+                              onChange={(e) => {
+                                const updated = [...form.customHeaders];
+                                updated[i] = { ...updated[i], value: e.target.value };
+                                setForm({ ...form, customHeaders: updated });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setForm({ ...form, customHeaders: form.customHeaders.filter((_, j) => j !== i) })}
+                              className="p-2 text-text-secondary hover:text-danger transition-colors shrink-0"
+                              aria-label="Remove header"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, customHeaders: [...form.customHeaders, { key: '', value: '' }] })}
+                        className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
+                      >
+                        + Add header
+                      </button>
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        These headers are sent with every webhook delivery. Useful for <code className="text-accent">Authorization: Bearer &lt;token&gt;</code> or <code className="text-accent">X-API-Key</code>.
+                      </p>
+                    </div>
                   </>
                 )}
                 {form.type === 'discord' && (
@@ -634,6 +698,56 @@ export default function AlertsPage() {
                     />
                     <p className="mt-1.5 text-xs text-text-secondary">
                       Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Custom headers <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <div className="space-y-2">
+                      {editCustomHeaders.map((h, i) => (
+                        <div key={i} className="flex gap-2 items-center">
+                          <input
+                            className={`${inputClass} flex-1`}
+                            placeholder="Header name"
+                            value={h.key}
+                            onChange={(e) => {
+                              const updated = [...editCustomHeaders];
+                              updated[i] = { ...updated[i], key: e.target.value };
+                              setEditCustomHeaders(updated);
+                            }}
+                          />
+                          <input
+                            className={`${inputClass} flex-1`}
+                            type="password"
+                            placeholder="Value"
+                            value={h.value}
+                            onChange={(e) => {
+                              const updated = [...editCustomHeaders];
+                              updated[i] = { ...updated[i], value: e.target.value };
+                              setEditCustomHeaders(updated);
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditCustomHeaders(editCustomHeaders.filter((_, j) => j !== i))}
+                            className="p-2 text-text-secondary hover:text-danger transition-colors shrink-0"
+                            aria-label="Remove header"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditCustomHeaders([...editCustomHeaders, { key: '', value: '' }])}
+                      className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
+                    >
+                      + Add header
+                    </button>
+                    <p className="mt-1.5 text-xs text-text-secondary">
+                      These headers are sent with every webhook delivery. Useful for <code className="text-accent">Authorization: Bearer &lt;token&gt;</code> or <code className="text-accent">X-API-Key</code>.
                     </p>
                   </div>
                 </>

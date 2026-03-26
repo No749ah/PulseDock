@@ -114,6 +114,10 @@ function MonitorsPageInner() {
     anomalyMultiplier: number;
     sliLatencyTarget: number | "";
     sliLatencyWindow: number;
+    scheduleEnabled: boolean;
+    scheduleDays: string;
+    scheduleStartHour: number;
+    scheduleEndHour: number;
   }>({
     name: "",
     description: "", runbookUrl: "",

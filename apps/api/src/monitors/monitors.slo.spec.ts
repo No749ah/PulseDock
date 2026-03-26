@@ -84,7 +84,6 @@ function makeService(prisma: ReturnType<typeof makePrisma>) {
     { fire: vi.fn() } as any,
     { monitorCreated: vi.fn(), monitorUpdated: vi.fn(), monitorDeleted: vi.fn() } as any,
     { log: vi.fn() } as any,
-    { checkLimit: vi.fn().mockResolvedValue({ allowed: true }) } as any,
   );
 }
 

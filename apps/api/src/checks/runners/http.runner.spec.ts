@@ -316,7 +316,7 @@ describe('runBrowserCheck', () => {
 describe('runHttpCheck — responseBody capture', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => { fetchSpy = vi.spyOn(globalThis, 'fetch' as keyof typeof globalThis); });
+  beforeEach(() => { fetchSpy = vi.spyOn(globalThis, 'fetch'); });
   afterEach(() => { vi.restoreAllMocks(); });
 
   it('captures responseBody on HTTP status failure', async () => {

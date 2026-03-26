@@ -422,7 +422,7 @@ export default function AlertRoutingPage() {
       </div>
 
       {/* Simulate Modal */}
-      <Modal open={showSimulate} onClose={() => setShowSimulate(false)} title="Simulate Alert Routing">
+      <Modal isOpen={showSimulate} onClose={() => setShowSimulate(false)} title="Simulate Alert Routing">
         <div className="space-y-5">
           <p className="text-sm text-text-secondary">
             Select a monitor and alert level to see which routing rules would match and which channels would receive the alert — without sending any actual notifications.

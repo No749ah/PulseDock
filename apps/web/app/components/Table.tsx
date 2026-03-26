@@ -46,9 +46,9 @@ export function TableHeader({ children, className = "" }: { children: ReactNode;
   );
 }
 
-export function TableCell({ children, className = "", title }: { children: ReactNode; className?: string; title?: string }) {
+export function TableCell({ children, className = "", title, colSpan }: { children: ReactNode; className?: string; title?: string; colSpan?: number }) {
   return (
-    <td className={`px-4 py-3 text-text-primary ${className}`} title={title}>
+    <td className={`px-4 py-3 text-text-primary ${className}`} title={title} colSpan={colSpan}>
       {children}
     </td>
   );

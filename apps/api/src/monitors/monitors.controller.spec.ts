@@ -51,7 +51,7 @@ describe('MonitorsController', () => {
   beforeEach(() => {
     service = makeMonitorsService();
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
-    controller = new MonitorsController(service as never, mockPlanService as never);
+    controller = new MonitorsController(service as never, mockPlanService as never, {} as never);
   });
 
   it('list() delegates to service.list', async () => {
@@ -251,7 +251,7 @@ describe('MonitorsController', () => {
   it('create() throws ForbiddenException when plan limit is reached', async () => {
     const { ForbiddenException } = await import('@nestjs/common');
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 50, limit: 50, plan: 'PRO' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     const dto = { name: 'Monitor', target: 'https://example.com', type: 'HTTP' as const, intervalSec: 60 };
     await expect(ctrl.create(makeReq(), dto as never)).rejects.toThrow(ForbiddenException);
   });
@@ -442,7 +442,7 @@ describe('MonitorsController', () => {
     const cloneResult = { id: 'clone-1', name: 'Copy of My Monitor', enabled: false, createdAt: new Date().toISOString() };
     service.clone = vi.fn().mockResolvedValue(cloneResult);
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 1, limit: -1, plan: 'COMMUNITY' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     const result = await ctrl.clone(makeReq(), 'm-1') as Record<string, unknown>;
     expect(service.clone).toHaveBeenCalledWith('user-1', 'm-1');
     expect(result['name']).toBe('Copy of My Monitor');
@@ -452,7 +452,7 @@ describe('MonitorsController', () => {
   it('clone() throws ForbiddenException when plan limit reached', async () => {
     const { ForbiddenException } = await import('@nestjs/common');
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 5, limit: 5, plan: 'FREE' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     await expect(ctrl.clone(makeReq(), 'm-1')).rejects.toThrow(ForbiddenException);
     expect(service.clone).not.toHaveBeenCalled();
   });

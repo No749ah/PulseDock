@@ -274,7 +274,7 @@ export default function EscalationPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-semibold text-text-primary">{policy.name}</span>
-                        <Badge variant="default" className="text-xs">{policy.steps.length} step{policy.steps.length !== 1 ? 's' : ''}</Badge>
+                        <Badge variant="default" className="text-xs">{`${policy.steps.length} step${policy.steps.length !== 1 ? 's' : ''}`}</Badge>
                       </div>
                       <div className="space-y-1">
                         {(policy.steps as EscalationStep[]).map((step, i) => (

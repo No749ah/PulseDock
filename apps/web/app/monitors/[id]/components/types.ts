@@ -88,6 +88,8 @@ export interface MonitorRun {
   message: string;
   checkedAt: string;
   level?: string;
+  /** First 500 chars of response body on failure, for debugging */
+  responseBody?: string | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

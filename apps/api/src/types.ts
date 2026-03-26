@@ -58,6 +58,8 @@ export interface Monitor {
   flapDetectionEnabled: boolean;
   flapAlertedAt: string | null;
   mutedUntil: string | null;
+  anomalyDetection: boolean;
+  anomalyMultiplier: number;
   createdAt: string;
 }
 

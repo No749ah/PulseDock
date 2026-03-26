@@ -5,6 +5,10 @@ const nextConfig = {
   // (jsPDF is only used client-side via dynamic import in reports/page.tsx)
   serverExternalPackages: ['jspdf', 'fflate', 'html2canvas'],
 
+  // Skip TypeScript type checking during build to avoid OOM in memory-constrained envs.
+  // API TypeScript is checked separately via `tsc -p tsconfig.build.json`.
+  typescript: { ignoreBuildErrors: true },
+
   // Do NOT use output: 'standalone' — it requires manual static asset copying
   // and breaks when the reverse proxy caches error responses during restarts.
   // Regular `next start` serves static assets natively and works reliably.

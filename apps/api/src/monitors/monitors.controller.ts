@@ -653,4 +653,14 @@ export class MonitorsController {
       createdAt: updated.createdAt.toISOString(),
     };
   }
+
+  @Get(':id/slo-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLO/SLI report', description: 'Returns the SLO report for a monitor, including uptime SLO, latency SLI (if configured), and error budget overview.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'SLO report returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getSloReport(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getSloReport(req.user.id, id);
+  }
 }

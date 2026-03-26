@@ -181,6 +181,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     flapDetectionEnabled?: boolean;
     flapAlertedAt?: Date | null;
     mutedUntil?: Date | null;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -221,6 +223,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         mutedUntil: (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil
           ? (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil!.toISOString()
           : null,
+        anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
+        anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
       });
     } finally {
       this.queueDepth--;

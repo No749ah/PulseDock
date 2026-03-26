@@ -124,6 +124,10 @@ model Monitor {
   autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
   activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
   mutedUntil          DateTime?   // if set and in future, all alerts suppressed
+  anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
+  anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
+  sliLatencyTarget    Int?        // target p95 latency in ms (e.g., 500 = p95 must be < 500ms)
+  sliLatencyWindow    Int         @default(7)  // rolling window in days for latency SLI
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -700,6 +700,41 @@ export function MonitorFormModal({
           <p className="mt-1 text-xs text-text-secondary">Rolling window for SLA uptime calculation.</p>
         </div>
 
+        {/* Latency SLI */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Latency SLI Target (ms) <span className="text-text-muted font-normal">— optional</span>
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="60000"
+            placeholder="e.g. 500 — p95 latency must be below this"
+            value={formData.sliLatencyTarget ?? ""}
+            onChange={(e) => onSetFormData({ ...formData, sliLatencyTarget: e.target.value === "" ? "" : parseInt(e.target.value) })}
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-text-secondary">Alert when p95 response time exceeds this threshold.</p>
+        </div>
+
+        {/* Latency SLI Window */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Latency SLI Window
+          </label>
+          <select
+            value={formData.sliLatencyWindow ?? 7}
+            onChange={(e) => onSetFormData({ ...formData, sliLatencyWindow: parseInt(e.target.value) })}
+            className={inputClass}
+          >
+            <option value={1}>1 day</option>
+            <option value={7}>7 days</option>
+            <option value={14}>14 days</option>
+            <option value={30}>30 days</option>
+          </select>
+          <p className="mt-1 text-xs text-text-secondary">Rolling window for Latency SLI measurement.</p>
+        </div>
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -769,6 +804,51 @@ export function MonitorFormModal({
             </button>
           </div>
         </div>
+
+        {/* Anomaly Detection */}
+        {(formData.type === "HTTP" || formData.type === "TCP") && (
+          <div>
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-text-secondary">Latency Anomaly Detection</label>
+                <p className="text-xs text-text-muted mt-0.5">Alert when response time spikes above a multiple of the 7-day P95 baseline (auto-calibrating threshold).</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.anomalyDetection ?? false}
+                onClick={() => onSetFormData({ ...formData, anomalyDetection: !(formData.anomalyDetection ?? false) })}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  (formData.anomalyDetection ?? false) ? "bg-accent" : "bg-surface-secondary"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                    (formData.anomalyDetection ?? false) ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            {(formData.anomalyDetection ?? false) && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-text-secondary mb-1">Spike Multiplier</label>
+                <input
+                  type="number"
+                  min="1.1"
+                  max="10"
+                  step="0.1"
+                  value={formData.anomalyMultiplier ?? 2.0}
+                  onChange={(e) => onSetFormData({ ...formData, anomalyMultiplier: parseFloat(e.target.value) || 2.0 })}
+                  className="w-32 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <p className="text-xs text-text-muted mt-1">
+                  Alert when latency &gt; {(formData.anomalyMultiplier ?? 2.0)}× P95 baseline. Default: 2.0.
+                  Requires 10+ successful checks in the past 7 days.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Tags</label>

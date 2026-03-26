@@ -27,6 +27,7 @@ import type {
   MonitorEvent,
   ChartPoint,
 } from "./components/types";
+import { SloTab } from "./components/SloTab";
 
 interface AlertDelivery {
   id: string;
@@ -76,6 +77,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo">("overview");
 
   // Alert delivery history
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
@@ -661,8 +663,45 @@ export default function MonitorDetailPage() {
           </div>
         )}
 
+        {/* Main Tab Navigation */}
+        <div className="flex gap-1 p-1 bg-white/3 border border-white/8 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveMainTab("overview")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              activeMainTab === "overview"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveMainTab("slo")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "slo"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            SLO / SLI
+          </button>
+        </div>
+
+        {/* SLO Tab Content */}
+        {activeMainTab === "slo" && (() => {
+          const user = getUser();
+          return user ? (
+            <SloTab
+              monitor={monitor}
+              userId={user.id}
+              onMonitorUpdated={(updated) => setMonitor((prev) => prev ? { ...prev, ...updated } : prev)}
+            />
+          ) : null;
+        })()}
+
         {/* SLA Stats — with period selector */}
-        
+        {activeMainTab === "overview" && (<>
           <Card className="p-4 space-y-4">
             {/* Period selector */}
             <div className="flex items-center justify-between">
@@ -1816,6 +1855,7 @@ export default function MonitorDetailPage() {
             </div>
           )}
         </Card>
+        </>)}
 
       </div>
 

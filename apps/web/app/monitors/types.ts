@@ -36,6 +36,8 @@ export interface MonitorItem {
   alertChannels?: AlertChannelSummary[];
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
+  sliLatencyTarget?: number | null;
+  sliLatencyWindow?: number | null;
   autoIncident?: boolean;
   autoIncidentSeverity?: string;
   activeAutoIncidentId?: string | null;
@@ -100,6 +102,10 @@ export type MonitorFormData = {
   autoIncident: boolean;
   autoIncidentSeverity: string;
   flapDetectionEnabled: boolean;
+  anomalyDetection: boolean;
+  anomalyMultiplier: number;
+  sliLatencyTarget: number | "";
+  sliLatencyWindow: number;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

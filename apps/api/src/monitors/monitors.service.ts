@@ -98,6 +98,10 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      anomalyDetection: m.anomalyDetection,
+      anomalyMultiplier: m.anomalyMultiplier,
+      sliLatencyTarget: m.sliLatencyTarget ?? null,
+      sliLatencyWindow: m.sliLatencyWindow,
       isAcknowledged: (m as any).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -131,6 +135,10 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    sliLatencyTarget?: number;
+    sliLatencyWindow?: number;
   }) {
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
@@ -157,9 +165,13 @@ export class MonitorsService {
         folderId: body.folderId ?? null,
         slaTarget: body.slaTarget ?? null,
         slaPeriodDays: body.slaPeriodDays ?? null,
+        sliLatencyTarget: body.sliLatencyTarget ?? null,
+        sliLatencyWindow: body.sliLatencyWindow ?? 7,
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
+        anomalyDetection: body.anomalyDetection ?? false,
+        anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -207,6 +219,10 @@ export class MonitorsService {
       isFlapping: created.isFlapping,
       flapDetectionEnabled: created.flapDetectionEnabled,
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
+      anomalyDetection: created.anomalyDetection,
+      anomalyMultiplier: created.anomalyMultiplier,
+      sliLatencyTarget: created.sliLatencyTarget ?? null,
+      sliLatencyWindow: created.sliLatencyWindow,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -244,6 +260,10 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    sliLatencyTarget?: number | null;
+    sliLatencyWindow?: number;
   }) {
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
@@ -279,7 +299,10 @@ export class MonitorsService {
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
-
+        ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
+        ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
+        ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
+        ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
       },
     });
 
@@ -644,6 +667,8 @@ export class MonitorsService {
       flapDetectionEnabled: monitor.flapDetectionEnabled,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
+      anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
+      anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
     });
   }
 
@@ -1772,5 +1797,147 @@ export class MonitorsService {
         : Math.round((scores.reduce((sum, s) => sum + s.score, 0) / scores.length) * 10) / 10;
 
     return { scores, overall: { avg, ...gradeCount } };
+  }
+
+  /**
+   * Returns the SLO/SLI report for a given monitor.
+   * Includes uptime SLO, latency SLI (if configured), and error budget overview.
+   */
+  async getSloReport(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays = monitor.slaPeriodDays ?? 30;
+    const slaTarget = monitor.slaTarget ?? 99.9;
+    const now = new Date();
+    const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    // --- Uptime SLO ---
+    const uptimeRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: from } },
+      select: { ok: true, checkedAt: true },
+    });
+
+    const totalChecks = uptimeRuns.length;
+    const okChecks = uptimeRuns.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - okChecks;
+    const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+    const periodMinutes = periodDays * 24 * 60;
+    const uptimeBudgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+    const uptimeBurnedMinutes = totalChecks === 0 ? 0 : (failedChecks / totalChecks) * periodMinutes;
+    const uptimeRemainingMinutes = uptimeBudgetMinutes - uptimeBurnedMinutes;
+    const uptimeBurnRate = uptimeBudgetMinutes === 0 ? 0 : uptimeBurnedMinutes / uptimeBudgetMinutes;
+
+    let uptimeStatus: 'ok' | 'warning' | 'breached';
+    if (actualUptime < slaTarget) {
+      uptimeStatus = 'breached';
+    } else if (uptimeRemainingMinutes < uptimeBudgetMinutes * 0.1) {
+      uptimeStatus = 'warning';
+    } else {
+      uptimeStatus = 'ok';
+    }
+
+    // --- Latency SLI ---
+    let latencyResult: {
+      target: number;
+      p50: number;
+      p95: number;
+      p99: number;
+      status: 'ok' | 'warning' | 'breached';
+      window: number;
+      totalChecks: number;
+      exceedingChecks: number;
+    } | null = null;
+
+    let latencyBudgetPct = 5.0;
+    let latencyBurnedPct = 0;
+    let latencyBurnRate = 0;
+
+    if (monitor.sliLatencyTarget) {
+      const latencyWindow = monitor.sliLatencyWindow ?? 7;
+      const latencyFrom = new Date(now.getTime() - latencyWindow * 24 * 60 * 60 * 1000);
+
+      const latencyRuns = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: latencyFrom }, latencyMs: { not: null } },
+        select: { latencyMs: true },
+        orderBy: { latencyMs: 'asc' },
+      });
+
+      const latencies = latencyRuns.map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const latTotal = latencies.length;
+
+      const getPercentile = (arr: number[], pct: number): number => {
+        if (arr.length === 0) return 0;
+        const idx = Math.ceil((pct / 100) * arr.length) - 1;
+        return arr[Math.max(0, Math.min(idx, arr.length - 1))];
+      };
+
+      const p50 = getPercentile(latencies, 50);
+      const p95 = getPercentile(latencies, 95);
+      const p99 = getPercentile(latencies, 99);
+      const exceedingChecks = latencies.filter((l) => l >= monitor.sliLatencyTarget!).length;
+
+      let latencyStatus: 'ok' | 'warning' | 'breached';
+      if (p95 >= monitor.sliLatencyTarget) {
+        latencyStatus = 'breached';
+      } else if (p95 >= monitor.sliLatencyTarget * 0.85) {
+        latencyStatus = 'warning';
+      } else {
+        latencyStatus = 'ok';
+      }
+
+      latencyBudgetPct = 5.0;
+      latencyBurnedPct = latTotal === 0 ? 0 : (exceedingChecks / latTotal) * 100;
+      latencyBurnRate = latencyBudgetPct === 0 ? 0 : latencyBurnedPct / latencyBudgetPct;
+
+      latencyResult = {
+        target: monitor.sliLatencyTarget,
+        p50,
+        p95,
+        p99,
+        status: latencyStatus,
+        window: latencyWindow,
+        totalChecks: latTotal,
+        exceedingChecks,
+      };
+    }
+
+    // --- Overall Health ---
+    let overallHealth: 'ok' | 'warning' | 'breached';
+    if (uptimeStatus === 'breached' || (latencyResult && latencyResult.status === 'breached')) {
+      overallHealth = 'breached';
+    } else if (uptimeStatus === 'warning' || (latencyResult && latencyResult.status === 'warning')) {
+      overallHealth = 'warning';
+    } else {
+      overallHealth = 'ok';
+    }
+
+    return {
+      monitorId,
+      period: {
+        days: periodDays,
+        from: from.toISOString(),
+        to: now.toISOString(),
+      },
+      uptime: {
+        target: slaTarget,
+        actual: Math.round(actualUptime * 10000) / 10000,
+        status: uptimeStatus,
+        totalChecks,
+        failedChecks,
+        remainingBudgetMinutes: Math.round(uptimeRemainingMinutes * 100) / 100,
+      },
+      ...(latencyResult ? { latency: latencyResult } : {}),
+      errorBudget: {
+        uptimeBudgetMinutes: Math.round(uptimeBudgetMinutes * 100) / 100,
+        uptimeBurnedMinutes: Math.round(uptimeBurnedMinutes * 100) / 100,
+        uptimeBurnRate: Math.round(uptimeBurnRate * 100) / 100,
+        latencyBudgetPct: Math.round(latencyBudgetPct * 100) / 100,
+        latencyBurnedPct: Math.round(latencyBurnedPct * 100) / 100,
+        latencyBurnRate: Math.round(latencyBurnRate * 100) / 100,
+        overallHealth,
+      },
+    };
   }
 }

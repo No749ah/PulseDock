@@ -110,6 +110,10 @@ function MonitorsPageInner() {
     autoIncident: boolean;
     autoIncidentSeverity: string;
     flapDetectionEnabled: boolean;
+    anomalyDetection: boolean;
+    anomalyMultiplier: number;
+    sliLatencyTarget: number | "";
+    sliLatencyWindow: number;
   }>({
     name: "",
     description: "", runbookUrl: "",
@@ -128,6 +132,10 @@ function MonitorsPageInner() {
     autoIncident: false,
     autoIncidentSeverity: "MEDIUM",
     flapDetectionEnabled: true,
+    anomalyDetection: false,
+    anomalyMultiplier: 2.0,
+    sliLatencyTarget: "",
+    sliLatencyWindow: 7,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -528,11 +536,14 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
-
+          anomalyDetection: formData.anomalyDetection,
+          anomalyMultiplier: formData.anomalyMultiplier,
+          ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
+          sliLatencyWindow: formData.sliLatencyWindow,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -572,6 +583,10 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          anomalyDetection: formData.anomalyDetection,
+          anomalyMultiplier: formData.anomalyMultiplier,
+          sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
+          sliLatencyWindow: formData.sliLatencyWindow,
         }),
       });
       setShowModal(false);
@@ -1085,7 +1100,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1254,7 +1269,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);

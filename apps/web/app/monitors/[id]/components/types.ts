@@ -9,6 +9,8 @@ export interface MonitorItem {
   config?: Record<string, unknown>;
   slaTarget?: number | null;
   slaPeriodDays?: number | null;
+  sliLatencyTarget?: number | null;
+  sliLatencyWindow?: number | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   description?: string | null;
   isFlapping?: boolean;
@@ -16,6 +18,38 @@ export interface MonitorItem {
   flapAlertedAt?: string | null;
   mutedUntil?: string | null;
   isAcknowledged?: boolean;
+}
+
+export interface SloReport {
+  monitorId: string;
+  period: { days: number; from: string; to: string };
+  uptime: {
+    target: number;
+    actual: number;
+    status: "ok" | "warning" | "breached";
+    totalChecks: number;
+    failedChecks: number;
+    remainingBudgetMinutes: number;
+  };
+  latency?: {
+    target: number;
+    p50: number;
+    p95: number;
+    p99: number;
+    status: "ok" | "warning" | "breached";
+    window: number;
+    totalChecks: number;
+    exceedingChecks: number;
+  };
+  errorBudget: {
+    uptimeBudgetMinutes: number;
+    uptimeBurnedMinutes: number;
+    uptimeBurnRate: number;
+    latencyBudgetPct: number;
+    latencyBurnedPct: number;
+    latencyBurnRate: number;
+    overallHealth: "ok" | "warning" | "breached";
+  };
 }
 
 export interface AlertChannelInfo {

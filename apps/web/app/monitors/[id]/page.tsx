@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
+import { createRealtimeSocket } from "../../../lib/realtime";
 import { getUser } from "../../../components/auth";
 import { AppFrame } from "../../../components/app-frame";
 import { Card } from "../../components/Card";
@@ -69,6 +70,7 @@ export default function MonitorDetailPage() {
   const [running, setRunning] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [toast, setToast] = useState("");
+  const [liveConnected, setLiveConnected] = useState(false);
   const [alertChannels, setAlertChannels] = useState<AlertChannelInfo[]>([]);
   const [dependencies, setDependencies] = useState<MonitorDependency[]>([]);
   const [allMonitors, setAllMonitors] = useState<MonitorItem[]>([]);
@@ -156,6 +158,27 @@ export default function MonitorDetailPage() {
 
     load();
   }, [id, router]);
+
+  // Live updates via WebSocket: prepend new runs to the check history
+  useEffect(() => {
+    const user = getUser();
+    if (!user || !id) return;
+    const socket = createRealtimeSocket(user.id);
+    socket.on("connect", () => {
+      socket.emit("subscribe", { userId: user.id });
+      setLiveConnected(true);
+    });
+    socket.on("disconnect", () => setLiveConnected(false));
+    socket.on("monitor.checked", (payload: { run: MonitorRun }) => {
+      if (payload.run?.monitorId !== id) return;
+      setRuns((prev) => [payload.run, ...prev.slice(0, 199)]);
+      // Also refresh monitor mute/ack state
+      api<MonitorItem>(`/v1/monitors/${id}`, user.id)
+        .then((m) => setMonitor((prev) => prev ? { ...prev, mutedUntil: m.mutedUntil, isAcknowledged: m.isAcknowledged } : prev))
+        .catch(() => { /* non-critical */ });
+    });
+    return () => { socket.disconnect(); setLiveConnected(false); };
+  }, [id]);
 
   const loadUptime = useCallback(
     async (period: UptimePeriod) => {
@@ -493,6 +516,12 @@ export default function MonitorDetailPage() {
                 <Badge variant={monitor.enabled ? "success" : "warning"}>
                   {monitor.enabled ? "Enabled" : "Disabled"}
                 </Badge>
+                {liveConnected && (
+                  <span title="Live updates active" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/20">
+                    <Wifi className="w-3 h-3" />
+                    Live
+                  </span>
+                )}
                 {monitor.isFlapping && (
                   <span
                     title="This monitor is flapping — it is rapidly alternating between healthy and unhealthy states. Alerts are suppressed until it stabilizes."
@@ -514,8 +543,14 @@ export default function MonitorDetailPage() {
                 {/* Acknowledged badge */}
                 {monitor.isAcknowledged && (
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                    <span
+                      title={(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck?.note ?? "Alert acknowledged"}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 cursor-help"
+                    >
                       🔔 Acknowledged
+                      {(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck?.note && (
+                        <span className="opacity-70 max-w-[120px] truncate">&nbsp;— {(monitor as typeof monitor & { activeAck?: { note: string | null } | null }).activeAck!.note}</span>
+                      )}
                     </span>
                     <button
                       onClick={handleClearAck}

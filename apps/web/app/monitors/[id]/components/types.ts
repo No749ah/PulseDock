@@ -18,6 +18,7 @@ export interface MonitorItem {
   flapAlertedAt?: string | null;
   mutedUntil?: string | null;
   isAcknowledged?: boolean;
+  activeAck?: { id: string; note: string | null; acknowledgedAt: string } | null;
 }
 
 export interface SloReport {

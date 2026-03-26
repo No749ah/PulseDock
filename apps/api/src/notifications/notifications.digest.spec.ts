@@ -64,10 +64,12 @@ function makePrisma() {
 describe('NotificationsService — Digest Queue', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let service: NotificationsService;
+  let mailer: { sendDigestEmail: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     prisma = makePrisma();
-    service = new NotificationsService(prisma as never);
+    mailer = { sendDigestEmail: vi.fn().mockResolvedValue(undefined) };
+    service = new NotificationsService(prisma as never, mailer as never);
   });
 
   describe('enqueueForDigest', () => {
@@ -178,6 +180,39 @@ describe('NotificationsService — Digest Queue', () => {
 
       expect(prisma.notificationQueueItem.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: { in: ['qi-1', 'qi-2'] } } }),
+      );
+    });
+
+    it('calls mailer.sendDigestEmail with correct args', async () => {
+      prisma.notificationQueueItem.groupBy.mockResolvedValue([{ userId: 'user-1' }]);
+      prisma.notificationPreference.findMany.mockResolvedValue([{ userId: 'user-1' }]);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-1', email: 'digest@example.com' }]);
+      const item = makeQueueItem({ id: 'qi-1', eventType: 'down' });
+      prisma.notificationQueueItem.findMany.mockResolvedValue([item]);
+
+      await service.sendHourlyDigests();
+
+      expect(mailer.sendDigestEmail).toHaveBeenCalledWith(
+        'digest@example.com',
+        'hourly_digest',
+        expect.arrayContaining([
+          expect.objectContaining({ eventType: 'down', monitorName: 'API Monitor' }),
+        ]),
+      );
+    });
+
+    it('still marks items sent even if mailer throws', async () => {
+      prisma.notificationQueueItem.groupBy.mockResolvedValue([{ userId: 'user-1' }]);
+      prisma.notificationPreference.findMany.mockResolvedValue([{ userId: 'user-1' }]);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-1', email: 'fail@example.com' }]);
+      prisma.notificationQueueItem.findMany.mockResolvedValue([makeQueueItem({ id: 'qi-99' })]);
+      mailer.sendDigestEmail.mockRejectedValueOnce(new Error('SMTP error'));
+
+      await service.sendHourlyDigests();
+
+      // Items should still be marked sent even when email fails
+      expect(prisma.notificationQueueItem.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: { in: ['qi-99'] } } }),
       );
     });
   });

@@ -514,4 +514,63 @@ describe('MailerService', () => {
       expect(result).toEqual({ sent: false });
     });
   });
+
+  describe('sendDigestEmail', () => {
+    beforeEach(() => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'user';
+      process.env.SMTP_PASS = 'pass';
+      process.env.MAIL_FROM = 'noreply@example.com';
+      mockCreateTransport.mockReturnValue({ sendMail: mockSendMail });
+      svc = new MailerService();
+    });
+
+    const items = [
+      { eventType: 'down' as const, monitorName: 'API', message: '🚨 down', createdAt: new Date('2026-03-26T10:00:00Z') },
+      { eventType: 'recovery' as const, monitorName: 'Web', message: '✅ recovered', createdAt: new Date('2026-03-26T10:30:00Z') },
+    ];
+
+    it('sends hourly digest with correct subject', async () => {
+      await svc.sendDigestEmail('digest@example.com', 'hourly_digest', items);
+      const call = mockSendMail.mock.calls[0][0] as { subject: string };
+      expect(call.subject).toContain('Hourly Alert Digest');
+      expect(call.subject).toContain('2 events');
+    });
+
+    it('sends daily digest with correct subject', async () => {
+      await svc.sendDigestEmail('digest@example.com', 'daily_digest', items);
+      const call = mockSendMail.mock.calls[0][0] as { subject: string };
+      expect(call.subject).toContain('Daily Alert Digest');
+    });
+
+    it('includes monitor names and event types in HTML', async () => {
+      await svc.sendDigestEmail('digest@example.com', 'hourly_digest', items);
+      const call = mockSendMail.mock.calls[0][0] as { html: string };
+      expect(call.html).toContain('API');
+      expect(call.html).toContain('DOWN');
+      expect(call.html).toContain('RECOVERED');
+    });
+
+    it('includes event summary in plain text', async () => {
+      await svc.sendDigestEmail('digest@example.com', 'hourly_digest', items);
+      const call = mockSendMail.mock.calls[0][0] as { text: string };
+      expect(call.text).toContain('[DOWN]');
+      expect(call.text).toContain('[RECOVERED]');
+    });
+
+    it('uses singular "event" when only 1 item', async () => {
+      await svc.sendDigestEmail('digest@example.com', 'hourly_digest', [items[0]]);
+      const call = mockSendMail.mock.calls[0][0] as { subject: string };
+      expect(call.subject).toContain('1 event');
+      expect(call.subject).not.toContain('1 events');
+    });
+
+    it('returns { sent: false } when SMTP not configured', async () => {
+      delete process.env.SMTP_HOST;
+      svc = new MailerService();
+      const result = await svc.sendDigestEmail('digest@example.com', 'hourly_digest', items);
+      expect(result).toEqual({ sent: false });
+    });
+  });
 });

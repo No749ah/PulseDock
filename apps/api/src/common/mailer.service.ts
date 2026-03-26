@@ -544,6 +544,100 @@ export class MailerService {
    * @param lockedUntil - Timestamp when the lock automatically expires (15 minutes from lockout)
    * @param ipAddress   - Optional IP address that triggered the lockout (for user awareness)
    */
+  /**
+   * Sends a digest notification email summarising batched alert events.
+   * Called by the notification service when delivering hourly or daily digests.
+   *
+   * @param to        - Recipient email address
+   * @param frequency - 'hourly_digest' | 'daily_digest'
+   * @param items     - Array of alert events to include in the digest
+   */
+  async sendDigestEmail(
+    to: string,
+    frequency: 'hourly_digest' | 'daily_digest',
+    items: Array<{
+      eventType: 'down' | 'recovery' | 'degraded' | 'flapping';
+      monitorName: string | null;
+      message: string;
+      createdAt: Date;
+    }>,
+  ) {
+    const label = frequency === 'hourly_digest' ? 'Hourly' : 'Daily';
+    const subject = `${APP_NAME} ${label} Alert Digest — ${items.length} event${items.length !== 1 ? 's' : ''}`;
+
+    const eventTypeLabel = (type: string): string => {
+      switch (type) {
+        case 'down': return 'DOWN';
+        case 'recovery': return 'RECOVERED';
+        case 'degraded': return 'DEGRADED';
+        case 'flapping': return 'FLAPPING';
+        default: return type.toUpperCase();
+      }
+    };
+
+    const eventTypeColor = (type: string): string => {
+      switch (type) {
+        case 'down': return '#ef4444';
+        case 'recovery': return '#22c55e';
+        case 'degraded': return '#f59e0b';
+        case 'flapping': return '#8b5cf6';
+        default: return '#64748b';
+      }
+    };
+
+    const eventRows = items.map((item) => {
+      const color = eventTypeColor(item.eventType);
+      const label = eventTypeLabel(item.eventType);
+      const time = new Date(item.createdAt).toUTCString();
+      const name = item.monitorName ?? 'Unknown monitor';
+      return `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #1e293b;">
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${color}22;color:${color};font-size:11px;font-weight:700;letter-spacing:0.5px;font-family:monospace;">${label}</span>
+            &nbsp;
+            <span style="font-size:14px;color:#f1f5f9;font-weight:600;">${name}</span>
+            <br/>
+            <span style="font-size:12px;color:#64748b;">${item.message}</span>
+            <br/>
+            <span style="font-size:11px;color:#475569;">${time}</span>
+          </td>
+        </tr>`;
+    }).join('');
+
+    const downCount = items.filter((i) => i.eventType === 'down').length;
+    const recoveryCount = items.filter((i) => i.eventType === 'recovery').length;
+    const degradedCount = items.filter((i) => i.eventType === 'degraded').length;
+    const flappingCount = items.filter((i) => i.eventType === 'flapping').length;
+
+    const summaryBadges = [
+      downCount > 0 ? `<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#ef444422;color:#ef4444;font-size:12px;font-weight:700;margin-right:6px;">${downCount} Down</span>` : '',
+      degradedCount > 0 ? `<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#f59e0b22;color:#f59e0b;font-size:12px;font-weight:700;margin-right:6px;">${degradedCount} Degraded</span>` : '',
+      recoveryCount > 0 ? `<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#22c55e22;color:#22c55e;font-size:12px;font-weight:700;margin-right:6px;">${recoveryCount} Recovered</span>` : '',
+      flappingCount > 0 ? `<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#8b5cf622;color:#8b5cf6;font-size:12px;font-weight:700;margin-right:6px;">${flappingCount} Flapping</span>` : '',
+    ].filter(Boolean).join('');
+
+    const html = htmlLayout(subject, `
+      <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#f1f5f9;">📊 ${label} Alert Digest</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#64748b;">${items.length} event${items.length !== 1 ? 's' : ''} since your last digest</p>
+      <div style="margin-bottom:20px;">${summaryBadges}</div>
+      ${divider()}
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        ${eventRows}
+      </table>
+      ${divider()}
+      <p style="margin:0 0 12px;font-size:13px;color:#64748b;line-height:1.6;">
+        These events were queued during your ${label.toLowerCase()} digest window.
+        To receive real-time alerts, update your
+        <a href="${APP_URL}/account#notifications" style="color:#3b82f6;text-decoration:none;">notification preferences</a>.
+      </p>
+    `);
+
+    const text = `${label} Alert Digest — ${items.length} events\n\n` +
+      items.map((i) => `[${eventTypeLabel(i.eventType)}] ${i.monitorName ?? 'Unknown'}: ${i.message} (${new Date(i.createdAt).toUTCString()})`).join('\n');
+
+    return this.deliver(to, subject, text, html);
+  }
+
   async sendAccountLockedEmail(to: string, lockedUntil: Date, ipAddress?: string | null) {
     const subject = `Your ${APP_NAME} account has been temporarily locked`;
     const text = `Your ${APP_NAME} account was temporarily locked due to 5 consecutive failed login attempts.\n\nThe lockout will expire at: ${lockedUntil.toUTCString()}\n\nIf this wasn't you, please change your password immediately after regaining access.`;

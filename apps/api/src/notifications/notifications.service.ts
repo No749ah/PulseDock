@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../common/prisma.service';
+import { MailerService } from '../common/mailer.service';
 import { UpdateNotificationPreferenceDto } from './notifications.dto';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailer: MailerService,
+  ) {}
 
   /**
    * Returns the notification preference for a user.
@@ -302,6 +306,25 @@ export class NotificationsService {
           `[${frequency}] Digest for ${user.email}: ${items.length} events ` +
           `(down=${downCount}, recovery=${recoveryCount}, degraded=${degradedCount}, flapping=${flappingCount})`
         );
+
+        // Send digest email (fire-and-forget; log but don't fail if SMTP is unconfigured)
+        try {
+          await this.mailer.sendDigestEmail(
+            user.email,
+            frequency,
+            items.map((i) => ({
+              eventType: i.eventType as 'down' | 'recovery' | 'degraded' | 'flapping',
+              monitorName: i.monitorName,
+              message: i.message,
+              createdAt: i.createdAt,
+            })),
+          );
+          this.logger.log(`[${frequency}] Digest email sent to ${user.email}`);
+        } catch (mailErr) {
+          this.logger.warn(
+            `[${frequency}] Failed to send digest email to ${user.email}: ${mailErr instanceof Error ? mailErr.message : String(mailErr)}`
+          );
+        }
 
         // Mark all items as sent
         await this.markDigestItemsSent(items.map((i) => i.id));

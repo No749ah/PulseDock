@@ -487,12 +487,22 @@ export class AlertsService {
       orderBy: { priority: 'asc' },
     });
 
-    // Find matching rules for this monitor+run
+    // Find matching rules for this monitor+run (load tags for tag-based matching)
+    let monitorTagNames: string[] = [];
+    if (routingRules.some(r => r.matchTags.length > 0)) {
+      const tagRows = await this.prisma.monitorTag.findMany({
+        where: { monitorId: monitor.id },
+        include: { tag: { select: { name: true } } },
+      });
+      monitorTagNames = tagRows.map(t => t.tag.name);
+    }
+
     const matchedRules = routingRules.filter(rule => {
       if (rule.matchMonitorIds.length > 0 && !rule.matchMonitorIds.includes(monitor.id)) return false;
       if (rule.matchTypes.length > 0 && !rule.matchTypes.includes(monitor.type)) return false;
       if (rule.matchLevels.length > 0 && !rule.matchLevels.includes(run.level)) return false;
       if (rule.matchFolderIds.length > 0 && (!monitor.folderId || !rule.matchFolderIds.includes(monitor.folderId))) return false;
+      if (rule.matchTags.length > 0 && !rule.matchTags.some(t => monitorTagNames.includes(t))) return false;
       return true;
     });
 

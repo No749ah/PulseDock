@@ -674,6 +674,7 @@ describe('AlertsService', () => {
         monitorRun: { findFirst: vi.fn().mockResolvedValue(null) },
         alertDeliveryLog: { create: vi.fn().mockResolvedValue({}) },
         alertAcknowledgement: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        alertRoutingRule: { findMany: vi.fn().mockResolvedValue([]) },
       };
       const service = new AlertsService(prismaRaw as never, metrics, makeMailer() as never, makeNotifications() as never);
 

@@ -23,6 +23,7 @@ import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 import { runHttpCheck } from './runners/http.runner';
 import { runBrowserCheck } from './runners/http.runner';
 import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck } from './runners/network.runner';
+import { runWhoisCheck } from './runners/whois.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -157,6 +158,8 @@ export class ChecksService {
         return runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'BROWSER':
         return runBrowserCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'WHOIS':
+        return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }
@@ -355,6 +358,27 @@ export class ChecksService {
         // Non-fatal: anomaly detection failure should never break normal alerting
         this.logger.warn(`[AnomalyDetection] Check failed for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
+    // ── Fixed Latency Alert Threshold ────────────────────────────────────────────────
+    // If latencyAlertMs is configured and the check succeeded but latency exceeded the
+    // threshold, upgrade the level to yellow and update the message accordingly.
+    // This runs after anomaly detection; anomaly yellow takes priority if both fire.
+    const monitorWithLatencyAlert = monitor as typeof monitor & { latencyAlertMs?: number | null };
+    if (
+      anomalyLevel === 'green' &&
+      created.ok &&
+      typeof monitorWithLatencyAlert.latencyAlertMs === 'number' &&
+      monitorWithLatencyAlert.latencyAlertMs > 0 &&
+      created.latencyMs !== null &&
+      created.latencyMs > monitorWithLatencyAlert.latencyAlertMs
+    ) {
+      anomalyLevel = 'yellow';
+      anomalyMessage = `Slow response: ${created.latencyMs}ms exceeds latency threshold of ${monitorWithLatencyAlert.latencyAlertMs}ms. ${created.message}`;
+      this.logger.warn(
+        `[LatencyAlert] Monitor ${monitor.id} (${monitor.name}) latency ${created.latencyMs}ms exceeds threshold ${monitorWithLatencyAlert.latencyAlertMs}ms`,
+      );
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

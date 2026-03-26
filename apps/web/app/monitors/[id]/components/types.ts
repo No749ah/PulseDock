@@ -1,7 +1,7 @@
 export interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -24,6 +24,7 @@ export interface MonitorItem {
   activeAck?: { id: string; note: string | null; acknowledgedAt: string } | null;
   autoIncident?: boolean;
   autoIncidentSeverity?: string | null;
+  latencyAlertMs?: number | null;
   anomalyDetection?: boolean;
   anomalyMultiplier?: number | null;
   scheduleEnabled?: boolean;

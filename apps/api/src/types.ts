@@ -1,4 +1,4 @@
-export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER';
+export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS';
 export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 
@@ -63,6 +63,7 @@ export interface Monitor {
   flapDetectionEnabled: boolean;
   flapAlertedAt: string | null;
   mutedUntil: string | null;
+  latencyAlertMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
   scheduleEnabled: boolean;

@@ -99,6 +99,7 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: m.latencyAlertMs ?? null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
       scheduleEnabled: m.scheduleEnabled,
@@ -158,6 +159,7 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: m.latencyAlertMs ?? null,
       isAcknowledged: m.acknowledgements.length > 0,
       activeAck: m.acknowledgements[0] ? {
         id: m.acknowledgements[0].id,
@@ -202,6 +204,7 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -242,6 +245,7 @@ export class MonitorsService {
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
+        latencyAlertMs: body.latencyAlertMs ?? null,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
         scheduleEnabled: body.scheduleEnabled ?? false,
@@ -296,6 +300,7 @@ export class MonitorsService {
       isFlapping: created.isFlapping,
       flapDetectionEnabled: created.flapDetectionEnabled,
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
+      latencyAlertMs: created.latencyAlertMs ?? null,
       anomalyDetection: created.anomalyDetection,
       anomalyMultiplier: created.anomalyMultiplier,
       scheduleEnabled: created.scheduleEnabled,
@@ -342,6 +347,7 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -386,6 +392,7 @@ export class MonitorsService {
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
+        ...(body.latencyAlertMs !== undefined ? { latencyAlertMs: body.latencyAlertMs } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
         ...(body.scheduleEnabled !== undefined ? { scheduleEnabled: body.scheduleEnabled } : {}),
@@ -549,6 +556,7 @@ export class MonitorsService {
         autoIncident: source.autoIncident,
         autoIncidentSeverity: source.autoIncidentSeverity,
         flapDetectionEnabled: source.flapDetectionEnabled,
+        latencyAlertMs: source.latencyAlertMs,
         anomalyDetection: source.anomalyDetection,
         anomalyMultiplier: source.anomalyMultiplier,
         monitorAlerts: {
@@ -598,6 +606,7 @@ export class MonitorsService {
       flapDetectionEnabled: cloned.flapDetectionEnabled,
       flapAlertedAt: null,
       mutedUntil: null,
+      latencyAlertMs: cloned.latencyAlertMs ?? null,
       isAcknowledged: false,
       anomalyDetection: cloned.anomalyDetection,
       anomalyMultiplier: cloned.anomalyMultiplier,
@@ -906,6 +915,7 @@ export class MonitorsService {
       flapDetectionEnabled: monitor.flapDetectionEnabled,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
       anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
       anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
       scheduleEnabled: (monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled ?? false,
@@ -2549,6 +2559,150 @@ export class MonitorsService {
       checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
       totalRuns: runs.length,
       currentStatus: prevLevel,
+    };
+  }
+
+  // ─── Bulk Create from URL List ────────────────────────────────────────────
+
+  /**
+   * Bulk-creates HTTP monitors from a list of URLs.
+   * Validates each URL, derives a name from the hostname, deduplicates by target.
+   *
+   * @param userId  - Authenticated user ID
+   * @param body    - { urls, folderId?, alertChannelIds?, intervalSec? }
+   * @returns       { created, skipped, errors }
+   */
+  async bulkCreateFromUrls(
+    userId: string,
+    body: {
+      urls: string[];
+      folderId?: string;
+      alertChannelIds?: string[];
+      intervalSec?: number;
+    },
+  ): Promise<{ created: number; skipped: number; errors: Array<{ url: string; error: string }> }> {
+    let created = 0;
+    let skipped = 0;
+    const errors: Array<{ url: string; error: string }> = [];
+
+    for (const rawUrl of body.urls) {
+      const url = rawUrl.trim();
+      if (!url) continue;
+
+      // Validate URL
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          errors.push({ url, error: 'Only HTTP/HTTPS URLs are supported' });
+          continue;
+        }
+      } catch {
+        errors.push({ url, error: 'Invalid URL' });
+        continue;
+      }
+
+      // Derive name from hostname
+      const name = parsedUrl.hostname;
+
+      // Deduplicate: skip if a monitor with the same target already exists for this user
+      const existing = await this.prisma.monitor.findFirst({
+        where: { userId, target: url },
+        select: { id: true },
+      });
+
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await this.create(userId, {
+          name,
+          target: url,
+          type: 'HTTP',
+          intervalSec: body.intervalSec ?? 60,
+          alertChannelIds: body.alertChannelIds ?? [],
+          folderId: body.folderId ?? null,
+        });
+        created++;
+      } catch (err) {
+        errors.push({ url, error: err instanceof Error ? err.message : 'Failed to create monitor' });
+      }
+    }
+
+    return { created, skipped, errors };
+  }
+
+  // ─── Response Diff ────────────────────────────────────────────────────────
+
+  /**
+   * Returns the response bodies of a failing run and the most recent passing run before it.
+   *
+   * @param userId    - Authenticated user ID (ownership check)
+   * @param monitorId - Monitor ID
+   * @param runId     - ID of the failing run
+   * @param baseRunId - (optional) explicit base run ID; if omitted, finds the most recent OK run before the failing run
+   */
+  async getResponseDiff(
+    userId: string,
+    monitorId: string,
+    runId: string,
+    baseRunId?: string,
+  ): Promise<{
+    failedBody: string | null;
+    baseBody: string | null;
+    runId: string;
+    baseRunId: string | null;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const failedRun = await this.prisma.monitorRun.findFirst({
+      where: { id: runId, monitorId, userId },
+      select: { id: true, ok: true, checkedAt: true, responseBody: true },
+    });
+    if (!failedRun) throw new NotFoundException('Run not found');
+
+    let resolvedBaseRunId: string | null = null;
+    let baseBody: string | null = null;
+
+    if (baseRunId) {
+      const baseRun = await this.prisma.monitorRun.findFirst({
+        where: { id: baseRunId, monitorId, userId },
+        select: { id: true, responseBody: true },
+      });
+      if (baseRun) {
+        resolvedBaseRunId = baseRun.id;
+        baseBody = baseRun.responseBody ?? null;
+      }
+    } else {
+      // Find most recent OK run before the failing run that has a responseBody
+      const baseRun = await this.prisma.monitorRun.findFirst({
+        where: {
+          monitorId,
+          userId,
+          ok: true,
+          responseBody: { not: null },
+          checkedAt: { lt: failedRun.checkedAt },
+        },
+        orderBy: { checkedAt: 'desc' },
+        select: { id: true, responseBody: true },
+      });
+      if (baseRun) {
+        resolvedBaseRunId = baseRun.id;
+        baseBody = baseRun.responseBody ?? null;
+      }
+    }
+
+    return {
+      failedBody: failedRun.responseBody ?? null,
+      baseBody,
+      runId: failedRun.id,
+      baseRunId: resolvedBaseRunId,
     };
   }
 }

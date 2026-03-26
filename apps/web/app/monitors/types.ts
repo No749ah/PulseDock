@@ -24,7 +24,7 @@ export interface MonitorItem {
   name: string;
   description?: string | null;
   runbookUrl?: string | null;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -45,6 +45,7 @@ export interface MonitorItem {
   isFlapping?: boolean;
   flapDetectionEnabled?: boolean;
   flapAlertedAt?: string | null;
+  latencyAlertMs?: number | null;
 }
 
 export interface MonitorRun {
@@ -90,7 +91,7 @@ export type MonitorFormData = {
   name: string;
   description: string;
   runbookUrl: string;
-  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -106,6 +107,7 @@ export type MonitorFormData = {
   autoIncident: boolean;
   autoIncidentSeverity: string;
   flapDetectionEnabled: boolean;
+  latencyAlertMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
   sliLatencyTarget: number | "";

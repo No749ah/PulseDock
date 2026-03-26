@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHtml } from '../common/sanitize';
 
@@ -141,6 +141,13 @@ export class CreateMonitorDto {
   @IsBoolean()
   flapDetectionEnabled?: boolean;
 
+  @ApiPropertyOptional({ description: 'Fixed latency alert threshold in ms. If set, any successful check with latency above this value will be flagged yellow and trigger a degraded alert.', minimum: 1, maximum: 60000, example: 2000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  latencyAlertMs?: number | null;
+
   @ApiPropertyOptional({ description: 'Enable dynamic latency anomaly detection — fires a degraded alert when response time exceeds multiplier × P95 of last 7 days', example: false })
   @IsOptional()
   @IsBoolean()
@@ -280,6 +287,13 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsBoolean()
   flapDetectionEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Fixed latency alert threshold in ms. If set, any successful check with latency above this value will be flagged yellow and trigger a degraded alert.', minimum: 1, maximum: 60000, example: 2000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  latencyAlertMs?: number | null;
 
   @IsOptional()
   @IsBoolean()
@@ -497,6 +511,33 @@ export class ImportExternalDto {
 
   /** Raw export payload: JSON object for uptime-robot/better-uptime/uptime-kuma, CSV string for csv. */
   payload!: unknown;
+}
+
+export class BulkCreateFromUrlsDto {
+  @ApiProperty({ type: [String], description: 'List of HTTP/HTTPS URLs to create monitors for' })
+  @IsArray()
+  @IsUrl({}, { each: true })
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  urls!: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  folderId?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  alertChannelIds?: string[];
+
+  @ApiPropertyOptional({ default: 60 })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(3600)
+  intervalSec?: number;
 }
 
 export class CreateMonitorEventDto {

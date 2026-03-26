@@ -6263,3 +6263,100 @@ describe('getPeriodComparison', () => {
     expect(p.monitorRun.findMany).toHaveBeenCalledTimes(2);
   });
 });
+
+// ─── bulkCreateFromUrls() ─────────────────────────────────────────────────────
+
+describe('MonitorsService.bulkCreateFromUrls', () => {
+  function makeService(p: ReturnType<typeof makePrisma>) {
+    const audit = { log: vi.fn().mockResolvedValue(undefined) };
+    const realtime = { monitorCreated: vi.fn(), monitorUpdated: vi.fn(), monitorDeleted: vi.fn() };
+    const checks = { run: vi.fn(), runMonitor: vi.fn(), listPlugins: vi.fn().mockReturnValue([]) };
+    const versionDetection = new VersionDetectionService(p as never);
+    return new MonitorsService(p as never, checks as never, audit as never, realtime as never, versionDetection as never);
+  }
+
+  it('creates monitors for valid URLs', async () => {
+    const p = makePrisma();
+    // No existing monitors (dedup check returns null)
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.example.com/health', 'https://status.example.com'],
+    });
+    expect(result.created).toBe(2);
+    expect(result.skipped).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('skips invalid/non-HTTP URLs and reports errors', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['not-a-url', 'ftp://bad-protocol.com', 'https://valid.example.com'],
+    });
+    expect(result.created).toBe(1);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0].url).toBe('not-a-url');
+    expect(result.errors[1].url).toBe('ftp://bad-protocol.com');
+  });
+
+  it('skips duplicate targets (same URL already exists)', async () => {
+    const p = makePrisma();
+    // First call: existing monitor found (duplicate); second call: no duplicate
+    p.monitor.findFirst
+      .mockResolvedValueOnce(makeMonitor()) // duplicate check for first URL
+      .mockResolvedValueOnce(null);          // duplicate check for second URL (create path also calls findFirst via prisma.monitor.findFirst for 'plugins' etc — reset)
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://existing.example.com', 'https://new.example.com'],
+    });
+    expect(result.skipped).toBe(1);
+    expect(result.created).toBe(1);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('derives the monitor name from URL hostname', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.my-service.com/health'],
+    });
+    // prisma.monitor.create should have been called with name = 'api.my-service.com'
+    expect(p.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'api.my-service.com' }),
+      }),
+    );
+  });
+
+  it('passes folderId and alertChannelIds to created monitors', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.example.com'],
+      folderId: 'folder-42',
+      alertChannelIds: ['ch-1', 'ch-2'],
+      intervalSec: 120,
+    });
+    expect(p.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          folderId: 'folder-42',
+          intervalSec: 120,
+        }),
+      }),
+    );
+  });
+
+  it('returns empty result for empty url list', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', { urls: [] });
+    expect(result.created).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+});

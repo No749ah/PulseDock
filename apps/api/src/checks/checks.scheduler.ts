@@ -141,6 +141,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         isFlapping: true,
         flapDetectionEnabled: true,
         flapAlertedAt: true,
+        latencyAlertMs: true,
         scheduleEnabled: true,
         scheduleDays: true,
         scheduleStartHour: true,
@@ -248,6 +249,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     flapDetectionEnabled?: boolean;
     flapAlertedAt?: Date | null;
     mutedUntil?: Date | null;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -295,6 +297,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         mutedUntil: (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil
           ? (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil!.toISOString()
           : null,
+        latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
         anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
         anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
         scheduleEnabled: monitor.scheduleEnabled ?? false,

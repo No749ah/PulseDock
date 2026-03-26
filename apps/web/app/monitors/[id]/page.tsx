@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain">("overview");
 
   // Performance / Latency distribution
   const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
@@ -955,6 +955,19 @@ export default function MonitorDetailPage() {
               Certificate
             </button>
           )}
+          {monitor.type === "WHOIS" && (
+            <button
+              onClick={() => setActiveMainTab("domain")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "domain"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Domain
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
@@ -1372,6 +1385,193 @@ export default function MonitorDetailPage() {
             })()}
           </Card>
         )}
+
+        {/* Domain Tab — WHOIS expiry info */}
+        {activeMainTab === "domain" && monitor.type === "WHOIS" && ((): React.ReactNode => {
+          // Parse expiry info from the last run message
+          // Messages look like: 'Domain "example.com" expires in 120d (2026-07-24)'
+          //                     'Domain "example.com" expires in 5d (2026-03-31) — CRITICAL'
+          //                     'Domain "example.com" expires in 20d (2026-04-15) — warning'
+          //                     'Domain "example.com" expired on 2025-12-01'
+          //                     'WHOIS: example.com — expiry date not published by registrar'
+          //                     'Domain "example.com" not found in WHOIS'
+          let daysRemaining: number | null = null;
+          let expiryDate: string | null = null;
+          let domainName: string | null = null;
+          let expiryStatus: "green" | "yellow" | "red" | "unknown" = "unknown";
+          let notPublished = false;
+          let notFound = false;
+
+          const msg = lastRun?.message ?? "";
+
+          // Extract domain name
+          const domainMatch = msg.match(/["""]([^"""]+)["""]/);
+          if (domainMatch) domainName = domainMatch[1];
+          // Also try WHOIS: example.com — pattern
+          if (!domainName) {
+            const whoisMatch = msg.match(/WHOIS:\s+([^\s—–]+)/);
+            if (whoisMatch) domainName = whoisMatch[1];
+          }
+
+          // Parse expiry days + date
+          const expiresMatch = msg.match(/expires in (\d+)d \((\d{4}-\d{2}-\d{2})\)/);
+          if (expiresMatch) {
+            daysRemaining = parseInt(expiresMatch[1], 10);
+            expiryDate = expiresMatch[2];
+          }
+
+          // Parse expired case
+          const expiredMatch = msg.match(/expired on (\d{4}-\d{2}-\d{2})/);
+          if (expiredMatch) {
+            expiryDate = expiredMatch[1];
+            daysRemaining = 0;
+          }
+
+          // Determine status from last run level
+          if (lastRun?.level === "green") expiryStatus = "green";
+          else if (lastRun?.level === "yellow") expiryStatus = "yellow";
+          else if (lastRun?.level === "red") expiryStatus = "red";
+
+          if (msg.includes("expiry date not published")) notPublished = true;
+          if (msg.includes("not found in WHOIS")) notFound = true;
+
+          const statusBannerClass = expiryStatus === "green"
+            ? "bg-success/10 border-success/30 text-success"
+            : expiryStatus === "yellow"
+            ? "bg-yellow-400/10 border-yellow-400/30 text-yellow-400"
+            : expiryStatus === "red"
+            ? "bg-danger/10 border-danger/30 text-danger"
+            : "bg-surface-elevated border-border text-text-secondary";
+
+          const expiryBarWidth = daysRemaining !== null && daysRemaining > 0
+            ? Math.min(100, Math.round((daysRemaining / 365) * 100))
+            : 0;
+          const expiryBarColor = expiryStatus === "green"
+            ? "bg-success"
+            : expiryStatus === "yellow"
+            ? "bg-yellow-400"
+            : "bg-danger";
+
+          // History: show check results with expiry context
+          const whoisRuns = runs.slice(0, 30);
+
+          return (
+            <Card className="p-4 space-y-5">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">WHOIS Domain Expiry</h2>
+              </div>
+
+              {/* Status Banner */}
+              <div className={`flex items-start gap-3 p-4 rounded-xl border ${statusBannerClass}`}>
+                <Globe className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">
+                    {notFound
+                      ? `Domain not found in WHOIS`
+                      : notPublished
+                      ? `Expiry date not published by registrar`
+                      : daysRemaining !== null && daysRemaining <= 0
+                      ? `Domain has expired`
+                      : daysRemaining !== null
+                      ? `Expires in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`
+                      : "No data yet — run a check to see expiry info"}
+                  </p>
+                  {domainName && (
+                    <p className="text-xs opacity-75 mt-0.5 font-mono">{domainName}</p>
+                  )}
+                  {expiryDate && (
+                    <p className="text-xs opacity-75 mt-0.5">
+                      Expiry date: <span className="font-medium">{new Date(expiryDate + "T00:00:00Z").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
+                    </p>
+                  )}
+                </div>
+                {daysRemaining !== null && daysRemaining > 0 && (
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-3xl font-bold tabular-nums leading-none">{daysRemaining}</p>
+                    <p className="text-xs opacity-75 mt-0.5">days left</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Expiry Progress Bar */}
+              {daysRemaining !== null && daysRemaining > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-text-muted">
+                    <span>Today</span>
+                    <span>{daysRemaining}d remaining out of 365d shown</span>
+                    <span>Expiry: {expiryDate ?? "—"}</span>
+                  </div>
+                  <div className="h-2 bg-surface-elevated rounded-full overflow-hidden border border-border">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${expiryBarColor}`}
+                      style={{ width: `${expiryBarWidth}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Config info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Warn Threshold</p>
+                  <p className="text-lg font-bold text-yellow-400 tabular-nums">
+                    {(monitor.config as { warnDays?: number } | null)?.warnDays ?? 30}d
+                  </p>
+                  <p className="text-xs text-text-secondary">Yellow alert below this</p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Critical Threshold</p>
+                  <p className="text-lg font-bold text-danger tabular-nums">
+                    {(monitor.config as { criticalDays?: number } | null)?.criticalDays ?? 7}d
+                  </p>
+                  <p className="text-xs text-text-secondary">Red alert below this</p>
+                </div>
+              </div>
+
+              {/* Check history */}
+              {whoisRuns.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks</p>
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                    {whoisRuns.map((run, idx) => {
+                      const runDaysMatch = run.message?.match(/expires in (\d+)d/);
+                      const runDays = runDaysMatch ? parseInt(runDaysMatch[1], 10) : null;
+                      const levelColors: Record<string, string> = {
+                        green: "text-success",
+                        yellow: "text-yellow-400",
+                        red: "text-danger",
+                      };
+                      return (
+                        <div key={idx} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/3 transition-colors">
+                          <span className={`text-xs font-medium w-12 tabular-nums ${run.level ? (levelColors[run.level] ?? "text-text-secondary") : "text-text-secondary"}`}>
+                            {run.level?.toUpperCase() ?? "—"}
+                          </span>
+                          <span className="text-xs text-text-muted w-36 flex-shrink-0">
+                            {new Date(run.checkedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="text-xs text-text-secondary truncate flex-1">
+                            {runDays !== null
+                              ? `${runDays}d remaining`
+                              : run.message?.length && run.message.length > 60
+                              ? run.message.slice(0, 60) + "…"
+                              : (run.message ?? "—")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {whoisRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No checks yet — trigger a manual check to see domain expiry data.
+                </div>
+              )}
+            </Card>
+          );
+        })()}
 
         {/* SLA Stats — with period selector */}
         {activeMainTab === "overview" && (<>
@@ -2309,6 +2509,7 @@ export default function MonitorDetailPage() {
         {/* Advanced Settings Summary */}
         {(monitor.retryCount != null && monitor.retryCount > 0) ||
          monitor.anomalyDetection ||
+         (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ||
          monitor.scheduleEnabled ||
          (monitor.confirmations != null && monitor.confirmations > 1) ||
          monitor.autoIncident ||
@@ -2333,6 +2534,13 @@ export default function MonitorDetailPage() {
                   <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Retries</span>
                   <span className="text-text-primary font-medium">{monitor.retryCount}× on failure</span>
                   <span className="text-[10px] text-text-secondary">Exponential backoff</span>
+                </div>
+              )}
+              {(monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <span className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">Latency Threshold</span>
+                  <span className="text-text-primary font-medium">&gt; {(monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs}ms</span>
+                  <span className="text-[10px] text-text-secondary">Alert on slow responses</span>
                 </div>
               )}
               {monitor.anomalyDetection && (

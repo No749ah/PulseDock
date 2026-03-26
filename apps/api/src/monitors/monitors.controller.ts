@@ -10,7 +10,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 
@@ -1151,5 +1151,62 @@ export class MonitorsController {
       ? (period as '24h' | '7d' | '30d')
       : '7d';
     return this.monitorsService.getPeriodComparison(req.user.id, id, safePeriod);
+  }
+
+  // ─── Bulk Create from URL List ────────────────────────────────────────────
+
+  @Post('bulk-create-from-urls')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Bulk create HTTP monitors from a URL list',
+    description: 'Accepts a list of HTTP/HTTPS URLs (max 50), validates each, derives a name from the hostname, and creates one HTTP monitor per URL. Skips duplicates (same target already monitored).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bulk create result.',
+    schema: {
+      example: { created: 3, skipped: 1, errors: [{ url: 'not-a-url', error: 'Invalid URL' }] },
+    },
+  })
+  bulkCreateFromUrls(
+    @Req() req: { user: { id: string } },
+    @Body() body: BulkCreateFromUrlsDto,
+  ) {
+    return this.monitorsService.bulkCreateFromUrls(req.user.id, body);
+  }
+
+  // ─── Response Body Diff ───────────────────────────────────────────────────
+
+  @Get(':id/response-diff')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get response body diff for a failing run',
+    description: 'Returns the response bodies of a failing run and the most recent passing run before it, for client-side diff display.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'runId', required: true, description: 'ID of the failing run to compare' })
+  @ApiQuery({ name: 'baseRunId', required: false, description: 'ID of the baseline (passing) run. If omitted, finds the most recent OK run before the failing run.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Diff bodies returned.',
+    schema: {
+      example: {
+        failedBody: '{"status":"error"}',
+        baseBody: '{"status":"ok"}',
+        runId: 'run-abc',
+        baseRunId: 'run-xyz',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor or run not found.' })
+  getResponseDiff(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('runId') runId: string,
+    @Query('baseRunId') baseRunId?: string,
+  ) {
+    return this.monitorsService.getResponseDiff(req.user.id, id, runId, baseRunId);
   }
 }

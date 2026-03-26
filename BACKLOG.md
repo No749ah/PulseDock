@@ -1,11 +1,16 @@
-## Status Summary (2026-03-26 18:45 UTC)
-- **Build/Test:** ✅ Clean build + 3487 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 21:21 UTC)
+- **Build/Test:** ✅ Clean build + 3525 API + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (18:45 UTC cycle):**
+- **Last changes (21:21 UTC cycle):**
+  - **Fix whois.runner.spec.ts ESM spy error** — `vi.spyOn(net, 'createConnection')` is non-configurable in ESM. Rewrote 10 failing tests using `vi.hoisted()` + `vi.mock('node:net', ...)` factory. All 17 tests green.
+  - **WHOIS Domain tab in monitor detail** — New "Domain" tab for WHOIS monitors: expiry countdown, color-coded banner (green/yellow/red), progress bar, threshold config display, check history with parsed days-remaining.
+  - **Fix TypeScript WHOIS type gaps** — Added `WHOIS` to `MonitorItem.type` union in `types.ts`, `[id]/components/types.ts`, and `MonitorFormData.type` union. 0 TS errors.
+  - **TableRow onClick support** — Added `onClick` prop to `TableRow` component (fixes pre-existing TS2322).
+- **Previous (18:45 UTC cycle):**
   - **Alert grouping / correlation** — When 3+ monitors in same folder/tag fail within a configurable window (default 5 min), a single grouped alert fires instead of N individual ones. Prisma migration `add_alert_grouping`, `AlertGroup` model, `notifyWithGrouping()` in AlertsService, minute-cron to flush expired groups, 4 new fields on `AlertChannel` (alertGrouping, groupWindowSec, groupByFolder, groupByTag), toggle UI in create/edit forms. 5 new tests → 3492 total.
   - **Status transitions timeline** — `GET /v1/monitors/:id/status-transitions` endpoint + Performance tab visualization.
   - **Fix AlertChannel TS strict errors** — 0 TS errors.

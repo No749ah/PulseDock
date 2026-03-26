@@ -1,5 +1,5 @@
-## Status Summary (2026-03-26 12:20 UTC)
-- **Build/Test:** ✅ Clean build + 3403 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 12:45 UTC)
+- **Build/Test:** ✅ Clean build + 3414 tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
 - **Branch:** heartbeat/2026-03-26-monitor-debug-improvements
@@ -7,13 +7,16 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (12:20 cycle):**
-  - Branch merge: heartbeat/2026-03-26-enterprise-features → dev
-  - Response body capture on failed HTTP checks (debug visibility in check history)
+- **Last changes (12:45 cycle):**
+  - Branch merge + new heartbeat branch
+  - responseBody on failed HTTP checks → debug in check history
   - Alert routing rule simulation API + UI (dry-run before go-live)
-  - Fixed all 25 TypeScript errors (spec files + web components)
-  - GET /v1/monitors/:id/incidents endpoint + Linked Incidents panel on monitor detail page
-  - Total tests: 3403.
+  - Fixed 25 TypeScript errors (spec files + web components) → code quality 8/8
+  - GET /v1/monitors/:id/incidents + Linked Incidents panel on detail page
+  - GET /v1/monitors/:id/release-notes (GitHub release body fetch)
+  - Versions page: Release Notes + Security Advisories (OSV.dev) panels
+  - Bulk update interval/timeout/confirmations actions
+  - Total tests: 3414.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

@@ -503,7 +503,65 @@ export class MonitorsController {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
   }
 
-  // ─── Alert Delivery History ───────────────────────────────────────────────
+  // ─── Linked Incidents ────────────────────────────────────────────────────
+
+  @Get(':id/incidents')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Incidents linked to a monitor',
+    description: 'Returns all formal incidents that reference this monitor, ordered by most recent first.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max incidents to return (1-100, default 20)' })
+  @ApiResponse({ status: 200, description: 'Incidents returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async monitorIncidents(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const take = Math.min(100, Math.max(1, parseInt(limit ?? '20', 10) || 20));
+
+    const links = await this.prisma.incidentMonitor.findMany({
+      where: { monitorId: id },
+      include: {
+        incident: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            severity: true,
+            createdAt: true,
+            resolvedAt: true,
+            autoCreated: true,
+          },
+        },
+      },
+      orderBy: { incident: { createdAt: 'desc' } },
+      take,
+    });
+
+    return {
+      total: links.length,
+      incidents: links.map((l) => ({
+        id: l.incident.id,
+        title: l.incident.title,
+        status: l.incident.status,
+        severity: l.incident.severity,
+        autoCreated: l.incident.autoCreated,
+        createdAt: l.incident.createdAt,
+        resolvedAt: l.incident.resolvedAt,
+        durationSec: l.incident.resolvedAt
+          ? Math.floor((new Date(l.incident.resolvedAt).getTime() - new Date(l.incident.createdAt).getTime()) / 1000)
+          : null,
+      })),
+    };
+  }
+
+// ─── Alert Delivery History ───────────────────────────────────────────────
 
   @Get(':id/deliveries')
   @RequireScope(ApiKeyScope.READ)

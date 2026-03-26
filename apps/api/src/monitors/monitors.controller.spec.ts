@@ -465,3 +465,70 @@ describe('MonitorsController', () => {
     expect(result).toEqual(monitorDetail);
   });
 });
+
+// ─── monitorIncidents ───────────────────────────────────────────────────────
+
+describe('MonitorsController.monitorIncidents', () => {
+  const now = new Date('2026-03-01T10:00:00Z');
+  const resolved = new Date('2026-03-01T11:30:00Z');
+
+  const mockIncidentLink = {
+    monitorId: 'mon-1',
+    incident: {
+      id: 'inc-1',
+      title: 'API down',
+      status: 'RESOLVED',
+      severity: 'HIGH',
+      autoCreated: true,
+      createdAt: now,
+      resolvedAt: resolved,
+    },
+  };
+
+  function makePrismaForIncidents(monitorFound = true, links = [mockIncidentLink]) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(monitorFound ? { id: 'mon-1' } : null),
+      },
+      incidentMonitor: {
+        findMany: vi.fn().mockResolvedValue(links),
+      },
+    };
+  }
+
+  it('returns linked incidents with duration', async () => {
+    const prisma = makePrismaForIncidents();
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    const incidents = result['incidents'] as Array<Record<string, unknown>>;
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]['id']).toBe('inc-1');
+    expect(incidents[0]['title']).toBe('API down');
+    expect(incidents[0]['durationSec']).toBe(5400); // 90 minutes
+  });
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForIncidents(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.monitorIncidents(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns empty list when no incidents linked', async () => {
+    const prisma = makePrismaForIncidents(true, []);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['total']).toBe(0);
+    expect(result['incidents']).toHaveLength(0);
+  });
+
+  it('open incident has durationSec null', async () => {
+    const openLink = { ...mockIncidentLink, incident: { ...mockIncidentLink.incident, status: 'INVESTIGATING', resolvedAt: null } };
+    const prisma = makePrismaForIncidents(true, [openLink]);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    const incidents = result['incidents'] as Array<Record<string, unknown>>;
+    expect(incidents[0]['durationSec']).toBeNull();
+    expect(incidents[0]['status']).toBe('INVESTIGATING');
+  });
+});

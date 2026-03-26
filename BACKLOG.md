@@ -7,7 +7,8 @@
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Last changes (17:20 UTC cycle):**
   - **Custom HTTP headers for webhook channels** — Key-value editor (password inputs) in create wizard + edit modal. Headers merged into every webhook delivery. Reserved headers (content-type, host, etc.) protected from override. `buildConfig()` updated to nested `customHeaders` object. 2 new tests (127 alerts.service total).
-  - **Webhook payload preview + manual delivery retry** — In progress via subagent.
+    - **Webhook payload preview + manual delivery retry** — 3 new endpoints (`preview-payload`, `retry-delivery/:id`, `retry-all-failed`). Preview shows rendered template with sample data (valid/invalid JSON indicator). Retry re-sends with fresh context. ↻ buttons in delivery history UI. Build clean, 3489 tests passing.
+  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — In progress via subagent.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

@@ -12,7 +12,6 @@ import {
   Bell,
   ScrollText,
   CalendarClock,
-  Shuffle,
 
   ChevronDown,
   Folder,
@@ -60,7 +59,6 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Management',
     items: [
       { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
-      { href: '/alerts/routing', label: 'Routing Rules', icon: Shuffle },
       { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },

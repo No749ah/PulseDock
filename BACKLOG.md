@@ -1,13 +1,14 @@
-## Status Summary (2026-03-26 14:36 UTC)
-- **Build/Test:** ✅ Clean build + 3434 tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 16:20 UTC)
+- **Build/Test:** ✅ Clean build + 3487 tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-noon
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (14:36 PM cycle):**
-  - **Alert Digest Queue** — Fixed critical gap where hourly_digest/daily_digest preference silently dropped notifications. Added NotificationQueueItem Prisma model + migration. NotificationsService: enqueueForDigest(), getPendingDigestItems(), markDigestItemsSent(). Cron jobs: hourly digest @5min past hour, daily digest @07:05 UTC, prune @04:00 UTC. AlertsService now queues notifications instead of dropping when frequency≠instant. API: GET/POST /v1/notification-preferences/digest-queue. 16 new tests.
-  - Total tests: 3450.
+- **Last changes (16:20 UTC cycle):**
+  - **Scheduler concurrency limiter** — `MAX_CONCURRENT_CHECKS` env var (default 50) limits simultaneous checks per tick via `runWithConcurrencyLimit`. Prevents thundering-herd on large deployments.
+  - **Monitor check retries** — `retryCount` field (0–3) on Monitor. Failed checks are retried with exponential backoff (500ms/1s/2s) before recording. Prevents false alerts from transient network blips. Prisma migration + API DTO + frontend select dropdown. 5 new tests.
+  - Total tests: 3487.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -21,6 +22,9 @@
 ---
 
 ## In Progress
+
+- [x] **Monitor check retries** — `retryCount` (0-3) with exponential backoff before recording failure. Prevents false alerts from transient network blips. Prisma migration + API + frontend. 5 tests. *(2026-03-26 16:20 UTC)*
+- [x] **Scheduler MAX_CONCURRENT_CHECKS** — Configurable concurrency limit (env var, default 50) via runWithConcurrencyLimit. *(2026-03-26 16:00 UTC)*
 
 - [x] **Alert Routing Rules** — Rules-based conditional alert routing: match monitors by type/level/folder/ID, route to specific channels. API CRUD + reorder + toggle. Frontend page at `/alerts/routing`. Wired into AlertsService. 22 new tests → 3299 total. *(2026-03-26)*
 

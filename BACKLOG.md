@@ -1,13 +1,14 @@
-## Status Summary (2026-03-26 18:30 UTC)
+## Status Summary (2026-03-26 18:45 UTC)
 - **Build/Test:** ✅ Clean build + 3487 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (18:30 UTC cycle):**
-  - **Status transitions timeline** — `GET /v1/monitors/:id/status-transitions` endpoint (outages, recovery, MTTR, MTBF). Timeline visualization in Performance tab with summary stats cards. 5 new tests.
-  - **Fix AlertChannel TS strict errors** — Added missing `alertGrouping`, `groupWindowSec`, `groupByFolder`, `groupByTag` fields in `alerts.service.ts` (sendSlaNotification path) and `escalation.service.ts`. 0 TS errors now.
+- **Last changes (18:45 UTC cycle):**
+  - **Alert grouping / correlation** — When 3+ monitors in same folder/tag fail within a configurable window (default 5 min), a single grouped alert fires instead of N individual ones. Prisma migration `add_alert_grouping`, `AlertGroup` model, `notifyWithGrouping()` in AlertsService, minute-cron to flush expired groups, 4 new fields on `AlertChannel` (alertGrouping, groupWindowSec, groupByFolder, groupByTag), toggle UI in create/edit forms. 5 new tests → 3492 total.
+  - **Status transitions timeline** — `GET /v1/monitors/:id/status-transitions` endpoint + Performance tab visualization.
+  - **Fix AlertChannel TS strict errors** — 0 TS errors.
 - **Previous (18:17 UTC cycle):**
   - **Advanced Settings summary panel on monitor detail** — Added contextual card showing active retries, confirmations, anomaly detection (w/ multiplier), business hours schedule, auto-incident, and runbook link. Only renders when at least one setting is active. Updated `MonitorItem` type with all missing fields.
 - **Previous changes (18:10 UTC cycle):**

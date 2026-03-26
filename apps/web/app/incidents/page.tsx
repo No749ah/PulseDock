@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus, Search, Download, ChevronsUpDown } from 'lucide-react';
+import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus, Search, Download, ChevronsUpDown, LayoutTemplate } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -164,6 +164,84 @@ function MonitorPicker({
   );
 }
 
+// ─── Incident Templates ──────────────────────────────────────────────────────
+
+interface IncidentTemplate {
+  id: string;
+  label: string;
+  icon: string;
+  title: string;
+  description: string;
+  severity: IncidentSeverity;
+}
+
+const INCIDENT_TEMPLATES: IncidentTemplate[] = [
+  {
+    id: 'service-outage',
+    label: 'Service Outage',
+    icon: '🔴',
+    title: 'Service outage — {service}',
+    description: 'We are investigating reports of a complete service outage. Users may be unable to access the service. Our team is working on a resolution.',
+    severity: 'CRITICAL',
+  },
+  {
+    id: 'degraded-performance',
+    label: 'Degraded Performance',
+    icon: '🟡',
+    title: 'Degraded performance — {service}',
+    description: 'We are experiencing degraded performance impacting some users. Response times are elevated and some requests may be failing. We are investigating the root cause.',
+    severity: 'HIGH',
+  },
+  {
+    id: 'database-issue',
+    label: 'Database Issue',
+    icon: '🗄️',
+    title: 'Database connectivity issues',
+    description: 'We are investigating database connectivity issues that may affect data reads and writes. Some operations may fail or be delayed.',
+    severity: 'CRITICAL',
+  },
+  {
+    id: 'deploy-issue',
+    label: 'Deploy Rollback',
+    icon: '🚀',
+    title: 'Deployment issue — rolling back',
+    description: 'A recent deployment introduced an issue impacting service availability. We are rolling back to the previous stable version.',
+    severity: 'HIGH',
+  },
+  {
+    id: 'third-party',
+    label: 'Third-party Outage',
+    icon: '🌐',
+    title: 'Third-party service outage',
+    description: 'We are experiencing issues due to an outage with a third-party dependency. We are monitoring the situation and will provide updates as we receive them.',
+    severity: 'MEDIUM',
+  },
+  {
+    id: 'network',
+    label: 'Network Issue',
+    icon: '📡',
+    title: 'Network connectivity issues',
+    description: 'We are investigating network connectivity issues that may affect service availability for some users in certain regions.',
+    severity: 'HIGH',
+  },
+  {
+    id: 'ssl-cert',
+    label: 'SSL Certificate',
+    icon: '🔒',
+    title: 'SSL certificate issue',
+    description: 'Users may encounter SSL certificate errors when accessing our service. We are working to resolve the certificate issue urgently.',
+    severity: 'CRITICAL',
+  },
+  {
+    id: 'maintenance',
+    label: 'Unplanned Maintenance',
+    icon: '🔧',
+    title: 'Unplanned maintenance in progress',
+    description: 'We are performing emergency maintenance to address a critical issue. Some services may be unavailable during this period.',
+    severity: 'LOW',
+  },
+];
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function IncidentsPage() {
@@ -183,6 +261,7 @@ export default function IncidentsPage() {
     severity: 'MEDIUM' as IncidentSeverity,
   });
   const [createMonitorIds, setCreateMonitorIds] = useState<string[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [creating, setCreating] = useState(false);
 
   // Edit modal
@@ -251,6 +330,7 @@ export default function IncidentsPage() {
       });
       success('Incident created');
       setCreateOpen(false);
+      setShowTemplates(false);
       setCreateForm({ title: '', description: '', severity: 'MEDIUM' });
       setCreateMonitorIds([]);
       load();
@@ -407,11 +487,11 @@ export default function IncidentsPage() {
           {/* Create */}
           <Modal
             isOpen={createOpen}
-            onClose={() => setCreateOpen(false)}
+            onClose={() => { setCreateOpen(false); setShowTemplates(false); }}
             title="Create incident"
             actions={
               <>
-                <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button variant="secondary" onClick={() => { setCreateOpen(false); setShowTemplates(false); }}>Cancel</Button>
                 <Button variant="primary" onClick={confirmCreate} disabled={!createForm.title.trim() || creating}>
                   {creating ? 'Creating…' : 'Create'}
                 </Button>
@@ -419,6 +499,39 @@ export default function IncidentsPage() {
             }
           >
             <div className="space-y-4">
+              {/* Template picker */}
+              <div>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
+                  onClick={() => setShowTemplates((v) => !v)}
+                >
+                  <LayoutTemplate className="w-4 h-4" />
+                  {showTemplates ? 'Hide templates' : 'Start from a template'}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
+                </button>
+                {showTemplates && (
+                  <div className="mt-2 grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
+                    {INCIDENT_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        className="flex items-start gap-2 p-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated hover:border-accent/40 text-left transition-colors group"
+                        onClick={() => {
+                          setCreateForm({ title: tpl.title, description: tpl.description, severity: tpl.severity });
+                          setShowTemplates(false);
+                        }}
+                      >
+                        <span className="text-base leading-none mt-0.5 flex-shrink-0">{tpl.icon}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors truncate">{tpl.label}</div>
+                          <div className="text-xs text-text-secondary mt-0.5">{tpl.severity.charAt(0) + tpl.severity.slice(1).toLowerCase()}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">Title <span className="text-danger">*</span></label>
                 <input

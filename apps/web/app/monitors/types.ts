@@ -106,6 +106,10 @@ export type MonitorFormData = {
   anomalyMultiplier: number;
   sliLatencyTarget: number | "";
   sliLatencyWindow: number;
+  scheduleEnabled: boolean;
+  scheduleDays: string;
+  scheduleStartHour: number;
+  scheduleEndHour: number;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

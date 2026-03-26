@@ -60,6 +60,10 @@ export interface Monitor {
   mutedUntil: string | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
+  scheduleEnabled: boolean;
+  scheduleDays: string;
+  scheduleStartHour: number;
+  scheduleEndHour: number;
   createdAt: string;
 }
 

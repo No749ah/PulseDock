@@ -100,6 +100,10 @@ export class MonitorsService {
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
+      scheduleEnabled: m.scheduleEnabled,
+      scheduleDays: m.scheduleDays,
+      scheduleStartHour: m.scheduleStartHour,
+      scheduleEndHour: m.scheduleEndHour,
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
@@ -160,6 +164,10 @@ export class MonitorsService {
       } : null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
+      scheduleEnabled: m.scheduleEnabled,
+      scheduleDays: m.scheduleDays,
+      scheduleStartHour: m.scheduleStartHour,
+      scheduleEndHour: m.scheduleEndHour,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -193,6 +201,10 @@ export class MonitorsService {
     flapDetectionEnabled?: boolean;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
     sliLatencyTarget?: number;
     sliLatencyWindow?: number;
   }) {
@@ -228,6 +240,10 @@ export class MonitorsService {
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
+        scheduleEnabled: body.scheduleEnabled ?? false,
+        scheduleDays: body.scheduleDays ?? '1,2,3,4,5',
+        scheduleStartHour: body.scheduleStartHour ?? 8,
+        scheduleEndHour: body.scheduleEndHour ?? 18,
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -277,6 +293,10 @@ export class MonitorsService {
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
       anomalyDetection: created.anomalyDetection,
       anomalyMultiplier: created.anomalyMultiplier,
+      scheduleEnabled: created.scheduleEnabled,
+      scheduleDays: created.scheduleDays,
+      scheduleStartHour: created.scheduleStartHour,
+      scheduleEndHour: created.scheduleEndHour,
       sliLatencyTarget: created.sliLatencyTarget ?? null,
       sliLatencyWindow: created.sliLatencyWindow,
       createdAt: created.createdAt.toISOString(),
@@ -318,6 +338,10 @@ export class MonitorsService {
     flapDetectionEnabled?: boolean;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
     sliLatencyTarget?: number | null;
     sliLatencyWindow?: number;
   }) {
@@ -357,6 +381,10 @@ export class MonitorsService {
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
+        ...(body.scheduleEnabled !== undefined ? { scheduleEnabled: body.scheduleEnabled } : {}),
+        ...(body.scheduleDays !== undefined ? { scheduleDays: body.scheduleDays } : {}),
+        ...(body.scheduleStartHour !== undefined ? { scheduleStartHour: body.scheduleStartHour } : {}),
+        ...(body.scheduleEndHour !== undefined ? { scheduleEndHour: body.scheduleEndHour } : {}),
         ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
       },
@@ -816,6 +844,10 @@ export class MonitorsService {
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
       anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
       anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+      scheduleEnabled: (monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled ?? false,
+      scheduleDays: (monitor as typeof monitor & { scheduleDays?: string }).scheduleDays ?? '1,2,3,4,5',
+      scheduleStartHour: (monitor as typeof monitor & { scheduleStartHour?: number }).scheduleStartHour ?? 8,
+      scheduleEndHour: (monitor as typeof monitor & { scheduleEndHour?: number }).scheduleEndHour ?? 18,
     });
   }
 

@@ -155,6 +155,30 @@ export class CreateMonitorDto {
   @Max(90)
   sliLatencyWindow?: number;
 
+  @ApiPropertyOptional({ description: 'Enable schedule-based checking (only run during configured window)', example: false })
+  @IsOptional()
+  @IsBoolean()
+  scheduleEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Comma-separated days of week (0=Sun..6=Sat). Default: "1,2,3,4,5"', example: '1,2,3,4,5' })
+  @IsOptional()
+  @IsString()
+  scheduleDays?: string;
+
+  @ApiPropertyOptional({ description: 'UTC hour to start checks (0-23)', example: 8 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @ApiPropertyOptional({ description: 'UTC hour to stop checks (0-23)', example: 18 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -266,6 +290,26 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(90)
   sliLatencyWindow?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  scheduleEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  scheduleDays?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
 
 }
 

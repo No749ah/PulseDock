@@ -134,6 +134,10 @@ function MonitorsPageInner() {
     flapDetectionEnabled: true,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18,
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
   });
@@ -538,12 +542,20 @@ function MonitorsPageInner() {
           flapDetectionEnabled: formData.flapDetectionEnabled,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
+          scheduleEnabled: formData.scheduleEnabled,
+          scheduleDays: formData.scheduleDays,
+          scheduleStartHour: formData.scheduleStartHour,
+          scheduleEndHour: formData.scheduleEndHour,
           ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
           sliLatencyWindow: formData.sliLatencyWindow,
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -585,6 +597,10 @@ function MonitorsPageInner() {
           flapDetectionEnabled: formData.flapDetectionEnabled,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
+          scheduleEnabled: formData.scheduleEnabled,
+          scheduleDays: formData.scheduleDays,
+          scheduleStartHour: formData.scheduleStartHour,
+          scheduleEndHour: formData.scheduleEndHour,
           sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
           sliLatencyWindow: formData.sliLatencyWindow,
         }),
@@ -1110,7 +1126,11 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1279,7 +1299,11 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0, sliLatencyTarget: "", sliLatencyWindow: 7 });
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+    scheduleEnabled: false,
+    scheduleDays: "1,2,3,4,5",
+    scheduleStartHour: 8,
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);

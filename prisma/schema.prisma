@@ -73,6 +73,7 @@ model User {
   monitorEvents           MonitorEvent[]
   acknowledgements        AlertAcknowledgement[]
   alertRoutingRules       AlertRoutingRule[]
+  escalationPolicies      EscalationPolicy[]
 }
 
 model Session {
@@ -128,6 +129,11 @@ model Monitor {
   anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
   sliLatencyTarget    Int?        // target p95 latency in ms (e.g., 500 = p95 must be < 500ms)
   sliLatencyWindow    Int         @default(7)  // rolling window in days for latency SLI
+  // Business-hours schedule: only run checks during configured window
+  scheduleEnabled     Boolean     @default(false)
+  scheduleDays        String      @default("1,2,3,4,5") // comma-sep day-of-week: 0=Sun..6=Sat
+  scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
+  scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -266,11 +272,32 @@ model MonitorAlert {
   /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
   notifyOn       String    @default("ON_CHANGE")
   lastNotifiedAt DateTime?
+  /// Optional escalation policy for this monitor↔channel link
+  escalationPolicyId String?
+  /// Timestamp when the first escalation step fired for the current outage
+  escalatedAt        DateTime?
+  /// Which escalation step index (0-based) was last triggered; 0 = none yet
+  escalationStep     Int       @default(0)
 
-  monitor      Monitor      @relation(fields: [monitorId], references: [id], onDelete: Cascade)
-  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+  monitor          Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  alertChannel     AlertChannel      @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+  escalationPolicy EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id], onDelete: SetNull)
 
   @@id([monitorId, alertChannelId])
+}
+
+model EscalationPolicy {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+  /// JSON array: [{delayMinutes: number, channelId: string}]
+  steps  Json   @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorAlerts MonitorAlert[]
 }
 
 model AlertRoutingRule {

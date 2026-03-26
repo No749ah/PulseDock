@@ -1,9 +1,10 @@
-import { Injectable, Logger, BeforeApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, BeforeApplicationShutdown, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from './checks.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { EscalationService } from '../escalation/escalation.service';
 
 /** How many days of MonitorRun history to keep. Configurable via RUN_RETENTION_DAYS env var. Default: 90 days. */
 const RUN_RETENTION_DAYS = Math.max(1, parseInt(process.env['RUN_RETENTION_DAYS'] ?? '90', 10) || 90);
@@ -34,6 +35,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     private readonly prisma: PrismaService,
     private readonly checksService: ChecksService,
     private readonly alertsService: AlertsService,
+    @Optional() private readonly escalationService?: EscalationService,
   ) {}
 
   /** Returns the current check queue depth (number of monitors actively being checked). */
@@ -101,6 +103,10 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         isFlapping: true,
         flapDetectionEnabled: true,
         flapAlertedAt: true,
+        scheduleEnabled: true,
+        scheduleDays: true,
+        scheduleStartHour: true,
+        scheduleEndHour: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -109,8 +115,20 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
       },
     });
 
+    const nowDate = new Date(cycleStart);
+    const nowDayOfWeek = nowDate.getUTCDay();
+    const nowHour = nowDate.getUTCHours();
+
     const total = monitors.length;
     const due = monitors.filter((monitor) => {
+      // Schedule check: skip if outside configured window
+      if (monitor.scheduleEnabled) {
+        const allowedDays = (monitor.scheduleDays ?? '1,2,3,4,5').split(',').map(Number);
+        if (!allowedDays.includes(nowDayOfWeek)) return false;
+        const start = monitor.scheduleStartHour ?? 8;
+        const end = monitor.scheduleEndHour ?? 18;
+        if (nowHour < start || nowHour >= end) return false;
+      }
       const latest = monitor.runs[0] ?? null;
       return !latest || cycleStart - latest.checkedAt.getTime() >= monitor.intervalSec * 1000;
     });
@@ -150,6 +168,13 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
       skipped,
       durationMs,
     }));
+
+    // Check escalation policies — fire next step for monitors that are still down
+    if (this.escalationService) {
+      this.escalationService.checkAllEscalations().catch((err: unknown) => {
+        this.logger.warn(`Escalation check failed: ${String(err)}`);
+      });
+    }
   }
 
   /**
@@ -183,6 +208,10 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     mutedUntil?: Date | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -225,6 +254,10 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
           : null,
         anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
         anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+        scheduleEnabled: monitor.scheduleEnabled ?? false,
+        scheduleDays: monitor.scheduleDays ?? '1,2,3,4,5',
+        scheduleStartHour: monitor.scheduleStartHour ?? 8,
+        scheduleEndHour: monitor.scheduleEndHour ?? 18,
       });
     } finally {
       this.queueDepth--;

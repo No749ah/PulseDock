@@ -13,12 +13,23 @@ export interface MonitorItem {
   sliLatencyWindow?: number | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   description?: string | null;
+  runbookUrl?: string | null;
+  confirmations?: number | null;
+  retryCount?: number | null;
   isFlapping?: boolean;
   flapDetectionEnabled?: boolean;
   flapAlertedAt?: string | null;
   mutedUntil?: string | null;
   isAcknowledged?: boolean;
   activeAck?: { id: string; note: string | null; acknowledgedAt: string } | null;
+  autoIncident?: boolean;
+  autoIncidentSeverity?: string | null;
+  anomalyDetection?: boolean;
+  anomalyMultiplier?: number | null;
+  scheduleEnabled?: boolean;
+  scheduleDays?: string | null;
+  scheduleStartHour?: number | null;
+  scheduleEndHour?: number | null;
 }
 
 export interface SloReport {

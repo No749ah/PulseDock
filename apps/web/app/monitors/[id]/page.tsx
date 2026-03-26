@@ -2215,6 +2215,78 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* Advanced Settings Summary */}
+        {(monitor.retryCount != null && monitor.retryCount > 0) ||
+         monitor.anomalyDetection ||
+         monitor.scheduleEnabled ||
+         (monitor.confirmations != null && monitor.confirmations > 1) ||
+         monitor.autoIncident ||
+         monitor.runbookUrl ? (
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Advanced Settings
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              {monitor.confirmations != null && monitor.confirmations > 1 && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Confirmations</span>
+                  <span className="text-text-primary font-medium">{monitor.confirmations}× before alert</span>
+                  <span className="text-[10px] text-text-secondary">Reduces false positives</span>
+                </div>
+              )}
+              {monitor.retryCount != null && monitor.retryCount > 0 && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Retries</span>
+                  <span className="text-text-primary font-medium">{monitor.retryCount}× on failure</span>
+                  <span className="text-[10px] text-text-secondary">Exponential backoff</span>
+                </div>
+              )}
+              {monitor.anomalyDetection && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Anomaly Detection</span>
+                  <span className="text-text-primary font-medium">{monitor.anomalyMultiplier ?? 2}× P95 baseline</span>
+                  <span className="text-[10px] text-text-secondary">Dynamic latency alerting</span>
+                </div>
+              )}
+              {monitor.scheduleEnabled && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Business Hours</span>
+                  <span className="text-text-primary font-medium">
+                    {monitor.scheduleStartHour ?? 8}:00 – {monitor.scheduleEndHour ?? 18}:00 UTC
+                  </span>
+                  <span className="text-[10px] text-text-secondary">
+                    {(monitor.scheduleDays ?? "1,2,3,4,5").split(",").map((d) => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][parseInt(d)] ?? d).join(", ")}
+                  </span>
+                </div>
+              )}
+              {monitor.autoIncident && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                  <span className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">Auto Incidents</span>
+                  <span className="text-text-primary font-medium capitalize">{(monitor.autoIncidentSeverity ?? "MEDIUM").toLowerCase()} severity</span>
+                  <span className="text-[10px] text-text-secondary">Auto-creates on outage</span>
+                </div>
+              )}
+              {monitor.runbookUrl && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Runbook</span>
+                  <a
+                    href={monitor.runbookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline text-xs truncate"
+                    title={monitor.runbookUrl}
+                  >
+                    Open runbook →
+                  </a>
+                </div>
+              )}
+            </div>
+          </Card>
+        ) : null}
+
         {/* Alert Channels */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">

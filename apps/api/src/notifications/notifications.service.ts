@@ -202,6 +202,28 @@ export class NotificationsService {
   }
 
   /**
+   * Returns both pending (unsent) and recently sent (last 20) digest queue items for a user.
+   * Used by the frontend Digest Queue card on the account page.
+   *
+   * @param userId - Authenticated user ID
+   * @returns { pending: DigestQueueItem[], sent: DigestQueueItem[] }
+   */
+  async getDigestQueue(userId: string) {
+    const [pending, sent] = await Promise.all([
+      this.prisma.notificationQueueItem.findMany({
+        where: { userId, sentAt: null },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.notificationQueueItem.findMany({
+        where: { userId, sentAt: { not: null } },
+        orderBy: { sentAt: 'desc' },
+        take: 20,
+      }),
+    ]);
+    return { pending, sent };
+  }
+
+  /**
    * Mark a list of queue items as sent (stamp sentAt = now).
    *
    * @param ids - Queue item IDs to mark sent

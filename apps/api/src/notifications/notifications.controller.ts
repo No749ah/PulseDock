@@ -42,14 +42,14 @@ export class NotificationsController {
 
   @Get('digest-queue')
   @ApiOperation({
-    summary: 'Get pending digest notifications',
+    summary: 'Get digest queue (pending + recently sent)',
     description:
-      'Returns all unsent (pending) digest notifications queued for the current user. ' +
+      'Returns pending (unsent) and recently sent digest notifications for the current user. ' +
       'Only relevant when frequency is set to hourly_digest or daily_digest.',
   })
-  @ApiResponse({ status: 200, description: 'List of pending digest queue items' })
-  getPendingDigestItems(@Req() req: AuthRequest) {
-    return this.notificationsService.getPendingDigestItems(req.user.id);
+  @ApiResponse({ status: 200, description: 'Digest queue with pending and sent items' })
+  async getDigestQueue(@Req() req: AuthRequest) {
+    return this.notificationsService.getDigestQueue(req.user.id);
   }
 
   @Post('digest-queue/test')

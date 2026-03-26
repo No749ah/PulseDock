@@ -19,6 +19,7 @@ import { ApiKeysCard } from "./components/ApiKeysCard";
 import { ActivityLogCard } from "./components/ActivityLogCard";
 import { SessionsCard } from "./components/SessionsCard";
 import { NotificationPrefsCard } from "./components/NotificationPrefsCard";
+import { DigestQueueCard } from "./components/DigestQueueCard";
 import { ScheduledReportsCard } from "./components/ScheduledReportsCard";
 import { TeamMembersCard } from "./components/TeamMembersCard";
 
@@ -191,6 +192,13 @@ export default function AccountPage() {
               onPrefsChange={setNotifPrefs}
               toastError={toastError}
             />
+
+            {notifPrefs && notifPrefs.frequency !== "instant" && (
+              <DigestQueueCard
+                userId={user.id}
+                frequency={notifPrefs.frequency}
+              />
+            )}
 
             <ScheduledReportsCard
               scheduledReport={scheduledReport}

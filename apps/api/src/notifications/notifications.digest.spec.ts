@@ -1,6 +1,6 @@
 /**
  * Tests for NotificationsService digest queue functionality.
- * Covers: enqueueForDigest, getPendingDigestItems, markDigestItemsSent,
+ * Covers: enqueueForDigest, getPendingDigestItems, getDigestQueue, markDigestItemsSent,
  * sendHourlyDigests, sendDailyDigests, pruneDigestQueue.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -134,6 +134,29 @@ describe('NotificationsService — Digest Queue', () => {
       prisma.notificationQueueItem.findMany.mockResolvedValue([]);
       const result = await service.getPendingDigestItems('user-1');
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('getDigestQueue', () => {
+    it('returns pending and sent items', async () => {
+      const pending = [makeQueueItem({ id: 'qi-pending', sentAt: null })];
+      const sent = [makeQueueItem({ id: 'qi-sent', sentAt: new Date() })];
+      prisma.notificationQueueItem.findMany
+        .mockResolvedValueOnce(pending)
+        .mockResolvedValueOnce(sent);
+
+      const result = await service.getDigestQueue('user-1');
+      expect(result.pending).toHaveLength(1);
+      expect(result.sent).toHaveLength(1);
+      expect(result.pending[0].id).toBe('qi-pending');
+      expect(result.sent[0].id).toBe('qi-sent');
+    });
+
+    it('returns empty arrays when no items exist', async () => {
+      prisma.notificationQueueItem.findMany.mockResolvedValue([]);
+      const result = await service.getDigestQueue('user-1');
+      expect(result.pending).toEqual([]);
+      expect(result.sent).toEqual([]);
     });
   });
 

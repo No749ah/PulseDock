@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { NotificationsService } from './notifications.service';
@@ -38,5 +38,33 @@ export class NotificationsController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   updatePreference(@Req() req: AuthRequest, @Body() dto: UpdateNotificationPreferenceDto) {
     return this.notificationsService.updatePreference(req.user.id, dto);
+  }
+
+  @Get('digest-queue')
+  @ApiOperation({
+    summary: 'Get digest queue (pending + recently sent)',
+    description:
+      'Returns pending (unsent) and recently sent digest notifications for the current user. ' +
+      'Only relevant when frequency is set to hourly_digest or daily_digest.',
+  })
+  @ApiResponse({ status: 200, description: 'Digest queue with pending and sent items' })
+  async getDigestQueue(@Req() req: AuthRequest) {
+    return this.notificationsService.getDigestQueue(req.user.id);
+  }
+
+  @Post('digest-queue/test')
+  @ApiOperation({
+    summary: 'Trigger digest delivery immediately (test/debug)',
+    description: 'Manually triggers digest processing for the current user. Useful for testing digest delivery.',
+  })
+  @ApiResponse({ status: 200, description: 'Digest triggered' })
+  async triggerDigest(@Req() req: AuthRequest) {
+    const pref = await this.notificationsService.getPreference(req.user.id);
+    if (pref.frequency === 'hourly_digest') {
+      await this.notificationsService.sendHourlyDigests();
+    } else if (pref.frequency === 'daily_digest') {
+      await this.notificationsService.sendDailyDigests();
+    }
+    return { triggered: true, frequency: pref.frequency };
   }
 }

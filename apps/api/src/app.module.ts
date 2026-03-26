@@ -69,6 +69,8 @@ import { DemoController } from './demo/demo.controller';
 import { DemoService } from './demo/demo.service';
 import { EscalationController } from './escalation/escalation.controller';
 import { EscalationService } from './escalation/escalation.service';
+import { SearchController } from './search/search.controller';
+import { SearchService } from './search/search.service';
 
 @Module({
   imports: [
@@ -112,6 +114,7 @@ import { EscalationService } from './escalation/escalation.service';
     OrganizationsController,
     DemoController,
     EscalationController,
+    SearchController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -147,6 +150,7 @@ import { EscalationService } from './escalation/escalation.service';
     RedisCacheService,
     DemoService,
     EscalationService,
+    SearchService,
   ],
 })
 export class AppModule implements NestModule {

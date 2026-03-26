@@ -99,6 +99,7 @@ function MonitorsPageInner() {
     target: string;
     intervalSec: number;
     confirmations: number;
+    retryCount: number;
     enabled: boolean;
     pluginId: string;
     expectedText: string;
@@ -125,6 +126,7 @@ function MonitorsPageInner() {
     target: "",
     intervalSec: 60,
     confirmations: 1,
+    retryCount: 0,
     enabled: true,
     pluginId: "",
     expectedText: "",
@@ -536,6 +538,7 @@ function MonitorsPageInner() {
           target: formData.target,
           intervalSec: formData.intervalSec,
           confirmations: formData.confirmations,
+          retryCount: formData.retryCount ?? 0,
           enabled: formData.enabled,
           config,
           tags: selectedTags,
@@ -556,7 +559,7 @@ function MonitorsPageInner() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -591,6 +594,7 @@ function MonitorsPageInner() {
           target: formData.target,
           intervalSec: formData.intervalSec,
           confirmations: formData.confirmations,
+          retryCount: formData.retryCount ?? 0,
           enabled: formData.enabled,
           config,
           tags: selectedTags,
@@ -1138,7 +1142,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -1311,7 +1315,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,

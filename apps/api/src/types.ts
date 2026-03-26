@@ -42,6 +42,7 @@ export interface Monitor {
   intervalSec: number;
   timeoutMs: number;
   confirmations: number;
+  retryCount: number;
   config: Record<string, unknown>;
   alertChannelIds: string[];
   folderId: string | null;

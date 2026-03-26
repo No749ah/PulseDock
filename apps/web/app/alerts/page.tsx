@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -121,6 +121,9 @@ export default function AlertsPage() {
     username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '',
     // Telegram extras
     parseMode: 'HTML',
+    // Webhook extras
+    payloadTemplate: '',
+    customHeaders: [] as Array<{key: string; value: string}>,
   });
 
   const [editOpen, setEditOpen] = useState(false);
@@ -137,10 +140,25 @@ export default function AlertsPage() {
   const [editMentionUserId, setEditMentionUserId] = useState('');
   const [editMessageTemplate, setEditMessageTemplate] = useState('');
   const [editParseMode, setEditParseMode] = useState('HTML');
+  const [editPayloadTemplate, setEditPayloadTemplate] = useState('');
+  const [editCustomHeaders, setEditCustomHeaders] = useState<Array<{key: string; value: string}>>([]);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [testingAll, setTestingAll] = useState(false);
+
+  // Payload preview state (create form)
+  const [createPreviewVisible, setCreatePreviewVisible] = useState(false);
+  const [createPreviewResult, setCreatePreviewResult] = useState<{ rendered: string; valid: boolean; error?: string } | null>(null);
+
+  // Payload preview state (edit form)
+  const [editPreviewVisible, setEditPreviewVisible] = useState(false);
+  const [editPreviewLoading, setEditPreviewLoading] = useState(false);
+  const [editPreviewResult, setEditPreviewResult] = useState<{ rendered: string; valid: boolean; error?: string } | null>(null);
+
+  // Retry state
+  const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
+  const [retryingAll, setRetryingAll] = useState(false);
 
   useEffect(() => {
     const user = getUser();
@@ -160,7 +178,110 @@ export default function AlertsPage() {
 
   function resetCreateForm() {
     setWizardStep(0);
-    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML' });
+    setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '', customHeaders: [] });
+    setCreatePreviewVisible(false);
+    setCreatePreviewResult(null);
+  }
+
+  function previewCreateTemplate(template: string) {
+    const sampleVars: Record<string, string> = {
+      '{{text}}': '🚨 Monitor "My API" is DOWN',
+      '{{monitor.name}}': 'My API',
+      '{{monitor.target}}': 'https://api.example.com',
+      '{{monitor.type}}': 'HTTP',
+      '{{monitor.id}}': 'mon_123',
+      '{{monitor.runbookUrl}}': '',
+      '{{run.level}}': 'red',
+      '{{run.message}}': 'Connection refused',
+      '{{run.latencyMs}}': 'null',
+      '{{run.statusCode}}': '503',
+      '{{run.checkedAt}}': new Date().toISOString(),
+      '{{run.ok}}': 'false',
+      '{{timestamp}}': new Date().toISOString(),
+      '{{channelName}}': form.name || 'My Webhook',
+    };
+    let rendered = template;
+    for (const [key, val] of Object.entries(sampleVars)) {
+      rendered = rendered.replaceAll(key, val);
+    }
+    let valid = false;
+    let error: string | undefined;
+    try {
+      JSON.parse(rendered);
+      valid = true;
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+    setCreatePreviewResult({ rendered, valid, error });
+    setCreatePreviewVisible(true);
+  }
+
+  async function previewEditTemplate() {
+    if (!selected) return;
+    setEditPreviewLoading(true);
+    setEditPreviewVisible(true);
+    try {
+      const result = await api<{ rendered: string; valid: boolean; error?: string }>(
+        `/v1/alert-channels/${selected.id}/preview-payload`,
+        undefined,
+        { method: 'POST', body: JSON.stringify({ template: editPayloadTemplate }) },
+      );
+      setEditPreviewResult(result);
+    } catch (e) {
+      setEditPreviewResult({ rendered: '', valid: false, error: e instanceof Error ? e.message : 'Preview failed' });
+    } finally {
+      setEditPreviewLoading(false);
+    }
+  }
+
+  async function retryDelivery(deliveryId: string) {
+    if (!selected) return;
+    setRetryingDeliveryId(deliveryId);
+    try {
+      const result = await api<{ success: boolean; error?: string }>(
+        `/v1/alert-channels/${selected.id}/retry-delivery/${deliveryId}`,
+        undefined,
+        { method: 'POST' },
+      );
+      if (result.success) {
+        success('Delivery retried successfully');
+        // Refresh delivery history
+        const data = await api<DeliveryHistory>(`/v1/alert-channels/${selected.id}/deliveries`);
+        setDeliveryHistory(data);
+      } else {
+        toastError(result.error ?? 'Retry failed');
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Retry failed');
+    } finally {
+      setRetryingDeliveryId(null);
+    }
+  }
+
+  async function retryAllFailed() {
+    if (!selected) return;
+    setRetryingAll(true);
+    try {
+      const result = await api<{ results: Array<{ deliveryId: string; success: boolean; error?: string }> }>(
+        `/v1/alert-channels/${selected.id}/retry-all-failed`,
+        undefined,
+        { method: 'POST' },
+      );
+      const succeeded = result.results.filter((r) => r.success).length;
+      const failed = result.results.filter((r) => !r.success).length;
+      if (failed === 0) {
+        success(`Retried ${succeeded} delivery${succeeded !== 1 ? 's' : ''} successfully`);
+      } else {
+        toastError(`${succeeded} succeeded, ${failed} failed`);
+      }
+      // Refresh delivery history
+      const data = await api<DeliveryHistory>(`/v1/alert-channels/${selected.id}/deliveries`);
+      setDeliveryHistory(data);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Retry all failed');
+    } finally {
+      setRetryingAll(false);
+    }
   }
 
   function next() {
@@ -172,10 +293,10 @@ export default function AlertsPage() {
   }
 
   function buildConfig(type: AlertType, a: string, b: string, secret?: string, extras?: {
-    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string;
-  }) {
+    username?: string; avatarUrl?: string; mentionRoleId?: string; mentionUserId?: string; messageTemplate?: string; parseMode?: string; payloadTemplate?: string; customHeaders?: Array<{key: string; value: string}>;
+  }): Record<string, unknown> {
     if (type === 'discord') {
-      const cfg: Record<string, string> = { webhookUrl: a };
+      const cfg: Record<string, unknown> = { webhookUrl: a };
       if (extras?.username?.trim()) cfg.username = extras.username.trim();
       if (extras?.avatarUrl?.trim()) cfg.avatarUrl = extras.avatarUrl.trim();
       if (extras?.mentionRoleId?.trim()) cfg.mentionRoleId = extras.mentionRoleId.trim();
@@ -185,12 +306,20 @@ export default function AlertsPage() {
     }
     if (type === 'slack') return { webhookUrl: a };
     if (type === 'webhook') {
-      const cfg: Record<string, string> = { url: a };
+      const cfg: Record<string, unknown> = { url: a };
       if (secret?.trim()) cfg.secret = secret.trim();
+      if (extras?.payloadTemplate?.trim()) cfg.payloadTemplate = extras.payloadTemplate.trim();
+      if (extras?.customHeaders?.length) {
+        const headers: Record<string, string> = {};
+        for (const h of extras.customHeaders) {
+          if (h.key.trim()) headers[h.key.trim()] = h.value;
+        }
+        if (Object.keys(headers).length > 0) cfg.customHeaders = headers;
+      }
       return cfg;
     }
     if (type === 'telegram') {
-      const cfg: Record<string, string> = { botToken: a, chatId: b };
+      const cfg: Record<string, unknown> = { botToken: a, chatId: b };
       if (extras?.parseMode) cfg.parseMode = extras.parseMode;
       return cfg;
     }
@@ -202,7 +331,7 @@ export default function AlertsPage() {
 
   async function createChannel() {
     try {
-      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode });
+      const config = buildConfig(form.type, form.a, form.b, form.secret, { username: form.username, avatarUrl: form.avatarUrl, mentionRoleId: form.mentionRoleId, mentionUserId: form.mentionUserId, messageTemplate: form.messageTemplate, parseMode: form.parseMode, payloadTemplate: form.payloadTemplate, customHeaders: form.customHeaders });
       await api('/v1/alert-channels', undefined, { method: 'POST', body: JSON.stringify({ name: form.name, type: form.type, config }) });
       setWizardOpen(false);
       resetCreateForm();
@@ -277,6 +406,12 @@ export default function AlertsPage() {
       setEditA(String(channel.config.url ?? ''));
       setEditB('');
       setEditSecret(String(channel.config.secret ?? ''));
+      setEditPayloadTemplate(String(channel.config.payloadTemplate ?? ''));
+      if (channel.config.customHeaders && typeof channel.config.customHeaders === 'object') {
+        setEditCustomHeaders(Object.entries(channel.config.customHeaders as Record<string, string>).map(([key, value]) => ({ key, value })));
+      } else {
+        setEditCustomHeaders([]);
+      }
     } else if (channel.type === 'telegram') {
       setEditA(String(channel.config.botToken ?? ''));
       setEditB(String(channel.config.chatId ?? ''));
@@ -298,13 +433,15 @@ export default function AlertsPage() {
       setEditB('');
       setEditSecret('');
     }
+    setEditPreviewVisible(false);
+    setEditPreviewResult(null);
     setEditOpen(true);
   }
 
   async function saveEdit() {
     if (!selected) return;
     try {
-      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode });
+      const config = buildConfig(selected.type, editA, editB, editSecret, { username: editUsername, avatarUrl: editAvatarUrl, mentionRoleId: editMentionRoleId, mentionUserId: editMentionUserId, messageTemplate: editMessageTemplate, parseMode: editParseMode, payloadTemplate: editPayloadTemplate, customHeaders: editCustomHeaders });
       await api(`/v1/alert-channels/${selected.id}`, '', {
         method: 'PATCH',
         body: JSON.stringify({ name: editName, config }),
@@ -470,15 +607,116 @@ export default function AlertsPage() {
                   </>
                 )}
                 {form.type === 'webhook' && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                      Signing secret <span className="text-text-secondary font-normal">(optional)</span>
-                    </label>
-                    <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
-                    <p className="mt-1.5 text-xs text-text-secondary">
-                      {brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
-                    </p>
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                        Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <input className={inputClass} type="password" placeholder="e.g. whsec_abc123…" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        {brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> so your endpoint can verify delivery.
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-medium text-text-secondary">
+                          Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (form.payloadTemplate.trim()) {
+                              previewCreateTemplate(form.payloadTemplate);
+                            } else {
+                              setCreatePreviewResult({ rendered: JSON.stringify({ text: '🚨 Monitor "My API" is DOWN', extra: { monitor: { id: 'mon_123', name: 'My API', target: 'https://api.example.com', type: 'HTTP' }, run: { level: 'red', message: 'Connection refused', latencyMs: null, statusCode: 503 }, test: false } }, null, 2), valid: true });
+                              setCreatePreviewVisible(true);
+                            }
+                          }}
+                          className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          {createPreviewVisible ? 'Hide preview' : 'Preview'}
+                        </button>
+                      </div>
+                      <textarea
+                        className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
+                        placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
+                        value={form.payloadTemplate}
+                        onChange={(e) => setForm({ ...form, payloadTemplate: e.target.value })}
+                        spellCheck={false}
+                      />
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
+                      </p>
+                      {createPreviewVisible && createPreviewResult && (
+                        <div className="mt-2 rounded-lg border border-border bg-surface-elevated p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Sample preview — not saved yet</span>
+                            {createPreviewResult.valid
+                              ? <span className="text-xs text-success flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Valid JSON</span>
+                              : <span className="text-xs text-warning flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> Invalid JSON</span>
+                            }
+                          </div>
+                          <pre className="text-xs font-mono text-text-primary whitespace-pre-wrap break-all overflow-x-auto max-h-48 overflow-y-auto">
+                            {createPreviewResult.rendered || '(empty)'}
+                          </pre>
+                          {createPreviewResult.error && !createPreviewResult.valid && (
+                            <p className="text-xs text-warning font-mono">{createPreviewResult.error}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                        Custom headers <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <div className="space-y-2">
+                        {form.customHeaders.map((h, i) => (
+                          <div key={i} className="flex gap-2 items-center">
+                            <input
+                              className={`${inputClass} flex-1`}
+                              placeholder="Header name"
+                              value={h.key}
+                              onChange={(e) => {
+                                const updated = [...form.customHeaders];
+                                updated[i] = { ...updated[i], key: e.target.value };
+                                setForm({ ...form, customHeaders: updated });
+                              }}
+                            />
+                            <input
+                              className={`${inputClass} flex-1`}
+                              type="password"
+                              placeholder="Value"
+                              value={h.value}
+                              onChange={(e) => {
+                                const updated = [...form.customHeaders];
+                                updated[i] = { ...updated[i], value: e.target.value };
+                                setForm({ ...form, customHeaders: updated });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setForm({ ...form, customHeaders: form.customHeaders.filter((_, j) => j !== i) })}
+                              className="p-2 text-text-secondary hover:text-danger transition-colors shrink-0"
+                              aria-label="Remove header"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, customHeaders: [...form.customHeaders, { key: '', value: '' }] })}
+                        className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
+                      >
+                        + Add header
+                      </button>
+                      <p className="mt-1.5 text-xs text-text-secondary">
+                        These headers are sent with every webhook delivery. Useful for <code className="text-accent">Authorization: Bearer &lt;token&gt;</code> or <code className="text-accent">X-API-Key</code>.
+                      </p>
+                    </div>
+                  </>
                 )}
                 {form.type === 'discord' && (
                   <>
@@ -591,13 +829,122 @@ export default function AlertsPage() {
                 </>
               )}
               {selected?.type === 'webhook' && (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    Signing secret <span className="text-text-secondary font-normal">(optional)</span>
-                  </label>
-                  <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
-                  <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Signing secret <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
+                    <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-text-secondary">
+                        Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editPreviewVisible) {
+                            setEditPreviewVisible(false);
+                          } else {
+                            previewEditTemplate().catch(() => undefined);
+                          }
+                        }}
+                        className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {editPreviewVisible ? 'Hide preview' : 'Preview'}
+                      </button>
+                    </div>
+                    <textarea
+                      className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
+                      placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
+                      value={editPayloadTemplate}
+                      onChange={(e) => setEditPayloadTemplate(e.target.value)}
+                      spellCheck={false}
+                    />
+                    <p className="mt-1.5 text-xs text-text-secondary">
+                      Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
+                    </p>
+                    {editPreviewVisible && (
+                      <div className="mt-2 rounded-lg border border-border bg-surface-elevated p-3 space-y-2">
+                        {editPreviewLoading ? (
+                          <div className="flex items-center gap-2 py-2">
+                            <div className="animate-spin w-3.5 h-3.5 border border-accent border-t-transparent rounded-full" />
+                            <span className="text-xs text-text-secondary">Rendering…</span>
+                          </div>
+                        ) : editPreviewResult ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Preview</span>
+                              {editPreviewResult.valid
+                                ? <span className="text-xs text-success flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Valid JSON</span>
+                                : <span className="text-xs text-warning flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> Invalid JSON</span>
+                              }
+                            </div>
+                            <pre className="text-xs font-mono text-text-primary whitespace-pre-wrap break-all overflow-x-auto max-h-48 overflow-y-auto">
+                              {editPreviewResult.rendered || '(empty)'}
+                            </pre>
+                            {editPreviewResult.error && !editPreviewResult.valid && (
+                              <p className="text-xs text-warning font-mono">{editPreviewResult.error}</p>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      Custom headers <span className="text-text-secondary font-normal">(optional)</span>
+                    </label>
+                    <div className="space-y-2">
+                      {editCustomHeaders.map((h, i) => (
+                        <div key={i} className="flex gap-2 items-center">
+                          <input
+                            className={`${inputClass} flex-1`}
+                            placeholder="Header name"
+                            value={h.key}
+                            onChange={(e) => {
+                              const updated = [...editCustomHeaders];
+                              updated[i] = { ...updated[i], key: e.target.value };
+                              setEditCustomHeaders(updated);
+                            }}
+                          />
+                          <input
+                            className={`${inputClass} flex-1`}
+                            type="password"
+                            placeholder="Value"
+                            value={h.value}
+                            onChange={(e) => {
+                              const updated = [...editCustomHeaders];
+                              updated[i] = { ...updated[i], value: e.target.value };
+                              setEditCustomHeaders(updated);
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditCustomHeaders(editCustomHeaders.filter((_, j) => j !== i))}
+                            className="p-2 text-text-secondary hover:text-danger transition-colors shrink-0"
+                            aria-label="Remove header"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditCustomHeaders([...editCustomHeaders, { key: '', value: '' }])}
+                      className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
+                    >
+                      + Add header
+                    </button>
+                    <p className="mt-1.5 text-xs text-text-secondary">
+                      These headers are sent with every webhook delivery. Useful for <code className="text-accent">Authorization: Bearer &lt;token&gt;</code> or <code className="text-accent">X-API-Key</code>.
+                    </p>
+                  </div>
+                </>
               )}
               {selected?.type === 'discord' && (
                 <div className="border-t border-border pt-3">
@@ -667,44 +1014,70 @@ export default function AlertsPage() {
                     <p className="text-xs text-text-secondary mt-1">Delivery logs appear here once alerts are sent</p>
                   </div>
                 ) : (
-                  <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
-                    {deliveryHistory.deliveries.map((d) => (
-                      <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
-                        <div className="mt-0.5 shrink-0">
-                          {d.status === 'success'
-                            ? <CheckCircle2 className="w-4 h-4 text-success" />
-                            : <XCircle className="w-4 h-4 text-danger" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
-                              {d.status}
-                            </span>
-                            {d.trigger && (
-                              <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
-                                {d.trigger.replace('_', ' ')}
-                              </span>
-                            )}
-                            {d.monitorName && (
-                              <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
-                            )}
-                          </div>
-                          {d.errorMessage && (
-                            <p className="text-xs text-danger mt-1 font-mono break-all">{d.errorMessage}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-text-secondary">{new Date(d.createdAt).toLocaleString()}</span>
-                            {d.durationMs != null && (
-                              <span className="flex items-center gap-1 text-xs text-text-secondary">
-                                <Clock className="w-3 h-3" />{d.durationMs}ms
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                  <>
+                    {deliveryHistory.deliveries.some((d) => d.status === 'failed') && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => retryAllFailed().catch(() => undefined)}
+                          disabled={retryingAll}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-danger border border-danger/30 bg-danger/5 hover:bg-danger/10 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${retryingAll ? 'animate-spin' : ''}`} />
+                          {retryingAll ? 'Retrying…' : 'Retry all failed'}
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
+                      {deliveryHistory.deliveries.map((d) => (
+                        <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
+                          <div className="mt-0.5 shrink-0">
+                            {d.status === 'success'
+                              ? <CheckCircle2 className="w-4 h-4 text-success" />
+                              : <XCircle className="w-4 h-4 text-danger" />
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
+                                {d.status}
+                              </span>
+                              {d.trigger && (
+                                <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
+                                  {d.trigger.replace('_', ' ')}
+                                </span>
+                              )}
+                              {d.monitorName && (
+                                <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
+                              )}
+                            </div>
+                            {d.errorMessage && (
+                              <p className="text-xs text-danger mt-1 font-mono break-all">{d.errorMessage}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-text-secondary">{new Date(d.createdAt).toLocaleString()}</span>
+                              {d.durationMs != null && (
+                                <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                  <Clock className="w-3 h-3" />{d.durationMs}ms
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {d.status === 'failed' && (
+                            <button
+                              type="button"
+                              onClick={() => retryDelivery(d.id).catch(() => undefined)}
+                              disabled={retryingDeliveryId === d.id || retryingAll}
+                              title="Retry this delivery"
+                              className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${retryingDeliveryId === d.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             ) : null}

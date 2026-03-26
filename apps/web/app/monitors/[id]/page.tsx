@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -21,6 +21,7 @@ import type {
   AlertChannelInfo,
   MonitorDependency,
   MonitorRun,
+  RunTimings,
   UptimePeriod,
   UptimeStats,
   ErrorBudget,
@@ -50,6 +51,105 @@ interface DeliveryHistory {
 }
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
+import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
+
+// ── Latency Distribution Types ───────────────────────────────────────────────
+
+interface LatencyBucket {
+  rangeLabel: string;
+  from: number;
+  to: number;
+  count: number;
+  pct: number;
+}
+
+interface LatencyPercentiles {
+  p50: number | null;
+  p75: number | null;
+  p90: number | null;
+  p95: number | null;
+  p99: number | null;
+}
+
+interface HourlyAvgEntry {
+  hour: number;
+  avgMs: number | null;
+  p95Ms: number | null;
+  count: number;
+}
+
+interface LatencyDistributionData {
+  buckets: LatencyBucket[];
+  percentiles: LatencyPercentiles;
+  hourlyAvg: HourlyAvgEntry[];
+  totalChecks: number;
+  successChecks: number;
+  checkedRange: string;
+}
+
+// ── Timing Waterfall ─────────────────────────────────────────────────────────
+
+interface TimingWaterfallProps {
+  timings: RunTimings;
+  totalMs: number | null;
+}
+
+interface TimingPhase {
+  label: string;
+  value: number | null;
+  color: string;
+}
+
+function TimingWaterfall({ timings, totalMs }: TimingWaterfallProps) {
+  const phases: TimingPhase[] = [
+    { label: "DNS", value: timings.dnsMs, color: "bg-blue-500" },
+    { label: "TCP", value: timings.tcpMs, color: "bg-green-500" },
+    { label: "TLS", value: timings.tlsMs, color: "bg-purple-500" },
+    { label: "TTFB", value: timings.ttfbMs, color: "bg-orange-500" },
+    { label: "Download", value: timings.downloadMs, color: "bg-cyan-500" },
+  ];
+
+  const total = totalMs ?? phases.reduce((sum, p) => sum + (p.value ?? 0), 0);
+  const maxMs = Math.max(...phases.map((p) => p.value ?? 0), 1);
+
+  return (
+    <div className="my-2 p-3 rounded-lg bg-surface-elevated border border-border text-xs">
+      <p className="text-text-muted mb-2 font-medium uppercase tracking-wide text-[10px]">Timing Breakdown</p>
+      <div className="space-y-1.5">
+        {phases.map((phase) => (
+          <div key={phase.label} className="flex items-center gap-2">
+            <span className="w-16 text-text-secondary text-right shrink-0">{phase.label}</span>
+            <div className="flex-1 flex items-center gap-2">
+              {phase.value !== null ? (
+                <>
+                  <div className="flex-1 bg-surface rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`${phase.color} h-2 rounded-full transition-all`}
+                      style={{ width: `${Math.max(2, (phase.value / maxMs) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-text-primary font-mono w-14 text-right shrink-0">{phase.value}ms</span>
+                </>
+              ) : (
+                <>
+                  <div className="flex-1 bg-surface rounded-full h-2" />
+                  <span className="text-text-muted font-mono w-14 text-right shrink-0">N/A</span>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center gap-2 pt-1 border-t border-border mt-1">
+          <span className="w-16 text-text-muted text-right shrink-0">Total</span>
+          <div className="flex-1" />
+          <span className="text-text-primary font-mono font-semibold w-14 text-right shrink-0">{total}ms</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function MonitorDetailPage() {
   const params = useParams();
@@ -79,7 +179,17 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate">("overview");
+
+  // Performance / Latency distribution
+  const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
+  const [perfLoading, setPerfLoading] = useState(false);
+  const [perfError, setPerfError] = useState<string | null>(null);
+  const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
+
+  // Certificate details (SSL/HTTP monitors)
+  const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
 
   // Alert delivery history
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
@@ -116,6 +226,8 @@ export default function MonitorDetailPage() {
   const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
   const [runsTotal, setRunsTotal] = useState<number | null>(null);
   const [runsLoadingMore, setRunsLoadingMore] = useState(false);
+  // Timing waterfall — stores the expanded run ID (click to expand)
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -735,10 +847,65 @@ export default function MonitorDetailPage() {
             <Gauge className="w-3.5 h-3.5" />
             SLO / SLI
           </button>
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER" || monitor.type === "TCP") && (
+            <button
+              onClick={async () => {
+                setActiveMainTab("performance");
+                const user = getUser();
+                if (!user) return;
+                setPerfLoading(true);
+                setPerfError(null);
+                try {
+                  const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id);
+                  setPerfData(data);
+                } catch {
+                  setPerfError("Failed to load performance data");
+                } finally {
+                  setPerfLoading(false);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "performance"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Performance
+            </button>
+          )}
+          {(monitor.type === "HTTP" || monitor.type === "SSL_CERT" || monitor.type === "BROWSER") && (
+            <button
+              onClick={async () => {
+                setActiveMainTab("certificate");
+                if (!certDetails && !certLoading) {
+                  const user = getUser();
+                  if (!user) return;
+                  setCertLoading(true);
+                  try {
+                    const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
+                    setCertDetails(data);
+                  } catch {
+                    setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
+                  } finally {
+                    setCertLoading(false);
+                  }
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "certificate"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Certificate
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
-        {activeMainTab === "slo" && (() => {
+        {activeMainTab === "slo" && ((): React.ReactNode => {
           const user = getUser();
           return user ? (
             <SloTab
@@ -748,6 +915,302 @@ export default function MonitorDetailPage() {
             />
           ) : null;
         })()}
+
+        {/* Performance Tab Content */}
+        {activeMainTab === "performance" && (
+          <div className="space-y-4">
+            {/* Period Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium">Period:</span>
+              {(["24h", "7d", "30d"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={async () => {
+                    setPerfPeriod(p);
+                    const user = getUser();
+                    if (!user) return;
+                    setPerfLoading(true);
+                    setPerfError(null);
+                    try {
+                      const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id);
+                      setPerfData(data);
+                    } catch {
+                      setPerfError("Failed to load performance data");
+                    } finally {
+                      setPerfLoading(false);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    perfPeriod === p
+                      ? "bg-accent text-white"
+                      : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              {perfData && (
+                <span className="ml-auto text-xs text-text-muted">{perfData.checkedRange} · {perfData.successChecks} successful checks</span>
+              )}
+            </div>
+
+            {perfLoading && (
+              <Card className="p-8 text-center text-text-muted text-sm">Loading performance data…</Card>
+            )}
+            {perfError && !perfLoading && (
+              <Card className="p-8 text-center text-danger text-sm">{perfError}</Card>
+            )}
+            {perfData && !perfLoading && (
+              <>
+                {/* A. Latency Distribution Histogram */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-4 h-4 text-accent" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Latency Distribution</h2>
+                  </div>
+                  {perfData.successChecks === 0 ? (
+                    <p className="text-text-muted text-sm text-center py-4">No successful checks in this period.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {perfData.buckets.map((bucket) => {
+                        const maxCount = Math.max(...perfData.buckets.map((b) => b.count), 1);
+                        const widthPct = (bucket.count / maxCount) * 100;
+                        const barColor =
+                          bucket.to !== -1 && bucket.to <= 200
+                            ? "bg-green-500"
+                            : bucket.to !== -1 && bucket.to <= 500
+                            ? "bg-yellow-500"
+                            : bucket.to !== -1 && bucket.to <= 1000
+                            ? "bg-orange-500"
+                            : "bg-red-500";
+                        return (
+                          <div key={bucket.rangeLabel} className="flex items-center gap-2 text-xs">
+                            <span className="w-20 text-text-muted text-right shrink-0 font-mono">{bucket.rangeLabel}</span>
+                            <div className="flex-1 bg-white/5 rounded-full h-5 overflow-hidden">
+                              <div
+                                className={`${barColor} h-5 rounded-full transition-all`}
+                                style={{ width: `${Math.max(bucket.count > 0 ? 2 : 0, widthPct)}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-right text-text-secondary tabular-nums shrink-0">{bucket.count}</span>
+                            <span className="w-12 text-right text-text-muted tabular-nums shrink-0">({bucket.pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Card>
+
+                {/* B. Percentile Cards */}
+                <div className="grid grid-cols-5 gap-2">
+                  {(["p50", "p75", "p90", "p95", "p99"] as const).map((key) => {
+                    const val = perfData.percentiles[key];
+                    const color =
+                      val === null
+                        ? "text-text-muted"
+                        : val < 200
+                        ? "text-green-400"
+                        : val < 500
+                        ? "text-yellow-400"
+                        : "text-red-400";
+                    return (
+                      <Card key={key} className="p-3 text-center">
+                        <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">{key.toUpperCase()}</p>
+                        <p className={`text-lg font-bold tabular-nums ${color}`}>
+                          {val !== null ? `${val}ms` : "—"}
+                        </p>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* C. Hourly Heatmap */}
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-4 h-4 text-accent" />
+                    <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Hourly Latency Pattern (UTC)</h2>
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {perfData.hourlyAvg.map((h) => {
+                      const bg =
+                        h.count === 0
+                          ? "bg-white/5"
+                          : h.avgMs === null
+                          ? "bg-white/5"
+                          : h.avgMs < 200
+                          ? "bg-green-500/60"
+                          : h.avgMs < 500
+                          ? "bg-yellow-500/60"
+                          : h.avgMs < 1000
+                          ? "bg-orange-500/60"
+                          : "bg-red-500/60";
+                      const tooltip =
+                        h.count === 0
+                          ? `Hour ${h.hour}:00 UTC — No data`
+                          : `Hour ${h.hour}:00 UTC\nAvg: ${h.avgMs}ms\nP95: ${h.p95Ms}ms\nChecks: ${h.count}`;
+                      return (
+                        <div key={h.hour} className="flex flex-col items-center gap-0.5">
+                          <div
+                            title={tooltip}
+                            className={`w-7 h-7 rounded ${bg} cursor-default transition-colors hover:ring-1 hover:ring-white/30`}
+                          />
+                          {h.hour % 6 === 0 && (
+                            <span className="text-[9px] text-text-muted">{h.hour}</span>
+                          )}
+                          {h.hour % 6 !== 0 && <span className="text-[9px] text-transparent">·</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-3 mt-3 text-[10px] text-text-muted">
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-white/5" /> No data</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-green-500/60" /> Fast (&lt;200ms)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-yellow-500/60" /> Medium (200-500ms)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-orange-500/60" /> Slow (500ms-1s)</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-500/60" /> Very Slow (&gt;1s)</span>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Certificate Tab Content */}
+        {activeMainTab === "certificate" && (
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">TLS Certificate Details</h2>
+              <button
+                onClick={async () => {
+                  const user = getUser();
+                  if (!user) return;
+                  setCertLoading(true);
+                  try {
+                    const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
+                    setCertDetails(data);
+                  } catch {
+                    setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
+                  } finally {
+                    setCertLoading(false);
+                  }
+                }}
+                className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
+                disabled={certLoading}
+              >
+                {certLoading ? "Loading…" : "↻ Refresh"}
+              </button>
+            </div>
+            {certLoading && (
+              <div className="text-center py-8 text-text-muted text-sm">Fetching live certificate data…</div>
+            )}
+            {!certLoading && certDetails && !(certDetails.available as boolean) && (
+              <div className="text-center py-8">
+                <p className="text-text-secondary text-sm">{String(certDetails.reason ?? "Certificate details unavailable")}</p>
+              </div>
+            )}
+            {!certLoading && Boolean(certDetails?.available) && ((): React.ReactNode => {
+              const cert = certDetails;
+              if (!cert) return null;
+              const status = String(cert.status ?? "unknown");
+              const statusColors: Record<string, string> = {
+                valid: "text-success",
+                expiring: "text-yellow-400",
+                critical: "text-danger",
+                expired: "text-danger",
+              };
+              const gradeColors: Record<string, string> = {
+                good: "bg-success/15 text-success border-success/30",
+                fair: "bg-yellow-400/15 text-yellow-400 border-yellow-400/30",
+                warning: "bg-yellow-400/15 text-yellow-400 border-yellow-400/30",
+                critical: "bg-danger/15 text-danger border-danger/30",
+                expired: "bg-danger/15 text-danger border-danger/30",
+              };
+              const daysLeft = Number(cert.daysRemaining ?? 0);
+              const sans = Array.isArray(cert.sans) ? cert.sans as string[] : [];
+              const subject = cert.subject as { CN?: string; O?: string } | null;
+              const issuer = cert.issuer as { CN?: string; O?: string } | null;
+              const cipher = cert.cipher as { name?: string; version?: string } | null;
+              return (
+                <div className="space-y-4">
+                  {/* Status banner */}
+                  <div className={`flex items-center gap-3 p-3 rounded-xl border ${gradeColors[String(cert.grade ?? "good")]}`}>
+                    <Shield className="w-5 h-5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm capitalize">{status === "valid" ? "Valid Certificate" : status === "expiring" ? `Expiring Soon — ${daysLeft} days left` : status === "critical" ? `Critical — Only ${daysLeft} days left!` : "Certificate Expired"}</p>
+                      <p className="text-xs opacity-75">{String(cert.hostname ?? "")} · Checked in {Number(cert.latencyMs ?? 0)}ms</p>
+                    </div>
+                    <span className={`ml-auto text-xs font-bold uppercase tracking-wide ${statusColors[status]}`}>{String(cert.grade ?? "—").toUpperCase()}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Subject */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Subject</p>
+                      <p className="text-sm text-text-primary">{subject?.CN ?? "—"}</p>
+                      {subject?.O && <p className="text-xs text-text-secondary">{subject.O}</p>}
+                    </div>
+
+                    {/* Issuer */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Issuer</p>
+                      <p className="text-sm text-text-primary">{issuer?.CN ?? "—"}</p>
+                      {issuer?.O && <p className="text-xs text-text-secondary">{issuer.O}</p>}
+                    </div>
+
+                    {/* Validity */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Valid From</p>
+                      <p className="text-sm text-text-primary">{cert.validFrom ? new Date(String(cert.validFrom)).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Valid To</p>
+                      <p className={`text-sm font-medium ${statusColors[status] ?? "text-text-primary"}`}>{cert.validTo ? new Date(String(cert.validTo)).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}</p>
+                    </div>
+
+                    {/* Protocol */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">TLS Protocol</p>
+                      <p className="text-sm text-text-primary font-mono">{String(cert.protocol ?? "—")}</p>
+                    </div>
+
+                    {/* Cipher */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Cipher Suite</p>
+                      <p className="text-sm text-text-primary font-mono text-xs break-all">{cipher?.name ?? "—"}</p>
+                    </div>
+
+                    {/* Fingerprint */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">SHA-256 Fingerprint</p>
+                      <p className="text-xs text-text-secondary font-mono break-all">{String(cert.fingerprint ?? "—")}</p>
+                    </div>
+
+                    {/* Serial */}
+                    {Boolean(cert.serialNumber) && (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Serial Number</p>
+                        <p className="text-xs text-text-secondary font-mono">{String(cert.serialNumber)}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SANs */}
+                  {sans.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Subject Alternative Names ({sans.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sans.map((san, i) => (
+                          <span key={i} className="px-2 py-0.5 text-xs rounded-md bg-surface-elevated border border-border text-text-secondary font-mono">{san}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </Card>
+        )}
 
         {/* SLA Stats — with period selector */}
         {activeMainTab === "overview" && (<>
@@ -1500,11 +1963,29 @@ export default function MonitorDetailPage() {
                       </tr>
                     </TableHead>
                     <TableBody>
-                      {runs.map((run) => (
+                      {runs.map((run) => {
+                        const isExpanded = expandedRunId === run.id;
+                        const hasTimings = run.timings && (
+                          run.timings.dnsMs !== null ||
+                          run.timings.tcpMs !== null ||
+                          run.timings.tlsMs !== null ||
+                          run.timings.ttfbMs !== null ||
+                          run.timings.downloadMs !== null
+                        );
+                        const showWaterfall = hasTimings && (monitor?.type === "HTTP" || monitor?.type === "BROWSER");
+                        return (
                         <React.Fragment key={run.id}>
-                        <TableRow>
+                        <TableRow
+                          className={showWaterfall ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
+                          onClick={showWaterfall ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
+                        >
                           <TableCell className="text-xs text-text-secondary whitespace-nowrap">
-                            {relativeTime(run.checkedAt)}
+                            <span className="flex items-center gap-1">
+                              {relativeTime(run.checkedAt)}
+                              {showWaterfall && (
+                                <ChevronDown className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              )}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {run.level === "yellow" ? (
@@ -1528,17 +2009,23 @@ export default function MonitorDetailPage() {
                             {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
                           </TableCell>
                         </TableRow>
+                        {isExpanded && showWaterfall && run.timings && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                              <TimingWaterfall timings={run.timings} totalMs={run.latencyMs} />
+                            </TableCell>
+                          </TableRow>
+                        )}
                         {run.responseBody && (
                           <TableRow>
                             <TableCell colSpan={5} className="py-0 pb-2 px-4">
-                              <div className="bg-surface-elevated/60 border border-border/50 rounded-md px-3 py-2 text-xs font-mono text-text-secondary whitespace-pre-wrap break-all max-h-28 overflow-y-auto">
-                                <span className="text-text-muted select-none mr-2">response body:</span>{run.responseBody}
-                              </div>
+                              <ResponseBodyViewer body={run.responseBody} />
                             </TableCell>
                           </TableRow>
                         )}
                         </React.Fragment>
-                      ))}
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   {runsHasMore && (

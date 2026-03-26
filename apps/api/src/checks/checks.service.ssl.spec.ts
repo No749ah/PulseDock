@@ -33,6 +33,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     intervalSec: 60,
     timeoutMs: 5000,
     confirmations: 1,
+    retryCount: 0,
     config: {},
     alertChannelIds: [],
     folderId: null,

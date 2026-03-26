@@ -7,7 +7,7 @@ import type { AlertChannelType } from '../types';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { PlanService } from '../settings/plan.service';
-import { CreateAlertChannelDto, TestAlertChannelDto, UpdateAlertChannelDto } from './alerts.dto';
+import { CreateAlertChannelDto, PreviewPayloadDto, TestAlertChannelDto, UpdateAlertChannelDto } from './alerts.dto';
 
 @ApiTags('Alerts')
 @ApiBearerAuth()
@@ -313,6 +313,88 @@ export class AlertsController {
       createdAt: channel.createdAt.toISOString(),
     });
     return { ok: true };
+  }
+
+  @Post(':id/preview-payload')
+  @ApiOperation({
+    summary: 'Preview webhook payload template',
+    description: 'Renders the payload template with sample data and returns the output. Validates whether the result is valid JSON.',
+  })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Rendered preview returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async previewPayload(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: PreviewPayloadDto,
+  ): Promise<{ rendered: string; valid: boolean; error?: string }> {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
+    if (!channel) throw new NotFoundException('channel not found');
+
+    return this.alertsService.previewPayload(
+      {
+        id: channel.id,
+        userId: channel.userId,
+        name: channel.name,
+        type: channel.type as import('../types').AlertChannelType,
+        config: (channel.configJson as Record<string, unknown>) ?? {},
+        createdAt: channel.createdAt.toISOString(),
+      },
+      body.template,
+    );
+  }
+
+  @Post(':id/retry-delivery/:deliveryId')
+  @ApiOperation({
+    summary: 'Retry a failed alert delivery',
+    description: 'Re-sends the alert for a specific failed delivery log entry and records a new delivery log.',
+  })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiParam({ name: 'deliveryId', description: 'AlertDeliveryLog ID to retry' })
+  @ApiResponse({ status: 200, description: 'Retry result returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async retryDelivery(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('deliveryId') deliveryId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
+    if (!channel) throw new NotFoundException('channel not found');
+
+    return this.alertsService.retryDelivery(deliveryId, {
+      id: channel.id,
+      userId: channel.userId,
+      name: channel.name,
+      type: channel.type as import('../types').AlertChannelType,
+      config: (channel.configJson as Record<string, unknown>) ?? {},
+      createdAt: channel.createdAt.toISOString(),
+    });
+  }
+
+  @Post(':id/retry-all-failed')
+  @ApiOperation({
+    summary: 'Retry all failed deliveries',
+    description: 'Retries all failed delivery log entries for a channel from the last 24 hours (max 10).',
+  })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Retry results returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async retryAllFailed(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ): Promise<{ results: Array<{ deliveryId: string; success: boolean; error?: string }> }> {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
+    if (!channel) throw new NotFoundException('channel not found');
+
+    const results = await this.alertsService.retryAllFailed({
+      id: channel.id,
+      userId: channel.userId,
+      name: channel.name,
+      type: channel.type as import('../types').AlertChannelType,
+      config: (channel.configJson as Record<string, unknown>) ?? {},
+      createdAt: channel.createdAt.toISOString(),
+    });
+    return { results };
   }
 
   @Post('test-all')

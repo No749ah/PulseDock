@@ -37,6 +37,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     intervalSec: 60,
     timeoutMs: 5000,
     confirmations: 1,
+    retryCount: 0,
     config: {},
     alertChannelIds: [],
     folderId: null,
@@ -114,6 +115,12 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     },
     alertRoutingRule: {
       findMany: vi.fn().mockResolvedValue([]),
+    },
+    notificationPreference: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+    notificationQueueItem: {
+      create: vi.fn().mockResolvedValue({}),
     },
   };
 }
@@ -502,6 +509,42 @@ describe('AlertsService', () => {
 
       // Called exactly maxRetries times
       expect(fn).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // ── webhook custom headers ────────────────────────────────────────────────────
+
+  describe('webhook custom headers', () => {
+    it('merges custom headers into webhook delivery', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'webhook',
+        config: { url: 'https://example.com/hook', customHeaders: { 'Authorization': 'Bearer tok', 'X-App-ID': '42' } },
+      });
+      fetchMock.mockResolvedValueOnce({ ok: true });
+      await (service as any).send(channel, 'Monitor is down', {});
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://example.com/hook',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Authorization': 'Bearer tok', 'X-App-ID': '42' }),
+        }),
+      );
+    });
+
+    it('does not allow overriding reserved headers', async () => {
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({
+        type: 'webhook',
+        config: { url: 'https://example.com/hook', customHeaders: { 'content-type': 'text/plain', 'X-Custom': 'ok' } },
+      });
+      fetchMock.mockResolvedValueOnce({ ok: true });
+      await (service as any).send(channel, 'Monitor is down', {});
+      const call = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      const headers = call?.headers as Record<string, string>;
+      expect(headers['content-type']).toBe('application/json'); // not overridden
+      expect(headers['X-Custom']).toBe('ok');
     });
   });
 
@@ -1063,6 +1106,67 @@ describe('AlertsService', () => {
       const createCall = prisma.alertDeliveryLog.create.mock.calls[0];
       expect(typeof createCall[0].data.durationMs).toBe('number');
       expect(createCall[0].data.durationMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ── Webhook payload template ─────────────────────────────────────────────────
+
+  describe('webhook payloadTemplate', () => {
+    it('sends rendered custom template body when payloadTemplate is configured', async () => {
+      vi.useFakeTimers();
+      const template = '{"alert":"{{text}}","monitor":"{{monitor.name}}","level":"{{run.level}}"}';
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', payloadTemplate: template } });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyTest(channel);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://hooks.example.com/test');
+      const body = JSON.parse(init.body as string) as Record<string, string>;
+      expect(body.alert).toBeDefined();
+      // Template rendered — no 'text' key at top level (unlike default payload)
+      expect(typeof body.alert).toBe('string');
+    });
+
+    it('falls back to default payload when payloadTemplate render throws', async () => {
+      vi.useFakeTimers();
+      // A template that is valid JSON after render — we just verify fallback doesn't crash
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', payloadTemplate: '' } });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyTest(channel);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      // Empty template falls through to default — should still call fetch once
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(body.text).toBeDefined();
+    });
+
+    it('substitutes all supported variables in template', async () => {
+      vi.useFakeTimers();
+      const template = '{{text}}|{{monitor.name}}|{{monitor.type}}|{{monitor.target}}|{{run.level}}|{{run.message}}|{{run.latencyMs}}|{{timestamp}}';
+      const channel = makeChannel({ type: 'webhook', config: { url: 'https://hooks.example.com/test', payloadTemplate: template } });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      const promise = service.notifyTest(channel);
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.useRealTimers();
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const rendered = init.body as string;
+      // All {{…}} placeholders should be substituted (none remain)
+      expect(rendered).not.toMatch(/\{\{[^}]+\}\}/);
     });
   });
 

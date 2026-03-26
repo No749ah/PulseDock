@@ -82,6 +82,7 @@ export class MonitorsService {
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
       confirmations: m.confirmations,
+      retryCount: m.retryCount,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
@@ -140,6 +141,7 @@ export class MonitorsService {
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
       confirmations: m.confirmations,
+      retryCount: m.retryCount,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
@@ -189,6 +191,7 @@ export class MonitorsService {
     intervalSec?: number;
     timeoutMs?: number;
     confirmations?: number;
+    retryCount?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -228,6 +231,7 @@ export class MonitorsService {
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
         confirmations: Math.max(1, Math.min(10, body.confirmations ?? 1)),
+        retryCount: Math.max(0, Math.min(3, body.retryCount ?? 0)),
         configJson: config as Prisma.InputJsonValue,
         enabled: body.enabled ?? true,
         folderId: body.folderId ?? null,
@@ -277,6 +281,7 @@ export class MonitorsService {
       intervalSec: created.intervalSec,
       timeoutMs: created.timeoutMs,
       confirmations: created.confirmations,
+      retryCount: created.retryCount,
       config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}, created.type as MonitorType),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
@@ -326,6 +331,7 @@ export class MonitorsService {
     intervalSec?: number;
     timeoutMs?: number;
     confirmations?: number;
+    retryCount?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -371,6 +377,7 @@ export class MonitorsService {
         intervalSec: body.intervalSec ?? current.intervalSec,
         timeoutMs: body.timeoutMs ?? current.timeoutMs,
         confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
+        retryCount: body.retryCount !== undefined ? Math.max(0, Math.min(3, body.retryCount)) : current.retryCount,
         configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,
@@ -533,6 +540,7 @@ export class MonitorsService {
         intervalSec: source.intervalSec,
         timeoutMs: source.timeoutMs,
         confirmations: source.confirmations,
+        retryCount: source.retryCount,
         configJson: source.configJson ?? Prisma.DbNull,
         enabled: false, // start disabled — user enables when ready
         folderId: source.folderId,
@@ -573,6 +581,7 @@ export class MonitorsService {
       intervalSec: cloned.intervalSec,
       timeoutMs: cloned.timeoutMs,
       confirmations: cloned.confirmations,
+      retryCount: cloned.retryCount,
       config: this.sanitizeConfig((cloned.configJson as Record<string, unknown> | null) ?? {}, cloned.type as MonitorType),
       alertChannelIds: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { name: string; type: string } }[] }).monitorAlerts?.map((ma) => ma.alertChannelId) ?? [],
       alertChannels: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { id?: string; name: string; type: string } }[] }).monitorAlerts?.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })) ?? [],
@@ -879,6 +888,7 @@ export class MonitorsService {
       intervalSec: monitor.intervalSec,
       timeoutMs: monitor.timeoutMs,
       confirmations: monitor.confirmations,
+      retryCount: monitor.retryCount,
       config: (monitor.configJson as Record<string, unknown> | null) ?? {},
       alertChannelIds: [],
       folderId: monitor.folderId,
@@ -1020,6 +1030,7 @@ export class MonitorsService {
         message: r.message,
         level: r.level as 'green' | 'yellow' | 'red',
         responseBody: r.responseBody ?? null,
+        timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
@@ -2257,5 +2268,103 @@ export class MonitorsService {
     };
 
     return { monitors: valid, summary };
+  }
+
+  // ─── Latency Distribution ────────────────────────────────────────────────
+
+  async getLatencyDistribution(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const since = new Date(Date.now() - rangeMs);
+
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since } },
+      select: { ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = allRuns.length;
+    const successRuns = allRuns.filter((r) => r.ok && r.latencyMs !== null);
+    const successChecks = successRuns.length;
+
+    const latencies = successRuns.map((r) => r.latencyMs as number);
+    latencies.sort((a, b) => a - b);
+
+    // Buckets
+    const bucketDefs: Array<{ rangeLabel: string; from: number; to: number }> = [
+      { rangeLabel: '0-50ms', from: 0, to: 50 },
+      { rangeLabel: '50-100ms', from: 50, to: 100 },
+      { rangeLabel: '100-200ms', from: 100, to: 200 },
+      { rangeLabel: '200-500ms', from: 200, to: 500 },
+      { rangeLabel: '500-1s', from: 500, to: 1000 },
+      { rangeLabel: '1-2s', from: 1000, to: 2000 },
+      { rangeLabel: '2-5s', from: 2000, to: 5000 },
+      { rangeLabel: '5s+', from: 5000, to: Infinity },
+    ];
+
+    const buckets = bucketDefs.map((b) => {
+      const count = latencies.filter((l) => l >= b.from && l < b.to).length;
+      const pct = successChecks === 0 ? 0 : Math.round((count / successChecks) * 1000) / 10;
+      return { rangeLabel: b.rangeLabel, from: b.from, to: b.to === Infinity ? -1 : b.to, count, pct };
+    });
+
+    // Percentiles
+    function percentile(sorted: number[], p: number): number | null {
+      if (sorted.length === 0) return null;
+      const idx = Math.max(0, Math.ceil((p / 100) * sorted.length) - 1);
+      return sorted[idx];
+    }
+
+    const percentiles = {
+      p50: percentile(latencies, 50),
+      p75: percentile(latencies, 75),
+      p90: percentile(latencies, 90),
+      p95: percentile(latencies, 95),
+      p99: percentile(latencies, 99),
+    };
+
+    // Hourly avg (0-23 UTC)
+    const hourlyBuckets: Array<number[]> = Array.from({ length: 24 }, () => []);
+    for (const run of successRuns) {
+      const hour = (run.checkedAt as Date).getUTCHours();
+      hourlyBuckets[hour].push(run.latencyMs as number);
+    }
+
+    const hourlyAvg = hourlyBuckets.map((vals, hour) => {
+      if (vals.length === 0) return { hour, avgMs: null, p95Ms: null, count: 0 };
+      const sorted = [...vals].sort((a, b) => a - b);
+      const avg = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+      const p95Idx = Math.max(0, Math.ceil(0.95 * sorted.length) - 1);
+      return { hour, avgMs: avg, p95Ms: sorted[p95Idx], count: vals.length };
+    });
+
+    const checkedRangeMap: Record<string, string> = {
+      '24h': 'Last 24 hours',
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+    };
+
+    return {
+      buckets,
+      percentiles,
+      hourlyAvg,
+      totalChecks,
+      successChecks,
+      checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+    };
   }
 }

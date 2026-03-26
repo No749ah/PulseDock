@@ -2,6 +2,151 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChecksService } from './checks.service';
 import type { Monitor } from '../types';
 
+// ── Mock http runner to use globalThis.fetch (preserves existing service tests) ──
+// The real http runner uses Node.js http/https modules, but the service tests mock
+// globalThis.fetch. This shim bridges the gap so all service tests keep working.
+vi.mock('./runners/http.runner', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./runners/http.runner')>();
+  // Inline extractByPath to avoid module resolution issues in vi.mock factory
+  function extractByPath(obj: unknown, path: string): unknown {
+    const parts = path.split('.');
+    let cur: unknown = obj;
+    for (const part of parts) {
+      if (cur === null || cur === undefined) return undefined;
+      if (Array.isArray(cur)) { const idx = parseInt(part, 10); cur = isNaN(idx) ? undefined : cur[idx]; }
+      else if (typeof cur === 'object') { cur = (cur as Record<string, unknown>)[part]; }
+      else { return undefined; }
+    }
+    return cur;
+  }
+  return {
+    ...original,
+    runHttpCheck: async (url: string, timeoutMs = 5000, config: Record<string, unknown> = {}) => {
+      const started = Date.now();
+      const expectedStatus = config['expectedStatus'] as number | number[] | undefined;
+      const bodyContains = typeof config['bodyContains'] === 'string' ? config['bodyContains'] : undefined;
+      const bodyJsonPath = typeof config['bodyJsonPath'] === 'string' && config['bodyJsonPath'].trim() ? config['bodyJsonPath'].trim() : undefined;
+      const bodyJsonPathExpected = typeof config['bodyJsonPathExpected'] === 'string' ? config['bodyJsonPathExpected'].trim() : undefined;
+      const responseTimeThresholdMs = typeof config['responseTimeThresholdMs'] === 'number' && config['responseTimeThresholdMs'] > 0 ? config['responseTimeThresholdMs'] : undefined;
+      const needsBody = !!bodyContains || !!bodyJsonPath;
+      const httpMethod = typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET';
+      const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
+      const requestHeaders: Record<string, string> = {};
+      if (config['requestHeaders'] && typeof config['requestHeaders'] === 'object' && !Array.isArray(config['requestHeaders'])) {
+        for (const [k, v] of Object.entries(config['requestHeaders'] as Record<string, unknown>)) {
+          if (typeof k === 'string' && typeof v === 'string' && k.trim()) requestHeaders[k.trim()] = v;
+        }
+      }
+      const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
+
+      const fetchOptions: RequestInit = { method: safeMethod, headers: requestHeaders };
+      if (requestBody && ['POST', 'PUT', 'PATCH'].includes(safeMethod)) fetchOptions.body = requestBody;
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      fetchOptions.signal = controller.signal;
+
+      try {
+        const response = await globalThis.fetch(url, fetchOptions);
+        clearTimeout(timer);
+        const latencyMs = Date.now() - started;
+
+        let statusOk: boolean;
+        if (expectedStatus !== undefined) {
+          const allowed = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
+          statusOk = allowed.includes(response.status);
+        } else {
+          statusOk = response.ok;
+        }
+
+        if (!statusOk) {
+          const failBody = await response.text().catch(() => '');
+          const expected = expectedStatus ? ` (expected ${Array.isArray(expectedStatus) ? expectedStatus.join('/') : expectedStatus})` : '';
+          return { ok: false, statusCode: response.status, latencyMs, message: `HTTP ${response.status}${expected}`, level: 'red' as const, responseBody: failBody ? failBody.slice(0, 500) : null };
+        }
+
+        if (needsBody) {
+          const body = await response.text().catch(() => '');
+          if (bodyContains) {
+            const found = body.toLowerCase().includes(bodyContains.toLowerCase());
+            if (!found) return { ok: false, statusCode: response.status, latencyMs, message: `HTTP ${response.status} — body does not contain "${bodyContains}"`, level: 'red' as const, responseBody: body.slice(0, 500) || null };
+          }
+          if (bodyJsonPath) {
+            let parsed: unknown;
+            try { parsed = JSON.parse(body); } catch { return { ok: false, statusCode: response.status, latencyMs, message: `HTTP ${response.status} — response is not valid JSON (cannot assert JSON path "${bodyJsonPath}")`, level: 'red' as const, responseBody: body.slice(0, 500) || null }; }
+            const normalizedPath = bodyJsonPath.startsWith('$.') ? bodyJsonPath.slice(2) : bodyJsonPath.startsWith('$') ? bodyJsonPath.slice(1) : bodyJsonPath;
+            const actual = extractByPath(parsed, normalizedPath);
+            const actualStr = actual === null || actual === undefined ? '' : String(actual);
+            const assertionPasses = bodyJsonPathExpected ? actualStr === bodyJsonPathExpected : actual !== null && actual !== undefined && actual !== false && actual !== '' && actual !== 0;
+            if (!assertionPasses) {
+              const expectDesc = bodyJsonPathExpected ? `"${bodyJsonPathExpected}"` : 'truthy value';
+              return { ok: false, statusCode: response.status, latencyMs, message: `HTTP ${response.status} — JSON path "${bodyJsonPath}" is ${actualStr ? `"${actualStr}"` : 'missing/falsy'} (expected ${expectDesc})`, level: 'red' as const, responseBody: body.slice(0, 500) || null };
+            }
+          }
+          if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+            const assertDesc = bodyJsonPath ? `JSON path "${bodyJsonPath}" OK` : `body contains "${bodyContains}"`;
+            return { ok: false, statusCode: response.status, latencyMs, message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms), ${assertDesc}`, level: 'yellow' as const };
+          }
+          const okDesc = bodyJsonPath ? `JSON path "${bodyJsonPath}"${bodyJsonPathExpected ? ` = "${bodyJsonPathExpected}"` : ' is truthy'}` : `body contains "${bodyContains}"`;
+          return { ok: true, statusCode: response.status, latencyMs, message: `OK — ${okDesc}`, level: 'green' as const };
+        }
+
+        await response.text().catch(() => undefined);
+        if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
+          return { ok: false, statusCode: response.status, latencyMs, message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms)`, level: 'yellow' as const };
+        }
+        return { ok: true, statusCode: response.status, latencyMs, message: 'OK', level: 'green' as const };
+      } catch (error) {
+        clearTimeout(timer);
+        return { ok: false, statusCode: 0, latencyMs: Date.now() - started, message: error instanceof Error ? error.message : 'Request failed', level: 'red' as const };
+      }
+    },
+    runBrowserCheck: async (target: string, config: Record<string, unknown>, timeoutMs = 15000) => {
+      const url = target.trim().startsWith('http') ? target.trim() : `https://${target.trim()}`;
+      const expectedText = typeof config.browserExpectedText === 'string' ? config.browserExpectedText.trim() : '';
+      const selector = typeof config.browserSelector === 'string' ? config.browserSelector.trim() : '';
+      const allowedCodes: number[] = Array.isArray(config.browserStatusCodes) && (config.browserStatusCodes as number[]).every((c) => typeof c === 'number') ? (config.browserStatusCodes as number[]) : [];
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const start = Date.now();
+      try {
+        const resp = await globalThis.fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; PulseDock/1.0; +https://pulsedock.io) PulseDockBrowserCheck/1.0',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+          },
+          redirect: 'follow',
+        });
+        clearTimeout(timer);
+        const latencyMs = Date.now() - start;
+        const statusOk = allowedCodes.length > 0 ? allowedCodes.includes(resp.status) : resp.status >= 200 && resp.status < 400;
+        if (!statusOk) {
+          return { ok: false, statusCode: resp.status, latencyMs, message: `HTTP ${resp.status} — expected ${allowedCodes.length > 0 ? allowedCodes.join('/') : '2xx-3xx'}`, level: resp.status >= 500 ? 'red' as const : 'yellow' as const };
+        }
+        if (expectedText || selector) {
+          const body = await resp.text();
+          if (expectedText && !body.toLowerCase().includes(expectedText.toLowerCase())) {
+            return { ok: false, statusCode: resp.status, latencyMs, message: `Expected text not found: "${expectedText}"`, level: 'red' as const };
+          }
+          if (selector) {
+            const selectorPresent = original.htmlContainsSelector(body, selector);
+            if (!selectorPresent) return { ok: false, statusCode: resp.status, latencyMs, message: `Element not found: "${selector}"`, level: 'red' as const };
+          }
+        }
+        return { ok: true, statusCode: resp.status, latencyMs, message: `${resp.status} OK${latencyMs > 0 ? ` (${latencyMs}ms)` : ''}`, level: 'green' as const };
+      } catch (err: unknown) {
+        clearTimeout(timer);
+        const latencyMs = Date.now() - start;
+        const isTimeout = err instanceof Error && err.name === 'AbortError';
+        return { ok: false, statusCode: 0, latencyMs, message: isTimeout ? `Timeout after ${timeoutMs}ms` : `Error: ${err instanceof Error ? err.message : String(err)}`, level: 'red' as const };
+      }
+    },
+  };
+});
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
@@ -18,6 +163,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     createdAt: new Date().toISOString(),
     timeoutMs: 5000,
     confirmations: 1,
+    retryCount: 0,
     config: {},
     description: null,
     runbookUrl: null,
@@ -5593,5 +5739,112 @@ describe('ChecksService — Flap Detection', () => {
     expect(prisma.monitor.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
     );
+  });
+});
+
+// ── Retry Logic Tests ─────────────────────────────────────────────────────────
+
+describe('retryCount — automatic check retries on failure', () => {
+  beforeEach(() => {
+    // Skip actual backoff delays so tests run fast
+    vi.stubGlobal('setTimeout', (fn: () => void) => { fn(); return 0 as unknown as ReturnType<typeof setTimeout>; });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeRetryPrisma(opts: { prevLevel?: string } = {}) {
+    const prevRun = { level: opts.prevLevel ?? 'green' };
+    return {
+      monitorRun: {
+        findMany: vi.fn().mockResolvedValue([prevRun]),
+        create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) => Promise.resolve({
+          id: 'run-1', userId: 'user-1', monitorId: 'mon-1',
+          checkedAt: new Date(), level: args.data.level,
+          ok: args.data.ok, status: args.data.status,
+          latencyMs: args.data.latencyMs, message: args.data.message,
+          responseBody: null,
+        })),
+        findFirst: vi.fn().mockResolvedValue(prevRun),
+      },
+      monitorDependency: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      incident: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      monitor: {
+        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    };
+  }
+
+  it('records failure immediately when retryCount=0 and check fails', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 0, confirmations: 1 }));
+    expect(result.ok).toBe(false);
+    // fetch called exactly once (no retries)
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once and succeeds — records success', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    // first call fails, second call succeeds
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: true, status: 200 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 1, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries twice, both fail — records failure', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 2, confirmations: 1 }));
+    expect(result.ok).toBe(false);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it('retries 3 times, succeeds on 3rd retry — records success', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: true, status: 200 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 3, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not retry when check succeeds on first attempt', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 3, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    // Only 1 call — no retries since first attempt succeeded
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1);
   });
 });

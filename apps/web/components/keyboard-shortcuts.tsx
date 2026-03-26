@@ -13,6 +13,7 @@ const SHORTCUTS: ShortcutGroup[] = [
     label: "Navigation",
     shortcuts: [
       { keys: ["Ctrl", "K"], description: "Open command palette" },
+      { keys: ["/"], description: "Open search (when not in input)" },
       { keys: ["?"], description: "Show keyboard shortcuts" },
       { keys: ["Esc"], description: "Close dialog / deselect" },
     ],

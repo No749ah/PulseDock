@@ -9,6 +9,14 @@ import { EscalationService } from '../escalation/escalation.service';
 /** How many days of MonitorRun history to keep. Configurable via RUN_RETENTION_DAYS env var. Default: 90 days. */
 const RUN_RETENTION_DAYS = Math.max(1, parseInt(process.env['RUN_RETENTION_DAYS'] ?? '90', 10) || 90);
 
+/**
+ * Maximum number of monitor checks to run concurrently per scheduler tick.
+ * Configurable via MAX_CONCURRENT_CHECKS env var. Default: 50.
+ * Setting too high on large deployments may cause CPU/network saturation.
+ * Setting too low may cause checks to back up and miss their intervals.
+ */
+const MAX_CONCURRENT_CHECKS = Math.max(1, parseInt(process.env['MAX_CONCURRENT_CHECKS'] ?? '50', 10) || 50);
+
 /** Max jitter delay (ms) added to each check to avoid thundering herd. */
 const MAX_JITTER_MS = 5_000;
 
@@ -17,6 +25,35 @@ const QUEUE_DEPTH_WARN_THRESHOLD = 50;
 
 /** Maximum time (ms) to wait for in-flight checks to finish during shutdown. */
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 30_000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Concurrency limiter
+// Runs at most `limit` tasks at once, draining the queue as slots free up.
+// Returns Promise.allSettled-style results preserving original order.
+// ─────────────────────────────────────────────────────────────────────────────
+async function runWithConcurrencyLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let nextIdx = 0;
+
+  async function runSlot(): Promise<void> {
+    while (nextIdx < items.length) {
+      const idx = nextIdx++;
+      try {
+        results[idx] = { status: 'fulfilled', value: await fn(items[idx]) };
+      } catch (err) {
+        results[idx] = { status: 'rejected', reason: err };
+      }
+    }
+  }
+
+  // Spin up `limit` concurrent slots
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runSlot));
+  return results;
+}
 
 @Injectable()
 export class ChecksScheduler implements BeforeApplicationShutdown {
@@ -88,6 +125,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         intervalSec: true,
         timeoutMs: true,
         confirmations: true,
+        retryCount: true,
         configJson: true,
         folderId: true,
         enabled: true,
@@ -148,9 +186,12 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
       return;
     }
 
-    // Run due monitors concurrently with per-monitor jitter to avoid thundering herd
-    const results = await Promise.allSettled(
-      due.map((monitor) => this.runWithJitter(monitor)),
+    // Run due monitors concurrently, limited to MAX_CONCURRENT_CHECKS simultaneous checks.
+    // This prevents thundering-herd / CPU saturation on large deployments.
+    const results = await runWithConcurrencyLimit(
+      due,
+      MAX_CONCURRENT_CHECKS,
+      (monitor) => this.runWithJitter(monitor),
     );
 
     const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
@@ -190,6 +231,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     intervalSec: number;
     timeoutMs: number;
     confirmations: number;
+    retryCount: number;
     configJson: unknown;
     folderId: string | null;
     enabled: boolean;
@@ -233,6 +275,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         intervalSec: monitor.intervalSec,
         timeoutMs: monitor.timeoutMs,
         confirmations: monitor.confirmations,
+        retryCount: monitor.retryCount ?? 0,
         config: (monitor.configJson as Record<string, unknown> | null | undefined) ?? {},
         alertChannelIds: [],
         folderId: monitor.folderId,

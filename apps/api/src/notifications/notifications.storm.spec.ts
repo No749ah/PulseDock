@@ -29,7 +29,8 @@ function makeService(prefOverrides: Record<string, unknown> = {}) {
     },
   };
 
-  const service = new NotificationsService(prisma as never);
+  const mailer = { sendDigestEmail: vi.fn().mockResolvedValue(undefined) };
+  const service = new NotificationsService(prisma as never, mailer as never);
   return { service, prisma };
 }
 

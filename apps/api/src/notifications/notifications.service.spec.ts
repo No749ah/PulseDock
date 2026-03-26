@@ -30,9 +30,12 @@ describe('NotificationsService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let service: NotificationsService;
 
+  const mailer = { sendDigestEmail: vi.fn().mockResolvedValue(undefined) };
+
   beforeEach(() => {
     prisma = makePrisma();
-    service = new NotificationsService(prisma as never);
+    mailer.sendDigestEmail.mockClear();
+    service = new NotificationsService(prisma as never, mailer as never);
   });
 
   describe('getPreference', () => {

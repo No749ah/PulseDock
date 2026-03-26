@@ -205,6 +205,20 @@ export function AppFrame({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // '/' keyboard shortcut → open command palette (when not focused in an input)
+  useEffect(() => {
+    function handleSlash(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (e.key === '/' && !inInput && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+      }
+    }
+    window.addEventListener('keydown', handleSlash);
+    return () => window.removeEventListener('keydown', handleSlash);
+  }, []);
+
   // Close user menu on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -386,12 +400,12 @@ export function AppFrame({
                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
               }}
               aria-label="Open command palette"
-              title="Open command palette (Ctrl+K)"
+              title="Open command palette (Ctrl+K or /)"
             >
               <Search className="w-3.5 h-3.5" />
               <span>Search…</span>
-              <kbd className="flex items-center gap-0.5 text-[10px]">
-                <span>Ctrl K</span>
+              <kbd className="flex items-center gap-0.5 text-[10px] opacity-60">
+                <span>/</span>
               </kbd>
             </button>
 
@@ -597,6 +611,23 @@ export function AppFrame({
             </div>
           </div>
         </header>
+
+        {/* ── Outage Banner ── */}
+        {downMonitorCount > 0 && (
+          <div
+            className="flex items-center gap-3 px-4 py-2 bg-danger/10 border-b border-danger/30 text-danger text-sm"
+            role="alert"
+            aria-live="polite"
+          >
+            <span className="w-2 h-2 rounded-full bg-danger animate-pulse shrink-0" />
+            <span className="font-medium">
+              {downMonitorCount} monitor{downMonitorCount !== 1 ? 's' : ''} down
+            </span>
+            <Link href="/monitors" className="underline underline-offset-2 hover:text-danger/80 transition-colors">
+              View monitors →
+            </Link>
+          </div>
+        )}
 
         {/* Content */}
         <main id="main-content" role="main" className="flex-1 overflow-y-auto">

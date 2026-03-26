@@ -21,8 +21,16 @@ import {
   Activity,
   Download,
   Sun,
+  Loader2,
+  Activity as ActivityIcon,
+  GitBranch,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
+import { api } from "../lib/api";
+import { getUser } from "./auth";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CommandItem {
   id: string;
@@ -33,7 +41,30 @@ interface CommandItem {
   group: string;
   keywords?: string[];
   shortcut?: string;
+  /** Optional status dot color */
+  statusColor?: "green" | "yellow" | "red" | "blue" | "gray";
 }
+
+interface SearchResult {
+  id: string;
+  type: "monitor" | "incident" | "status_page" | "version";
+  title: string;
+  subtitle: string;
+  url: string;
+  status?: string;
+  statusColor?: "green" | "yellow" | "red" | "blue" | "gray";
+}
+
+interface SearchResponse {
+  query: string;
+  total: number;
+  monitors: SearchResult[];
+  incidents: SearchResult[];
+  status_pages: SearchResult[];
+  versions: SearchResult[];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const RECENT_KEY = "pd:recent-commands";
 const MAX_RECENT = 3;
@@ -65,6 +96,29 @@ function fuzzyMatch(text: string, query: string): boolean {
   return true;
 }
 
+function StatusDot({ color }: { color?: CommandItem["statusColor"] }) {
+  if (!color || color === "gray") return null;
+  const map: Record<string, string> = {
+    green: "bg-success",
+    yellow: "bg-warning",
+    red: "bg-danger animate-pulse",
+    blue: "bg-blue-400",
+  };
+  return <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${map[color] ?? "bg-border"}`} />;
+}
+
+function resultTypeIcon(type: SearchResult["type"]): React.ComponentType<{ className?: string }> {
+  switch (type) {
+    case "monitor": return Monitor;
+    case "incident": return AlertTriangle;
+    case "status_page": return Globe;
+    case "version": return GitBranch;
+    default: return FileText;
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function CommandPalette() {
   const router = useRouter();
   const { toggleTheme } = useTheme();
@@ -72,10 +126,14 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Build commands — needs router, so inside component
+  // ─── Static Commands ──────────────────────────────────────────────────────
+
   const allCommands = useCallback((): CommandItem[] => [
     // Navigation
     { id: "nav-dashboard", label: "Dashboard", description: "Go to dashboard", icon: LayoutDashboard, group: "Navigation", keywords: ["home", "overview"], shortcut: "G D", action: () => router.push("/dashboard") },
@@ -93,7 +151,6 @@ export function CommandPalette() {
     { id: "create-alert", label: "New Alert Channel", description: "Add alert destination", icon: Plus, group: "Create", keywords: ["add", "slack", "discord", "webhook"], shortcut: "N A", action: () => router.push("/alerts") },
     { id: "create-status-page", label: "New Status Page", description: "Create public status page", icon: Plus, group: "Create", keywords: ["add", "public"], shortcut: "N S", action: () => router.push("/status-pages") },
     { id: "create-incident", label: "New Incident", description: "Report an incident", icon: Plus, group: "Create", keywords: ["add", "outage", "report"], action: () => router.push("/incidents") },
-    // Create (more)
     { id: "create-version-check", label: "New Version Check", description: "Track a tool or package version", icon: Plus, group: "Create", keywords: ["add", "semver", "docker", "npm", "github"], action: () => router.push("/versions") },
     { id: "create-project", label: "New Project", description: "Group monitors into a project", icon: Plus, group: "Create", keywords: ["add", "folder", "group", "team"], action: () => router.push("/projects") },
     { id: "create-maintenance", label: "Schedule Maintenance", description: "Plan a maintenance window", icon: Plus, group: "Create", keywords: ["add", "downtime", "schedule"], action: () => router.push("/maintenance") },
@@ -102,7 +159,7 @@ export function CommandPalette() {
     { id: "action-toggle-theme", label: "Toggle Theme", description: "Switch dark / light mode", icon: Sun, group: "Actions", keywords: ["dark", "light", "theme", "mode", "color"], shortcut: "T", action: () => { toggleTheme(); } },
     { id: "action-account-keys", label: "Manage API Keys", description: "View and create API keys", icon: Shield, group: "Actions", keywords: ["api", "key", "token", "auth"], action: () => router.push("/account#api-keys") },
     { id: "action-data-retention", label: "Data Retention Settings", description: "Configure data retention policies", icon: Clock, group: "Actions", keywords: ["storage", "retention", "prune", "cleanup"], action: () => router.push("/account#data-retention") },
-    { id: "action-view-health", label: "API Health Check", description: "View API health status", icon: Activity, group: "Actions", keywords: ["health", "status", "api", "uptime"], action: () => window.open("/api/v1/health", "_blank") },
+    { id: "action-view-health", label: "API Health Check", description: "View API health status", icon: ActivityIcon, group: "Actions", keywords: ["health", "status", "api", "uptime"], action: () => window.open("/api/v1/health", "_blank") },
     // External
     { id: "ext-github", label: "GitHub Repository", description: "View source code", icon: ExternalLink, group: "External", keywords: ["source", "code", "repo"], action: () => window.open("https://github.com/No749ah/PulseDock", "_blank") },
     { id: "ext-api-docs", label: "API Documentation", description: "Browse API reference (Swagger)", icon: ExternalLink, group: "External", keywords: ["api", "rest", "docs", "swagger", "openapi"], action: () => router.push("/api/docs") },
@@ -110,11 +167,72 @@ export function CommandPalette() {
     { id: "nav-changelog", label: "Changelog Page", description: "View built-in changelog", icon: BarChart2, group: "Navigation", keywords: ["changelog", "releases", "versions", "history"], action: () => router.push("/changelog") },
   ], [router, toggleTheme]);
 
-  // Filtered results grouped
-  const grouped = useCallback(() => {
+  // ─── Live Search ─────────────────────────────────────────────────────────
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const user = getUser();
+      if (!user) { setSearching(false); return; }
+      const data = await api<SearchResponse>(`/v1/search?q=${encodeURIComponent(q)}&limit=4`, user.id);
+      const results: SearchResult[] = [
+        ...data.monitors,
+        ...data.incidents,
+        ...data.status_pages,
+        ...data.versions,
+      ];
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    if (!open) return;
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (query.length >= 2) {
+      setSearching(true);
+      searchTimer.current = setTimeout(() => doSearch(query), 250);
+    } else {
+      setSearchResults([]);
+      setSearching(false);
+    }
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [query, open, doSearch]);
+
+  // ─── Grouped Items ────────────────────────────────────────────────────────
+
+  const grouped = useCallback((): Array<{ group: string; items: CommandItem[] }> => {
     const commands = allCommands();
     const q = query.trim();
 
+    // When we have live search results, show them at the top
+    const result: Array<{ group: string; items: CommandItem[] }> = [];
+
+    if (searchResults.length > 0) {
+      const liveItems: CommandItem[] = searchResults.map((r) => ({
+        id: `live-${r.type}-${r.id}`,
+        label: r.title,
+        description: r.subtitle,
+        icon: resultTypeIcon(r.type),
+        group: "Search Results",
+        statusColor: r.statusColor,
+        action: () => router.push(r.url),
+      }));
+      result.push({ group: "Search Results", items: liveItems });
+    }
+
+    // Filter static commands
     let filtered: CommandItem[];
     if (q === "") {
       filtered = commands;
@@ -125,8 +243,6 @@ export function CommandPalette() {
         (cmd.keywords ?? []).some((kw) => fuzzyMatch(kw, q))
       );
     }
-
-    const result: Array<{ group: string; items: CommandItem[] }> = [];
 
     // Recent group (only when no query)
     if (q === "" && recentIds.length > 0) {
@@ -146,14 +262,17 @@ export function CommandPalette() {
     }
 
     return result;
-  }, [allCommands, query, recentIds]);
+  }, [allCommands, query, recentIds, searchResults, router]);
 
   const flatItems = useCallback(() => grouped().flatMap((g) => g.items), [grouped]);
 
-  // Open / close
+  // ─── Open / Close ─────────────────────────────────────────────────────────
+
   const openPalette = useCallback(() => {
     setRecentIds(loadRecent());
     setQuery("");
+    setSearchResults([]);
+    setSearching(false);
     setActiveIndex(0);
     setOpen(true);
   }, []);
@@ -161,25 +280,27 @@ export function CommandPalette() {
   const closePalette = useCallback(() => {
     setOpen(false);
     setQuery("");
+    setSearchResults([]);
+    setSearching(false);
     setActiveIndex(0);
   }, []);
 
   const selectItem = useCallback((item: CommandItem) => {
-    saveRecent(item.id);
+    if (!item.id.startsWith("live-")) {
+      saveRecent(item.id);
+    }
     item.action();
     closePalette();
   }, [closePalette]);
 
-  // Global Ctrl+K / Cmd+K listener
+  // ─── Keyboard Listeners ───────────────────────────────────────────────────
+
+  // Global Ctrl+K / Cmd+K
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        if (open) {
-          closePalette();
-        } else {
-          openPalette();
-        }
+        if (open) closePalette(); else openPalette();
       }
     }
     window.addEventListener("keydown", handler);
@@ -188,15 +309,10 @@ export function CommandPalette() {
 
   // Auto-focus input when opened
   useEffect(() => {
-    if (open) {
-      // Small delay to ensure the element is mounted
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 10);
-    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 10);
   }, [open]);
 
-  // Keyboard navigation within palette
+  // Navigation within palette
   useEffect(() => {
     if (!open) return;
     function handler(e: KeyboardEvent) {
@@ -220,10 +336,8 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handler);
   }, [open, activeIndex, flatItems, closePalette, selectItem]);
 
-  // Reset active index when query or groups change
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
+  // Reset active index on query change
+  useEffect(() => { setActiveIndex(0); }, [query, searchResults]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -251,13 +365,17 @@ export function CommandPalette() {
       <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 overflow-hidden mx-4">
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 border-b border-border">
-          <Search className="h-4 w-4 text-text-muted shrink-0" />
+          {searching ? (
+            <Loader2 className="h-4 w-4 text-text-muted shrink-0 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4 text-text-muted shrink-0" />
+          )}
           <input
             ref={inputRef}
             id="command-palette-input"
             type="text"
             className="w-full bg-transparent py-4 text-sm placeholder:text-text-muted outline-none text-text-primary"
-            placeholder="Search commands…"
+            placeholder="Search monitors, incidents, commands…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
@@ -281,14 +399,15 @@ export function CommandPalette() {
         <div ref={listRef} className="max-h-80 overflow-y-auto py-2">
           {groups.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-text-muted">
-              No commands found
+              {searching ? "Searching…" : "No results found"}
             </div>
           ) : (
             groups.map((group) => (
               <div key={group.group}>
                 <div className="px-4 py-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2">
                   {group.group === "Recent" && <Clock className="h-3 w-3" />}
-                  {group.group}
+                  {group.group === "Search Results" && <Activity className="h-3 w-3 text-accent" />}
+                  <span className={group.group === "Search Results" ? "text-accent" : ""}>{group.group}</span>
                 </div>
                 {group.items.map((item) => {
                   const currentIdx = flatIdx++;
@@ -307,18 +426,20 @@ export function CommandPalette() {
                       onClick={() => selectItem(item)}
                     >
                       <item.icon className="h-4 w-4 shrink-0 text-text-secondary" />
-                      <span className="text-sm flex-1 min-w-0 text-text-primary">
-                        {item.label}
+                      <span className="text-sm flex-1 min-w-0">
+                        <span className="text-text-primary block truncate">{item.label}</span>
+                        {item.description && (
+                          <span className="text-xs text-text-muted block truncate">{item.description}</span>
+                        )}
                       </span>
-                      {item.shortcut ? (
-                        <kbd className="hidden sm:flex items-center gap-0.5 ml-auto shrink-0 text-[10px] font-medium text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface-elevated">
-                          {item.shortcut}
-                        </kbd>
-                      ) : item.description ? (
-                        <span className="text-xs text-text-muted ml-auto truncate shrink-0 hidden sm:block">
-                          {item.description}
-                        </span>
-                      ) : null}
+                      <div className="flex items-center gap-2 ml-auto shrink-0">
+                        <StatusDot color={item.statusColor} />
+                        {item.shortcut && !item.description && (
+                          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-medium text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface-elevated">
+                            {item.shortcut}
+                          </kbd>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -332,6 +453,11 @@ export function CommandPalette() {
           <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 border border-border rounded bg-surface-elevated">↑↓</kbd> navigate</span>
           <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 border border-border rounded bg-surface-elevated">↵</kbd> select</span>
           <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 border border-border rounded bg-surface-elevated">ESC</kbd> close</span>
+          {query.length >= 2 && (
+            <span className="ml-auto text-accent">
+              {searchResults.length > 0 ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}` : searching ? "searching…" : "no results"}
+            </span>
+          )}
         </div>
       </div>
     </div>

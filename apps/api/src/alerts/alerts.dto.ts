@@ -35,3 +35,9 @@ export class TestAlertChannelDto {
   @MaxLength(255)
   channelId!: string;
 }
+
+export class PreviewPayloadDto {
+  @IsOptional()
+  @IsString()
+  template?: string;
+}

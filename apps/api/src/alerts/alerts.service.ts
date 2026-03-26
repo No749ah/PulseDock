@@ -107,7 +107,7 @@ export class AlertsService {
    * @param ctx - Rendering context containing monitor, run, and text data
    * @returns Rendered string with all known placeholders substituted
    */
-  private renderPayloadTemplate(template: string, ctx: { text: string; channel: AlertChannel; extra?: unknown }): string {
+  renderPayloadTemplate(template: string, ctx: { text: string; channel: AlertChannel; extra?: unknown }): string {
     const extra = ctx.extra as { monitor?: Record<string, unknown>; run?: Record<string, unknown> } | undefined;
     const monitor = extra?.monitor ?? {};
     const run = extra?.run ?? {};
@@ -155,6 +155,17 @@ export class AlertsService {
         body = JSON.stringify({ text, extra });
       }
       const headers: Record<string, string> = { 'content-type': 'application/json' };
+
+      // Merge user-defined custom headers (e.g., Authorization, X-API-Key)
+      // Sanitise: only string values, skip reserved headers that could break delivery
+      const RESERVED_HEADERS = new Set(['content-type', 'content-length', 'transfer-encoding', 'host']);
+      if (channel.config.customHeaders && typeof channel.config.customHeaders === 'object' && !Array.isArray(channel.config.customHeaders)) {
+        for (const [k, v] of Object.entries(channel.config.customHeaders as Record<string, unknown>)) {
+          if (typeof k === 'string' && typeof v === 'string' && !RESERVED_HEADERS.has(k.toLowerCase())) {
+            headers[k] = v;
+          }
+        }
+      }
 
       if (typeof channel.config.secret === 'string' && channel.config.secret.length > 0) {
         headers['x-pulsedock-signature'] = this.webhookSignature(channel.config.secret, body);
@@ -823,5 +834,126 @@ export class AlertsService {
       extra,
       { monitorId, monitorName, trigger: 'escalation' },
     );
+  }
+
+  /**
+   * Renders a preview of the payload template with sample data.
+   * Used by the preview endpoint — does not send any real alert.
+   *
+   * @param channel - The alert channel (for context)
+   * @param template - Optional template override; if empty, uses the channel's configured template or default payload
+   * @returns { rendered, valid, error? }
+   */
+  previewPayload(
+    channel: AlertChannel,
+    template?: string,
+  ): { rendered: string; valid: boolean; error?: string } {
+    const sampleContext = {
+      text: '🚨 Monitor "My API" is DOWN',
+      channel,
+      extra: {
+        monitor: { id: 'mon_123', name: 'My API', target: 'https://api.example.com', type: 'HTTP' },
+        run: { level: 'red', message: 'Connection refused', latencyMs: null as null, statusCode: 503 },
+        test: false,
+      },
+    };
+
+    const tmpl = template?.trim()
+      ? template.trim()
+      : (typeof channel.config.payloadTemplate === 'string' && channel.config.payloadTemplate.trim()
+          ? channel.config.payloadTemplate
+          : '');
+
+    let rendered: string;
+    if (tmpl) {
+      try {
+        rendered = this.renderPayloadTemplate(tmpl, sampleContext);
+      } catch (err) {
+        return {
+          rendered: '',
+          valid: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    } else {
+      // Default payload
+      rendered = JSON.stringify({ text: sampleContext.text, extra: sampleContext.extra }, null, 2);
+    }
+
+    let valid = false;
+    let parseError: string | undefined;
+    try {
+      JSON.parse(rendered);
+      valid = true;
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+    }
+
+    return { rendered, valid, ...(parseError ? { error: parseError } : {}) };
+  }
+
+  /**
+   * Retries a single failed delivery by its log ID.
+   * Re-sends the original payload (stored text) and records a new delivery log entry.
+   *
+   * @param deliveryId - ID of the AlertDeliveryLog record to retry
+   * @param channel - The owning alert channel
+   * @returns { success, error? }
+   */
+  async retryDelivery(
+    deliveryId: string,
+    channel: AlertChannel,
+  ): Promise<{ success: boolean; error?: string }> {
+    const log = await this.prisma.alertDeliveryLog.findUnique({ where: { id: deliveryId } });
+    if (!log || log.alertChannelId !== channel.id) {
+      return { success: false, error: 'Delivery log not found or does not belong to this channel' };
+    }
+
+    // Re-send using original context stored in the log. We don't store raw payload text in the log,
+    // so we reconstruct a minimal retry message tagged with monitorName if available.
+    const retryText = log.monitorName
+      ? `↻ Retry: 🚨 Monitor "${log.monitorName}" alert (retry of delivery ${deliveryId})`
+      : `↻ Retry alert (retry of delivery ${deliveryId})`;
+
+    try {
+      await this.sendWithRetry(
+        channel,
+        retryText,
+        { retry: true, originalDeliveryId: deliveryId, monitorId: log.monitorId, monitorName: log.monitorName },
+        { monitorId: log.monitorId ?? undefined, monitorName: log.monitorName ?? undefined, trigger: 'retry' },
+        1, // single attempt for manual retries
+      );
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
+   * Retries all failed deliveries for a channel from the last 24 hours (max 10).
+   *
+   * @param channel - The alert channel
+   * @returns Array of retry results per delivery ID
+   */
+  async retryAllFailed(
+    channel: AlertChannel,
+  ): Promise<Array<{ deliveryId: string; success: boolean; error?: string }>> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const failedLogs = await this.prisma.alertDeliveryLog.findMany({
+      where: {
+        alertChannelId: channel.id,
+        status: 'failed',
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    const results: Array<{ deliveryId: string; success: boolean; error?: string }> = [];
+    for (const log of failedLogs) {
+      const result = await this.retryDelivery(log.id, channel);
+      results.push({ deliveryId: log.id, ...result });
+    }
+    return results;
   }
 }

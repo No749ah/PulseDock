@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -147,6 +147,19 @@ export default function AlertsPage() {
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [testingAll, setTestingAll] = useState(false);
 
+  // Payload preview state (create form)
+  const [createPreviewVisible, setCreatePreviewVisible] = useState(false);
+  const [createPreviewResult, setCreatePreviewResult] = useState<{ rendered: string; valid: boolean; error?: string } | null>(null);
+
+  // Payload preview state (edit form)
+  const [editPreviewVisible, setEditPreviewVisible] = useState(false);
+  const [editPreviewLoading, setEditPreviewLoading] = useState(false);
+  const [editPreviewResult, setEditPreviewResult] = useState<{ rendered: string; valid: boolean; error?: string } | null>(null);
+
+  // Retry state
+  const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
+  const [retryingAll, setRetryingAll] = useState(false);
+
   useEffect(() => {
     const user = getUser();
     if (!user) router.push('/login');
@@ -166,6 +179,109 @@ export default function AlertsPage() {
   function resetCreateForm() {
     setWizardStep(0);
     setForm({ name: '', type: 'discord', a: '', b: '', secret: '', username: '', avatarUrl: '', mentionRoleId: '', mentionUserId: '', messageTemplate: '', parseMode: 'HTML', payloadTemplate: '', customHeaders: [] });
+    setCreatePreviewVisible(false);
+    setCreatePreviewResult(null);
+  }
+
+  function previewCreateTemplate(template: string) {
+    const sampleVars: Record<string, string> = {
+      '{{text}}': '🚨 Monitor "My API" is DOWN',
+      '{{monitor.name}}': 'My API',
+      '{{monitor.target}}': 'https://api.example.com',
+      '{{monitor.type}}': 'HTTP',
+      '{{monitor.id}}': 'mon_123',
+      '{{monitor.runbookUrl}}': '',
+      '{{run.level}}': 'red',
+      '{{run.message}}': 'Connection refused',
+      '{{run.latencyMs}}': 'null',
+      '{{run.statusCode}}': '503',
+      '{{run.checkedAt}}': new Date().toISOString(),
+      '{{run.ok}}': 'false',
+      '{{timestamp}}': new Date().toISOString(),
+      '{{channelName}}': form.name || 'My Webhook',
+    };
+    let rendered = template;
+    for (const [key, val] of Object.entries(sampleVars)) {
+      rendered = rendered.replaceAll(key, val);
+    }
+    let valid = false;
+    let error: string | undefined;
+    try {
+      JSON.parse(rendered);
+      valid = true;
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+    setCreatePreviewResult({ rendered, valid, error });
+    setCreatePreviewVisible(true);
+  }
+
+  async function previewEditTemplate() {
+    if (!selected) return;
+    setEditPreviewLoading(true);
+    setEditPreviewVisible(true);
+    try {
+      const result = await api<{ rendered: string; valid: boolean; error?: string }>(
+        `/v1/alert-channels/${selected.id}/preview-payload`,
+        undefined,
+        { method: 'POST', body: JSON.stringify({ template: editPayloadTemplate }) },
+      );
+      setEditPreviewResult(result);
+    } catch (e) {
+      setEditPreviewResult({ rendered: '', valid: false, error: e instanceof Error ? e.message : 'Preview failed' });
+    } finally {
+      setEditPreviewLoading(false);
+    }
+  }
+
+  async function retryDelivery(deliveryId: string) {
+    if (!selected) return;
+    setRetryingDeliveryId(deliveryId);
+    try {
+      const result = await api<{ success: boolean; error?: string }>(
+        `/v1/alert-channels/${selected.id}/retry-delivery/${deliveryId}`,
+        undefined,
+        { method: 'POST' },
+      );
+      if (result.success) {
+        success('Delivery retried successfully');
+        // Refresh delivery history
+        const data = await api<DeliveryHistory>(`/v1/alert-channels/${selected.id}/deliveries`);
+        setDeliveryHistory(data);
+      } else {
+        toastError(result.error ?? 'Retry failed');
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Retry failed');
+    } finally {
+      setRetryingDeliveryId(null);
+    }
+  }
+
+  async function retryAllFailed() {
+    if (!selected) return;
+    setRetryingAll(true);
+    try {
+      const result = await api<{ results: Array<{ deliveryId: string; success: boolean; error?: string }> }>(
+        `/v1/alert-channels/${selected.id}/retry-all-failed`,
+        undefined,
+        { method: 'POST' },
+      );
+      const succeeded = result.results.filter((r) => r.success).length;
+      const failed = result.results.filter((r) => !r.success).length;
+      if (failed === 0) {
+        success(`Retried ${succeeded} delivery${succeeded !== 1 ? 's' : ''} successfully`);
+      } else {
+        toastError(`${succeeded} succeeded, ${failed} failed`);
+      }
+      // Refresh delivery history
+      const data = await api<DeliveryHistory>(`/v1/alert-channels/${selected.id}/deliveries`);
+      setDeliveryHistory(data);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : 'Retry all failed');
+    } finally {
+      setRetryingAll(false);
+    }
   }
 
   function next() {
@@ -317,6 +433,8 @@ export default function AlertsPage() {
       setEditB('');
       setEditSecret('');
     }
+    setEditPreviewVisible(false);
+    setEditPreviewResult(null);
     setEditOpen(true);
   }
 
@@ -500,9 +618,26 @@ export default function AlertsPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                        Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-medium text-text-secondary">
+                          Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (form.payloadTemplate.trim()) {
+                              previewCreateTemplate(form.payloadTemplate);
+                            } else {
+                              setCreatePreviewResult({ rendered: JSON.stringify({ text: '🚨 Monitor "My API" is DOWN', extra: { monitor: { id: 'mon_123', name: 'My API', target: 'https://api.example.com', type: 'HTTP' }, run: { level: 'red', message: 'Connection refused', latencyMs: null, statusCode: 503 }, test: false } }, null, 2), valid: true });
+                              setCreatePreviewVisible(true);
+                            }
+                          }}
+                          className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          {createPreviewVisible ? 'Hide preview' : 'Preview'}
+                        </button>
+                      </div>
                       <textarea
                         className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
                         placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
@@ -513,6 +648,23 @@ export default function AlertsPage() {
                       <p className="mt-1.5 text-xs text-text-secondary">
                         Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
                       </p>
+                      {createPreviewVisible && createPreviewResult && (
+                        <div className="mt-2 rounded-lg border border-border bg-surface-elevated p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Sample preview — not saved yet</span>
+                            {createPreviewResult.valid
+                              ? <span className="text-xs text-success flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Valid JSON</span>
+                              : <span className="text-xs text-warning flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> Invalid JSON</span>
+                            }
+                          </div>
+                          <pre className="text-xs font-mono text-text-primary whitespace-pre-wrap break-all overflow-x-auto max-h-48 overflow-y-auto">
+                            {createPreviewResult.rendered || '(empty)'}
+                          </pre>
+                          {createPreviewResult.error && !createPreviewResult.valid && (
+                            <p className="text-xs text-warning font-mono">{createPreviewResult.error}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">
@@ -686,9 +838,25 @@ export default function AlertsPage() {
                     <p className="mt-1.5 text-xs text-text-secondary">{brand.name} adds <code className="text-accent text-xs">X-PulseDock-Signature: sha256=…</code> to every payload.</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                      Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-text-secondary">
+                        Custom payload template <span className="text-text-secondary font-normal">(optional)</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editPreviewVisible) {
+                            setEditPreviewVisible(false);
+                          } else {
+                            previewEditTemplate().catch(() => undefined);
+                          }
+                        }}
+                        className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {editPreviewVisible ? 'Hide preview' : 'Preview'}
+                      </button>
+                    </div>
                     <textarea
                       className={`${inputClass} font-mono text-xs resize-y min-h-[120px]`}
                       placeholder={`{\n  "text": "{{text}}",\n  "monitor": "{{monitor.name}}",\n  "status": "{{run.level}}",\n  "latency": {{run.latencyMs}}\n}`}
@@ -699,6 +867,32 @@ export default function AlertsPage() {
                     <p className="mt-1.5 text-xs text-text-secondary">
                       Leave blank for default payload. Variables: <code className="text-accent">{"{{text}}"}</code> <code className="text-accent">{"{{monitor.name}}"}</code> <code className="text-accent">{"{{monitor.target}}"}</code> <code className="text-accent">{"{{run.level}}"}</code> <code className="text-accent">{"{{run.message}}"}</code> <code className="text-accent">{"{{run.latencyMs}}"}</code> <code className="text-accent">{"{{run.statusCode}}"}</code> <code className="text-accent">{"{{timestamp}}"}</code>
                     </p>
+                    {editPreviewVisible && (
+                      <div className="mt-2 rounded-lg border border-border bg-surface-elevated p-3 space-y-2">
+                        {editPreviewLoading ? (
+                          <div className="flex items-center gap-2 py-2">
+                            <div className="animate-spin w-3.5 h-3.5 border border-accent border-t-transparent rounded-full" />
+                            <span className="text-xs text-text-secondary">Rendering…</span>
+                          </div>
+                        ) : editPreviewResult ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Preview</span>
+                              {editPreviewResult.valid
+                                ? <span className="text-xs text-success flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Valid JSON</span>
+                                : <span className="text-xs text-warning flex items-center gap-1"><XCircle className="w-3.5 h-3.5" /> Invalid JSON</span>
+                              }
+                            </div>
+                            <pre className="text-xs font-mono text-text-primary whitespace-pre-wrap break-all overflow-x-auto max-h-48 overflow-y-auto">
+                              {editPreviewResult.rendered || '(empty)'}
+                            </pre>
+                            {editPreviewResult.error && !editPreviewResult.valid && (
+                              <p className="text-xs text-warning font-mono">{editPreviewResult.error}</p>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1.5">
@@ -820,44 +1014,70 @@ export default function AlertsPage() {
                     <p className="text-xs text-text-secondary mt-1">Delivery logs appear here once alerts are sent</p>
                   </div>
                 ) : (
-                  <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
-                    {deliveryHistory.deliveries.map((d) => (
-                      <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
-                        <div className="mt-0.5 shrink-0">
-                          {d.status === 'success'
-                            ? <CheckCircle2 className="w-4 h-4 text-success" />
-                            : <XCircle className="w-4 h-4 text-danger" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
-                              {d.status}
-                            </span>
-                            {d.trigger && (
-                              <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
-                                {d.trigger.replace('_', ' ')}
-                              </span>
-                            )}
-                            {d.monitorName && (
-                              <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
-                            )}
-                          </div>
-                          {d.errorMessage && (
-                            <p className="text-xs text-danger mt-1 font-mono break-all">{d.errorMessage}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-text-secondary">{new Date(d.createdAt).toLocaleString()}</span>
-                            {d.durationMs != null && (
-                              <span className="flex items-center gap-1 text-xs text-text-secondary">
-                                <Clock className="w-3 h-3" />{d.durationMs}ms
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                  <>
+                    {deliveryHistory.deliveries.some((d) => d.status === 'failed') && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => retryAllFailed().catch(() => undefined)}
+                          disabled={retryingAll}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-danger border border-danger/30 bg-danger/5 hover:bg-danger/10 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${retryingAll ? 'animate-spin' : ''}`} />
+                          {retryingAll ? 'Retrying…' : 'Retry all failed'}
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    <div className="max-h-96 overflow-y-auto space-y-1.5 -mx-1 px-1">
+                      {deliveryHistory.deliveries.map((d) => (
+                        <div key={d.id} className={`flex items-start gap-3 p-3 rounded-lg border ${d.status === 'success' ? 'bg-success/5 border-success/20' : 'bg-danger/5 border-danger/20'}`}>
+                          <div className="mt-0.5 shrink-0">
+                            {d.status === 'success'
+                              ? <CheckCircle2 className="w-4 h-4 text-success" />
+                              : <XCircle className="w-4 h-4 text-danger" />
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-xs font-semibold uppercase ${d.status === 'success' ? 'text-success' : 'text-danger'}`}>
+                                {d.status}
+                              </span>
+                              {d.trigger && (
+                                <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded">
+                                  {d.trigger.replace('_', ' ')}
+                                </span>
+                              )}
+                              {d.monitorName && (
+                                <span className="text-xs text-text-secondary truncate">· {d.monitorName}</span>
+                              )}
+                            </div>
+                            {d.errorMessage && (
+                              <p className="text-xs text-danger mt-1 font-mono break-all">{d.errorMessage}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-text-secondary">{new Date(d.createdAt).toLocaleString()}</span>
+                              {d.durationMs != null && (
+                                <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                  <Clock className="w-3 h-3" />{d.durationMs}ms
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {d.status === 'failed' && (
+                            <button
+                              type="button"
+                              onClick={() => retryDelivery(d.id).catch(() => undefined)}
+                              disabled={retryingDeliveryId === d.id || retryingAll}
+                              title="Retry this delivery"
+                              className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${retryingDeliveryId === d.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             ) : null}

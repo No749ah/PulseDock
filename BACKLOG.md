@@ -1,21 +1,15 @@
-## Status Summary (2026-03-26 13:30 UTC)
-- **Build/Test:** ✅ Clean build + 3414 tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 13:50 UTC)
+- **Build/Test:** ✅ Clean build + 3434 tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
-- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-monitor-debug-improvements
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-26-noon
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
-- **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (13:30 noon cycle):**
-  - Branch merge (heartbeat/2026-03-26-monitor-debug-improvements → dev)
-  - **Global Search API** (`GET /v1/search?q=...`) — monitors, incidents, status pages, versions; 13 tests
-  - **Command Palette live search** — debounced 250ms, status dots, "View all N+ results →" link
-  - **Full-page /search** — URL-synced, grouped results, 20-per-category, keyboard accessible
-  - **Outage banner** — red pulsing strip at top of app when monitors are DOWN
-  - **`/` keyboard shortcut** — press `/` anywhere (not in input) to open command palette
-  - **ResponseBodyViewer** — JSON syntax highlighting, copy button, expand/collapse, on check history
-  - Total tests: 3427.
+- **Last changes (13:50 afternoon cycle):**
+  - **Webhook custom payload templates** — Mustache-style `{{variable}}` rendering in AlertsService; 8 variables (monitor.name, run.level, run.message, run.latencyMs, run.statusCode, timestamp, etc.); UI textarea in create/edit modal; HMAC signed on rendered body; 3 new tests
+  - **TLS Certificate Details endpoint** — `GET /v1/monitors/:id/certificate`; live TLS connect; returns subject/issuer/SANs/fingerprint/protocol/cipher/validity/grade; 4 new controller tests
+  - **Certificate tab on monitor detail page** — Shield icon tab for HTTP/SSL_CERT monitors; lazy-loaded; status banner with grade color; full cert metadata UI
+  - Total tests: 3434.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

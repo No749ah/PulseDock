@@ -114,15 +114,15 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRunsPage, alertChs, deps, evts, deliveries] = await Promise.all([
-          api<MonitorItem[]>("/v1/monitors", user!.id),
+        const [found, monitorRunsPage, alertChs, deps, evts, deliveries, allMonitors] = await Promise.all([
+          api<MonitorItem>(`/v1/monitors/${id}`, user!.id).catch(() => null),
           api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
           api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
           api<DeliveryHistory>(`/v1/monitors/${id}/deliveries`, user!.id).catch(() => null),
+          api<MonitorItem[]>("/v1/monitors", user!.id).catch(() => [] as MonitorItem[]),
         ]);
-        const found = monitors.find((m) => m.id === id) ?? null;
         if (!found) {
           router.push("/monitors");
           return;
@@ -136,7 +136,7 @@ export default function MonitorDetailPage() {
         setDependencies(deps);
         setEvents(evts);
         setDeliveryHistory(deliveries);
-        setAllMonitors(monitors);
+        setAllMonitors(allMonitors);
         // Fetch error budget if SLA target is set
         if (found.slaTarget) {
           api<ErrorBudget>(`/v1/monitors/${id}/error-budget?period=30d`, user!.id)

@@ -109,6 +109,62 @@ export class MonitorsService {
   }
 
   /**
+   * Returns a single monitor by ID with full detail including mute state, active acknowledgement, and tags.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor ID to retrieve
+   */
+  async getOne(userId: string, monitorId: string) {
+    const m = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { id: true, name: true, type: true } } } },
+        monitorTags: { include: { tag: true } },
+        runs: { take: 1, orderBy: { checkedAt: 'desc' } },
+        acknowledgements: { where: { clearedAt: null }, take: 1, orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!m) throw new NotFoundException('monitor not found');
+
+    return {
+      id: m.id,
+      userId: m.userId,
+      name: m.name,
+      description: m.description,
+      runbookUrl: m.runbookUrl,
+      type: m.type,
+      target: m.target,
+      intervalSec: m.intervalSec,
+      timeoutMs: m.timeoutMs,
+      confirmations: m.confirmations,
+      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
+      alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
+      alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
+      folderId: m.folderId,
+      tags: m.monitorTags.map((mt) => ({ id: mt.tag.id, name: mt.tag.name, color: mt.tag.color })),
+      enabled: m.enabled,
+      slaTarget: m.slaTarget,
+      slaPeriodDays: m.slaPeriodDays,
+      slaBreachAlertedAt: m.slaBreachAlertedAt?.toISOString() ?? null,
+      autoIncident: m.autoIncident,
+      autoIncidentSeverity: m.autoIncidentSeverity,
+      activeAutoIncidentId: m.activeAutoIncidentId,
+      isFlapping: m.isFlapping,
+      flapDetectionEnabled: m.flapDetectionEnabled,
+      flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      isAcknowledged: m.acknowledgements.length > 0,
+      activeAck: m.acknowledgements[0] ? {
+        id: m.acknowledgements[0].id,
+        note: m.acknowledgements[0].note,
+        acknowledgedAt: m.acknowledgements[0].acknowledgedAt.toISOString(),
+      } : null,
+      anomalyDetection: m.anomalyDetection,
+      anomalyMultiplier: m.anomalyMultiplier,
+      createdAt: m.createdAt.toISOString(),
+    };
+  }
+
+  /**
    * Creates a new monitor for the authenticated user.
    * For HEARTBEAT monitors, a unique token is auto-generated if not provided.
    * Emits a real-time monitorCreated event via Socket.IO and logs to audit trail.

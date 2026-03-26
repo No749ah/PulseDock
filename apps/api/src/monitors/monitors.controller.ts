@@ -33,6 +33,16 @@ export class MonitorsController {
     return this.monitorsService.list(req.user.id, tag);
   }
 
+  @Get(':id')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Get a single monitor', description: 'Returns full monitor details including mute status and active acknowledgement.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async getOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.getOne(req.user.id, id);
+  }
+
   @Post()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequireScope(ApiKeyScope.WRITE)

@@ -1,14 +1,15 @@
-## Status Summary (2026-03-26 17:33 UTC)
-- **Build/Test:** ✅ Clean build + 3467 API + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 17:55 UTC)
+- **Build/Test:** ✅ Clean build + 3473 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-noon
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (17:20 UTC cycle):**
-  - **Custom HTTP headers for webhook channels** — Key-value editor (password inputs) in create wizard + edit modal. Headers merged into every webhook delivery. Reserved headers (content-type, host, etc.) protected from override. `buildConfig()` updated to nested `customHeaders` object. 2 new tests (127 alerts.service total).
-    - **Webhook payload preview + manual delivery retry** — 3 new endpoints (`preview-payload`, `retry-delivery/:id`, `retry-all-failed`). Preview shows rendered template with sample data (valid/invalid JSON indicator). Retry re-sends with fresh context. ↻ buttons in delivery history UI. Build clean, 3489 tests passing.
-  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — In progress via subagent.
+- **Last changes (17:55 UTC cycle):**
+  - **Custom HTTP headers for webhook channels** — Key-value editor (password inputs) in create/edit modal. Reserved headers protected. 2 new tests.
+  - **Webhook payload template preview** — `POST /v1/alert-channels/:id/preview-payload` renders template with sample data, returns `{ rendered, valid, error? }`. UI: preview panel with ✓/⚠ JSON indicator in create (client-side) + edit (server-side) forms.
+  - **Manual alert delivery retry** — `POST /v1/alert-channels/:id/retry-delivery/:id` and `retry-all-failed`. ↻ buttons in delivery history UI, auto-refresh after retry.
+  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding. 49 http.runner tests (incl. 3 timing-specific).
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

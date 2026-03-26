@@ -637,6 +637,24 @@ export function MonitorFormModal({
               <p className="mt-1 text-xs text-text-secondary">Consecutive failures before alerting (1-10).</p>
             )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Retries on failure
+              <HelpTooltip content="Automatically retry failed checks before recording as failed. Uses exponential backoff: 500ms, 1s, 2s. Prevents false alerts from transient network blips. Range: 0–3." className="ml-1 align-middle" />
+            </label>
+            <select
+              value={formData.retryCount ?? 0}
+              onChange={(e) => onSetFormData({ ...formData, retryCount: parseInt(e.target.value) })}
+              className={inputClass}
+            >
+              <option value={0}>0 — No retries (alert immediately)</option>
+              <option value={1}>1 retry (500ms backoff)</option>
+              <option value={2}>2 retries (500ms + 1s backoff)</option>
+              <option value={3}>3 retries (500ms + 1s + 2s backoff)</option>
+            </select>
+            <p className="mt-1 text-xs text-text-secondary">Retries before recording failure (0–3).</p>
+          </div>
         </div>
 
         {/* Description */}

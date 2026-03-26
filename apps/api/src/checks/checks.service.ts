@@ -267,8 +267,29 @@ export class ChecksService {
 
     const prev = recentRuns[0] ?? null;
 
+    // ── Retry Logic ───────────────────────────────────────────────────────────────────
+    // If retryCount > 0, automatically retry failed checks up to retryCount times with
+    // exponential backoff (500ms, 1s, 2s). This prevents transient network blips from
+    // generating false alerts. The final result (success or last failure) is recorded.
+    const maxRetries = Math.max(0, Math.min(3, monitor.retryCount ?? 0));
+
     const pluginResult = await this.runPluginMonitor(monitor);
-    const result = pluginResult ?? await this.dispatchCheck(monitor);
+    let result = pluginResult ?? await this.dispatchCheck(monitor);
+
+    if (!result.ok && maxRetries > 0) {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1); // 500ms, 1s, 2s
+        await new Promise((r) => setTimeout(r, backoffMs));
+        const retryPluginResult = await this.runPluginMonitor(monitor);
+        const retryResult = retryPluginResult ?? await this.dispatchCheck(monitor);
+        if (retryResult.ok) {
+          result = retryResult;
+          break;
+        }
+        // On last retry, keep the latest failure result (more recent message/status)
+        result = retryResult;
+      }
+    }
 
     const created = await this.prisma.monitorRun.create({
       data: {

@@ -125,6 +125,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         intervalSec: true,
         timeoutMs: true,
         confirmations: true,
+        retryCount: true,
         configJson: true,
         folderId: true,
         enabled: true,
@@ -230,6 +231,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     intervalSec: number;
     timeoutMs: number;
     confirmations: number;
+    retryCount: number;
     configJson: unknown;
     folderId: string | null;
     enabled: boolean;
@@ -273,6 +275,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         intervalSec: monitor.intervalSec,
         timeoutMs: monitor.timeoutMs,
         confirmations: monitor.confirmations,
+        retryCount: monitor.retryCount ?? 0,
         config: (monitor.configJson as Record<string, unknown> | null | undefined) ?? {},
         alertChannelIds: [],
         folderId: monitor.folderId,

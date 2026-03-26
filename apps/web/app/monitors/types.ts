@@ -28,6 +28,7 @@ export interface MonitorItem {
   target: string;
   intervalSec: number;
   confirmations: number;
+  retryCount?: number;
   enabled: boolean;
   createdAt: string;
   folderId?: string | null;
@@ -93,6 +94,7 @@ export type MonitorFormData = {
   target: string;
   intervalSec: number;
   confirmations: number;
+  retryCount: number;
   enabled: boolean;
   pluginId: string;
   expectedText: string;

@@ -64,6 +64,18 @@ export class CreateMonitorDto {
   confirmations?: number;
 
   @ApiPropertyOptional({
+    description: 'Number of automatic retries on check failure before recording as failed (0–3). Retries use exponential backoff (500ms, 1s, 2s). Prevents false alerts from transient network blips.',
+    minimum: 0,
+    maximum: 3,
+    example: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  retryCount?: number;
+
+  @ApiPropertyOptional({
     description: [
       'Monitor-type-specific configuration. For HTTP monitors: method, requestHeaders, requestBody, expectedStatus, bodyContains, responseTimeThresholdMs.',
       'For HEARTBEAT: timeoutMin, token.',

@@ -113,6 +113,7 @@ model Monitor {
   intervalSec   Int         @default(60)
   timeoutMs     Int         @default(5000)
   confirmations       Int         @default(1)
+  retryCount          Int         @default(0)  // number of automatic retries on failure before recording as failed (0-3)
   enabled             Boolean     @default(true)
   isFlapping          Boolean     @default(false)
   flapDetectionEnabled Boolean    @default(true)

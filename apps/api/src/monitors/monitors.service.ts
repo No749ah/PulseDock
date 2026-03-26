@@ -82,6 +82,7 @@ export class MonitorsService {
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
       confirmations: m.confirmations,
+      retryCount: m.retryCount,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
@@ -140,6 +141,7 @@ export class MonitorsService {
       intervalSec: m.intervalSec,
       timeoutMs: m.timeoutMs,
       confirmations: m.confirmations,
+      retryCount: m.retryCount,
       config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}, m.type as MonitorType),
       alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
       alertChannels: m.monitorAlerts.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })),
@@ -189,6 +191,7 @@ export class MonitorsService {
     intervalSec?: number;
     timeoutMs?: number;
     confirmations?: number;
+    retryCount?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -228,6 +231,7 @@ export class MonitorsService {
         intervalSec: body.intervalSec ?? 60,
         timeoutMs: body.timeoutMs ?? 5000,
         confirmations: Math.max(1, Math.min(10, body.confirmations ?? 1)),
+        retryCount: Math.max(0, Math.min(3, body.retryCount ?? 0)),
         configJson: config as Prisma.InputJsonValue,
         enabled: body.enabled ?? true,
         folderId: body.folderId ?? null,
@@ -277,6 +281,7 @@ export class MonitorsService {
       intervalSec: created.intervalSec,
       timeoutMs: created.timeoutMs,
       confirmations: created.confirmations,
+      retryCount: created.retryCount,
       config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}, created.type as MonitorType),
       alertChannelIds: body.alertChannelIds ?? [],
       folderId: created.folderId,
@@ -326,6 +331,7 @@ export class MonitorsService {
     intervalSec?: number;
     timeoutMs?: number;
     confirmations?: number;
+    retryCount?: number;
     config?: Record<string, unknown>;
     alertChannelIds?: string[];
     folderId?: string | null;
@@ -371,6 +377,7 @@ export class MonitorsService {
         intervalSec: body.intervalSec ?? current.intervalSec,
         timeoutMs: body.timeoutMs ?? current.timeoutMs,
         confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
+        retryCount: body.retryCount !== undefined ? Math.max(0, Math.min(3, body.retryCount)) : current.retryCount,
         configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,
@@ -533,6 +540,7 @@ export class MonitorsService {
         intervalSec: source.intervalSec,
         timeoutMs: source.timeoutMs,
         confirmations: source.confirmations,
+        retryCount: source.retryCount,
         configJson: source.configJson ?? Prisma.DbNull,
         enabled: false, // start disabled — user enables when ready
         folderId: source.folderId,
@@ -573,6 +581,7 @@ export class MonitorsService {
       intervalSec: cloned.intervalSec,
       timeoutMs: cloned.timeoutMs,
       confirmations: cloned.confirmations,
+      retryCount: cloned.retryCount,
       config: this.sanitizeConfig((cloned.configJson as Record<string, unknown> | null) ?? {}, cloned.type as MonitorType),
       alertChannelIds: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { name: string; type: string } }[] }).monitorAlerts?.map((ma) => ma.alertChannelId) ?? [],
       alertChannels: (cloned as typeof cloned & { monitorAlerts?: { alertChannelId: string; notifyOn: string; alertChannel: { id?: string; name: string; type: string } }[] }).monitorAlerts?.map((ma) => ({ id: ma.alertChannelId, name: ma.alertChannel.name, type: ma.alertChannel.type, notifyOn: ma.notifyOn })) ?? [],
@@ -879,6 +888,7 @@ export class MonitorsService {
       intervalSec: monitor.intervalSec,
       timeoutMs: monitor.timeoutMs,
       confirmations: monitor.confirmations,
+      retryCount: monitor.retryCount,
       config: (monitor.configJson as Record<string, unknown> | null) ?? {},
       alertChannelIds: [],
       folderId: monitor.folderId,

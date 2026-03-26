@@ -18,6 +18,7 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     createdAt: new Date().toISOString(),
     timeoutMs: 5000,
     confirmations: 1,
+    retryCount: 0,
     config: {},
     description: null,
     runbookUrl: null,
@@ -5593,5 +5594,104 @@ describe('ChecksService — Flap Detection', () => {
     expect(prisma.monitor.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isFlapping: true }) }),
     );
+  });
+});
+
+// ── Retry Logic Tests ─────────────────────────────────────────────────────────
+
+describe('retryCount — automatic check retries on failure', () => {
+  beforeEach(() => {
+    // Skip actual backoff delays so tests run fast
+    vi.stubGlobal('setTimeout', (fn: () => void) => { fn(); return 0 as unknown as ReturnType<typeof setTimeout>; });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeRetryPrisma(opts: { prevLevel?: string } = {}) {
+    const prevRun = { level: opts.prevLevel ?? 'green' };
+    return {
+      monitorRun: {
+        findMany: vi.fn().mockResolvedValue([prevRun]),
+        create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) => Promise.resolve({
+          id: 'run-1', userId: 'user-1', monitorId: 'mon-1',
+          checkedAt: new Date(), level: args.data.level,
+          ok: args.data.ok, status: args.data.status,
+          latencyMs: args.data.latencyMs, message: args.data.message,
+          responseBody: null,
+        })),
+        findFirst: vi.fn().mockResolvedValue(prevRun),
+      },
+      monitor: {
+        update: vi.fn().mockResolvedValue({}),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    };
+  }
+
+  it('records failure immediately when retryCount=0 and check fails', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: false, status: 500 }]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 0, confirmations: 1 }));
+    expect(result.ok).toBe(false);
+    // fetch called exactly once (no retries)
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once and succeeds — records success', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    // first call fails, second call succeeds
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: true, status: 200 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 1, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries twice, both fail — records failure', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 2, confirmations: 1 }));
+    expect(result.ok).toBe(false);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it('retries 3 times, succeeds on 3rd retry — records success', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: false, status: 503 },
+      { ok: true, status: 200 },
+    ]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 3, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not retry when check succeeds on first attempt', async () => {
+    const prisma = makeRetryPrisma();
+    const service = makeService({ prisma });
+    vi.stubGlobal('fetch', mockFetch([{ ok: true, status: 200 }]));
+
+    const result = await service.runMonitor(makeMonitor({ retryCount: 3, confirmations: 1 }));
+    expect(result.ok).toBe(true);
+    // Only 1 call — no retries since first attempt succeeded
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1);
   });
 });

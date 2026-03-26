@@ -18,6 +18,7 @@ function makeMonitorsService() {
     listPlugins: vi.fn(),
     getRecentRuns: vi.fn(),
     monitorRuns: vi.fn(),
+    exportMonitorRuns: vi.fn(),
     monitorUptime: vi.fn(),
     monitorChart: vi.fn(),
     versionSummary: vi.fn(),
@@ -134,6 +135,23 @@ describe('MonitorsController', () => {
     service.monitorRuns.mockResolvedValue([]);
     await controller.monitorRuns(makeReq(), 'm-1');
     expect(service.monitorRuns).toHaveBeenCalledWith('user-1', 'm-1');
+  });
+
+  it('exportMonitorRuns() sends CSV with correct headers', async () => {
+    service.exportMonitorRuns.mockResolvedValue({
+      csv: 'id,checkedAt,ok\nrun-1,2026-01-01T00:00:00Z,1',
+      filename: 'pulsedock-runs-test-2026-01-01.csv',
+      monitorName: 'Test Monitor',
+    });
+    const res = {
+      setHeader: vi.fn(),
+      send: vi.fn(),
+    } as unknown as import('express').Response;
+    await controller.exportMonitorRuns(makeReq(), 'm-1', res);
+    expect(service.exportMonitorRuns).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="pulsedock-runs-test-2026-01-01.csv"');
+    expect(res.send).toHaveBeenCalledWith('id,checkedAt,ok\nrun-1,2026-01-01T00:00:00Z,1');
   });
 
   it('versionSummary() delegates to service.versionSummary', async () => {

@@ -502,6 +502,69 @@ describe('MonitorsService', () => {
     });
   });
 
+  // ─── exportMonitorRuns() ────────────────────────────────────────────────────
+
+  describe('exportMonitorRuns()', () => {
+    it('throws NotFoundException when monitor not found', async () => {
+      const p = makePrisma(null);
+      const svc = makeService(p);
+      await expect(svc.exportMonitorRuns('user-1', 'bad-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns csv string with header and data rows', async () => {
+      const run = makeRun();
+      prisma.monitorRun.findMany.mockResolvedValue([run]);
+      const result = await service.exportMonitorRuns('user-1', 'monitor-1');
+      expect(result.csv).toContain('id,checkedAt,ok,statusCode,latencyMs,level,message');
+      expect(result.csv).toContain('run-1');
+      expect(result.csv).toContain('2026-01-01T12:00:00.000Z');
+      expect(result.csv).toContain('1'); // ok=true → '1'
+      expect(result.csv).toContain('200'); // statusCode
+      expect(result.csv).toContain('42'); // latencyMs
+    });
+
+    it('returns filename with monitor name and date', async () => {
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+      const result = await service.exportMonitorRuns('user-1', 'monitor-1');
+      expect(result.filename).toMatch(/pulsedock-runs-test_monitor-\d{4}-\d{2}-\d{2}\.csv/);
+    });
+
+    it('returns monitorName in result', async () => {
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+      const result = await service.exportMonitorRuns('user-1', 'monitor-1');
+      expect(result.monitorName).toBe('Test Monitor');
+    });
+
+    it('escapes double-quotes in message field', async () => {
+      const run = makeRun({ message: 'error: "timeout"' });
+      prisma.monitorRun.findMany.mockResolvedValue([run]);
+      const result = await service.exportMonitorRuns('user-1', 'monitor-1');
+      // double quotes in message should be escaped as ""
+      expect(result.csv).toContain('error: ""timeout""');
+    });
+
+    it('queries up to 10000 runs ordered by checkedAt desc', async () => {
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+      await service.exportMonitorRuns('user-1', 'monitor-1');
+      expect(prisma.monitorRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1', monitorId: 'monitor-1' },
+          orderBy: { checkedAt: 'desc' },
+          take: 10_000,
+        }),
+      );
+    });
+
+    it('marks ok=false as 0 in CSV', async () => {
+      const run = makeRun({ ok: false, status: 503, latencyMs: null });
+      prisma.monitorRun.findMany.mockResolvedValue([run]);
+      const result = await service.exportMonitorRuns('user-1', 'monitor-1');
+      const dataRow = result.csv.split('\n')[1];
+      expect(dataRow).toContain(',0,'); // ok=false
+      expect(dataRow).toContain('503'); // status code
+    });
+  });
+
   // ─── exportMonitors() ───────────────────────────────────────────────────────
 
   describe('exportMonitors()', () => {

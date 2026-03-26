@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -1119,7 +1119,39 @@ export default function MonitorDetailPage() {
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
                 Recent Checks
               </h2>
-              <span className="text-xs text-text-muted">{Math.min(runs.length, 50)} of {runs.length} shown</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-text-muted">{Math.min(runs.length, 50)} of {runs.length} shown</span>
+                {runs.length > 0 && (
+                  <button
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border hover:border-border-strong transition-colors"
+                    title="Export all check history as CSV (up to 10,000 runs)"
+                    onClick={async () => {
+                      try {
+                        const { API_BASE } = await import('../../../lib/api');
+                        const fetchRes = await fetch(`${API_BASE}/v1/monitors/${id}/runs/export`, {
+                          credentials: 'include',
+                          cache: 'no-store',
+                        });
+                        if (!fetchRes.ok) return;
+                        const blob = await fetchRes.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const monitorName = monitor?.name ?? id;
+                        const dateStr = new Date().toISOString().slice(0, 10);
+                        a.href = url;
+                        a.download = `pulsedock-runs-${monitorName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${dateStr}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch {
+                        // silently fail
+                      }
+                    }}
+                  >
+                    <Download className="w-3 h-3" />
+                    Export CSV
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               {runs.length === 0 ? (

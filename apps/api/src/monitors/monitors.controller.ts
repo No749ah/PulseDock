@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../common/auth.guard';
@@ -162,6 +163,25 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Run history returned.' })
   monitorRuns(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.monitorsService.monitorRuns(req.user.id, id);
+  }
+
+  @Get(':id/runs/export')
+  @ApiOperation({
+    summary: 'Export check run history as CSV',
+    description: 'Exports all check run history for a monitor as a CSV file (up to 10,000 most recent runs). Useful for audits, SLA reports, and offline analysis.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'CSV file download.' })
+  async exportMonitorRuns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { csv, filename } = await this.monitorsService.exportMonitorRuns(req.user.id, id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(csv);
   }
 
   @Get(':id/error-budget')

@@ -736,6 +736,44 @@ export class MonitorsService {
   }
 
   /**
+   * Exports all check run history for a monitor as a CSV string.
+   * Returns up to 10,000 most recent runs (newest first).
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to export runs for
+   * @returns Object with csv string and filename for Content-Disposition header
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
+  async exportMonitorRuns(userId: string, monitorId: string): Promise<{ csv: string; filename: string; monitorName: string }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 10_000,
+    });
+
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message'].join(',');
+    const rows = runs.map((r) => {
+      const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
+      return [
+        r.id,
+        r.checkedAt.toISOString(),
+        r.ok ? '1' : '0',
+        r.status ?? '',
+        r.latencyMs ?? '',
+        r.level ?? '',
+        `"${msg}"`,
+      ].join(',');
+    });
+
+    const csv = [header, ...rows].join('\n');
+    const safeName = monitor.name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    return { csv, filename: `pulsedock-runs-${safeName}-${dateStr}.csv`, monitorName: monitor.name };
+  }
+
+  /**
    * Calculates uptime statistics for a monitor over a given time period.
    * Computes uptimePct, incident list, MTTR, MTBF, and average latency.
    * @param userId - The authenticated user's ID

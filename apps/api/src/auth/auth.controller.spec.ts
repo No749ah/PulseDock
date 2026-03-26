@@ -518,6 +518,76 @@ describe('refresh() — null context fallbacks', () => {
   });
 });
 
+// ── OAuth2 / SSO ─────────────────────────────────────────────────────────────
+
+describe('oauthRedirect() + oauthCallback()', () => {
+  let oauthController: AuthController;
+  let oauthService: ReturnType<typeof makeAuthService> & {
+    getOAuthRedirectUrl: ReturnType<typeof vi.fn>;
+    handleOAuthCallback: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    oauthService = {
+      ...makeAuthService(),
+      getOAuthRedirectUrl: vi.fn().mockReturnValue('https://github.com/login/oauth/authorize?client_id=abc'),
+      handleOAuthCallback: vi.fn().mockResolvedValue({ accessToken: 'acc', refreshToken: 'ref-tok' }),
+    };
+    oauthController = new AuthController(oauthService as never, makePrisma() as never);
+  });
+
+  it('oauthRedirect: redirects to the URL from getOAuthRedirectUrl', () => {
+    const res = { redirect: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
+    oauthController.oauthRedirect('github', res);
+    expect(res.redirect).toHaveBeenCalledWith('https://github.com/login/oauth/authorize?client_id=abc');
+  });
+
+  it('oauthRedirect: passes provider string to getOAuthRedirectUrl', () => {
+    const res = { redirect: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
+    oauthController.oauthRedirect('google', res);
+    expect(oauthService.getOAuthRedirectUrl).toHaveBeenCalledWith('google');
+  });
+
+  it('oauthCallback: redirects to /login?token=... on success', async () => {
+    const res = { redirect: vi.fn() };
+    await oauthController.oauthCallback('github', 'auth-code-123', { headers: { 'user-agent': 'Chrome' }, ip: '1.2.3.4' }, res);
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('/login?token='));
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('ref-tok'));
+  });
+
+  it('oauthCallback: redirects to /login?error=oauth_failed on exception', async () => {
+    oauthService.handleOAuthCallback.mockRejectedValue(new Error('Invalid code'));
+    const res = { redirect: vi.fn() };
+    await oauthController.oauthCallback('github', 'bad-code', { headers: {}, ip: undefined }, res);
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error=oauth_failed'));
+  });
+
+  it('oauthCallback: passes userAgent and ipAddress from request to handleOAuthCallback', async () => {
+    const res = { redirect: vi.fn() };
+    await oauthController.oauthCallback('google', 'code-xyz', { headers: { 'user-agent': 'TestBrowser/1.0' }, ip: '192.168.1.1' }, res);
+    expect(oauthService.handleOAuthCallback).toHaveBeenCalledWith(
+      'google', 'code-xyz', { userAgent: 'TestBrowser/1.0', ipAddress: '192.168.1.1' },
+    );
+  });
+
+  it('oauthCallback: passes null userAgent/ipAddress when missing from request', async () => {
+    const res = { redirect: vi.fn() };
+    await oauthController.oauthCallback('github', 'c', { headers: {}, ip: undefined }, res);
+    expect(oauthService.handleOAuthCallback).toHaveBeenCalledWith(
+      'github', 'c', { userAgent: null, ipAddress: null },
+    );
+  });
+
+  it('oauthCallback: uses NEXT_PUBLIC_APP_URL env for redirect base when set', async () => {
+    const orig = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.acme.com';
+    const res = { redirect: vi.fn() };
+    await oauthController.oauthCallback('github', 'c', { headers: {}, ip: undefined }, res);
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('https://app.acme.com/login?token='));
+    process.env.NEXT_PUBLIC_APP_URL = orig;
+  });
+});
+
 // ── Rate limiting — auth endpoint throttle verification ──────────────────────
 
 describe('rate limiting — auth endpoint @Throttle decorators', () => {

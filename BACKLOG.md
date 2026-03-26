@@ -1,11 +1,14 @@
-## Status Summary (2026-03-26 18:17 UTC)
-- **Build/Test:** ✅ Clean build + 3482 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 18:30 UTC)
+- **Build/Test:** ✅ Clean build + 3487 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (18:17 UTC cycle):**
+- **Last changes (18:30 UTC cycle):**
+  - **Status transitions timeline** — `GET /v1/monitors/:id/status-transitions` endpoint (outages, recovery, MTTR, MTBF). Timeline visualization in Performance tab with summary stats cards. 5 new tests.
+  - **Fix AlertChannel TS strict errors** — Added missing `alertGrouping`, `groupWindowSec`, `groupByFolder`, `groupByTag` fields in `alerts.service.ts` (sendSlaNotification path) and `escalation.service.ts`. 0 TS errors now.
+- **Previous (18:17 UTC cycle):**
   - **Advanced Settings summary panel on monitor detail** — Added contextual card showing active retries, confirmations, anomaly detection (w/ multiplier), business hours schedule, auto-incident, and runbook link. Only renders when at least one setting is active. Updated `MonitorItem` type with all missing fields.
 - **Previous changes (18:10 UTC cycle):**
   - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding.

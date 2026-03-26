@@ -158,11 +158,23 @@ export class MonitorsController {
   }
 
   @Get(':id/runs')
-  @ApiOperation({ summary: 'Check run history for a monitor' })
+  @ApiOperation({
+    summary: 'Check run history for a monitor',
+    description: 'Returns paginated check run history. Supports status filter (all/ok/failed) and cursor-based pagination via `before` (checkedAt ISO timestamp of oldest run on current page).',
+  })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max runs to return (1-500, default 100)' })
+  @ApiQuery({ name: 'before', required: false, description: 'Cursor: return runs older than this checkedAt ISO timestamp' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed (default: all)' })
   @ApiResponse({ status: 200, description: 'Run history returned.' })
-  monitorRuns(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return this.monitorsService.monitorRuns(req.user.id, id);
+  monitorRuns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.monitorsService.monitorRuns(req.user.id, id, { limit, before, status });
   }
 
   @Get(':id/runs/export')

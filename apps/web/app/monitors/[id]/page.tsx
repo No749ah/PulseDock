@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
@@ -65,6 +65,13 @@ export default function MonitorDetailPage() {
   const [addingEvent, setAddingEvent] = useState(false);
   const [eventError, setEventError] = useState("");
 
+  // Check history pagination + filter
+  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed">("all");
+  const [runsHasMore, setRunsHasMore] = useState(false);
+  const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
+  const [runsTotal, setRunsTotal] = useState<number | null>(null);
+  const [runsLoadingMore, setRunsLoadingMore] = useState(false);
+
   useEffect(() => {
     const user = getUser();
     if (!user) {
@@ -76,9 +83,9 @@ export default function MonitorDetailPage() {
       try {
         setLoading(true);
         setError("");
-        const [monitors, monitorRuns, alertChs, deps, evts] = await Promise.all([
+        const [monitors, monitorRunsPage, alertChs, deps, evts] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", user!.id),
-          api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user!.id),
+          api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100`, user!.id),
           api<AlertChannelInfo[]>(`/v1/monitors/${id}/alerts`, user!.id).catch(() => []),
           api<MonitorDependency[]>(`/v1/monitors/${id}/dependencies`, user!.id).catch(() => []),
           api<MonitorEvent[]>(`/v1/monitors/${id}/events`, user!.id).catch(() => []),
@@ -89,7 +96,10 @@ export default function MonitorDetailPage() {
           return;
         }
         setMonitor(found);
-        setRuns(monitorRuns);
+        setRuns(monitorRunsPage.runs);
+        setRunsHasMore(monitorRunsPage.hasMore);
+        setRunsNextCursor(monitorRunsPage.nextCursor);
+        setRunsTotal(monitorRunsPage.total);
         setAlertChannels(alertChs);
         setDependencies(deps);
         setEvents(evts);
@@ -160,6 +170,47 @@ export default function MonitorDetailPage() {
     }
   }, [loading, monitor, chartPeriod, loadChartData]);
 
+  // Load runs with optional status filter (resets pagination)
+  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed") => {
+    const user = getUser();
+    if (!user) return;
+    setRunsStatusFilter(statusFilter);
+    try {
+      const qs = statusFilter !== "all" ? `&status=${statusFilter}` : "";
+      const page = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(
+        `/v1/monitors/${id}/runs?limit=100${qs}`,
+        user.id,
+      );
+      setRuns(page.runs);
+      setRunsHasMore(page.hasMore);
+      setRunsNextCursor(page.nextCursor);
+      setRunsTotal(page.total);
+    } catch {
+      // non-fatal
+    }
+  }, [id]);
+
+  // Append next page of runs (cursor pagination)
+  const loadMoreRuns = useCallback(async () => {
+    const user = getUser();
+    if (!user || !runsNextCursor || runsLoadingMore) return;
+    setRunsLoadingMore(true);
+    try {
+      const qs = runsStatusFilter !== "all" ? `&status=${runsStatusFilter}` : "";
+      const page = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(
+        `/v1/monitors/${id}/runs?limit=100&before=${encodeURIComponent(runsNextCursor)}${qs}`,
+        user.id,
+      );
+      setRuns((prev) => [...prev, ...page.runs]);
+      setRunsHasMore(page.hasMore);
+      setRunsNextCursor(page.nextCursor);
+    } catch {
+      // non-fatal
+    } finally {
+      setRunsLoadingMore(false);
+    }
+  }, [id, runsNextCursor, runsLoadingMore, runsStatusFilter]);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -176,8 +227,11 @@ export default function MonitorDetailPage() {
       // Reload runs after a brief delay
       setTimeout(async () => {
         try {
-          const updated = await api<MonitorRun[]>(`/v1/monitors/${id}/runs`, user.id);
-          setRuns(updated);
+          const updatedPage = await api<{ runs: MonitorRun[]; hasMore: boolean; total: number; nextCursor: string | null }>(`/v1/monitors/${id}/runs?limit=100${runsStatusFilter !== "all" ? `&status=${runsStatusFilter}` : ""}`, user.id);
+          setRuns(updatedPage.runs);
+          setRunsHasMore(updatedPage.hasMore);
+          setRunsNextCursor(updatedPage.nextCursor);
+          setRunsTotal(updatedPage.total);
           loadUptime(uptimePeriod);
         } catch {
           // Non-fatal
@@ -1113,14 +1167,36 @@ export default function MonitorDetailPage() {
         )}
 
         {/* Run history table */}
-        
           <Card className="p-0">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-                Recent Checks
-              </h2>
+            <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-text-muted">{Math.min(runs.length, 50)} of {runs.length} shown</span>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                  Check History
+                </h2>
+                {runsTotal !== null && (
+                  <span className="text-xs text-text-muted">
+                    {runs.length} of {runsTotal} {runsStatusFilter !== "all" ? `(${runsStatusFilter} only)` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Status filter pills */}
+                <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-surface">
+                  {(["all", "ok", "failed"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => loadFilteredRuns(f)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                        runsStatusFilter === f
+                          ? "bg-surface-elevated text-text-primary shadow-sm"
+                          : "text-text-muted hover:text-text-secondary"
+                      }`}
+                    >
+                      {f === "all" ? "All" : f === "ok" ? "OK" : "Failed"}
+                    </button>
+                  ))}
+                </div>
+                {/* Export CSV */}
                 {runs.length > 0 && (
                   <button
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border hover:border-border-strong transition-colors"
@@ -1156,50 +1232,66 @@ export default function MonitorDetailPage() {
             <div>
               {runs.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
-                  No runs yet — this monitor hasn&apos;t checked yet.
+                  {runsStatusFilter !== "all"
+                    ? `No ${runsStatusFilter === "ok" ? "successful" : "failed"} checks found.`
+                    : "No runs yet — this monitor hasn't checked yet."}
                 </div>
               ) : (
-                <Table>
-                  <TableHead>
-                    <tr>
-                      <TableHeader>Time</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Latency</TableHeader>
-                      <TableHeader>HTTP Code</TableHeader>
-                      <TableHeader>Message</TableHeader>
-                    </tr>
-                  </TableHead>
-                  <TableBody>
-                    {runs.slice(0, 50).map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className="text-xs text-text-secondary whitespace-nowrap">
-                          {relativeTime(run.checkedAt)}
-                        </TableCell>
-                        <TableCell>
-                          {run.level === "yellow" ? (
-                            <Badge variant="warning">Degraded</Badge>
-                          ) : run.ok ? (
-                            <Badge variant="success">OK</Badge>
-                          ) : (
-                            <Badge variant="danger">Failed</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm font-mono text-text-secondary">
-                          {run.latencyMs !== null ? `${run.latencyMs}ms` : "—"}
-                        </TableCell>
-                        <TableCell className="text-sm font-mono text-text-secondary">
-                          {run.statusCode || "—"}
-                        </TableCell>
-                        <TableCell
-                          className="text-sm text-text-secondary max-w-[300px] truncate"
-                          title={run.message}
-                        >
-                          {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  <Table>
+                    <TableHead>
+                      <tr>
+                        <TableHeader>Time</TableHeader>
+                        <TableHeader>Status</TableHeader>
+                        <TableHeader>Latency</TableHeader>
+                        <TableHeader>HTTP Code</TableHeader>
+                        <TableHeader>Message</TableHeader>
+                      </tr>
+                    </TableHead>
+                    <TableBody>
+                      {runs.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="text-xs text-text-secondary whitespace-nowrap">
+                            {relativeTime(run.checkedAt)}
+                          </TableCell>
+                          <TableCell>
+                            {run.level === "yellow" ? (
+                              <Badge variant="warning">Degraded</Badge>
+                            ) : run.ok ? (
+                              <Badge variant="success">OK</Badge>
+                            ) : (
+                              <Badge variant="danger">Failed</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-text-secondary">
+                            {run.latencyMs !== null ? `${run.latencyMs}ms` : "—"}
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-text-secondary">
+                            {run.statusCode || "—"}
+                          </TableCell>
+                          <TableCell
+                            className="text-sm text-text-secondary max-w-[300px] truncate"
+                            title={run.message}
+                          >
+                            {run.message.length > 60 ? run.message.slice(0, 60) + "…" : run.message}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {runsHasMore && (
+                    <div className="px-4 py-3 border-t border-border flex items-center justify-center">
+                      <button
+                        onClick={loadMoreRuns}
+                        disabled={runsLoadingMore}
+                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border hover:border-border-strong transition-colors disabled:opacity-50"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        {runsLoadingMore ? "Loading…" : "Load more"}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Card>

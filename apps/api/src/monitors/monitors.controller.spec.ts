@@ -131,10 +131,10 @@ describe('MonitorsController', () => {
     expect(service.getRecentRuns).toHaveBeenCalledWith('user-1', 10, undefined);
   });
 
-  it('monitorRuns() delegates to service.monitorRuns', async () => {
-    service.monitorRuns.mockResolvedValue([]);
-    await controller.monitorRuns(makeReq(), 'm-1');
-    expect(service.monitorRuns).toHaveBeenCalledWith('user-1', 'm-1');
+  it('monitorRuns() delegates to service.monitorRuns with opts', async () => {
+    service.monitorRuns.mockResolvedValue({ runs: [], hasMore: false, total: 0, nextCursor: null });
+    await controller.monitorRuns(makeReq(), 'm-1', '100', undefined, 'all');
+    expect(service.monitorRuns).toHaveBeenCalledWith('user-1', 'm-1', { limit: '100', before: undefined, status: 'all' });
   });
 
   it('exportMonitorRuns() sends CSV with correct headers', async () => {

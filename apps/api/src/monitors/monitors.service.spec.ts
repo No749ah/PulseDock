@@ -478,25 +478,52 @@ describe('MonitorsService', () => {
       await expect(svc.monitorRuns('user-1', 'non-existent')).rejects.toThrow(NotFoundException);
     });
 
-    it('returns runs for the monitor', async () => {
+    it('returns paginated runs for the monitor', async () => {
       const run = makeRun();
       prisma.monitorRun.findMany.mockResolvedValue([run]);
+      prisma.monitorRun.count.mockResolvedValue(1);
 
       const result = await service.monitorRuns('user-1', 'monitor-1');
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
+      expect(result.runs).toHaveLength(1);
+      expect(result.runs[0]).toMatchObject({
         id: 'run-1',
         monitorId: 'monitor-1',
         ok: true,
       });
+      expect(result.hasMore).toBe(false);
+      expect(result.total).toBe(1);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it('sets hasMore=true when extra run is returned', async () => {
+      const runs = Array.from({ length: 101 }, (_, i) => ({ ...makeRun(), id: `run-${i}` }));
+      prisma.monitorRun.findMany.mockResolvedValue(runs);
+      prisma.monitorRun.count.mockResolvedValue(200);
+
+      const result = await service.monitorRuns('user-1', 'monitor-1', { limit: '100' });
+      expect(result.hasMore).toBe(true);
+      expect(result.runs).toHaveLength(100);
+      expect(result.nextCursor).toBeDefined();
+    });
+
+    it('filters by status=ok', async () => {
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+      prisma.monitorRun.count.mockResolvedValue(0);
+      await service.monitorRuns('user-1', 'monitor-1', { status: 'ok' });
+      expect(prisma.monitorRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ ok: true }),
+        }),
+      );
     });
 
     it('queries with correct monitorId and userId', async () => {
+      prisma.monitorRun.findMany.mockResolvedValue([]);
+      prisma.monitorRun.count.mockResolvedValue(0);
       await service.monitorRuns('user-1', 'monitor-1');
       expect(prisma.monitorRun.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1', monitorId: 'monitor-1' },
-          take: 200,
+          where: expect.objectContaining({ userId: 'user-1', monitorId: 'monitor-1' }),
         }),
       );
     });

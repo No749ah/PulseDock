@@ -713,26 +713,56 @@ export class MonitorsService {
    * @returns Array of run result objects for that monitor, ordered by checkedAt desc
    * @throws NotFoundException if monitor not found or not owned by user
    */
-  async monitorRuns(userId: string, monitorId: string) {
+  async monitorRuns(
+    userId: string,
+    monitorId: string,
+    opts?: { limit?: string; before?: string; status?: string },
+  ) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
+    const take = Math.min(500, Math.max(1, parseInt(opts?.limit ?? '100', 10) || 100));
+
+    // Build filter
+    const where: {
+      userId: string;
+      monitorId: string;
+      checkedAt?: { lt: Date };
+      ok?: boolean;
+    } = { userId, monitorId };
+
+    if (opts?.before) {
+      const d = new Date(opts.before);
+      if (!isNaN(d.getTime())) where.checkedAt = { lt: d };
+    }
+
+    if (opts?.status === 'ok') where.ok = true;
+    else if (opts?.status === 'failed') where.ok = false;
+
     const runs = await this.prisma.monitorRun.findMany({
-      where: { userId, monitorId },
+      where,
       orderBy: { checkedAt: 'desc' },
-      take: 200,
+      take: take + 1, // fetch one extra to determine hasMore
     });
 
-    return runs.map((r) => ({
-      id: r.id,
-      monitorId: r.monitorId,
-      checkedAt: r.checkedAt.toISOString(),
-      ok: r.ok,
-      statusCode: r.status,
-      latencyMs: r.latencyMs,
-      message: r.message,
-      level: r.level as 'green' | 'yellow' | 'red',
-    }));
+    const hasMore = runs.length > take;
+    const page = hasMore ? runs.slice(0, take) : runs;
+
+    return {
+      runs: page.map((r) => ({
+        id: r.id,
+        monitorId: r.monitorId,
+        checkedAt: r.checkedAt.toISOString(),
+        ok: r.ok,
+        statusCode: r.status,
+        latencyMs: r.latencyMs,
+        message: r.message,
+        level: r.level as 'green' | 'yellow' | 'red',
+      })),
+      hasMore,
+      total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
+      nextCursor: hasMore ? page[page.length - 1]?.checkedAt.toISOString() : null,
+    };
   }
 
   /**

@@ -508,16 +508,18 @@ enum IncidentSeverity {
 }
 
 model Incident {
-  id          String           @id @default(cuid())
-  userId      String
-  title       String
-  description String?
-  status      IncidentStatus   @default(INVESTIGATING)
-  severity    IncidentSeverity @default(MEDIUM)
-  resolvedAt  DateTime?
-  autoCreated Boolean          @default(false) // true when auto-created by monitor check
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id               String           @id @default(cuid())
+  userId           String
+  title            String
+  description      String?
+  status           IncidentStatus   @default(INVESTIGATING)
+  severity         IncidentSeverity @default(MEDIUM)
+  resolvedAt       DateTime?
+  autoCreated      Boolean          @default(false) // true when auto-created by monitor check
+  rootCause        String?          // Post-mortem: root cause analysis
+  postmortemNotes  String?          // Post-mortem: lessons learned / action items
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   updates  IncidentUpdate[]

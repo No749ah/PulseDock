@@ -47,6 +47,12 @@ class UpdateIncidentBody implements UpdateIncidentDto {
 
   @IsOptional() @IsArray() @IsString({ each: true })
   monitorIds?: string[];
+
+  @IsOptional() @IsString() @MaxLength(5000)
+  rootCause?: string | null;
+
+  @IsOptional() @IsString() @MaxLength(10000)
+  postmortemNotes?: string | null;
 }
 
 class AddUpdateBody implements AddUpdateDto {
@@ -126,6 +132,22 @@ export class IncidentsController {
     @Body() body: AddUpdateBody,
   ) {
     return this.incidents.addUpdate(req.user.sub, id, body);
+  }
+
+  @Patch(':id/postmortem')
+  @ApiOperation({ summary: 'Update incident post-mortem', description: 'Sets or updates the root cause analysis and post-mortem notes for a resolved incident.' })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 200, description: 'Post-mortem updated.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
+  updatePostmortem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: { rootCause?: string | null; postmortemNotes?: string | null },
+  ) {
+    return this.incidents.update(req.user.sub, id, {
+      rootCause: body.rootCause,
+      postmortemNotes: body.postmortemNotes,
+    });
   }
 
   @Delete(':id')

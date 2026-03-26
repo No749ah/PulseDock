@@ -23,6 +23,8 @@ export interface UpdateIncidentDto {
   status?: IncidentStatus;
   severity?: IncidentSeverity;
   monitorIds?: string[];
+  rootCause?: string | null;
+  postmortemNotes?: string | null;
 }
 
 export interface AddUpdateDto {
@@ -180,6 +182,8 @@ export class IncidentsService {
         ...(dto.status ? { status: dto.status } : {}),
         ...(dto.severity ? { severity: dto.severity } : {}),
         ...(resolvedAt !== undefined ? { resolvedAt } : {}),
+        ...(dto.rootCause !== undefined ? { rootCause: dto.rootCause?.trim().slice(0, 5000) ?? null } : {}),
+        ...(dto.postmortemNotes !== undefined ? { postmortemNotes: dto.postmortemNotes?.trim().slice(0, 10000) ?? null } : {}),
       },
       include: {
         updates: { orderBy: { createdAt: 'desc' } },

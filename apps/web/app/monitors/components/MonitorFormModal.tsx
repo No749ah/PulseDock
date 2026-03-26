@@ -363,6 +363,23 @@ export function MonitorFormModal({
                 className={inputClass}
               />
             </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-surface/50">
+              <input
+                id="detectChanges"
+                type="checkbox"
+                checked={(formData as unknown as { dnsDetectChanges?: boolean }).dnsDetectChanges ?? false}
+                onChange={(e) => onSetFormData({ ...formData, dnsDetectChanges: e.target.checked } as typeof formData & { dnsDetectChanges?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-accent cursor-pointer"
+              />
+              <div>
+                <label htmlFor="detectChanges" className="block text-sm font-medium text-text-primary cursor-pointer">
+                  Alert on record change
+                </label>
+                <p className="mt-0.5 text-xs text-text-secondary leading-relaxed">
+                  Stores the current DNS records as a baseline on first check. Alerts if records change (added or removed). Useful for detecting DNS hijacking or accidental record changes.
+                </p>
+              </div>
+            </div>
           </>
         )}
 

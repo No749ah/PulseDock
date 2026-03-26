@@ -294,6 +294,41 @@ export class ChecksService {
       }
     }
 
+    // ── DNS Baseline Persistence ──────────────────────────────────────────────────────
+    // When a DNS monitor has detectChanges enabled and resolvedRecords are available,
+    // persist the baseline to configJson if not set yet (first successful run).
+    // This allows subsequent runs to detect record changes.
+    const dnsResult = result as PluginExecutionResult;
+    if (
+      monitor.type === 'DNS' &&
+      dnsResult.resolvedRecords &&
+      dnsResult.resolvedRecords.length > 0 &&
+      monitor.config.detectChanges === true &&
+      !Array.isArray(monitor.config.dnsBaseline)
+    ) {
+      try {
+        const currentConfig = (monitor.config as Record<string, unknown>);
+        await this.prisma.monitor.update({
+          where: { id: monitor.id },
+          data: {
+            configJson: {
+              ...currentConfig,
+              dnsBaseline: dnsResult.resolvedRecords,
+              dnsBaselineSetAt: new Date().toISOString(),
+            } as Prisma.InputJsonValue,
+          },
+        });
+        this.logger.log(
+          `[DNSChange] Baseline set for monitor ${monitor.id} (${monitor.name}): ${dnsResult.resolvedRecords.join(', ')}`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `[DNSChange] Failed to persist baseline for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     const created = await this.prisma.monitorRun.create({
       data: {
         userId: monitor.userId,

@@ -5110,6 +5110,80 @@ describe('runMonitor() — DNS type', () => {
   }, 10000);
 });
 
+// ── runMonitor() — DNS baseline persistence ──────────────────────────────────
+
+describe('runMonitor() — DNS baseline persistence (detectChanges)', () => {
+  it('persists resolvedRecords as dnsBaseline on first successful check when detectChanges=true', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    // DNS runner will actually resolve example.com — use a working hostname
+    const monitor = makeMonitor({
+      type: 'DNS',
+      target: 'example.com',
+      config: { detectChanges: true },
+    });
+
+    await service.runMonitor(monitor);
+
+    // The service should have called monitor.update to persist the baseline
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: monitor.id },
+        data: expect.objectContaining({
+          configJson: expect.objectContaining({
+            detectChanges: true,
+            dnsBaseline: expect.any(Array),
+            dnsBaselineSetAt: expect.any(String),
+          }),
+        }),
+      }),
+    );
+  }, 10000);
+
+  it('does not update dnsBaseline when baseline already exists', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    const monitor = makeMonitor({
+      type: 'DNS',
+      target: 'example.com',
+      config: { detectChanges: true, dnsBaseline: ['1.2.3.4'] },
+    });
+
+    await service.runMonitor(monitor);
+
+    // Should NOT call monitor.update since baseline is already set
+    expect(prisma.monitor.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          configJson: expect.objectContaining({ dnsBaseline: expect.any(Array) }),
+        }),
+      }),
+    );
+  }, 10000);
+
+  it('does not update baseline when detectChanges is not set', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    const monitor = makeMonitor({
+      type: 'DNS',
+      target: 'example.com',
+      config: {},
+    });
+
+    await service.runMonitor(monitor);
+
+    // Without detectChanges, no baseline should be persisted
+    const updateCalls = (prisma.monitor.update as ReturnType<typeof vi.fn>).mock.calls;
+    const baselineCall = updateCalls.find((call: unknown[]) =>
+      JSON.stringify(call).includes('dnsBaseline')
+    );
+    expect(baselineCall).toBeUndefined();
+  }, 10000);
+});
+
 // ── runMonitor() — PING type ────────────────────────────────────────────────
 
 describe('runMonitor() — PING type', () => {

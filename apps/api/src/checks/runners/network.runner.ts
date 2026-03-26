@@ -154,6 +154,10 @@ export async function runDnsCheck(
 
   const recordType = (typeof config.recordType === 'string' ? config.recordType.toUpperCase() : 'A') as 'A' | 'AAAA' | 'MX' | 'TXT' | 'CNAME' | 'NS';
   const expectedValue = typeof config.expectedValue === 'string' && config.expectedValue.trim() ? config.expectedValue.trim() : null;
+  /** When true, caller will compare resolved records against a stored baseline. */
+  const detectChanges = config.detectChanges === true;
+  /** Pre-sorted baseline records stored from the first successful check. */
+  const baseline: string[] | null = Array.isArray(config.dnsBaseline) ? (config.dnsBaseline as string[]) : null;
 
   const started = Date.now();
 
@@ -176,6 +180,7 @@ export async function runDnsCheck(
 
     const latencyMs = Date.now() - started;
     const first = resolved[0] ?? '';
+    const sortedResolved = [...resolved].sort();
 
     if (expectedValue && !resolved.some(r => r.includes(expectedValue))) {
       return {
@@ -184,8 +189,33 @@ export async function runDnsCheck(
         latencyMs,
         message: `DNS resolved but expected value "${expectedValue}" not found in ${recordType} records: ${resolved.slice(0, 3).join(', ')}`,
         level: 'yellow' as const,
+        resolvedRecords: sortedResolved,
       };
     }
+
+    // ── DNS Change Detection ──────────────────────────────────────────────────────────
+    // If detectChanges is enabled and a baseline exists, compare current records vs baseline.
+    // If no baseline yet (first run), return resolvedRecords so caller can persist it.
+    if (detectChanges && baseline !== null) {
+      const sortedBaseline = [...baseline].sort();
+      const added = sortedResolved.filter(r => !sortedBaseline.includes(r));
+      const removed = sortedBaseline.filter(r => !sortedResolved.includes(r));
+
+      if (added.length > 0 || removed.length > 0) {
+        const parts: string[] = [];
+        if (added.length > 0) parts.push(`+[${added.slice(0, 3).join(', ')}]`);
+        if (removed.length > 0) parts.push(`-[${removed.slice(0, 3).join(', ')}]`);
+        return {
+          ok: false,
+          statusCode: 0,
+          latencyMs,
+          message: `DNS ${recordType} records changed for ${hostname}: ${parts.join(' ')}`,
+          level: 'red' as const,
+          resolvedRecords: sortedResolved,
+        };
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
 
     return {
       ok: true,
@@ -193,6 +223,7 @@ export async function runDnsCheck(
       latencyMs,
       message: `${recordType} resolved: ${resolved.length > 1 ? `${first} (+${resolved.length - 1} more)` : first}`,
       level: latencyMs > 2000 ? 'yellow' : 'green' as const,
+      resolvedRecords: sortedResolved,
     };
   } catch (error) {
     const latencyMs = Date.now() - started;
@@ -202,6 +233,7 @@ export async function runDnsCheck(
       latencyMs,
       message: error instanceof Error ? `DNS ${recordType} failed: ${error.message}` : `DNS ${recordType} check failed`,
       level: 'red' as const,
+      resolvedRecords: null,
     };
   }
 }

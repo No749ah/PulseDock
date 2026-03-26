@@ -479,10 +479,11 @@ function MonitorsPageInner() {
       if (f.checkTls) config.checkTls = f.checkTls;
     }
     if (formData.type === "DNS") {
-      const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
+      const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number; dnsDetectChanges?: boolean };
       config.recordType = f.dnsRecordType ?? "A";
       if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
       if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
+      if (f.dnsDetectChanges) config.detectChanges = true;
     }
     if (formData.type === "PING") {
       const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };

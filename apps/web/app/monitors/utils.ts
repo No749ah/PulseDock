@@ -46,6 +46,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     dnsRecordType: String(monitor.config?.recordType ?? "A"),
     dnsExpectedValue: String(monitor.config?.expectedValue ?? ""),
     dnsTimeoutMs: Number(monitor.config?.timeoutMs ?? 10000),
+    dnsDetectChanges: monitor.config?.detectChanges === true,
     pingCount: Number(monitor.config?.pingCount ?? 3),
     pingMaxLossPct: monitor.config?.maxPacketLossPct !== undefined ? Number(monitor.config.maxPacketLossPct) : undefined,
     browserExpectedText: String(monitor.config?.browserExpectedText ?? ""),

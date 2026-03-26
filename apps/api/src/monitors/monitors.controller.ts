@@ -1,4 +1,5 @@
 import * as tls from 'tls';
+import { Prisma } from '@prisma/client';
 import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -1073,6 +1074,34 @@ export class MonitorsController {
       clearedAt: updated.clearedAt!.toISOString(),
       createdAt: updated.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Reset the stored DNS baseline for a DNS monitor with detectChanges enabled.
+   * The next successful check will re-establish a new baseline automatically.
+   */
+  @Post(':id/dns-baseline/reset')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Reset DNS record baseline', description: 'Clears the stored DNS record baseline for a DNS monitor with change detection enabled. The next successful check will establish a new baseline.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Baseline cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resetDnsBaseline(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const currentConfig = (monitor.configJson ?? {}) as Record<string, unknown>;
+    const { dnsBaseline: _removed, dnsBaselineSetAt: _removedAt, ...restConfig } = currentConfig;
+
+    await this.prisma.monitor.update({
+      where: { id },
+      data: { configJson: restConfig as Prisma.InputJsonValue },
+    });
+
+    return { ok: true, message: 'DNS baseline cleared — will be re-established on next successful check.' };
   }
 
   @Get(':id/slo-report')

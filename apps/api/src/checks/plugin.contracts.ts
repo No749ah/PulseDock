@@ -24,6 +24,12 @@ export interface PluginExecutionResult {
   responseBody?: string | null;
   /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only populated for HTTP/BROWSER checks. */
   timings?: Timings | null;
+  /**
+   * Resolved DNS records returned from the DNS runner.
+   * Used by ChecksService to detect record changes vs. stored baseline.
+   * Only populated for DNS monitor type runs.
+   */
+  resolvedRecords?: string[] | null;
 }
 
 export interface PluginConfigField {

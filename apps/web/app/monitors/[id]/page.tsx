@@ -1973,7 +1973,66 @@ export default function MonitorDetailPage() {
                   {String(monitor.config?.timeoutMs ? `${Math.round(Number(monitor.config.timeoutMs) / 1000)}s` : "10s")}
                 </span>
               </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Change Detection</span>
+                <span className={`font-medium ${monitor.config?.detectChanges ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.detectChanges ? "✓ Enabled" : "Disabled"}
+                </span>
+              </div>
             </div>
+            {monitor.config?.detectChanges && (
+              <div className="mt-2 pt-3 border-t border-border">
+                {Array.isArray(monitor.config?.dnsBaseline) && (monitor.config.dnsBaseline as string[]).length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Records</span>
+                      <div className="flex items-center gap-2">
+                        {monitor.config?.dnsBaselineSetAt && (
+                          <span className="text-xs text-text-muted">
+                            Set {new Date(String(monitor.config.dnsBaselineSetAt)).toLocaleDateString()}
+                          </span>
+                        )}
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Reset DNS baseline? The next check will establish a new baseline.")) return;
+                            const u = getUser();
+                            if (!u) return;
+                            try {
+                              await api(`/v1/monitors/${monitor.id}/dns-baseline/reset`, u.id, { method: "POST" });
+                              router.refresh();
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : "Failed to reset baseline");
+                            }
+                          }}
+                          className="text-xs text-warning hover:text-warning/80 border border-warning/30 hover:border-warning/60 px-2 py-0.5 rounded transition-colors"
+                          title="Reset baseline — next successful check will set a new one"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      {(monitor.config.dnsBaseline as string[]).map((record, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-surface-elevated">
+                          <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+                          <span className="font-mono text-xs text-text-primary break-all">{record}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-text-muted">
+                      Alerts will fire if any records are added or removed from this baseline.
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20">
+                    <span className="text-warning text-sm">⏳</span>
+                    <p className="text-xs text-text-secondary">
+                      Baseline not set yet — will be captured on the next successful check.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         )}
 

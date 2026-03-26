@@ -259,6 +259,130 @@ describe('DashboardController', () => {
 
 // ── PublicDashboardController ───────────────────────────────────────────────
 
+describe('DashboardController.healthTimeline()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: DashboardController;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    controller = new DashboardController(prisma as never);
+  });
+
+  it('returns empty timeline (null scores) when user has no uptime monitors', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    expect(result.timeline).toHaveLength(30);
+    expect(result.timeline[0].healthScore).toBeNull();
+    expect(result.timeline[0].green).toBe(0);
+    expect(result.timeline[0].total).toBe(0);
+  });
+
+  it('returns null for days with no check runs', async () => {
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor({ type: 'HTTP' })]);
+    prisma.monitorRun.findMany.mockResolvedValue([]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    expect(result.timeline).toHaveLength(30);
+    result.timeline.forEach((d) => {
+      expect(d.healthScore).toBeNull();
+    });
+  });
+
+  it('returns 100 healthScore when all monitors green on a day', async () => {
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor({ type: 'HTTP', id: 'm-1' })]);
+    const today = new Date();
+    today.setUTCHours(12, 0, 0, 0);
+    prisma.monitorRun.findMany.mockResolvedValue([
+      makeRun({ monitorId: 'm-1', level: 'green', checkedAt: today }),
+    ]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    const todayStr = today.toISOString().slice(0, 10);
+    const day = result.timeline.find((d) => d.date === todayStr);
+    expect(day).toBeDefined();
+    expect(day!.healthScore).toBe(100);
+    expect(day!.green).toBe(1);
+    expect(day!.total).toBe(1);
+  });
+
+  it('returns 0 healthScore when all monitors red on a day', async () => {
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor({ type: 'HTTP', id: 'm-1' })]);
+    const today = new Date();
+    today.setUTCHours(12, 0, 0, 0);
+    prisma.monitorRun.findMany.mockResolvedValue([
+      makeRun({ monitorId: 'm-1', level: 'red', checkedAt: today }),
+    ]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    const todayStr = today.toISOString().slice(0, 10);
+    const day = result.timeline.find((d) => d.date === todayStr);
+    expect(day!.healthScore).toBe(0);
+    expect(day!.green).toBe(0);
+    expect(day!.total).toBe(1);
+  });
+
+  it('marks a monitor red if ANY run on that day is red', async () => {
+    prisma.monitor.findMany.mockResolvedValue([makeMonitor({ type: 'HTTP', id: 'm-1' })]);
+    const today = new Date();
+    today.setUTCHours(12, 0, 0, 0);
+    const today2 = new Date(today);
+    today2.setUTCHours(14, 0, 0, 0);
+    prisma.monitorRun.findMany.mockResolvedValue([
+      makeRun({ monitorId: 'm-1', level: 'green', checkedAt: today }),
+      makeRun({ monitorId: 'm-1', level: 'red', id: 'r2', checkedAt: today2 }),
+    ]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    const todayStr = today.toISOString().slice(0, 10);
+    const day = result.timeline.find((d) => d.date === todayStr);
+    expect(day!.healthScore).toBe(0); // monitor had a red run → not green for the day
+    expect(day!.green).toBe(0);
+  });
+
+  it('computes partial health score when some monitors green, some red', async () => {
+    prisma.monitor.findMany.mockResolvedValue([
+      makeMonitor({ type: 'HTTP', id: 'm-1' }),
+      makeMonitor({ type: 'HTTP', id: 'm-2' }),
+    ]);
+    const today = new Date();
+    today.setUTCHours(12, 0, 0, 0);
+    prisma.monitorRun.findMany.mockResolvedValue([
+      makeRun({ monitorId: 'm-1', level: 'green', checkedAt: today }),
+      makeRun({ monitorId: 'm-2', level: 'red', id: 'r2', checkedAt: today }),
+    ]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    const todayStr = today.toISOString().slice(0, 10);
+    const day = result.timeline.find((d) => d.date === todayStr);
+    expect(day!.healthScore).toBe(50);
+    expect(day!.green).toBe(1);
+    expect(day!.total).toBe(2);
+  });
+
+  it('respects the ?days query parameter', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result7 = await controller.healthTimeline({ user: { id: 'user-1' } }, '7');
+    expect(result7.timeline).toHaveLength(7);
+    const result90 = await controller.healthTimeline({ user: { id: 'user-1' } }, '90');
+    expect(result90.timeline).toHaveLength(90);
+  });
+
+  it('caps days at 90', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } }, '200');
+    expect(result.timeline).toHaveLength(90);
+  });
+
+  it('defaults to 30 days with invalid/missing param', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } }, 'abc');
+    expect(result.timeline).toHaveLength(30);
+  });
+
+  it('returns dates in ascending order (oldest first)', async () => {
+    prisma.monitor.findMany.mockResolvedValue([]);
+    const result = await controller.healthTimeline({ user: { id: 'user-1' } });
+    const dates = result.timeline.map((d) => d.date);
+    const sorted = [...dates].sort();
+    expect(dates).toEqual(sorted);
+  });
+});
+
 describe('PublicDashboardController', () => {
   let controller: PublicDashboardController;
   let prisma: ReturnType<typeof makePrisma>;

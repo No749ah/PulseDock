@@ -250,4 +250,45 @@ describe('IncidentsService', () => {
       expect(call.data.resolvedAt).toBeUndefined();
     });
   });
+
+  // ── Post-mortem fields ────────────────────────────────────────────────────
+  describe('update() — post-mortem fields', () => {
+    it('saves rootCause when provided', async () => {
+      await service.update('user-1', 'inc-1', { rootCause: 'Database ran out of connections' });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.data).toHaveProperty('rootCause', 'Database ran out of connections');
+    });
+
+    it('saves postmortemNotes when provided', async () => {
+      await service.update('user-1', 'inc-1', { postmortemNotes: 'Increase connection pool size' });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.data).toHaveProperty('postmortemNotes', 'Increase connection pool size');
+    });
+
+    it('sets rootCause to null when passed null', async () => {
+      await service.update('user-1', 'inc-1', { rootCause: null });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.data).toHaveProperty('rootCause', null);
+    });
+
+    it('does not include rootCause when not in dto', async () => {
+      await service.update('user-1', 'inc-1', { title: 'Updated title' });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.data).not.toHaveProperty('rootCause');
+    });
+
+    it('truncates rootCause to 5000 chars', async () => {
+      const longString = 'x'.repeat(6000);
+      await service.update('user-1', 'inc-1', { rootCause: longString });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect((call.data.rootCause as string).length).toBe(5000);
+    });
+
+    it('truncates postmortemNotes to 10000 chars', async () => {
+      const longString = 'y'.repeat(12000);
+      await service.update('user-1', 'inc-1', { postmortemNotes: longString });
+      const call = (prisma.incident.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect((call.data.postmortemNotes as string).length).toBe(10000);
+    });
+  });
 });

@@ -48,6 +48,9 @@ type Incident = {
   status: IncidentStatus;
   severity: IncidentSeverity;
   autoCreated: boolean;
+  resolvedAt: string | null;
+  rootCause: string | null;
+  postmortemNotes: string | null;
   createdAt: string;
   updatedAt: string;
   updates: IncidentUpdate[];
@@ -290,6 +293,11 @@ export default function IncidentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Incident | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Post-mortem inline editing
+  const [postmortemEditId, setPostmortemEditId] = useState<string | null>(null);
+  const [postmortemForm, setPostmortemForm] = useState({ rootCause: '', postmortemNotes: '' });
+  const [savingPostmortem, setSavingPostmortem] = useState(false);
+
   useEffect(() => {
     const user = getUser();
     if (!user) router.push('/login');
@@ -410,6 +418,35 @@ export default function IncidentsPage() {
   }
 
   // ── Delete ──
+  function openPostmortem(incident: Incident) {
+    setPostmortemEditId(incident.id);
+    setPostmortemForm({
+      rootCause: incident.rootCause ?? '',
+      postmortemNotes: incident.postmortemNotes ?? '',
+    });
+  }
+
+  async function savePostmortem(incidentId: string) {
+    setSavingPostmortem(true);
+    try {
+      await api(`/v1/incidents/${incidentId}/postmortem`, undefined, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rootCause: postmortemForm.rootCause.trim() || null,
+          postmortemNotes: postmortemForm.postmortemNotes.trim() || null,
+        }),
+      });
+      success('Post-mortem saved');
+      setPostmortemEditId(null);
+      load();
+    } catch {
+      toastError('Failed to save post-mortem');
+    } finally {
+      setSavingPostmortem(false);
+    }
+  }
+
   function openDelete(incident: Incident) {
     setDeleteTarget(incident);
     setDeleteOpen(true);
@@ -794,6 +831,13 @@ export default function IncidentsPage() {
                         onEdit={() => openEdit(incident)}
                         onUpdate={() => openUpdate(incident)}
                         onDelete={() => openDelete(incident)}
+                        postmortemEditId={postmortemEditId}
+                        postmortemForm={postmortemForm}
+                        onOpenPostmortem={() => openPostmortem(incident)}
+                        onCancelPostmortem={() => setPostmortemEditId(null)}
+                        onSavePostmortem={() => savePostmortem(incident.id)}
+                        onPostmortemChange={setPostmortemForm}
+                        savingPostmortem={savingPostmortem}
                       />
                     ))}
                   </div>
@@ -816,6 +860,13 @@ export default function IncidentsPage() {
                         onEdit={() => openEdit(incident)}
                         onUpdate={() => openUpdate(incident)}
                         onDelete={() => openDelete(incident)}
+                        postmortemEditId={postmortemEditId}
+                        postmortemForm={postmortemForm}
+                        onOpenPostmortem={() => openPostmortem(incident)}
+                        onCancelPostmortem={() => setPostmortemEditId(null)}
+                        onSavePostmortem={() => savePostmortem(incident.id)}
+                        onPostmortemChange={setPostmortemForm}
+                        savingPostmortem={savingPostmortem}
                       />
                     ))}
                   </div>
@@ -849,6 +900,13 @@ function IncidentRow({
   onEdit,
   onUpdate,
   onDelete,
+  postmortemEditId,
+  postmortemForm,
+  onOpenPostmortem,
+  onCancelPostmortem,
+  onSavePostmortem,
+  onPostmortemChange,
+  savingPostmortem,
 }: {
   incident: Incident;
   expanded: boolean;
@@ -856,6 +914,13 @@ function IncidentRow({
   onEdit: () => void;
   onUpdate: () => void;
   onDelete: () => void;
+  postmortemEditId: string | null;
+  postmortemForm: { rootCause: string; postmortemNotes: string };
+  onOpenPostmortem: () => void;
+  onCancelPostmortem: () => void;
+  onSavePostmortem: () => void;
+  onPostmortemChange: (form: { rootCause: string; postmortemNotes: string }) => void;
+  savingPostmortem: boolean;
 }) {
   return (
     <Card className="p-0 overflow-hidden">
@@ -988,6 +1053,84 @@ function IncidentRow({
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Post-mortem section */}
+          <div className="border-t border-border/50 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Post-Mortem</p>
+              {postmortemEditId !== incident.id && (
+                <button
+                  onClick={onOpenPostmortem}
+                  className="text-xs text-accent hover:underline"
+                >
+                  {incident.rootCause || incident.postmortemNotes ? 'Edit' : '+ Add Post-Mortem'}
+                </button>
+              )}
+            </div>
+
+            {postmortemEditId === incident.id ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Root Cause</label>
+                  <textarea
+                    value={postmortemForm.rootCause}
+                    onChange={(e) => onPostmortemChange({ ...postmortemForm, rootCause: e.target.value })}
+                    placeholder="What caused this incident?"
+                    maxLength={5000}
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Lessons Learned / Action Items</label>
+                  <textarea
+                    value={postmortemForm.postmortemNotes}
+                    onChange={(e) => onPostmortemChange({ ...postmortemForm, postmortemNotes: e.target.value })}
+                    placeholder="What can we do to prevent this in the future?"
+                    maxLength={10000}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={onSavePostmortem}
+                    disabled={savingPostmortem}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent/80 disabled:opacity-50 transition-colors"
+                  >
+                    {savingPostmortem ? 'Saving…' : 'Save Post-Mortem'}
+                  </button>
+                  <button
+                    onClick={onCancelPostmortem}
+                    className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : incident.rootCause || incident.postmortemNotes ? (
+              <div className="space-y-3">
+                {incident.rootCause && (
+                  <div>
+                    <p className="text-xs font-medium text-text-muted mb-1">Root Cause</p>
+                    <p className="text-sm text-text-primary whitespace-pre-wrap bg-surface-elevated rounded-lg px-3 py-2">
+                      {incident.rootCause}
+                    </p>
+                  </div>
+                )}
+                {incident.postmortemNotes && (
+                  <div>
+                    <p className="text-xs font-medium text-text-muted mb-1">Lessons Learned</p>
+                    <p className="text-sm text-text-primary whitespace-pre-wrap bg-surface-elevated rounded-lg px-3 py-2">
+                      {incident.postmortemNotes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted italic">No post-mortem added yet.</p>
             )}
           </div>
         </div>

@@ -115,7 +115,14 @@ export default function DashboardPage() {
     monitors: SloMonitorSummary[];
     summary: { total: number; ok: number; warning: number; breached: number };
   }
+  interface HealthTimelineEntry {
+    date: string;
+    healthScore: number | null;
+    green: number;
+    total: number;
+  }
   const [sloSummary, setSloSummary] = useState<SloSummary | null>(null);
+  const [healthTimeline, setHealthTimeline] = useState<HealthTimelineEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
@@ -134,14 +141,14 @@ export default function DashboardPage() {
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setTick] = useState(0); // force re-render for "last updated" text
 
-  const DEFAULT_SECTION_ORDER = ["uptime", "versions", "monitors", "slo"] as const;
+  const DEFAULT_SECTION_ORDER = ["uptime", "versions", "monitors", "slo", "health"] as const;
   type SectionKey = (typeof DEFAULT_SECTION_ORDER)[number];
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(() => {
     try {
       const stored = localStorage.getItem("dashboard-section-order");
       if (stored) {
         const parsed = JSON.parse(stored) as string[];
-        if (Array.isArray(parsed) && parsed.length >= 3) return [...new Set([...parsed, "slo"])] as SectionKey[];
+        if (Array.isArray(parsed) && parsed.length >= 3) return [...new Set([...parsed, "slo", "health"])] as SectionKey[];
       }
     } catch { /* ignore */ }
     return [...DEFAULT_SECTION_ORDER];
@@ -188,7 +195,7 @@ export default function DashboardPage() {
   };
 
   const resetSectionOrder = () => {
-    const defaults = [...DEFAULT_SECTION_ORDER];
+    const defaults = [...DEFAULT_SECTION_ORDER] as SectionKey[];
     setSectionOrder(defaults);
     try { localStorage.setItem("dashboard-section-order", JSON.stringify(defaults)); } catch { /* ignore */ }
   };
@@ -198,6 +205,7 @@ export default function DashboardPage() {
     versions: "Version Tracking",
     monitors: "Monitors",
     slo: "SLO Health",
+    health: "Health Timeline",
   };
 
   const timeRangeToMs: Record<string, number> = { "1h": 3600000, "6h": 21600000, "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
@@ -230,8 +238,11 @@ export default function DashboardPage() {
       setStats(computeStats(monitorsData, runsData, versionSummary.items ?? []));
       setLastRefreshed(new Date());
 
-      // Non-critical: fetch SLO summary (won't block main render)
+      // Non-critical: fetch SLO summary and health timeline (won't block main render)
       api<SloSummary>("/v1/monitors/slo-summary").then(setSloSummary).catch(() => {});
+      api<{ timeline: HealthTimelineEntry[] }>("/v1/dashboard/health-timeline?days=30")
+        .then((d) => setHealthTimeline(d.timeline))
+        .catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
     } finally {
@@ -915,6 +926,86 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </Card>
+              </div>
+            );
+          }
+
+          if (sectionKey === "health") {
+            const hasData = healthTimeline && healthTimeline.some((d) => d.healthScore !== null);
+            if (!hasData) return null;
+            const maxBarH = 80;
+            const scores = healthTimeline!.map((d) => d.healthScore ?? 0);
+            const avgScore = scores.filter((_, i) => healthTimeline![i].healthScore !== null).reduce((a, b) => a + b, 0) / (healthTimeline!.filter((d) => d.healthScore !== null).length || 1);
+            const trend = (() => {
+              const valid = healthTimeline!.filter((d) => d.healthScore !== null);
+              if (valid.length < 7) return 0;
+              const recent = valid.slice(-7).reduce((a, d) => a + (d.healthScore ?? 0), 0) / 7;
+              const earlier = valid.slice(-14, -7).reduce((a, d) => a + (d.healthScore ?? 0), 0) / Math.max(valid.slice(-14, -7).length, 1);
+              return recent - earlier;
+            })();
+            return (
+              <div key="health" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-accent" />
+                      Infrastructure Health
+                    </h2>
+                    <p className="text-text-secondary text-sm mt-1">
+                      30-day uptime health score — % of monitors green per day
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold tabular-nums ${avgScore >= 99 ? "text-green-400" : avgScore >= 95 ? "text-yellow-400" : "text-red-400"}`}>
+                        {avgScore.toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-text-muted">30-day avg</div>
+                    </div>
+                    {Math.abs(trend) >= 0.5 && (
+                      <div className={`flex items-center gap-1 text-sm font-medium ${trend > 0 ? "text-green-400" : "text-red-400"}`}>
+                        <TrendingUp className={`w-4 h-4 ${trend < 0 ? "rotate-180" : ""}`} />
+                        {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Card className="p-4">
+                  <div className="flex items-end gap-0.5 h-20" style={{ height: maxBarH }}>
+                    {healthTimeline!.map((day) => {
+                      const score = day.healthScore;
+                      const barH = score === null ? 2 : Math.max(4, (score / 100) * maxBarH);
+                      const color = score === null ? "bg-border" : score >= 99 ? "bg-green-500" : score >= 90 ? "bg-yellow-500" : "bg-red-500";
+                      const dateLabel = new Date(day.date + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                      return (
+                        <div
+                          key={day.date}
+                          className="flex-1 flex flex-col items-center justify-end group relative cursor-default"
+                          style={{ height: maxBarH }}
+                          title={score === null ? `${dateLabel}: No data` : `${dateLabel}: ${score}% (${day.green}/${day.total} monitors green)`}
+                        >
+                          <div
+                            className={`w-full rounded-sm transition-opacity group-hover:opacity-80 ${color}`}
+                            style={{ height: barH }}
+                          />
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-surface-elevated border border-border rounded px-2 py-1 text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-10 shadow-lg">
+                            {dateLabel}: {score === null ? "No data" : `${score}%`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-2 text-xs text-text-muted">
+                    <span>{new Date(healthTimeline![0].date + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                    <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-green-500 inline-block" />≥99%</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-yellow-500 inline-block" />90–99%</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500 inline-block" />&lt;90%</span>
+                    </span>
+                    <span>Today</span>
                   </div>
                 </Card>
               </div>

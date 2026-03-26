@@ -1524,6 +1524,11 @@ function MonitorsPageInner() {
                                   🔔
                                 </span>
                               )}
+                              {(monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled && (
+                                <span title="Business hours schedule active" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30 whitespace-nowrap">
+                                  📅
+                                </span>
+                              )}
                             </div>
                             {monitor.folderId && (
                               <span className="text-xs text-text-secondary bg-surface px-1.5 py-0.5 rounded mr-1">

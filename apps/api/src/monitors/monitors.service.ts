@@ -682,16 +682,19 @@ export class MonitorsService {
 
     const assignments = await this.prisma.monitorAlert.findMany({
       where: { monitorId },
-      include: { alertChannel: true },
+      include: { alertChannel: true, escalationPolicy: { select: { id: true, name: true } } },
     });
 
     return assignments.map((a) => ({
       id: a.alertChannel.id,
+      alertChannelId: a.alertChannelId,
       name: a.alertChannel.name,
       type: a.alertChannel.type,
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
       notifyOn: a.notifyOn,
+      escalationPolicyId: a.escalationPolicyId ?? null,
+      escalationPolicy: a.escalationPolicy ? { id: a.escalationPolicy.id, name: a.escalationPolicy.name } : null,
     }));
   }
 
@@ -762,6 +765,31 @@ export class MonitorsService {
    * @returns { ok: true } on success
    * @throws NotFoundException if monitor not owned by user
    */
+  /**
+   * Assigns or clears an escalation policy for a monitor alert channel link.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor ID
+   * @param channelId - The alert channel ID
+   * @param policyId - The escalation policy ID, or null to clear
+   */
+  async updateMonitorAlertEscalationPolicy(userId: string, monitorId: string, channelId: string, policyId: string | null) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    if (policyId !== null) {
+      const policy = await this.prisma.escalationPolicy.findFirst({ where: { id: policyId, userId } });
+      if (!policy) throw new NotFoundException('escalation policy not found');
+    }
+
+    await this.prisma.monitorAlert.update({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      data: { escalationPolicyId: policyId },
+    });
+
+    await this.audit.log('monitor.alert.escalation_set', userId, userId, { monitorId, channelId, policyId });
+    return { ok: true };
+  }
+
   async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');

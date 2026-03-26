@@ -375,13 +375,19 @@ export class MonitorsController {
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiParam({ name: 'channelId', description: 'Alert channel ID' })
   @ApiResponse({ status: 200, description: 'notifyOn updated.' })
-  updateAlert(
+  async updateAlert(
     @Req() req: { user: { id: string } },
     @Param('id') id: string,
     @Param('channelId') channelId: string,
-    @Body() body: { notifyOn: string },
+    @Body() body: { notifyOn?: string; escalationPolicyId?: string | null },
   ) {
-    return this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
+    if (body.notifyOn !== undefined) {
+      await this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
+    }
+    if ('escalationPolicyId' in body) {
+      await this.monitorsService.updateMonitorAlertEscalationPolicy(req.user.id, id, channelId, body.escalationPolicyId ?? null);
+    }
+    return { ok: true };
   }
 
   @Delete(':id/alerts/:channelId')

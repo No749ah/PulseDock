@@ -7,6 +7,27 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [Unreleased] — 2026-03-26
+
+### Added
+- **Alert Acknowledgement** — `POST/DELETE /v1/monitors/:id/acknowledge` — Acknowledge active alerts with optional note. Suppresses further notifications. Shows note inline in the Acknowledged badge. Auto-clears when monitor recovers.
+- **Monitor Muting** — `POST/DELETE /v1/monitors/:id/mute` — Mute all alerts for 30min/1h/4h/24h. Amber 🔇 badge on monitors list and detail page. Click badge to unmute.
+- **Alert Routing Rules** — `GET/POST/PATCH/DELETE /v1/alert-routing-rules` — Route alerts to specific channels based on monitor type, level, tags, folder, or individual monitor. Rules evaluated in priority order (first match wins). Can override notifyOn per rule. Frontend at `/alerts/routing`. 9 tests.
+- **Latency Anomaly Detection** — `anomalyDetection` + `anomalyMultiplier` per monitor. Automatically computes P95 baseline from last 7 days (≥10 samples required). Upgrades check level green→yellow when latency exceeds N×P95. Toggle in monitor form. 10 tests.
+- **Alert Storm Protection** — `alertStormProtection` + `alertStormThreshold` in notification preferences. Suppresses alerts when more than N fire within 10 minutes. Sends one "storm detected" notification per 30-minute window. UI in Account > Notifications. 9 tests.
+- **Business Hours Schedule** — `scheduleEnabled`, `scheduleDays`, `scheduleStartHour`, `scheduleEndHour` per monitor. Checks only run during configured UTC time window and days. Day picker + hour selects in monitor form. 📅 badge on monitors list. 10 tests.
+- **Monitor Cloning** — `POST /v1/monitors/:id/clone` — Duplicate a monitor with all config, alert channels, and tags. Clone starts disabled. Clone button (Copy icon) in monitors list.
+- **GET /v1/monitors/:id** — Single-monitor endpoint returning full detail including mute state, active acknowledgement note, anomaly settings, and schedule config. Monitor detail page now fetches this instead of loading all monitors.
+- **Alert Analytics** — `GET /v1/alert-channels/analytics` — 30-day daily delivery counts, per-channel reliability rates, top alerting monitors. Frontend at `/alerts/analytics` with stat cards and bar chart.
+- **Alert Analytics Dashboard Section** — Dashboard SLO Health section: `GET /v1/monitors/slo-summary` shows ok/at-risk/breached counts + per-monitor table.
+- **Escalation Policies** — `GET/POST/PATCH/DELETE /v1/escalation-policies` — Define multi-step escalation with configurable delays per channel. Assigned to monitor alert channels via `PATCH /v1/monitors/:id/alerts/:channelId`. Checks scheduler fires steps automatically. Frontend at `/alerts/escalation`. 18 tests.
+- **WebSocket live updates on monitor detail** — Check runs prepend in real-time without page refresh. Live green indicator badge.
+- **P95 latency line on detail chart** — Response time chart shows P95 line alongside avg line.
+- **Down monitor count badge in nav** — Sidebar "Monitors" link shows red badge with count of currently down monitors.
+
+### Tests
+- **3371 API tests** (up from 3208) — All passing. 163 new tests.
+
 ## [1.4.0] — 2026-03-25
 
 ### Added

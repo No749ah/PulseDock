@@ -56,6 +56,7 @@ model User {
   statusPages             PublicStatusPage[]
   tags                    Tag[]
   notificationPreference  NotificationPreference?
+  notificationQueue       NotificationQueueItem[]
   maintenanceWindows      MaintenanceWindow[]
   incidents               Incident[]
   scheduledReport         ScheduledReport?
@@ -808,4 +809,22 @@ model UserPlan {
 
   @@index([userId])
   @@index([planId])
+}
+
+/// Queued notification for digest delivery (hourly_digest / daily_digest frequency)
+model NotificationQueueItem {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String   // 'down' | 'recovery' | 'degraded' | 'flapping'
+  monitorId   String?
+  monitorName String?
+  message     String
+  sentAt      DateTime? // null = not yet sent (pending)
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, sentAt])
+  @@index([createdAt])
 }

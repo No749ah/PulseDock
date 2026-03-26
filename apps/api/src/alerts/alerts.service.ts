@@ -524,9 +524,31 @@ export class AlertsService {
     const shouldSend = await this.notifications.shouldNotify(monitor.userId, eventType);
 
     if (!shouldSend) {
-      this.logger.debug(
-        `Suppressed alert for monitor "${monitor.name}" (userId=${monitor.userId}, level=${run.level}, eventType=${eventType}) — notification preferences`,
-      );
+      // Check if this user has digest frequency — if so, queue for later delivery
+      const pref = await this.prisma.notificationPreference.findUnique({
+        where: { userId: monitor.userId },
+        select: { frequency: true },
+      }).catch(() => null);
+
+      if (pref?.frequency === 'hourly_digest' || pref?.frequency === 'daily_digest') {
+        const digestEventType = eventType === 'down' ? 'down' : eventType === 'recovery' ? 'recovery' : 'degraded';
+        const levelEmoji = run.level === 'green' ? '✅' : run.level === 'yellow' ? '⚠️' : '🚨';
+        const message = `${levelEmoji} ${monitor.name}: ${run.message ?? run.level}${run.latencyMs != null ? ` (${run.latencyMs}ms)` : ''}`;
+        await this.notifications.enqueueForDigest(
+          monitor.userId,
+          digestEventType as 'down' | 'recovery' | 'degraded',
+          monitor.id,
+          monitor.name,
+          message,
+        );
+        this.logger.debug(
+          `Queued digest notification for monitor "${monitor.name}" (userId=${monitor.userId}, frequency=${pref.frequency})`,
+        );
+      } else {
+        this.logger.debug(
+          `Suppressed alert for monitor "${monitor.name}" (userId=${monitor.userId}, level=${run.level}, eventType=${eventType}) — notification preferences`,
+        );
+      }
       return;
     }
 

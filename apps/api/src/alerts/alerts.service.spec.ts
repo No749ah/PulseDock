@@ -115,6 +115,12 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     alertRoutingRule: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    notificationPreference: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+    notificationQueueItem: {
+      create: vi.fn().mockResolvedValue({}),
+    },
   };
 }
 

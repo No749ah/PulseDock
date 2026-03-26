@@ -78,4 +78,5 @@ export interface MonitorRun {
   latencyMs: number | null;
   message: string;
   level: MonitorLevel;
+  responseBody?: string | null;
 }

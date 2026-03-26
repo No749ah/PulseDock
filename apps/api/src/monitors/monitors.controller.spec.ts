@@ -51,7 +51,7 @@ describe('MonitorsController', () => {
   beforeEach(() => {
     service = makeMonitorsService();
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
-    controller = new MonitorsController(service as never, mockPlanService as never);
+    controller = new MonitorsController(service as never, mockPlanService as never, {} as never);
   });
 
   it('list() delegates to service.list', async () => {
@@ -97,7 +97,7 @@ describe('MonitorsController', () => {
   it('bulk() delegates to service.bulkAction', async () => {
     service.bulkAction.mockResolvedValue({ processed: 2 });
     const result = await controller.bulk(makeReq(), { ids: ['m-1', 'm-2'], action: 'enable' });
-    expect(service.bulkAction).toHaveBeenCalledWith('user-1', ['m-1', 'm-2'], 'enable', undefined);
+    expect(service.bulkAction).toHaveBeenCalledWith('user-1', ['m-1', 'm-2'], 'enable', undefined, undefined);
   });
 
   it('versionTest() delegates to service.testVersionConnection', async () => {
@@ -251,7 +251,7 @@ describe('MonitorsController', () => {
   it('create() throws ForbiddenException when plan limit is reached', async () => {
     const { ForbiddenException } = await import('@nestjs/common');
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 50, limit: 50, plan: 'PRO' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     const dto = { name: 'Monitor', target: 'https://example.com', type: 'HTTP' as const, intervalSec: 60 };
     await expect(ctrl.create(makeReq(), dto as never)).rejects.toThrow(ForbiddenException);
   });
@@ -442,7 +442,7 @@ describe('MonitorsController', () => {
     const cloneResult = { id: 'clone-1', name: 'Copy of My Monitor', enabled: false, createdAt: new Date().toISOString() };
     service.clone = vi.fn().mockResolvedValue(cloneResult);
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 1, limit: -1, plan: 'COMMUNITY' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     const result = await ctrl.clone(makeReq(), 'm-1') as Record<string, unknown>;
     expect(service.clone).toHaveBeenCalledWith('user-1', 'm-1');
     expect(result['name']).toBe('Copy of My Monitor');
@@ -452,7 +452,7 @@ describe('MonitorsController', () => {
   it('clone() throws ForbiddenException when plan limit reached', async () => {
     const { ForbiddenException } = await import('@nestjs/common');
     const mockPlanService = { checkLimit: vi.fn().mockResolvedValue({ allowed: false, current: 5, limit: 5, plan: 'FREE' }) };
-    const ctrl = new MonitorsController(service as never, mockPlanService as never);
+    const ctrl = new MonitorsController(service as never, mockPlanService as never, {} as never);
     await expect(ctrl.clone(makeReq(), 'm-1')).rejects.toThrow(ForbiddenException);
     expect(service.clone).not.toHaveBeenCalled();
   });
@@ -463,5 +463,141 @@ describe('MonitorsController', () => {
     const result = await controller.getOne(makeReq(), 'm-1');
     expect(service.getOne).toHaveBeenCalledWith('user-1', 'm-1');
     expect(result).toEqual(monitorDetail);
+  });
+});
+
+// ─── securityAdvisories ───────────────────────────────────────────────────
+
+describe('MonitorsController.securityAdvisories', () => {
+  function makePrismaForSec(found: boolean, config: Record<string, unknown> = {}) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(found ? { id: 'mon-1', type: 'GIT_RELEASE', target: 'express', configJson: config } : null),
+      },
+    };
+  }
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForSec(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.securityAdvisories(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns supported:false for docker provider', async () => {
+    const prisma = makePrismaForSec(true, { provider: 'docker', target: 'nginx' });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.securityAdvisories(makeReq(), 'mon-1') as { supported: boolean };
+    expect(result.supported).toBe(false);
+  });
+
+  it('returns supported:false for helm provider', async () => {
+    const prisma = makePrismaForSec(true, { provider: 'helm', target: 'some/chart' });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.securityAdvisories(makeReq(), 'mon-1') as { supported: boolean };
+    expect(result.supported).toBe(false);
+  });
+});
+
+// ─── releaseNotes ─────────────────────────────────────────────────────────
+
+describe('MonitorsController.releaseNotes', () => {
+  function makePrismaForNotes(found: boolean, config: Record<string, unknown> = {}) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(found ? { id: 'mon-1', type: 'GIT_RELEASE', target: 'expressjs/express', configJson: { provider: 'github', target: 'expressjs/express', ...config } } : null),
+      },
+    };
+  }
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForNotes(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.releaseNotes(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns available:false for non-github provider', async () => {
+    const prisma = makePrismaForNotes(true, { provider: 'npm' });
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', type: 'GIT_RELEASE', target: 'express', configJson: { provider: 'npm', target: 'express' } });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.releaseNotes(makeReq(), 'mon-1') as { available: boolean };
+    expect(result.available).toBe(false);
+  });
+
+  it('returns available:false when target is unparseable', async () => {
+    const prisma = makePrismaForNotes(true);
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', type: 'GIT_RELEASE', target: 'notarepo', configJson: { provider: 'github', target: 'notarepo' } });
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.releaseNotes(makeReq(), 'mon-1') as { available: boolean };
+    expect(result.available).toBe(false);
+  });
+});
+
+// ─── monitorIncidents ───────────────────────────────────────────────────────
+
+describe('MonitorsController.monitorIncidents', () => {
+  const now = new Date('2026-03-01T10:00:00Z');
+  const resolved = new Date('2026-03-01T11:30:00Z');
+
+  const mockIncidentLink = {
+    monitorId: 'mon-1',
+    incident: {
+      id: 'inc-1',
+      title: 'API down',
+      status: 'RESOLVED',
+      severity: 'HIGH',
+      autoCreated: true,
+      createdAt: now,
+      resolvedAt: resolved,
+    },
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function makePrismaForIncidents(monitorFound = true, links: any[] = [mockIncidentLink]) {
+    return {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue(monitorFound ? { id: 'mon-1' } : null),
+      },
+      incidentMonitor: {
+        findMany: vi.fn().mockResolvedValue(links),
+      },
+    };
+  }
+
+  it('returns linked incidents with duration', async () => {
+    const prisma = makePrismaForIncidents();
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    const incidents = result['incidents'] as Array<Record<string, unknown>>;
+    expect(incidents).toHaveLength(1);
+    expect(incidents[0]['id']).toBe('inc-1');
+    expect(incidents[0]['title']).toBe('API down');
+    expect(incidents[0]['durationSec']).toBe(5400); // 90 minutes
+  });
+
+  it('returns 404 when monitor not found', async () => {
+    const { NotFoundException } = await import('@nestjs/common');
+    const prisma = makePrismaForIncidents(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.monitorIncidents(makeReq(), 'bad-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns empty list when no incidents linked', async () => {
+    const prisma = makePrismaForIncidents(true, []);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['total']).toBe(0);
+    expect(result['incidents']).toHaveLength(0);
+  });
+
+  it('open incident has durationSec null', async () => {
+    const openLink = { monitorId: 'mon-1', incident: { id: 'inc-1', title: 'API down', status: 'INVESTIGATING', severity: 'HIGH', autoCreated: true, createdAt: now, resolvedAt: null as null | Date } };
+    const prisma = makePrismaForIncidents(true, [openLink]);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.monitorIncidents(makeReq(), 'mon-1') as Record<string, unknown>;
+    const incidents = result['incidents'] as Array<Record<string, unknown>>;
+    expect(incidents[0]['durationSec']).toBeNull();
+    expect(incidents[0]['status']).toBe('INVESTIGATING');
   });
 });

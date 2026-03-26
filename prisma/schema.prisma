@@ -234,15 +234,16 @@ model MonitorEvent {
 }
 
 model MonitorRun {
-  id        String   @id @default(cuid())
-  monitorId String
-  userId    String
-  level     String
-  ok        Boolean
-  status    Int
-  latencyMs Int?
-  message   String
-  checkedAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  monitorId    String
+  userId       String
+  level        String
+  ok           Boolean
+  status       Int
+  latencyMs    Int?
+  message      String
+  responseBody String?  // First 500 chars of response body on failure, for debug
+  checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

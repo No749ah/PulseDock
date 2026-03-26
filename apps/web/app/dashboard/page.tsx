@@ -921,7 +921,7 @@ export default function DashboardPage() {
                             {m.status === "ok" ? "OK" : m.status === "warning" ? "AT RISK" : "BREACHED"}
                           </span>
                           {m.hasLatencySli && (
-                            <AlertTriangle className="w-3.5 h-3.5 text-purple-400 shrink-0" title="Latency SLI configured" />
+                            <span title="Latency SLI configured"><AlertTriangle className="w-3.5 h-3.5 text-purple-400 shrink-0" /></span>
                           )}
                         </div>
                       </div>

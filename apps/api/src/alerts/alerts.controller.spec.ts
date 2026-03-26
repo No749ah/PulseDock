@@ -626,9 +626,9 @@ describe('AlertsController analytics()', () => {
     const today = new Date().toISOString().slice(0, 10);
     const todayBucket = result.dailyCounts.find((d: { date: string }) => d.date === today);
     expect(todayBucket).toBeDefined();
-    expect(todayBucket.total).toBe(2);
-    expect(todayBucket.success).toBe(1);
-    expect(todayBucket.failed).toBe(1);
+    expect(todayBucket!.total).toBe(2);
+    expect(todayBucket!.success).toBe(1);
+    expect(todayBucket!.failed).toBe(1);
   });
 
   it('computes correct totals', async () => {

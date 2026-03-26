@@ -3081,6 +3081,55 @@ describe('bulkAction() — unknown action returns { ok: false }', () => {
   });
 });
 
+// ── bulkAction() — update-interval / update-timeout / update-confirmations ────
+
+describe('bulkAction() — update-interval / update-timeout / update-confirmations', () => {
+  function makeUpdatePrisma() {
+    const m = makeMonitor();
+    const p = makePrisma(m);
+    p.monitor.findMany.mockResolvedValue([m]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p.monitor as any).updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    return { p, svc: makeService(p) };
+  }
+
+  it('update-interval clamps and updates intervalSec', async () => {
+    const { p, svc } = makeUpdatePrisma();
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'update-interval', undefined, 120);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((p.monitor as any).updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { intervalSec: 120 } }));
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('update-interval enforces minimum of 10s', async () => {
+    const { p, svc } = makeUpdatePrisma();
+    await svc.bulkAction('user-1', ['monitor-1'], 'update-interval', undefined, 1);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((p.monitor as any).updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { intervalSec: 10 } }));
+  });
+
+  it('update-timeout clamps and updates timeoutMs', async () => {
+    const { p, svc } = makeUpdatePrisma();
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'update-timeout', undefined, 5000);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((p.monitor as any).updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { timeoutMs: 5000 } }));
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('update-confirmations clamps to 1-10 range', async () => {
+    const { p, svc } = makeUpdatePrisma();
+    await svc.bulkAction('user-1', ['monitor-1'], 'update-confirmations', undefined, 50);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((p.monitor as any).updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { confirmations: 10 } }));
+  });
+
+  it('update-interval with undefined value returns { ok: false }', async () => {
+    const { svc } = makeUpdatePrisma();
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'update-interval', undefined, undefined);
+    expect(result).toEqual({ ok: false, affected: 0 });
+  });
+});
+
 // ── parseGitlabTarget() — plain group/project path (line 542) ────────────────
 
 describe('testVersionConnection() — gitlab plain group/project target (line 542)', () => {

@@ -279,6 +279,8 @@ export class ChecksService {
         latencyMs: result.latencyMs,
         message: result.message,
         level: result.level,
+        // Capture response body on failure for debugging (max 500 chars)
+        responseBody: (result as PluginExecutionResult).responseBody ? (result as PluginExecutionResult).responseBody!.slice(0, 500) : null,
       },
     });
 

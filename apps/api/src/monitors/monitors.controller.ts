@@ -127,7 +127,7 @@ export class MonitorsController {
   @ApiOperation({ summary: 'Bulk action on monitors', description: 'Apply enable, disable, delete, or run-now to multiple monitors at once.' })
   @ApiResponse({ status: 200, description: 'Bulk action applied.' })
   bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
-    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId);
+    return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId, body.value);
   }
 
   @Post('version-test')
@@ -503,7 +503,263 @@ export class MonitorsController {
     return this.monitorsService.deleteEvent(req.user.id, id, eventId);
   }
 
-  // ─── Alert Delivery History ───────────────────────────────────────────────
+  // ─── Security Advisories ──────────────────────────────────────────────────
+
+  @Get(':id/security')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Security advisories for a version monitor',
+    description:
+      'Queries OSV.dev for known security vulnerabilities affecting the currently tracked version. ' +
+      'Supports npm, PyPI, Cargo, GitHub repos. Returns up to 10 most recent advisories.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Advisory list returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async securityAdvisories(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true, type: true, target: true, configJson: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const config = (monitor.configJson as Record<string, unknown> | null) ?? {};
+    const provider = String(config['provider'] ?? '').toLowerCase();
+    const target = String(config['target'] ?? monitor.target ?? '').trim();
+
+    // Determine OSV ecosystem + package name
+    let ecosystem: string | null = null;
+    let packageName: string | null = null;
+
+    if (provider === 'npm') {
+      ecosystem = 'npm';
+      packageName = target;
+    } else if (provider === 'pypi') {
+      ecosystem = 'PyPI';
+      packageName = target;
+    } else if (provider === 'cargo') {
+      ecosystem = 'crates.io';
+      packageName = target;
+    } else if (provider === 'github' && target.includes('/')) {
+      // For GitHub, use GitHub Advisory Database via OSV
+      ecosystem = 'GitHub Actions'; // fallback; we use package query
+      const parts = target.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '').split('/');
+      if (parts.length >= 2) {
+        packageName = `${parts[0]}/${parts[1]}`;
+      }
+    }
+
+    if (!ecosystem || !packageName) {
+      return {
+        supported: false,
+        reason: 'Security advisories are available for npm, PyPI, Cargo, and GitHub monitors.',
+        advisories: [],
+      };
+    }
+
+    try {
+      // Query OSV.dev for known vulnerabilities
+      const osvBody: Record<string, unknown> = {
+        package: { name: packageName, ecosystem },
+      };
+
+      const osvResp = await fetch('https://api.osv.dev/v1/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(osvBody),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!osvResp.ok) {
+        return { supported: true, source: 'osv.dev', advisories: [], error: `OSV API returned ${osvResp.status}` };
+      }
+
+      const osvData = await osvResp.json() as {
+        vulns?: Array<{
+          id: string;
+          summary?: string;
+          details?: string;
+          severity?: Array<{ type: string; score: string }>;
+          affected?: Array<{ ranges?: Array<{ type: string; events?: Array<{ introduced?: string; fixed?: string }> }> }>;
+          published?: string;
+          modified?: string;
+          references?: Array<{ type: string; url: string }>;
+          aliases?: string[];
+        }>;
+      };
+
+      const vulns = (osvData.vulns ?? []).slice(0, 10);
+
+      return {
+        supported: true,
+        source: 'osv.dev',
+        total: osvData.vulns?.length ?? 0,
+        advisories: vulns.map((v) => {
+          const cvss = v.severity?.find((s) => s.type === 'CVSS_V3')?.score ?? v.severity?.[0]?.score ?? null;
+          const cveId = v.aliases?.find((a) => a.startsWith('CVE-')) ?? null;
+          const fixedInRef = v.affected?.[0]?.ranges?.[0]?.events?.find((e) => e.fixed);
+          return {
+            id: v.id,
+            cveId,
+            summary: v.summary ?? null,
+            cvss,
+            publishedAt: v.published ?? null,
+            fixedIn: fixedInRef?.fixed ?? null,
+            url: v.references?.find((r) => r.type === 'ADVISORY' || r.type === 'WEB')?.url ?? `https://osv.dev/vulnerability/${v.id}`,
+          };
+        }),
+      };
+    } catch {
+      return { supported: true, source: 'osv.dev', advisories: [], error: 'Failed to query OSV API' };
+    }
+  }
+
+// ─── Release Notes ────────────────────────────────────────────────────────
+
+  @Get(':id/release-notes')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fetch release notes for a version monitor',
+    description:
+      'For GitHub-backed version monitors: fetches the release notes (body) of the latest release tag. Returns null for non-GitHub or non-version monitors.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'version', required: false, description: 'Specific version tag to fetch notes for (defaults to latest)' })
+  @ApiResponse({ status: 200, description: 'Release notes returned (or null if unavailable).' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async releaseNotes(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('version') version?: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id, userId: req.user.id },
+      select: { id: true, type: true, target: true, configJson: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const config = (monitor.configJson as Record<string, unknown> | null) ?? {};
+    const provider = String(config['provider'] ?? '');
+
+    if (!['github'].includes(provider) || !['GIT_RELEASE', 'DOCKER_IMAGE'].includes(monitor.type)) {
+      return { available: false, reason: 'Release notes are only available for GitHub version monitors.' };
+    }
+
+    const target = String(config['target'] ?? monitor.target ?? '').trim();
+    // target is "owner/repo"
+    const parts = target.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '').split('/');
+    if (parts.length < 2) {
+      return { available: false, reason: 'Cannot parse repository from monitor target.' };
+    }
+    const [owner, repo] = parts;
+
+    const token = config['token'] ? String(config['token']) : (process.env.GITHUB_TOKEN ?? '');
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      let releaseUrl: string;
+      if (version) {
+        releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(version)}`;
+      } else {
+        releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+      }
+
+      const resp = await fetch(releaseUrl, { headers });
+      if (!resp.ok) {
+        return { available: false, reason: `GitHub API returned ${resp.status}` };
+      }
+
+      const release = await resp.json() as {
+        tag_name?: string;
+        name?: string;
+        body?: string;
+        published_at?: string;
+        html_url?: string;
+        prerelease?: boolean;
+        assets?: Array<{ name: string; download_count: number; size: number; browser_download_url: string }>;
+      };
+
+      return {
+        available: true,
+        version: release.tag_name ?? null,
+        releaseName: release.name ?? null,
+        body: release.body ? release.body.slice(0, 10000) : null,
+        publishedAt: release.published_at ?? null,
+        url: release.html_url ?? null,
+        prerelease: release.prerelease ?? false,
+        assetCount: release.assets?.length ?? 0,
+      };
+    } catch {
+      return { available: false, reason: 'Failed to fetch release notes from GitHub.' };
+    }
+  }
+
+// ─── Linked Incidents ────────────────────────────────────────────────────
+
+  @Get(':id/incidents')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Incidents linked to a monitor',
+    description: 'Returns all formal incidents that reference this monitor, ordered by most recent first.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max incidents to return (1-100, default 20)' })
+  @ApiResponse({ status: 200, description: 'Incidents returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async monitorIncidents(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const take = Math.min(100, Math.max(1, parseInt(limit ?? '20', 10) || 20));
+
+    const links = await this.prisma.incidentMonitor.findMany({
+      where: { monitorId: id },
+      include: {
+        incident: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            severity: true,
+            createdAt: true,
+            resolvedAt: true,
+            autoCreated: true,
+          },
+        },
+      },
+      orderBy: { incident: { createdAt: 'desc' } },
+      take,
+    });
+
+    return {
+      total: links.length,
+      incidents: links.map((l) => ({
+        id: l.incident.id,
+        title: l.incident.title,
+        status: l.incident.status,
+        severity: l.incident.severity,
+        autoCreated: l.incident.autoCreated,
+        createdAt: l.incident.createdAt,
+        resolvedAt: l.incident.resolvedAt,
+        durationSec: l.incident.resolvedAt
+          ? Math.floor((new Date(l.incident.resolvedAt).getTime() - new Date(l.incident.createdAt).getTime()) / 1000)
+          : null,
+      })),
+    };
+  }
+
+// ─── Alert Delivery History ───────────────────────────────────────────────
 
   @Get(':id/deliveries')
   @RequireScope(ApiKeyScope.READ)

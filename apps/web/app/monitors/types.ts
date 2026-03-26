@@ -55,6 +55,8 @@ export interface MonitorRun {
   message: string;
   checkedAt: string;
   level?: "green" | "yellow" | "red";
+  /** First 500 chars of response body on failure, for debugging */
+  responseBody?: string | null;
 }
 
 export interface AlertChannel {

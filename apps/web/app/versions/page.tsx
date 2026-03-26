@@ -26,6 +26,17 @@ export default function VersionsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [runsByMonitor, setRunsByMonitor] = useState<Record<string, MonitorRun[]>>({});
   const [runsLoadingId, setRunsLoadingId] = useState<string | null>(null);
+  const [releaseNotesByMonitor, setReleaseNotesByMonitor] = useState<Record<string, {
+    available: boolean; reason?: string;
+    version?: string | null; releaseName?: string | null; body?: string | null;
+    publishedAt?: string | null; url?: string | null; prerelease?: boolean; assetCount?: number;
+  }>>({});
+  const [releaseNotesLoading, setReleaseNotesLoading] = useState<string | null>(null);
+  const [securityByMonitor, setSecurityByMonitor] = useState<Record<string, {
+    supported: boolean; reason?: string; source?: string; total?: number; error?: string;
+    advisories: Array<{ id: string; cveId: string | null; summary: string | null; cvss: string | null; publishedAt: string | null; fixedIn: string | null; url: string }>;
+  }>>({});
+  const [securityLoading, setSecurityLoading] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'lastChecked'>('name');
@@ -183,6 +194,32 @@ export default function VersionsPage() {
       await load();
     } finally {
       setRunningAll(false);
+    }
+  }
+
+  async function fetchSecurity(monitorId: string) {
+    if (securityByMonitor[monitorId] || securityLoading === monitorId) return;
+    setSecurityLoading(monitorId);
+    try {
+      const data = await api<typeof securityByMonitor[string]>(`/v1/monitors/${monitorId}/security`);
+      setSecurityByMonitor((prev) => ({ ...prev, [monitorId]: data }));
+    } catch {
+      setSecurityByMonitor((prev) => ({ ...prev, [monitorId]: { supported: false, reason: 'Failed to fetch', advisories: [] } }));
+    } finally {
+      setSecurityLoading(null);
+    }
+  }
+
+  async function fetchReleaseNotes(monitorId: string) {
+    if (releaseNotesByMonitor[monitorId] || releaseNotesLoading === monitorId) return;
+    setReleaseNotesLoading(monitorId);
+    try {
+      const notes = await api<typeof releaseNotesByMonitor[string]>(`/v1/monitors/${monitorId}/release-notes`);
+      setReleaseNotesByMonitor((prev) => ({ ...prev, [monitorId]: notes }));
+    } catch {
+      setReleaseNotesByMonitor((prev) => ({ ...prev, [monitorId]: { available: false, reason: 'Failed to fetch' } }));
+    } finally {
+      setReleaseNotesLoading(null);
     }
   }
 
@@ -650,6 +687,111 @@ export default function VersionsPage() {
                                 )}
                               </>
                             )}
+
+                            {/* Release Notes (GitHub monitors) */}
+                            {(() => {
+                              const cfg = (monitorDetails[item.id]?.config ?? {}) as Record<string, unknown>;
+                              const prov = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase();
+                              if (prov !== 'github') return null;
+                              const notes = releaseNotesByMonitor[item.id];
+                              const isLoading = releaseNotesLoading === item.id;
+                              return (
+                                <div className="mt-4 pt-3 border-t border-border/50">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Release Notes</span>
+                                    {!notes && !isLoading && (
+                                      <button
+                                        onClick={() => fetchReleaseNotes(item.id)}
+                                        className="text-xs text-accent hover:underline flex items-center gap-1"
+                                      >
+                                        <span>Fetch latest</span>
+                                      </button>
+                                    )}
+                                    {notes?.url && (
+                                      <a href={notes.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" />View on GitHub
+                                      </a>
+                                    )}
+                                  </div>
+                                  {isLoading && <p className="text-xs text-text-secondary">Loading release notes…</p>}
+                                  {notes && !notes.available && (
+                                    <p className="text-xs text-text-muted">{notes.reason ?? 'Release notes unavailable'}</p>
+                                  )}
+                                  {notes?.available && (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {notes.version && <span className="text-xs font-mono font-semibold text-text-primary">{notes.version}</span>}
+                                        {notes.releaseName && notes.releaseName !== notes.version && (
+                                          <span className="text-xs text-text-secondary">{notes.releaseName}</span>
+                                        )}
+                                        {notes.publishedAt && (
+                                          <span className="text-xs text-text-muted">{new Date(notes.publishedAt).toLocaleDateString()}</span>
+                                        )}
+                                        {notes.prerelease && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30">pre-release</span>}
+                                        {notes.assetCount != null && notes.assetCount > 0 && (
+                                          <span className="text-xs text-text-muted">{notes.assetCount} asset{notes.assetCount !== 1 ? 's' : ''}</span>
+                                        )}
+                                      </div>
+                                      {notes.body ? (
+                                        <pre className="text-xs text-text-secondary whitespace-pre-wrap font-sans bg-surface-elevated/50 border border-border/50 rounded-lg px-3 py-2 max-h-48 overflow-y-auto leading-relaxed">{notes.body}</pre>
+                                      ) : (
+                                        <p className="text-xs text-text-muted italic">No release notes provided.</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            {/* Security Advisories */}
+                            {(() => {
+                              const cfg = (monitorDetails[item.id]?.config ?? {}) as Record<string, unknown>;
+                              const prov = String(cfg.provider ?? (item.type === 'DOCKER_IMAGE' ? 'docker' : 'github')).toLowerCase();
+                              if (!['npm', 'pypi', 'cargo', 'github'].includes(prov)) return null;
+                              const sec = securityByMonitor[item.id];
+                              const isLoading = securityLoading === item.id;
+                              return (
+                                <div className="mt-3 pt-3 border-t border-border/50">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Security</span>
+                                    {!sec && !isLoading && (
+                                      <button onClick={() => fetchSecurity(item.id)} className="text-xs text-accent hover:underline">Check advisories</button>
+                                    )}
+                                    {sec?.total != null && sec.total > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-danger/15 text-danger border border-danger/30">
+                                        {sec.total} advisory{sec.total !== 1 ? 'ies' : ''}
+                                      </span>
+                                    )}
+                                    {sec?.total === 0 && (
+                                      <span className="text-xs text-success">✓ No known vulnerabilities</span>
+                                    )}
+                                  </div>
+                                  {isLoading && <p className="text-xs text-text-secondary">Querying osv.dev…</p>}
+                                  {sec && !sec.supported && <p className="text-xs text-text-muted">{sec.reason}</p>}
+                                  {sec?.error && <p className="text-xs text-danger">{sec.error}</p>}
+                                  {sec?.supported && sec.advisories.length > 0 && (
+                                    <div className="space-y-1.5">
+                                      {sec.advisories.map((adv) => (
+                                        <div key={adv.id} className="px-3 py-2 rounded-lg bg-danger/5 border border-danger/20 text-xs">
+                                          <div className="flex items-start gap-2">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                                <span className="font-mono font-semibold text-danger">{adv.cveId ?? adv.id}</span>
+                                                {adv.cvss && <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger/15 text-danger border border-danger/30">CVSS {adv.cvss.substring(0, 4)}</span>}
+                                                {adv.fixedIn && <span className="text-success">Fixed in {adv.fixedIn}</span>}
+                                              </div>
+                                              {adv.summary && <p className="text-text-secondary truncate">{adv.summary}</p>}
+                                            </div>
+                                            <a href={adv.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline shrink-0 flex items-center gap-1">
+                                              <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       )}

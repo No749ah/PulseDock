@@ -465,13 +465,18 @@ export class BulkActionDto {
   @IsString({ each: true })
   ids!: string[];
 
-  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag'])
-  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag';
+  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag', 'update-interval', 'update-timeout', 'update-confirmations'])
+  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations';
 
   /** Tag ID — required when action is 'add-tag' or 'remove-tag' */
   @IsOptional()
   @IsString()
   tagId?: string;
+
+  /** Numeric value — required when action is 'update-interval', 'update-timeout', or 'update-confirmations' */
+  @IsOptional()
+  @IsNumber()
+  value?: number;
 }
 
 export class ImportExternalDto {

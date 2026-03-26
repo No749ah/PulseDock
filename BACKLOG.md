@@ -1,16 +1,19 @@
-## Status Summary (2026-03-26 11:25 UTC)
-- **Build/Test:** ✅ Clean build + 3387 API tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-26 12:20 UTC)
+- **Build/Test:** ✅ Clean build + 3403 API tests + 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200; code quality 8/8
-- **Branch:** heartbeat/2026-03-26-enterprise-features
+- **Branch:** heartbeat/2026-03-26-monitor-debug-improvements
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Widget Showcase:** ✅ 99 widgets deployed at `/status/widget-showcase` — ready for Noah's visual review
 - **Quality:** ✅ code quality 8/8, 0 any types, 0 console.log, 0 TODOs, 0 TS errors
-- **Last changes (11:25 cycle):**
-  - Incident Post-Mortem: rootCause + postmortemNotes fields on Incident, PATCH /v1/incidents/:id/postmortem, inline edit UI in incidents page expanded row. 6 new tests.
-  - Dashboard Health Timeline: `GET /v1/dashboard/health-timeline?days=30`. 15 new tests.
-  - Total tests: 3387. Tags page at /monitors/tags. Escalation policies frontend + integration. Monitor cloning. Business-hours schedule. Alert storm protection.
+- **Last changes (12:20 cycle):**
+  - Branch merge: heartbeat/2026-03-26-enterprise-features → dev
+  - Response body capture on failed HTTP checks (debug visibility in check history)
+  - Alert routing rule simulation API + UI (dry-run before go-live)
+  - Fixed all 25 TypeScript errors (spec files + web components)
+  - GET /v1/monitors/:id/incidents endpoint + Linked Incidents panel on monitor detail page
+  - Total tests: 3403.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

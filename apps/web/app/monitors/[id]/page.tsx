@@ -1629,13 +1629,30 @@ export default function MonitorDetailPage() {
                 const colorClass = typeColors[ac.alertChannel.type] ?? "text-text-secondary bg-surface-elevated border-border";
                 return (
                   <div key={ac.alertChannelId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-elevated border border-border">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${colorClass}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${colorClass} shrink-0`}>
                       {ac.alertChannel.type}
                     </span>
                     <span className="text-sm text-text-primary flex-1 truncate">{ac.alertChannel.name}</span>
-                    <span className="text-xs text-text-muted">{notifyLabels[ac.notifyOn] ?? ac.notifyOn}</span>
+                    <select
+                      value={ac.notifyOn}
+                      onChange={async (e) => {
+                        const user = getUser();
+                        if (!user) return;
+                        try {
+                          await api(`/v1/monitors/${id}/alerts/${ac.alertChannelId}`, user.id, {
+                            method: "PATCH",
+                            body: JSON.stringify({ notifyOn: e.target.value }),
+                          });
+                          setAlertChannels((prev) => prev.map((x) => x.alertChannelId === ac.alertChannelId ? { ...x, notifyOn: e.target.value } : x));
+                        } catch { /* non-critical */ }
+                      }}
+                      className="text-xs text-text-muted bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent rounded"
+                      title="Change notification trigger"
+                    >
+                      {Object.entries(notifyLabels).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
+                    </select>
                     {ac.escalationPolicy && (
-                      <span className="text-[10px] text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-1.5 py-0.5" title={`Escalation: ${ac.escalationPolicy.name}`}>
+                      <span className="text-[10px] text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-1.5 py-0.5 shrink-0" title={`Escalation: ${ac.escalationPolicy.name}`}>
                         ↗ {ac.escalationPolicy.name}
                       </span>
                     )}

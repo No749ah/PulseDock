@@ -127,11 +127,13 @@ export type MonitorFormDataExtended = MonitorFormData & {
   requestHeaders?: string;
   requestBody?: string;
   responseTimeThresholdMs?: number;
+  checkSecurityHeaders?: boolean;
   ehlo?: string;
   checkTls?: boolean;
   dnsRecordType?: string;
   dnsExpectedValue?: string;
   dnsTimeoutMs?: number;
+  dnsDetectChanges?: boolean;
   pingCount?: number;
   pingMaxLossPct?: number;
   browserExpectedText?: string;

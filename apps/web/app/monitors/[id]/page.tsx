@@ -968,7 +968,7 @@ export default function MonitorDetailPage() {
               Domain
             </button>
           )}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && (monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
             <button
               onClick={() => setActiveMainTab("security")}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
@@ -2107,14 +2107,14 @@ export default function MonitorDetailPage() {
                 </span>
               </div>
             </div>
-            {monitor.config?.detectChanges && (
+            {!!monitor.config?.detectChanges && (
               <div className="mt-2 pt-3 border-t border-border">
                 {Array.isArray(monitor.config?.dnsBaseline) && (monitor.config.dnsBaseline as string[]).length > 0 ? (
                   <>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Records</span>
                       <div className="flex items-center gap-2">
-                        {monitor.config?.dnsBaselineSetAt && (
+                        {!!monitor.config?.dnsBaselineSetAt && (
                           <span className="text-xs text-text-muted">
                             Set {new Date(String(monitor.config.dnsBaselineSetAt)).toLocaleDateString()}
                           </span>

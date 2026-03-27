@@ -771,6 +771,41 @@ export function MonitorFormModal({
               </label>
             </div>
 
+            {/* Response Header Tracking */}
+            <div className="flex flex-col gap-2 p-3 rounded-lg bg-surface-2 border border-border">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="enableHeaderTracking"
+                  checked={!!((formData as unknown as { trackedHeaders?: string }).trackedHeaders)}
+                  onChange={(e) => onSetFormData({ ...formData, trackedHeaders: e.target.checked ? 'x-frame-options,content-security-policy,server' : '' } as typeof formData & { trackedHeaders?: string })}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+                />
+                <label htmlFor="enableHeaderTracking" className="cursor-pointer select-none">
+                  <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                    📋 Track response header changes
+                  </span>
+                  <span className="text-xs text-text-secondary mt-0.5 block">Alerts yellow when specified response headers change from baseline. Useful for detecting security header regressions, CDN configuration changes, or server version updates.</span>
+                </label>
+              </div>
+              {!!((formData as unknown as { trackedHeaders?: string }).trackedHeaders) && (
+                <div className="mt-1 ml-7">
+                  <label htmlFor="trackedHeaders" className="text-xs text-text-secondary block mb-1">
+                    Header names to track (comma-separated, case-insensitive):
+                  </label>
+                  <input
+                    id="trackedHeaders"
+                    type="text"
+                    value={(formData as unknown as { trackedHeaders?: string }).trackedHeaders ?? ''}
+                    onChange={(e) => onSetFormData({ ...formData, trackedHeaders: e.target.value } as typeof formData & { trackedHeaders?: string })}
+                    placeholder="e.g. x-frame-options,content-security-policy,server"
+                    className="w-full px-2 py-1.5 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">Common: <code className="text-accent">server</code>, <code className="text-accent">x-frame-options</code>, <code className="text-accent">content-security-policy</code>, <code className="text-accent">strict-transport-security</code>, <code className="text-accent">x-powered-by</code></p>
+                </div>
+              )}
+            </div>
+
             {/* Redirect Following */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input

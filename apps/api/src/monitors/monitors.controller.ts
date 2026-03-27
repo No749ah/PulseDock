@@ -1177,6 +1177,27 @@ export class MonitorsController {
     return { ok: true, message: 'Content baseline cleared — will be re-established on next successful check.' };
   }
 
+  @Post(':id/header-baseline/reset')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Reset response header baseline', description: 'Clears the stored response header baseline for an HTTP/BROWSER monitor with header tracking enabled. The next successful check will establish a new baseline.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Header baseline cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resetHeaderBaseline(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    await this.prisma.monitor.update({
+      where: { id },
+      data: { headerBaseline: Prisma.DbNull, headerBaselineSetAt: null },
+    });
+
+    return { ok: true, message: 'Header baseline cleared — will be re-established on next successful check.' };
+  }
+
   @Get(':id/slo-report')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'SLO/SLI report', description: 'Returns the SLO report for a monitor, including uptime SLO, latency SLI (if configured), and error budget overview.' })

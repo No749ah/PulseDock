@@ -325,6 +325,11 @@ export async function runHttpCheck(
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
   const checkSecurityHeaders = config['checkSecurityHeaders'] === true;
 
+  // ─── Header Tracking ──────────────────────────────────────────────────────────
+  const trackedHeaderNames: string[] = typeof config['trackedHeaders'] === 'string' && config['trackedHeaders'].trim()
+    ? config['trackedHeaders'].split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+    : [];
+
   // ─── Authentication ───────────────────────────────────────────────────────────
   // authType: 'none' | 'basic' | 'bearer' | 'api-key'
   const authType = typeof config['authType'] === 'string' ? config['authType'] : 'none';
@@ -380,6 +385,11 @@ export async function runHttpCheck(
     const { statusCode, body, latencyMs, timings, responseHeaders, redirectChain } = timedResult;
     const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
     const responseBodyHash = detectContentChanges && body ? createHash('sha256').update(body).digest('hex').slice(0, 64) : null;
+
+    // ─── Capture tracked headers ──────────────────────────────────────────────
+    const capturedHeaders: Record<string, string | null> | null = trackedHeaderNames.length > 0
+      ? Object.fromEntries(trackedHeaderNames.map((h) => [h, responseHeaders[h] ?? null]))
+      : null;
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
@@ -478,6 +488,7 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
 
@@ -491,6 +502,7 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
 
@@ -507,6 +519,7 @@ export async function runHttpCheck(
       securityHeadersAudit: securityAudit,
       responseBodyHash,
       ...(redirectChain.length > 0 ? { redirectChain } : {}),
+      ...(capturedHeaders ? { capturedHeaders } : {}),
     };
   } catch (error) {
     return {

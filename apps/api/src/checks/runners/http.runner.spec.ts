@@ -11,6 +11,7 @@ interface MockConfig {
   shouldError?: Error;
   delayMs?: number;
   secureConnect?: boolean;
+  headers?: Record<string, string>;
 }
 
 const mockState = vi.hoisted(() => ({
@@ -70,8 +71,8 @@ function buildMockModule(getConfig: () => MockConfig) {
         res.statusCode = cfg.statusCode;
         // Support location header for redirect testing
         res.headers = (cfg as MockConfig & { location?: string }).location
-          ? { location: (cfg as MockConfig & { location?: string }).location! }
-          : {};
+          ? { location: (cfg as MockConfig & { location?: string }).location!, ...(cfg.headers ?? {}) }
+          : (cfg.headers ?? {});
         callback(res);
         setTimeout(() => {
           res.emit('data', Buffer.from(cfg.body));
@@ -702,5 +703,37 @@ describe('runHttpCheck — redirect following', () => {
     const result = await runHttpCheck('https://example.com', 5000, {});
     // Should not have redirectChain key or it should be empty/absent
     expect('redirectChain' in result ? (result as { redirectChain?: string[] }).redirectChain ?? [] : []).toHaveLength(0);
+  });
+});
+
+describe('runHttpCheck — header tracking', () => {
+  it('returns capturedHeaders for tracked header names', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'DENY', 'server': 'nginx/1.24' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'x-frame-options,server' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders).toEqual({
+      'x-frame-options': 'DENY',
+      'server': 'nginx/1.24',
+    });
+  });
+
+  it('captures null for absent tracked headers', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'DENY' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'x-frame-options,content-security-policy' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders).toEqual({
+      'x-frame-options': 'DENY',
+      'content-security-policy': null,
+    });
+  });
+
+  it('does not include capturedHeaders when trackedHeaders is empty', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'server': 'nginx' } };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect('capturedHeaders' in result).toBe(false);
+  });
+
+  it('normalizes tracked header names to lowercase', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'SAMEORIGIN' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'X-Frame-Options' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders?.['x-frame-options']).toBe('SAMEORIGIN');
   });
 });

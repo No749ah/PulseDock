@@ -590,6 +590,7 @@ function MonitorsPageInner() {
           scheduleEndHour: formData.scheduleEndHour,
           ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
           sliLatencyWindow: formData.sliLatencyWindow,
+          trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
         }),
       });
       setShowModal(false);
@@ -650,6 +651,7 @@ function MonitorsPageInner() {
           scheduleEndHour: formData.scheduleEndHour,
           sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
           sliLatencyWindow: formData.sliLatencyWindow,
+          trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
         }),
       });
       setShowModal(false);

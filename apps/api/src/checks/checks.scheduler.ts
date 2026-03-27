@@ -173,6 +173,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         scheduleDays: true,
         scheduleStartHour: true,
         scheduleEndHour: true,
+        trackedHeaders: true,
+        headerBaseline: true,
+        headerBaselineSetAt: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },

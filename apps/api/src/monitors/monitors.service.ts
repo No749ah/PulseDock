@@ -114,6 +114,9 @@ export class MonitorsService {
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
       shareToken: m.shareToken ?? null,
+      trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
+      headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -183,6 +186,9 @@ export class MonitorsService {
       scheduleStartHour: m.scheduleStartHour,
       scheduleEndHour: m.scheduleEndHour,
       shareToken: m.shareToken ?? null,
+      trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
+      headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -227,6 +233,7 @@ export class MonitorsService {
     scheduleEndHour?: number;
     sliLatencyTarget?: number;
     sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -278,6 +285,7 @@ export class MonitorsService {
         scheduleDays: body.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: body.scheduleStartHour ?? 8,
         scheduleEndHour: body.scheduleEndHour ?? 18,
+        ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -338,6 +346,7 @@ export class MonitorsService {
       scheduleEndHour: created.scheduleEndHour,
       sliLatencyTarget: created.sliLatencyTarget ?? null,
       sliLatencyWindow: created.sliLatencyWindow,
+      trackedHeaders: (created as typeof created & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -388,6 +397,7 @@ export class MonitorsService {
     scheduleEndHour?: number;
     sliLatencyTarget?: number | null;
     sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -445,6 +455,7 @@ export class MonitorsService {
         ...(body.scheduleEndHour !== undefined ? { scheduleEndHour: body.scheduleEndHour } : {}),
         ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
+        ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
       },
     });
 

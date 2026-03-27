@@ -137,9 +137,15 @@ export class ChecksService {
   }
 
   private async dispatchCheck(monitor: Monitor) {
+    // Merge top-level trackedHeaders field into config for HTTP/BROWSER runners
+    const monitorWithHeaders = monitor as typeof monitor & { trackedHeaders?: string | null };
+    const httpConfig = monitorWithHeaders.trackedHeaders
+      ? { ...monitor.config, trackedHeaders: monitorWithHeaders.trackedHeaders }
+      : monitor.config;
+
     switch (monitor.type) {
       case 'HTTP':
-        return runHttpCheck(monitor.target, monitor.timeoutMs, monitor.config);
+        return runHttpCheck(monitor.target, monitor.timeoutMs, httpConfig);
       case 'GIT_RELEASE':
         return runGitReleaseCheck(monitor.target, monitor.config);
       case 'DOCKER_IMAGE':
@@ -157,7 +163,7 @@ export class ChecksService {
       case 'SMTP':
         return runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'BROWSER':
-        return runBrowserCheck(monitor.target, monitor.config, monitor.timeoutMs);
+        return runBrowserCheck(monitor.target, httpConfig, monitor.timeoutMs);
       case 'WHOIS':
         return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
       default:
@@ -374,6 +380,70 @@ export class ChecksService {
         this.logger.log(
           `[ContentChange] Content changed for monitor ${monitor.id} (${monitor.name}): ${storedHash} → ${httpResult.responseBodyHash}`,
         );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
+    // ── Response Header Tracking ──────────────────────────────────────────────────────
+    // When trackedHeaders is set on HTTP/BROWSER monitors:
+    // - First successful run with capturedHeaders: persist as headerBaseline
+    // - Subsequent runs: compare; if any tracked header changed → degrade to yellow
+    const headerResult = result as PluginExecutionResult;
+    if (
+      (monitor.type === 'HTTP' || monitor.type === 'BROWSER') &&
+      headerResult.capturedHeaders &&
+      headerResult.ok
+    ) {
+      const monitorWithHeaders = monitor as typeof monitor & {
+        trackedHeaders?: string | null;
+        headerBaseline?: Record<string, string | null> | null;
+        headerBaselineSetAt?: Date | null;
+      };
+      const hasBaseline =
+        monitorWithHeaders.headerBaseline &&
+        typeof monitorWithHeaders.headerBaseline === 'object' &&
+        Object.keys(monitorWithHeaders.headerBaseline).length > 0;
+
+      if (!hasBaseline) {
+        // First run — persist baseline
+        try {
+          await this.prisma.monitor.update({
+            where: { id: monitor.id },
+            data: {
+              headerBaseline: headerResult.capturedHeaders as Prisma.InputJsonValue,
+              headerBaselineSetAt: new Date(),
+            },
+          });
+          this.logger.log(
+            `[HeaderTracking] Baseline set for monitor ${monitor.id} (${monitor.name}): ${JSON.stringify(headerResult.capturedHeaders)}`,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `[HeaderTracking] Failed to persist baseline for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      } else {
+        // Compare with baseline
+        const baseline = monitorWithHeaders.headerBaseline as Record<string, string | null>;
+        const current = headerResult.capturedHeaders;
+        const changed: string[] = [];
+        for (const [header, baselineValue] of Object.entries(baseline)) {
+          const currentValue = current[header] ?? null;
+          if (currentValue !== baselineValue) {
+            changed.push(`${header}: "${baselineValue ?? '(absent)'}" → "${currentValue ?? '(absent)'}"`);
+          }
+        }
+        if (changed.length > 0) {
+          result = {
+            ...result,
+            ok: false,
+            level: 'yellow',
+            message: `Header changed — ${changed.join('; ')}`,
+          };
+          this.logger.log(
+            `[HeaderTracking] Headers changed for monitor ${monitor.id} (${monitor.name}): ${changed.join(', ')}`,
+          );
+        }
       }
     }
     // ─────────────────────────────────────────────────────────────────────────────────

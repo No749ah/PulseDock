@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "diff" | "annotations">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations">("overview");
 
   // Annotations
   type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
@@ -1084,6 +1084,19 @@ export default function MonitorDetailPage() {
               Content
             </button>
           )}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!((monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders) && (
+            <button
+              onClick={() => setActiveMainTab("headers")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "headers"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              Headers
+            </button>
+          )}
           {(monitor.type === "HTTP" || monitor.type === "BROWSER") && (
             <button
               onClick={() => setActiveMainTab("diff")}
@@ -1919,6 +1932,108 @@ export default function MonitorDetailPage() {
             )}
           </Card>
         )}
+
+        {/* Response Header Tracking Tab */}
+        {(activeMainTab as string) === "headers" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && (() => {
+          const m = monitor as typeof monitor & {
+            trackedHeaders?: string | null;
+            headerBaseline?: Record<string, string | null> | null;
+            headerBaselineSetAt?: string | null;
+          };
+          const trackedNames = (m.trackedHeaders ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+          const baseline = m.headerBaseline as Record<string, string | null> | null | undefined;
+          return (
+            <Card className="p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <List className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Response Header Tracking</h2>
+              </div>
+              <p className="text-xs text-text-muted">
+                Tracking {trackedNames.length} header{trackedNames.length !== 1 ? "s" : ""}: {trackedNames.map((h) => <code key={h} className="text-accent mx-0.5">{h}</code>)}.
+                Alerts yellow when any tracked header value changes from baseline.
+              </p>
+
+              {baseline && Object.keys(baseline).length > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Baseline values
+                      {m.headerBaselineSetAt && (
+                        <span className="ml-2 font-normal text-text-muted">established {new Date(m.headerBaselineSetAt).toLocaleString()}</span>
+                      )}
+                    </p>
+                    <div className="rounded-xl overflow-hidden border border-border">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-surface-elevated border-b border-border">
+                            <th className="text-left px-4 py-2 font-semibold text-text-secondary uppercase tracking-wider w-1/3">Header</th>
+                            <th className="text-left px-4 py-2 font-semibold text-text-secondary uppercase tracking-wider">Baseline value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(baseline).map(([header, value]) => (
+                            <tr key={header} className="border-b border-border/50 last:border-0 hover:bg-surface-elevated/40 transition-colors">
+                              <td className="px-4 py-2.5 font-mono text-text-secondary">{header}</td>
+                              <td className="px-4 py-2.5 font-mono text-text-primary break-all">
+                                {value ?? <span className="text-text-muted italic">(absent)</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</p>
+                    <p className="text-xs text-text-secondary">Reset the baseline to re-capture current header values. The next successful check will establish a new baseline.</p>
+                    <button
+                      className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
+                      onClick={async () => {
+                        const u = getUser();
+                        if (!u) return;
+                        await api(`/v1/monitors/${monitor.id}/header-baseline/reset`, u.id, { method: "POST" });
+                        setMonitor((prev) => prev ? { ...prev, headerBaseline: null, headerBaselineSetAt: null } as typeof prev : prev);
+                      }}
+                    >
+                      Reset Baseline
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Recent Header Change Events</p>
+                    {runs.filter((r) => r.message?.includes("Header changed")).length > 0 ? (
+                      <div className="space-y-2">
+                        {runs.filter((r) => r.message?.includes("Header changed")).slice(0, 10).map((r) => (
+                          <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-warning/5 border border-warning/20">
+                            <span className="text-warning text-sm">⚠</span>
+                            <div>
+                              <p className="text-sm text-text-primary font-medium">Header changed</p>
+                              <p className="text-xs text-text-secondary">{r.message}</p>
+                              <p className="text-xs text-text-muted">{new Date(r.checkedAt).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 py-8 text-center">
+                        <CheckCircle className="w-8 h-8 text-success opacity-50" />
+                        <p className="text-sm text-text-secondary">No header changes detected</p>
+                        <p className="text-xs text-text-muted">PulseDock will alert here when tracked headers differ from the baseline.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <List className="w-10 h-10 text-text-muted opacity-40" />
+                  <p className="text-sm font-medium text-text-secondary">No baseline established yet</p>
+                  <p className="text-xs text-text-muted max-w-xs">Run a check to capture the current header values as the baseline. Future checks will compare against them and alert on changes.</p>
+                </div>
+              )}
+            </Card>
+          );
+        })()}
 
         {/* Annotations Tab */}
         {activeMainTab === "annotations" && (

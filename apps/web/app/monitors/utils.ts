@@ -68,6 +68,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     authApiKeyName: String(monitor.config?.authApiKeyName ?? ""),
     authApiKeyValue: String(monitor.config?.authApiKeyValue ?? ""),
     authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
+    trackedHeaders: (monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders ?? "",
   };
 }
 

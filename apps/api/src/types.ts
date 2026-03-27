@@ -79,6 +79,9 @@ export interface Monitor {
   scheduleEndHour: number;
   isAcknowledged?: boolean;
   pinned?: boolean;
+  trackedHeaders?: string | null;
+  headerBaseline?: Record<string, string | null> | null;
+  headerBaselineSetAt?: string | null;
   createdAt: string;
 }
 

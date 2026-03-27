@@ -220,6 +220,12 @@ export class CreateMonitorDto {
   @Max(23)
   scheduleEndHour?: number;
 
+  @ApiPropertyOptional({ description: 'Comma-separated HTTP response header names to track for changes (HTTP/BROWSER monitors only). Example: "x-frame-options,content-security-policy,server"', example: 'x-frame-options,content-security-policy' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  trackedHeaders?: string | null;
+
 }
 
 export class UpdateMonitorDto {
@@ -376,6 +382,11 @@ export class UpdateMonitorDto {
   @Min(0)
   @Max(23)
   scheduleEndHour?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  trackedHeaders?: string | null;
 
 }
 

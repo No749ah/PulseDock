@@ -2782,4 +2782,203 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── ntfy channel ───────────────────────────────────────────────────────────
+
+  describe('ntfy channel', () => {
+    it('sends POST to topic URL with correct headers for red level', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'API Server', type: 'HTTP', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', message: 'Connection refused' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'ntfy',
+        config: { topicUrl: 'https://ntfy.sh/my-alerts' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string>; body: string }];
+      expect(url).toBe('https://ntfy.sh/my-alerts');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers['X-Priority']).toBe('5');
+      expect(opts.headers['X-Title']).toContain('API Server');
+      expect(opts.headers['X-Title']).toContain('Down');
+      expect(opts.body).toContain('Connection refused');
+    });
+
+    it('sends priority 3 for yellow level', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'DB', type: 'TCP', target: 'db:5432' });
+      const run = makeRun({ level: 'yellow', message: 'High latency' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'ntfy',
+        config: { topicUrl: 'https://ntfy.sh/alerts' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+      expect(opts.headers['X-Priority']).toBe('3');
+    });
+
+    it('sends priority 2 for green (recovery)', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'Web', type: 'HTTP', target: 'https://example.com' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'ntfy',
+        config: { topicUrl: 'https://ntfy.sh/alerts' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+      expect(opts.headers['X-Priority']).toBe('2');
+      expect(opts.headers['X-Title']).toContain('Recovered');
+    });
+
+    it('includes Authorization Bearer header when token configured', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'Web', type: 'HTTP', target: 'https://example.com' });
+      const run = makeRun({ level: 'red', message: 'Down' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'ntfy',
+        config: { topicUrl: 'https://ntfy.self.hosted/alerts', token: 'tk_secretabc' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+      expect(opts.headers['Authorization']).toBe('Bearer tk_secretabc');
+    });
+
+    it('throws if ntfy returns non-ok status', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 403, text: async () => 'Forbidden' });
+      const channel = makeChannel({ type: 'ntfy', config: { topicUrl: 'https://ntfy.sh/alerts' } });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('ntfy returned 403');
+    });
+  });
+
+  // ── Gotify channel ─────────────────────────────────────────────────────────
+
+  describe('Gotify channel', () => {
+    it('sends POST to /message endpoint with correct payload for red level', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'API Server', type: 'HTTP', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', message: 'HTTP 503' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com', appToken: 'A.mXxXxXxXxX' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { headers: Record<string, string>; body: string }];
+      expect(url).toBe('https://gotify.example.com/message');
+      expect(opts.headers['X-Gotify-Key']).toBe('A.mXxXxXxXxX');
+      const body = JSON.parse(opts.body);
+      expect(body.priority).toBe(9);
+      expect(body.title).toContain('API Server');
+      expect(body.title).toContain('Down');
+      expect(body.message).toContain('HTTP 503');
+    });
+
+    it('strips trailing slash from serverUrl', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const channel = makeChannel({
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com/', appToken: 'tok' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url] = fetchMock.mock.calls[0] as [string];
+      expect(url).toBe('https://gotify.example.com/message');
+    });
+
+    it('uses priority 5 for yellow level', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'DB', type: 'TCP', target: 'db:5432' });
+      const run = makeRun({ level: 'yellow', message: 'Latency spike' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com', appToken: 'tok' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+      expect(JSON.parse(opts.body as string).priority).toBe(5);
+    });
+
+    it('uses priority 1 for green (recovery)', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const monitor = makeMonitor({ name: 'Web', type: 'HTTP', target: 'https://example.com' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com', appToken: 'tok' },
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+      const body = JSON.parse(opts.body as string);
+      expect(body.priority).toBe(1);
+      expect(body.title).toContain('Recovered');
+    });
+
+    it('allows custom priority override from config', async () => {
+      fetchMock.mockResolvedValue({ ok: true });
+      const channel = makeChannel({
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com', appToken: 'tok', priority: 7 },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+      expect(JSON.parse(opts.body as string).priority).toBe(7);
+    });
+
+    it('throws if Gotify returns non-ok status', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 401, text: async () => 'Unauthorized' });
+      const channel = makeChannel({
+        type: 'gotify',
+        config: { serverUrl: 'https://gotify.example.com', appToken: 'bad-token' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Gotify returned 401');
+    });
+  });
+
 });

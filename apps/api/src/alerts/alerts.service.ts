@@ -422,6 +422,86 @@ export class AlertsService {
       }
       return;
     }
+
+    // ── ntfy ─────────────────────────────────────────────────────────────────
+    // Config: { topicUrl: string, token?: string }
+    // topicUrl is the full topic URL e.g. https://ntfy.sh/my-alerts or https://ntfy.example.com/alerts
+    if (channel.type === 'ntfy' && typeof channel.config.topicUrl === 'string') {
+      const ctx = extra as {
+        monitor?: { name?: string; type?: string; target?: string };
+        run?: { level?: string; message?: string; latencyMs?: number };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const priority = level === 'red' ? '5' : level === 'yellow' ? '3' : '2';
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const title = `${emoji} ${monitor?.name ?? 'Monitor'} — ${statusLabel}`;
+      const msgText = run?.message ?? text;
+
+      const headers: Record<string, string> = {
+        'content-type': 'text/plain; charset=utf-8',
+        'X-Title': title,
+        'X-Priority': priority,
+        'X-Tags': level === 'green' ? 'white_check_mark' : level === 'yellow' ? 'warning' : 'rotating_light',
+      };
+      if (typeof channel.config.token === 'string' && channel.config.token.length > 0) {
+        headers['Authorization'] = `Bearer ${channel.config.token}`;
+      }
+
+      const resp = await fetch(channel.config.topicUrl as string, {
+        method: 'POST',
+        headers,
+        body: msgText,
+      });
+      if (!resp.ok) {
+        const respBody = await resp.text().catch(() => '');
+        throw new Error(`ntfy returned ${resp.status}: ${respBody}`);
+      }
+      return;
+    }
+
+    // ── Gotify ─────────────────────────────────────────────────────────────────
+    // Config: { serverUrl: string, appToken: string, priority?: number }
+    // serverUrl e.g. https://gotify.example.com (no trailing slash)
+    if (
+      channel.type === 'gotify' &&
+      typeof channel.config.serverUrl === 'string' &&
+      typeof channel.config.appToken === 'string'
+    ) {
+      const ctx = extra as {
+        monitor?: { name?: string; type?: string; target?: string };
+        run?: { level?: string; message?: string; latencyMs?: number };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const defaultPriority = level === 'red' ? 9 : level === 'yellow' ? 5 : 1;
+      const priority =
+        typeof channel.config.priority === 'number' ? channel.config.priority : defaultPriority;
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const title = `${emoji} ${monitor?.name ?? 'Monitor'} — ${statusLabel}`;
+      const msgText = run?.message ?? text;
+
+      const serverUrl = (channel.config.serverUrl as string).replace(/\/$/, '');
+      const resp = await fetch(`${serverUrl}/message`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-Gotify-Key': channel.config.appToken as string,
+        },
+        body: JSON.stringify({ title, message: msgText, priority }),
+      });
+      if (!resp.ok) {
+        const respBody = await resp.text().catch(() => '');
+        throw new Error(`Gotify returned ${resp.status}: ${respBody}`);
+      }
+      return;
+    }
   }
 
   /**

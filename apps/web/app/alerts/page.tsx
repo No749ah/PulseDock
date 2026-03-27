@@ -18,7 +18,7 @@ import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { brand } from '../../lib/brand';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify';
 
 type AlertChannel = {
   id: string;
@@ -55,6 +55,10 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <Smartphone className={`${iconClass} text-green-400`} />;
     case 'teams':
       return <MessageSquare className={`${iconClass} text-purple-400`} />;
+    case 'ntfy':
+      return <Bell className={`${iconClass} text-yellow-400`} />;
+    case 'gotify':
+      return <Bell className={`${iconClass} text-cyan-400`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -354,6 +358,16 @@ export default function AlertsPage() {
     if (type === 'opsgenie') return { apiKey: a, region: b || 'us' };
     if (type === 'sms') return { accountSid: a, authToken: secret ?? '', from: b, to: extras?.username ?? '' };
     if (type === 'teams') return { webhookUrl: a };
+    if (type === 'ntfy') {
+      const cfg: Record<string, unknown> = { topicUrl: a };
+      if (b?.trim()) cfg.token = b.trim();
+      return cfg;
+    }
+    if (type === 'gotify') {
+      const cfg: Record<string, unknown> = { serverUrl: a, appToken: b };
+      if (secret?.trim()) cfg.priority = parseInt(secret.trim(), 10) || 5;
+      return cfg;
+    }
     return { to: a };
   }
 
@@ -472,6 +486,14 @@ export default function AlertsPage() {
       setEditA(String(channel.config.webhookUrl ?? ''));
       setEditB('');
       setEditSecret('');
+    } else if (channel.type === 'ntfy') {
+      setEditA(String(channel.config.topicUrl ?? ''));
+      setEditB(String(channel.config.token ?? ''));
+      setEditSecret('');
+    } else if (channel.type === 'gotify') {
+      setEditA(String(channel.config.serverUrl ?? ''));
+      setEditB(String(channel.config.appToken ?? ''));
+      setEditSecret(String(channel.config.priority ?? '5'));
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -604,6 +626,8 @@ export default function AlertsPage() {
                     { value: 'opsgenie', label: 'OpsGenie' },
                     { value: 'sms', label: 'SMS (Twilio)' },
                     { value: 'teams', label: 'Microsoft Teams' },
+                    { value: 'ntfy', label: 'ntfy (self-hosted)' },
+                    { value: 'gotify', label: 'Gotify (self-hosted)' },
                   ]}
                 />
               </div>
@@ -613,11 +637,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : form.type === 'ntfy' ? <span>Paste the full <strong>ntfy topic URL</strong> (e.g. <code className="text-accent text-xs">https://ntfy.sh/my-alerts</code>). Add an access token if your topic is protected.</span> : form.type === 'gotify' ? <span>Enter your <strong>Gotify server URL</strong> and <strong>App Token</strong>. Create a Gotify app to get the token.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
@@ -661,6 +685,27 @@ export default function AlertsPage() {
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">To number <span className="font-normal text-text-secondary">(E.164 format)</span></label>
                       <input className={inputClass} placeholder="+15559876543" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
                       <p className="mt-1 text-xs text-text-secondary">The recipient phone number.</p>
+                    </div>
+                  </>
+                )}
+                {form.type === 'ntfy' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Access Token <span className="font-normal text-text-secondary">(optional)</span></label>
+                    <input className={inputClass} type="password" placeholder="tk_xxxxxxxxxx" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                    <p className="mt-1 text-xs text-text-secondary">Required only if your ntfy topic is access-controlled.</p>
+                  </div>
+                )}
+                {form.type === 'gotify' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">App Token</label>
+                      <input className={inputClass} type="password" placeholder="A.xxxxxxxxxxxx" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Create an app in Gotify to get this token.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Priority <span className="font-normal text-text-secondary">(optional, default: auto)</span></label>
+                      <input className={inputClass} type="number" min={1} max={10} placeholder="5" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">1–4 low, 5–7 normal, 8–10 high. Leave blank for auto (9=down, 5=degraded, 1=recovered).</p>
                     </div>
                   </>
                 )}
@@ -888,7 +933,7 @@ export default function AlertsPage() {
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : 'URL'}: {form.a ? 'configured' : 'missing'}
                 </p>
                 {form.type === 'telegram' && (
                   <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
@@ -929,7 +974,7 @@ export default function AlertsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : 'URL'}
+                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : selected?.type === 'ntfy' ? 'Topic URL' : selected?.type === 'gotify' ? 'Server URL' : 'URL'}
                 </label>
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>
@@ -955,6 +1000,26 @@ export default function AlertsPage() {
                       <option value="Markdown">Markdown</option>
                       <option value="">Plain text</option>
                     </select>
+                  </div>
+                </>
+              )}
+              {selected?.type === 'ntfy' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Access Token <span className="font-normal text-text-secondary">(optional)</span></label>
+                  <input className={inputClass} type="password" placeholder="tk_xxxxxxxxxx" value={editB} onChange={(e) => setEditB(e.target.value)} />
+                  <p className="mt-1 text-xs text-text-secondary">Required only if your ntfy topic is access-controlled.</p>
+                </div>
+              )}
+              {selected?.type === 'gotify' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">App Token</label>
+                    <input className={inputClass} type="password" placeholder="A.xxxxxxxxxxxx" value={editB} onChange={(e) => setEditB(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Priority <span className="font-normal text-text-secondary">(optional)</span></label>
+                    <input className={inputClass} type="number" min={1} max={10} placeholder="5" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
+                    <p className="mt-1 text-xs text-text-secondary">Leave blank for auto (9=down, 5=degraded, 1=recovered).</p>
                   </div>
                 </>
               )}

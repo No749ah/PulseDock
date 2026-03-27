@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -118,6 +118,7 @@ function MonitorsPageInner() {
     anomalyMultiplier: number;
     sliLatencyTarget: number | "";
     sliLatencyWindow: number;
+    rtoMinutes: number | undefined;
     cronExpression: string;
     scheduleEnabled: boolean;
     scheduleDays: string;
@@ -152,6 +153,7 @@ function MonitorsPageInner() {
     scheduleEndHour: 18,
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
+    rtoMinutes: undefined,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -178,6 +180,7 @@ function MonitorsPageInner() {
   const [bulkValue, setBulkValue] = useState<string>("");
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
+  const [pauseMenuId, setPauseMenuId] = useState<string | null>(null);
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
@@ -261,6 +264,13 @@ function MonitorsPageInner() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [snoozeMenuId]);
+
+  useEffect(() => {
+    if (!pauseMenuId) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPauseMenuId(null); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pauseMenuId]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -595,6 +605,7 @@ function MonitorsPageInner() {
           ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
           sliLatencyWindow: formData.sliLatencyWindow,
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
+          ...(formData.rtoMinutes !== undefined ? { rtoMinutes: formData.rtoMinutes } : {}),
         }),
       });
       setShowModal(false);
@@ -602,7 +613,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -656,6 +667,7 @@ function MonitorsPageInner() {
           sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
           sliLatencyWindow: formData.sliLatencyWindow,
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
+          rtoMinutes: formData.rtoMinutes ?? null,
         }),
       });
       setShowModal(false);
@@ -808,6 +820,31 @@ function MonitorsPageInner() {
       success(`Monitor snoozed for ${label}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to snooze monitor");
+    }
+  };
+
+  const handlePause = async (monitorId: string, minutes: number) => {
+    setPauseMenuId(null);
+    try {
+      const res = await api<{ pausedUntil: string }>(`/v1/monitors/${monitorId}/pause`, user?.id, {
+        method: "POST",
+        body: JSON.stringify({ minutes }),
+      });
+      const label = minutes >= 1440 ? `${Math.round(minutes / 1440)}d` : minutes >= 60 ? `${Math.round(minutes / 60)}h` : `${minutes}m`;
+      setMonitors((prev) => prev.map((m) => m.id === monitorId ? { ...m, pausedUntil: res.pausedUntil } : m));
+      success(`Monitor checks paused for ${label}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to pause monitor");
+    }
+  };
+
+  const handleResumePause = async (monitorId: string) => {
+    try {
+      await api(`/v1/monitors/${monitorId}/pause`, user?.id, { method: "DELETE" });
+      setMonitors((prev) => prev.map((m) => m.id === monitorId ? { ...m, pausedUntil: null } : m));
+      success("Monitor checks resumed");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to resume monitor");
     }
   };
 
@@ -1602,6 +1639,11 @@ function MonitorsPageInner() {
                                   🔇
                                 </span>
                               )}
+                              {monitor.pausedUntil && new Date(monitor.pausedUntil) > new Date() && (
+                                <span title={`Checks paused until ${new Date(monitor.pausedUntil).toLocaleString()}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 whitespace-nowrap cursor-help">
+                                  ⏸ Paused
+                                </span>
+                              )}
                               {(monitor as typeof monitor & { isAcknowledged?: boolean }).isAcknowledged && (
                                 <span title="Alert acknowledged" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 whitespace-nowrap">
                                   🔔
@@ -1645,6 +1687,7 @@ function MonitorsPageInner() {
                               monitorId={monitor.id}
                               monitorType={monitor.type}
                               enabled={monitor.enabled}
+                              pausedUntil={monitor.pausedUntil}
                               runs={runs}
                             />
                           </TableCell>
@@ -1767,6 +1810,27 @@ function MonitorsPageInner() {
                                     {[1, 4, 8, 24, 168].map((h) => (
                                       <button key={h} onClick={() => handleSnooze(monitor.id, h)} className="w-full text-left px-3 py-1.5 text-sm text-text-primary hover:bg-bg-surface transition-colors" role="menuitem">
                                         {h === 168 ? "7 days" : h === 1 ? "1 hour" : `${h} hours`}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="relative">
+                                {monitor.pausedUntil && new Date(monitor.pausedUntil) > new Date() ? (
+                                  <Button variant="ghost" size="sm" onClick={() => handleResumePause(monitor.id)} className="text-sky-400 hover:text-sky-300" aria-label={`Resume checks for ${monitor.name}`} title="Resume checks">
+                                    <PlayCircle className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <Button variant="ghost" size="sm" onClick={() => setPauseMenuId(pauseMenuId === monitor.id ? null : monitor.id)} className="text-text-secondary hover:text-sky-400" aria-label={`Pause checks for ${monitor.name}`} title="Pause checks">
+                                    <PauseCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {pauseMenuId === monitor.id && (
+                                  <div className="absolute right-0 top-full mt-1 z-50 bg-bg-card border border-border rounded-xl shadow-lg min-w-[160px] py-1" role="menu">
+                                    <p className="px-3 py-1 text-[10px] font-semibold text-text-muted uppercase tracking-wider">Pause checks for</p>
+                                    {[[30, "30 minutes"], [60, "1 hour"], [240, "4 hours"], [480, "8 hours"], [1440, "24 hours"], [10080, "7 days"]].map(([m, label]) => (
+                                      <button key={m} onClick={() => handlePause(monitor.id, m as number)} className="w-full text-left px-3 py-1.5 text-sm text-text-primary hover:bg-bg-surface transition-colors" role="menuitem">
+                                        {label}
                                       </button>
                                     ))}
                                   </div>

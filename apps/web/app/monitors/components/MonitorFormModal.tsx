@@ -1086,6 +1086,30 @@ export function MonitorFormModal({
           <p className="mt-1 text-xs text-text-secondary">Rolling window for Latency SLI measurement.</p>
         </div>
 
+        {/* RTO */}
+        <div>
+          <label className="text-sm font-medium text-white">
+            Recovery Time Objective (RTO)
+            <span className="ml-1 text-xs text-white/40">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              min={1}
+              max={10080}
+              placeholder="e.g. 15"
+              value={formData.rtoMinutes ?? ''}
+              onChange={e => {
+                const v = e.target.value === '' ? undefined : parseInt(e.target.value);
+                onSetFormData({ ...formData, rtoMinutes: v });
+              }}
+              className="w-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+            />
+            <span className="text-sm text-white/50">minutes</span>
+          </div>
+          <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
+        </div>
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">

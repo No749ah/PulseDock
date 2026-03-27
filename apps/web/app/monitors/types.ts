@@ -50,6 +50,8 @@ export interface MonitorItem {
   latencyAlertMs?: number | null;
   shareToken?: string | null;
   pinned?: boolean;
+  pausedUntil?: string | null;
+  mutedUntil?: string | null;
 }
 
 export interface MonitorRun {

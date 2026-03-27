@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Settings, TrendingUp, Clock, Shield, AlertCircle, CheckCircle, AlertTriangle } from "lucide-react";
 import { api } from "../../../../lib/api";
-import type { SloReport, MonitorItem } from "./types";
+import type { SloReport, MonitorItem, UptimeStats } from "./types";
 
 interface SloTabProps {
   monitor: MonitorItem;
@@ -199,6 +199,7 @@ function ConfigSloModal({ monitor, onClose, onSave }: ConfigSloModalProps) {
 
 export function SloTab({ monitor, userId, onMonitorUpdated }: SloTabProps) {
   const [report, setReport] = useState<SloReport | null>(null);
+  const [uptimeData, setUptimeData] = useState<UptimeStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -209,8 +210,12 @@ export function SloTab({ monitor, userId, onMonitorUpdated }: SloTabProps) {
     setLoading(true);
     setError("");
     try {
-      const data = await api<SloReport>(`/v1/monitors/${monitor.id}/slo-report`, userId);
-      setReport(data);
+      const [sloData, uptime] = await Promise.all([
+        api<SloReport>(`/v1/monitors/${monitor.id}/slo-report`, userId),
+        api<UptimeStats>(`/v1/monitors/${monitor.id}/uptime?period=30d`, userId).catch(() => null),
+      ]);
+      setReport(sloData);
+      setUptimeData(uptime);
       setLoaded(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load SLO report");
@@ -244,6 +249,7 @@ export function SloTab({ monitor, userId, onMonitorUpdated }: SloTabProps) {
     // Refresh report
     setLoaded(false);
     setReport(null);
+    setUptimeData(null);
     setTimeout(() => loadReport(), 100);
   };
 
@@ -397,6 +403,49 @@ export function SloTab({ monitor, userId, onMonitorUpdated }: SloTabProps) {
                     : `${((report.latency.exceedingChecks / report.latency.totalChecks) * 100).toFixed(1)}% exceeding`}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* RTO Card */}
+          {uptimeData?.rtoMinutes != null && uptimeData.rtoMinutes > 0 && (
+            <div className="p-4 rounded-xl bg-white/3 border border-white/8 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Recovery Time Objective (RTO)
+                </h3>
+                <span className="text-xs text-text-muted">Target: ≤{uptimeData.rtoMinutes} min</span>
+              </div>
+              {uptimeData.rtoCompliancePct !== null && uptimeData.rtoCompliancePct !== undefined ? (
+                <div className="space-y-3">
+                  <div className="flex items-end gap-2">
+                    <span className={`text-3xl font-bold tabular-nums ${
+                      uptimeData.rtoCompliancePct >= 95 ? 'text-green-400' :
+                      uptimeData.rtoCompliancePct >= 80 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {uptimeData.rtoCompliancePct}%
+                    </span>
+                    <span className="text-sm text-text-secondary mb-1">RTO compliance</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/10 text-center">
+                      <div className="text-xl font-bold text-green-400 tabular-nums">{uptimeData.rtoCompliant ?? 0}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">Within RTO</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-red-500/10 text-center">
+                      <div className="text-xl font-bold text-red-400 tabular-nums">{uptimeData.rtoBreaches ?? 0}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">RTO breached</div>
+                    </div>
+                  </div>
+                  {(uptimeData.rtoBreaches ?? 0) > 0 && (
+                    <p className="text-xs text-yellow-400">
+                      ⚠️ {uptimeData.rtoBreaches} outage{(uptimeData.rtoBreaches ?? 0) !== 1 ? 's' : ''} exceeded the {uptimeData.rtoMinutes}-minute RTO target.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-text-secondary">No incidents in the selected period — RTO compliance: 100%</p>
+              )}
             </div>
           )}
 

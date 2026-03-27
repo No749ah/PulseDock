@@ -234,6 +234,7 @@ export class MonitorsService {
     sliLatencyTarget?: number;
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -286,6 +287,7 @@ export class MonitorsService {
         scheduleStartHour: body.scheduleStartHour ?? 8,
         scheduleEndHour: body.scheduleEndHour ?? 18,
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
+        ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -398,6 +400,7 @@ export class MonitorsService {
     sliLatencyTarget?: number | null;
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -456,6 +459,7 @@ export class MonitorsService {
         ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
+        ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
       },
     });
 
@@ -1241,6 +1245,25 @@ export class MonitorsService {
         ? Math.round(withLatency.reduce((sum, r) => sum + (r.latencyMs as number), 0) / withLatency.length)
         : null;
 
+    // RTO analysis: for each incident with a known duration, check if it breached the RTO target
+    let rtoBreaches = 0;
+    let rtoCompliant = 0;
+    const rto = (monitor as typeof monitor & { rtoMinutes?: number | null }).rtoMinutes ?? null;
+    if (rto !== null && rto > 0) {
+      for (const incident of incidents) {
+        if (incident.durationSec > 0) {
+          const durationMin = incident.durationSec / 60;
+          if (durationMin > rto) {
+            rtoBreaches++;
+          } else {
+            rtoCompliant++;
+          }
+        }
+      }
+    }
+    const rtoTotal = rtoBreaches + rtoCompliant;
+    const rtoCompliancePct = rto !== null && rtoTotal > 0 ? Math.round((rtoCompliant / rtoTotal) * 100) : null;
+
     return {
       monitorId,
       period,
@@ -1256,6 +1279,10 @@ export class MonitorsService {
       mttrSec,
       mtbfSec,
       avgLatencyMs,
+      rtoMinutes: rto,
+      rtoBreaches,
+      rtoCompliant,
+      rtoCompliancePct,
     };
   }
 

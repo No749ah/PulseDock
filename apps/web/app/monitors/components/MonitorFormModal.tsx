@@ -775,6 +775,43 @@ export function MonitorFormModal({
               </div>
             </div>
 
+            {/* Response Header Assertion */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Assert header name <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { assertResponseHeader?: string }).assertResponseHeader ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value || undefined;
+                    onSetFormData({ ...formData, assertResponseHeader: val } as typeof formData & { assertResponseHeader?: string });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. content-type"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if this header is missing.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Assert header value <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { assertResponseHeaderValue?: string }).assertResponseHeaderValue ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value || undefined;
+                    onSetFormData({ ...formData, assertResponseHeaderValue: val } as typeof formData & { assertResponseHeaderValue?: string });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. application/json"
+                  disabled={!(formData as unknown as { assertResponseHeader?: string }).assertResponseHeader}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if header value doesn&apos;t contain this.</p>
+              </div>
+            </div>
+
             {/* Security Headers Audit */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input

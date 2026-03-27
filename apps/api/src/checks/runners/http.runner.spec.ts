@@ -775,3 +775,48 @@ describe('runHttpCheck — response size alerts', () => {
     expect(result.message).toMatch(/min 1000/);
   });
 });
+
+describe('runHttpCheck — response header assertion', () => {
+  it('returns red when asserted header is missing', async () => {
+    mockState.https = { statusCode: 200, body: 'ok' };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'x-custom-header' });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('x-custom-header');
+    expect(result.message).toContain('missing');
+  });
+
+  it('returns ok when asserted header is present (no value check)', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type' });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain('content-type');
+  });
+
+  it('returns red when header value does not match', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'text/html' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type', assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('text/html');
+    expect(result.message).toContain('application/json');
+  });
+
+  it('returns ok when header value contains expected substring (case-insensitive)', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json; charset=utf-8' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type', assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(true);
+  });
+
+  it('header name matching is case-insensitive', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'Content-Type' });
+    expect(result.ok).toBe(true);
+  });
+
+  it('assertResponseHeaderValue alone (no header name) has no effect', async () => {
+    mockState.https = { statusCode: 200, body: 'ok' };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(true);
+  });
+});

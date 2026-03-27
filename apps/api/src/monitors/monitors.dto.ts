@@ -226,6 +226,13 @@ export class CreateMonitorDto {
   @MaxLength(1024)
   trackedHeaders?: string | null;
 
+  @ApiPropertyOptional({ description: 'Recovery Time Objective in minutes. Alert breach when recovery takes longer than this target (1–10080, i.e. 1 min–1 week).', minimum: 1, maximum: 10080, example: 15 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10080)
+  rtoMinutes?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -387,6 +394,12 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(1024)
   trackedHeaders?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10080)
+  rtoMinutes?: number;
 
 }
 

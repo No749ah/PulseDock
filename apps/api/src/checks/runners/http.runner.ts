@@ -316,6 +316,11 @@ export async function runHttpCheck(
   const maxResponseBodyBytes = typeof config['maxResponseBodyBytes'] === 'number' && config['maxResponseBodyBytes'] > 0
     ? config['maxResponseBodyBytes'] : undefined;
   const checkResponseSize = minResponseBodyBytes !== undefined || maxResponseBodyBytes !== undefined;
+  // Header assertion: assert a specific response header is present (and optionally matches a value)
+  const assertResponseHeader = typeof config['assertResponseHeader'] === 'string' && config['assertResponseHeader'].trim()
+    ? config['assertResponseHeader'].trim().toLowerCase() : undefined;
+  const assertResponseHeaderValue = typeof config['assertResponseHeaderValue'] === 'string'
+    ? config['assertResponseHeaderValue'] : undefined;
   const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize;
   const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
   const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
@@ -417,6 +422,39 @@ export async function runHttpCheck(
         timings,
         ...(redirectChain.length > 0 ? { redirectChain } : {}),
       };
+    }
+
+    // ─── Response header assertion ────────────────────────────────────────────
+    if (assertResponseHeader) {
+      const actualValue = responseHeaders[assertResponseHeader] ?? null;
+      if (actualValue === null) {
+        return {
+          ok: false,
+          statusCode,
+          latencyMs,
+          message: `HTTP ${statusCode} — header "${assertResponseHeader}" missing`,
+          level: 'red' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
+      if (assertResponseHeaderValue !== undefined) {
+        const expected = assertResponseHeaderValue.trim();
+        // Case-insensitive contains match (covers "application/json; charset=utf-8" matching "application/json")
+        if (!actualValue.toLowerCase().includes(expected.toLowerCase())) {
+          return {
+            ok: false,
+            statusCode,
+            latencyMs,
+            message: `HTTP ${statusCode} — header "${assertResponseHeader}" is "${actualValue}" (expected to contain "${expected}")`,
+            level: 'red' as const,
+            timings,
+            securityHeadersAudit: securityAudit,
+            ...(capturedHeaders ? { capturedHeaders } : {}),
+          };
+        }
+      }
     }
 
     if (needsBody) {
@@ -542,11 +580,14 @@ export async function runHttpCheck(
     // Compute message suffix for security audit grade and redirect info
     const secGradeSuffix = securityAudit ? ` [Security: ${securityAudit.grade}]` : '';
     const redirectSuffix = redirectChain.length > 0 ? ` [${redirectChain.length} redirect${redirectChain.length > 1 ? 's' : ''}]` : '';
+    const headerAssertSuffix = assertResponseHeader
+      ? ` [header "${assertResponseHeader}" OK]`
+      : '';
     return {
       ok: true,
       statusCode,
       latencyMs,
-      message: `OK${redirectSuffix}${secGradeSuffix}`,
+      message: `OK${headerAssertSuffix}${redirectSuffix}${secGradeSuffix}`,
       level: 'green' as const,
       timings,
       securityHeadersAudit: securityAudit,

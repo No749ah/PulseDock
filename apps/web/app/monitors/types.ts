@@ -49,6 +49,7 @@ export interface MonitorItem {
   flapAlertedAt?: string | null;
   latencyAlertMs?: number | null;
   shareToken?: string | null;
+  pinned?: boolean;
 }
 
 export interface MonitorRun {

@@ -66,6 +66,7 @@ export interface Monitor {
   flapWindow: number;
   flapThreshold: number;
   flapAlertedAt: string | null;
+  pausedUntil: string | null;
   mutedUntil: string | null;
   latencyAlertMs: number | null;
   anomalyDetection: boolean;
@@ -77,6 +78,7 @@ export interface Monitor {
   scheduleStartHour: number;
   scheduleEndHour: number;
   isAcknowledged?: boolean;
+  pinned?: boolean;
   createdAt: string;
 }
 

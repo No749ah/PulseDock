@@ -14,6 +14,7 @@ import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
 import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
+import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 
 @ApiTags('Monitors')
@@ -1004,6 +1005,49 @@ export class MonitorsController {
     return { mutedUntil: null };
   }
 
+  // ─── Pause (temporary check suspension) ──────────────────────────────────
+
+  @Post(':id/pause')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Pause monitor checks',
+    description: 'Stop all checks on a monitor for the specified duration. Unlike muting (which suppresses alerts but still runs checks), pausing stops check execution entirely. Checks automatically resume when the pause expires. Useful for deployment windows or scheduled maintenance.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor paused. Returns pausedUntil timestamp.' })
+  @ApiResponse({ status: 400, description: 'Invalid minutes value.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async pauseMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: PauseMonitorDto,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const pausedUntil = new Date(Date.now() + body.minutes * 60_000);
+    await this.prisma.monitor.update({ where: { id }, data: { pausedUntil } });
+    return { pausedUntil: pausedUntil.toISOString() };
+  }
+
+  @Delete(':id/pause')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Resume monitor checks', description: 'Clear the pause on a monitor, immediately resuming check execution.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Monitor resumed.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resumeMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    await this.prisma.monitor.update({ where: { id }, data: { pausedUntil: null } });
+    return { pausedUntil: null };
+  }
+
   // ─── Acknowledge ──────────────────────────────────────────────────────────
 
   @Post(':id/acknowledge')
@@ -1311,5 +1355,18 @@ export class MonitorsController {
     @Query('baseRunId') baseRunId?: string,
   ) {
     return this.monitorsService.getResponseDiff(req.user.id, id, runId, baseRunId);
+  }
+
+  @Post(':id/pin')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Toggle monitor pinned state' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Returns updated pinned state.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async togglePin(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ): Promise<{ pinned: boolean }> {
+    return this.monitorsService.togglePin(req.user.id, id);
   }
 }

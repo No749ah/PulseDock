@@ -133,6 +133,7 @@ model Monitor {
   autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
   activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
   mutedUntil          DateTime?   // if set and in future, all alerts suppressed
+  pausedUntil         DateTime?   // if set and in future, checks are skipped (temporary pause)
   latencyAlertMs      Int?        // if set, alert when latency exceeds this threshold (ms) even on success
   anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
   anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
@@ -144,6 +145,7 @@ model Monitor {
   scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
   scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
   shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
+  pinned              Boolean     @default(false)  // pinned monitors appear at the top of the list
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

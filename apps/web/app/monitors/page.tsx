@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -1023,12 +1023,19 @@ function MonitorsPageInner() {
   });
 
   // Paginated slice
-  const totalFiltered = sortedMonitors.length;
+  // Sort pinned monitors to top (secondary sort, preserves primary sort within each group)
+  const sortedWithPins = [...sortedMonitors].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return 0;
+  });
+
+  const totalFiltered = sortedWithPins.length;
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(totalFiltered / (pageSize as number)));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedMonitors = pageSize === "all"
-    ? sortedMonitors
-    : sortedMonitors.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
+    ? sortedWithPins
+    : sortedWithPins.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
 
   if (!user) return null;
   if (loading)
@@ -1762,6 +1769,20 @@ function MonitorsPageInner() {
                               <Button variant="ghost" size="sm" onClick={() => setBadgeMonitor(monitor)} className="text-text-secondary hover:text-text-primary" aria-label={`Get embed badge for ${monitor.name}`} title="Embed badge">
                                 <Shield className="w-4 h-4" />
                               </Button>
+                              <button
+                                title={monitor.pinned ? "Unpin monitor" : "Pin monitor to top"}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const user = getUser();
+                                  if (!user) return;
+                                  await api(`/v1/monitors/${monitor.id}/pin`, user.id, { method: 'POST' });
+                                  setMonitors(prev => prev.map(m => m.id === monitor.id ? { ...m, pinned: !m.pinned } : m));
+                                }}
+                                className={`p-1.5 rounded hover:bg-white/10 transition-colors ${monitor.pinned ? 'text-amber-400' : 'text-text-muted hover:text-text-primary'}`}
+                                aria-label={monitor.pinned ? "Unpin" : "Pin"}
+                              >
+                                <Pin className="w-3.5 h-3.5" />
+                              </button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger" aria-label={`Delete monitor ${monitor.name}`} title="Delete monitor">
                                 <Trash2 className="w-4 h-4" />
                               </Button>

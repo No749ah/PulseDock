@@ -101,6 +101,7 @@ export class MonitorsService {
       flapWindow: m.flapWindow,
       flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
       anomalyDetection: m.anomalyDetection,
@@ -165,6 +166,7 @@ export class MonitorsService {
       flapWindow: m.flapWindow,
       flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
       isAcknowledged: m.acknowledgements.length > 0,
@@ -651,6 +653,7 @@ export class MonitorsService {
       flapWindow: cloned.flapWindow,
       flapThreshold: cloned.flapThreshold,
       flapAlertedAt: null,
+      pausedUntil: null,
       mutedUntil: null,
       latencyAlertMs: cloned.latencyAlertMs ?? null,
       isAcknowledged: false,
@@ -962,6 +965,7 @@ export class MonitorsService {
       flapWindow: monitor.flapWindow,
       flapThreshold: monitor.flapThreshold,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: (monitor as typeof monitor & { pausedUntil?: Date | null }).pausedUntil?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
       anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
@@ -2755,5 +2759,19 @@ export class MonitorsService {
       runId: failedRun.id,
       baseRunId: resolvedBaseRunId,
     };
+  }
+
+  /**
+   * Toggle the pinned state of a monitor. Pinned monitors appear at the top of the list.
+   * @throws NotFoundException if monitor not found or not owned by the user
+   */
+  async togglePin(userId: string, monitorId: string): Promise<{ pinned: boolean }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    const updated = await this.prisma.monitor.update({
+      where: { id: monitorId },
+      data: { pinned: !monitor.pinned },
+    });
+    return { pinned: updated.pinned };
   }
 }

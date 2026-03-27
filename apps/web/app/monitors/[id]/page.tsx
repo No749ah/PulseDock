@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -871,6 +871,19 @@ export default function MonitorDetailPage() {
                     <><Power className="w-3.5 h-3.5" />{toggling ? "Enabling…" : "Enable"}</>
                   )}
                 </Button>
+                <button
+                  onClick={async () => {
+                    const user = getUser();
+                    if (!user) return;
+                    const result = await api<{ pinned: boolean }>(`/v1/monitors/${monitor.id}/pin`, user.id, { method: 'POST' });
+                    setMonitor(prev => prev ? { ...prev, pinned: result.pinned } : prev);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors ${monitor.pinned ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30' : 'bg-surface-elevated text-text-secondary hover:text-text-primary border-border'}`}
+                  title={monitor.pinned ? "Unpin monitor" : "Pin monitor to top of list"}
+                >
+                  <Pin className="w-3.5 h-3.5" />
+                  {monitor.pinned ? "Pinned" : "Pin"}
+                </button>
                 <Link
                   href={`/monitors#edit-${monitor.id}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"

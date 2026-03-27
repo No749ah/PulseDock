@@ -888,3 +888,192 @@ describe('embedStatusPageScript()', () => {
     expect(getHeaders()['Cache-Control']).toContain('public');
   });
 });
+
+// ---------------------------------------------------------------------------
+// publicMonitorStatus() — share token JSON endpoint
+// ---------------------------------------------------------------------------
+
+describe('publicMonitorStatus()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: PublicDashboardController;
+
+  function makeJsonRes() {
+    const headers: Record<string, string> = {};
+    let body: unknown;
+    let statusCode = 200;
+    const res = {
+      setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+      json: vi.fn((data: unknown) => { body = data; }),
+      status: vi.fn((code: number) => { statusCode = code; return { json: vi.fn((data: unknown) => { body = data; }) }; }),
+    } as unknown as Response;
+    return { res, getBody: () => body, getHeaders: () => headers, getStatus: () => statusCode };
+  }
+
+  beforeEach(() => {
+    prisma = {
+      monitor: { findUnique: vi.fn() },
+      monitorRun: { findMany: vi.fn().mockResolvedValue([]) },
+    } as unknown as PrismaService;
+    controller = new PublicDashboardController(prisma);
+  });
+
+  it('returns 404 JSON when token is invalid', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorStatus('bad-token', res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.error).toBe('Not found');
+  });
+
+  it('returns up status for healthy monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+      runs: [{ level: 'green', ok: true, latencyMs: 50, message: 'HTTP 200', checkedAt: new Date() }],
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ ok: true }, { ok: true }]);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorStatus('pd_share_abc', res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.status).toBe('up');
+    expect(b.name).toBe('API');
+    expect(b.latencyMs).toBe(50);
+    expect(b.uptimePct30d).toBe(100);
+  });
+
+  it('returns down status for failing monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+      runs: [{ level: 'red', ok: false, latencyMs: null, message: 'Connection refused', checkedAt: new Date() }],
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{ ok: false }, { ok: true }]);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorStatus('pd_share_abc', res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.status).toBe('down');
+    expect(b.uptimePct30d).toBe(50);
+  });
+
+  it('returns paused status for disabled monitor', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: false,
+      runs: [],
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorStatus('pd_share_abc', res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.status).toBe('paused');
+  });
+
+  it('returns unknown status when no runs and enabled', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+      runs: [],
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorStatus('pd_share_abc', res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.status).toBe('unknown');
+    expect(b.uptimePct30d).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// publicMonitorHistory() — share token history endpoint
+// ---------------------------------------------------------------------------
+
+describe('publicMonitorHistory()', () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: PublicDashboardController;
+
+  function makeJsonRes() {
+    const headers: Record<string, string> = {};
+    let body: unknown;
+    const res = {
+      setHeader: vi.fn((k: string, v: string) => { headers[k] = v; }),
+      json: vi.fn((data: unknown) => { body = data; }),
+      status: vi.fn(() => ({ json: vi.fn((data: unknown) => { body = data; }) })),
+    } as unknown as Response;
+    return { res, getBody: () => body, getHeaders: () => headers };
+  }
+
+  beforeEach(() => {
+    prisma = {
+      monitor: { findUnique: vi.fn() },
+      monitorRun: { findMany: vi.fn() },
+    } as unknown as PrismaService;
+    controller = new PublicDashboardController(prisma);
+  });
+
+  it('returns 404 JSON for invalid token', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorHistory('bad-token', undefined, res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.error).toBe('Not found');
+  });
+
+  it('returns history array for valid token', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+    });
+    const now = new Date();
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { checkedAt: now, ok: true, level: 'green', latencyMs: 42, message: 'HTTP 200' },
+      { checkedAt: new Date(now.getTime() - 60000), ok: false, level: 'red', latencyMs: null, message: 'Timeout' },
+    ]);
+    const { res, getBody } = makeJsonRes();
+    await controller.publicMonitorHistory('pd_share_abc', undefined, res);
+    const b = getBody() as Record<string, unknown>;
+    expect(b.monitorId).toBe('m1');
+    expect(b.name).toBe('API');
+    const history = b.history as unknown[];
+    expect(history).toHaveLength(2);
+    expect((history[0] as Record<string, unknown>).ok).toBe(true);
+    expect((history[1] as Record<string, unknown>).ok).toBe(false);
+  });
+
+  it('respects custom limit parameter', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res } = makeJsonRes();
+    await controller.publicMonitorHistory('pd_share_abc', '10', res);
+    const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.take).toBe(10);
+  });
+
+  it('clamps limit to max 200', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res } = makeJsonRes();
+    await controller.publicMonitorHistory('pd_share_abc', '9999', res);
+    const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.take).toBe(200);
+  });
+
+  it('defaults limit to 90 when not provided', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res } = makeJsonRes();
+    await controller.publicMonitorHistory('pd_share_abc', undefined, res);
+    const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.take).toBe(90);
+  });
+
+  it('sets CORS and cache headers', async () => {
+    (prisma.monitor.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 'm1', name: 'API', type: 'HTTP', target: 'https://example.com', enabled: true,
+    });
+    (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const { res, getHeaders } = makeJsonRes();
+    await controller.publicMonitorHistory('pd_share_abc', undefined, res);
+    expect(getHeaders()['Cache-Control']).toContain('public');
+  });
+});

@@ -1,8 +1,12 @@
-## Status Summary (2026-03-27 04:45 UTC)
-- **Build/Test:** ✅ Clean build + 3587 API + 747 web + 10 e2e + 12 agent = 4356 total; 0 TS errors; all routes 200
+## Status Summary (2026-03-27 07:20 UTC)
+- **Build/Test:** ✅ Clean build + 3615 API + 10 e2e + 12 agent = 3637 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-27-morning
+- **Last changes (07:20 UTC cycle):**
+  - **Monitor Timeline Annotations** — `MonitorAnnotation` model (text, color, annotatedAt). Full CRUD API `GET/POST/PATCH/DELETE /v1/monitors/:id/annotations`. Annotations tab on monitor detail with create form (text/color/datetime), color-coded list with delete. Count badge on tab. 11 new tests → 3615 total.
+  - **Custom Message Template per Alert Channel** — `messageTemplate` column on `AlertChannel`. `AlertsService.send()` applies {{token}} substitution (monitor.name, run.level, run.message, etc.) before dispatch. Telegram respects template (skips HTML formatting). UI: textarea in create/edit modal with token hints. 5 tests.
+  - **Fix test regressions** — `alerts.service.spec.ts` makePrisma now includes `messageTemplate` in mock; Telegram handler respects messageTemplate flag.
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
 - **Last changes (04:45 UTC cycle):**
@@ -47,6 +51,11 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-27 07:20 UTC)
+
+- [x] **Monitor Timeline Annotations** — `MonitorAnnotation` Prisma model. Full CRUD API `GET/POST/PATCH/DELETE /v1/monitors/:id/annotations`. Frontend "Annotations" tab on monitor detail: create form (text, color selector, datetime-local), color-coded annotation list with dot indicator + delete button, count badge on tab. Lazy-loads on first open. Use case: mark deployments, config changes, incidents directly on the timeline. 11 new tests. *(2026-03-27)*
+- [x] **Custom Message Template per Alert Channel** — `messageTemplate TEXT` on `AlertChannel`. `AlertsService.send()` applies `{{token}}` substitution before any channel transport: `{{monitor.name}}`, `{{run.level}}`, `{{run.message}}`, `{{run.latencyMs}}`, `{{timestamp}}`, etc. Telegram skips HTML formatting when template set. UI: textarea in create/edit modal with placeholder showing available tokens. 5 tests. *(2026-03-27)*
 
 ## In Progress
 

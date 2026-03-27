@@ -66,10 +66,13 @@ export interface Monitor {
   latencyAlertMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
+  sliLatencyTarget: number | null;
+  sliLatencyWindow: number;
   scheduleEnabled: boolean;
   scheduleDays: string;
   scheduleStartHour: number;
   scheduleEndHour: number;
+  isAcknowledged?: boolean;
   createdAt: string;
 }
 

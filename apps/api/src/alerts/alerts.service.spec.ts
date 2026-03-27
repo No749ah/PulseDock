@@ -58,8 +58,11 @@ function makeMonitor(overrides: Partial<Monitor> = {}): Monitor {
     flapDetectionEnabled: true,
     flapAlertedAt: null,
     mutedUntil: null,
+    latencyAlertMs: null,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
+    sliLatencyTarget: null,
+    sliLatencyWindow: 7,
     scheduleEnabled: false,
     scheduleDays: '1,2,3,4,5',
     scheduleStartHour: 8,
@@ -129,6 +132,12 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     },
     notificationQueueItem: {
       create: vi.fn().mockResolvedValue({}),
+    },
+    alertGroup: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: 'grp-1', monitorIds: '[]' }),
+      update: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   };
 }

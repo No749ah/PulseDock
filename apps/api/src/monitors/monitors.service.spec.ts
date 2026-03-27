@@ -6198,7 +6198,7 @@ describe('getPeriodComparison', () => {
   }
 
   function makeService(p: ReturnType<typeof makePrisma>) {
-    return new MonitorsService(p as never, undefined as never);
+    return new MonitorsService(p as never, undefined as never, undefined as never, undefined as never, undefined as never);
   }
 
   it('returns current and prior period stats with delta', async () => {

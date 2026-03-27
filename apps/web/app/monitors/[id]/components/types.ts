@@ -112,6 +112,8 @@ export interface MonitorRun {
   responseBody?: string | null;
   /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only for HTTP/BROWSER monitors. */
   timings?: RunTimings | null;
+  /** Security headers audit result. Only populated when checkSecurityHeaders=true on HTTP monitors. */
+  securityAuditJson?: unknown | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

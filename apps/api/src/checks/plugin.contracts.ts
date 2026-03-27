@@ -14,6 +14,26 @@ export interface PluginExecutionContext {
   nowIso: string;
 }
 
+/** Result of a security headers audit for HTTP monitors. */
+export interface SecurityHeadersAudit {
+  /** Letter grade: A, B, C, D, F */
+  grade: string;
+  /** Score 0-100 */
+  score: number;
+  /** Individual header checks */
+  headers: SecurityHeaderResult[];
+}
+
+export interface SecurityHeaderResult {
+  name: string;
+  present: boolean;
+  value: string | null;
+  /** Info, warning, or critical severity if missing */
+  severity: 'info' | 'warning' | 'critical';
+  description: string;
+  recommendation?: string;
+}
+
 export interface PluginExecutionResult {
   ok: boolean;
   statusCode: number;
@@ -30,6 +50,10 @@ export interface PluginExecutionResult {
    * Only populated for DNS monitor type runs.
    */
   resolvedRecords?: string[] | null;
+  /**
+   * Security headers audit result. Only populated when `checkSecurityHeaders` is enabled on HTTP monitors.
+   */
+  securityHeadersAudit?: SecurityHeadersAudit | null;
 }
 
 export interface PluginConfigField {

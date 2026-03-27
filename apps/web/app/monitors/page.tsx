@@ -527,6 +527,7 @@ function MonitorsPageInner() {
       }
       if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
+      if ((f as typeof f & { checkSecurityHeaders?: boolean }).checkSecurityHeaders) config.checkSecurityHeaders = true;
     }
     return config;
   };

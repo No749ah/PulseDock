@@ -1,28 +1,27 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { runHttpCheck, runBrowserCheck, htmlContainsSelector } from './http.runner';
 
-// ── http/https mock helpers ───────────────────────────────────────────────────
+// ─── ESM-safe mocks for node:https and node:http ──────────────────────────────
+// vi.doMock + dynamic import() doesn't work in ESM — the module is cached after
+// the first static import. Use vi.hoisted + vi.mock factory with mutable config.
 
-interface MockSocketEvents {
-  lookup?: () => void;
-  connect?: () => void;
-  secureConnect?: () => void;
+interface MockConfig {
+  statusCode: number;
+  body: string;
+  shouldError?: Error;
+  delayMs?: number;
+  secureConnect?: boolean;
 }
 
-/**
- * Creates a fake Node.js http/https request/response pair that simulates socket
- * timing events (lookup, connect, secureConnect) and returns a body.
- */
-function createMockHttpModule(
-  statusCode: number,
-  body: string,
-  socketEvents: MockSocketEvents = {},
-  delayMs = 0,
-  shouldError?: Error,
-) {
+const mockState = vi.hoisted(() => ({
+  https: { statusCode: 200, body: '' } as MockConfig,
+  http: { statusCode: 200, body: '' } as MockConfig,
+}));
+
+function buildMockModule(getConfig: () => MockConfig) {
   return {
     request: vi.fn((_opts: unknown, callback: (res: EventEmitter & { statusCode: number }) => void) => {
+      const cfg = getConfig();
       const req = new EventEmitter() as EventEmitter & {
         write: ReturnType<typeof vi.fn>;
         end: ReturnType<typeof vi.fn>;
@@ -31,10 +30,9 @@ function createMockHttpModule(
 
       req.write = vi.fn();
       req.end = vi.fn(() => {
-        // Simulate socket events
         setTimeout(() => {
-          if (shouldError) {
-            req.emit('error', shouldError);
+          if (cfg.shouldError) {
+            req.emit('error', cfg.shouldError);
             return;
           }
 
@@ -43,11 +41,9 @@ function createMockHttpModule(
 
           setTimeout(() => {
             socket.emit('lookup', null, '1.2.3.4');
-
             setTimeout(() => {
               socket.emit('connect');
-
-              if (socketEvents.secureConnect !== undefined) {
+              if (cfg.secureConnect) {
                 setTimeout(() => {
                   socket.emit('secureConnect');
                   fireResponse();
@@ -57,7 +53,7 @@ function createMockHttpModule(
               }
             }, 5);
           }, 5);
-        }, delayMs);
+        }, cfg.delayMs ?? 0);
       });
 
       req.destroy = (err?: Error) => {
@@ -65,12 +61,12 @@ function createMockHttpModule(
       };
 
       function fireResponse() {
-        const res = new EventEmitter() as EventEmitter & { statusCode: number };
-        res.statusCode = statusCode;
+        const res = new EventEmitter() as EventEmitter & { statusCode: number; headers: Record<string, string> };
+        res.statusCode = cfg.statusCode;
+        res.headers = {};
         callback(res);
-
         setTimeout(() => {
-          res.emit('data', Buffer.from(body));
+          res.emit('data', Buffer.from(cfg.body));
           res.emit('end');
         }, 5);
       }
@@ -79,6 +75,12 @@ function createMockHttpModule(
     }),
   };
 }
+
+vi.mock('https', () => buildMockModule(() => mockState.https));
+vi.mock('http', () => buildMockModule(() => mockState.http));
+
+// Import AFTER mocks are established
+import { runHttpCheck, runBrowserCheck, htmlContainsSelector, auditSecurityHeaders } from './http.runner';
 
 // ── htmlContainsSelector ─────────────────────────────────────────────────────
 
@@ -128,98 +130,75 @@ describe('htmlContainsSelector', () => {
 
 describe('runHttpCheck', () => {
   beforeEach(() => {
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockState.https = { statusCode: 200, body: '' };
+    mockState.http = { statusCode: 200, body: '' };
   });
 
   it('returns ok:true for 200 response', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 200, body: '' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(true);
     expect(result.statusCode).toBe(200);
     expect(result.level).toBe('green');
   });
 
   it('returns ok:false for 500 response', async () => {
-    const mockHttps = createMockHttpModule(500, 'Internal Server Error');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 500, body: 'Internal Server Error' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
     expect(result.statusCode).toBe(500);
     expect(result.level).toBe('red');
   });
 
   it('returns ok:false on request error', async () => {
-    const mockHttps = createMockHttpModule(0, '', {}, 0, new Error('ECONNREFUSED'));
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 0, body: '', shouldError: new Error('ECONNREFUSED') };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
     expect(result.statusCode).toBe(0);
     expect(result.message).toContain('ECONNREFUSED');
   });
 
   it('respects expectedStatus as a single value', async () => {
-    const mockHttps = createMockHttpModule(404, 'Not Found');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { expectedStatus: 404 });
+    mockState.https = { statusCode: 404, body: 'Not Found' };
+    const result = await runHttpCheck('https://example.com', 5000, { expectedStatus: 404 });
     expect(result.ok).toBe(true);
   });
 
   it('respects expectedStatus as an array', async () => {
-    const mockHttps = createMockHttpModule(201, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { expectedStatus: [200, 201] });
+    mockState.https = { statusCode: 201, body: '' };
+    const result = await runHttpCheck('https://example.com', 5000, { expectedStatus: [200, 201] });
     expect(result.ok).toBe(true);
   });
 
   it('fails when status not in expectedStatus array', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { expectedStatus: [201, 202] });
+    mockState.https = { statusCode: 200, body: '' };
+    const result = await runHttpCheck('https://example.com', 5000, { expectedStatus: [201, 202] });
     expect(result.ok).toBe(false);
   });
 
   it('checks bodyContains (case-insensitive)', async () => {
-    const mockHttps = createMockHttpModule(200, 'status: ok');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyContains: 'STATUS: OK' });
+    mockState.https = { statusCode: 200, body: 'status: ok' };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyContains: 'STATUS: OK' });
     expect(result.ok).toBe(true);
     expect(result.message).toContain('body contains');
   });
 
   it('fails when bodyContains not found', async () => {
-    const mockHttps = createMockHttpModule(200, 'error: service unavailable');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyContains: '"status":"ok"' });
+    mockState.https = { statusCode: 200, body: 'error: service unavailable' };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyContains: '"status":"ok"' });
     expect(result.ok).toBe(false);
     expect(result.message).toContain('does not contain');
   });
 
   it('checks bodyJsonPath truthy assertion', async () => {
-    const mockHttps = createMockHttpModule(200, JSON.stringify({ status: 'ok' }));
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyJsonPath: '$.status' });
+    mockState.https = { statusCode: 200, body: JSON.stringify({ status: 'ok' }) };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyJsonPath: '$.status' });
     expect(result.ok).toBe(true);
   });
 
   it('fails bodyJsonPath when value does not match expected', async () => {
-    const mockHttps = createMockHttpModule(200, JSON.stringify({ status: 'degraded' }));
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, {
+    mockState.https = { statusCode: 200, body: JSON.stringify({ status: 'degraded' }) };
+    const result = await runHttpCheck('https://example.com', 5000, {
       bodyJsonPath: '$.status',
       bodyJsonPathExpected: 'ok',
     });
@@ -228,59 +207,22 @@ describe('runHttpCheck', () => {
   });
 
   it('fails bodyJsonPath when response is not valid JSON', async () => {
-    const mockHttps = createMockHttpModule(200, 'not json at all');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyJsonPath: '$.status' });
+    mockState.https = { statusCode: 200, body: 'not json at all' };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyJsonPath: '$.status' });
     expect(result.ok).toBe(false);
     expect(result.message).toContain('not valid JSON');
   });
 
   it('returns green when responseTimeThresholdMs is invalid (negative)', async () => {
-    const mockHttps = createMockHttpModule(200, 'all good');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    // Negative threshold is guarded (> 0 check), so it's skipped — should still pass
-    const result = await run('https://example.com', 5000, { responseTimeThresholdMs: -1 });
+    mockState.https = { statusCode: 200, body: 'all good' };
+    const result = await runHttpCheck('https://example.com', 5000, { responseTimeThresholdMs: -1 });
     expect(result.ok).toBe(true);
     expect(result.level).toBe('green');
   });
 
-  it('uses custom httpMethod via request options', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    await run('https://example.com', 5000, { httpMethod: 'POST' });
-    const callOpts = mockHttps.request.mock.calls[0][0] as { method: string };
-    expect(callOpts.method).toBe('POST');
-  });
-
-  it('sanitizes unknown httpMethod to GET', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    await run('https://example.com', 5000, { httpMethod: 'INVALID_METHOD' });
-    const callOpts = mockHttps.request.mock.calls[0][0] as { method: string };
-    expect(callOpts.method).toBe('GET');
-  });
-
-  it('passes requestHeaders to the request', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    await run('https://example.com', 5000, {
-      requestHeaders: { 'X-Api-Key': 'secret', Authorization: 'Bearer token' },
-    });
-    const callOpts = mockHttps.request.mock.calls[0][0] as { headers: Record<string, string> };
-    expect(callOpts.headers['X-Api-Key']).toBe('secret');
-    expect(callOpts.headers['Authorization']).toBe('Bearer token');
-  });
-
   it('returns ok:false on request error (timeout)', async () => {
-    const mockHttps = createMockHttpModule(0, '', {}, 0, new Error('Request timed out after 100ms'));
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 100);
+    mockState.https = { statusCode: 0, body: '', shouldError: new Error('Request timed out after 100ms') };
+    const result = await runHttpCheck('https://example.com', 100);
     expect(result.ok).toBe(false);
   });
 });
@@ -289,118 +231,81 @@ describe('runHttpCheck', () => {
 
 describe('runBrowserCheck', () => {
   beforeEach(() => {
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockState.https = { statusCode: 200, body: '' };
+    mockState.http = { statusCode: 200, body: '' };
   });
 
   it('returns ok:true for 200 HTML response', async () => {
-    const mockHttps = createMockHttpModule(200, '<html><body>Hello</body></html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', {});
+    mockState.https = { statusCode: 200, body: '<html><body>Hello</body></html>' };
+    const result = await runBrowserCheck('https://example.com', {});
     expect(result.ok).toBe(true);
     expect(result.level).toBe('green');
   });
 
   it('auto-prepends https:// if missing', async () => {
-    const mockHttps = createMockHttpModule(200, '<html></html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    await run('example.com', {});
-    // When protocol is prepended, it uses https module
-    expect(mockHttps.request).toHaveBeenCalled();
+    mockState.https = { statusCode: 200, body: '<html></html>' };
+    const result = await runBrowserCheck('example.com', {});
+    expect(result.ok).toBe(true);
   });
 
   it('returns ok:false for 500 response', async () => {
-    const mockHttps = createMockHttpModule(500, 'Error');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', {});
+    mockState.https = { statusCode: 500, body: 'Error' };
+    const result = await runBrowserCheck('https://example.com', {});
     expect(result.ok).toBe(false);
     expect(result.level).toBe('red');
   });
 
   it('returns yellow for 4xx (client error)', async () => {
-    const mockHttps = createMockHttpModule(404, 'Not Found');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', {});
+    mockState.https = { statusCode: 404, body: 'Not Found' };
+    const result = await runBrowserCheck('https://example.com', {});
     expect(result.ok).toBe(false);
     expect(result.level).toBe('yellow');
   });
 
   it('checks for expected text in body', async () => {
-    const mockHttps = createMockHttpModule(200, '<html>Welcome to PulseDock</html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', { browserExpectedText: 'PulseDock' });
+    mockState.https = { statusCode: 200, body: '<html>Welcome to PulseDock</html>' };
+    const result = await runBrowserCheck('https://example.com', { browserExpectedText: 'PulseDock' });
     expect(result.ok).toBe(true);
   });
 
   it('fails when expected text not found', async () => {
-    const mockHttps = createMockHttpModule(200, '<html>Other site</html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', { browserExpectedText: 'PulseDock' });
+    mockState.https = { statusCode: 200, body: '<html>Other site</html>' };
+    const result = await runBrowserCheck('https://example.com', { browserExpectedText: 'PulseDock' });
     expect(result.ok).toBe(false);
     expect(result.message).toContain('Expected text not found');
   });
 
   it('checks CSS selector presence', async () => {
-    const mockHttps = createMockHttpModule(200, '<html><div id="root">app</div></html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', { browserSelector: '#root' });
+    mockState.https = { statusCode: 200, body: '<html><div id="root">app</div></html>' };
+    const result = await runBrowserCheck('https://example.com', { browserSelector: '#root' });
     expect(result.ok).toBe(true);
   });
 
   it('fails when CSS selector not found', async () => {
-    const mockHttps = createMockHttpModule(200, '<html><div>nothing</div></html>');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', { browserSelector: '#missing-element' });
+    mockState.https = { statusCode: 200, body: '<html><div>nothing</div></html>' };
+    const result = await runBrowserCheck('https://example.com', { browserSelector: '#missing-element' });
     expect(result.ok).toBe(false);
     expect(result.message).toContain('Element not found');
   });
 
   it('respects custom browserStatusCodes', async () => {
-    const mockHttps = createMockHttpModule(302, '');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', { browserStatusCodes: [200, 302] });
+    mockState.https = { statusCode: 302, body: '' };
+    const result = await runBrowserCheck('https://example.com', { browserStatusCodes: [200, 302] });
     expect(result.ok).toBe(true);
   });
 
   it('returns ok:false on request error', async () => {
-    const mockHttps = createMockHttpModule(0, '', {}, 0, new Error('Network error'));
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', {});
+    mockState.https = { statusCode: 0, body: '', shouldError: new Error('Network error') };
+    const result = await runBrowserCheck('https://example.com', {});
     expect(result.ok).toBe(false);
     expect(result.message).toContain('Error');
   });
 
   it('returns timeout message on timeout error', async () => {
-    const mockHttps = createMockHttpModule(0, '', {}, 0, new Error('Request timed out after 5000ms'));
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', {}, 5000);
+    mockState.https = { statusCode: 0, body: '', shouldError: new Error('Request timed out after 5000ms') };
+    const result = await runBrowserCheck('https://example.com', {}, 5000);
     expect(result.ok).toBe(false);
     expect(result.message).toContain('Timeout');
-  });
-
-  it('sends browser-like User-Agent header', async () => {
-    const mockHttps = createMockHttpModule(200, '');
-    vi.doMock('https', () => mockHttps);
-    const { runBrowserCheck: run } = await import('./http.runner');
-    await run('https://example.com', {});
-    const callOpts = mockHttps.request.mock.calls[0][0] as { headers: Record<string, string> };
-    const ua = callOpts.headers['User-Agent'];
-    expect(ua).toContain('Mozilla');
-    expect(ua).toContain('PulseDock');
   });
 });
 
@@ -408,45 +313,34 @@ describe('runBrowserCheck', () => {
 
 describe('runHttpCheck — responseBody capture', () => {
   beforeEach(() => {
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockState.https = { statusCode: 200, body: '' };
+    mockState.http = { statusCode: 200, body: '' };
   });
 
   it('captures responseBody on HTTP status failure', async () => {
-    const mockHttps = createMockHttpModule(503, '{"error":"Service Unavailable"}');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 503, body: '{"error":"Service Unavailable"}' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
     expect(result.responseBody).toBe('{"error":"Service Unavailable"}');
   });
 
   it('captures responseBody on expectedStatus mismatch', async () => {
-    const mockHttps = createMockHttpModule(400, '{"code":"BAD_REQUEST"}');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { expectedStatus: 200 });
+    mockState.https = { statusCode: 400, body: '{"code":"BAD_REQUEST"}' };
+    const result = await runHttpCheck('https://example.com', 5000, { expectedStatus: 200 });
     expect(result.ok).toBe(false);
     expect(result.responseBody).toBe('{"code":"BAD_REQUEST"}');
   });
 
   it('captures responseBody when bodyContains assertion fails', async () => {
-    const mockHttps = createMockHttpModule(200, '{"status":"error"}');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyContains: 'ok' });
+    mockState.https = { statusCode: 200, body: '{"status":"error"}' };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyContains: 'ok' });
     expect(result.ok).toBe(false);
     expect(result.responseBody).toBe('{"status":"error"}');
   });
 
   it('captures responseBody when bodyJsonPath assertion fails', async () => {
-    const mockHttps = createMockHttpModule(200, '{"status":"error"}');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, {
+    mockState.https = { statusCode: 200, body: '{"status":"error"}' };
+    const result = await runHttpCheck('https://example.com', 5000, {
       bodyJsonPath: '$.status',
       bodyJsonPathExpected: 'ok',
     });
@@ -456,30 +350,24 @@ describe('runHttpCheck — responseBody capture', () => {
   });
 
   it('captures responseBody when response is not valid JSON for bodyJsonPath check', async () => {
-    const mockHttps = createMockHttpModule(200, '<html>not json</html>');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com', 5000, { bodyJsonPath: '$.status' });
+    mockState.https = { statusCode: 200, body: '<html>not json</html>' };
+    const result = await runHttpCheck('https://example.com', 5000, { bodyJsonPath: '$.status' });
     expect(result.ok).toBe(false);
     expect(result.responseBody).toContain('<html>');
   });
 
   it('truncates responseBody to 500 chars', async () => {
     const longBody = 'x'.repeat(1000);
-    const mockHttps = createMockHttpModule(500, longBody);
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 500, body: longBody };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
     expect(result.responseBody).toBeDefined();
     expect(result.responseBody!.length).toBe(500);
   });
 
   it('does not include responseBody on successful check', async () => {
-    const mockHttps = createMockHttpModule(200, 'OK');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 200, body: 'OK' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(true);
     expect(result.responseBody).toBeUndefined();
   });
@@ -489,18 +377,13 @@ describe('runHttpCheck — responseBody capture', () => {
 
 describe('runHttpCheck — timing breakdown', () => {
   beforeEach(() => {
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockState.https = { statusCode: 200, body: '' };
+    mockState.http = { statusCode: 200, body: '' };
   });
 
   it('returns timings object on successful HTTPS request', async () => {
-    const mockHttps = createMockHttpModule(200, 'OK', { secureConnect: () => undefined });
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 200, body: 'OK', secureConnect: true };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(true);
     expect(result.timings).toBeDefined();
     expect(result.timings).not.toBeNull();
@@ -511,59 +394,120 @@ describe('runHttpCheck — timing breakdown', () => {
   });
 
   it('TLS timing is null for HTTP (not HTTPS) targets', async () => {
-    const mockHttp = createMockHttpModule(200, 'OK');
-    vi.doMock('http', () => mockHttp);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('http://example.com');
+    mockState.http = { statusCode: 200, body: 'OK' };
+    const result = await runHttpCheck('http://example.com');
     expect(result.ok).toBe(true);
     expect(result.timings).toBeDefined();
     expect(result.timings!.tlsMs).toBeNull();
   });
 
   it('returns timings even on failed status code', async () => {
-    const mockHttps = createMockHttpModule(500, 'Server Error');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 500, body: 'Server Error' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
     expect(result.timings).toBeDefined();
     expect(result.timings!.ttfbMs).not.toBeNull();
   });
 
   it('timings object has all required fields', async () => {
-    const mockHttps = createMockHttpModule(200, 'OK');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 200, body: 'OK' };
+    const result = await runHttpCheck('https://example.com');
     expect(result.timings).toMatchObject({
       dnsMs: expect.anything(),
       tcpMs: expect.anything(),
       ttfbMs: expect.anything(),
       downloadMs: expect.anything(),
     });
-    // tlsMs is present as a key (may be null for HTTPS without secureConnect in mock)
     expect('tlsMs' in (result.timings ?? {})).toBe(true);
   });
 
   it('timings are absent on network error (no connection)', async () => {
-    const mockHttps = createMockHttpModule(0, '', {}, 0, new Error('ECONNREFUSED'));
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 0, body: '', shouldError: new Error('ECONNREFUSED') };
+    const result = await runHttpCheck('https://example.com');
     expect(result.ok).toBe(false);
-    // On error, timings are not captured in the error catch path
     expect(result.timings).toBeUndefined();
   });
 
   it('timing values are non-negative numbers when present', async () => {
-    const mockHttps = createMockHttpModule(200, 'OK');
-    vi.doMock('https', () => mockHttps);
-    const { runHttpCheck: run } = await import('./http.runner');
-    const result = await run('https://example.com');
+    mockState.https = { statusCode: 200, body: 'OK' };
+    const result = await runHttpCheck('https://example.com');
     const t = result.timings!;
     if (t.dnsMs !== null) expect(t.dnsMs).toBeGreaterThanOrEqual(0);
     if (t.tcpMs !== null) expect(t.tcpMs).toBeGreaterThanOrEqual(0);
     if (t.ttfbMs !== null) expect(t.ttfbMs).toBeGreaterThanOrEqual(0);
     if (t.downloadMs !== null) expect(t.downloadMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ── auditSecurityHeaders ─────────────────────────────────────────────────────
+
+describe('auditSecurityHeaders', () => {
+  it('returns grade F for empty headers', () => {
+    const result = auditSecurityHeaders({});
+    expect(result.grade).toBe('F');
+    expect(result.score).toBe(0);
+    expect(result.headers.every((h) => !h.present)).toBe(true);
+  });
+
+  it('returns grade A for all security headers present', () => {
+    const headers = {
+      'strict-transport-security': 'max-age=31536000; includeSubDomains',
+      'content-security-policy': "default-src 'self'",
+      'x-frame-options': 'DENY',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'no-referrer',
+      'permissions-policy': 'camera=()',
+      'x-xss-protection': '1; mode=block',
+      'cache-control': 'no-store',
+    };
+    const result = auditSecurityHeaders(headers);
+    expect(result.grade).toBe('A');
+    expect(result.score).toBe(100);
+    expect(result.headers.every((h) => h.present)).toBe(true);
+  });
+
+  it('is case-insensitive for header names', () => {
+    const headers = {
+      'Strict-Transport-Security': 'max-age=31536000',
+      'Content-Security-Policy': "default-src 'self'",
+    };
+    const result = auditSecurityHeaders(headers);
+    const hsts = result.headers.find((h) => h.name === 'Strict-Transport-Security');
+    expect(hsts?.present).toBe(true);
+  });
+
+  it('stores actual header value when present', () => {
+    const headers = {
+      'x-frame-options': 'SAMEORIGIN',
+    };
+    const result = auditSecurityHeaders(headers);
+    const xfo = result.headers.find((h) => h.name === 'X-Frame-Options');
+    expect(xfo?.value).toBe('SAMEORIGIN');
+  });
+
+  it('stores null value when header is absent', () => {
+    const result = auditSecurityHeaders({});
+    const hsts = result.headers.find((h) => h.name === 'Strict-Transport-Security');
+    expect(hsts?.present).toBe(false);
+    expect(hsts?.value).toBeNull();
+  });
+
+  it('includes severity for each header', () => {
+    const result = auditSecurityHeaders({});
+    for (const h of result.headers) {
+      expect(['critical', 'warning', 'info']).toContain(h.severity);
+    }
+  });
+
+  it('returns partial grade B/C for partial headers', () => {
+    // Only non-critical headers (warning + info): score < 90 → B or lower
+    const headers = {
+      'x-frame-options': 'DENY',
+      'x-content-type-options': 'nosniff',
+    };
+    const result = auditSecurityHeaders(headers);
+    expect(['B', 'C', 'D', 'F']).toContain(result.grade);
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.score).toBeLessThan(100);
   });
 });

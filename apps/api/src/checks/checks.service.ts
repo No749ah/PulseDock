@@ -344,6 +344,10 @@ export class ChecksService {
         timingsJson: ((result as PluginExecutionResult).timings
           ? ((result as PluginExecutionResult).timings as unknown as Prisma.InputJsonValue)
           : Prisma.DbNull),
+        // Security headers audit (only present when checkSecurityHeaders=true on HTTP monitors)
+        securityAuditJson: ((result as PluginExecutionResult).securityHeadersAudit
+          ? ((result as PluginExecutionResult).securityHeadersAudit as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull),
       },
     });
 

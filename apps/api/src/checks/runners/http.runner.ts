@@ -9,7 +9,7 @@
 import * as https from 'https';
 import * as http from 'http';
 import type { IncomingMessage } from 'http';
-import type { PluginExecutionResult, Timings } from '../plugin.contracts';
+import type { PluginExecutionResult, SecurityHeadersAudit, SecurityHeaderResult, Timings } from '../plugin.contracts';
 import { extractByPath } from '../version-extractor.util';
 
 interface TimedResult {
@@ -17,6 +17,99 @@ interface TimedResult {
   body: string;
   latencyMs: number;
   timings: Timings;
+  responseHeaders: Record<string, string>;
+}
+
+// ─── Security Headers Audit ───────────────────────────────────────────────────
+
+/** Checks a set of security response headers and returns a graded audit report. */
+export function auditSecurityHeaders(headers: Record<string, string>): SecurityHeadersAudit {
+  const normalised: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    normalised[k.toLowerCase()] = v;
+  }
+
+  const checks: SecurityHeaderResult[] = [
+    {
+      name: 'Strict-Transport-Security',
+      present: 'strict-transport-security' in normalised,
+      value: normalised['strict-transport-security'] ?? null,
+      severity: 'critical',
+      description: 'Enforces HTTPS connections and prevents protocol downgrade attacks.',
+      recommendation: 'Add: Strict-Transport-Security: max-age=31536000; includeSubDomains',
+    },
+    {
+      name: 'Content-Security-Policy',
+      present: 'content-security-policy' in normalised || 'content-security-policy-report-only' in normalised,
+      value: normalised['content-security-policy'] ?? normalised['content-security-policy-report-only'] ?? null,
+      severity: 'critical',
+      description: 'Prevents XSS and data injection attacks by controlling allowed content sources.',
+      recommendation: 'Add: Content-Security-Policy: default-src \'self\'',
+    },
+    {
+      name: 'X-Frame-Options',
+      present: 'x-frame-options' in normalised,
+      value: normalised['x-frame-options'] ?? null,
+      severity: 'warning',
+      description: 'Prevents clickjacking by controlling iframe embedding.',
+      recommendation: 'Add: X-Frame-Options: DENY or SAMEORIGIN',
+    },
+    {
+      name: 'X-Content-Type-Options',
+      present: 'x-content-type-options' in normalised,
+      value: normalised['x-content-type-options'] ?? null,
+      severity: 'warning',
+      description: 'Prevents MIME type sniffing attacks.',
+      recommendation: 'Add: X-Content-Type-Options: nosniff',
+    },
+    {
+      name: 'Referrer-Policy',
+      present: 'referrer-policy' in normalised,
+      value: normalised['referrer-policy'] ?? null,
+      severity: 'info',
+      description: 'Controls how much referrer information is sent with requests.',
+      recommendation: 'Add: Referrer-Policy: no-referrer or strict-origin-when-cross-origin',
+    },
+    {
+      name: 'Permissions-Policy',
+      present: 'permissions-policy' in normalised,
+      value: normalised['permissions-policy'] ?? null,
+      severity: 'info',
+      description: 'Controls access to browser features like camera, mic, geolocation.',
+      recommendation: 'Add: Permissions-Policy: camera=(), microphone=(), geolocation=()',
+    },
+    {
+      name: 'X-XSS-Protection',
+      present: 'x-xss-protection' in normalised,
+      value: normalised['x-xss-protection'] ?? null,
+      severity: 'info',
+      description: 'Legacy XSS filter for older browsers. Largely superseded by CSP.',
+      recommendation: 'Add: X-XSS-Protection: 1; mode=block',
+    },
+    {
+      name: 'Cache-Control',
+      present: 'cache-control' in normalised,
+      value: normalised['cache-control'] ?? null,
+      severity: 'info',
+      description: 'Controls caching behavior to prevent sensitive data exposure.',
+      recommendation: 'Add: Cache-Control: no-store for authenticated pages',
+    },
+  ];
+
+  // Scoring: critical=30pts, warning=15pts, info=5pts
+  const weights: Record<SecurityHeaderResult['severity'], number> = { critical: 30, warning: 15, info: 5 };
+  const maxScore = checks.reduce((sum, c) => sum + weights[c.severity], 0); // 30+30+15+15+5+5+5+5 = 110
+  const earned = checks.filter(c => c.present).reduce((sum, c) => sum + weights[c.severity], 0);
+  const score = Math.round((earned / maxScore) * 100);
+
+  let grade: string;
+  if (score >= 90) grade = 'A';
+  else if (score >= 75) grade = 'B';
+  else if (score >= 55) grade = 'C';
+  else if (score >= 35) grade = 'D';
+  else grade = 'F';
+
+  return { grade, score, headers: checks };
 }
 
 /**
@@ -88,11 +181,19 @@ function runTimedRequest(
           ttfbMs,
           downloadMs,
         };
+        // Flatten response headers (Node may return string | string[] per header)
+        const responseHeaders: Record<string, string> = {};
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (v !== undefined) {
+            responseHeaders[k] = Array.isArray(v) ? v.join(', ') : v;
+          }
+        }
         resolve({
           statusCode: res.statusCode ?? 0,
           body,
           latencyMs,
           timings,
+          responseHeaders,
         });
       });
 
@@ -172,6 +273,7 @@ export async function runHttpCheck(
     }
   }
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
+  const checkSecurityHeaders = config['checkSecurityHeaders'] === true;
 
   try {
     const timedResult = await runTimedRequest(url, {
@@ -181,7 +283,8 @@ export async function runHttpCheck(
       body: requestBody,
     });
 
-    const { statusCode, body, latencyMs, timings } = timedResult;
+    const { statusCode, body, latencyMs, timings, responseHeaders } = timedResult;
+    const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
@@ -276,6 +379,7 @@ export async function runHttpCheck(
         message: `OK — ${okDesc}`,
         level: 'green' as const,
         timings,
+        securityHeadersAudit: securityAudit,
       };
     }
 
@@ -287,16 +391,20 @@ export async function runHttpCheck(
         message: `Degraded — ${latencyMs}ms exceeds threshold (${responseTimeThresholdMs}ms)`,
         level: 'yellow' as const,
         timings,
+        securityHeadersAudit: securityAudit,
       };
     }
 
+    // Compute message suffix for security audit grade if enabled
+    const secGradeSuffix = securityAudit ? ` [Security: ${securityAudit.grade}]` : '';
     return {
       ok: true,
       statusCode,
       latencyMs,
-      message: 'OK',
+      message: `OK${secGradeSuffix}`,
       level: 'green' as const,
       timings,
+      securityHeadersAudit: securityAudit,
     };
   } catch (error) {
     return {

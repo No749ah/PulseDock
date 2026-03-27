@@ -641,6 +641,23 @@ export function MonitorFormModal({
               />
               <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
             </div>
+
+            {/* Security Headers Audit */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="checkSecurityHeaders"
+                checked={(formData as unknown as { checkSecurityHeaders?: boolean }).checkSecurityHeaders ?? false}
+                onChange={(e) => onSetFormData({ ...formData, checkSecurityHeaders: e.target.checked } as typeof formData & { checkSecurityHeaders?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="checkSecurityHeaders" className="cursor-pointer select-none">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  🔒 Audit security headers
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Checks for HSTS, CSP, X-Frame-Options, X-Content-Type-Options and more. Grades the response A–F and stores results per run.</span>
+              </label>
+            </div>
           </>
         )}
 

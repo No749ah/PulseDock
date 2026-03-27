@@ -85,4 +85,5 @@ export interface MonitorRun {
   message: string;
   level: MonitorLevel;
   responseBody?: string | null;
+  securityAuditJson?: unknown | null;
 }

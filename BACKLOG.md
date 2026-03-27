@@ -1,3 +1,14 @@
+## Status Summary (2026-03-27 16:20 UTC)
+- **Build/Test:** ✅ Clean build + 3664 API + 10 e2e + 12 agent = 3686 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities (brace-expansion CVE fixed via npm audit fix)
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (16:20 UTC cycle):**
+  - **Microsoft Teams alert channel** — `teams` added to `AlertChannelType` union. `send()` handler builds MessageCard payload: themeColor (red/yellow/green), summary, activityTitle, activityText, facts (monitor name/type/latency/target/time). Frontend: Teams option in platform select, setup instructions for Incoming Webhook, buildConfig/edit-prefill wired. 4 new tests.
+  - **Fix PluginExecutionResult** — Added `redirectChain?: string[] | null` to interface (was missing, caused TS errors in http.runner.spec.ts redirect tests).
+  - **Fix monitors.pin.spec.ts** — Updated constructor call to pass all 5 required args to MonitorsService.
+  - **npm audit fix** — brace-expansion CVE (moderate) resolved.
+
 ## Status Summary (2026-03-27 15:25 UTC)
 - **Build/Test:** ✅ Clean build + 3660 API + 10 e2e + 12 agent = 3682 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -79,6 +90,11 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-27 16:20 UTC)
+
+- [x] **Microsoft Teams alert channel** — `teams` channel type added to AlertChannelType. Backend: MessageCard payload (themeColor, summary, activityTitle, activityText, facts). Frontend: Teams option in platform select, setup instructions (create Incoming Webhook in Teams → channel → Connectors), buildConfig/edit-prefill. 4 new tests. *(2026-03-27)*
+- [x] **brace-expansion CVE fix** — `npm audit fix` resolved moderate severity vulnerability. 0 vulnerabilities remaining. *(2026-03-27)*
 
 ## Recently Completed (2026-03-27 15:25 UTC)
 

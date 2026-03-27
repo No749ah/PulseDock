@@ -1,3 +1,12 @@
+## Status Summary (2026-03-27 15:25 UTC)
+- **Build/Test:** ✅ Clean build + 3660 API + 10 e2e + 12 agent = 3682 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (15:25 UTC cycle):**
+  - **Monitor Pinning** — `pinned Boolean @default(false)` on Monitor. `POST /v1/monitors/:id/pin` toggles pin state. Pinned monitors sorted to top of list. Amber pin button per row + detail page header. 4 new tests.
+  - **Cron scheduling test coverage** — 11 unit tests for `isCronDue()`: null fallback, due/not-due by schedule, invalid/empty expression handling (fail-safe), daily/weekly schedule accuracy. Empty-string guard added to production scheduler.
+
 ## Status Summary (2026-03-27 12:20 UTC)
 - **Build/Test:** ✅ Clean build + 3628 API + 10 e2e + 12 agent = 3650 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -70,6 +79,11 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-27 15:25 UTC)
+
+- [x] **Monitor Pinning** — `pinned Boolean @default(false)` on Monitor model. `POST /v1/monitors/:id/pin` toggles pin state. Pinned monitors sorted to top of monitors list. Amber ⭐ pin button in each list row + detail page header. 4 new tests. *(2026-03-27)*
+- [x] **Cron scheduling test coverage** — 11 unit tests for `isCronDue()` logic: null/never-checked fallback (always due), past-due detection, future-schedule not-due, invalid cron expression fail-safe, empty expression guard added to production code, daily `0 9 * * *` and weekly `0 0 * * 1` schedule accuracy. *(2026-03-27)*
 
 ## Recently Completed (2026-03-27 08:15 UTC)
 

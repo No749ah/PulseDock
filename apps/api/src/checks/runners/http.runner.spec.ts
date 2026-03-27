@@ -737,3 +737,41 @@ describe('runHttpCheck — header tracking', () => {
     expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders?.['x-frame-options']).toBe('SAMEORIGIN');
   });
 });
+
+describe('runHttpCheck — response size alerts', () => {
+  it('returns yellow when body is smaller than minResponseBodyBytes', async () => {
+    mockState.https = { statusCode: 200, body: 'hi' }; // 2 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 100 });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('too small');
+  });
+
+  it('returns yellow when body is larger than maxResponseBodyBytes', async () => {
+    mockState.https = { statusCode: 200, body: 'x'.repeat(200) }; // 200 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { maxResponseBodyBytes: 50 });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('too large');
+  });
+
+  it('returns ok when body size is within bounds', async () => {
+    mockState.https = { statusCode: 200, body: 'x'.repeat(100) }; // 100 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 50, maxResponseBodyBytes: 200 });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+  });
+
+  it('does not apply size check when neither bound is set', async () => {
+    mockState.https = { statusCode: 200, body: 'tiny' };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(true);
+  });
+
+  it('size check message includes actual byte count', async () => {
+    mockState.https = { statusCode: 200, body: 'ab' }; // 2 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 1000 });
+    expect(result.message).toMatch(/2 bytes/);
+    expect(result.message).toMatch(/min 1000/);
+  });
+});

@@ -311,7 +311,12 @@ export async function runHttpCheck(
       ? config['responseTimeThresholdMs']
       : undefined;
   const detectContentChanges = config['detectContentChanges'] === true;
-  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges;
+  const minResponseBodyBytes = typeof config['minResponseBodyBytes'] === 'number' && config['minResponseBodyBytes'] > 0
+    ? config['minResponseBodyBytes'] : undefined;
+  const maxResponseBodyBytes = typeof config['maxResponseBodyBytes'] === 'number' && config['maxResponseBodyBytes'] > 0
+    ? config['maxResponseBodyBytes'] : undefined;
+  const checkResponseSize = minResponseBodyBytes !== undefined || maxResponseBodyBytes !== undefined;
+  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize;
   const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
   const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
   const requestHeaders: Record<string, string> = {};
@@ -465,6 +470,33 @@ export async function runHttpCheck(
         }
       }
 
+      // ─── Response size check ──────────────────────────────────────────────────
+      if (checkResponseSize) {
+        const sizeBytes = Buffer.byteLength(body, 'utf8');
+        if (minResponseBodyBytes !== undefined && sizeBytes < minResponseBodyBytes) {
+          return {
+            ok: false,
+            statusCode,
+            latencyMs,
+            message: `Response too small — ${sizeBytes} bytes (min ${minResponseBodyBytes})`,
+            level: 'yellow' as const,
+            timings,
+            ...(capturedHeaders ? { capturedHeaders } : {}),
+          };
+        }
+        if (maxResponseBodyBytes !== undefined && sizeBytes > maxResponseBodyBytes) {
+          return {
+            ok: false,
+            statusCode,
+            latencyMs,
+            message: `Response too large — ${sizeBytes} bytes (max ${maxResponseBodyBytes})`,
+            level: 'yellow' as const,
+            timings,
+            ...(capturedHeaders ? { capturedHeaders } : {}),
+          };
+        }
+      }
+
       if (responseTimeThresholdMs !== undefined && latencyMs > responseTimeThresholdMs) {
         const assertDesc = bodyJsonPath ? `JSON path "${bodyJsonPath}" OK` : `body contains "${bodyContains}"`;
         return {
@@ -478,6 +510,7 @@ export async function runHttpCheck(
       }
       const okDesc = bodyJsonPath
         ? `JSON path "${bodyJsonPath}"${bodyJsonPathExpected ? ` = "${bodyJsonPathExpected}"` : ' is truthy'}`
+        : checkResponseSize ? `Size OK (${Buffer.byteLength(body, 'utf8')} bytes)`
         : `body contains "${bodyContains}"`;
       return {
         ok: true,

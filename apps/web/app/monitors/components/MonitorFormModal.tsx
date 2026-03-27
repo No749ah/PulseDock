@@ -737,6 +737,44 @@ export function MonitorFormModal({
               <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
             </div>
 
+            {/* Response Size Bounds */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Min response size (bytes) <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={(formData as unknown as { minResponseBodyBytes?: number }).minResponseBodyBytes ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    onSetFormData({ ...formData, minResponseBodyBytes: val } as typeof formData & { minResponseBodyBytes?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. 500"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if body smaller than this.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Max response size (bytes) <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={(formData as unknown as { maxResponseBodyBytes?: number }).maxResponseBodyBytes ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    onSetFormData({ ...formData, maxResponseBodyBytes: val } as typeof formData & { maxResponseBodyBytes?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. 5000000"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if body larger than this.</p>
+              </div>
+            </div>
+
             {/* Security Headers Audit */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input

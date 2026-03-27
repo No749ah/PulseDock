@@ -509,7 +509,7 @@ function MonitorsPageInner() {
       if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
-      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number };
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number };
       if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
       if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
@@ -531,6 +531,8 @@ function MonitorsPageInner() {
       }
       if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
+      if (f.minResponseBodyBytes && f.minResponseBodyBytes > 0) config.minResponseBodyBytes = f.minResponseBodyBytes;
+      if (f.maxResponseBodyBytes && f.maxResponseBodyBytes > 0) config.maxResponseBodyBytes = f.maxResponseBodyBytes;
       if (f.checkSecurityHeaders) config.checkSecurityHeaders = true;
       // Redirect following (only store when NOT default, except followRedirects=false)
       if (f.followRedirects === false) config.followRedirects = false;

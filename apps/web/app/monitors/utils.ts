@@ -27,6 +27,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
     anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
     anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+    cronExpression: (monitor as typeof monitor & { cronExpression?: string | null }).cronExpression ?? '',
     scheduleEnabled: (monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled ?? false,
     scheduleDays: (monitor as typeof monitor & { scheduleDays?: string }).scheduleDays ?? '1,2,3,4,5',
     scheduleStartHour: (monitor as typeof monitor & { scheduleStartHour?: number }).scheduleStartHour ?? 8,
@@ -57,6 +58,14 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     browserStatusCodesRaw: Array.isArray(monitor.config?.browserStatusCodes)
       ? (monitor.config.browserStatusCodes as number[]).join(", ")
       : "",
+    // HTTP Auth
+    authType: String(monitor.config?.authType ?? "none"),
+    authUser: String(monitor.config?.authUser ?? ""),
+    authPassword: String(monitor.config?.authPassword ?? ""),
+    authToken: String(monitor.config?.authToken ?? ""),
+    authApiKeyName: String(monitor.config?.authApiKeyName ?? ""),
+    authApiKeyValue: String(monitor.config?.authApiKeyValue ?? ""),
+    authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
   };
 }
 
@@ -90,6 +99,7 @@ export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataEx
     latencyAlertMs: null,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
+    cronExpression: '',
     scheduleEnabled: false,
     scheduleDays: '1,2,3,4,5',
     scheduleStartHour: 8,

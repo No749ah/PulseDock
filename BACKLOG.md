@@ -1,3 +1,11 @@
+## Status Summary (2026-03-27 12:20 UTC)
+- **Build/Test:** ✅ Clean build + 3628 API + 10 e2e + 12 agent = 3650 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-noon (merged afternoon → dev at 12:00 UTC)
+- **Last changes (12:20 UTC cycle):**
+  - **Cron Expression Scheduling** — `cronExpression String?` on Monitor model (Prisma migration). Scheduler uses `cron-parser` `isCronDue()`: if cronExpression set, checks prev fire time vs last check time instead of fixed intervalSec. MonitorsService validates expression on create/update (BadRequestException on invalid). UI: toggle in Advanced Settings section of monitor form, preset buttons (Every 1/5/15/30 min, hourly, daily 9am, weekdays 9am UTC), free-text input with format hint. 8 new tests → 3628 total.
+
 ## Status Summary (2026-03-27 11:40 UTC)
 - **Build/Test:** ✅ Clean build + 3620 API + 10 e2e + 12 agent = 3642 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

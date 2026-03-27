@@ -277,8 +277,42 @@ export async function runHttpCheck(
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
   const checkSecurityHeaders = config['checkSecurityHeaders'] === true;
 
+  // ─── Authentication ───────────────────────────────────────────────────────────
+  // authType: 'none' | 'basic' | 'bearer' | 'api-key'
+  const authType = typeof config['authType'] === 'string' ? config['authType'] : 'none';
+  if (authType === 'basic') {
+    const user = typeof config['authUser'] === 'string' ? config['authUser'] : '';
+    const pass = typeof config['authPassword'] === 'string' ? config['authPassword'] : '';
+    if (user || pass) {
+      requestHeaders['Authorization'] = `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`;
+    }
+  } else if (authType === 'bearer') {
+    const token = typeof config['authToken'] === 'string' ? config['authToken'] : '';
+    if (token) requestHeaders['Authorization'] = `Bearer ${token}`;
+  } else if (authType === 'api-key') {
+    const keyName = typeof config['authApiKeyName'] === 'string' ? config['authApiKeyName'].trim() : '';
+    const keyValue = typeof config['authApiKeyValue'] === 'string' ? config['authApiKeyValue'] : '';
+    const keyIn = typeof config['authApiKeyIn'] === 'string' ? config['authApiKeyIn'] : 'header';
+    if (keyName && keyValue && keyIn === 'header') {
+      requestHeaders[keyName] = keyValue;
+    }
+    // query-string API key: append to URL handled below
+  }
+
+  // For API key in query string, we append before building the request
+  let effectiveUrl = url;
+  if (authType === 'api-key') {
+    const keyName = typeof config['authApiKeyName'] === 'string' ? config['authApiKeyName'].trim() : '';
+    const keyValue = typeof config['authApiKeyValue'] === 'string' ? config['authApiKeyValue'] : '';
+    const keyIn = typeof config['authApiKeyIn'] === 'string' ? config['authApiKeyIn'] : 'header';
+    if (keyName && keyValue && keyIn === 'query') {
+      const sep = url.includes('?') ? '&' : '?';
+      effectiveUrl = `${url}${sep}${encodeURIComponent(keyName)}=${encodeURIComponent(keyValue)}`;
+    }
+  }
+
   try {
-    const timedResult = await runTimedRequest(url, {
+    const timedResult = await runTimedRequest(effectiveUrl, {
       method: safeMethod,
       timeoutMs,
       headers: requestHeaders,

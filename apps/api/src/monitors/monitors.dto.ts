@@ -188,6 +188,14 @@ export class CreateMonitorDto {
   @Max(90)
   sliLatencyWindow?: number;
 
+  @ApiPropertyOptional({
+    description: 'Cron expression (5-field, UTC) to schedule checks. When set, overrides intervalSec. E.g. "*/5 * * * *" = every 5 min, "0 9 * * 1-5" = weekdays 9am UTC.',
+    example: '*/5 * * * *',
+  })
+  @IsOptional()
+  @IsString()
+  cronExpression?: string | null;
+
   @ApiPropertyOptional({ description: 'Enable schedule-based checking (only run during configured window)', example: false })
   @IsOptional()
   @IsBoolean()
@@ -344,6 +352,10 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(90)
   sliLatencyWindow?: number;
+
+  @IsOptional()
+  @IsString()
+  cronExpression?: string | null;
 
   @IsOptional()
   @IsBoolean()

@@ -16,11 +16,13 @@ interface MockConfig {
 const mockState = vi.hoisted(() => ({
   https: { statusCode: 200, body: '' } as MockConfig,
   http: { statusCode: 200, body: '' } as MockConfig,
+  lastRequestOpts: null as unknown,
 }));
 
 function buildMockModule(getConfig: () => MockConfig) {
   return {
-    request: vi.fn((_opts: unknown, callback: (res: EventEmitter & { statusCode: number }) => void) => {
+    request: vi.fn((opts: unknown, callback: (res: EventEmitter & { statusCode: number }) => void) => {
+      mockState.lastRequestOpts = opts;
       const cfg = getConfig();
       const req = new EventEmitter() as EventEmitter & {
         write: ReturnType<typeof vi.fn>;
@@ -224,6 +226,62 @@ describe('runHttpCheck', () => {
     mockState.https = { statusCode: 0, body: '', shouldError: new Error('Request timed out after 100ms') };
     const result = await runHttpCheck('https://example.com', 100);
     expect(result.ok).toBe(false);
+  });
+
+  describe('authentication', () => {
+    beforeEach(() => {
+      mockState.https = { statusCode: 200, body: '' };
+      mockState.lastRequestOpts = null;
+    });
+
+    it('adds Basic Auth Authorization header from authType=basic', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'basic', authUser: 'admin', authPassword: 'secret' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      const expected = `Basic ${Buffer.from('admin:secret').toString('base64')}`;
+      expect(opts?.headers?.['Authorization']).toBe(expected);
+    });
+
+    it('adds Bearer Authorization header from authType=bearer', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'bearer', authToken: 'mytoken123' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['Authorization']).toBe('Bearer mytoken123');
+    });
+
+    it('adds API key as custom header from authType=api-key (header)', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'api-key', authApiKeyName: 'X-API-Key', authApiKeyValue: 'mykey', authApiKeyIn: 'header' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['X-API-Key']).toBe('mykey');
+    });
+
+    it('appends API key as query param from authType=api-key (query)', async () => {
+      await runHttpCheck('https://example.com/status', 5000, { authType: 'api-key', authApiKeyName: 'api_key', authApiKeyValue: 'qkeyval', authApiKeyIn: 'query' });
+      const opts = mockState.lastRequestOpts as { path?: string };
+      expect(opts?.path).toContain('api_key=qkeyval');
+    });
+
+    it('does not add Authorization header when authType=none', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'none' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['Authorization']).toBeUndefined();
+    });
+
+    it('does not add Authorization header when authType omitted', async () => {
+      await runHttpCheck('https://example.com', 5000, {});
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['Authorization']).toBeUndefined();
+    });
+
+    it('skips Basic Auth Authorization when both user and password are empty', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'basic', authUser: '', authPassword: '' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['Authorization']).toBeUndefined();
+    });
+
+    it('does not override existing Authorization header with bearer when token is empty', async () => {
+      await runHttpCheck('https://example.com', 5000, { authType: 'bearer', authToken: '' });
+      const opts = mockState.lastRequestOpts as { headers?: Record<string, string> };
+      expect(opts?.headers?.['Authorization']).toBeUndefined();
+    });
   });
 });
 

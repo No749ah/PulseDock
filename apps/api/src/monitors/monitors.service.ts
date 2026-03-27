@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { CronExpressionParser } from 'cron-parser';
 import { PrismaService } from '../common/prisma.service';
 import type { MonitorType } from '../types';
 import { ChecksService } from '../checks/checks.service';
@@ -104,6 +105,7 @@ export class MonitorsService {
       latencyAlertMs: m.latencyAlertMs ?? null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
+      cronExpression: m.cronExpression ?? null,
       scheduleEnabled: m.scheduleEnabled,
       scheduleDays: m.scheduleDays,
       scheduleStartHour: m.scheduleStartHour,
@@ -173,6 +175,7 @@ export class MonitorsService {
       } : null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
+      cronExpression: m.cronExpression ?? null,
       scheduleEnabled: m.scheduleEnabled,
       scheduleDays: m.scheduleDays,
       scheduleStartHour: m.scheduleStartHour,
@@ -215,6 +218,7 @@ export class MonitorsService {
     latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
+    cronExpression?: string | null;
     scheduleEnabled?: boolean;
     scheduleDays?: string;
     scheduleStartHour?: number;
@@ -222,6 +226,15 @@ export class MonitorsService {
     sliLatencyTarget?: number;
     sliLatencyWindow?: number;
   }) {
+    // Validate cron expression if provided
+    if (body.cronExpression) {
+      try {
+        CronExpressionParser.parse(body.cronExpression, { tz: 'UTC' });
+      } catch {
+        throw new BadRequestException(`Invalid cron expression: "${body.cronExpression}". Expected 5-field cron (e.g. "*/5 * * * *").`);
+      }
+    }
+
     const config: Record<string, unknown> = { ...(body.config ?? {}) };
     if (body.type === 'HEARTBEAT') {
       if (typeof config.token !== 'string' || !config.token.trim()) {
@@ -258,6 +271,7 @@ export class MonitorsService {
         latencyAlertMs: body.latencyAlertMs ?? null,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
+        cronExpression: body.cronExpression ?? null,
         scheduleEnabled: body.scheduleEnabled ?? false,
         scheduleDays: body.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: body.scheduleStartHour ?? 8,
@@ -315,6 +329,7 @@ export class MonitorsService {
       latencyAlertMs: created.latencyAlertMs ?? null,
       anomalyDetection: created.anomalyDetection,
       anomalyMultiplier: created.anomalyMultiplier,
+      cronExpression: created.cronExpression ?? null,
       scheduleEnabled: created.scheduleEnabled,
       scheduleDays: created.scheduleDays,
       scheduleStartHour: created.scheduleStartHour,
@@ -364,6 +379,7 @@ export class MonitorsService {
     latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
+    cronExpression?: string | null;
     scheduleEnabled?: boolean;
     scheduleDays?: string;
     scheduleStartHour?: number;
@@ -371,6 +387,15 @@ export class MonitorsService {
     sliLatencyTarget?: number | null;
     sliLatencyWindow?: number;
   }) {
+    // Validate cron expression if provided
+    if (body.cronExpression) {
+      try {
+        CronExpressionParser.parse(body.cronExpression, { tz: 'UTC' });
+      } catch {
+        throw new BadRequestException(`Invalid cron expression: "${body.cronExpression}". Expected 5-field cron (e.g. "*/5 * * * *").`);
+      }
+    }
+
     const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!current) throw new NotFoundException('monitor not found');
 
@@ -411,6 +436,7 @@ export class MonitorsService {
         ...(body.latencyAlertMs !== undefined ? { latencyAlertMs: body.latencyAlertMs } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
+        ...(body.cronExpression !== undefined ? { cronExpression: body.cronExpression } : {}),
         ...(body.scheduleEnabled !== undefined ? { scheduleEnabled: body.scheduleEnabled } : {}),
         ...(body.scheduleDays !== undefined ? { scheduleDays: body.scheduleDays } : {}),
         ...(body.scheduleStartHour !== undefined ? { scheduleStartHour: body.scheduleStartHour } : {}),

@@ -114,6 +114,7 @@ model Monitor {
   type          MonitorType
   target        String
   intervalSec   Int         @default(60)
+  cronExpression String?    // Optional cron expression (5-field). When set, overrides intervalSec for scheduling.
   timeoutMs     Int         @default(5000)
   confirmations       Int         @default(1)
   retryCount          Int         @default(0)  // number of automatic retries on failure before recording as failed (0-3)

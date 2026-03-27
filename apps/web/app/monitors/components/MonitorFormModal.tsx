@@ -529,6 +529,101 @@ export function MonitorFormModal({
                 ))}
               </select>
             </div>
+            {/* Authentication */}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Authentication
+              </label>
+              <select
+                value={(formData as unknown as { authType?: string }).authType ?? "none"}
+                onChange={(e) => onSetFormData({ ...formData, authType: e.target.value } as typeof formData & { authType?: string })}
+                className={inputClass}
+              >
+                <option value="none">None</option>
+                <option value="basic">Basic Auth (username + password)</option>
+                <option value="bearer">Bearer Token</option>
+                <option value="api-key">API Key</option>
+              </select>
+            </div>
+            {(formData as unknown as { authType?: string }).authType === "basic" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={(formData as unknown as { authUser?: string }).authUser ?? ""}
+                    onChange={(e) => onSetFormData({ ...formData, authUser: e.target.value } as typeof formData & { authUser?: string })}
+                    className={inputClass}
+                    placeholder="username"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={(formData as unknown as { authPassword?: string }).authPassword ?? ""}
+                    onChange={(e) => onSetFormData({ ...formData, authPassword: e.target.value } as typeof formData & { authPassword?: string })}
+                    className={inputClass}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+            )}
+            {(formData as unknown as { authType?: string }).authType === "bearer" && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Bearer Token</label>
+                <input
+                  type="password"
+                  value={(formData as unknown as { authToken?: string }).authToken ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, authToken: e.target.value } as typeof formData & { authToken?: string })}
+                  className={inputClass}
+                  placeholder="eyJhbGciOiJIUzI1NiIs..."
+                  autoComplete="off"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Sent as <code className="bg-surface-2 px-1 rounded">Authorization: Bearer &lt;token&gt;</code></p>
+              </div>
+            )}
+            {(formData as unknown as { authType?: string }).authType === "api-key" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Key Name</label>
+                    <input
+                      type="text"
+                      value={(formData as unknown as { authApiKeyName?: string }).authApiKeyName ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, authApiKeyName: e.target.value } as typeof formData & { authApiKeyName?: string })}
+                      className={inputClass}
+                      placeholder="X-API-Key"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Key Value</label>
+                    <input
+                      type="password"
+                      value={(formData as unknown as { authApiKeyValue?: string }).authApiKeyValue ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, authApiKeyValue: e.target.value } as typeof formData & { authApiKeyValue?: string })}
+                      className={inputClass}
+                      placeholder="your-secret-api-key"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Send As</label>
+                  <select
+                    value={(formData as unknown as { authApiKeyIn?: string }).authApiKeyIn ?? "header"}
+                    onChange={(e) => onSetFormData({ ...formData, authApiKeyIn: e.target.value } as typeof formData & { authApiKeyIn?: string })}
+                    className={inputClass}
+                  >
+                    <option value="header">Request Header</option>
+                    <option value="query">Query Parameter</option>
+                  </select>
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
                 Request Headers <span className="text-xs text-text-muted">(optional)</span>
@@ -538,7 +633,7 @@ export function MonitorFormModal({
                 value={(formData as unknown as { requestHeaders?: string }).requestHeaders ?? ""}
                 onChange={(e) => onSetFormData({ ...formData, requestHeaders: e.target.value } as typeof formData & { requestHeaders?: string })}
                 className={`${inputClass} font-mono text-xs resize-y`}
-                placeholder={"Authorization: Bearer <token>\nX-API-Key: your-key"}
+                placeholder={"Content-Type: application/json\nX-Custom-Header: value"}
                 spellCheck={false}
               />
               <p className="mt-1 text-xs text-text-secondary">One header per line: <code className="bg-surface-2 px-1 rounded">Name: Value</code>. Added to every request.</p>
@@ -1022,6 +1117,72 @@ export function MonitorFormModal({
             )}
           </div>
         )}
+
+        {/* Cron Expression Scheduling */}
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-text-secondary">Cron Expression Schedule</label>
+              <p className="text-xs text-text-muted mt-0.5">Use a cron expression for advanced scheduling (overrides the interval above). Evaluated in UTC.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!(formData.cronExpression ?? '')}
+              onClick={() => onSetFormData({ ...formData, cronExpression: formData.cronExpression ? '' : '*/5 * * * *' })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                !!(formData.cronExpression ?? '') ? "bg-accent" : "bg-surface-secondary"
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${!!(formData.cronExpression ?? '') ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
+          </div>
+          {!!(formData.cronExpression ?? '') && (
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Presets</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Every 1 min', expr: '* * * * *' },
+                    { label: 'Every 5 min', expr: '*/5 * * * *' },
+                    { label: 'Every 15 min', expr: '*/15 * * * *' },
+                    { label: 'Every 30 min', expr: '*/30 * * * *' },
+                    { label: 'Every hour', expr: '0 * * * *' },
+                    { label: 'Daily 9am UTC', expr: '0 9 * * *' },
+                    { label: 'Weekdays 9am UTC', expr: '0 9 * * 1-5' },
+                  ].map(({ label, expr }) => (
+                    <button
+                      key={expr}
+                      type="button"
+                      onClick={() => onSetFormData({ ...formData, cronExpression: expr })}
+                      className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                        formData.cronExpression === expr
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-surface text-text-secondary hover:border-accent/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Expression (5-field, UTC)</label>
+                <input
+                  type="text"
+                  value={formData.cronExpression ?? ''}
+                  onChange={(e) => onSetFormData({ ...formData, cronExpression: e.target.value })}
+                  placeholder="*/5 * * * *"
+                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <p className="text-xs text-text-muted mt-1.5">
+                  Format: <code className="font-mono bg-surface-secondary px-1 rounded">minute hour day month weekday</code>.
+                  When set, this overrides the check interval above.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Business Hours Schedule */}
         <div>

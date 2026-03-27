@@ -1,3 +1,11 @@
+## Status Summary (2026-03-27 19:21 UTC)
+- **Build/Test:** ✅ Clean build + 3693 API tests (7 new RTO); 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (19:21 UTC cycle):**
+  - [x] **Recovery Time Objective (RTO) Tracking** — `rtoMinutes Int?` on Monitor. Per-incident RTO compliance check: breach count, compliant count, RTO compliance % (compliant/total incidents). RTO card on monitor SLO tab: compliance %, within-RTO/breached counts, warning when breaches exist. RTO input in create/edit form (Advanced Settings, near SLA config). 7 new tests.
+
 ## Status Summary (2026-03-27 16:20 UTC)
 - **Build/Test:** ✅ Clean build + 3664 API + 10 e2e + 12 agent = 3686 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities (brace-expansion CVE fixed via npm audit fix)

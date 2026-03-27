@@ -1023,6 +1023,72 @@ export function MonitorFormModal({
           </div>
         )}
 
+        {/* Cron Expression Scheduling */}
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-text-secondary">Cron Expression Schedule</label>
+              <p className="text-xs text-text-muted mt-0.5">Use a cron expression for advanced scheduling (overrides the interval above). Evaluated in UTC.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!(formData.cronExpression ?? '')}
+              onClick={() => onSetFormData({ ...formData, cronExpression: formData.cronExpression ? '' : '*/5 * * * *' })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                !!(formData.cronExpression ?? '') ? "bg-accent" : "bg-surface-secondary"
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${!!(formData.cronExpression ?? '') ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
+          </div>
+          {!!(formData.cronExpression ?? '') && (
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">Presets</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Every 1 min', expr: '* * * * *' },
+                    { label: 'Every 5 min', expr: '*/5 * * * *' },
+                    { label: 'Every 15 min', expr: '*/15 * * * *' },
+                    { label: 'Every 30 min', expr: '*/30 * * * *' },
+                    { label: 'Every hour', expr: '0 * * * *' },
+                    { label: 'Daily 9am UTC', expr: '0 9 * * *' },
+                    { label: 'Weekdays 9am UTC', expr: '0 9 * * 1-5' },
+                  ].map(({ label, expr }) => (
+                    <button
+                      key={expr}
+                      type="button"
+                      onClick={() => onSetFormData({ ...formData, cronExpression: expr })}
+                      className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                        formData.cronExpression === expr
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-surface text-text-secondary hover:border-accent/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Expression (5-field, UTC)</label>
+                <input
+                  type="text"
+                  value={formData.cronExpression ?? ''}
+                  onChange={(e) => onSetFormData({ ...formData, cronExpression: e.target.value })}
+                  placeholder="*/5 * * * *"
+                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <p className="text-xs text-text-muted mt-1.5">
+                  Format: <code className="font-mono bg-surface-secondary px-1 rounded">minute hour day month weekday</code>.
+                  When set, this overrides the check interval above.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Business Hours Schedule */}
         <div>
           <div className="flex items-center justify-between">

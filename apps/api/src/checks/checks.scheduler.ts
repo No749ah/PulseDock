@@ -1,10 +1,28 @@
 import { Injectable, Logger, BeforeApplicationShutdown, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MonitorType } from '@prisma/client';
+import { CronExpressionParser } from 'cron-parser';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from './checks.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { EscalationService } from '../escalation/escalation.service';
+
+/**
+ * Returns true if a monitor with a cron expression is due to run.
+ * A cron-scheduled monitor is due when the most recent "prev" fire time
+ * is strictly after the last check. This means we only run it once per
+ * cron window, no matter how fast the tick cycle is.
+ */
+function isCronDue(cronExpression: string, lastCheckedAt: Date | null): boolean {
+  try {
+    const interval = CronExpressionParser.parse(cronExpression, { tz: 'UTC' });
+    const prev = interval.prev().toDate();
+    if (!lastCheckedAt) return true; // never checked → run now
+    return prev.getTime() > lastCheckedAt.getTime();
+  } catch {
+    return false; // invalid expression → skip rather than crash
+  }
+}
 
 /** How many days of MonitorRun history to keep. Configurable via RUN_RETENTION_DAYS env var. Default: 90 days. */
 const RUN_RETENTION_DAYS = Math.max(1, parseInt(process.env['RUN_RETENTION_DAYS'] ?? '90', 10) || 90);
@@ -148,6 +166,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         anomalyMultiplier: true,
         sliLatencyTarget: true,
         sliLatencyWindow: true,
+        cronExpression: true,
         scheduleEnabled: true,
         scheduleDays: true,
         scheduleStartHour: true,
@@ -175,6 +194,11 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         if (nowHour < start || nowHour >= end) return false;
       }
       const latest = monitor.runs[0] ?? null;
+      // If a cron expression is configured, use it to determine due time
+      if (monitor.cronExpression) {
+        return isCronDue(monitor.cronExpression, latest?.checkedAt ?? null);
+      }
+      // Otherwise fall back to fixed interval
       return !latest || cycleStart - latest.checkedAt.getTime() >= monitor.intervalSec * 1000;
     });
 

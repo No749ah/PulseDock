@@ -117,6 +117,7 @@ export type MonitorFormData = {
   anomalyMultiplier: number;
   sliLatencyTarget: number | "";
   sliLatencyWindow: number;
+  cronExpression: string;
   scheduleEnabled: boolean;
   scheduleDays: string;
   scheduleStartHour: number;

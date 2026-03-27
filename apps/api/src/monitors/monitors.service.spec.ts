@@ -6360,3 +6360,44 @@ describe('MonitorsService.bulkCreateFromUrls', () => {
     expect(result.errors).toHaveLength(0);
   });
 });
+
+describe('cron expression validation', () => {
+  it('accepts a valid 5-field cron expression on create', async () => {
+    const p = makePrisma();
+    p.monitor.create.mockResolvedValue({ ...makeMonitor(), cronExpression: '*/5 * * * *' });
+    const svc = makeService(p);
+    await expect(
+      svc.create('user-1', { name: 'Test', type: 'HTTP', target: 'https://example.com', cronExpression: '*/5 * * * *' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('rejects an invalid cron expression on create', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    await expect(
+      svc.create('user-1', { name: 'Test', type: 'HTTP', target: 'https://example.com', cronExpression: 'not-a-cron' }),
+    ).rejects.toThrow('Invalid cron expression');
+  });
+
+  it('accepts a valid cron expression on update', async () => {
+    const p = makePrisma();
+    const current = makeMonitor();
+    p.monitor.findFirst.mockResolvedValue(current);
+    p.monitor.update.mockResolvedValue({ ...current, cronExpression: '0 9 * * 1-5' });
+    // list() is called after update to return the updated monitor
+    p.monitor.findMany.mockResolvedValue([{ ...current, cronExpression: '0 9 * * 1-5', monitorAlerts: [], monitorTags: [], runs: [], acknowledgements: [] }]);
+    const svc = makeService(p);
+    await expect(
+      svc.update('user-1', 'monitor-1', { cronExpression: '0 9 * * 1-5' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('rejects an invalid cron expression on update', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(makeMonitor());
+    const svc = makeService(p);
+    await expect(
+      svc.update('user-1', 'monitor-1', { cronExpression: '60 * * * *' }),
+    ).rejects.toThrow('Invalid cron expression');
+  });
+});

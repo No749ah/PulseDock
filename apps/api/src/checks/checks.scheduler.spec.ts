@@ -726,4 +726,71 @@ describe('ChecksScheduler', () => {
       expect(scheduler.getQueueDepth()).toBe(0);
     });
   });
+
+  describe('tick() — cron expression scheduling', () => {
+    it('runs a cron-scheduled monitor that has never been checked', async () => {
+      // */1 * * * * = every minute → prev() will be within the last minute → never checked → due
+      const monitor = makeMonitor({ cronExpression: '* * * * *', runs: [], intervalSec: 3600 });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Should have triggered a check
+      expect(checks.runMonitor).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT re-run a cron-scheduled monitor when already checked after last cron fire', async () => {
+      // 0 0 1 1 * = once a year on Jan 1 → prev() was far in the past
+      // Last checked at "just now" → not due
+      const now = new Date();
+      const monitor = makeMonitor({
+        cronExpression: '0 0 1 1 *',
+        intervalSec: 3600,
+        runs: [{ checkedAt: new Date(now.getTime() - 1000) }], // checked 1 second ago
+      });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Should NOT have triggered a check because last checked is after prev cron fire
+      expect(checks.runMonitor).not.toHaveBeenCalled();
+    });
+
+    it('falls back to intervalSec when cronExpression is null', async () => {
+      // No cron expression, interval 60s, last checked 61s ago → due
+      const monitor = makeMonitor({
+        cronExpression: null,
+        intervalSec: 60,
+        runs: [{ checkedAt: new Date(Date.now() - 61_000) }],
+      });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      expect(checks.runMonitor).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips a monitor with an invalid cron expression gracefully', async () => {
+      // Invalid cron → isCronDue returns false → monitor not run
+      const monitor = makeMonitor({
+        cronExpression: 'not-a-valid-cron',
+        intervalSec: 60,
+        runs: [],
+      });
+      prisma.monitor.findMany.mockResolvedValue([monitor]);
+
+      const promise = scheduler.tick();
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Invalid cron → not due → no check fired
+      expect(checks.runMonitor).not.toHaveBeenCalled();
+    });
+  });
 });

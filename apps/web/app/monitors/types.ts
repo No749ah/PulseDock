@@ -146,4 +146,12 @@ export type MonitorFormDataExtended = MonitorFormData & {
   browserExpectedText?: string;
   browserSelector?: string;
   browserStatusCodesRaw?: string;
+  // HTTP Auth
+  authType?: string;
+  authUser?: string;
+  authPassword?: string;
+  authToken?: string;
+  authApiKeyName?: string;
+  authApiKeyValue?: string;
+  authApiKeyIn?: string;
 };

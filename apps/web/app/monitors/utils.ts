@@ -58,6 +58,14 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     browserStatusCodesRaw: Array.isArray(monitor.config?.browserStatusCodes)
       ? (monitor.config.browserStatusCodes as number[]).join(", ")
       : "",
+    // HTTP Auth
+    authType: String(monitor.config?.authType ?? "none"),
+    authUser: String(monitor.config?.authUser ?? ""),
+    authPassword: String(monitor.config?.authPassword ?? ""),
+    authToken: String(monitor.config?.authToken ?? ""),
+    authApiKeyName: String(monitor.config?.authApiKeyName ?? ""),
+    authApiKeyValue: String(monitor.config?.authApiKeyValue ?? ""),
+    authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
   };
 }
 

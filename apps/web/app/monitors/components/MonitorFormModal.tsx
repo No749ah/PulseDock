@@ -529,6 +529,101 @@ export function MonitorFormModal({
                 ))}
               </select>
             </div>
+            {/* Authentication */}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Authentication
+              </label>
+              <select
+                value={(formData as unknown as { authType?: string }).authType ?? "none"}
+                onChange={(e) => onSetFormData({ ...formData, authType: e.target.value } as typeof formData & { authType?: string })}
+                className={inputClass}
+              >
+                <option value="none">None</option>
+                <option value="basic">Basic Auth (username + password)</option>
+                <option value="bearer">Bearer Token</option>
+                <option value="api-key">API Key</option>
+              </select>
+            </div>
+            {(formData as unknown as { authType?: string }).authType === "basic" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={(formData as unknown as { authUser?: string }).authUser ?? ""}
+                    onChange={(e) => onSetFormData({ ...formData, authUser: e.target.value } as typeof formData & { authUser?: string })}
+                    className={inputClass}
+                    placeholder="username"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={(formData as unknown as { authPassword?: string }).authPassword ?? ""}
+                    onChange={(e) => onSetFormData({ ...formData, authPassword: e.target.value } as typeof formData & { authPassword?: string })}
+                    className={inputClass}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+            )}
+            {(formData as unknown as { authType?: string }).authType === "bearer" && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Bearer Token</label>
+                <input
+                  type="password"
+                  value={(formData as unknown as { authToken?: string }).authToken ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, authToken: e.target.value } as typeof formData & { authToken?: string })}
+                  className={inputClass}
+                  placeholder="eyJhbGciOiJIUzI1NiIs..."
+                  autoComplete="off"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Sent as <code className="bg-surface-2 px-1 rounded">Authorization: Bearer &lt;token&gt;</code></p>
+              </div>
+            )}
+            {(formData as unknown as { authType?: string }).authType === "api-key" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Key Name</label>
+                    <input
+                      type="text"
+                      value={(formData as unknown as { authApiKeyName?: string }).authApiKeyName ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, authApiKeyName: e.target.value } as typeof formData & { authApiKeyName?: string })}
+                      className={inputClass}
+                      placeholder="X-API-Key"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Key Value</label>
+                    <input
+                      type="password"
+                      value={(formData as unknown as { authApiKeyValue?: string }).authApiKeyValue ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, authApiKeyValue: e.target.value } as typeof formData & { authApiKeyValue?: string })}
+                      className={inputClass}
+                      placeholder="your-secret-api-key"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Send As</label>
+                  <select
+                    value={(formData as unknown as { authApiKeyIn?: string }).authApiKeyIn ?? "header"}
+                    onChange={(e) => onSetFormData({ ...formData, authApiKeyIn: e.target.value } as typeof formData & { authApiKeyIn?: string })}
+                    className={inputClass}
+                  >
+                    <option value="header">Request Header</option>
+                    <option value="query">Query Parameter</option>
+                  </select>
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
                 Request Headers <span className="text-xs text-text-muted">(optional)</span>
@@ -538,7 +633,7 @@ export function MonitorFormModal({
                 value={(formData as unknown as { requestHeaders?: string }).requestHeaders ?? ""}
                 onChange={(e) => onSetFormData({ ...formData, requestHeaders: e.target.value } as typeof formData & { requestHeaders?: string })}
                 className={`${inputClass} font-mono text-xs resize-y`}
-                placeholder={"Authorization: Bearer <token>\nX-API-Key: your-key"}
+                placeholder={"Content-Type: application/json\nX-Custom-Header: value"}
                 spellCheck={false}
               />
               <p className="mt-1 text-xs text-text-secondary">One header per line: <code className="bg-surface-2 px-1 rounded">Name: Value</code>. Added to every request.</p>

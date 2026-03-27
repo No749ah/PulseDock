@@ -509,7 +509,7 @@ function MonitorsPageInner() {
       if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
-      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string };
       if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
       if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
@@ -531,7 +531,21 @@ function MonitorsPageInner() {
       }
       if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
-      if ((f as typeof f & { checkSecurityHeaders?: boolean }).checkSecurityHeaders) config.checkSecurityHeaders = true;
+      if (f.checkSecurityHeaders) config.checkSecurityHeaders = true;
+      // Authentication
+      if (f.authType && f.authType !== 'none') {
+        config.authType = f.authType;
+        if (f.authType === 'basic') {
+          if (f.authUser) config.authUser = f.authUser;
+          if (f.authPassword) config.authPassword = f.authPassword;
+        } else if (f.authType === 'bearer') {
+          if (f.authToken) config.authToken = f.authToken;
+        } else if (f.authType === 'api-key') {
+          if (f.authApiKeyName) config.authApiKeyName = f.authApiKeyName;
+          if (f.authApiKeyValue) config.authApiKeyValue = f.authApiKeyValue;
+          config.authApiKeyIn = f.authApiKeyIn ?? 'header';
+        }
+      }
     }
     return config;
   };

@@ -24,6 +24,7 @@ enum MonitorType {
   PING
   SMTP
   BROWSER
+  WHOIS
 }
 
 model User {
@@ -75,6 +76,7 @@ model User {
   acknowledgements        AlertAcknowledgement[]
   alertRoutingRules       AlertRoutingRule[]
   escalationPolicies      EscalationPolicy[]
+  alertGroups             AlertGroup[]
 }
 
 model Session {
@@ -127,6 +129,7 @@ model Monitor {
   autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
   activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
   mutedUntil          DateTime?   // if set and in future, all alerts suppressed
+  latencyAlertMs      Int?        // if set, alert when latency exceeds this threshold (ms) even on success
   anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
   anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
   sliLatencyTarget    Int?        // target p95 latency in ms (e.g., 500 = p95 must be < 500ms)
@@ -136,6 +139,7 @@ model Monitor {
   scheduleDays        String      @default("1,2,3,4,5") // comma-sep day-of-week: 0=Sun..6=Sat
   scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
   scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
+  shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -246,6 +250,7 @@ model MonitorRun {
   message      String
   responseBody String?  // First 500 chars of response body on failure, for debug
   timingsJson  Json?    // HTTP timing breakdown: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }
+  securityAuditJson Json? // Security headers audit: { grade, score, headers[] } — only on HTTP monitors with checkSecurityHeaders=true
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
@@ -258,16 +263,21 @@ model MonitorRun {
 }
 
 model AlertChannel {
-  id         String   @id @default(cuid())
-  userId     String
-  name       String
-  type       String
-  configJson Json
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  type             String
+  configJson       Json
+  createdAt        DateTime @default(now())
+  alertGrouping    Boolean  @default(false)  // enable alert grouping for this channel
+  groupWindowSec   Int      @default(300)    // window in seconds to group related alerts (default 5min)
+  groupByFolder    Boolean  @default(true)   // group alerts from same folder
+  groupByTag       Boolean  @default(false)  // group alerts from same tag
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
   deliveryLogs  AlertDeliveryLog[]
+  alertGroups   AlertGroup[]
 }
 
 model MonitorAlert {
@@ -591,15 +601,35 @@ model AlertDeliveryLog {
   monitorId      String?
   monitorName    String?
   status         String   // "success" | "failed"
-  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test"
+  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test" | "grouped_alert"
   errorMessage   String?
   durationMs     Int?
   createdAt      DateTime @default(now())
+  isGrouped      Boolean  @default(false)
+  groupedCount   Int      @default(0)
 
   alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
 
   @@index([alertChannelId])
   @@index([alertChannelId, createdAt])
+}
+
+model AlertGroup {
+  id           String    @id @default(cuid())
+  userId       String
+  channelId    String
+  groupKey     String    // e.g. "folder:folderId" or "tag:tagId" or "none"
+  monitorIds   String    // JSON array of monitor IDs in this group
+  firstAlertAt DateTime  @default(now())
+  lastAlertAt  DateTime  @default(now())
+  sentAt       DateTime? // when the grouped alert was sent, null = pending
+  level        String    @default("red")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel AlertChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channelId, groupKey])
+  @@index([userId, sentAt])
 }
 
 model UserSettings {

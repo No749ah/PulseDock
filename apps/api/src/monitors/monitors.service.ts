@@ -99,6 +99,7 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: m.latencyAlertMs ?? null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
       scheduleEnabled: m.scheduleEnabled,
@@ -107,6 +108,7 @@ export class MonitorsService {
       scheduleEndHour: m.scheduleEndHour,
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
+      shareToken: m.shareToken ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -158,6 +160,7 @@ export class MonitorsService {
       flapDetectionEnabled: m.flapDetectionEnabled,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: m.latencyAlertMs ?? null,
       isAcknowledged: m.acknowledgements.length > 0,
       activeAck: m.acknowledgements[0] ? {
         id: m.acknowledgements[0].id,
@@ -170,6 +173,7 @@ export class MonitorsService {
       scheduleDays: m.scheduleDays,
       scheduleStartHour: m.scheduleStartHour,
       scheduleEndHour: m.scheduleEndHour,
+      shareToken: m.shareToken ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -202,6 +206,7 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -242,6 +247,7 @@ export class MonitorsService {
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
+        latencyAlertMs: body.latencyAlertMs ?? null,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
         scheduleEnabled: body.scheduleEnabled ?? false,
@@ -296,6 +302,7 @@ export class MonitorsService {
       isFlapping: created.isFlapping,
       flapDetectionEnabled: created.flapDetectionEnabled,
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
+      latencyAlertMs: created.latencyAlertMs ?? null,
       anomalyDetection: created.anomalyDetection,
       anomalyMultiplier: created.anomalyMultiplier,
       scheduleEnabled: created.scheduleEnabled,
@@ -342,6 +349,7 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -386,6 +394,7 @@ export class MonitorsService {
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
+        ...(body.latencyAlertMs !== undefined ? { latencyAlertMs: body.latencyAlertMs } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
         ...(body.scheduleEnabled !== undefined ? { scheduleEnabled: body.scheduleEnabled } : {}),
@@ -549,6 +558,7 @@ export class MonitorsService {
         autoIncident: source.autoIncident,
         autoIncidentSeverity: source.autoIncidentSeverity,
         flapDetectionEnabled: source.flapDetectionEnabled,
+        latencyAlertMs: source.latencyAlertMs,
         anomalyDetection: source.anomalyDetection,
         anomalyMultiplier: source.anomalyMultiplier,
         monitorAlerts: {
@@ -598,6 +608,7 @@ export class MonitorsService {
       flapDetectionEnabled: cloned.flapDetectionEnabled,
       flapAlertedAt: null,
       mutedUntil: null,
+      latencyAlertMs: cloned.latencyAlertMs ?? null,
       isAcknowledged: false,
       anomalyDetection: cloned.anomalyDetection,
       anomalyMultiplier: cloned.anomalyMultiplier,
@@ -906,8 +917,11 @@ export class MonitorsService {
       flapDetectionEnabled: monitor.flapDetectionEnabled,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
+      latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
       anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
       anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+      sliLatencyTarget: monitor.sliLatencyTarget ?? null,
+      sliLatencyWindow: monitor.sliLatencyWindow,
       scheduleEnabled: (monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled ?? false,
       scheduleDays: (monitor as typeof monitor & { scheduleDays?: string }).scheduleDays ?? '1,2,3,4,5',
       scheduleStartHour: (monitor as typeof monitor & { scheduleStartHour?: number }).scheduleStartHour ?? 8,
@@ -1031,6 +1045,7 @@ export class MonitorsService {
         level: r.level as 'green' | 'yellow' | 'red',
         responseBody: r.responseBody ?? null,
         timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
+        securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
@@ -1056,10 +1071,11 @@ export class MonitorsService {
       take: 10_000,
     });
 
-    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'responseBody'].join(',');
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseBody'].join(',');
     const rows = runs.map((r) => {
       const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
       const body = (r.responseBody ?? '').replace(/"/g, '""');
+      const timings = r.timingsJson as { dnsMs?: number | null; tcpMs?: number | null; tlsMs?: number | null; ttfbMs?: number | null; downloadMs?: number | null } | null;
       return [
         r.id,
         r.checkedAt.toISOString(),
@@ -1068,6 +1084,11 @@ export class MonitorsService {
         r.latencyMs ?? '',
         r.level ?? '',
         `"${msg}"`,
+        timings?.dnsMs ?? '',
+        timings?.tcpMs ?? '',
+        timings?.tlsMs ?? '',
+        timings?.ttfbMs ?? '',
+        timings?.downloadMs ?? '',
         body ? `"${body}"` : '',
       ].join(',');
     });
@@ -2365,6 +2386,328 @@ export class MonitorsService {
       totalChecks,
       successChecks,
       checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+    };
+  }
+
+  /**
+   * Returns a period-over-period comparison for a monitor's latency and uptime.
+   * Compares the current period (last N days) against the prior period (same length before that).
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to compare
+   * @param period - Comparison window: '24h' | '7d' | '30d'
+   */
+  async getPeriodComparison(userId: string, monitorId: string, period: '24h' | '7d' | '30d' = '7d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const now = Date.now();
+    const currentFrom = new Date(now - rangeMs);
+    const priorTo = new Date(now - rangeMs);
+    const priorFrom = new Date(now - 2 * rangeMs);
+
+    function computePeriodStats(runs: Array<{ ok: boolean; latencyMs: number | null }>) {
+      const total = runs.length;
+      const successes = runs.filter((r) => r.ok);
+      const uptime = total === 0 ? null : Math.round((successes.length / total) * 10000) / 100;
+      const latencies = successes.filter((r) => r.latencyMs !== null).map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const avg = latencies.length === 0 ? null : Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length);
+      const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.95 * latencies.length) - 1)];
+      const p50 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.5 * latencies.length) - 1)];
+      return { total, successCount: successes.length, uptime, avgMs: avg, p50Ms: p50, p95Ms: p95 };
+    }
+
+    const [currentRuns, priorRuns] = await Promise.all([
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: currentFrom } }, select: { ok: true, latencyMs: true } }),
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: priorFrom, lt: priorTo } }, select: { ok: true, latencyMs: true } }),
+    ]);
+
+    const current = computePeriodStats(currentRuns);
+    const prior = computePeriodStats(priorRuns);
+
+    function pctChange(curr: number | null, prev: number | null): number | null {
+      if (curr === null || prev === null || prev === 0) return null;
+      return Math.round(((curr - prev) / prev) * 1000) / 10;
+    }
+
+    return {
+      period,
+      current,
+      prior,
+      delta: {
+        uptimePct: pctChange(current.uptime, prior.uptime),
+        avgMsPct: pctChange(current.avgMs, prior.avgMs),
+        p95MsPct: pctChange(current.p95Ms, prior.p95Ms),
+      },
+    };
+  }
+
+  // ─── Status Transitions ───────────────────────────────────────────────────
+
+  /**
+   * Returns a list of status transition events for a monitor over a given period.
+   * Each transition represents a change in health level (e.g. green → red, red → green).
+   * Useful for post-mortem analysis and incident root-cause investigation.
+   *
+   * @param userId    - Authenticated user ID (ownership check)
+   * @param monitorId - Monitor ID
+   * @param period    - Lookback window: 24h | 7d | 30d (default 7d)
+   * @returns List of transitions + summary stats (total outages, total downtime, MTTR, MTBF)
+   */
+  async getStatusTransitions(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true, name: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const since = new Date(Date.now() - rangeMs);
+
+    // Load all runs in period, ordered oldest→newest
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since } },
+      select: { ok: true, level: true, message: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    if (runs.length === 0) {
+      return {
+        transitions: [],
+        summary: { totalOutages: 0, totalDowntimeSec: 0, avgRecoveryTimeSec: null, mtbfSec: null },
+        period,
+        totalRuns: 0,
+      };
+    }
+
+    // Walk the run list and detect level changes
+    type Transition = {
+      from: string;
+      to: string;
+      at: string;
+      message: string | null;
+      latencyMs: number | null;
+      durationSec: number | null; // duration in previous state
+    };
+
+    const transitions: Transition[] = [];
+    let prevLevel = runs[0].level ?? (runs[0].ok ? 'green' : 'red');
+    let prevAt = new Date(runs[0].checkedAt).getTime();
+
+    for (let i = 1; i < runs.length; i++) {
+      const run = runs[i];
+      const currentLevel = run.level ?? (run.ok ? 'green' : 'red');
+      const currentAt = new Date(run.checkedAt).getTime();
+
+      if (currentLevel !== prevLevel) {
+        transitions.push({
+          from: prevLevel,
+          to: currentLevel,
+          at: new Date(currentAt).toISOString(),
+          message: run.message ?? null,
+          latencyMs: run.latencyMs ?? null,
+          durationSec: Math.round((currentAt - prevAt) / 1000),
+        });
+        prevLevel = currentLevel;
+        prevAt = currentAt;
+      }
+    }
+
+    // Summary stats
+    const outageTransitions = transitions.filter((t) => t.from === 'green' && t.to !== 'green');
+    const recoveryTransitions = transitions.filter((t) => t.from !== 'green' && t.to === 'green');
+
+    const totalOutages = outageTransitions.length;
+
+    // Total downtime: sum of durations of non-green → green transitions
+    const totalDowntimeSec = recoveryTransitions.reduce((sum, t) => sum + (t.durationSec ?? 0), 0);
+
+    const avgRecoveryTimeSec = recoveryTransitions.length > 0
+      ? Math.round(totalDowntimeSec / recoveryTransitions.length)
+      : null;
+
+    // MTBF: time between outage starts
+    let mtbfSec: number | null = null;
+    if (outageTransitions.length >= 2) {
+      const outageTimestamps = outageTransitions.map((t) => new Date(t.at).getTime());
+      let intervalSum = 0;
+      for (let i = 1; i < outageTimestamps.length; i++) {
+        intervalSum += outageTimestamps[i] - outageTimestamps[i - 1];
+      }
+      mtbfSec = Math.round(intervalSum / (outageTimestamps.length - 1) / 1000);
+    }
+
+    const checkedRangeMap: Record<string, string> = {
+      '24h': 'Last 24 hours',
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+    };
+
+    return {
+      transitions,
+      summary: { totalOutages, totalDowntimeSec, avgRecoveryTimeSec, mtbfSec },
+      period,
+      checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+      totalRuns: runs.length,
+      currentStatus: prevLevel,
+    };
+  }
+
+  // ─── Bulk Create from URL List ────────────────────────────────────────────
+
+  /**
+   * Bulk-creates HTTP monitors from a list of URLs.
+   * Validates each URL, derives a name from the hostname, deduplicates by target.
+   *
+   * @param userId  - Authenticated user ID
+   * @param body    - { urls, folderId?, alertChannelIds?, intervalSec? }
+   * @returns       { created, skipped, errors }
+   */
+  async bulkCreateFromUrls(
+    userId: string,
+    body: {
+      urls: string[];
+      folderId?: string;
+      alertChannelIds?: string[];
+      intervalSec?: number;
+    },
+  ): Promise<{ created: number; skipped: number; errors: Array<{ url: string; error: string }> }> {
+    let created = 0;
+    let skipped = 0;
+    const errors: Array<{ url: string; error: string }> = [];
+
+    for (const rawUrl of body.urls) {
+      const url = rawUrl.trim();
+      if (!url) continue;
+
+      // Validate URL
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          errors.push({ url, error: 'Only HTTP/HTTPS URLs are supported' });
+          continue;
+        }
+      } catch {
+        errors.push({ url, error: 'Invalid URL' });
+        continue;
+      }
+
+      // Derive name from hostname
+      const name = parsedUrl.hostname;
+
+      // Deduplicate: skip if a monitor with the same target already exists for this user
+      const existing = await this.prisma.monitor.findFirst({
+        where: { userId, target: url },
+        select: { id: true },
+      });
+
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await this.create(userId, {
+          name,
+          target: url,
+          type: 'HTTP',
+          intervalSec: body.intervalSec ?? 60,
+          alertChannelIds: body.alertChannelIds ?? [],
+          folderId: body.folderId ?? null,
+        });
+        created++;
+      } catch (err) {
+        errors.push({ url, error: err instanceof Error ? err.message : 'Failed to create monitor' });
+      }
+    }
+
+    return { created, skipped, errors };
+  }
+
+  // ─── Response Diff ────────────────────────────────────────────────────────
+
+  /**
+   * Returns the response bodies of a failing run and the most recent passing run before it.
+   *
+   * @param userId    - Authenticated user ID (ownership check)
+   * @param monitorId - Monitor ID
+   * @param runId     - ID of the failing run
+   * @param baseRunId - (optional) explicit base run ID; if omitted, finds the most recent OK run before the failing run
+   */
+  async getResponseDiff(
+    userId: string,
+    monitorId: string,
+    runId: string,
+    baseRunId?: string,
+  ): Promise<{
+    failedBody: string | null;
+    baseBody: string | null;
+    runId: string;
+    baseRunId: string | null;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const failedRun = await this.prisma.monitorRun.findFirst({
+      where: { id: runId, monitorId, userId },
+      select: { id: true, ok: true, checkedAt: true, responseBody: true },
+    });
+    if (!failedRun) throw new NotFoundException('Run not found');
+
+    let resolvedBaseRunId: string | null = null;
+    let baseBody: string | null = null;
+
+    if (baseRunId) {
+      const baseRun = await this.prisma.monitorRun.findFirst({
+        where: { id: baseRunId, monitorId, userId },
+        select: { id: true, responseBody: true },
+      });
+      if (baseRun) {
+        resolvedBaseRunId = baseRun.id;
+        baseBody = baseRun.responseBody ?? null;
+      }
+    } else {
+      // Find most recent OK run before the failing run that has a responseBody
+      const baseRun = await this.prisma.monitorRun.findFirst({
+        where: {
+          monitorId,
+          userId,
+          ok: true,
+          responseBody: { not: null },
+          checkedAt: { lt: failedRun.checkedAt },
+        },
+        orderBy: { checkedAt: 'desc' },
+        select: { id: true, responseBody: true },
+      });
+      if (baseRun) {
+        resolvedBaseRunId = baseRun.id;
+        baseBody = baseRun.responseBody ?? null;
+      }
+    }
+
+    return {
+      failedBody: failedRun.responseBody ?? null,
+      baseBody,
+      runId: failedRun.id,
+      baseRunId: resolvedBaseRunId,
     };
   }
 }

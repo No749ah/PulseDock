@@ -14,6 +14,26 @@ export interface PluginExecutionContext {
   nowIso: string;
 }
 
+/** Result of a security headers audit for HTTP monitors. */
+export interface SecurityHeadersAudit {
+  /** Letter grade: A, B, C, D, F */
+  grade: string;
+  /** Score 0-100 */
+  score: number;
+  /** Individual header checks */
+  headers: SecurityHeaderResult[];
+}
+
+export interface SecurityHeaderResult {
+  name: string;
+  present: boolean;
+  value: string | null;
+  /** Info, warning, or critical severity if missing */
+  severity: 'info' | 'warning' | 'critical';
+  description: string;
+  recommendation?: string;
+}
+
 export interface PluginExecutionResult {
   ok: boolean;
   statusCode: number;
@@ -24,6 +44,21 @@ export interface PluginExecutionResult {
   responseBody?: string | null;
   /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only populated for HTTP/BROWSER checks. */
   timings?: Timings | null;
+  /**
+   * Resolved DNS records returned from the DNS runner.
+   * Used by ChecksService to detect record changes vs. stored baseline.
+   * Only populated for DNS monitor type runs.
+   */
+  resolvedRecords?: string[] | null;
+  /**
+   * Security headers audit result. Only populated when `checkSecurityHeaders` is enabled on HTTP monitors.
+   */
+  securityHeadersAudit?: SecurityHeadersAudit | null;
+  /**
+   * SHA-256 hash of the response body (hex, first 64 chars).
+   * Only populated for HTTP/BROWSER monitors when `detectContentChanges` is enabled.
+   */
+  responseBodyHash?: string | null;
 }
 
 export interface PluginConfigField {

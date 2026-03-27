@@ -423,6 +423,99 @@ describe('runDnsCheck', () => {
   });
 });
 
+// ── runDnsCheck — Change Detection ──────────────────────────────────────────
+
+describe('runDnsCheck — DNS change detection', () => {
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('returns resolvedRecords on successful A lookup', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['1.2.3.4', '5.6.7.8'] as never);
+    const result = await runDnsCheck('example.com', { recordType: 'A' });
+    expect(result.ok).toBe(true);
+    expect(result.resolvedRecords).toEqual(['1.2.3.4', '5.6.7.8'].sort());
+  });
+
+  it('returns null resolvedRecords on DNS failure', async () => {
+    vi.mocked(dns.resolve4).mockRejectedValue(new Error('NXDOMAIN'));
+    const result = await runDnsCheck('missing.example.com', { recordType: 'A' });
+    expect(result.ok).toBe(false);
+    expect(result.resolvedRecords).toBeNull();
+  });
+
+  it('fires green when detectChanges=true and records match baseline', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['1.2.3.4'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      dnsBaseline: ['1.2.3.4'],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+  });
+
+  it('fires red when detectChanges=true and records differ from baseline (IP changed)', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['9.9.9.9'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      dnsBaseline: ['1.2.3.4'],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('changed');
+    expect(result.message).toContain('+[9.9.9.9]');
+    expect(result.message).toContain('-[1.2.3.4]');
+  });
+
+  it('fires red when detectChanges=true and a record is added', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['1.2.3.4', '9.9.9.9'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      dnsBaseline: ['1.2.3.4'],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('+[9.9.9.9]');
+  });
+
+  it('fires red when detectChanges=true and a record is removed', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['1.2.3.4'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      dnsBaseline: ['1.2.3.4', '5.6.7.8'],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('-[5.6.7.8]');
+  });
+
+  it('skips change detection when baseline is null (first run)', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['1.2.3.4'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      // no dnsBaseline — first run
+    });
+    // Should succeed — caller will store baseline after this
+    expect(result.ok).toBe(true);
+    expect(result.resolvedRecords).toEqual(['1.2.3.4']);
+  });
+
+  it('ignores detectChanges when baseline comparison results in no diff but order differs', async () => {
+    vi.mocked(dns.resolve4).mockResolvedValue(['5.6.7.8', '1.2.3.4'] as never);
+    const result = await runDnsCheck('example.com', {
+      recordType: 'A',
+      detectChanges: true,
+      dnsBaseline: ['1.2.3.4', '5.6.7.8'],
+    });
+    // Different order should not trigger a change alert
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+  });
+});
+
 // ── runPingCheck ─────────────────────────────────────────────────────────────
 
 describe('runPingCheck', () => {

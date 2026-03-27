@@ -141,6 +141,11 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         isFlapping: true,
         flapDetectionEnabled: true,
         flapAlertedAt: true,
+        latencyAlertMs: true,
+        anomalyDetection: true,
+        anomalyMultiplier: true,
+        sliLatencyTarget: true,
+        sliLatencyWindow: true,
         scheduleEnabled: true,
         scheduleDays: true,
         scheduleStartHour: true,
@@ -248,6 +253,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     flapDetectionEnabled?: boolean;
     flapAlertedAt?: Date | null;
     mutedUntil?: Date | null;
+    latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     scheduleEnabled?: boolean;
@@ -295,8 +301,11 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         mutedUntil: (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil
           ? (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil!.toISOString()
           : null,
+        latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
         anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
         anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
+        sliLatencyTarget: (monitor as typeof monitor & { sliLatencyTarget?: number | null }).sliLatencyTarget ?? null,
+        sliLatencyWindow: (monitor as typeof monitor & { sliLatencyWindow?: number }).sliLatencyWindow ?? 7,
         scheduleEnabled: monitor.scheduleEnabled ?? false,
         scheduleDays: monitor.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: monitor.scheduleStartHour ?? 8,
@@ -522,6 +531,19 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         budgetConsumedPct: Math.round(budgetConsumedPct * 10) / 10,
         slaTarget,
       }));
+    }
+  }
+
+  /**
+   * Every minute: flush expired alert groups whose window has passed.
+   * Sends grouped summary alerts for any pending groups with >=2 monitors.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async flushExpiredAlertGroups() {
+    try {
+      await this.alertsService.flushExpiredAlertGroups();
+    } catch (err) {
+      this.logger.error('Failed to flush expired alert groups', err instanceof Error ? err.message : String(err));
     }
   }
 

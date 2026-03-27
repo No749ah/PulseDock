@@ -23,6 +23,7 @@ import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 import { runHttpCheck } from './runners/http.runner';
 import { runBrowserCheck } from './runners/http.runner';
 import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck } from './runners/network.runner';
+import { runWhoisCheck } from './runners/whois.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -157,6 +158,8 @@ export class ChecksService {
         return runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'BROWSER':
         return runBrowserCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'WHOIS':
+        return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }
@@ -291,6 +294,90 @@ export class ChecksService {
       }
     }
 
+    // ── DNS Baseline Persistence ──────────────────────────────────────────────────────
+    // When a DNS monitor has detectChanges enabled and resolvedRecords are available,
+    // persist the baseline to configJson if not set yet (first successful run).
+    // This allows subsequent runs to detect record changes.
+    const dnsResult = result as PluginExecutionResult;
+    if (
+      monitor.type === 'DNS' &&
+      dnsResult.resolvedRecords &&
+      dnsResult.resolvedRecords.length > 0 &&
+      monitor.config.detectChanges === true &&
+      !Array.isArray(monitor.config.dnsBaseline)
+    ) {
+      try {
+        const currentConfig = (monitor.config as Record<string, unknown>);
+        await this.prisma.monitor.update({
+          where: { id: monitor.id },
+          data: {
+            configJson: {
+              ...currentConfig,
+              dnsBaseline: dnsResult.resolvedRecords,
+              dnsBaselineSetAt: new Date().toISOString(),
+            } as Prisma.InputJsonValue,
+          },
+        });
+        this.logger.log(
+          `[DNSChange] Baseline set for monitor ${monitor.id} (${monitor.name}): ${dnsResult.resolvedRecords.join(', ')}`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `[DNSChange] Failed to persist baseline for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
+    // ── HTTP Content Change Detection ─────────────────────────────────────────────────
+    // When detectContentChanges is enabled on HTTP/BROWSER monitors:
+    // - First successful run: persist contentHash as baseline
+    // - Subsequent runs: compare hash; if different → degrade level to yellow and alert
+    const httpResult = result as PluginExecutionResult;
+    if (
+      (monitor.type === 'HTTP' || monitor.type === 'BROWSER') &&
+      httpResult.responseBodyHash &&
+      monitor.config.detectContentChanges === true &&
+      httpResult.ok
+    ) {
+      const storedHash = typeof monitor.config.contentHash === 'string' ? monitor.config.contentHash : null;
+      if (!storedHash) {
+        // First run — persist baseline hash
+        try {
+          const currentConfig = (monitor.config as Record<string, unknown>);
+          await this.prisma.monitor.update({
+            where: { id: monitor.id },
+            data: {
+              configJson: {
+                ...currentConfig,
+                contentHash: httpResult.responseBodyHash,
+                contentHashSetAt: new Date().toISOString(),
+              } as Prisma.InputJsonValue,
+            },
+          });
+          this.logger.log(
+            `[ContentChange] Baseline set for monitor ${monitor.id} (${monitor.name}): ${httpResult.responseBodyHash}`,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `[ContentChange] Failed to persist baseline for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      } else if (storedHash !== httpResult.responseBodyHash) {
+        // Hash changed — degrade to yellow
+        result = {
+          ...result,
+          ok: false,
+          level: 'yellow',
+          message: `Content changed — page content differs from baseline`,
+        };
+        this.logger.log(
+          `[ContentChange] Content changed for monitor ${monitor.id} (${monitor.name}): ${storedHash} → ${httpResult.responseBodyHash}`,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     const created = await this.prisma.monitorRun.create({
       data: {
         userId: monitor.userId,
@@ -305,6 +392,10 @@ export class ChecksService {
         // HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download) for HTTP/BROWSER monitors
         timingsJson: ((result as PluginExecutionResult).timings
           ? ((result as PluginExecutionResult).timings as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull),
+        // Security headers audit (only present when checkSecurityHeaders=true on HTTP monitors)
+        securityAuditJson: ((result as PluginExecutionResult).securityHeadersAudit
+          ? ((result as PluginExecutionResult).securityHeadersAudit as unknown as Prisma.InputJsonValue)
           : Prisma.DbNull),
       },
     });
@@ -355,6 +446,27 @@ export class ChecksService {
         // Non-fatal: anomaly detection failure should never break normal alerting
         this.logger.warn(`[AnomalyDetection] Check failed for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
+    // ── Fixed Latency Alert Threshold ────────────────────────────────────────────────
+    // If latencyAlertMs is configured and the check succeeded but latency exceeded the
+    // threshold, upgrade the level to yellow and update the message accordingly.
+    // This runs after anomaly detection; anomaly yellow takes priority if both fire.
+    const monitorWithLatencyAlert = monitor as typeof monitor & { latencyAlertMs?: number | null };
+    if (
+      anomalyLevel === 'green' &&
+      created.ok &&
+      typeof monitorWithLatencyAlert.latencyAlertMs === 'number' &&
+      monitorWithLatencyAlert.latencyAlertMs > 0 &&
+      created.latencyMs !== null &&
+      created.latencyMs > monitorWithLatencyAlert.latencyAlertMs
+    ) {
+      anomalyLevel = 'yellow';
+      anomalyMessage = `Slow response: ${created.latencyMs}ms exceeds latency threshold of ${monitorWithLatencyAlert.latencyAlertMs}ms. ${created.message}`;
+      this.logger.warn(
+        `[LatencyAlert] Monitor ${monitor.id} (${monitor.name}) latency ${created.latencyMs}ms exceeds threshold ${monitorWithLatencyAlert.latencyAlertMs}ms`,
+      );
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

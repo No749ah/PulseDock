@@ -154,6 +154,7 @@ export function MonitorFormModal({
               <option value="PING">ICMP Ping</option>
               <option value="SMTP">SMTP Email Server</option>
               <option value="BROWSER">Browser / Page Check</option>
+              <option value="WHOIS">WHOIS Domain Expiry</option>
             </select>
           </div>
 
@@ -362,6 +363,23 @@ export function MonitorFormModal({
                 className={inputClass}
               />
             </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-surface/50">
+              <input
+                id="detectChanges"
+                type="checkbox"
+                checked={(formData as unknown as { dnsDetectChanges?: boolean }).dnsDetectChanges ?? false}
+                onChange={(e) => onSetFormData({ ...formData, dnsDetectChanges: e.target.checked } as typeof formData & { dnsDetectChanges?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-accent cursor-pointer"
+              />
+              <div>
+                <label htmlFor="detectChanges" className="block text-sm font-medium text-text-primary cursor-pointer">
+                  Alert on record change
+                </label>
+                <p className="mt-0.5 text-xs text-text-secondary leading-relaxed">
+                  Stores the current DNS records as a baseline on first check. Alerts if records change (added or removed). Useful for detecting DNS hijacking or accidental record changes.
+                </p>
+              </div>
+            </div>
           </>
         )}
 
@@ -449,6 +467,47 @@ export function MonitorFormModal({
                 className={inputClass}
               />
               <p className="mt-1 text-xs text-text-secondary">Comma-separated list. Leave blank to accept any 2xx or 3xx response.</p>
+            </div>
+          </>
+        )}
+
+        {/* WHOIS Domain Expiry config */}
+        {formData.type === "WHOIS" && (
+          <>
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">WHOIS Domain Expiry</span> — queries the WHOIS registry to find when your domain expires. Alerts you before the expiry date so you never let a domain lapse. Enter just the domain name (e.g. <code className="bg-surface-2 px-1 rounded">example.com</code>).
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Warn threshold <span className="text-xs text-text-muted">(days)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={(formData as unknown as { whoisWarnDays?: number }).whoisWarnDays ?? 30}
+                  onChange={(e) => onSetFormData({ ...formData, whoisWarnDays: Math.max(1, Number(e.target.value)) } as typeof formData & { whoisWarnDays?: number })}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Yellow warning when expiry is within this many days (default: 30).</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Critical threshold <span className="text-xs text-text-muted">(days)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={(formData as unknown as { whoisCriticalDays?: number }).whoisCriticalDays ?? 7}
+                  onChange={(e) => onSetFormData({ ...formData, whoisCriticalDays: Math.max(1, Number(e.target.value)) } as typeof formData & { whoisCriticalDays?: number })}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Red alert when expiry is within this many days (default: 7).</p>
+              </div>
             </div>
           </>
         )}
@@ -581,6 +640,40 @@ export function MonitorFormModal({
                 placeholder="e.g. 2000"
               />
               <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
+            </div>
+
+            {/* Security Headers Audit */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="checkSecurityHeaders"
+                checked={(formData as unknown as { checkSecurityHeaders?: boolean }).checkSecurityHeaders ?? false}
+                onChange={(e) => onSetFormData({ ...formData, checkSecurityHeaders: e.target.checked } as typeof formData & { checkSecurityHeaders?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="checkSecurityHeaders" className="cursor-pointer select-none">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  🔒 Audit security headers
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Checks for HSTS, CSP, X-Frame-Options, X-Content-Type-Options and more. Grades the response A–F and stores results per run.</span>
+              </label>
+            </div>
+
+            {/* Content Change Detection */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="detectContentChanges"
+                checked={(formData as unknown as { detectContentChanges?: boolean }).detectContentChanges ?? false}
+                onChange={(e) => onSetFormData({ ...formData, detectContentChanges: e.target.checked } as typeof formData & { detectContentChanges?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="detectContentChanges" className="cursor-pointer select-none">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  📄 Detect content changes
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Alerts when the page content changes from the established baseline. Useful for detecting deployments, defacements, or unexpected changes.</span>
+              </label>
             </div>
           </>
         )}
@@ -822,6 +915,37 @@ export function MonitorFormModal({
             </button>
           </div>
         </div>
+
+        {/* Fixed Latency Alert Threshold */}
+        {(formData.type === "HTTP" || formData.type === "TCP" || formData.type === "DNS") && (
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Latency Alert Threshold</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Alert when a successful check takes longer than this threshold. Leave blank to disable.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="1"
+                max="60000"
+                step="100"
+                placeholder="e.g. 2000"
+                value={formData.latencyAlertMs ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                  onSetFormData({ ...formData, latencyAlertMs: val && val > 0 ? val : null });
+                }}
+                className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <span className="text-sm text-text-muted">ms</span>
+              {formData.latencyAlertMs && formData.latencyAlertMs > 0 && (
+                <span className="text-xs text-warning">⚠ Alert if response &gt; {formData.latencyAlertMs}ms</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Anomaly Detection */}
         {(formData.type === "HTTP" || formData.type === "TCP") && (

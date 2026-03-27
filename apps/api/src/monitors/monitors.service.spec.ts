@@ -6005,6 +6005,91 @@ describe('importExternal — message pluralization', () => {
   });
 });
 
+// ── getStatusTransitions ──────────────────────────────────────────────────────
+
+describe('getStatusTransitions', () => {
+  it('returns empty transitions with zero summary when no runs exist', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(0);
+    expect(result.summary.totalOutages).toBe(0);
+    expect(result.summary.totalDowntimeSec).toBe(0);
+    expect(result.totalRuns).toBe(0);
+  });
+
+  it('detects green→red transition (outage)', async () => {
+    const p = makePrisma();
+    const t0 = new Date('2026-03-26T10:00:00Z');
+    const t1 = new Date('2026-03-26T10:05:00Z');
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: t0 },
+      { ok: false, level: 'red', message: 'Connection refused', latencyMs: null, checkedAt: t1 },
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(1);
+    expect(result.transitions[0].from).toBe('green');
+    expect(result.transitions[0].to).toBe('red');
+    expect(result.transitions[0].message).toBe('Connection refused');
+    expect(result.summary.totalOutages).toBe(1);
+  });
+
+  it('detects red→green recovery and computes downtime', async () => {
+    const p = makePrisma();
+    const t0 = new Date('2026-03-26T10:00:00Z');
+    const t1 = new Date('2026-03-26T10:05:00Z');
+    const t2 = new Date('2026-03-26T10:10:00Z'); // recovery after 5 min
+    p.monitorRun.findMany.mockResolvedValue([
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: t0 },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: t1 },
+      { ok: true, level: 'green', message: 'recovered', latencyMs: 60, checkedAt: t2 },
+    ]);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.transitions).toHaveLength(2);
+    const recovery = result.transitions[1];
+    expect(recovery.from).toBe('red');
+    expect(recovery.to).toBe('green');
+    expect(recovery.durationSec).toBe(300); // 5 minutes
+    expect(result.summary.totalDowntimeSec).toBe(300);
+    expect(result.summary.avgRecoveryTimeSec).toBe(300);
+  });
+
+  it('computes MTBF from multiple outages', async () => {
+    const p = makePrisma();
+    // Two outages: at T=0 and T=60min
+    const runs = [
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T09:00:00Z') },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: new Date('2026-03-26T09:05:00Z') },
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T09:10:00Z') },
+      { ok: false, level: 'red', message: 'down', latencyMs: null, checkedAt: new Date('2026-03-26T10:05:00Z') }, // 60min later
+      { ok: true, level: 'green', message: 'ok', latencyMs: 50, checkedAt: new Date('2026-03-26T10:10:00Z') },
+    ];
+    p.monitorRun.findMany.mockResolvedValue(runs);
+    const svc = makeService(p);
+    const result = await svc.getStatusTransitions('user-1', 'monitor-1', '7d');
+    expect(result.summary.totalOutages).toBe(2);
+    expect(result.summary.mtbfSec).toBe(3600); // 60 min between outages
+  });
+
+  it('respects the period filter by passing correct since date', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    const before = Date.now();
+    await svc.getStatusTransitions('user-1', 'monitor-1', '24h');
+    const after = Date.now();
+    const call = (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+      where: { checkedAt: { gte: Date } };
+    };
+    const gte = call.where.checkedAt.gte.getTime();
+    expect(gte).toBeGreaterThanOrEqual(before - 24 * 60 * 60 * 1000 - 100);
+    expect(gte).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 100);
+  });
+});
+
 // ── getLatencyDistribution ────────────────────────────────────────────────────
 
 describe('getLatencyDistribution', () => {
@@ -6097,5 +6182,181 @@ describe('getLatencyDistribution', () => {
     // Should be approx 24h ago
     expect(gte).toBeGreaterThanOrEqual(before - 24 * 60 * 60 * 1000 - 100);
     expect(gte).toBeLessThanOrEqual(after - 24 * 60 * 60 * 1000 + 100);
+  });
+});
+
+// ── getPeriodComparison ────────────────────────────────────────────────────────
+
+describe('getPeriodComparison', () => {
+  function makePrisma() {
+    return {
+      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'monitor-1' }) },
+      monitorRun: {
+        findMany: vi.fn(),
+      },
+    };
+  }
+
+  function makeService(p: ReturnType<typeof makePrisma>) {
+    return new MonitorsService(p as never, undefined as never, undefined as never, undefined as never, undefined as never);
+  }
+
+  it('returns current and prior period stats with delta', async () => {
+    const p = makePrisma();
+    const now = new Date();
+    // Current period: 3 ok runs
+    const currentRuns = [
+      { ok: true, latencyMs: 100 },
+      { ok: true, latencyMs: 200 },
+      { ok: false, latencyMs: null },
+    ];
+    // Prior period: 2 ok runs
+    const priorRuns = [
+      { ok: true, latencyMs: 150 },
+      { ok: true, latencyMs: 300 },
+    ];
+    p.monitorRun.findMany
+      .mockResolvedValueOnce(currentRuns)
+      .mockResolvedValueOnce(priorRuns);
+
+    const svc = makeService(p);
+    const result = await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+
+    expect(result.current.total).toBe(3);
+    expect(result.current.successCount).toBe(2);
+    expect(result.current.uptime).toBe(66.67);
+    expect(result.current.avgMs).toBe(150);
+    expect(result.prior.total).toBe(2);
+    expect(result.prior.successCount).toBe(2);
+    expect(result.prior.avgMs).toBe(225);
+    // delta: avg improved (150 vs 225 = -33.3%)
+    expect(result.delta.avgMsPct).not.toBeNull();
+    expect((result.delta.avgMsPct as number)).toBeLessThan(0); // lower is better
+  });
+
+  it('handles no prior data (empty prior)', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany
+      .mockResolvedValueOnce([{ ok: true, latencyMs: 100 }])
+      .mockResolvedValueOnce([]);
+    const svc = makeService(p);
+    const result = await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+    expect(result.prior.total).toBe(0);
+    expect(result.prior.uptime).toBeNull();
+    expect(result.delta.avgMsPct).toBeNull();
+    expect(result.delta.p95MsPct).toBeNull();
+  });
+
+  it('throws NotFoundException when monitor not found', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await expect(svc.getPeriodComparison('user-1', 'bad-id', '7d')).rejects.toThrow(NotFoundException);
+  });
+
+  it('fetches two separate time windows', async () => {
+    const p = makePrisma();
+    p.monitorRun.findMany.mockResolvedValue([]);
+    const svc = makeService(p);
+    await svc.getPeriodComparison('user-1', 'monitor-1', '7d');
+    // Should call findMany twice (current + prior)
+    expect(p.monitorRun.findMany).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ─── bulkCreateFromUrls() ─────────────────────────────────────────────────────
+
+describe('MonitorsService.bulkCreateFromUrls', () => {
+  function makeService(p: ReturnType<typeof makePrisma>) {
+    const audit = { log: vi.fn().mockResolvedValue(undefined) };
+    const realtime = { monitorCreated: vi.fn(), monitorUpdated: vi.fn(), monitorDeleted: vi.fn() };
+    const checks = { run: vi.fn(), runMonitor: vi.fn(), listPlugins: vi.fn().mockReturnValue([]) };
+    const versionDetection = new VersionDetectionService(p as never);
+    return new MonitorsService(p as never, checks as never, audit as never, realtime as never, versionDetection as never);
+  }
+
+  it('creates monitors for valid URLs', async () => {
+    const p = makePrisma();
+    // No existing monitors (dedup check returns null)
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.example.com/health', 'https://status.example.com'],
+    });
+    expect(result.created).toBe(2);
+    expect(result.skipped).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('skips invalid/non-HTTP URLs and reports errors', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['not-a-url', 'ftp://bad-protocol.com', 'https://valid.example.com'],
+    });
+    expect(result.created).toBe(1);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0].url).toBe('not-a-url');
+    expect(result.errors[1].url).toBe('ftp://bad-protocol.com');
+  });
+
+  it('skips duplicate targets (same URL already exists)', async () => {
+    const p = makePrisma();
+    // First call: existing monitor found (duplicate); second call: no duplicate
+    p.monitor.findFirst
+      .mockResolvedValueOnce(makeMonitor()) // duplicate check for first URL
+      .mockResolvedValueOnce(null);          // duplicate check for second URL (create path also calls findFirst via prisma.monitor.findFirst for 'plugins' etc — reset)
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://existing.example.com', 'https://new.example.com'],
+    });
+    expect(result.skipped).toBe(1);
+    expect(result.created).toBe(1);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('derives the monitor name from URL hostname', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.my-service.com/health'],
+    });
+    // prisma.monitor.create should have been called with name = 'api.my-service.com'
+    expect(p.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'api.my-service.com' }),
+      }),
+    );
+  });
+
+  it('passes folderId and alertChannelIds to created monitors', async () => {
+    const p = makePrisma();
+    p.monitor.findFirst.mockResolvedValue(null);
+    const svc = makeService(p);
+    await svc.bulkCreateFromUrls('user-1', {
+      urls: ['https://api.example.com'],
+      folderId: 'folder-42',
+      alertChannelIds: ['ch-1', 'ch-2'],
+      intervalSec: 120,
+    });
+    expect(p.monitor.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          folderId: 'folder-42',
+          intervalSec: 120,
+        }),
+      }),
+    );
+  });
+
+  it('returns empty result for empty url list', async () => {
+    const p = makePrisma();
+    const svc = makeService(p);
+    const result = await svc.bulkCreateFromUrls('user-1', { urls: [] });
+    expect(result.created).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.errors).toHaveLength(0);
   });
 });

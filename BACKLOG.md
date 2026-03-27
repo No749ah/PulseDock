@@ -1,15 +1,39 @@
-## Status Summary (2026-03-26 17:55 UTC)
-- **Build/Test:** ✅ Clean build + 3473 API + 747 web + 10 e2e + 12 agent tests + 0 TS errors; all routes 200
+## Status Summary (2026-03-27 04:15 UTC)
+- **Build/Test:** ✅ Clean build + 3579 API + 747 web + 10 e2e + 12 agent = 4348 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
-- **Branch:** heartbeat/2026-03-26-noon
+- **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (17:55 UTC cycle):**
-  - **Custom HTTP headers for webhook channels** — Key-value editor (password inputs) in create/edit modal. Reserved headers protected. 2 new tests.
-  - **Webhook payload template preview** — `POST /v1/alert-channels/:id/preview-payload` renders template with sample data, returns `{ rendered, valid, error? }`. UI: preview panel with ✓/⚠ JSON indicator in create (client-side) + edit (server-side) forms.
-  - **Manual alert delivery retry** — `POST /v1/alert-channels/:id/retry-delivery/:id` and `retry-all-failed`. ↻ buttons in delivery history UI, auto-refresh after retry.
-  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding. 49 http.runner tests (incl. 3 timing-specific).
+- **Last changes (04:15 UTC cycle):**
+  - **Monitor Public Share Token** — `POST/DELETE /v1/monitors/:id/share-token` generates/revokes `pd_share_*` token. `GET /v1/public/monitor/:token/status.json` returns status, level, latency, 30d uptime%, generatedAt — no auth required. Prisma migration `add_monitor_share_token`. "Public Status URL" card on monitor detail. Embed in README/CI/CD/dashboards.
+  - **Response Diff tab on monitor detail** — New "Diff" tab for HTTP/BROWSER monitors. Picker shows failed runs with captured response body. Side-by-side baseline (last OK) vs failed body panels + line-by-line diff with color coding (+/-). Uses existing `GET /v1/monitors/:id/response-diff/:runId` API.
+  - **Fix TS errors** — whois.runner.spec.ts errorSocket cast, page.tsx `r.createdAt→r.checkedAt` in content events, `Boolean()` guard on contentHashSetAt.
+- **Previous changes (02:18 UTC cycle):**
+  - **HTTP Content Change Detection** — `detectContentChanges` option on HTTP/BROWSER monitors. SHA-256 hashes response body on first successful check, stores as `contentHash` baseline. Subsequent checks compare hash; alerts yellow when content differs. `POST /v1/monitors/:id/content-baseline/reset` to re-capture. Monitor detail "Content" tab shows baseline hash, set date, reset button, change event history. Create/edit form toggle. 5 new tests → 3552 API total.
+- **Previous changes (22:30 UTC cycle):**
+  - **DNS Record Change Detection** — `detectChanges` option on DNS monitors. Stores resolved records as `dnsBaseline` on first check. Alerts red when records are added or removed vs baseline (sorted, order-independent comparison). `POST /v1/monitors/:id/dns-baseline/reset` clears baseline. Monitor detail shows baseline records + set date + Reset button. Create/edit form has "Alert on record change" toggle. 11 new tests → 3558 total.
+- **Previous (21:21 UTC cycle):**
+  - **Fix whois.runner.spec.ts ESM spy error** — `vi.spyOn(net, 'createConnection')` is non-configurable in ESM. Rewrote 10 failing tests using `vi.hoisted()` + `vi.mock('node:net', ...)` factory. All 17 tests green.
+  - **WHOIS Domain tab in monitor detail** — New "Domain" tab for WHOIS monitors: expiry countdown, color-coded banner (green/yellow/red), progress bar, threshold config display, check history with parsed days-remaining.
+  - **Fix TypeScript WHOIS type gaps** — Added `WHOIS` to `MonitorItem.type` union in `types.ts`, `[id]/components/types.ts`, and `MonitorFormData.type` union. 0 TS errors.
+  - **TableRow onClick support** — Added `onClick` prop to `TableRow` component (fixes pre-existing TS2322).
+- **Previous (18:45 UTC cycle):**
+  - **Alert grouping / correlation** — When 3+ monitors in same folder/tag fail within a configurable window (default 5 min), a single grouped alert fires instead of N individual ones. Prisma migration `add_alert_grouping`, `AlertGroup` model, `notifyWithGrouping()` in AlertsService, minute-cron to flush expired groups, 4 new fields on `AlertChannel` (alertGrouping, groupWindowSec, groupByFolder, groupByTag), toggle UI in create/edit forms. 5 new tests → 3492 total.
+  - **Status transitions timeline** — `GET /v1/monitors/:id/status-transitions` endpoint + Performance tab visualization.
+  - **Fix AlertChannel TS strict errors** — 0 TS errors.
+- **Previous (18:17 UTC cycle):**
+  - **Advanced Settings summary panel on monitor detail** — Added contextual card showing active retries, confirmations, anomaly detection (w/ multiplier), business hours schedule, auto-incident, and runbook link. Only renders when at least one setting is active. Updated `MonitorItem` type with all missing fields.
+- **Previous changes (18:10 UTC cycle):**
+  - **HTTP timing breakdown (DNS/TCP/TLS/TTFB)** — HTTP runner refactored to native `http`/`https` with socket events. `timingsJson` field on MonitorRun (Prisma migration `add_run_timings`). Waterfall visualization in monitor detail page: DNS/TCP/TLS/TTFB/Download bars with proportional widths + color coding.
+  - **Latency distribution + performance tab** — `GET /v1/monitors/:id/latency-distribution` (buckets, p50-p99, hourly heatmap). Performance tab on monitor detail with histogram, percentile cards, hourly heatmap.
+  - **Period-over-period comparison** — `GET /v1/monitors/:id/period-comparison` (current vs prior period uptime, avg/p95 latency, % deltas). "vs Previous Period" card in Performance tab with color-coded trend indicators.
+  - **CSV export with timing columns** — dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs columns added to check history CSV export.
+  - **Notification digest system** — hourly/daily digest queue with `POST /v1/notifications/digest-queue`, `GET /v1/notifications/digest-queue`. DigestQueueCard on account page.
+  - **Global search** — `GET /v1/search?q=` across monitors/incidents/alerts/status-pages. `/search` page with result categories.
+  - **Monitor check retries** — `retryCount` (0-3) with exponential backoff. Prisma migration + API + frontend.
+  - **Custom HTTP headers for webhook channels** — Key-value editor in create/edit modal. Reserved headers protected.
+  - **Webhook payload template preview** + **Manual alert delivery retry** — preview panel + ↻ retry buttons.
 
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)

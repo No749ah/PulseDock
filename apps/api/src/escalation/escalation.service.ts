@@ -187,6 +187,10 @@ export class EscalationService {
           type: channel.type as AlertChannelType,
           config: channel.configJson as Record<string, unknown>,
           createdAt: (channel.createdAt instanceof Date ? channel.createdAt.toISOString() : channel.createdAt as string) ?? new Date().toISOString(),
+          alertGrouping: false,
+          groupWindowSec: 300,
+          groupByFolder: false,
+          groupByTag: false,
         };
         await this.alerts.sendToChannel(
           alertChannel,

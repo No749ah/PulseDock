@@ -21,6 +21,33 @@ export class AlertsController {
     private readonly planService: PlanService,
   ) {}
 
+  /** Maps a Prisma AlertChannel row to the AlertChannel domain type. */
+  private mapChannel(c: {
+    id: string;
+    userId: string;
+    name: string;
+    type: string;
+    configJson: import('@prisma/client').Prisma.JsonValue;
+    createdAt: Date;
+    alertGrouping: boolean;
+    groupWindowSec: number;
+    groupByFolder: boolean;
+    groupByTag: boolean;
+  }): import('../types').AlertChannel {
+    return {
+      id: c.id,
+      userId: c.userId,
+      name: c.name,
+      type: c.type as import('../types').AlertChannelType,
+      config: (c.configJson as Record<string, unknown>) ?? {},
+      createdAt: c.createdAt.toISOString(),
+      alertGrouping: c.alertGrouping,
+      groupWindowSec: c.groupWindowSec,
+      groupByFolder: c.groupByFolder,
+      groupByTag: c.groupByTag,
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List alert channels', description: 'Returns all configured alert channels for the authenticated user.' })
   @ApiResponse({ status: 200, description: 'Alert channels returned.' })
@@ -33,6 +60,10 @@ export class AlertsController {
       type: c.type,
       config: (c.configJson as Record<string, unknown>) ?? {},
       createdAt: c.createdAt.toISOString(),
+      alertGrouping: c.alertGrouping,
+      groupWindowSec: c.groupWindowSec,
+      groupByFolder: c.groupByFolder,
+      groupByTag: c.groupByTag,
     }));
   }
 
@@ -61,6 +92,10 @@ export class AlertsController {
         name: body.name,
         type: body.type,
         configJson: (body.config ?? {}) as Prisma.InputJsonValue,
+        alertGrouping: body.alertGrouping ?? false,
+        groupWindowSec: body.groupWindowSec ?? 300,
+        groupByFolder: body.groupByFolder ?? true,
+        groupByTag: body.groupByTag ?? false,
       },
     });
 
@@ -73,6 +108,10 @@ export class AlertsController {
       type: channel.type,
       config: (channel.configJson as Record<string, unknown>) ?? {},
       createdAt: channel.createdAt.toISOString(),
+      alertGrouping: channel.alertGrouping,
+      groupWindowSec: channel.groupWindowSec,
+      groupByFolder: channel.groupByFolder,
+      groupByTag: channel.groupByTag,
     };
   }
 
@@ -91,6 +130,10 @@ export class AlertsController {
         name: body.name ?? current.name,
         type: body.type ?? current.type,
         configJson: (body.config ?? current.configJson) as Prisma.InputJsonValue,
+        ...(body.alertGrouping !== undefined && { alertGrouping: body.alertGrouping }),
+        ...(body.groupWindowSec !== undefined && { groupWindowSec: body.groupWindowSec }),
+        ...(body.groupByFolder !== undefined && { groupByFolder: body.groupByFolder }),
+        ...(body.groupByTag !== undefined && { groupByTag: body.groupByTag }),
       },
     });
 
@@ -102,6 +145,10 @@ export class AlertsController {
       type: updated.type,
       config: (updated.configJson as Record<string, unknown>) ?? {},
       createdAt: updated.createdAt.toISOString(),
+      alertGrouping: updated.alertGrouping,
+      groupWindowSec: updated.groupWindowSec,
+      groupByFolder: updated.groupByFolder,
+      groupByTag: updated.groupByTag,
     };
   }
 
@@ -255,6 +302,8 @@ export class AlertsController {
         errorMessage: l.errorMessage,
         durationMs: l.durationMs,
         createdAt: l.createdAt.toISOString(),
+        isGrouped: l.isGrouped,
+        groupedCount: l.groupedCount,
       })),
     };
   }
@@ -291,6 +340,8 @@ export class AlertsController {
         errorMessage: l.errorMessage,
         durationMs: l.durationMs,
         createdAt: l.createdAt.toISOString(),
+        isGrouped: l.isGrouped,
+        groupedCount: l.groupedCount,
       })),
     };
   }
@@ -304,14 +355,7 @@ export class AlertsController {
     if (!channel) throw new NotFoundException('channel not found');
 
     await this.audit.log('alert_channel.test', req.user.id, req.user.id, { channelId: channel.id });
-    await this.alertsService.notifyTest({
-      id: channel.id,
-      userId: channel.userId,
-      name: channel.name,
-      type: channel.type as AlertChannelType,
-      config: (channel.configJson as Record<string, unknown>) ?? {},
-      createdAt: channel.createdAt.toISOString(),
-    });
+    await this.alertsService.notifyTest(this.mapChannel(channel));
     return { ok: true };
   }
 
@@ -331,17 +375,7 @@ export class AlertsController {
     const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!channel) throw new NotFoundException('channel not found');
 
-    return this.alertsService.previewPayload(
-      {
-        id: channel.id,
-        userId: channel.userId,
-        name: channel.name,
-        type: channel.type as import('../types').AlertChannelType,
-        config: (channel.configJson as Record<string, unknown>) ?? {},
-        createdAt: channel.createdAt.toISOString(),
-      },
-      body.template,
-    );
+    return this.alertsService.previewPayload(this.mapChannel(channel), body.template);
   }
 
   @Post(':id/retry-delivery/:deliveryId')
@@ -361,14 +395,7 @@ export class AlertsController {
     const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!channel) throw new NotFoundException('channel not found');
 
-    return this.alertsService.retryDelivery(deliveryId, {
-      id: channel.id,
-      userId: channel.userId,
-      name: channel.name,
-      type: channel.type as import('../types').AlertChannelType,
-      config: (channel.configJson as Record<string, unknown>) ?? {},
-      createdAt: channel.createdAt.toISOString(),
-    });
+    return this.alertsService.retryDelivery(deliveryId, this.mapChannel(channel));
   }
 
   @Post(':id/retry-all-failed')
@@ -386,14 +413,7 @@ export class AlertsController {
     const channel = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!channel) throw new NotFoundException('channel not found');
 
-    const results = await this.alertsService.retryAllFailed({
-      id: channel.id,
-      userId: channel.userId,
-      name: channel.name,
-      type: channel.type as import('../types').AlertChannelType,
-      config: (channel.configJson as Record<string, unknown>) ?? {},
-      createdAt: channel.createdAt.toISOString(),
-    });
+    const results = await this.alertsService.retryAllFailed(this.mapChannel(channel));
     return { results };
   }
 
@@ -411,14 +431,7 @@ export class AlertsController {
     const results = await Promise.allSettled(
       channels.map(async (channel) => {
         try {
-          await this.alertsService.notifyTest({
-            id: channel.id,
-            userId: channel.userId,
-            name: channel.name,
-            type: channel.type as AlertChannelType,
-            config: (channel.configJson as Record<string, unknown>) ?? {},
-            createdAt: channel.createdAt.toISOString(),
-          });
+          await this.alertsService.notifyTest(this.mapChannel(channel));
           return { channelId: channel.id, name: channel.name, type: channel.type, ok: true, error: null };
         } catch (err) {
           return {

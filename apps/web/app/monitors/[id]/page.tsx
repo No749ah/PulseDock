@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -85,6 +85,51 @@ interface LatencyDistributionData {
   totalChecks: number;
   successChecks: number;
   checkedRange: string;
+}
+
+// ── Status Transitions Types ──────────────────────────────────────────────────
+
+interface StatusTransition {
+  from: string;
+  to: string;
+  at: string;
+  message: string | null;
+  latencyMs: number | null;
+  durationSec: number | null;
+}
+
+interface StatusTransitionsData {
+  transitions: StatusTransition[];
+  summary: {
+    totalOutages: number;
+    totalDowntimeSec: number;
+    avgRecoveryTimeSec: number | null;
+    mtbfSec: number | null;
+  };
+  period: string;
+  checkedRange: string;
+  totalRuns: number;
+  currentStatus: string;
+}
+
+interface PeriodStats {
+  total: number;
+  successCount: number;
+  uptime: number | null;
+  avgMs: number | null;
+  p50Ms: number | null;
+  p95Ms: number | null;
+}
+
+interface PeriodComparisonData {
+  period: string;
+  current: PeriodStats;
+  prior: PeriodStats;
+  delta: {
+    uptimePct: number | null;
+    avgMsPct: number | null;
+    p95MsPct: number | null;
+  };
 }
 
 // ── Timing Waterfall ─────────────────────────────────────────────────────────
@@ -179,13 +224,15 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "diff">("overview");
 
   // Performance / Latency distribution
   const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
   const [perfLoading, setPerfLoading] = useState(false);
   const [perfError, setPerfError] = useState<string | null>(null);
   const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
+  const [transitionsData, setTransitionsData] = useState<StatusTransitionsData | null>(null);
+  const [perfComparison, setPerfComparison] = useState<PeriodComparisonData | null>(null);
 
   // Certificate details (SSL/HTTP monitors)
   const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
@@ -205,6 +252,16 @@ export default function MonitorDetailPage() {
     resolvedAt: string | null;
     durationSec: number | null;
   }> | null>(null);
+
+  // Share Token
+  const [shareTokenLoading, setShareTokenLoading] = useState(false);
+  const [shareTokenCopied, setShareTokenCopied] = useState(false);
+
+  // Response Diff
+  const [diffRunId, setDiffRunId] = useState<string | null>(null);
+  const [diffData, setDiffData] = useState<{ failedBody: string | null; baseBody: string | null; runId: string; baseRunId: string | null } | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
 
   // Mute & Acknowledge
   const [showMuteMenu, setShowMuteMenu] = useState(false);
@@ -501,6 +558,64 @@ export default function MonitorDetailPage() {
     } catch (e) {
       setEventError(e instanceof Error ? e.message : "Failed to delete event");
     }
+  };
+
+  const handleLoadDiff = async (runId: string) => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setDiffRunId(runId);
+    setDiffLoading(true);
+    setDiffError(null);
+    setDiffData(null);
+    try {
+      const result = await api<{ failedBody: string | null; baseBody: string | null; runId: string; baseRunId: string | null }>(
+        `/v1/monitors/${id}/response-diff/${runId}`,
+        user.id,
+      );
+      setDiffData(result);
+    } catch {
+      setDiffError("Failed to load response diff");
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
+  const handleGenerateShareToken = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setShareTokenLoading(true);
+    try {
+      const result = await api<{ shareToken: string }>(`/v1/monitors/${id}/share-token`, user.id, { method: "POST" });
+      setMonitor((prev) => prev ? { ...prev, shareToken: result.shareToken } : prev);
+    } catch {
+      setActionError("Failed to generate share token");
+    } finally {
+      setShareTokenLoading(false);
+    }
+  };
+
+  const handleRevokeShareToken = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    if (!confirm("Revoke share token? Anyone using the public status URL will no longer be able to access it.")) return;
+    setShareTokenLoading(true);
+    try {
+      await api(`/v1/monitors/${id}/share-token`, user.id, { method: "DELETE" });
+      setMonitor((prev) => prev ? { ...prev, shareToken: null } : prev);
+    } catch {
+      setActionError("Failed to revoke share token");
+    } finally {
+      setShareTokenLoading(false);
+    }
+  };
+
+  const handleCopyShareUrl = (token: string) => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4321`;
+    const url = `${apiBase}/v1/public/monitor/${token}/status.json`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setShareTokenCopied(true);
+      setTimeout(() => setShareTokenCopied(false), 2000);
+    });
   };
 
   const handleMute = async (minutes: number) => {
@@ -856,8 +971,14 @@ export default function MonitorDetailPage() {
                 setPerfLoading(true);
                 setPerfError(null);
                 try {
-                  const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id);
+                  const [data, comparison, txData] = await Promise.all([
+                    api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id),
+                    api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${perfPeriod}`, user.id).catch(() => null),
+                    api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${perfPeriod}`, user.id).catch(() => null),
+                  ]);
                   setPerfData(data);
+                  setPerfComparison(comparison);
+                  setTransitionsData(txData);
                 } catch {
                   setPerfError("Failed to load performance data");
                 } finally {
@@ -902,6 +1023,58 @@ export default function MonitorDetailPage() {
               Certificate
             </button>
           )}
+          {monitor.type === "WHOIS" && (
+            <button
+              onClick={() => setActiveMainTab("domain")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "domain"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Domain
+            </button>
+          )}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
+            <button
+              onClick={() => setActiveMainTab("security")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "security"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Security
+            </button>
+          )}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.detectContentChanges && (
+            <button
+              onClick={() => setActiveMainTab("content")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "content"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Content
+            </button>
+          )}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && (
+            <button
+              onClick={() => setActiveMainTab("diff")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "diff"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <GitCompare className="w-3.5 h-3.5" />
+              Diff
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
@@ -932,8 +1105,14 @@ export default function MonitorDetailPage() {
                     setPerfLoading(true);
                     setPerfError(null);
                     try {
-                      const data = await api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id);
+                      const [data, comparison, txData] = await Promise.all([
+                        api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${p}`, user.id),
+                        api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${p}`, user.id).catch(() => null),
+                        api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${p}`, user.id).catch(() => null),
+                      ]);
                       setPerfData(data);
+                      setPerfComparison(comparison);
+                      setTransitionsData(txData);
                     } catch {
                       setPerfError("Failed to load performance data");
                     } finally {
@@ -1024,7 +1203,48 @@ export default function MonitorDetailPage() {
                   })}
                 </div>
 
-                {/* C. Hourly Heatmap */}
+                {/* C. Period Comparison */}
+                {perfComparison && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp className="w-4 h-4 text-accent" />
+                      <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                        vs. Previous {perfPeriod === "24h" ? "24 hours" : perfPeriod === "7d" ? "7 days" : "30 days"}
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {([
+                        { label: "Uptime", curr: perfComparison.current.uptime !== null ? `${perfComparison.current.uptime}%` : "—", delta: perfComparison.delta.uptimePct, higher: true },
+                        { label: "Avg Latency", curr: perfComparison.current.avgMs !== null ? `${perfComparison.current.avgMs}ms` : "—", delta: perfComparison.delta.avgMsPct, higher: false },
+                        { label: "P95 Latency", curr: perfComparison.current.p95Ms !== null ? `${perfComparison.current.p95Ms}ms` : "—", delta: perfComparison.delta.p95MsPct, higher: false },
+                      ] as Array<{ label: string; curr: string; delta: number | null; higher: boolean }>).map((metric) => {
+                        const improved = metric.delta !== null && (metric.higher ? metric.delta > 0 : metric.delta < 0);
+                        const degraded = metric.delta !== null && (metric.higher ? metric.delta < 0 : metric.delta > 0);
+                        const deltaColor = improved ? "text-green-400" : degraded ? "text-red-400" : "text-text-muted";
+                        const deltaPrefix = metric.delta !== null && metric.delta > 0 ? "+" : "";
+                        return (
+                          <div key={metric.label} className="text-center">
+                            <p className="text-xs text-text-muted mb-1">{metric.label}</p>
+                            <p className="text-lg font-bold text-text-primary tabular-nums">{metric.curr}</p>
+                            {metric.delta !== null ? (
+                              <p className={`text-xs font-medium tabular-nums ${deltaColor}`}>
+                                {deltaPrefix}{metric.delta}%
+                              </p>
+                            ) : (
+                              <p className="text-xs text-text-muted">No prior data</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-text-muted border-t border-border pt-2">
+                      <span>Current: {perfComparison.current.total} checks, {perfComparison.current.successCount} ok</span>
+                      <span>Prior: {perfComparison.prior.total} checks, {perfComparison.prior.successCount} ok</span>
+                    </div>
+                  </Card>
+                )}
+
+                {/* D. Hourly Heatmap */}
                 <Card className="p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Clock className="w-4 h-4 text-accent" />
@@ -1070,6 +1290,67 @@ export default function MonitorDetailPage() {
                     <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-500/60" /> Very Slow (&gt;1s)</span>
                   </div>
                 </Card>
+
+                {/* E. Status Transitions Timeline */}
+                {transitionsData && (
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertCircle className="w-4 h-4 text-accent" />
+                      <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Status Transitions</h2>
+                      <span className="ml-auto text-xs text-text-muted">{transitionsData.checkedRange}</span>
+                    </div>
+                    {/* Summary stats */}
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: "Outages", value: String(transitionsData.summary.totalOutages), color: transitionsData.summary.totalOutages > 0 ? "text-danger" : "text-success" },
+                        { label: "Total Downtime", value: transitionsData.summary.totalDowntimeSec > 0 ? formatDuration(transitionsData.summary.totalDowntimeSec) : "0s", color: "text-text-primary" },
+                        { label: "Avg Recovery (MTTR)", value: transitionsData.summary.avgRecoveryTimeSec !== null ? formatDuration(transitionsData.summary.avgRecoveryTimeSec) : "—", color: "text-text-primary" },
+                        { label: "MTBF", value: transitionsData.summary.mtbfSec !== null ? formatDuration(transitionsData.summary.mtbfSec) : "—", color: "text-text-primary" },
+                      ].map((stat) => (
+                        <div key={stat.label} className="text-center p-2 rounded-lg bg-white/3">
+                          <p className="text-[10px] text-text-muted mb-1 uppercase tracking-wider">{stat.label}</p>
+                          <p className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {transitionsData.transitions.length === 0 ? (
+                      <p className="text-text-muted text-sm text-center py-4">No status changes in this period — monitor has been stable. ✓</p>
+                    ) : (
+                      <div className="relative">
+                        <div className="absolute left-[18px] top-0 bottom-0 w-px bg-white/10" />
+                        <div className="space-y-3">
+                          {transitionsData.transitions.map((t, i) => {
+                            const isDown = t.to !== "green";
+                            const dotColor = t.to === "green" ? "bg-success" : t.to === "yellow" ? "bg-warning" : "bg-danger";
+                            const textColor = t.to === "green" ? "text-success" : t.to === "yellow" ? "text-warning" : "text-danger";
+                            const arrow = `${t.from} → ${t.to}`;
+                            return (
+                              <div key={i} className="flex items-start gap-3 pl-1">
+                                <div className={`w-4 h-4 rounded-full ${dotColor} shrink-0 mt-0.5 ring-2 ring-surface`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-xs font-semibold capitalize ${textColor}`}>{isDown ? "Outage" : "Recovery"}</span>
+                                    <span className="text-[10px] text-text-muted font-mono">{arrow}</span>
+                                    {t.durationSec !== null && (
+                                      <span className="text-[10px] text-text-muted">· was {t.from} for {formatDuration(t.durationSec)}</span>
+                                    )}
+                                    <span className="ml-auto text-[10px] text-text-muted shrink-0">{relativeTime(t.at)}</span>
+                                  </div>
+                                  {t.message && (
+                                    <p className="text-[11px] text-text-secondary mt-0.5 truncate">{t.message}</p>
+                                  )}
+                                  {t.latencyMs !== null && (
+                                    <p className="text-[10px] text-text-muted">{t.latencyMs}ms</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )}
               </>
             )}
           </div>
@@ -1209,6 +1490,381 @@ export default function MonitorDetailPage() {
                 </div>
               );
             })()}
+          </Card>
+        )}
+
+        {/* Domain Tab — WHOIS expiry info */}
+        {activeMainTab === "domain" && monitor.type === "WHOIS" && ((): React.ReactNode => {
+          // Parse expiry info from the last run message
+          // Messages look like: 'Domain "example.com" expires in 120d (2026-07-24)'
+          //                     'Domain "example.com" expires in 5d (2026-03-31) — CRITICAL'
+          //                     'Domain "example.com" expires in 20d (2026-04-15) — warning'
+          //                     'Domain "example.com" expired on 2025-12-01'
+          //                     'WHOIS: example.com — expiry date not published by registrar'
+          //                     'Domain "example.com" not found in WHOIS'
+          let daysRemaining: number | null = null;
+          let expiryDate: string | null = null;
+          let domainName: string | null = null;
+          let expiryStatus: "green" | "yellow" | "red" | "unknown" = "unknown";
+          let notPublished = false;
+          let notFound = false;
+
+          const msg = lastRun?.message ?? "";
+
+          // Extract domain name
+          const domainMatch = msg.match(/["""]([^"""]+)["""]/);
+          if (domainMatch) domainName = domainMatch[1];
+          // Also try WHOIS: example.com — pattern
+          if (!domainName) {
+            const whoisMatch = msg.match(/WHOIS:\s+([^\s—–]+)/);
+            if (whoisMatch) domainName = whoisMatch[1];
+          }
+
+          // Parse expiry days + date
+          const expiresMatch = msg.match(/expires in (\d+)d \((\d{4}-\d{2}-\d{2})\)/);
+          if (expiresMatch) {
+            daysRemaining = parseInt(expiresMatch[1], 10);
+            expiryDate = expiresMatch[2];
+          }
+
+          // Parse expired case
+          const expiredMatch = msg.match(/expired on (\d{4}-\d{2}-\d{2})/);
+          if (expiredMatch) {
+            expiryDate = expiredMatch[1];
+            daysRemaining = 0;
+          }
+
+          // Determine status from last run level
+          if (lastRun?.level === "green") expiryStatus = "green";
+          else if (lastRun?.level === "yellow") expiryStatus = "yellow";
+          else if (lastRun?.level === "red") expiryStatus = "red";
+
+          if (msg.includes("expiry date not published")) notPublished = true;
+          if (msg.includes("not found in WHOIS")) notFound = true;
+
+          const statusBannerClass = expiryStatus === "green"
+            ? "bg-success/10 border-success/30 text-success"
+            : expiryStatus === "yellow"
+            ? "bg-yellow-400/10 border-yellow-400/30 text-yellow-400"
+            : expiryStatus === "red"
+            ? "bg-danger/10 border-danger/30 text-danger"
+            : "bg-surface-elevated border-border text-text-secondary";
+
+          const expiryBarWidth = daysRemaining !== null && daysRemaining > 0
+            ? Math.min(100, Math.round((daysRemaining / 365) * 100))
+            : 0;
+          const expiryBarColor = expiryStatus === "green"
+            ? "bg-success"
+            : expiryStatus === "yellow"
+            ? "bg-yellow-400"
+            : "bg-danger";
+
+          // History: show check results with expiry context
+          const whoisRuns = runs.slice(0, 30);
+
+          return (
+            <Card className="p-4 space-y-5">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">WHOIS Domain Expiry</h2>
+              </div>
+
+              {/* Status Banner */}
+              <div className={`flex items-start gap-3 p-4 rounded-xl border ${statusBannerClass}`}>
+                <Globe className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">
+                    {notFound
+                      ? `Domain not found in WHOIS`
+                      : notPublished
+                      ? `Expiry date not published by registrar`
+                      : daysRemaining !== null && daysRemaining <= 0
+                      ? `Domain has expired`
+                      : daysRemaining !== null
+                      ? `Expires in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`
+                      : "No data yet — run a check to see expiry info"}
+                  </p>
+                  {domainName && (
+                    <p className="text-xs opacity-75 mt-0.5 font-mono">{domainName}</p>
+                  )}
+                  {expiryDate && (
+                    <p className="text-xs opacity-75 mt-0.5">
+                      Expiry date: <span className="font-medium">{new Date(expiryDate + "T00:00:00Z").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
+                    </p>
+                  )}
+                </div>
+                {daysRemaining !== null && daysRemaining > 0 && (
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-3xl font-bold tabular-nums leading-none">{daysRemaining}</p>
+                    <p className="text-xs opacity-75 mt-0.5">days left</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Expiry Progress Bar */}
+              {daysRemaining !== null && daysRemaining > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-text-muted">
+                    <span>Today</span>
+                    <span>{daysRemaining}d remaining out of 365d shown</span>
+                    <span>Expiry: {expiryDate ?? "—"}</span>
+                  </div>
+                  <div className="h-2 bg-surface-elevated rounded-full overflow-hidden border border-border">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${expiryBarColor}`}
+                      style={{ width: `${expiryBarWidth}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Config info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Warn Threshold</p>
+                  <p className="text-lg font-bold text-yellow-400 tabular-nums">
+                    {(monitor.config as { warnDays?: number } | null)?.warnDays ?? 30}d
+                  </p>
+                  <p className="text-xs text-text-secondary">Yellow alert below this</p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Critical Threshold</p>
+                  <p className="text-lg font-bold text-danger tabular-nums">
+                    {(monitor.config as { criticalDays?: number } | null)?.criticalDays ?? 7}d
+                  </p>
+                  <p className="text-xs text-text-secondary">Red alert below this</p>
+                </div>
+              </div>
+
+              {/* Check history */}
+              {whoisRuns.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Recent Checks</p>
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                    {whoisRuns.map((run, idx) => {
+                      const runDaysMatch = run.message?.match(/expires in (\d+)d/);
+                      const runDays = runDaysMatch ? parseInt(runDaysMatch[1], 10) : null;
+                      const levelColors: Record<string, string> = {
+                        green: "text-success",
+                        yellow: "text-yellow-400",
+                        red: "text-danger",
+                      };
+                      return (
+                        <div key={idx} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/3 transition-colors">
+                          <span className={`text-xs font-medium w-12 tabular-nums ${run.level ? (levelColors[run.level] ?? "text-text-secondary") : "text-text-secondary"}`}>
+                            {run.level?.toUpperCase() ?? "—"}
+                          </span>
+                          <span className="text-xs text-text-muted w-36 flex-shrink-0">
+                            {new Date(run.checkedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="text-xs text-text-secondary truncate flex-1">
+                            {runDays !== null
+                              ? `${runDays}d remaining`
+                              : run.message?.length && run.message.length > 60
+                              ? run.message.slice(0, 60) + "…"
+                              : (run.message ?? "—")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {whoisRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No checks yet — trigger a manual check to see domain expiry data.
+                </div>
+              )}
+            </Card>
+          );
+        })()}
+
+        {/* Security Headers Audit Tab */}
+        {activeMainTab === "security" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && ((): React.ReactNode => {
+          // Get the latest run that has a security audit
+          const auditRun = runs.find((r) => (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson);
+          const audit = auditRun ? (auditRun as typeof auditRun & { securityAuditJson?: { grade: string; score: number; headers: Array<{ name: string; present: boolean; value: string | null; severity: string; description: string; recommendation?: string }> } }).securityAuditJson : null;
+
+          const gradeColor = (g: string) => {
+            if (g === "A") return "text-success";
+            if (g === "B") return "text-emerald-400";
+            if (g === "C") return "text-yellow-400";
+            if (g === "D") return "text-orange-400";
+            return "text-danger";
+          };
+          const gradeBg = (g: string) => {
+            if (g === "A") return "bg-success/10 border-success/30";
+            if (g === "B") return "bg-emerald-400/10 border-emerald-400/30";
+            if (g === "C") return "bg-yellow-400/10 border-yellow-400/30";
+            if (g === "D") return "bg-orange-400/10 border-orange-400/30";
+            return "bg-danger/10 border-danger/30";
+          };
+          const severityColor = (s: string) => {
+            if (s === "critical") return "text-danger";
+            if (s === "warning") return "text-yellow-400";
+            return "text-text-muted";
+          };
+          const severityBadge = (s: string) => {
+            if (s === "critical") return "bg-danger/10 text-danger border border-danger/20";
+            if (s === "warning") return "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20";
+            return "bg-white/5 text-text-muted border border-white/10";
+          };
+
+          return (
+            <Card className="p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Security Headers Audit
+                </h2>
+                {auditRun && (
+                  <span className="text-xs text-text-muted">
+                    Last checked {new Date(auditRun.checkedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+
+              {!audit ? (
+                <div className="text-center py-8 space-y-2">
+                  <Shield className="w-8 h-8 text-text-muted mx-auto opacity-40" />
+                  <p className="text-sm text-text-muted">No audit data yet.</p>
+                  <p className="text-xs text-text-muted opacity-75">Run a check to populate security header audit results.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Grade + Score */}
+                  <div className="flex items-center gap-6">
+                    <div className={`flex items-center justify-center w-20 h-20 rounded-2xl border-2 ${gradeBg(audit.grade)}`}>
+                      <span className={`text-4xl font-bold ${gradeColor(audit.grade)}`}>{audit.grade}</span>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-text-primary">{audit.score}<span className="text-base font-normal text-text-muted">/100</span></p>
+                      <p className="text-sm text-text-secondary mt-0.5">Security Score</p>
+                      <div className="mt-2 w-48 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${audit.score >= 75 ? "bg-success" : audit.score >= 55 ? "bg-yellow-400" : "bg-danger"}`}
+                          style={{ width: `${audit.score}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Headers breakdown */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Header Checks</p>
+                    <div className="space-y-2">
+                      {audit.headers.map((h) => (
+                        <div key={h.name} className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {h.present ? (
+                              <CheckCircle className="w-4 h-4 text-success" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-danger" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-text-primary font-mono">{h.name}</span>
+                              {!h.present && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${severityBadge(h.severity)}`}>
+                                  {h.severity}
+                                </span>
+                              )}
+                            </div>
+                            {h.present && h.value && (
+                              <p className="text-xs text-text-muted mt-0.5 font-mono truncate" title={h.value}>{h.value}</p>
+                            )}
+                            {!h.present && (
+                              <>
+                                <p className="text-xs text-text-secondary mt-0.5">{h.description}</p>
+                                {h.recommendation && (
+                                  <p className="text-xs text-text-muted mt-1 font-mono bg-white/3 px-2 py-1 rounded">{h.recommendation}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </Card>
+          );
+        })()}
+
+        {/* Content Change Detection Tab */}
+        {activeMainTab === "content" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && (
+          <Card className="p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Content Change Detection</h2>
+            </div>
+
+            {(monitor.config as Record<string, unknown>)?.contentHash ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Hash</p>
+                    <p className="text-xs font-mono text-text-primary break-all">{String((monitor.config as Record<string, unknown>).contentHash)}</p>
+                    {Boolean((monitor.config as Record<string, unknown>).contentHashSetAt) && (
+                      <p className="text-xs text-text-muted">Set {new Date(String((monitor.config as Record<string, unknown>).contentHashSetAt)).toLocaleDateString()}</p>
+                    )}
+                  </div>
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</p>
+                    <p className="text-xs text-text-secondary">Reset the baseline to re-capture current page content. The next successful check will establish a new baseline hash.</p>
+                    <button
+                      className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
+                      onClick={async () => {
+                        const u = getUser();
+                        if (!u) return;
+                        await api(`/v1/monitors/${monitor.id}/content-baseline/reset`, u.id, { method: "POST" });
+                        setMonitor((prev) => {
+                          if (!prev) return prev;
+                          const cfg = { ...(prev.config as Record<string, unknown>) };
+                          delete cfg.contentHash;
+                          delete cfg.contentHashSetAt;
+                          return { ...prev, config: cfg };
+                        });
+                      }}
+                    >
+                      Reset Baseline
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Recent Change Events</p>
+                  {runs.filter((r) => r.message?.includes("Content changed")).length > 0 ? (
+                    <div className="space-y-2">
+                      {runs.filter((r) => r.message?.includes("Content changed")).slice(0, 10).map((r) => (
+                        <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-warning/5 border border-warning/20">
+                          <span className="text-warning text-sm">⚠</span>
+                          <div>
+                            <p className="text-sm text-text-primary font-medium">Content changed</p>
+                            <p className="text-xs text-text-muted">{new Date(r.checkedAt).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-8 text-center">
+                      <CheckCircle className="w-8 h-8 text-success opacity-50" />
+                      <p className="text-sm text-text-secondary">No content changes detected</p>
+                      <p className="text-xs text-text-muted">PulseDock will alert here when the page content differs from the baseline.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <FileText className="w-10 h-10 text-text-muted opacity-40" />
+                <p className="text-sm font-medium text-text-secondary">No baseline established yet</p>
+                <p className="text-xs text-text-muted max-w-xs">Run a check to capture the current page content as the baseline. Future checks will compare against it and alert on changes.</p>
+              </div>
+            )}
           </Card>
         )}
 
@@ -1612,7 +2268,66 @@ export default function MonitorDetailPage() {
                   {String(monitor.config?.timeoutMs ? `${Math.round(Number(monitor.config.timeoutMs) / 1000)}s` : "10s")}
                 </span>
               </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Change Detection</span>
+                <span className={`font-medium ${monitor.config?.detectChanges ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.detectChanges ? "✓ Enabled" : "Disabled"}
+                </span>
+              </div>
             </div>
+            {!!monitor.config?.detectChanges && (
+              <div className="mt-2 pt-3 border-t border-border">
+                {Array.isArray(monitor.config?.dnsBaseline) && (monitor.config.dnsBaseline as string[]).length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Records</span>
+                      <div className="flex items-center gap-2">
+                        {!!monitor.config?.dnsBaselineSetAt && (
+                          <span className="text-xs text-text-muted">
+                            Set {new Date(String(monitor.config.dnsBaselineSetAt)).toLocaleDateString()}
+                          </span>
+                        )}
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Reset DNS baseline? The next check will establish a new baseline.")) return;
+                            const u = getUser();
+                            if (!u) return;
+                            try {
+                              await api(`/v1/monitors/${monitor.id}/dns-baseline/reset`, u.id, { method: "POST" });
+                              router.refresh();
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : "Failed to reset baseline");
+                            }
+                          }}
+                          className="text-xs text-warning hover:text-warning/80 border border-warning/30 hover:border-warning/60 px-2 py-0.5 rounded transition-colors"
+                          title="Reset baseline — next successful check will set a new one"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      {(monitor.config.dnsBaseline as string[]).map((record, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-surface-elevated">
+                          <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+                          <span className="font-mono text-xs text-text-primary break-all">{record}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-text-muted">
+                      Alerts will fire if any records are added or removed from this baseline.
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20">
+                    <span className="text-warning text-sm">⏳</span>
+                    <p className="text-xs text-text-secondary">
+                      Baseline not set yet — will be captured on the next successful check.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         )}
 
@@ -2145,6 +2860,134 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* Advanced Settings Summary */}
+        {(monitor.retryCount != null && monitor.retryCount > 0) ||
+         monitor.anomalyDetection ||
+         (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ||
+         monitor.scheduleEnabled ||
+         (monitor.confirmations != null && monitor.confirmations > 1) ||
+         monitor.autoIncident ||
+         monitor.runbookUrl ? (
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Advanced Settings
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              {monitor.confirmations != null && monitor.confirmations > 1 && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Confirmations</span>
+                  <span className="text-text-primary font-medium">{monitor.confirmations}× before alert</span>
+                  <span className="text-[10px] text-text-secondary">Reduces false positives</span>
+                </div>
+              )}
+              {monitor.retryCount != null && monitor.retryCount > 0 && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Retries</span>
+                  <span className="text-text-primary font-medium">{monitor.retryCount}× on failure</span>
+                  <span className="text-[10px] text-text-secondary">Exponential backoff</span>
+                </div>
+              )}
+              {(monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <span className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">Latency Threshold</span>
+                  <span className="text-text-primary font-medium">&gt; {(monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs}ms</span>
+                  <span className="text-[10px] text-text-secondary">Alert on slow responses</span>
+                </div>
+              )}
+              {monitor.anomalyDetection && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Anomaly Detection</span>
+                  <span className="text-text-primary font-medium">{monitor.anomalyMultiplier ?? 2}× P95 baseline</span>
+                  <span className="text-[10px] text-text-secondary">Dynamic latency alerting</span>
+                </div>
+              )}
+              {monitor.scheduleEnabled && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Business Hours</span>
+                  <span className="text-text-primary font-medium">
+                    {monitor.scheduleStartHour ?? 8}:00 – {monitor.scheduleEndHour ?? 18}:00 UTC
+                  </span>
+                  <span className="text-[10px] text-text-secondary">
+                    {(monitor.scheduleDays ?? "1,2,3,4,5").split(",").map((d) => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][parseInt(d)] ?? d).join(", ")}
+                  </span>
+                </div>
+              )}
+              {monitor.autoIncident && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                  <span className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">Auto Incidents</span>
+                  <span className="text-text-primary font-medium capitalize">{(monitor.autoIncidentSeverity ?? "MEDIUM").toLowerCase()} severity</span>
+                  <span className="text-[10px] text-text-secondary">Auto-creates on outage</span>
+                </div>
+              )}
+              {monitor.runbookUrl && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Runbook</span>
+                  <a
+                    href={monitor.runbookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline text-xs truncate"
+                    title={monitor.runbookUrl}
+                  >
+                    Open runbook →
+                  </a>
+                </div>
+              )}
+            </div>
+          </Card>
+        ) : null}
+
+        {/* Share Token (Public Status URL) */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Public Status URL
+            </h2>
+          </div>
+          <p className="text-xs text-text-secondary">
+            Generate a share token to expose this monitor&apos;s current status as a public JSON endpoint — no API key needed.
+            Embed in README files, CI/CD pipelines, or dashboards.
+          </p>
+          {monitor.shareToken ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-elevated border border-border font-mono text-[11px] text-text-secondary overflow-hidden">
+                <span className="truncate flex-1">{`/v1/public/monitor/${monitor.shareToken}/status.json`}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleCopyShareUrl(monitor.shareToken!)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${shareTokenCopied ? "bg-success/20 text-success border border-success/30" : "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20"}`}
+                >
+                  {shareTokenCopied ? <CheckCircle className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                  {shareTokenCopied ? "Copied!" : "Copy URL"}
+                </button>
+                <button
+                  onClick={handleRevokeShareToken}
+                  disabled={shareTokenLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-danger/70 border border-danger/20 hover:bg-danger/10 transition-colors disabled:opacity-50"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Revoke
+                </button>
+              </div>
+              <p className="text-[11px] text-text-muted">Returns: status, level, latency, 30d uptime%. Cached 30s.</p>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateShareToken}
+              disabled={shareTokenLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-surface-elevated border border-border text-text-secondary hover:text-text-primary hover:border-accent/40 transition-colors disabled:opacity-50"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {shareTokenLoading ? "Generating…" : "Generate Share Token"}
+            </button>
+          )}
+        </Card>
+
         {/* Alert Channels */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -2465,6 +3308,110 @@ export default function MonitorDetailPage() {
           )}
         </Card>
         </>)}
+
+        {/* Response Diff Tab — outside overview block to avoid TSC narrowing conflict */}
+        {(activeMainTab as string) === "diff" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && (
+          <Card className="p-4 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <GitCompare className="w-4 h-4" />
+                Response Body Diff
+              </h2>
+              <p className="text-xs text-text-muted mt-1">
+                Compare the response body of a failed check against the last successful baseline. Select a failed run from the check history below.
+              </p>
+            </div>
+
+            {/* Run selector — pick from failed runs */}
+            <div>
+              <p className="text-xs font-medium text-text-secondary mb-2">Select a failed run to inspect:</p>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {runs.filter((r) => !r.ok && r.responseBody).length === 0 ? (
+                  <p className="text-xs text-text-muted italic">No failed runs with response body captured. Make sure the monitor has been checked recently.</p>
+                ) : (
+                  runs.filter((r) => !r.ok && r.responseBody).slice(0, 20).map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => void handleLoadDiff(r.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-colors text-left ${
+                        diffRunId === r.id
+                          ? "bg-danger/15 border border-danger/30 text-text-primary"
+                          : "bg-surface-elevated border border-border text-text-secondary hover:border-danger/30 hover:text-text-primary"
+                      }`}
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-danger flex-shrink-0" />
+                      <span className="flex-1 truncate">{r.message ?? "Check failed"}</span>
+                      <span className="text-text-muted flex-shrink-0">{new Date(r.checkedAt).toLocaleString()}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Diff result */}
+            {diffLoading && (
+              <div className="flex items-center gap-2 text-text-muted text-xs py-4">
+                <Activity className="w-4 h-4 animate-pulse" />
+                Loading diff…
+              </div>
+            )}
+            {diffError && <p className="text-xs text-danger">{diffError}</p>}
+            {diffData && !diffLoading && (
+              <div className="space-y-3">
+                {!diffData.baseBody && (
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning">
+                    No prior successful response body found to compare against. Only the failed response is shown below.
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-success flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Baseline (last OK response)
+                    </p>
+                    <pre className="text-[11px] font-mono p-3 rounded-lg bg-surface-elevated border border-border text-text-secondary overflow-x-auto whitespace-pre-wrap break-all max-h-64">
+                      {diffData.baseBody ?? "(no baseline captured)"}
+                    </pre>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-danger flex items-center gap-1.5">
+                      <XCircle className="w-3.5 h-3.5" />
+                      Failed response
+                    </p>
+                    <pre className="text-[11px] font-mono p-3 rounded-lg bg-surface-elevated border border-danger/20 text-text-secondary overflow-x-auto whitespace-pre-wrap break-all max-h-64">
+                      {diffData.failedBody ?? "(no response body)"}
+                    </pre>
+                  </div>
+                </div>
+                {diffData.baseBody && diffData.failedBody && (
+                  <div className="p-3 rounded-lg bg-surface-elevated border border-border">
+                    <p className="text-xs font-semibold text-text-secondary mb-2">Line-by-line diff</p>
+                    <div className="font-mono text-[11px] space-y-0.5 max-h-64 overflow-y-auto">
+                      {((): React.ReactNode => {
+                        const baseLines = (diffData.baseBody ?? "").split("\n");
+                        const failLines = (diffData.failedBody ?? "").split("\n");
+                        const maxLen = Math.max(baseLines.length, failLines.length);
+                        const rows: React.ReactNode[] = [];
+                        for (let i = 0; i < maxLen; i++) {
+                          const b = baseLines[i] ?? null;
+                          const f = failLines[i] ?? null;
+                          if (b === f) {
+                            rows.push(<div key={i} className="text-text-muted px-2 py-0.5">{b}</div>);
+                          } else {
+                            if (b !== null) rows.push(<div key={`b${i}`} className="text-success bg-success/10 px-2 py-0.5 rounded">- {b}</div>);
+                            if (f !== null) rows.push(<div key={`f${i}`} className="text-danger bg-danger/10 px-2 py-0.5 rounded">+ {f}</div>);
+                          }
+                        }
+                        return rows;
+                      })()}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-text-muted">Note: Only the first 500 characters of each response body are stored.</p>
+              </div>
+            )}
+          </Card>
+        )}
 
       </div>
 

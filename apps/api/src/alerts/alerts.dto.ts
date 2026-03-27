@@ -1,4 +1,4 @@
-import { IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { SanitizeHtml } from '../common/sanitize';
 
 export class CreateAlertChannelDto {
@@ -12,6 +12,24 @@ export class CreateAlertChannelDto {
 
   @IsObject()
   config!: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  alertGrouping?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(86400)
+  groupWindowSec?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  groupByFolder?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  groupByTag?: boolean;
 }
 
 export class UpdateAlertChannelDto {
@@ -28,6 +46,24 @@ export class UpdateAlertChannelDto {
   @IsOptional()
   @IsObject()
   config?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  alertGrouping?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(86400)
+  groupWindowSec?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  groupByFolder?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  groupByTag?: boolean;
 }
 
 export class TestAlertChannelDto {

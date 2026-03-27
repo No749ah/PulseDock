@@ -1,4 +1,6 @@
 import * as tls from 'tls';
+import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -10,7 +12,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 
@@ -1075,6 +1077,62 @@ export class MonitorsController {
     };
   }
 
+  /**
+   * Reset the stored DNS baseline for a DNS monitor with detectChanges enabled.
+   * The next successful check will re-establish a new baseline automatically.
+   */
+  @Post(':id/dns-baseline/reset')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Reset DNS record baseline', description: 'Clears the stored DNS record baseline for a DNS monitor with change detection enabled. The next successful check will establish a new baseline.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Baseline cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resetDnsBaseline(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const currentConfig = (monitor.configJson ?? {}) as Record<string, unknown>;
+    const { dnsBaseline: _removed, dnsBaselineSetAt: _removedAt, ...restConfig } = currentConfig;
+
+    await this.prisma.monitor.update({
+      where: { id },
+      data: { configJson: restConfig as Prisma.InputJsonValue },
+    });
+
+    return { ok: true, message: 'DNS baseline cleared — will be re-established on next successful check.' };
+  }
+
+  /**
+   * Reset the stored content hash baseline for an HTTP/BROWSER monitor with detectContentChanges enabled.
+   * The next successful check will re-establish a new baseline automatically.
+   */
+  @Post(':id/content-baseline/reset')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Reset content change baseline', description: 'Clears the stored content hash baseline for an HTTP/BROWSER monitor with content change detection enabled. The next successful check will establish a new baseline.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Baseline cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resetContentBaseline(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const currentConfig = (monitor.configJson ?? {}) as Record<string, unknown>;
+    const { contentHash: _removed, contentHashSetAt: _removedAt, ...restConfig } = currentConfig;
+
+    await this.prisma.monitor.update({
+      where: { id },
+      data: { configJson: restConfig as Prisma.InputJsonValue },
+    });
+
+    return { ok: true, message: 'Content baseline cleared — will be re-established on next successful check.' };
+  }
+
   @Get(':id/slo-report')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'SLO/SLI report', description: 'Returns the SLO report for a monitor, including uptime SLO, latency SLI (if configured), and error budget overview.' })
@@ -1091,6 +1149,28 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'SLO summary returned.' })
   getSloSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.getSloSummary(req.user.id);
+  }
+
+  @Get(':id/status-transitions')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get status transition history for a monitor',
+    description: 'Returns a list of level-change events (green→red, red→green, etc.) over the given period. Useful for incident root-cause analysis and post-mortems. Includes summary stats: total outages, total downtime, MTTR, MTBF.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d'], required: false, description: 'Lookback window (default 7d)' })
+  @ApiResponse({ status: 200, description: 'Status transition list and summary returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getStatusTransitions(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period') period?: string,
+  ) {
+    const validPeriods = ['24h', '7d', '30d'] as const;
+    const safePeriod = validPeriods.includes(period as '24h' | '7d' | '30d')
+      ? (period as '24h' | '7d' | '30d')
+      : '7d';
+    return this.monitorsService.getStatusTransitions(req.user.id, id, safePeriod);
   }
 
   @Get(':id/latency-distribution')
@@ -1110,5 +1190,126 @@ export class MonitorsController {
       ? (period as '24h' | '7d' | '30d')
       : '7d';
     return this.monitorsService.getLatencyDistribution(req.user.id, id, safePeriod);
+  }
+
+  @Get(':id/period-comparison')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Period-over-period latency and uptime comparison for a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'period', enum: ['24h', '7d', '30d'], required: false, description: 'Comparison window (default: 7d)' })
+  @ApiResponse({ status: 200, description: 'Current vs prior period stats with % deltas' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getPeriodComparison(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('period') period?: string,
+  ) {
+    const validPeriods = ['24h', '7d', '30d'] as const;
+    const safePeriod = validPeriods.includes(period as '24h' | '7d' | '30d')
+      ? (period as '24h' | '7d' | '30d')
+      : '7d';
+    return this.monitorsService.getPeriodComparison(req.user.id, id, safePeriod);
+  }
+
+  // ─── Bulk Create from URL List ────────────────────────────────────────────
+
+  @Post('bulk-create-from-urls')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Bulk create HTTP monitors from a URL list',
+    description: 'Accepts a list of HTTP/HTTPS URLs (max 50), validates each, derives a name from the hostname, and creates one HTTP monitor per URL. Skips duplicates (same target already monitored).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bulk create result.',
+    schema: {
+      example: { created: 3, skipped: 1, errors: [{ url: 'not-a-url', error: 'Invalid URL' }] },
+    },
+  })
+  bulkCreateFromUrls(
+    @Req() req: { user: { id: string } },
+    @Body() body: BulkCreateFromUrlsDto,
+  ) {
+    return this.monitorsService.bulkCreateFromUrls(req.user.id, body);
+  }
+
+  // ─── Share Token (public status.json) ────────────────────────────────────
+
+  @Post(':id/share-token')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Generate or refresh share token',
+    description: 'Generates (or regenerates) a unique share token for this monitor. The token enables access to `GET /v1/public/monitor/:token/status.json` without authentication. Useful for embedding status in README files, CI/CD scripts, or dashboards.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Share token generated.', schema: { example: { shareToken: 'pd_share_xxxxxxxx' } } })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async generateShareToken(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    // Generate a random share token with prefix
+    const bytes = randomBytes(16).toString('hex');
+    const shareToken = `pd_share_${bytes}`;
+    await this.prisma.monitor.update({ where: { id }, data: { shareToken } });
+    return { shareToken };
+  }
+
+  @Delete(':id/share-token')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Revoke share token',
+    description: 'Revokes the share token for this monitor, disabling the public status.json endpoint.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Share token revoked.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async revokeShareToken(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    await this.prisma.monitor.update({ where: { id }, data: { shareToken: null } });
+    return { shareToken: null };
+  }
+
+  // ─── Response Body Diff ───────────────────────────────────────────────────
+
+  @Get(':id/response-diff')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get response body diff for a failing run',
+    description: 'Returns the response bodies of a failing run and the most recent passing run before it, for client-side diff display.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'runId', required: true, description: 'ID of the failing run to compare' })
+  @ApiQuery({ name: 'baseRunId', required: false, description: 'ID of the baseline (passing) run. If omitted, finds the most recent OK run before the failing run.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Diff bodies returned.',
+    schema: {
+      example: {
+        failedBody: '{"status":"error"}',
+        baseBody: '{"status":"ok"}',
+        runId: 'run-abc',
+        baseRunId: 'run-xyz',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor or run not found.' })
+  getResponseDiff(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('runId') runId: string,
+    @Query('baseRunId') baseRunId?: string,
+  ) {
+    return this.monitorsService.getResponseDiff(req.user.id, id, runId, baseRunId);
   }
 }

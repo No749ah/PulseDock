@@ -1,7 +1,7 @@
 export interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -13,12 +13,25 @@ export interface MonitorItem {
   sliLatencyWindow?: number | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   description?: string | null;
+  runbookUrl?: string | null;
+  confirmations?: number | null;
+  retryCount?: number | null;
   isFlapping?: boolean;
   flapDetectionEnabled?: boolean;
   flapAlertedAt?: string | null;
   mutedUntil?: string | null;
   isAcknowledged?: boolean;
   activeAck?: { id: string; note: string | null; acknowledgedAt: string } | null;
+  autoIncident?: boolean;
+  autoIncidentSeverity?: string | null;
+  latencyAlertMs?: number | null;
+  anomalyDetection?: boolean;
+  anomalyMultiplier?: number | null;
+  scheduleEnabled?: boolean;
+  scheduleDays?: string | null;
+  scheduleStartHour?: number | null;
+  scheduleEndHour?: number | null;
+  shareToken?: string | null;
 }
 
 export interface SloReport {
@@ -100,6 +113,8 @@ export interface MonitorRun {
   responseBody?: string | null;
   /** HTTP timing breakdown (DNS, TCP, TLS, TTFB, Download). Only for HTTP/BROWSER monitors. */
   timings?: RunTimings | null;
+  /** Security headers audit result. Only populated when checkSecurityHeaders=true on HTTP monitors. */
+  securityAuditJson?: unknown | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

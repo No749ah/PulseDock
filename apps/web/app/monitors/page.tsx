@@ -51,7 +51,7 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
@@ -95,7 +95,7 @@ function MonitorsPageInner() {
     name: string;
     description: string;
     runbookUrl: string;
-    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER";
+    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
     target: string;
     intervalSec: number;
     confirmations: number;
@@ -111,6 +111,7 @@ function MonitorsPageInner() {
     autoIncident: boolean;
     autoIncidentSeverity: string;
     flapDetectionEnabled: boolean;
+    latencyAlertMs: number | null;
     anomalyDetection: boolean;
     anomalyMultiplier: number;
     sliLatencyTarget: number | "";
@@ -138,6 +139,7 @@ function MonitorsPageInner() {
     autoIncident: false,
     autoIncidentSeverity: "MEDIUM",
     flapDetectionEnabled: true,
+    latencyAlertMs: null,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
     scheduleEnabled: false,
@@ -477,10 +479,11 @@ function MonitorsPageInner() {
       if (f.checkTls) config.checkTls = f.checkTls;
     }
     if (formData.type === "DNS") {
-      const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number };
+      const f = formData as typeof formData & { dnsRecordType?: string; dnsExpectedValue?: string; dnsTimeoutMs?: number; dnsDetectChanges?: boolean };
       config.recordType = f.dnsRecordType ?? "A";
       if (f.dnsExpectedValue?.trim()) config.expectedValue = f.dnsExpectedValue.trim();
       if (f.dnsTimeoutMs && f.dnsTimeoutMs !== 10000) config.timeoutMs = f.dnsTimeoutMs;
+      if (f.dnsDetectChanges) config.detectChanges = true;
     }
     if (formData.type === "PING") {
       const f = formData as typeof formData & { pingCount?: number; pingMaxLossPct?: number };
@@ -495,6 +498,11 @@ function MonitorsPageInner() {
         const codes = f2.browserStatusCodesRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
         if (codes.length > 0) config.browserStatusCodes = codes;
       }
+    }
+    if (formData.type === "WHOIS") {
+      const fw = formData as typeof formData & { whoisWarnDays?: number; whoisCriticalDays?: number };
+      if (fw.whoisWarnDays !== undefined) config.warnDays = fw.whoisWarnDays;
+      if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
       const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number };
@@ -519,6 +527,7 @@ function MonitorsPageInner() {
       }
       if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
+      if ((f as typeof f & { checkSecurityHeaders?: boolean }).checkSecurityHeaders) config.checkSecurityHeaders = true;
     }
     return config;
   };
@@ -548,6 +557,7 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          latencyAlertMs: formData.latencyAlertMs ?? null,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
           scheduleEnabled: formData.scheduleEnabled,
@@ -559,7 +569,7 @@ function MonitorsPageInner() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -604,6 +614,7 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          latencyAlertMs: formData.latencyAlertMs ?? null,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
           scheduleEnabled: formData.scheduleEnabled,
@@ -878,7 +889,7 @@ function MonitorsPageInner() {
 
   // Compute active filter count for badge
   const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
-  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]);
   const activeFilterCount =
     (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
     (filterTypes.size < defaultTypes.size ? 1 : 0) +
@@ -1142,7 +1153,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -1239,7 +1250,7 @@ function MonitorsPageInner() {
             onDeletePreset={deletePreset}
             onClearFilters={() => {
               setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER"]));
+              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]));
               setFilterTags(new Set());
               setTypeFilter("all");
               setStatusFilter("all");
@@ -1315,7 +1326,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, anomalyDetection: false, anomalyMultiplier: 2.0,
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,

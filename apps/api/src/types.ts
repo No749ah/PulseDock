@@ -1,4 +1,4 @@
-export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER';
+export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS';
 export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 
@@ -31,6 +31,10 @@ export interface AlertChannel {
   type: AlertChannelType;
   config: Record<string, unknown>;
   createdAt: string;
+  alertGrouping: boolean;
+  groupWindowSec: number;
+  groupByFolder: boolean;
+  groupByTag: boolean;
 }
 
 export interface Monitor {
@@ -59,12 +63,16 @@ export interface Monitor {
   flapDetectionEnabled: boolean;
   flapAlertedAt: string | null;
   mutedUntil: string | null;
+  latencyAlertMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
+  sliLatencyTarget: number | null;
+  sliLatencyWindow: number;
   scheduleEnabled: boolean;
   scheduleDays: string;
   scheduleStartHour: number;
   scheduleEndHour: number;
+  isAcknowledged?: boolean;
   createdAt: string;
 }
 
@@ -80,4 +88,5 @@ export interface MonitorRun {
   message: string;
   level: MonitorLevel;
   responseBody?: string | null;
+  securityAuditJson?: unknown | null;
 }

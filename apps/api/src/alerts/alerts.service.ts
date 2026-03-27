@@ -660,6 +660,10 @@ export class AlertsService {
       type: l.alertChannel.type as AlertChannel['type'],
       config: (l.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: l.alertChannel.createdAt.toISOString(),
+      alertGrouping: l.alertChannel.alertGrouping,
+      groupWindowSec: l.alertChannel.groupWindowSec,
+      groupByFolder: l.alertChannel.groupByFolder,
+      groupByTag: l.alertChannel.groupByTag,
     }));
 
     const isFlapping = context?.isFlapping ?? false;
@@ -681,25 +685,303 @@ export class AlertsService {
       sentAt: new Date().toISOString(),
     });
 
+    const extra = {
+      monitor: {
+        ...monitor,
+        runbookUrl: monitor.runbookUrl ?? undefined,
+      },
+      run,
+      runbookUrl: monitor.runbookUrl ?? undefined,
+    };
+    const isRecovery = run.level === 'green';
+
     for (const channel of channels) {
       try {
-        await this.sendWithRetry(channel, text, {
-          monitor: {
-            ...monitor,
-            runbookUrl: monitor.runbookUrl ?? undefined,
-          },
-          run,
-          runbookUrl: monitor.runbookUrl ?? undefined,
-        }, {
-          monitorId: monitor.id,
-          monitorName: monitor.name,
-          trigger: isFlapping ? 'monitor_flapping' : run.level === 'green' ? 'monitor_recovery' : 'monitor_failure',
-        });
+        const trigger = isFlapping ? 'monitor_flapping' : isRecovery ? 'monitor_recovery' : 'monitor_failure';
+        if (isRecovery || isFlapping) {
+          // Recovery and flapping alerts always send directly
+          await this.sendWithRetry(channel, text, extra, {
+            monitorId: monitor.id,
+            monitorName: monitor.name,
+            trigger,
+          });
+        } else {
+          // Non-recovery failure alerts go through grouping
+          await this.notifyWithGrouping(channel, monitor, run, text, extra);
+        }
       } catch (error) {
         this.logger.error(`Alert channel failed: ${channel.name}`, error instanceof Error ? error.stack : String(error));
       }
     }
 
+  }
+
+  /**
+   * Sends a grouped summary alert for a pending AlertGroup.
+   * Looks up monitor names and folder name, formats the grouped text, sends via sendWithRetry,
+   * and marks the group as sent.
+   */
+  private async sendGroupedAlert(group: { id: string; channelId: string; userId: string; monitorIds: string; groupKey: string }): Promise<void> {
+    const monitorIds = JSON.parse(group.monitorIds) as string[];
+    if (monitorIds.length === 0) return;
+
+    // Load channel
+    const channelRow = await this.prisma.alertChannel.findUnique({ where: { id: group.channelId } });
+    if (!channelRow) return;
+
+    const channel: AlertChannel = {
+      id: channelRow.id,
+      userId: channelRow.userId,
+      name: channelRow.name,
+      type: channelRow.type as AlertChannel['type'],
+      config: (channelRow.configJson as Record<string, unknown>) ?? {},
+      createdAt: channelRow.createdAt.toISOString(),
+      alertGrouping: channelRow.alertGrouping,
+      groupWindowSec: channelRow.groupWindowSec,
+      groupByFolder: channelRow.groupByFolder,
+      groupByTag: channelRow.groupByTag,
+    };
+
+    // Load monitors to get their names
+    const monitors = await this.prisma.monitor.findMany({
+      where: { id: { in: monitorIds } },
+      select: { id: true, name: true, folderId: true },
+    });
+    const monitorNames = monitors.map((m) => m.name);
+
+    // Get folder name if applicable
+    let locationLabel = 'your account';
+    if (group.groupKey.startsWith('folder:')) {
+      const folderId = group.groupKey.slice('folder:'.length);
+      const folder = await this.prisma.folder.findUnique({ where: { id: folderId }, select: { name: true } });
+      if (folder) locationLabel = `folder "${folder.name}"`;
+    } else if (group.groupKey.startsWith('tag:')) {
+      const tagId = group.groupKey.slice('tag:'.length);
+      const tag = await this.prisma.tag.findUnique({ where: { id: tagId }, select: { name: true } });
+      if (tag) locationLabel = `tag "${tag.name}"`;
+    }
+
+    const MAX_NAMES = 5;
+    const displayNames = monitorNames.length > MAX_NAMES
+      ? [...monitorNames.slice(0, MAX_NAMES), `+${monitorNames.length - MAX_NAMES} more`]
+      : monitorNames;
+    const text = `⚠️ Alert storm: ${monitorNames.length} monitors DOWN in ${locationLabel} — ${displayNames.join(', ')}`;
+
+    const startMs = Date.now();
+    try {
+      await this.send(channel, text, { grouped: true, count: monitorNames.length, monitorIds });
+      this.metrics.inc('alertsSent');
+      this.prisma.alertDeliveryLog.create({
+        data: {
+          alertChannelId: channel.id,
+          monitorId: null,
+          monitorName: null,
+          status: 'success',
+          trigger: 'grouped_alert',
+          durationMs: Date.now() - startMs,
+          isGrouped: true,
+          groupedCount: monitorNames.length,
+        },
+      }).catch(() => { /* non-critical */ });
+    } catch (error) {
+      this.metrics.inc('alertsFailed');
+      this.prisma.alertDeliveryLog.create({
+        data: {
+          alertChannelId: channel.id,
+          monitorId: null,
+          monitorName: null,
+          status: 'failed',
+          trigger: 'grouped_alert',
+          errorMessage: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startMs,
+          isGrouped: true,
+          groupedCount: monitorNames.length,
+        },
+      }).catch(() => { /* non-critical */ });
+      this.logger.warn(`Grouped alert send failed for group ${group.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Mark as sent
+    await this.prisma.alertGroup.update({
+      where: { id: group.id },
+      data: { sentAt: new Date() },
+    });
+  }
+
+  /**
+   * Check if alert grouping is enabled for the channel.
+   * If yes: accumulate the monitor into a pending group. If the group threshold
+   * is met (>=3 monitors) OR the window has expired and group has >=2 monitors,
+   * send a grouped summary alert. Otherwise suppress the individual alert.
+   * If no: send the alert directly.
+   */
+  async notifyWithGrouping(
+    channel: AlertChannel,
+    monitor: Monitor,
+    run: MonitorRun,
+    text: string,
+    extra?: unknown,
+  ): Promise<void> {
+    if (!channel.alertGrouping) {
+      await this.sendWithRetry(channel, text, extra, {
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        trigger: 'monitor_failure',
+      });
+      return;
+    }
+
+    // Determine group key
+    let groupKey: string | null = null;
+
+    if (channel.groupByFolder && monitor.folderId) {
+      groupKey = `folder:${monitor.folderId}`;
+    } else if (channel.groupByTag) {
+      // Load first tag for this monitor
+      const firstTag = await this.prisma.monitorTag.findFirst({
+        where: { monitorId: monitor.id },
+        include: { tag: { select: { id: true } } },
+        orderBy: { tag: { name: 'asc' } },
+      });
+      if (firstTag) {
+        groupKey = `tag:${firstTag.tag.id}`;
+      }
+    }
+
+    if (!groupKey) {
+      // No grouping key — send directly
+      await this.sendWithRetry(channel, text, extra, {
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        trigger: 'monitor_failure',
+      });
+      return;
+    }
+
+    const windowStart = new Date(Date.now() - channel.groupWindowSec * 1000);
+
+    // Find existing pending group within window
+    const existingGroup = await this.prisma.alertGroup.findFirst({
+      where: {
+        channelId: channel.id,
+        groupKey,
+        sentAt: null,
+        firstAlertAt: { gte: windowStart },
+      },
+      orderBy: { firstAlertAt: 'asc' },
+    });
+
+    let currentGroup: { id: string; channelId: string; userId: string; monitorIds: string; groupKey: string };
+
+    if (existingGroup) {
+      const ids = JSON.parse(existingGroup.monitorIds) as string[];
+      if (!ids.includes(monitor.id)) {
+        ids.push(monitor.id);
+      }
+      const updated = await this.prisma.alertGroup.update({
+        where: { id: existingGroup.id },
+        data: {
+          monitorIds: JSON.stringify(ids),
+          lastAlertAt: new Date(),
+          level: run.level,
+        },
+      });
+      currentGroup = { id: updated.id, channelId: updated.channelId, userId: updated.userId, monitorIds: updated.monitorIds, groupKey: updated.groupKey };
+    } else {
+      const created = await this.prisma.alertGroup.create({
+        data: {
+          userId: channel.userId,
+          channelId: channel.id,
+          groupKey,
+          monitorIds: JSON.stringify([monitor.id]),
+          level: run.level,
+        },
+      });
+      currentGroup = { id: created.id, channelId: created.channelId, userId: created.userId, monitorIds: created.monitorIds, groupKey: created.groupKey };
+    }
+
+    const monitorIds = JSON.parse(currentGroup.monitorIds) as string[];
+
+    if (monitorIds.length >= 3) {
+      // Threshold met — send grouped alert immediately
+      await this.sendGroupedAlert(currentGroup);
+    } else {
+      // Schedule a deferred check after windowSec
+      const windowMs = channel.groupWindowSec * 1000;
+      const groupId = currentGroup.id;
+      setTimeout(() => {
+        this.prisma.alertGroup.findUnique({ where: { id: groupId } })
+          .then(async (g) => {
+            if (!g || g.sentAt !== null) return;
+            const ids = JSON.parse(g.monitorIds) as string[];
+            if (ids.length >= 2) {
+              await this.sendGroupedAlert({ id: g.id, channelId: g.channelId, userId: g.userId, monitorIds: g.monitorIds, groupKey: g.groupKey });
+            } else if (ids.length === 1) {
+              // Only one monitor — send directly as individual alert
+              const channelRow = await this.prisma.alertChannel.findUnique({ where: { id: g.channelId } });
+              if (!channelRow) return;
+              const ch: AlertChannel = {
+                id: channelRow.id,
+                userId: channelRow.userId,
+                name: channelRow.name,
+                type: channelRow.type as AlertChannel['type'],
+                config: (channelRow.configJson as Record<string, unknown>) ?? {},
+                createdAt: channelRow.createdAt.toISOString(),
+                alertGrouping: channelRow.alertGrouping,
+                groupWindowSec: channelRow.groupWindowSec,
+                groupByFolder: channelRow.groupByFolder,
+                groupByTag: channelRow.groupByTag,
+              };
+              await this.sendWithRetry(ch, text, extra, {
+                monitorId: monitor.id,
+                monitorName: monitor.name,
+                trigger: 'monitor_failure',
+              });
+              await this.prisma.alertGroup.update({
+                where: { id: g.id },
+                data: { sentAt: new Date() },
+              });
+            }
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(`Deferred group check failed for group ${groupId}: ${err instanceof Error ? err.message : String(err)}`);
+          });
+      }, windowMs);
+    }
+  }
+
+  /**
+   * Cleanup cron: every minute, find pending AlertGroups whose window has expired
+   * and send them if they have >=2 monitors.
+   */
+  async flushExpiredAlertGroups(): Promise<void> {
+    const now = new Date();
+    // Find all pending groups where firstAlertAt is old enough
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { alertGrouping: true },
+      select: { id: true, groupWindowSec: true },
+    });
+
+    for (const ch of channels) {
+      const windowStart = new Date(now.getTime() - ch.groupWindowSec * 1000);
+      const expiredGroups = await this.prisma.alertGroup.findMany({
+        where: {
+          channelId: ch.id,
+          sentAt: null,
+          firstAlertAt: { lt: windowStart },
+        },
+      });
+
+      for (const g of expiredGroups) {
+        const ids = JSON.parse(g.monitorIds) as string[];
+        if (ids.length >= 2) {
+          await this.sendGroupedAlert({ id: g.id, channelId: g.channelId, userId: g.userId, monitorIds: g.monitorIds, groupKey: g.groupKey });
+        } else {
+          // Mark as sent without alerting (single monitor will have been sent via deferred setTimeout)
+          await this.prisma.alertGroup.update({ where: { id: g.id }, data: { sentAt: now } });
+        }
+      }
+    }
   }
 
   /**
@@ -758,6 +1040,10 @@ export class AlertsService {
         type: l.alertChannel.type as AlertChannel['type'],
         config: (l.alertChannel.configJson as Record<string, unknown>) ?? {},
         createdAt: l.alertChannel.createdAt.toISOString(),
+        alertGrouping: l.alertChannel.alertGrouping ?? false,
+        groupWindowSec: l.alertChannel.groupWindowSec ?? 300,
+        groupByFolder: l.alertChannel.groupByFolder ?? false,
+        groupByTag: l.alertChannel.groupByTag ?? false,
       }));
 
     for (const channel of channels) {

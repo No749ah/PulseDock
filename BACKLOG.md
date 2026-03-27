@@ -1,3 +1,11 @@
+## Status Summary (2026-03-27 11:40 UTC)
+- **Build/Test:** ✅ Clean build + 3620 API + 10 e2e + 12 agent = 3642 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-afternoon (merged morning → dev at 11:40 UTC)
+- **Last changes (11:40 UTC cycle):**
+  - **90-Day Uptime Calendar Heatmap** — GitHub contributions-style heatmap on monitor detail overview tab. Computed client-side from loaded runs: per-day uptime% bucketed into green/yellow/red/grey squares. 13-week grid with hover tooltips. Zero new API calls needed.
+
 ## Status Summary (2026-03-27 08:15 UTC)
 - **Build/Test:** ✅ Clean build + 3615 API + 10 e2e + 12 agent = 3637 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

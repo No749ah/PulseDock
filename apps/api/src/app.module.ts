@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { MonitorsController } from './monitors/monitors.controller';
+import { AnnotationsController } from './monitors/annotations.controller';
 import { MonitorsService } from './monitors/monitors.service';
 import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
@@ -115,6 +116,7 @@ import { SearchService } from './search/search.service';
     DemoController,
     EscalationController,
     SearchController,
+    AnnotationsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

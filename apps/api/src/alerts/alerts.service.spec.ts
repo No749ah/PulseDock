@@ -104,6 +104,7 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
             groupWindowSec: ma.alertChannel.groupWindowSec ?? 300,
             groupByFolder: ma.alertChannel.groupByFolder ?? true,
             groupByTag: ma.alertChannel.groupByTag ?? false,
+            messageTemplate: ma.alertChannel.messageTemplate ?? null,
           },
         })),
       ),

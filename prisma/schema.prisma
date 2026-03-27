@@ -77,6 +77,7 @@ model User {
   alertRoutingRules       AlertRoutingRule[]
   escalationPolicies      EscalationPolicy[]
   alertGroups             AlertGroup[]
+  annotations             MonitorAnnotation[]
 }
 
 model Session {
@@ -158,6 +159,7 @@ model Monitor {
   dependents    MonitorDependency[] @relation("DependencyMonitor")
   events        MonitorEvent[]
   acknowledgements AlertAcknowledgement[]
+  annotations   MonitorAnnotation[]
 
 
   @@index([userId])
@@ -845,6 +847,25 @@ model UserPlan {
 
   @@index([userId])
   @@index([planId])
+}
+
+/// User-defined annotation / event marker on a monitor's timeline
+/// Useful for marking deployments, config changes, incidents, etc.
+model MonitorAnnotation {
+  id           String   @id @default(cuid())
+  monitorId    String
+  userId       String
+  text         String   // e.g. "Deployed v2.1", "Config rollback"
+  color        String   @default("blue")   // blue | green | yellow | red | purple
+  annotatedAt  DateTime // the point-in-time the annotation refers to
+  createdAt    DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId])
+  @@index([monitorId, annotatedAt])
+  @@index([userId])
 }
 
 /// Queued notification for digest delivery (hourly_digest / daily_digest frequency)

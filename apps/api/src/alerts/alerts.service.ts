@@ -230,7 +230,9 @@ export class AlertsService {
       const monitor = ctx?.monitor;
 
       let msgText = text;
-      if (parseMode === 'HTML' && run && monitor) {
+      // Only apply HTML formatting if no channel-level messageTemplate was applied
+      // (when messageTemplate is set, `text` is already the user's custom message)
+      if (parseMode === 'HTML' && run && monitor && !channel.messageTemplate?.trim()) {
         const emoji = run.level === 'green' ? '✅' : run.level === 'yellow' ? '⚠️' : '🚨';
         const status = run.level === 'green' ? 'Recovered' : run.level === 'yellow' ? 'Degraded' : 'Down';
         msgText = `${emoji} <b>${monitor.name}</b> — ${status}\n<code>${run.message}</code>`;

@@ -256,3 +256,93 @@ describe('runWhoisCheck()', () => {
     expect(result.level).toBe('yellow');
   });
 });
+
+// ─── parseWhoisExpiry — additional format coverage ───────────────────────────
+
+describe('parseWhoisExpiry() — DD-Mon-YYYY format', () => {
+  it('parses "01-Jan-2027" style date', () => {
+    const raw = 'Expiry Date: 15-Mar-2027\n';
+    const result = parseWhoisExpiry(raw);
+    expect(result).not.toBeNull();
+    expect(result!.getFullYear()).toBe(2027);
+    expect(result!.getMonth()).toBe(2); // March = 2 (0-indexed)
+  });
+
+  it('parses "31-Dec-2028" style date', () => {
+    const raw = 'Registry Expiry Date: 31-Dec-2028\n';
+    const result = parseWhoisExpiry(raw);
+    expect(result).not.toBeNull();
+    expect(result!.getFullYear()).toBe(2028);
+  });
+});
+
+describe('parseWhoisExpiry() — edge cases', () => {
+  it('returns null for lines without colon', () => {
+    const raw = 'Expiry Date\n';
+    const result = parseWhoisExpiry(raw);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when value after colon is empty', () => {
+    const raw = 'Expiry Date:   \n';
+    const result = parseWhoisExpiry(raw);
+    expect(result).toBeNull();
+  });
+
+  it('handles multiple date lines and returns first match', () => {
+    const raw = `Domain Name: TEST.COM\nRegistry Expiry Date: 2028-06-15T00:00:00Z\nExpiration Date: 2029-01-01T00:00:00Z\n`;
+    const result = parseWhoisExpiry(raw);
+    expect(result).not.toBeNull();
+    expect(result!.getFullYear()).toBe(2028);
+  });
+});
+
+// ─── runWhoisCheck — IANA referral path ─────────────────────────────────────
+
+describe('runWhoisCheck() — IANA referral', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('follows IANA referral to secondary WHOIS server', async () => {
+    const farFuture = "2027-03-27T00:00:00Z";
+    // First socket: IANA response with referral
+    const ianaResponse = 'refer: whois.verisign-grs.com\n';
+    // Second socket: real WHOIS response with expiry
+    const realResponse = `Domain Name: EXAMPLE.COM\nRegistry Expiry Date: ${farFuture}\n`;
+
+    mockCreateConnection
+      .mockReturnValueOnce(makeSocket(ianaResponse))
+      .mockReturnValueOnce(makeSocket(realResponse));
+
+    const result = await runWhoisCheck('example.com', { warnDays: 30, criticalDays: 7 }, 5000);
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('expire');
+  });
+
+  it('uses original response when referral server fails', async () => {
+    const farFuture = "2027-03-27T00:00:00Z";
+    // First socket: IANA response with referral + fallback expiry
+    const ianaResponse = `refer: whois.unreachable.example\nRegistry Expiry Date: ${farFuture}\n`;
+    // Second socket: referral server connection fails
+    const errorSocket = {
+      setTimeout: vi.fn().mockReturnThis(),
+      once: vi.fn().mockImplementation((event: string, cb: (err?: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+        return errorSocket;
+      }),
+      on: vi.fn().mockReturnThis(),
+      write: vi.fn().mockReturnThis(),
+      destroy: vi.fn(),
+    };
+
+    mockCreateConnection
+      .mockReturnValueOnce(makeSocket(ianaResponse))
+      .mockReturnValueOnce(errorSocket);
+
+    const result = await runWhoisCheck('example.com', { warnDays: 30, criticalDays: 7 }, 5000);
+    // Falls back to original response — should still parse expiry from ianaResponse
+    expect(result.ok).toBe(true);
+  });
+});

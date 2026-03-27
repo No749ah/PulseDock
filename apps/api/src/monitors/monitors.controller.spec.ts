@@ -663,3 +663,224 @@ describe('certificateDetails()', () => {
     connectSpy.mockRestore();
   });
 });
+
+// ─── New endpoint coverage ────────────────────────────────────────────────────
+
+function makeFullService() {
+  return {
+    ...makeMonitorsService(),
+    getSloReport: vi.fn(),
+    getSloSummary: vi.fn(),
+    getStatusTransitions: vi.fn(),
+    getLatencyDistribution: vi.fn(),
+    getPeriodComparison: vi.fn(),
+    bulkCreateFromUrls: vi.fn(),
+    getResponseDiff: vi.fn(),
+    getAcknowledgement: vi.fn(),
+  };
+}
+
+function makePrismaForReset(found = true) {
+  return {
+    monitor: {
+      findFirst: vi.fn().mockResolvedValue(found ? { id: 'mon-1', configJson: { detectChanges: true, dnsBaseline: ['1.2.3.4'], someOther: 'value' } } : null),
+      update: vi.fn().mockResolvedValue({}),
+    },
+  };
+}
+
+describe('resetDnsBaseline()', () => {
+  it('clears dns baseline fields and returns ok', async () => {
+    const prisma = makePrismaForReset(true);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.resetDnsBaseline(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['ok']).toBe(true);
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'mon-1' } }),
+    );
+    const updateData = (prisma.monitor.update as ReturnType<typeof vi.fn>).mock.calls[0][0].data.configJson as Record<string, unknown>;
+    expect(updateData['dnsBaseline']).toBeUndefined();
+    expect(updateData['someOther']).toBe('value');
+  });
+
+  it('throws 404 when monitor not found', async () => {
+    const prisma = makePrismaForReset(false);
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.resetDnsBaseline(makeReq(), 'missing')).rejects.toThrow('Monitor not found');
+  });
+});
+
+describe('resetContentBaseline()', () => {
+  it('clears content hash fields and returns ok', async () => {
+    const prisma = {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'mon-1', configJson: { contentHash: 'abc123', contentHashSetAt: '2026-01-01', keep: true } }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    };
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.resetContentBaseline(makeReq(), 'mon-1') as Record<string, unknown>;
+    expect(result['ok']).toBe(true);
+    const updateData = (prisma.monitor.update as ReturnType<typeof vi.fn>).mock.calls[0][0].data.configJson as Record<string, unknown>;
+    expect(updateData['contentHash']).toBeUndefined();
+    expect(updateData['keep']).toBe(true);
+  });
+
+  it('throws 404 when monitor not found', async () => {
+    const prisma = { monitor: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() } };
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.resetContentBaseline(makeReq(), 'missing')).rejects.toThrow('Monitor not found');
+  });
+});
+
+describe('getSloReport()', () => {
+  it('delegates to monitorsService.getSloReport', async () => {
+    const svc = makeFullService();
+    svc.getSloReport.mockResolvedValue({ slo: 99.9 });
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getSloReport(makeReq(), 'mon-1');
+    expect(svc.getSloReport).toHaveBeenCalledWith('user-1', 'mon-1');
+  });
+});
+
+describe('getSloSummary()', () => {
+  it('delegates to monitorsService.getSloSummary', async () => {
+    const svc = makeFullService();
+    svc.getSloSummary.mockResolvedValue([]);
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getSloSummary(makeReq());
+    expect(svc.getSloSummary).toHaveBeenCalledWith('user-1');
+  });
+});
+
+describe('getStatusTransitions()', () => {
+  it('defaults period to 7d when not provided', async () => {
+    const svc = makeFullService();
+    svc.getStatusTransitions.mockResolvedValue([]);
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getStatusTransitions(makeReq(), 'mon-1');
+    expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+
+  it('uses valid provided period', async () => {
+    const svc = makeFullService();
+    svc.getStatusTransitions.mockResolvedValue([]);
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getStatusTransitions(makeReq(), 'mon-1', '30d');
+    expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '30d');
+  });
+
+  it('falls back to 7d for invalid period string', async () => {
+    const svc = makeFullService();
+    svc.getStatusTransitions.mockResolvedValue([]);
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getStatusTransitions(makeReq(), 'mon-1', 'invalid');
+    expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+});
+
+describe('getLatencyDistribution()', () => {
+  it('defaults period to 7d', async () => {
+    const svc = makeFullService();
+    svc.getLatencyDistribution.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getLatencyDistribution(makeReq(), 'mon-1');
+    expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+
+  it('passes valid period 24h', async () => {
+    const svc = makeFullService();
+    svc.getLatencyDistribution.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getLatencyDistribution(makeReq(), 'mon-1', '24h');
+    expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '24h');
+  });
+
+  it('falls back to 7d for invalid period', async () => {
+    const svc = makeFullService();
+    svc.getLatencyDistribution.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getLatencyDistribution(makeReq(), 'mon-1', 'bad-value');
+    expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+});
+
+describe('getPeriodComparison()', () => {
+  it('defaults to 7d', async () => {
+    const svc = makeFullService();
+    svc.getPeriodComparison.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getPeriodComparison(makeReq(), 'mon-1');
+    expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+
+  it('passes valid period 30d', async () => {
+    const svc = makeFullService();
+    svc.getPeriodComparison.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getPeriodComparison(makeReq(), 'mon-1', '30d');
+    expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '30d');
+  });
+
+  it('falls back to 7d for unrecognized period', async () => {
+    const svc = makeFullService();
+    svc.getPeriodComparison.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getPeriodComparison(makeReq(), 'mon-1', 'weekly');
+    expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+});
+
+describe('bulkCreateFromUrls()', () => {
+  it('delegates to monitorsService.bulkCreateFromUrls', async () => {
+    const svc = makeFullService();
+    svc.bulkCreateFromUrls.mockResolvedValue({ created: 2, skipped: 0, errors: [] });
+    const planSvc = { checkLimit: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: -1, plan: 'COMMUNITY' }) };
+    const ctrl = new MonitorsController(svc as never, planSvc as never, {} as never);
+    const body = { urls: ['https://example.com', 'https://test.com'] };
+    const result = await ctrl.bulkCreateFromUrls(makeReq(), body as never);
+    expect(svc.bulkCreateFromUrls).toHaveBeenCalledWith('user-1', body);
+    expect((result as Record<string, unknown>)['created']).toBe(2);
+  });
+});
+
+describe('getResponseDiff()', () => {
+  it('delegates to monitorsService.getResponseDiff', async () => {
+    const svc = makeFullService();
+    svc.getResponseDiff.mockResolvedValue({ failedBody: 'err', baseBody: 'ok' });
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getResponseDiff(makeReq(), 'mon-1', 'run-bad', 'run-good');
+    expect(svc.getResponseDiff).toHaveBeenCalledWith('user-1', 'mon-1', 'run-bad', 'run-good');
+  });
+
+  it('passes undefined baseRunId when not provided', async () => {
+    const svc = makeFullService();
+    svc.getResponseDiff.mockResolvedValue({});
+    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    await ctrl.getResponseDiff(makeReq(), 'mon-1', 'run-abc');
+    expect(svc.getResponseDiff).toHaveBeenCalledWith('user-1', 'mon-1', 'run-abc', undefined);
+  });
+});
+
+describe('muteMonitor()', () => {
+  it('sets mutedUntil and returns timestamp', async () => {
+    const prisma = {
+      monitor: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'mon-1' }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    };
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    const result = await ctrl.muteMonitor(makeReq(), 'mon-1', { minutes: 60 } as never) as Record<string, unknown>;
+    expect(typeof result['mutedUntil']).toBe('string');
+    expect(prisma.monitor.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'mon-1' }, data: expect.objectContaining({ mutedUntil: expect.any(Date) }) }),
+    );
+  });
+
+  it('throws 404 when monitor not found', async () => {
+    const prisma = { monitor: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() } };
+    const ctrl = new MonitorsController({} as never, {} as never, prisma as never);
+    await expect(ctrl.muteMonitor(makeReq(), 'missing', { minutes: 30 } as never)).rejects.toThrow('Monitor not found');
+  });
+});

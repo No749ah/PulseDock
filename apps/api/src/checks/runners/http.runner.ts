@@ -249,6 +249,54 @@ function runTimedRequest(
   });
 }
 
+/**
+ * Follow HTTP redirects (3xx) up to maxRedirects times.
+ * Returns the final timed result plus the redirect chain.
+ * Accumulates total latency across hops.
+ * @param url - Starting URL
+ * @param options - Request options (forwarded to runTimedRequest)
+ * @param maxRedirects - Max redirects to follow (default 10)
+ */
+async function runTimedRequestWithRedirects(
+  url: string,
+  options: Parameters<typeof runTimedRequest>[1],
+  maxRedirects = 10,
+): Promise<TimedResult & { redirectChain: string[] }> {
+  const redirectChain: string[] = [];
+  let currentUrl = url;
+  let totalLatencyMs = 0;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const result = await runTimedRequest(currentUrl, options);
+    totalLatencyMs += result.latencyMs;
+
+    const isRedirect = result.statusCode >= 301 && result.statusCode <= 308;
+    const location = result.responseHeaders['location'];
+
+    if (isRedirect && location) {
+      redirectChain.push(currentUrl);
+      // Resolve relative location against current URL
+      try {
+        currentUrl = new URL(location, currentUrl).href;
+      } catch {
+        // Invalid location header — return what we have
+        return { ...result, latencyMs: totalLatencyMs, redirectChain };
+      }
+      // For POST→GET redirect (301/302/303), switch to GET
+      if ([301, 302, 303].includes(result.statusCode) && options.method !== 'GET') {
+        options = { ...options, method: 'GET', body: undefined };
+      }
+      continue;
+    }
+
+    // Non-redirect response or no location header — return final
+    return { ...result, latencyMs: totalLatencyMs, redirectChain };
+  }
+
+  // Too many redirects
+  throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
+}
+
 export async function runHttpCheck(
   url: string,
   timeoutMs = 5000,
@@ -311,15 +359,25 @@ export async function runHttpCheck(
     }
   }
 
-  try {
-    const timedResult = await runTimedRequest(effectiveUrl, {
-      method: safeMethod,
-      timeoutMs,
-      headers: requestHeaders,
-      body: requestBody,
-    });
+  const followRedirects = config['followRedirects'] !== false; // default: follow redirects
+  const maxRedirects = typeof config['maxRedirects'] === 'number' ? Math.min(Math.max(0, config['maxRedirects']), 20) : 10;
 
-    const { statusCode, body, latencyMs, timings, responseHeaders } = timedResult;
+  try {
+    const timedResult = followRedirects
+      ? await runTimedRequestWithRedirects(effectiveUrl, {
+          method: safeMethod,
+          timeoutMs,
+          headers: requestHeaders,
+          body: requestBody,
+        }, maxRedirects)
+      : { ...await runTimedRequest(effectiveUrl, {
+          method: safeMethod,
+          timeoutMs,
+          headers: requestHeaders,
+          body: requestBody,
+        }), redirectChain: [] as string[] };
+
+    const { statusCode, body, latencyMs, timings, responseHeaders, redirectChain } = timedResult;
     const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
     const responseBodyHash = detectContentChanges && body ? createHash('sha256').update(body).digest('hex').slice(0, 64) : null;
 
@@ -333,14 +391,16 @@ export async function runHttpCheck(
 
     if (!statusOk) {
       const expected = expectedStatus ? ` (expected ${Array.isArray(expectedStatus) ? expectedStatus.join('/') : expectedStatus})` : '';
+      const redirectNote = redirectChain.length > 0 ? ` [via ${redirectChain.length} redirect${redirectChain.length > 1 ? 's' : ''}]` : '';
       return {
         ok: false,
         statusCode,
         latencyMs,
-        message: `HTTP ${statusCode}${expected}`,
+        message: `HTTP ${statusCode}${expected}${redirectNote}`,
         level: 'red' as const,
         responseBody: body ? body.slice(0, 500) : null,
         timings,
+        ...(redirectChain.length > 0 ? { redirectChain } : {}),
       };
     }
 
@@ -434,17 +494,19 @@ export async function runHttpCheck(
       };
     }
 
-    // Compute message suffix for security audit grade if enabled
+    // Compute message suffix for security audit grade and redirect info
     const secGradeSuffix = securityAudit ? ` [Security: ${securityAudit.grade}]` : '';
+    const redirectSuffix = redirectChain.length > 0 ? ` [${redirectChain.length} redirect${redirectChain.length > 1 ? 's' : ''}]` : '';
     return {
       ok: true,
       statusCode,
       latencyMs,
-      message: `OK${secGradeSuffix}`,
+      message: `OK${redirectSuffix}${secGradeSuffix}`,
       level: 'green' as const,
       timings,
       securityHeadersAudit: securityAudit,
       responseBodyHash,
+      ...(redirectChain.length > 0 ? { redirectChain } : {}),
     };
   } catch (error) {
     return {

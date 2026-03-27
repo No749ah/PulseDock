@@ -43,6 +43,8 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     requestBody: String(monitor.config?.requestBody ?? ""),
     responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
     checkSecurityHeaders: Boolean(monitor.config?.checkSecurityHeaders),
+    followRedirects: monitor.config?.followRedirects !== false,
+    maxRedirects: monitor.config?.maxRedirects !== undefined ? Number(monitor.config.maxRedirects) : 10,
     bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
     bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
     ehlo: String(monitor.config?.ehlo ?? "pulsedock.monitor"),

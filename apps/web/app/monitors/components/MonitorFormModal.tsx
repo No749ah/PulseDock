@@ -770,6 +770,41 @@ export function MonitorFormModal({
                 <span className="text-xs text-text-secondary mt-0.5 block">Alerts when the page content changes from the established baseline. Useful for detecting deployments, defacements, or unexpected changes.</span>
               </label>
             </div>
+
+            {/* Redirect Following */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="followRedirects"
+                checked={(formData as unknown as { followRedirects?: boolean }).followRedirects !== false}
+                onChange={(e) => onSetFormData({ ...formData, followRedirects: e.target.checked } as typeof formData & { followRedirects?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="followRedirects" className="cursor-pointer select-none flex-1">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  🔀 Follow redirects
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Automatically follow HTTP 3xx redirects up to the configured limit. Disable to assert the first response code directly (useful for monitoring redirect chains).</span>
+                {(formData as unknown as { followRedirects?: boolean }).followRedirects !== false && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <label htmlFor="maxRedirects" className="text-xs text-text-secondary whitespace-nowrap">Max redirects:</label>
+                    <input
+                      id="maxRedirects"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={(formData as unknown as { maxRedirects?: number }).maxRedirects ?? 10}
+                      onChange={(e) => {
+                        const val = Math.min(20, Math.max(1, parseInt(e.target.value) || 10));
+                        onSetFormData({ ...formData, maxRedirects: val } as typeof formData & { maxRedirects?: number });
+                      }}
+                      className="w-16 px-2 py-1 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <span className="text-xs text-text-secondary">(1–20, default 10)</span>
+                  </div>
+                )}
+              </label>
+            </div>
           </>
         )}
 

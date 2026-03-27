@@ -1,11 +1,15 @@
-## Status Summary (2026-03-27 02:18 UTC)
-- **Build/Test:** ✅ Clean build + 3552 API + 747 web + 10 e2e + 12 agent = 4321 total; 0 TS errors; all routes 200
+## Status Summary (2026-03-27 04:15 UTC)
+- **Build/Test:** ✅ Clean build + 3579 API + 747 web + 10 e2e + 12 agent = 4348 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-26-evening
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (02:18 UTC cycle):**
+- **Last changes (04:15 UTC cycle):**
+  - **Monitor Public Share Token** — `POST/DELETE /v1/monitors/:id/share-token` generates/revokes `pd_share_*` token. `GET /v1/public/monitor/:token/status.json` returns status, level, latency, 30d uptime%, generatedAt — no auth required. Prisma migration `add_monitor_share_token`. "Public Status URL" card on monitor detail. Embed in README/CI/CD/dashboards.
+  - **Response Diff tab on monitor detail** — New "Diff" tab for HTTP/BROWSER monitors. Picker shows failed runs with captured response body. Side-by-side baseline (last OK) vs failed body panels + line-by-line diff with color coding (+/-). Uses existing `GET /v1/monitors/:id/response-diff/:runId` API.
+  - **Fix TS errors** — whois.runner.spec.ts errorSocket cast, page.tsx `r.createdAt→r.checkedAt` in content events, `Boolean()` guard on contentHashSetAt.
+- **Previous changes (02:18 UTC cycle):**
   - **HTTP Content Change Detection** — `detectContentChanges` option on HTTP/BROWSER monitors. SHA-256 hashes response body on first successful check, stores as `contentHash` baseline. Subsequent checks compare hash; alerts yellow when content differs. `POST /v1/monitors/:id/content-baseline/reset` to re-capture. Monitor detail "Content" tab shows baseline hash, set date, reset button, change event history. Create/edit form toggle. 5 new tests → 3552 API total.
 - **Previous changes (22:30 UTC cycle):**
   - **DNS Record Change Detection** — `detectChanges` option on DNS monitors. Stores resolved records as `dnsBaseline` on first check. Alerts red when records are added or removed vs baseline (sorted, order-independent comparison). `POST /v1/monitors/:id/dns-baseline/reset` clears baseline. Monitor detail shows baseline records + set date + Reset button. Create/edit form has "Alert on record change" toggle. 11 new tests → 3558 total.

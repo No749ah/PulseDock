@@ -275,6 +275,8 @@ model AlertChannel {
   groupWindowSec   Int      @default(300)    // window in seconds to group related alerts (default 5min)
   groupByFolder    Boolean  @default(true)   // group alerts from same folder
   groupByTag       Boolean  @default(false)  // group alerts from same tag
+  /// Custom message template with {{token}} substitution. null = use default message.
+  messageTemplate  String?  @db.Text
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]

@@ -33,6 +33,7 @@ export class AlertsController {
     groupWindowSec: number;
     groupByFolder: boolean;
     groupByTag: boolean;
+    messageTemplate?: string | null;
   }): import('../types').AlertChannel {
     return {
       id: c.id,
@@ -45,6 +46,7 @@ export class AlertsController {
       groupWindowSec: c.groupWindowSec,
       groupByFolder: c.groupByFolder,
       groupByTag: c.groupByTag,
+      messageTemplate: c.messageTemplate ?? null,
     };
   }
 
@@ -64,6 +66,7 @@ export class AlertsController {
       groupWindowSec: c.groupWindowSec,
       groupByFolder: c.groupByFolder,
       groupByTag: c.groupByTag,
+      messageTemplate: c.messageTemplate ?? null,
     }));
   }
 
@@ -96,6 +99,7 @@ export class AlertsController {
         groupWindowSec: body.groupWindowSec ?? 300,
         groupByFolder: body.groupByFolder ?? true,
         groupByTag: body.groupByTag ?? false,
+        messageTemplate: (body as { messageTemplate?: string }).messageTemplate ?? null,
       },
     });
 
@@ -112,6 +116,7 @@ export class AlertsController {
       groupWindowSec: channel.groupWindowSec,
       groupByFolder: channel.groupByFolder,
       groupByTag: channel.groupByTag,
+      messageTemplate: channel.messageTemplate ?? null,
     };
   }
 
@@ -134,6 +139,7 @@ export class AlertsController {
         ...(body.groupWindowSec !== undefined && { groupWindowSec: body.groupWindowSec }),
         ...(body.groupByFolder !== undefined && { groupByFolder: body.groupByFolder }),
         ...(body.groupByTag !== undefined && { groupByTag: body.groupByTag }),
+        ...('messageTemplate' in body && { messageTemplate: (body as { messageTemplate?: string | null }).messageTemplate ?? null }),
       },
     });
 
@@ -149,6 +155,7 @@ export class AlertsController {
       groupWindowSec: updated.groupWindowSec,
       groupByFolder: updated.groupByFolder,
       groupByTag: updated.groupByTag,
+      messageTemplate: updated.messageTemplate ?? null,
     };
   }
 

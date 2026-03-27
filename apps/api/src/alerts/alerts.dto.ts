@@ -30,6 +30,11 @@ export class CreateAlertChannelDto {
   @IsOptional()
   @IsBoolean()
   groupByTag?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  messageTemplate?: string;
 }
 
 export class UpdateAlertChannelDto {
@@ -64,6 +69,11 @@ export class UpdateAlertChannelDto {
   @IsOptional()
   @IsBoolean()
   groupByTag?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  messageTemplate?: string | null;
 }
 
 export class TestAlertChannelDto {

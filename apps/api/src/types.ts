@@ -35,6 +35,8 @@ export interface AlertChannel {
   groupWindowSec: number;
   groupByFolder: boolean;
   groupByTag: boolean;
+  /** Custom {{token}} message template. null = use default message. */
+  messageTemplate: string | null;
 }
 
 export interface Monitor {

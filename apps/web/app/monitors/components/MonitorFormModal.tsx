@@ -658,6 +658,23 @@ export function MonitorFormModal({
                 <span className="text-xs text-text-secondary mt-0.5 block">Checks for HSTS, CSP, X-Frame-Options, X-Content-Type-Options and more. Grades the response A–F and stores results per run.</span>
               </label>
             </div>
+
+            {/* Content Change Detection */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="detectContentChanges"
+                checked={(formData as unknown as { detectContentChanges?: boolean }).detectContentChanges ?? false}
+                onChange={(e) => onSetFormData({ ...formData, detectContentChanges: e.target.checked } as typeof formData & { detectContentChanges?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="detectContentChanges" className="cursor-pointer select-none">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  📄 Detect content changes
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Alerts when the page content changes from the established baseline. Useful for detecting deployments, defacements, or unexpected changes.</span>
+              </label>
+            </div>
           </>
         )}
 

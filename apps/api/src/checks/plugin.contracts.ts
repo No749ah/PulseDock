@@ -54,6 +54,11 @@ export interface PluginExecutionResult {
    * Security headers audit result. Only populated when `checkSecurityHeaders` is enabled on HTTP monitors.
    */
   securityHeadersAudit?: SecurityHeadersAudit | null;
+  /**
+   * SHA-256 hash of the response body (hex, first 64 chars).
+   * Only populated for HTTP/BROWSER monitors when `detectContentChanges` is enabled.
+   */
+  responseBodyHash?: string | null;
 }
 
 export interface PluginConfigField {

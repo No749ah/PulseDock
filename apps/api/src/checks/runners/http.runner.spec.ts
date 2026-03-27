@@ -511,3 +511,46 @@ describe('auditSecurityHeaders', () => {
     expect(result.score).toBeLessThan(100);
   });
 });
+
+describe('runHttpCheck — content change detection', () => {
+  beforeEach(() => {
+    mockState.https = { statusCode: 200, body: '<html><body>Hello World</body></html>' };
+  });
+
+  it('returns responseBodyHash when detectContentChanges=true', async () => {
+    const result = await runHttpCheck('https://example.com', 5000, { detectContentChanges: true });
+    expect(result.ok).toBe(true);
+    expect(result.responseBodyHash).toBeTypeOf('string');
+    expect(result.responseBodyHash!.length).toBe(64);
+  });
+
+  it('responseBodyHash is null when detectContentChanges is not set', async () => {
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.responseBodyHash).toBeNull();
+  });
+
+  it('same body produces same hash across calls', async () => {
+    mockState.https = { statusCode: 200, body: 'stable content' };
+    const r1 = await runHttpCheck('https://example.com', 5000, { detectContentChanges: true });
+    const r2 = await runHttpCheck('https://example.com', 5000, { detectContentChanges: true });
+    expect(r1.responseBodyHash).toBe(r2.responseBodyHash);
+  });
+
+  it('different body produces different hash', async () => {
+    mockState.https = { statusCode: 200, body: 'original content' };
+    const r1 = await runHttpCheck('https://example.com', 5000, { detectContentChanges: true });
+    mockState.https = { statusCode: 200, body: 'updated content — something changed!' };
+    const r2 = await runHttpCheck('https://example.com', 5000, { detectContentChanges: true });
+    expect(r1.responseBodyHash).not.toBe(r2.responseBodyHash);
+  });
+
+  it('includes hash even when bodyContains also passes', async () => {
+    mockState.https = { statusCode: 200, body: '<html>status: ok</html>' };
+    const result = await runHttpCheck('https://example.com', 5000, {
+      detectContentChanges: true,
+      bodyContains: 'status: ok',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.responseBodyHash).toBeTypeOf('string');
+  });
+});

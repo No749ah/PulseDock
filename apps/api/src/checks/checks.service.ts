@@ -329,6 +329,55 @@ export class ChecksService {
     }
     // ─────────────────────────────────────────────────────────────────────────────────
 
+    // ── HTTP Content Change Detection ─────────────────────────────────────────────────
+    // When detectContentChanges is enabled on HTTP/BROWSER monitors:
+    // - First successful run: persist contentHash as baseline
+    // - Subsequent runs: compare hash; if different → degrade level to yellow and alert
+    const httpResult = result as PluginExecutionResult;
+    if (
+      (monitor.type === 'HTTP' || monitor.type === 'BROWSER') &&
+      httpResult.responseBodyHash &&
+      monitor.config.detectContentChanges === true &&
+      httpResult.ok
+    ) {
+      const storedHash = typeof monitor.config.contentHash === 'string' ? monitor.config.contentHash : null;
+      if (!storedHash) {
+        // First run — persist baseline hash
+        try {
+          const currentConfig = (monitor.config as Record<string, unknown>);
+          await this.prisma.monitor.update({
+            where: { id: monitor.id },
+            data: {
+              configJson: {
+                ...currentConfig,
+                contentHash: httpResult.responseBodyHash,
+                contentHashSetAt: new Date().toISOString(),
+              } as Prisma.InputJsonValue,
+            },
+          });
+          this.logger.log(
+            `[ContentChange] Baseline set for monitor ${monitor.id} (${monitor.name}): ${httpResult.responseBodyHash}`,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `[ContentChange] Failed to persist baseline for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      } else if (storedHash !== httpResult.responseBodyHash) {
+        // Hash changed — degrade to yellow
+        result = {
+          ...result,
+          ok: false,
+          level: 'yellow',
+          message: `Content changed — page content differs from baseline`,
+        };
+        this.logger.log(
+          `[ContentChange] Content changed for monitor ${monitor.id} (${monitor.name}): ${storedHash} → ${httpResult.responseBodyHash}`,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     const created = await this.prisma.monitorRun.create({
       data: {
         userId: monitor.userId,

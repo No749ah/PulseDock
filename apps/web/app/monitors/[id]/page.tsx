@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content">("overview");
 
   // Performance / Latency distribution
   const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
@@ -981,6 +981,19 @@ export default function MonitorDetailPage() {
               Security
             </button>
           )}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.detectContentChanges && (
+            <button
+              onClick={() => setActiveMainTab("content")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "content"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Content
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
@@ -1699,6 +1712,80 @@ export default function MonitorDetailPage() {
             </Card>
           );
         })()}
+
+        {/* Content Change Detection Tab */}
+        {activeMainTab === "content" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && (
+          <Card className="p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Content Change Detection</h2>
+            </div>
+
+            {(monitor.config as Record<string, unknown>)?.contentHash ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Hash</p>
+                    <p className="text-xs font-mono text-text-primary break-all">{String((monitor.config as Record<string, unknown>).contentHash)}</p>
+                    {(monitor.config as Record<string, unknown>).contentHashSetAt && (
+                      <p className="text-xs text-text-muted">Set {new Date(String((monitor.config as Record<string, unknown>).contentHashSetAt)).toLocaleDateString()}</p>
+                    )}
+                  </div>
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</p>
+                    <p className="text-xs text-text-secondary">Reset the baseline to re-capture current page content. The next successful check will establish a new baseline hash.</p>
+                    <button
+                      className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
+                      onClick={async () => {
+                        const u = getUser();
+                        if (!u) return;
+                        await api(`/v1/monitors/${monitor.id}/content-baseline/reset`, u.id, { method: "POST" });
+                        setMonitor((prev) => {
+                          if (!prev) return prev;
+                          const cfg = { ...(prev.config as Record<string, unknown>) };
+                          delete cfg.contentHash;
+                          delete cfg.contentHashSetAt;
+                          return { ...prev, config: cfg };
+                        });
+                      }}
+                    >
+                      Reset Baseline
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Recent Change Events</p>
+                  {runs.filter((r) => r.message?.includes("Content changed")).length > 0 ? (
+                    <div className="space-y-2">
+                      {runs.filter((r) => r.message?.includes("Content changed")).slice(0, 10).map((r) => (
+                        <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-warning/5 border border-warning/20">
+                          <span className="text-warning text-sm">⚠</span>
+                          <div>
+                            <p className="text-sm text-text-primary font-medium">Content changed</p>
+                            <p className="text-xs text-text-muted">{new Date(r.createdAt).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-8 text-center">
+                      <CheckCircle className="w-8 h-8 text-success opacity-50" />
+                      <p className="text-sm text-text-secondary">No content changes detected</p>
+                      <p className="text-xs text-text-muted">PulseDock will alert here when the page content differs from the baseline.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <FileText className="w-10 h-10 text-text-muted opacity-40" />
+                <p className="text-sm font-medium text-text-secondary">No baseline established yet</p>
+                <p className="text-xs text-text-muted max-w-xs">Run a check to capture the current page content as the baseline. Future checks will compare against it and alert on changes.</p>
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* SLA Stats — with period selector */}
         {activeMainTab === "overview" && (<>

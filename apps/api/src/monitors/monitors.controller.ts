@@ -1104,6 +1104,34 @@ export class MonitorsController {
     return { ok: true, message: 'DNS baseline cleared — will be re-established on next successful check.' };
   }
 
+  /**
+   * Reset the stored content hash baseline for an HTTP/BROWSER monitor with detectContentChanges enabled.
+   * The next successful check will re-establish a new baseline automatically.
+   */
+  @Post(':id/content-baseline/reset')
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Reset content change baseline', description: 'Clears the stored content hash baseline for an HTTP/BROWSER monitor with content change detection enabled. The next successful check will establish a new baseline.' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Baseline cleared.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async resetContentBaseline(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const currentConfig = (monitor.configJson ?? {}) as Record<string, unknown>;
+    const { contentHash: _removed, contentHashSetAt: _removedAt, ...restConfig } = currentConfig;
+
+    await this.prisma.monitor.update({
+      where: { id },
+      data: { configJson: restConfig as Prisma.InputJsonValue },
+    });
+
+    return { ok: true, message: 'Content baseline cleared — will be re-established on next successful check.' };
+  }
+
   @Get(':id/slo-report')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'SLO/SLI report', description: 'Returns the SLO report for a monitor, including uptime SLO, latency SLI (if configured), and error budget overview.' })

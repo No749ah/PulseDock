@@ -8,6 +8,7 @@
 
 import * as https from 'https';
 import * as http from 'http';
+import { createHash } from 'node:crypto';
 import type { IncomingMessage } from 'http';
 import type { PluginExecutionResult, SecurityHeadersAudit, SecurityHeaderResult, Timings } from '../plugin.contracts';
 import { extractByPath } from '../version-extractor.util';
@@ -261,7 +262,8 @@ export async function runHttpCheck(
     typeof config['responseTimeThresholdMs'] === 'number' && config['responseTimeThresholdMs'] > 0
       ? config['responseTimeThresholdMs']
       : undefined;
-  const needsBody = !!bodyContains || !!bodyJsonPath;
+  const detectContentChanges = config['detectContentChanges'] === true;
+  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges;
   const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
   const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
   const requestHeaders: Record<string, string> = {};
@@ -285,6 +287,7 @@ export async function runHttpCheck(
 
     const { statusCode, body, latencyMs, timings, responseHeaders } = timedResult;
     const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
+    const responseBodyHash = detectContentChanges && body ? createHash('sha256').update(body).digest('hex').slice(0, 64) : null;
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
@@ -380,6 +383,7 @@ export async function runHttpCheck(
         level: 'green' as const,
         timings,
         securityHeadersAudit: securityAudit,
+        responseBodyHash,
       };
     }
 
@@ -392,6 +396,7 @@ export async function runHttpCheck(
         level: 'yellow' as const,
         timings,
         securityHeadersAudit: securityAudit,
+        responseBodyHash,
       };
     }
 
@@ -405,6 +410,7 @@ export async function runHttpCheck(
       level: 'green' as const,
       timings,
       securityHeadersAudit: securityAudit,
+      responseBodyHash,
     };
   } catch (error) {
     return {

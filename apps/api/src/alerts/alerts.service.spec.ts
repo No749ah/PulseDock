@@ -2981,4 +2981,127 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── Matrix ─────────────────────────────────────────────────────────────────
+  describe('Matrix channel', () => {
+    it('sends m.room.message PUT to Matrix homeserver with correct auth header', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"event_id":"$abc123"}' });
+      const channel = makeChannel({
+        type: 'matrix',
+        config: {
+          homeserverUrl: 'https://matrix.example.com',
+          accessToken: 'syt_token123',
+          roomId: '!roomABC:matrix.example.com',
+        },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+      expect(url).toContain('https://matrix.example.com/_matrix/client/v3/rooms/');
+      expect(url).toContain(encodeURIComponent('!roomABC:matrix.example.com'));
+      expect(url).toContain('/send/m.room.message/');
+      const headers = opts.headers as Record<string, string>;
+      expect(headers['Authorization']).toBe('Bearer syt_token123');
+      expect(opts.method).toBe('PUT');
+      const body = JSON.parse(opts.body as string);
+      expect(body.msgtype).toBe('m.text');
+      expect(body.format).toBe('org.matrix.custom.html');
+      expect(body.body).toContain('[PulseDock]');
+    });
+
+    it('strips trailing slash from homeserverUrl', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{}' });
+      const channel = makeChannel({
+        type: 'matrix',
+        config: {
+          homeserverUrl: 'https://matrix.example.com/',
+          accessToken: 'token',
+          roomId: '!room:matrix.example.com',
+        },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url.startsWith('https://matrix.example.com/_matrix')).toBe(true);
+      // Verify no double-slash between base URL and path (trailing slash was stripped)
+      expect(url).not.toMatch(/\.com\/\/_matrix/);
+    });
+
+    it('HTML-formats the alert body with level emoji', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{}' });
+      const channel = makeChannel({
+        type: 'matrix',
+        config: {
+          homeserverUrl: 'https://matrix.org',
+          accessToken: 'tok',
+          roomId: '!r:matrix.org',
+        },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit & { body: string }];
+      const body = JSON.parse(opts.body as string);
+      expect(body.formatted_body).toContain('<strong>');
+      expect(body.formatted_body).toContain('[PulseDock]');
+    });
+
+    it('uses unique transaction ID per send to prevent duplicate delivery', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{}' });
+      const channel = makeChannel({
+        type: 'matrix',
+        config: {
+          homeserverUrl: 'https://matrix.org',
+          accessToken: 'tok',
+          roomId: '!r:matrix.org',
+        },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+      await service.notifyTest(channel);
+
+      const txn1 = (fetchMock.mock.calls[0] as [string])[0].split('/send/m.room.message/')[1];
+      const txn2 = (fetchMock.mock.calls[1] as [string])[0].split('/send/m.room.message/')[1];
+      expect(txn1).not.toBe(txn2);
+    });
+
+    it('throws if Matrix returns non-ok status', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 403, text: async () => 'Forbidden' });
+      const channel = makeChannel({
+        type: 'matrix',
+        config: {
+          homeserverUrl: 'https://matrix.org',
+          accessToken: 'bad-token',
+          roomId: '!r:matrix.org',
+        },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Matrix returned 403');
+    });
+
+    it('does not send if required config fields are missing', async () => {
+      const channel = makeChannel({
+        type: 'matrix',
+        config: { homeserverUrl: 'https://matrix.org' }, // missing accessToken + roomId
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      // Should not throw — just silently skip (no matching handler)
+      await service.notifyTest(channel);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
 });

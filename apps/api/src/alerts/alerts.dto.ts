@@ -7,8 +7,8 @@ export class CreateAlertChannelDto {
   @MaxLength(255)
   name!: string;
 
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify'])
-  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix'])
+  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
 
   @IsObject()
   config!: Record<string, unknown>;
@@ -45,8 +45,8 @@ export class UpdateAlertChannelDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify'])
-  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix'])
+  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
 
   @IsOptional()
   @IsObject()

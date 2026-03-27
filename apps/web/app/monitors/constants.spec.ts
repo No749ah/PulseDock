@@ -12,7 +12,10 @@ import {
 } from './constants';
 
 describe('CHANNEL_TYPE_COLORS', () => {
-  const expectedChannels = ['discord', 'slack', 'webhook', 'telegram', 'email'];
+  const expectedChannels = [
+    'discord', 'slack', 'webhook', 'telegram', 'email',
+    'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix',
+  ];
 
   it.each(expectedChannels)('has a color for %s', (channel) => {
     expect(CHANNEL_TYPE_COLORS[channel]).toBeTruthy();
@@ -23,6 +26,10 @@ describe('CHANNEL_TYPE_COLORS', () => {
       expect(typeof value).toBe('string');
       expect(value.length).toBeGreaterThan(0);
     }
+  });
+
+  it('covers all 12 known channel types', () => {
+    expect(Object.keys(CHANNEL_TYPE_COLORS)).toHaveLength(12);
   });
 });
 

@@ -57,6 +57,10 @@ function channelTypeBadgeClass(type: string): string {
     case 'pagerduty': return 'bg-green-600/10 text-green-500 border-green-600/20';
     case 'opsgenie': return 'bg-orange-600/10 text-orange-500 border-orange-600/20';
     case 'sms': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    case 'teams': return 'bg-blue-600/10 text-blue-400 border-blue-600/20';
+    case 'ntfy': return 'bg-violet-500/10 text-violet-400 border-violet-500/20';
+    case 'gotify': return 'bg-teal-500/10 text-teal-400 border-teal-500/20';
+    case 'matrix': return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
     default: return 'bg-surface-elevated text-text-secondary border-border';
   }
 }

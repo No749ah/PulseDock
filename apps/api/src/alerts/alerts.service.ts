@@ -502,6 +502,59 @@ export class AlertsService {
       }
       return;
     }
+
+    // ── Matrix ────────────────────────────────────────────────────────────────
+    // Config: { homeserverUrl: string, accessToken: string, roomId: string }
+    // homeserverUrl: e.g. https://matrix.org or https://matrix.example.com
+    // accessToken: user access token (e.g. from Element → Settings → Help & About → Access Token)
+    // roomId: internal room ID e.g. !abc123:matrix.org (not the alias)
+    if (
+      channel.type === 'matrix' &&
+      typeof channel.config.homeserverUrl === 'string' &&
+      typeof channel.config.accessToken === 'string' &&
+      typeof channel.config.roomId === 'string'
+    ) {
+      const baseUrl = (channel.config.homeserverUrl as string).replace(/\/$/, '');
+      const roomId = channel.config.roomId as string;
+      const matrixToken = channel.config.accessToken as string;
+
+      // Extract level and monitor name from extra context
+      const matrixExtra = extra as { run?: { level?: string }; monitor?: { name?: string } } | undefined;
+      const matrixLevel = matrixExtra?.run?.level ?? 'red';
+      const matrixMonitorName = matrixExtra?.monitor?.name ?? 'Monitor';
+
+      // Build a formatted plain-text and HTML body
+      const levelEmoji = matrixLevel === 'red' ? '🔴' : matrixLevel === 'yellow' ? '🟡' : '🟢';
+      const levelLabel = matrixLevel === 'red' ? 'DOWN' : matrixLevel === 'yellow' ? 'DEGRADED' : 'RECOVERED';
+
+      const plainBody = `${levelEmoji} [PulseDock] ${levelLabel}: ${matrixMonitorName}\n${text}`;
+      const htmlBody =
+        `<p>${levelEmoji} <strong>[PulseDock] ${levelLabel}:</strong> ${matrixMonitorName}</p>` +
+        `<p>${text.replace(/\n/g, '<br/>')}</p>`;
+
+      // Use a unique transaction ID per call to prevent duplicate delivery
+      const txnId = `pulsedock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const matrixUrl = `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`;
+
+      const matrixResp = await fetch(matrixUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${matrixToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          msgtype: 'm.text',
+          body: plainBody,
+          format: 'org.matrix.custom.html',
+          formatted_body: htmlBody,
+        }),
+      });
+      if (!matrixResp.ok) {
+        const matrixBody = await matrixResp.text().catch(() => '');
+        throw new Error(`Matrix returned ${matrixResp.status}: ${matrixBody}`);
+      }
+      return;
+    }
   }
 
   /**

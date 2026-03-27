@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   BarChart2,
   Bell,
+  ClipboardList,
   ScrollText,
   CalendarClock,
 
@@ -62,6 +63,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
       { href: '/alerts/escalation', label: 'Escalation', icon: AlertOctagon },
       { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
+      { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
 

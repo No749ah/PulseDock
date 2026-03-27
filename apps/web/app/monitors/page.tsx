@@ -1104,6 +1104,21 @@ function MonitorsPageInner() {
     ? sortedWithPins
     : sortedWithPins.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
 
+  // Summary stats computed from ALL uptime monitors (not filtered)
+  const uptimeMonitors = monitors.filter((m) => m.type !== "GIT_RELEASE" && m.type !== "DOCKER_IMAGE");
+  const monitorSummary = uptimeMonitors.reduce(
+    (acc, m) => {
+      if (!m.enabled) { acc.paused++; return acc; }
+      const lastRun = runs.find((r) => r.monitorId === m.id);
+      if (!lastRun || lastRun.level === "green") { acc.up++; return acc; }
+      if (lastRun.level === "yellow") { acc.degraded++; return acc; }
+      if (lastRun.level === "red") { acc.down++; return acc; }
+      acc.up++;
+      return acc;
+    },
+    { up: 0, degraded: 0, down: 0, paused: 0 },
+  );
+
   if (!user) return null;
   if (loading)
     return (
@@ -1134,9 +1149,39 @@ function MonitorsPageInner() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
-              <p className="text-text-secondary text-sm mt-1">
-                {monitors.filter((m) => m.type !== "GIT_RELEASE" && m.type !== "DOCKER_IMAGE").length} monitors
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-text-secondary text-sm">
+                  {uptimeMonitors.length} monitors
+                </p>
+                {uptimeMonitors.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs">
+                    {monitorSummary.up > 0 && (
+                      <span className="flex items-center gap-1 text-success font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
+                        {monitorSummary.up} up
+                      </span>
+                    )}
+                    {monitorSummary.degraded > 0 && (
+                      <span className="flex items-center gap-1 text-warning font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning inline-block" />
+                        {monitorSummary.degraded} degraded
+                      </span>
+                    )}
+                    {monitorSummary.down > 0 && (
+                      <span className="flex items-center gap-1 text-danger font-medium animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" />
+                        {monitorSummary.down} down
+                      </span>
+                    )}
+                    {monitorSummary.paused > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-text-muted inline-block" />
+                        {monitorSummary.paused} paused
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {/* View toggle */}

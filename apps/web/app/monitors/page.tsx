@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -28,6 +28,7 @@ import { BadgeModal } from "./components/BadgeModal";
 import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+import { QuickAddModal } from "./components/QuickAddModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -184,6 +185,9 @@ function MonitorsPageInner() {
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
+
+  // quick add (bulk URL) modal
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -793,6 +797,26 @@ function MonitorsPageInner() {
     }
   };
 
+  const handleQuickAdd = async (payload: {
+    urls: string[];
+    folderId?: string;
+    alertChannelIds?: string[];
+    intervalSec?: number;
+  }) => {
+    const res = await api<{ created: number; skipped: number; errors: Array<{ url: string; error: string }> }>(
+      "/v1/monitors/bulk-create-from-urls",
+      user?.id,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    if (res.created > 0) {
+      // Refresh monitor list
+      const updated = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(updated);
+      success(`${res.created} monitor${res.created !== 1 ? "s" : ""} created`);
+    }
+    return res;
+  };
+
   const handleCheckNow = async (monitorId: string) => {
     if (checkingNowId) return;
     setCheckingNowId(monitorId);
@@ -1224,6 +1248,16 @@ function MonitorsPageInner() {
               >
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">Import from…</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowQuickAdd(true)}
+                className="flex items-center gap-2"
+                title="Paste multiple URLs to create monitors in bulk"
+              >
+                <Zap className="w-4 h-4" />
+                <span className="hidden sm:inline">Quick Add</span>
               </Button>
               <Button
                 size="sm"
@@ -2225,6 +2259,14 @@ function MonitorsPageInner() {
           monitor={badgeMonitor}
           onClose={() => setBadgeMonitor(null)}
           onCopySuccess={success}
+        />
+      )}
+      {showQuickAdd && (
+        <QuickAddModal
+          folders={folders}
+          channels={allChannels}
+          onClose={() => setShowQuickAdd(false)}
+          onSubmit={handleQuickAdd}
         />
       )}
     </AppFrame>

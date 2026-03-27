@@ -890,7 +890,7 @@ export function MonitorFormModal({
         </div>
 
         {/* Flap Detection */}
-        <div className="border border-border rounded-lg p-4">
+        <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <label className="block text-sm font-semibold text-text-primary">Flap Detection</label>
@@ -914,6 +914,37 @@ export function MonitorFormModal({
               />
             </button>
           </div>
+          {(formData.flapDetectionEnabled ?? true) && (
+            <div className="space-y-3 pl-4 border-l-2 border-border">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Check Window</label>
+                <input
+                  type="number"
+                  min={5}
+                  max={50}
+                  value={formData.flapWindow ?? 10}
+                  onChange={(e) => onSetFormData({ ...formData, flapWindow: parseInt(e.target.value) || 10 })}
+                  className="w-24 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <p className="text-xs text-text-muted mt-1">Number of recent checks to analyze for flapping (5–50)</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Flap Threshold</label>
+                <select
+                  value={formData.flapThreshold ?? 0.5}
+                  onChange={(e) => onSetFormData({ ...formData, flapThreshold: parseFloat(e.target.value) })}
+                  className="w-56 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value={0.3}>30% changes (sensitive)</option>
+                  <option value={0.4}>40% changes</option>
+                  <option value={0.5}>50% changes (default)</option>
+                  <option value={0.6}>60% changes</option>
+                  <option value={0.7}>70% changes (conservative)</option>
+                </select>
+                <p className="text-xs text-text-muted mt-1">Fraction of state changes in the window required to detect flapping</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Fixed Latency Alert Threshold */}

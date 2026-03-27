@@ -61,6 +61,8 @@ export interface Monitor {
   activeAutoIncidentId: string | null;
   isFlapping: boolean;
   flapDetectionEnabled: boolean;
+  flapWindow: number;
+  flapThreshold: number;
   flapAlertedAt: string | null;
   mutedUntil: string | null;
   latencyAlertMs: number | null;

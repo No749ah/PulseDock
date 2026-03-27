@@ -141,6 +141,20 @@ export class CreateMonitorDto {
   @IsBoolean()
   flapDetectionEnabled?: boolean;
 
+  @ApiPropertyOptional({ description: 'Number of recent checks to analyze for flap detection (5–50)', minimum: 5, maximum: 50, example: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(50)
+  flapWindow?: number;
+
+  @ApiPropertyOptional({ description: 'Fraction of state changes required to detect flapping (0.3–0.9)', minimum: 0.3, maximum: 0.9, example: 0.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0.3)
+  @Max(0.9)
+  flapThreshold?: number;
+
   @ApiPropertyOptional({ description: 'Fixed latency alert threshold in ms. If set, any successful check with latency above this value will be flagged yellow and trigger a degraded alert.', minimum: 1, maximum: 60000, example: 2000 })
   @IsOptional()
   @IsInt()
@@ -287,6 +301,20 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsBoolean()
   flapDetectionEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Number of recent checks to analyze for flap detection (5–50)', minimum: 5, maximum: 50, example: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(50)
+  flapWindow?: number;
+
+  @ApiPropertyOptional({ description: 'Fraction of state changes required to detect flapping (0.3–0.9)', minimum: 0.3, maximum: 0.9, example: 0.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0.3)
+  @Max(0.9)
+  flapThreshold?: number;
 
   @ApiPropertyOptional({ description: 'Fixed latency alert threshold in ms. If set, any successful check with latency above this value will be flagged yellow and trigger a degraded alert.', minimum: 1, maximum: 60000, example: 2000 })
   @IsOptional()

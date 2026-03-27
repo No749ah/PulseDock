@@ -119,6 +119,8 @@ model Monitor {
   enabled             Boolean     @default(true)
   isFlapping          Boolean     @default(false)
   flapDetectionEnabled Boolean    @default(true)
+  flapWindow          Int       @default(10)
+  flapThreshold       Float     @default(0.5)
   flapAlertedAt       DateTime?
   configJson          Json?
   slaTarget           Float?

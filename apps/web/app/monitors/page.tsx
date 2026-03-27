@@ -111,6 +111,8 @@ function MonitorsPageInner() {
     autoIncident: boolean;
     autoIncidentSeverity: string;
     flapDetectionEnabled: boolean;
+    flapWindow: number;
+    flapThreshold: number;
     latencyAlertMs: number | null;
     anomalyDetection: boolean;
     anomalyMultiplier: number;
@@ -557,6 +559,8 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          flapWindow: formData.flapWindow,
+          flapThreshold: formData.flapThreshold,
           latencyAlertMs: formData.latencyAlertMs ?? null,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
@@ -569,7 +573,7 @@ function MonitorsPageInner() {
         }),
       });
       setShowModal(false);
-      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
+      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, flapWindow: 10, flapThreshold: 0.5, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -614,6 +618,8 @@ function MonitorsPageInner() {
           autoIncident: formData.autoIncident,
           autoIncidentSeverity: formData.autoIncidentSeverity,
           flapDetectionEnabled: formData.flapDetectionEnabled,
+          flapWindow: formData.flapWindow,
+          flapThreshold: formData.flapThreshold,
           latencyAlertMs: formData.latencyAlertMs ?? null,
           anomalyDetection: formData.anomalyDetection,
           anomalyMultiplier: formData.anomalyMultiplier,
@@ -1153,7 +1159,7 @@ function MonitorsPageInner() {
                 onClick={() => {
                   setModalMode("create");
                   setEditingMonitor(null);
-                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
+                  setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, flapWindow: 10, flapThreshold: 0.5, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
@@ -1326,7 +1332,7 @@ function MonitorsPageInner() {
                     onClick={() => {
                       setModalMode("create");
                       setEditingMonitor(null);
-                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
+                      setFormData({ name: "", description: "", runbookUrl: "", type: "HTTP", target: "", intervalSec: 60, confirmations: 1, retryCount: 0, enabled: true, pluginId: "", expectedText: "", heartbeatTimeoutMin: 5, heartbeatToken: "", folderId: "", slaTarget: "", slaPeriodDays: 30, autoIncident: false, autoIncidentSeverity: "MEDIUM", flapDetectionEnabled: true, flapWindow: 10, flapThreshold: 0.5, latencyAlertMs: null, anomalyDetection: false, anomalyMultiplier: 2.0,
     scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,

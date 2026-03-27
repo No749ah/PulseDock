@@ -1,11 +1,13 @@
-## Status Summary (2026-03-27 04:15 UTC)
-- **Build/Test:** ✅ Clean build + 3579 API + 747 web + 10 e2e + 12 agent = 4348 total; 0 TS errors; all routes 200
+## Status Summary (2026-03-27 04:45 UTC)
+- **Build/Test:** ✅ Clean build + 3587 API + 747 web + 10 e2e + 12 agent = 4356 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
-- **Branch:** heartbeat/2026-03-26-evening
+- **Branch:** heartbeat/2026-03-27-morning
 - **Registry:** 5009 tools, lint clean, 646 verified entries
 - **Deps:** Breaking majors (Prisma 7, React 19, TS 6, lucide-react 1.0, class-validator 0.15) deferred.
-- **Last changes (04:15 UTC cycle):**
+- **Last changes (04:45 UTC cycle):**
+  - **Flapping Detection** — `flapDetection` toggle per monitor. Analyzes last N checks (`flapWindow` 5-50, default 10). When state-change ratio ≥ `flapThreshold` (default 50%), monitor flagged as flapping: individual up/down alerts suppressed, single "⚡ flapping" alert sent once. Auto-clears when monitor stabilizes. Amber ⚡ badge on monitors list + detail page. Config in Advanced Settings form panel. 8 new tests.
+- **Previous changes (04:15 UTC cycle):**
   - **Monitor Public Share Token** — `POST/DELETE /v1/monitors/:id/share-token` generates/revokes `pd_share_*` token. `GET /v1/public/monitor/:token/status.json` returns status, level, latency, 30d uptime%, generatedAt — no auth required. Prisma migration `add_monitor_share_token`. "Public Status URL" card on monitor detail. Embed in README/CI/CD/dashboards.
   - **Response Diff tab on monitor detail** — New "Diff" tab for HTTP/BROWSER monitors. Picker shows failed runs with captured response body. Side-by-side baseline (last OK) vs failed body panels + line-by-line diff with color coding (+/-). Uses existing `GET /v1/monitors/:id/response-diff/:runId` API.
   - **Fix TS errors** — whois.runner.spec.ts errorSocket cast, page.tsx `r.createdAt→r.checkedAt` in content events, `Boolean()` guard on contentHashSetAt.
@@ -94,6 +96,8 @@
 *(next: continue status-page widgets - Region Status Map, Third-Party Dependencies, Security Advisory, Page-Level config items)*
 
 ## Recently Completed
+
+- [x] **Flapping Detection** — `flapDetection` toggle per monitor. Analyzes last N checks (`flapWindow` 5-50, default 10). When state-change ratio ≥ `flapThreshold` (default 50%), monitor flagged as flapping: individual up/down alerts suppressed, single "⚡ flapping" alert sent once. Auto-clears when monitor stabilizes. Amber ⚡ badge on monitors list + detail page. Config in Advanced Settings form panel. 8 new tests. *(2026-03-27)*
 
 - [x] **SLA Error Budget Burn Rate Alerts (Google SRE model)** - Multi-window burn rate alerting: Critical (1h>=14.4×, 6h>=2.88×), High (1h>=6×, 6h>=1.2×), Warning (1h>=3×, 6h>=0.6×). Both windows must fire simultaneously (reduces false positives). Throttled 6h per monitor. New `slaBurnRateAlertedAt` Prisma field + migration. `notifyBurnRateAlert()` in alerts service with severity emoji. 9 new tests. *(2026-03-25)*
 

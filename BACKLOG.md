@@ -1,9 +1,11 @@
-## Status Summary (2026-03-27 07:20 UTC)
+## Status Summary (2026-03-27 08:15 UTC)
 - **Build/Test:** ✅ Clean build + 3615 API + 10 e2e + 12 agent = 3637 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-27-morning
-- **Last changes (07:20 UTC cycle):**
+- **Last changes (08:15 UTC cycle):**
+  - **Global Activity Feed** — `GET /v1/dashboard/activity` unified feed API (pagination cursor, level/kinds/monitorId filters). Frontend `/activity` page with infinite scroll, filter panel, color-coded check/event/incident cards, relative timestamps. Added to sidebar nav (Insights). 5 new tests → 3620 total.
+- **Previous changes (07:20 UTC cycle):**
   - **Monitor Timeline Annotations** — `MonitorAnnotation` model (text, color, annotatedAt). Full CRUD API `GET/POST/PATCH/DELETE /v1/monitors/:id/annotations`. Annotations tab on monitor detail with create form (text/color/datetime), color-coded list with delete. Count badge on tab. 11 new tests → 3615 total.
   - **Custom Message Template per Alert Channel** — `messageTemplate` column on `AlertChannel`. `AlertsService.send()` applies {{token}} substitution (monitor.name, run.level, run.message, etc.) before dispatch. Telegram respects template (skips HTML formatting). UI: textarea in create/edit modal with token hints. 5 tests.
   - **Public Monitor Share Page** — `/public/monitor/[token]` route renders a branded public status page for a single monitor: current status/latency, 90-day uptime sparkline, recent checks feed. Linked from "Public Status URL" card on monitor detail. No login required.
@@ -52,6 +54,10 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-27 08:15 UTC)
+
+- [x] **Global Activity Feed** — Unified real-time activity feed at `/activity`. Shows check run events (failures/degraded/recoveries), monitor timeline events (deploys, config changes, notes), and incidents — all time-sorted in a single stream. `GET /v1/dashboard/activity` API with cursor pagination, level filter, kinds filter (check/event/incident), and monitorId scoping. Frontend: infinite scroll, filter panel, color-coded cards, relative timestamps, empty state. Added to sidebar nav under Insights. 5 new tests → 3620 total. *(2026-03-27)*
 
 ## Recently Completed (2026-03-27 07:20 UTC)
 

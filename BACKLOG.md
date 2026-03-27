@@ -1,3 +1,13 @@
+## Status Summary (2026-03-27 20:20 UTC)
+- **Build/Test:** ✅ Clean build + 3707 API (+11 ntfy/gotify tests) + 747 web + 10 e2e + 12 agent = 4476 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (20:20 UTC cycle):**
+  - [x] **ntfy alert channel** — POST to full topic URL, X-Priority (5=down/3=degraded/2=recovered), X-Title with monitor name + status, X-Tags emoji, optional Bearer token auth for protected topics. Self-hosted-friendly. 5 new tests.
+  - [x] **Gotify alert channel** — POST to /message endpoint, X-Gotify-Key header, auto-priority (9=down, 5=degraded, 1=recovered) with manual override, trailing-slash guard on serverUrl. 6 new tests.
+  - [x] **Fix teams DTO gap** — `teams` channel type was in the service + web UI but missing from `CreateAlertChannelDto`/`UpdateAlertChannelDto` — blocked creation via API. Fixed.
+
 ## Status Summary (2026-03-27 19:38 UTC)
 - **Build/Test:** ✅ Clean build + 3696 API tests (+10 bulk-create); 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

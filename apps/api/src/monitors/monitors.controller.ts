@@ -1,4 +1,5 @@
 import * as tls from 'tls';
+import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
@@ -1232,6 +1233,51 @@ export class MonitorsController {
     @Body() body: BulkCreateFromUrlsDto,
   ) {
     return this.monitorsService.bulkCreateFromUrls(req.user.id, body);
+  }
+
+  // ─── Share Token (public status.json) ────────────────────────────────────
+
+  @Post(':id/share-token')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Generate or refresh share token',
+    description: 'Generates (or regenerates) a unique share token for this monitor. The token enables access to `GET /v1/public/monitor/:token/status.json` without authentication. Useful for embedding status in README files, CI/CD scripts, or dashboards.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Share token generated.', schema: { example: { shareToken: 'pd_share_xxxxxxxx' } } })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async generateShareToken(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    // Generate a random share token with prefix
+    const bytes = randomBytes(16).toString('hex');
+    const shareToken = `pd_share_${bytes}`;
+    await this.prisma.monitor.update({ where: { id }, data: { shareToken } });
+    return { shareToken };
+  }
+
+  @Delete(':id/share-token')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Revoke share token',
+    description: 'Revokes the share token for this monitor, disabling the public status.json endpoint.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Share token revoked.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async revokeShareToken(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    await this.prisma.monitor.update({ where: { id }, data: { shareToken: null } });
+    return { shareToken: null };
   }
 
   // ─── Response Body Diff ───────────────────────────────────────────────────

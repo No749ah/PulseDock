@@ -31,6 +31,7 @@ export interface MonitorItem {
   scheduleDays?: string | null;
   scheduleStartHour?: number | null;
   scheduleEndHour?: number | null;
+  shareToken?: string | null;
 }
 
 export interface SloReport {

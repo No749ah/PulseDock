@@ -339,7 +339,7 @@ describe('runWhoisCheck() — IANA referral', () => {
 
     mockCreateConnection
       .mockReturnValueOnce(makeSocket(ianaResponse))
-      .mockReturnValueOnce(errorSocket);
+      .mockReturnValueOnce(errorSocket as unknown as import('net').Socket);
 
     const result = await runWhoisCheck('example.com', { warnDays: 30, criticalDays: 7 }, 5000);
     // Falls back to original response — should still parse expiry from ianaResponse

@@ -253,6 +253,10 @@ export default function MonitorDetailPage() {
     durationSec: number | null;
   }> | null>(null);
 
+  // Share Token
+  const [shareTokenLoading, setShareTokenLoading] = useState(false);
+  const [shareTokenCopied, setShareTokenCopied] = useState(false);
+
   // Mute & Acknowledge
   const [showMuteMenu, setShowMuteMenu] = useState(false);
   const [muteLoading, setMuteLoading] = useState(false);
@@ -548,6 +552,44 @@ export default function MonitorDetailPage() {
     } catch (e) {
       setEventError(e instanceof Error ? e.message : "Failed to delete event");
     }
+  };
+
+  const handleGenerateShareToken = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    setShareTokenLoading(true);
+    try {
+      const result = await api<{ shareToken: string }>(`/v1/monitors/${id}/share-token`, user.id, { method: "POST" });
+      setMonitor((prev) => prev ? { ...prev, shareToken: result.shareToken } : prev);
+    } catch {
+      setActionError("Failed to generate share token");
+    } finally {
+      setShareTokenLoading(false);
+    }
+  };
+
+  const handleRevokeShareToken = async () => {
+    const user = getUser();
+    if (!user || !monitor) return;
+    if (!confirm("Revoke share token? Anyone using the public status URL will no longer be able to access it.")) return;
+    setShareTokenLoading(true);
+    try {
+      await api(`/v1/monitors/${id}/share-token`, user.id, { method: "DELETE" });
+      setMonitor((prev) => prev ? { ...prev, shareToken: null } : prev);
+    } catch {
+      setActionError("Failed to revoke share token");
+    } finally {
+      setShareTokenLoading(false);
+    }
+  };
+
+  const handleCopyShareUrl = (token: string) => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4321`;
+    const url = `${apiBase}/v1/public/monitor/${token}/status.json`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setShareTokenCopied(true);
+      setTimeout(() => setShareTokenCopied(false), 2000);
+    });
   };
 
   const handleMute = async (minutes: number) => {
@@ -1727,7 +1769,7 @@ export default function MonitorDetailPage() {
                   <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
                     <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline Hash</p>
                     <p className="text-xs font-mono text-text-primary break-all">{String((monitor.config as Record<string, unknown>).contentHash)}</p>
-                    {(monitor.config as Record<string, unknown>).contentHashSetAt && (
+                    {Boolean((monitor.config as Record<string, unknown>).contentHashSetAt) && (
                       <p className="text-xs text-text-muted">Set {new Date(String((monitor.config as Record<string, unknown>).contentHashSetAt)).toLocaleDateString()}</p>
                     )}
                   </div>
@@ -1763,7 +1805,7 @@ export default function MonitorDetailPage() {
                           <span className="text-warning text-sm">⚠</span>
                           <div>
                             <p className="text-sm text-text-primary font-medium">Content changed</p>
-                            <p className="text-xs text-text-muted">{new Date(r.createdAt).toLocaleString()}</p>
+                            <p className="text-xs text-text-muted">{new Date(r.checkedAt).toLocaleString()}</p>
                           </div>
                         </div>
                       ))}
@@ -2858,6 +2900,54 @@ export default function MonitorDetailPage() {
             </div>
           </Card>
         ) : null}
+
+        {/* Share Token (Public Status URL) */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Public Status URL
+            </h2>
+          </div>
+          <p className="text-xs text-text-secondary">
+            Generate a share token to expose this monitor&apos;s current status as a public JSON endpoint — no API key needed.
+            Embed in README files, CI/CD pipelines, or dashboards.
+          </p>
+          {monitor.shareToken ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-elevated border border-border font-mono text-[11px] text-text-secondary overflow-hidden">
+                <span className="truncate flex-1">{`/v1/public/monitor/${monitor.shareToken}/status.json`}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleCopyShareUrl(monitor.shareToken!)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${shareTokenCopied ? "bg-success/20 text-success border border-success/30" : "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20"}`}
+                >
+                  {shareTokenCopied ? <CheckCircle className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                  {shareTokenCopied ? "Copied!" : "Copy URL"}
+                </button>
+                <button
+                  onClick={handleRevokeShareToken}
+                  disabled={shareTokenLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-danger/70 border border-danger/20 hover:bg-danger/10 transition-colors disabled:opacity-50"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Revoke
+                </button>
+              </div>
+              <p className="text-[11px] text-text-muted">Returns: status, level, latency, 30d uptime%. Cached 30s.</p>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateShareToken}
+              disabled={shareTokenLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-surface-elevated border border-border text-text-secondary hover:text-text-primary hover:border-accent/40 transition-colors disabled:opacity-50"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {shareTokenLoading ? "Generating…" : "Generate Share Token"}
+            </button>
+          )}
+        </Card>
 
         {/* Alert Channels */}
         <Card className="p-4 space-y-3">

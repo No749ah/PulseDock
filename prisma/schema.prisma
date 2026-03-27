@@ -139,6 +139,7 @@ model Monitor {
   scheduleDays        String      @default("1,2,3,4,5") // comma-sep day-of-week: 0=Sun..6=Sat
   scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
   scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
+  shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -108,6 +108,7 @@ export class MonitorsService {
       scheduleEndHour: m.scheduleEndHour,
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
+      shareToken: m.shareToken ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -172,6 +173,7 @@ export class MonitorsService {
       scheduleDays: m.scheduleDays,
       scheduleStartHour: m.scheduleStartHour,
       scheduleEndHour: m.scheduleEndHour,
+      shareToken: m.shareToken ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }

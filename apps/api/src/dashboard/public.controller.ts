@@ -689,4 +689,102 @@ export class PublicDashboardController {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.end(svg);
   }
+
+  /**
+   * Public monitor status JSON endpoint. No authentication required — access via share token.
+   * Returns the current status, latest check result, and 30-day uptime for the monitor.
+   *
+   * @param token - Monitor share token (from `POST /v1/monitors/:id/share-token`)
+   */
+  @Get('monitor/:token/status.json')
+  @Header('Content-Type', 'application/json; charset=utf-8')
+  @Header('Access-Control-Allow-Origin', '*')
+  @Header('Cross-Origin-Resource-Policy', 'cross-origin')
+  @ApiOperation({
+    summary: 'Public monitor status (share token)',
+    description: 'Returns the current status, latest check result, and 30-day uptime for a monitor via its share token. No authentication required. Embed in README files, dashboards, or CI/CD pipelines.',
+  })
+  @ApiParam({ name: 'token', description: 'Monitor share token (generated from monitor detail page)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Monitor status returned.',
+    schema: {
+      example: {
+        name: 'My API',
+        type: 'HTTP',
+        target: 'https://api.example.com',
+        status: 'up',
+        level: 'green',
+        lastChecked: '2026-03-27T03:00:00.000Z',
+        latencyMs: 42,
+        message: 'HTTP 200 in 42ms',
+        uptimePct30d: 99.97,
+        enabled: true,
+        generatedAt: '2026-03-27T03:00:01.000Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Invalid or revoked share token.' })
+  async publicMonitorStatus(
+    @Param('token') token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { shareToken: token },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        enabled: true,
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: { level: true, ok: true, latencyMs: true, message: true, checkedAt: true },
+        },
+      },
+    });
+
+    if (!monitor) {
+      res.status(404).json({ error: 'Not found', message: 'Invalid or revoked share token' });
+      return;
+    }
+
+    // Compute 30-day uptime%
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const runs30d = await this.prisma.monitorRun.findMany({
+      where: { monitorId: monitor.id, checkedAt: { gte: since30d } },
+      select: { ok: true },
+    });
+    const uptimePct30d =
+      runs30d.length > 0
+        ? Math.round((runs30d.filter(r => r.ok).length / runs30d.length) * 10000) / 100
+        : null;
+
+    const latestRun = monitor.runs[0] ?? null;
+    const status = !monitor.enabled
+      ? 'paused'
+      : latestRun === null
+        ? 'unknown'
+        : latestRun.ok
+          ? 'up'
+          : 'down';
+
+    const result = {
+      name: monitor.name,
+      type: monitor.type,
+      target: monitor.target,
+      status,
+      level: latestRun?.level ?? 'unknown',
+      lastChecked: latestRun?.checkedAt ?? null,
+      latencyMs: latestRun?.latencyMs ?? null,
+      message: latestRun?.message ?? null,
+      uptimePct30d,
+      enabled: monitor.enabled,
+      generatedAt: new Date().toISOString(),
+    };
+
+    res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
+    res.json(result);
+  }
 }

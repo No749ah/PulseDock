@@ -141,6 +141,15 @@ export class AlertsService {
    * @throws Error when the underlying channel request fails (e.g., non-2xx Discord response)
    */
   private async send(channel: AlertChannel, text: string, extra?: unknown) {
+    // Apply channel-level message template ({{token}} substitution) before any transport
+    if (channel.messageTemplate && channel.messageTemplate.trim().length > 0) {
+      try {
+        text = this.renderPayloadTemplate(channel.messageTemplate, { text, channel, extra });
+      } catch {
+        // Template render failed — keep original text
+      }
+    }
+
     if (channel.type === 'webhook' && typeof channel.config.url === 'string') {
       // Use custom payload template if configured, otherwise fall back to default payload
       let body: string;
@@ -221,7 +230,9 @@ export class AlertsService {
       const monitor = ctx?.monitor;
 
       let msgText = text;
-      if (parseMode === 'HTML' && run && monitor) {
+      // Only apply HTML formatting if no channel-level messageTemplate was applied
+      // (when messageTemplate is set, `text` is already the user's custom message)
+      if (parseMode === 'HTML' && run && monitor && !channel.messageTemplate?.trim()) {
         const emoji = run.level === 'green' ? '✅' : run.level === 'yellow' ? '⚠️' : '🚨';
         const status = run.level === 'green' ? 'Recovered' : run.level === 'yellow' ? 'Degraded' : 'Down';
         msgText = `${emoji} <b>${monitor.name}</b> — ${status}\n<code>${run.message}</code>`;
@@ -664,6 +675,7 @@ export class AlertsService {
       groupWindowSec: l.alertChannel.groupWindowSec,
       groupByFolder: l.alertChannel.groupByFolder,
       groupByTag: l.alertChannel.groupByTag,
+      messageTemplate: l.alertChannel.messageTemplate ?? null,
     }));
 
     const isFlapping = context?.isFlapping ?? false;
@@ -740,6 +752,7 @@ export class AlertsService {
       groupWindowSec: channelRow.groupWindowSec,
       groupByFolder: channelRow.groupByFolder,
       groupByTag: channelRow.groupByTag,
+      messageTemplate: channelRow.messageTemplate ?? null,
     };
 
     // Load monitors to get their names
@@ -931,6 +944,7 @@ export class AlertsService {
                 groupWindowSec: channelRow.groupWindowSec,
                 groupByFolder: channelRow.groupByFolder,
                 groupByTag: channelRow.groupByTag,
+                messageTemplate: channelRow.messageTemplate ?? null,
               };
               await this.sendWithRetry(ch, text, extra, {
                 monitorId: monitor.id,
@@ -1044,6 +1058,7 @@ export class AlertsService {
         groupWindowSec: l.alertChannel.groupWindowSec ?? 300,
         groupByFolder: l.alertChannel.groupByFolder ?? false,
         groupByTag: l.alertChannel.groupByTag ?? false,
+        messageTemplate: l.alertChannel.messageTemplate ?? null,
       }));
 
     for (const channel of channels) {

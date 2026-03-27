@@ -191,6 +191,7 @@ export class EscalationService {
           groupWindowSec: 300,
           groupByFolder: false,
           groupByTag: false,
+          messageTemplate: null,
         };
         await this.alerts.sendToChannel(
           alertChannel,

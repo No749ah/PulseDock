@@ -72,6 +72,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Insights',
     items: [
+      { href: '/activity', label: 'Activity Feed', icon: Activity },
       { href: '/reports', label: 'Reports', icon: BarChart2 },
     ],
   },

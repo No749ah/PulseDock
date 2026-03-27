@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare } from "lucide-react";
+import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,16 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "diff">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "diff" | "annotations">("overview");
+
+  // Annotations
+  type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [annotationText, setAnnotationText] = useState('');
+  const [annotationColor, setAnnotationColor] = useState<'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray'>('blue');
+  const [annotationDate, setAnnotationDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [annotationSaving, setAnnotationSaving] = useState(false);
 
   // Performance / Latency distribution
   const [perfData, setPerfData] = useState<LatencyDistributionData | null>(null);
@@ -1075,6 +1084,36 @@ export default function MonitorDetailPage() {
               Diff
             </button>
           )}
+          {/* Annotations tab — always visible */}
+          <button
+            onClick={async () => {
+              setActiveMainTab("annotations");
+              const user = getUser();
+              if (!user || annotations.length > 0) return;
+              setAnnotationsLoading(true);
+              try {
+                const data = await api<{ annotations: Annotation[] }>(`/v1/monitors/${id}/annotations`, user.id);
+                setAnnotations(data.annotations ?? []);
+              } catch {
+                // ignore
+              } finally {
+                setAnnotationsLoading(false);
+              }
+            }}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "annotations"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Annotations
+            {annotations.length > 0 && (
+              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
+                {annotations.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* SLO Tab Content */}
@@ -1868,6 +1907,135 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* Annotations Tab */}
+        {activeMainTab === "annotations" && (
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Timeline Annotations
+              </h2>
+              <p className="text-xs text-text-muted">Mark deployments, incidents, config changes on the timeline</p>
+            </div>
+
+            {/* Create annotation form */}
+            <div className="border border-border rounded-xl p-4 space-y-3 bg-surface-elevated/40">
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Add Annotation</p>
+              <div className="flex gap-3 flex-wrap">
+                <input
+                  type="text"
+                  placeholder="e.g. Deployed v2.1, Config rollback..."
+                  value={annotationText}
+                  onChange={e => setAnnotationText(e.target.value)}
+                  maxLength={200}
+                  className="flex-1 min-w-48 text-sm rounded-lg border border-border bg-surface px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <input
+                  type="datetime-local"
+                  value={annotationDate}
+                  onChange={e => setAnnotationDate(e.target.value)}
+                  className="text-sm rounded-lg border border-border bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <select
+                  value={annotationColor}
+                  onChange={e => setAnnotationColor(e.target.value as typeof annotationColor)}
+                  className="text-sm rounded-lg border border-border bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  {['blue','green','yellow','red','purple','gray'].map(c => (
+                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  ))}
+                </select>
+                <button
+                  disabled={!annotationText.trim() || annotationSaving}
+                  onClick={async () => {
+                    const user = getUser();
+                    if (!user || !annotationText.trim()) return;
+                    setAnnotationSaving(true);
+                    try {
+                      const data = await api<{ annotation: Annotation }>(
+                        `/v1/monitors/${id}/annotations`,
+                        user.id,
+                        {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            text: annotationText.trim(),
+                            color: annotationColor,
+                            annotatedAt: new Date(annotationDate).toISOString(),
+                          }),
+                        }
+                      );
+                      if (data.annotation) {
+                        setAnnotations(prev => [data.annotation, ...prev]);
+                        setAnnotationText('');
+                        setAnnotationDate(new Date().toISOString().slice(0, 16));
+                      }
+                    } catch {
+                      // ignore
+                    } finally {
+                      setAnnotationSaving(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {annotationSaving ? 'Adding…' : '+ Add'}
+                </button>
+              </div>
+            </div>
+
+            {/* Annotations list */}
+            {annotationsLoading ? (
+              <div className="flex items-center gap-2 py-6 justify-center text-text-muted text-sm">
+                <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                Loading annotations…
+              </div>
+            ) : annotations.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <MessageSquare className="w-10 h-10 text-text-muted opacity-40" />
+                <p className="text-sm font-medium text-text-secondary">No annotations yet</p>
+                <p className="text-xs text-text-muted max-w-xs">Add annotations to mark significant events — deployments, config changes, incident starts — and correlate them with uptime/latency changes on the timeline.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {annotations.map(ann => {
+                  const colorMap: Record<string, string> = {
+                    blue: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+                    green: 'bg-green-500/10 border-green-500/30 text-green-400',
+                    yellow: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
+                    red: 'bg-red-500/10 border-red-500/30 text-red-400',
+                    purple: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+                    gray: 'bg-gray-500/10 border-gray-500/30 text-gray-400',
+                  };
+                  const dotMap: Record<string, string> = {
+                    blue: 'bg-blue-400', green: 'bg-green-400', yellow: 'bg-yellow-400',
+                    red: 'bg-red-400', purple: 'bg-purple-400', gray: 'bg-gray-400',
+                  };
+                  return (
+                    <div key={ann.id} className={`flex items-start gap-3 p-3 rounded-xl border ${colorMap[ann.color] ?? colorMap.blue}`}>
+                      <div className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${dotMap[ann.color] ?? 'bg-blue-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary">{ann.text}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{new Date(ann.annotatedAt).toLocaleString()}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const user = getUser();
+                          if (!user) return;
+                          await api(`/v1/monitors/${id}/annotations/${ann.id}`, user.id, { method: 'DELETE' });
+                          setAnnotations(prev => prev.filter(a => a.id !== ann.id));
+                        }}
+                        className="text-text-muted hover:text-red-400 transition-colors p-1 rounded shrink-0"
+                        title="Delete annotation"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* SLA Stats — with period selector */}
         {activeMainTab === "overview" && (<>
           <Card className="p-4 space-y-4">
@@ -2041,7 +2209,78 @@ export default function MonitorDetailPage() {
               </details>
             )}
           </Card>
-        
+
+          {/* 90-day uptime heatmap — GitHub-contributions style */}
+          {runs.length > 0 && (() => {
+            // Build a day-bucket map from existing runs (up to 90 days back)
+            const now = new Date();
+            const days: { date: string; ok: number; total: number }[] = [];
+            for (let i = 89; i >= 0; i--) {
+              const d = new Date(now);
+              d.setUTCDate(d.getUTCDate() - i);
+              days.push({ date: d.toISOString().slice(0, 10), ok: 0, total: 0 });
+            }
+            const dayMap = new Map(days.map(d => [d.date, d]));
+            for (const r of runs) {
+              const dayKey = new Date(r.checkedAt).toISOString().slice(0, 10);
+              const bucket = dayMap.get(dayKey);
+              if (bucket) {
+                bucket.total++;
+                if (r.ok) bucket.ok++;
+              }
+            }
+            const weeks: (typeof days[0] | null)[][] = [];
+            let week: (typeof days[0] | null)[] = [];
+            // Pad start to align with Sunday
+            const firstDay = new Date(days[0].date + "T00:00:00Z");
+            const startPad = firstDay.getUTCDay(); // 0=Sun
+            for (let i = 0; i < startPad; i++) week.push(null);
+            for (const day of days) {
+              week.push(day);
+              if (week.length === 7) { weeks.push(week); week = []; }
+            }
+            if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week); }
+
+            const getColor = (d: typeof days[0] | null) => {
+              if (!d || d.total === 0) return "bg-surface-elevated";
+              const pct = d.ok / d.total;
+              if (pct >= 1) return "bg-green-500/80";
+              if (pct >= 0.9) return "bg-green-500/50";
+              if (pct >= 0.5) return "bg-yellow-500/60";
+              return "bg-red-500/70";
+            };
+
+            return (
+              <Card className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    90-Day Uptime Calendar
+                  </h2>
+                  <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-surface-elevated inline-block" /> No data
+                    <span className="w-2.5 h-2.5 rounded-sm bg-green-500/80 inline-block ml-1" /> 100%
+                    <span className="w-2.5 h-2.5 rounded-sm bg-yellow-500/60 inline-block" /> Degraded
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-500/70 inline-block" /> Down
+                  </div>
+                </div>
+                <div className="flex gap-0.5 overflow-x-auto">
+                  {weeks.map((wk, wi) => (
+                    <div key={wi} className="flex flex-col gap-0.5">
+                      {wk.map((day, di) => (
+                        <div
+                          key={di}
+                          title={day ? `${day.date}: ${day.total === 0 ? "no data" : `${day.total > 0 ? Math.round(day.ok / day.total * 100) : 0}% uptime (${day.ok}/${day.total} ok)`}` : ""}
+                          className={`w-3 h-3 rounded-sm transition-opacity hover:opacity-75 ${getColor(day)}`}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-text-muted mt-2">Based on check runs in local history. Only includes runs loaded in the current session.</p>
+              </Card>
+            );
+          })()}
 
         {/* Quick status row */}
         
@@ -2949,11 +3188,25 @@ export default function MonitorDetailPage() {
             </h2>
           </div>
           <p className="text-xs text-text-secondary">
-            Generate a share token to expose this monitor&apos;s current status as a public JSON endpoint — no API key needed.
-            Embed in README files, CI/CD pipelines, or dashboards.
+            Generate a share token to expose this monitor&apos;s status publicly — no API key needed.
+            Share a human-readable status page, embed a JSON endpoint in README files or CI/CD pipelines.
           </p>
           {monitor.shareToken ? (
             <div className="space-y-2">
+              {/* Public status page link */}
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20">
+                <Globe className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                <a
+                  href={`/public/monitor/${monitor.shareToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-success hover:underline truncate flex-1 font-medium"
+                >
+                  {`/public/monitor/${monitor.shareToken}`}
+                </a>
+                <span className="text-[10px] text-success/60 flex-shrink-0">Status page ↗</span>
+              </div>
+              {/* JSON API endpoint */}
               <div className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-elevated border border-border font-mono text-[11px] text-text-secondary overflow-hidden">
                 <span className="truncate flex-1">{`/v1/public/monitor/${monitor.shareToken}/status.json`}</span>
               </div>
@@ -2963,7 +3216,7 @@ export default function MonitorDetailPage() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${shareTokenCopied ? "bg-success/20 text-success border border-success/30" : "bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20"}`}
                 >
                   {shareTokenCopied ? <CheckCircle className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
-                  {shareTokenCopied ? "Copied!" : "Copy URL"}
+                  {shareTokenCopied ? "Copied!" : "Copy JSON URL"}
                 </button>
                 <button
                   onClick={handleRevokeShareToken}
@@ -2974,7 +3227,7 @@ export default function MonitorDetailPage() {
                   Revoke
                 </button>
               </div>
-              <p className="text-[11px] text-text-muted">Returns: status, level, latency, 30d uptime%. Cached 30s.</p>
+              <p className="text-[11px] text-text-muted">Status page: human-readable HTML with history + sparkline. JSON: status, level, latency, 30d uptime%. Both cached 30s.</p>
             </div>
           ) : (
             <button

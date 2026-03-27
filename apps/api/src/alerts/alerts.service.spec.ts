@@ -27,6 +27,7 @@ function makeChannel(overrides: Partial<AlertChannel> = {}): AlertChannel {
     groupWindowSec: 300,
     groupByFolder: true,
     groupByTag: false,
+    messageTemplate: null,
     ...overrides,
   };
 }
@@ -103,6 +104,7 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
             groupWindowSec: ma.alertChannel.groupWindowSec ?? 300,
             groupByFolder: ma.alertChannel.groupByFolder ?? true,
             groupByTag: ma.alertChannel.groupByTag ?? false,
+            messageTemplate: ma.alertChannel.messageTemplate ?? null,
           },
         })),
       ),
@@ -2574,6 +2576,112 @@ describe('AlertsService', () => {
       await service.notifyWithGrouping(channelNoGrouping, monitor, run, '✅ Recovered');
 
       expect(vi.mocked(fetch)).toHaveBeenCalledOnce();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Channel-level messageTemplate
+  // -------------------------------------------------------------------------
+
+  describe('channel messageTemplate', () => {
+    it('applies messageTemplate to webhook text when set', async () => {
+      const monitor = makeMonitor({ name: 'DB', type: 'HTTP', target: 'https://db.example.com' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Connection refused', latencyMs: 0 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'webhook',
+        config: { url: 'https://hooks.example.com/test' },
+        messageTemplate: '{{monitor.name}} → {{run.level}}: {{run.message}}',
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toBe('DB → red: Connection refused');
+    });
+
+    it('falls back to default text when messageTemplate is null', async () => {
+      const monitor = makeMonitor({ name: 'API', type: 'HTTP', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Timeout' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'webhook',
+        config: { url: 'https://hooks.example.com/test' },
+        messageTemplate: null,
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toContain('PulseDock');
+      expect(body.text).toContain('API');
+    });
+
+    it('falls back to default text when messageTemplate is empty string', async () => {
+      const monitor = makeMonitor({ name: 'API', type: 'HTTP', target: 'https://api.example.com' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Timeout' });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'webhook',
+        config: { url: 'https://hooks.example.com/test' },
+        messageTemplate: '',
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      expect(body.text).toContain('PulseDock');
+    });
+
+    it('renders all supported tokens in messageTemplate', async () => {
+      const service = new AlertsService({} as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ name: 'My Channel', messageTemplate: null });
+      const result = service.renderPayloadTemplate(
+        '{{monitor.name}} {{monitor.type}} {{run.level}} {{run.latencyMs}}ms via {{channelName}}',
+        {
+          text: 'fallback',
+          channel,
+          extra: {
+            monitor: { name: 'Web API', type: 'HTTP' },
+            run: { level: 'red', latencyMs: 120 },
+          },
+        },
+      );
+      expect(result).toBe('Web API HTTP red 120ms via My Channel');
+    });
+
+    it('keeps unknown tokens as empty string', async () => {
+      const service = new AlertsService({} as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const channel = makeChannel({ messageTemplate: null });
+      const result = service.renderPayloadTemplate('Hello {{unknown.field}} world', { text: 'x', channel });
+      expect(result).toBe('Hello  world');
+    });
+
+    it('applies messageTemplate to telegram text when set', async () => {
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+      const monitor = makeMonitor({ name: 'Redis', type: 'TCP', target: 'redis:6379' });
+      const run = makeRun({ level: 'yellow', ok: false, message: 'High latency', latencyMs: 1200 });
+      const channel = makeChannel({
+        userId: monitor.userId,
+        type: 'telegram',
+        config: { botToken: 'tok', chatId: '123' },
+        messageTemplate: 'Alert: {{monitor.name}} is {{run.level}}',
+      });
+      const prisma = makePrisma([{ alertChannel: channel }]);
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyMonitorFailure(monitor, run);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+      // Telegram sends as text or msgText; check the overall message contains our template output
+      expect(body.text).toContain('Redis');
+      expect(body.text).toContain('yellow');
     });
   });
 

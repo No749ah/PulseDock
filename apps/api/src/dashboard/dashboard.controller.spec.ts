@@ -40,6 +40,12 @@ function makePrisma() {
     monitorRun: {
       findMany: vi.fn(),
     },
+    monitorEvent: {
+      findMany: vi.fn(),
+    },
+    incident: {
+      findMany: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -457,5 +463,107 @@ describe('PublicDashboardController', () => {
 
       expect('incidents' in result).toBe(true);
     });
+  });
+});
+
+// ── DashboardController.activityFeed() ─────────────────────────────────────
+
+describe('DashboardController.activityFeed()', () => {
+  let controller: DashboardController;
+  let prisma: ReturnType<typeof makePrisma>;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    controller = new DashboardController(prisma as never);
+  });
+
+  it('returns empty feed when no data', async () => {
+    prisma.monitorRun.findMany.mockResolvedValue([]);
+    prisma.monitorEvent.findMany.mockResolvedValue([]);
+    prisma.incident.findMany.mockResolvedValue([]);
+
+    const result = await controller.activityFeed({ user: { id: 'user-1' } }, 50);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.nextCursor).toBeNull();
+    expect(result.total).toBe(0);
+  });
+
+  it('merges check runs and events sorted by time desc', async () => {
+    const t1 = new Date('2026-03-27T07:00:00Z');
+    const t2 = new Date('2026-03-27T06:00:00Z');
+    const t3 = new Date('2026-03-27T05:00:00Z');
+
+    prisma.monitorRun.findMany.mockResolvedValue([
+      { id: 'r1', level: 'red', ok: false, status: 503, latencyMs: null, message: 'Down', checkedAt: t1, monitor: { id: 'm1', name: 'API', type: 'HTTP' } },
+      { id: 'r2', level: 'green', ok: true, status: 200, latencyMs: 50, message: 'OK', checkedAt: t3, monitor: { id: 'm1', name: 'API', type: 'HTTP' } },
+    ]);
+    prisma.monitorEvent.findMany.mockResolvedValue([
+      { id: 'e1', message: 'Deployed v2', eventType: 'deploy', createdAt: t2, monitor: { id: 'm1', name: 'API', type: 'HTTP' } },
+    ]);
+    prisma.incident.findMany.mockResolvedValue([]);
+
+    const result = await controller.activityFeed({ user: { id: 'user-1' } }, 50);
+
+    expect(result.items).toHaveLength(3);
+    expect(result.items[0]!.kind).toBe('check');
+    expect((result.items[0] as { ts: Date }).ts.getTime()).toBe(t1.getTime());
+    expect(result.items[1]!.kind).toBe('event');
+    expect(result.items[2]!.kind).toBe('check');
+  });
+
+  it('respects limit and sets nextCursor', async () => {
+    const runs = Array.from({ length: 3 }, (_, i) => ({
+      id: `r${i}`,
+      level: 'red',
+      ok: false,
+      status: 503,
+      latencyMs: null,
+      message: 'Down',
+      checkedAt: new Date(Date.now() - i * 1000),
+      monitor: { id: 'm1', name: 'API', type: 'HTTP' },
+    }));
+    prisma.monitorRun.findMany.mockResolvedValue(runs);
+    prisma.monitorEvent.findMany.mockResolvedValue([]);
+    prisma.incident.findMany.mockResolvedValue([]);
+
+    const result = await controller.activityFeed({ user: { id: 'user-1' } }, 2);
+
+    expect(result.items).toHaveLength(2);
+    expect(result.nextCursor).not.toBeNull();
+  });
+
+  it('includes incident items in feed', async () => {
+    prisma.monitorRun.findMany.mockResolvedValue([]);
+    prisma.monitorEvent.findMany.mockResolvedValue([]);
+    prisma.incident.findMany.mockResolvedValue([
+      {
+        id: 'inc1',
+        title: 'API Outage',
+        status: 'INVESTIGATING',
+        severity: 'HIGH',
+        createdAt: new Date('2026-03-27T08:00:00Z'),
+        resolvedAt: null,
+        monitors: [{ monitor: { id: 'm1', name: 'API' } }],
+      },
+    ]);
+
+    const result = await controller.activityFeed({ user: { id: 'user-1' } }, 50);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.kind).toBe('incident');
+    expect((result.items[0] as { title: string }).title).toBe('API Outage');
+  });
+
+  it('filters by kinds parameter (check only)', async () => {
+    prisma.monitorRun.findMany.mockResolvedValue([
+      { id: 'r1', level: 'red', ok: false, status: 503, latencyMs: null, message: 'Down', checkedAt: new Date(), monitor: { id: 'm1', name: 'API', type: 'HTTP' } },
+    ]);
+    prisma.monitorEvent.findMany.mockResolvedValue([]);
+    prisma.incident.findMany.mockResolvedValue([]);
+
+    const result = await controller.activityFeed({ user: { id: 'user-1' } }, 50, undefined, undefined, 'check');
+
+    expect(result.items.every(i => i.kind === 'check')).toBe(true);
   });
 });

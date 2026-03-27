@@ -44,6 +44,8 @@ export interface MonitorItem {
   activeAutoIncidentId?: string | null;
   isFlapping?: boolean;
   flapDetectionEnabled?: boolean;
+  flapWindow?: number;
+  flapThreshold?: number;
   flapAlertedAt?: string | null;
   latencyAlertMs?: number | null;
   shareToken?: string | null;
@@ -108,6 +110,8 @@ export type MonitorFormData = {
   autoIncident: boolean;
   autoIncidentSeverity: string;
   flapDetectionEnabled: boolean;
+  flapWindow: number;
+  flapThreshold: number;
   latencyAlertMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;

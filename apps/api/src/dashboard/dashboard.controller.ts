@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { PrismaService } from '../common/prisma.service';
@@ -205,5 +205,149 @@ export class DashboardController {
     }
 
     return { timeline };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // GET /v1/dashboard/activity
+  // Global activity feed: recent check events, monitor events, incidents.
+  // Returns a unified, time-sorted list of activity items for the dashboard.
+  // ─────────────────────────────────────────────────────────────────────────
+  @Get('activity')
+  @ApiOperation({ summary: 'Global activity feed', description: 'Returns a unified time-sorted feed of recent check results (failures and recoveries), monitor events (notes/deploys/config changes), and incidents. Use `limit` (max 200) and `cursor` (ISO timestamp) for pagination.' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max items to return (default 50, max 200)' })
+  @ApiQuery({ name: 'cursor', required: false, type: String, description: 'ISO timestamp — return items before this time (for pagination)' })
+  @ApiQuery({ name: 'monitorId', required: false, type: String, description: 'Filter by a specific monitor ID' })
+  @ApiQuery({ name: 'level', required: false, type: String, description: 'Filter check runs by level: green | yellow | red' })
+  @ApiQuery({ name: 'kinds', required: false, type: String, description: 'Comma-separated kinds to include: check,event,incident (default: all)' })
+  @ApiResponse({ status: 200, description: 'Activity feed returned.' })
+  async activityFeed(
+    @Req() req: { user: { id: string } },
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) rawLimit: number,
+    @Query('cursor') cursor?: string,
+    @Query('monitorId') monitorId?: string,
+    @Query('level') level?: string,
+    @Query('kinds') kindsParam?: string,
+  ) {
+    const userId = req.user.id;
+    const limit = Math.min(Math.max(1, rawLimit), 200);
+    const before = cursor ? new Date(cursor) : new Date();
+    const kinds = kindsParam ? kindsParam.split(',').map(k => k.trim()) : ['check', 'event', 'incident'];
+
+    // Build monitor ID filter (scoped to user)
+    const monitorWhere = monitorId
+      ? { monitorId, monitor: { userId } }
+      : { monitor: { userId } };
+
+    // Fetch recent check runs (failures + recoveries) - only non-green or level-filtered
+    const checkRuns = kinds.includes('check') ? await this.prisma.monitorRun.findMany({
+      where: {
+        ...monitorWhere,
+        checkedAt: { lt: before },
+        ...(level ? { level } : { level: { in: ['red', 'yellow'] } }), // only interesting events by default
+      },
+      select: {
+        id: true,
+        level: true,
+        ok: true,
+        status: true,
+        latencyMs: true,
+        message: true,
+        checkedAt: true,
+        monitor: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { checkedAt: 'desc' },
+      take: limit,
+    }) : [];
+
+    // Fetch monitor events (notes, deploys, incidents)
+    const monitorEvents = kinds.includes('event') ? await this.prisma.monitorEvent.findMany({
+      where: {
+        ...(monitorId ? { monitorId, monitor: { userId } } : { monitor: { userId } }),
+        createdAt: { lt: before },
+      },
+      select: {
+        id: true,
+        message: true,
+        eventType: true,
+        createdAt: true,
+        monitor: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    }) : [];
+
+    // Fetch recent incidents
+    const incidents = kinds.includes('incident') ? await this.prisma.incident.findMany({
+      where: {
+        userId,
+        ...(monitorId ? {
+          monitors: { some: { monitorId } },
+        } : {}),
+        createdAt: { lt: before },
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        severity: true,
+        createdAt: true,
+        resolvedAt: true,
+        monitors: {
+          select: { monitor: { select: { id: true, name: true, type: true } } },
+          take: 3,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.floor(limit / 4),
+    }) : [];
+
+    // Unify into a single feed
+    type FeedItem =
+      | { kind: 'check'; id: string; ts: Date; monitorId: string; monitorName: string; monitorType: string; level: string; ok: boolean; status: number; latencyMs: number | null; message: string }
+      | { kind: 'event'; id: string; ts: Date; monitorId: string; monitorName: string; monitorType: string; eventType: string; message: string }
+      | { kind: 'incident'; id: string; ts: Date; title: string; status: string; severity: string; resolvedAt: Date | null; monitors: Array<{ id: string; name: string }> };
+
+    const feed: FeedItem[] = [
+      ...checkRuns.map(r => ({
+        kind: 'check' as const,
+        id: r.id,
+        ts: r.checkedAt,
+        monitorId: r.monitor.id,
+        monitorName: r.monitor.name,
+        monitorType: r.monitor.type,
+        level: r.level,
+        ok: r.ok,
+        status: r.status,
+        latencyMs: r.latencyMs,
+        message: r.message,
+      })),
+      ...monitorEvents.map(e => ({
+        kind: 'event' as const,
+        id: e.id,
+        ts: e.createdAt,
+        monitorId: e.monitor.id,
+        monitorName: e.monitor.name,
+        monitorType: e.monitor.type,
+        eventType: e.eventType,
+        message: e.message,
+      })),
+      ...incidents.map(i => ({
+        kind: 'incident' as const,
+        id: i.id,
+        ts: i.createdAt,
+        title: i.title,
+        status: i.status,
+        severity: i.severity,
+        resolvedAt: i.resolvedAt,
+        monitors: i.monitors.map(m => ({ id: m.monitor.id, name: m.monitor.name })),
+      })),
+    ];
+
+    // Sort by timestamp desc and take limit
+    feed.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+    const page = feed.slice(0, limit);
+    const nextCursor = page.length === limit ? page[page.length - 1]?.ts.toISOString() : null;
+
+    return { items: page, nextCursor, total: page.length };
   }
 }

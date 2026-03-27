@@ -97,6 +97,8 @@ export class MonitorsService {
       activeAutoIncidentId: m.activeAutoIncidentId,
       isFlapping: m.isFlapping,
       flapDetectionEnabled: m.flapDetectionEnabled,
+      flapWindow: m.flapWindow,
+      flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
@@ -158,6 +160,8 @@ export class MonitorsService {
       activeAutoIncidentId: m.activeAutoIncidentId,
       isFlapping: m.isFlapping,
       flapDetectionEnabled: m.flapDetectionEnabled,
+      flapWindow: m.flapWindow,
+      flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
@@ -206,6 +210,8 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    flapWindow?: number;
+    flapThreshold?: number;
     latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
@@ -247,6 +253,8 @@ export class MonitorsService {
         autoIncident: body.autoIncident ?? false,
         autoIncidentSeverity: body.autoIncidentSeverity ?? 'MEDIUM',
         flapDetectionEnabled: body.flapDetectionEnabled ?? true,
+        flapWindow: body.flapWindow ?? 10,
+        flapThreshold: body.flapThreshold ?? 0.5,
         latencyAlertMs: body.latencyAlertMs ?? null,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
@@ -301,6 +309,8 @@ export class MonitorsService {
       activeAutoIncidentId: created.activeAutoIncidentId,
       isFlapping: created.isFlapping,
       flapDetectionEnabled: created.flapDetectionEnabled,
+      flapWindow: created.flapWindow,
+      flapThreshold: created.flapThreshold,
       flapAlertedAt: created.flapAlertedAt?.toISOString() ?? null,
       latencyAlertMs: created.latencyAlertMs ?? null,
       anomalyDetection: created.anomalyDetection,
@@ -349,6 +359,8 @@ export class MonitorsService {
     autoIncident?: boolean;
     autoIncidentSeverity?: string;
     flapDetectionEnabled?: boolean;
+    flapWindow?: number;
+    flapThreshold?: number;
     latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
@@ -394,6 +406,8 @@ export class MonitorsService {
         ...(body.autoIncident !== undefined ? { autoIncident: body.autoIncident } : {}),
         ...(body.autoIncidentSeverity !== undefined ? { autoIncidentSeverity: body.autoIncidentSeverity } : {}),
         ...(body.flapDetectionEnabled !== undefined ? { flapDetectionEnabled: body.flapDetectionEnabled } : {}),
+        ...(body.flapWindow !== undefined ? { flapWindow: body.flapWindow } : {}),
+        ...(body.flapThreshold !== undefined ? { flapThreshold: body.flapThreshold } : {}),
         ...(body.latencyAlertMs !== undefined ? { latencyAlertMs: body.latencyAlertMs } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
@@ -558,6 +572,8 @@ export class MonitorsService {
         autoIncident: source.autoIncident,
         autoIncidentSeverity: source.autoIncidentSeverity,
         flapDetectionEnabled: source.flapDetectionEnabled,
+        flapWindow: source.flapWindow,
+        flapThreshold: source.flapThreshold,
         latencyAlertMs: source.latencyAlertMs,
         anomalyDetection: source.anomalyDetection,
         anomalyMultiplier: source.anomalyMultiplier,
@@ -606,6 +622,8 @@ export class MonitorsService {
       activeAutoIncidentId: null,
       isFlapping: false,
       flapDetectionEnabled: cloned.flapDetectionEnabled,
+      flapWindow: cloned.flapWindow,
+      flapThreshold: cloned.flapThreshold,
       flapAlertedAt: null,
       mutedUntil: null,
       latencyAlertMs: cloned.latencyAlertMs ?? null,
@@ -915,6 +933,8 @@ export class MonitorsService {
       activeAutoIncidentId: monitor.activeAutoIncidentId,
       isFlapping: monitor.isFlapping,
       flapDetectionEnabled: monitor.flapDetectionEnabled,
+      flapWindow: monitor.flapWindow,
+      flapThreshold: monitor.flapThreshold,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,

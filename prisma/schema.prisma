@@ -77,6 +77,7 @@ model User {
   alertRoutingRules       AlertRoutingRule[]
   escalationPolicies      EscalationPolicy[]
   alertGroups             AlertGroup[]
+  annotations             MonitorAnnotation[]
 }
 
 model Session {
@@ -119,6 +120,8 @@ model Monitor {
   enabled             Boolean     @default(true)
   isFlapping          Boolean     @default(false)
   flapDetectionEnabled Boolean    @default(true)
+  flapWindow          Int       @default(10)
+  flapThreshold       Float     @default(0.5)
   flapAlertedAt       DateTime?
   configJson          Json?
   slaTarget           Float?
@@ -156,6 +159,7 @@ model Monitor {
   dependents    MonitorDependency[] @relation("DependencyMonitor")
   events        MonitorEvent[]
   acknowledgements AlertAcknowledgement[]
+  annotations   MonitorAnnotation[]
 
 
   @@index([userId])
@@ -273,6 +277,8 @@ model AlertChannel {
   groupWindowSec   Int      @default(300)    // window in seconds to group related alerts (default 5min)
   groupByFolder    Boolean  @default(true)   // group alerts from same folder
   groupByTag       Boolean  @default(false)  // group alerts from same tag
+  /// Custom message template with {{token}} substitution. null = use default message.
+  messageTemplate  String?  @db.Text
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
@@ -841,6 +847,25 @@ model UserPlan {
 
   @@index([userId])
   @@index([planId])
+}
+
+/// User-defined annotation / event marker on a monitor's timeline
+/// Useful for marking deployments, config changes, incidents, etc.
+model MonitorAnnotation {
+  id           String   @id @default(cuid())
+  monitorId    String
+  userId       String
+  text         String   // e.g. "Deployed v2.1", "Config rollback"
+  color        String   @default("blue")   // blue | green | yellow | red | purple
+  annotatedAt  DateTime // the point-in-time the annotation refers to
+  createdAt    DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId])
+  @@index([monitorId, annotatedAt])
+  @@index([userId])
 }
 
 /// Queued notification for digest delivery (hourly_digest / daily_digest frequency)

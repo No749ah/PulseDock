@@ -31,6 +31,7 @@ type AlertChannel = {
   groupWindowSec?: number;
   groupByFolder?: boolean;
   groupByTag?: boolean;
+  messageTemplate?: string | null;
 };
 
 function ChannelTypeIcon({ type }: { type: AlertType }) {
@@ -158,6 +159,9 @@ export default function AlertsPage() {
   const [editGroupWindowMin, setEditGroupWindowMin] = useState(5);
   const [editGroupByFolder, setEditGroupByFolder] = useState(true);
   const [editGroupByTag, setEditGroupByTag] = useState(false);
+  // Channel-level message template (applies to all channel types)
+  const [createChannelMsgTemplate, setCreateChannelMsgTemplate] = useState('');
+  const [editChannelMsgTemplate, setEditChannelMsgTemplate] = useState('');
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -201,6 +205,7 @@ export default function AlertsPage() {
     setCreateGroupWindowMin(5);
     setCreateGroupByFolder(true);
     setCreateGroupByTag(false);
+    setCreateChannelMsgTemplate('');
   }
 
   function previewCreateTemplate(template: string) {
@@ -362,6 +367,7 @@ export default function AlertsPage() {
           groupWindowSec: createGroupWindowMin * 60,
           groupByFolder: createGroupByFolder,
           groupByTag: createGroupByTag,
+          ...(createChannelMsgTemplate.trim() && { messageTemplate: createChannelMsgTemplate.trim() }),
         }),
       });
       setWizardOpen(false);
@@ -470,6 +476,7 @@ export default function AlertsPage() {
     setEditGroupWindowMin(Math.round((channel.groupWindowSec ?? 300) / 60));
     setEditGroupByFolder(channel.groupByFolder ?? true);
     setEditGroupByTag(channel.groupByTag ?? false);
+    setEditChannelMsgTemplate((channel as AlertChannel & { messageTemplate?: string | null }).messageTemplate ?? '');
     setEditOpen(true);
   }
 
@@ -486,6 +493,7 @@ export default function AlertsPage() {
           groupWindowSec: editGroupWindowMin * 60,
           groupByFolder: editGroupByFolder,
           groupByTag: editGroupByTag,
+          messageTemplate: editChannelMsgTemplate.trim() || null,
         }),
       });
       setEditOpen(false);
@@ -795,6 +803,7 @@ export default function AlertsPage() {
             )}
 
             {wizardStep === 1 && (
+              <>
               <div className="mt-4 border-t border-border pt-4 space-y-3">
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Alert Grouping</p>
                 <div className="flex items-center justify-between">
@@ -845,6 +854,24 @@ export default function AlertsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Channel-level Message Template */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Custom Message Template</p>
+                <p className="text-xs text-text-muted">Override the default alert message for this channel. Use <code className="bg-surface-elevated px-1 rounded text-accent">{'{{token}}'}</code> placeholders. Leave blank to use the default.</p>
+                <textarea
+                  value={createChannelMsgTemplate}
+                  onChange={(e) => setCreateChannelMsgTemplate(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder={'{{monitor.name}} is {{run.level}}: {{run.message}} ({{run.latencyMs}}ms)'}
+                  className="w-full text-sm rounded-lg border border-border bg-surface px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none font-mono"
+                />
+                <div className="text-[11px] text-text-muted leading-relaxed">
+                  Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
+                </div>
+              </div>
+              </>
             )}
 
             {wizardStep === 2 && (
@@ -1121,6 +1148,23 @@ export default function AlertsPage() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Channel-level Message Template */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Custom Message Template</p>
+                <p className="text-xs text-text-muted">Override the default alert message for this channel. Use <code className="bg-surface-elevated px-1 rounded text-accent">{'{{token}}'}</code> placeholders. Leave blank to use the default.</p>
+                <textarea
+                  value={editChannelMsgTemplate}
+                  onChange={(e) => setEditChannelMsgTemplate(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder={'{{monitor.name}} is {{run.level}}: {{run.message}} ({{run.latencyMs}}ms)'}
+                  className="w-full text-sm rounded-lg border border-border bg-surface px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-none font-mono"
+                />
+                <div className="text-[11px] text-text-muted leading-relaxed">
+                  Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
+                </div>
               </div>
             </div>
           </Modal>

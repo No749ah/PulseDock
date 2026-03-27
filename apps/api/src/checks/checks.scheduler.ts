@@ -140,6 +140,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         activeAutoIncidentId: true,
         isFlapping: true,
         flapDetectionEnabled: true,
+        flapWindow: true,
+        flapThreshold: true,
         flapAlertedAt: true,
         latencyAlertMs: true,
         anomalyDetection: true,
@@ -251,6 +253,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     activeAutoIncidentId: string | null;
     isFlapping?: boolean;
     flapDetectionEnabled?: boolean;
+    flapWindow?: number;
+    flapThreshold?: number;
     flapAlertedAt?: Date | null;
     mutedUntil?: Date | null;
     latencyAlertMs?: number | null;
@@ -297,6 +301,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         activeAutoIncidentId: monitor.activeAutoIncidentId,
         isFlapping: monitor.isFlapping ?? false,
         flapDetectionEnabled: monitor.flapDetectionEnabled ?? true,
+        flapWindow: monitor.flapWindow ?? 10,
+        flapThreshold: monitor.flapThreshold ?? 0.5,
         flapAlertedAt: monitor.flapAlertedAt ? monitor.flapAlertedAt.toISOString() : null,
         mutedUntil: (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil
           ? (monitor as typeof monitor & { mutedUntil?: Date | null }).mutedUntil!.toISOString()

@@ -35,6 +35,8 @@ export interface AlertChannel {
   groupWindowSec: number;
   groupByFolder: boolean;
   groupByTag: boolean;
+  /** Custom {{token}} message template. null = use default message. */
+  messageTemplate: string | null;
 }
 
 export interface Monitor {
@@ -61,6 +63,8 @@ export interface Monitor {
   activeAutoIncidentId: string | null;
   isFlapping: boolean;
   flapDetectionEnabled: boolean;
+  flapWindow: number;
+  flapThreshold: number;
   flapAlertedAt: string | null;
   mutedUntil: string | null;
   latencyAlertMs: number | null;

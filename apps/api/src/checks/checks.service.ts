@@ -249,9 +249,9 @@ export class ChecksService {
       }) => Promise<Array<{ level: string }>>;
     };
 
-    // Fetch recent runs — we need enough for both confirmations and flap detection (max 10).
-    const FLAP_WINDOW = 5; // look at last 5 runs for flap detection
-    const fetchCount = Math.max(confirmations, FLAP_WINDOW);
+    // Fetch recent runs — we need enough for both confirmations and flap detection.
+    const monitorFlapWindow = monitor.flapWindow ?? 10;
+    const fetchCount = Math.max(confirmations, monitorFlapWindow);
 
     let recentRuns: Array<{ level: string }> = [];
     if (typeof monitorRunModel.findMany === 'function') {
@@ -489,11 +489,12 @@ export class ChecksService {
 
     // ── Flap Detection ─────────────────────────────────────────────────────────────────
     // A monitor is "flapping" when it rapidly alternates between healthy and unhealthy states.
-    // Detection: count state transitions in the last FLAP_WINDOW+1 runs (including current).
-    // If transitions >= FLAP_STATE_CHANGE_THRESHOLD → mark as flapping → suppress noise alerts.
-    // Flapping state clears automatically when the monitor is stable for FLAP_WINDOW runs.
-    const FLAP_STATE_CHANGE_THRESHOLD = 3; // ≥3 changes in last 5 runs = flapping
-    const flapWindowRuns = [{ level: run.level }, ...recentRuns.slice(0, FLAP_WINDOW - 1)];
+    // Detection uses configurable window size and threshold per monitor.
+    // When the ratio of state transitions ≥ flapThreshold → flapping → suppress noise alerts.
+    // Flapping state clears automatically when the monitor stabilizes.
+    const flapWindow = monitor.flapWindow ?? 10;
+    const flapThreshold = monitor.flapThreshold ?? 0.5;
+    const flapWindowRuns = [{ level: run.level }, ...recentRuns.slice(0, flapWindow - 1)];
     let stateChanges = 0;
     for (let i = 1; i < flapWindowRuns.length; i++) {
       const isUnhealthy = (l: string) => l === 'red' || l === 'yellow';
@@ -502,9 +503,11 @@ export class ChecksService {
       if (prevHealthy !== currHealthy) stateChanges++;
     }
 
+    const minRuns = Math.ceil(flapWindow / 2);
+    const transitionRatio = flapWindowRuns.length > 1 ? stateChanges / (flapWindowRuns.length - 1) : 0;
     const nowFlapping = (monitor.flapDetectionEnabled ?? true)
-      && flapWindowRuns.length >= 3
-      && stateChanges >= FLAP_STATE_CHANGE_THRESHOLD;
+      && flapWindowRuns.length >= minRuns
+      && transitionRatio >= flapThreshold;
     const wasFlapping = monitor.isFlapping ?? false;
     const flapStateChanged = nowFlapping !== wasFlapping;
 

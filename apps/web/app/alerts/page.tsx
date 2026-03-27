@@ -18,7 +18,7 @@ import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { brand } from '../../lib/brand';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams';
 
 type AlertChannel = {
   id: string;
@@ -53,6 +53,8 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <Bell className={`${iconClass} text-orange-500`} />;
     case 'sms':
       return <Smartphone className={`${iconClass} text-green-400`} />;
+    case 'teams':
+      return <MessageSquare className={`${iconClass} text-purple-400`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -351,6 +353,7 @@ export default function AlertsPage() {
     if (type === 'pagerduty') return { integrationKey: a };
     if (type === 'opsgenie') return { apiKey: a, region: b || 'us' };
     if (type === 'sms') return { accountSid: a, authToken: secret ?? '', from: b, to: extras?.username ?? '' };
+    if (type === 'teams') return { webhookUrl: a };
     return { to: a };
   }
 
@@ -465,6 +468,10 @@ export default function AlertsPage() {
       setEditB(String(channel.config.from ?? ''));
       setEditSecret(String(channel.config.authToken ?? ''));
       setEditUsername(String(channel.config.to ?? ''));
+    } else if (channel.type === 'teams') {
+      setEditA(String(channel.config.webhookUrl ?? ''));
+      setEditB('');
+      setEditSecret('');
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -596,6 +603,7 @@ export default function AlertsPage() {
                     { value: 'pagerduty', label: 'PagerDuty' },
                     { value: 'opsgenie', label: 'OpsGenie' },
                     { value: 'sms', label: 'SMS (Twilio)' },
+                    { value: 'teams', label: 'Microsoft Teams' },
                   ]}
                 />
               </div>
@@ -605,11 +613,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>

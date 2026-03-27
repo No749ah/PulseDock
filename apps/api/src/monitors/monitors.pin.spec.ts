@@ -82,6 +82,9 @@ describe('MonitorsService — togglePin()', () => {
     prisma = makePrisma();
     service = new MonitorsService(
       prisma as never,
+      {} as never, // ChecksService (not needed for pin tests)
+      {} as never, // AuditService (not needed for pin tests)
+      {} as never, // RealtimeEvents (not needed for pin tests)
       {} as never, // VersionDetectionService (not needed for pin tests)
     );
   });

@@ -373,6 +373,55 @@ export class AlertsService {
       }
       return;
     }
+
+    if (channel.type === 'teams' && typeof channel.config.webhookUrl === 'string') {
+      const ctx = extra as {
+        monitor?: { name?: string; type?: string; target?: string };
+        run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const themeColor = level === 'green' ? '3fb950' : level === 'yellow' ? 'd29922' : 'f85149';
+
+      // Microsoft Teams Adaptive Card payload (works with both old Connectors and new workflows)
+      const facts: Array<{ name: string; value: string }> = [];
+      if (monitor?.name) facts.push({ name: 'Monitor', value: monitor.name });
+      if (monitor?.type) facts.push({ name: 'Type', value: monitor.type.replace('_', ' ') });
+      if (run?.latencyMs != null) facts.push({ name: 'Latency', value: `${run.latencyMs}ms` });
+      if (monitor?.target) facts.push({ name: 'Target', value: monitor.target });
+      if (run?.checkedAt) facts.push({ name: 'Time', value: new Date(run.checkedAt).toUTCString() });
+
+      const teamsPayload = {
+        '@type': 'MessageCard',
+        '@context': 'http://schema.org/extensions',
+        themeColor,
+        summary: `${emoji} ${monitor?.name ?? 'Monitor'} — ${statusLabel}`,
+        sections: [
+          {
+            activityTitle: `${emoji} **${monitor?.name ?? 'Monitor'} — ${statusLabel}**`,
+            activitySubtitle: 'PulseDock Alert',
+            activityText: run?.message ?? text,
+            facts,
+            markdown: true,
+          },
+        ],
+      };
+
+      const resp = await fetch(channel.config.webhookUrl as string, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(teamsPayload),
+      });
+      if (!resp.ok) {
+        const respBody = await resp.text().catch(() => '');
+        throw new Error(`Microsoft Teams webhook returned ${resp.status}: ${respBody}`);
+      }
+      return;
+    }
   }
 
   /**

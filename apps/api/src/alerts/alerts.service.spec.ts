@@ -1071,6 +1071,100 @@ describe('AlertsService', () => {
     });
   });
 
+  // ─── Microsoft Teams channel ─────────────────────────────────────────────────
+
+  describe('teams channel', () => {
+    it('posts MessageCard payload to Teams webhook URL', async () => {
+      const monitor = makeMonitor({ name: 'Prod API' });
+      const run = makeRun({ level: 'red', ok: false, message: 'Connection refused' });
+      const channel = makeChannel({
+        type: 'teams' as never,
+        config: { webhookUrl: 'https://outlook.office.com/webhook/test-teams-webhook' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, opts] = fetchMock.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
+      expect(url).toBe('https://outlook.office.com/webhook/test-teams-webhook');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers['content-type']).toBe('application/json');
+
+      const body = JSON.parse(opts.body) as Record<string, unknown>;
+      expect(body['@type']).toBe('MessageCard');
+      expect(body.themeColor).toBe('f85149'); // red for down
+      expect(body.summary).toContain('Prod API');
+      expect(body.summary).toContain('Down');
+    });
+
+    it('uses correct themeColor for recovery (green level)', async () => {
+      const monitor = makeMonitor({ name: 'Prod API' });
+      const run = makeRun({ level: 'green', ok: true, message: 'OK — 123ms' });
+      const channel = makeChannel({
+        type: 'teams' as never,
+        config: { webhookUrl: 'https://outlook.office.com/webhook/test-recovery' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run, { levelChanged: true, previousLevel: 'red' });
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [, opts] = fetchMock.mock.calls[0] as [string, { body: string }];
+      const body = JSON.parse(opts.body) as Record<string, unknown>;
+      expect(body.themeColor).toBe('3fb950'); // green for recovered
+      expect(body.summary).toContain('Recovered');
+    });
+
+    it('uses yellow themeColor for degraded level', async () => {
+      const monitor = makeMonitor({ name: 'Slow API' });
+      const run = makeRun({ level: 'yellow', ok: true, message: 'Slow: 3000ms' });
+      const channel = makeChannel({
+        type: 'teams' as never,
+        config: { webhookUrl: 'https://outlook.office.com/webhook/test-degraded' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      await service.notifyMonitorFailure(monitor, run);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const [, opts] = fetchMock.mock.calls[0] as [string, { body: string }];
+      const body = JSON.parse(opts.body) as Record<string, unknown>;
+      expect(body.themeColor).toBe('d29922'); // yellow for degraded
+    });
+
+    it('records failed delivery log when Teams webhook returns non-ok response', async () => {
+      vi.useFakeTimers();
+      fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Bad Request' } as Response);
+      const monitor = makeMonitor();
+      const run = makeRun({ level: 'red', ok: false });
+      const channel = makeChannel({
+        type: 'teams' as never,
+        config: { webhookUrl: 'https://outlook.office.com/webhook/bad-webhook' },
+      });
+
+      const links = [{ alertChannel: channel }];
+      const prismaWithChannel = makePrisma(links);
+      const service = new AlertsService(prismaWithChannel as never, metrics, makeMailer() as never, makeNotifications() as never);
+      const promise = service.notifyMonitorFailure(monitor, run);
+      await vi.runAllTimersAsync();
+      try { await promise; } catch { /* expected */ }
+      vi.useRealTimers();
+
+      expect(prismaWithChannel.alertDeliveryLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'failed' }),
+        }),
+      );
+    });
+  });
+
   // ─── Delivery log ────────────────────────────────────────────────────────────
 
   describe('alert delivery log', () => {

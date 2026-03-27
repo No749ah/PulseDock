@@ -59,6 +59,11 @@ export interface PluginExecutionResult {
    * Only populated for HTTP/BROWSER monitors when `detectContentChanges` is enabled.
    */
   responseBodyHash?: string | null;
+  /**
+   * List of URLs visited during HTTP redirect chains.
+   * Only populated for HTTP/BROWSER monitors when redirects are followed.
+   */
+  redirectChain?: string[] | null;
 }
 
 export interface PluginConfigField {

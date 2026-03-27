@@ -1,8 +1,10 @@
-## Status Summary (2026-03-27 19:21 UTC)
-- **Build/Test:** ✅ Clean build + 3693 API tests (7 new RTO); 0 TS errors; all routes 200
+## Status Summary (2026-03-27 19:38 UTC)
+- **Build/Test:** ✅ Clean build + 3696 API tests (+10 bulk-create); 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
 - **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (19:38 UTC cycle):**
+  - [x] **Quick Add Monitors (Bulk URL import)** — `QuickAddModal` component: paste 1–50 URLs (one per line), pick folder, check interval, and alert channels, then create all in one click. Results show created/skipped/errors inline. ⚡ "Quick Add" button in monitors toolbar. handleQuickAdd() calls POST /v1/monitors/bulk-create-from-urls (already existed but had no frontend). 10 new tests for bulkCreateFromUrls logic.
 - **Last changes (19:21 UTC cycle):**
   - [x] **Recovery Time Objective (RTO) Tracking** — `rtoMinutes Int?` on Monitor. Per-incident RTO compliance check: breach count, compliant count, RTO compliance % (compliant/total incidents). RTO card on monitor SLO tab: compliance %, within-RTO/breached counts, warning when breaches exist. RTO input in create/edit form (Advanced Settings, near SLA config). 7 new tests.
 

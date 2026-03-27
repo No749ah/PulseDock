@@ -2209,7 +2209,78 @@ export default function MonitorDetailPage() {
               </details>
             )}
           </Card>
-        
+
+          {/* 90-day uptime heatmap — GitHub-contributions style */}
+          {runs.length > 0 && (() => {
+            // Build a day-bucket map from existing runs (up to 90 days back)
+            const now = new Date();
+            const days: { date: string; ok: number; total: number }[] = [];
+            for (let i = 89; i >= 0; i--) {
+              const d = new Date(now);
+              d.setUTCDate(d.getUTCDate() - i);
+              days.push({ date: d.toISOString().slice(0, 10), ok: 0, total: 0 });
+            }
+            const dayMap = new Map(days.map(d => [d.date, d]));
+            for (const r of runs) {
+              const dayKey = new Date(r.checkedAt).toISOString().slice(0, 10);
+              const bucket = dayMap.get(dayKey);
+              if (bucket) {
+                bucket.total++;
+                if (r.ok) bucket.ok++;
+              }
+            }
+            const weeks: (typeof days[0] | null)[][] = [];
+            let week: (typeof days[0] | null)[] = [];
+            // Pad start to align with Sunday
+            const firstDay = new Date(days[0].date + "T00:00:00Z");
+            const startPad = firstDay.getUTCDay(); // 0=Sun
+            for (let i = 0; i < startPad; i++) week.push(null);
+            for (const day of days) {
+              week.push(day);
+              if (week.length === 7) { weeks.push(week); week = []; }
+            }
+            if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week); }
+
+            const getColor = (d: typeof days[0] | null) => {
+              if (!d || d.total === 0) return "bg-surface-elevated";
+              const pct = d.ok / d.total;
+              if (pct >= 1) return "bg-green-500/80";
+              if (pct >= 0.9) return "bg-green-500/50";
+              if (pct >= 0.5) return "bg-yellow-500/60";
+              return "bg-red-500/70";
+            };
+
+            return (
+              <Card className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    90-Day Uptime Calendar
+                  </h2>
+                  <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-surface-elevated inline-block" /> No data
+                    <span className="w-2.5 h-2.5 rounded-sm bg-green-500/80 inline-block ml-1" /> 100%
+                    <span className="w-2.5 h-2.5 rounded-sm bg-yellow-500/60 inline-block" /> Degraded
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-500/70 inline-block" /> Down
+                  </div>
+                </div>
+                <div className="flex gap-0.5 overflow-x-auto">
+                  {weeks.map((wk, wi) => (
+                    <div key={wi} className="flex flex-col gap-0.5">
+                      {wk.map((day, di) => (
+                        <div
+                          key={di}
+                          title={day ? `${day.date}: ${day.total === 0 ? "no data" : `${day.total > 0 ? Math.round(day.ok / day.total * 100) : 0}% uptime (${day.ok}/${day.total} ok)`}` : ""}
+                          className={`w-3 h-3 rounded-sm transition-opacity hover:opacity-75 ${getColor(day)}`}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-text-muted mt-2">Based on check runs in local history. Only includes runs loaded in the current session.</p>
+              </Card>
+            );
+          })()}
 
         {/* Quick status row */}
         

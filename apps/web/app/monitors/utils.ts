@@ -74,6 +74,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     authApiKeyValue: String(monitor.config?.authApiKeyValue ?? ""),
     authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
     trackedHeaders: (monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders ?? "",
+    timeoutMs: (monitor as typeof monitor & { timeoutMs?: number | null }).timeoutMs ?? null,
   };
 }
 
@@ -115,6 +116,7 @@ export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataEx
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
     rtoMinutes: undefined,
+    timeoutMs: null,
     ...(cfg.checkTls !== undefined ? { checkTls: Boolean(cfg.checkTls) } : {}),
     ...(typeof cfg.ehlo === "string" ? { ehlo: cfg.ehlo } : {}),
     ...(typeof cfg.recordType === "string" ? { dnsRecordType: cfg.recordType } : {}),

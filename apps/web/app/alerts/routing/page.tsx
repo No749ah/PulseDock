@@ -65,7 +65,7 @@ interface SimulateResult {
   fallback: { active: boolean; description: string; channels: Array<{ id: string; name: string; type: string }> } | null;
 }
 
-const MONITOR_TYPES = ["HTTP", "GIT_RELEASE", "DOCKER_IMAGE", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"];
+const MONITOR_TYPES = ["HTTP", "GIT_RELEASE", "DOCKER_IMAGE", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "WHOIS"];
 const ALERT_LEVELS = ["green", "yellow", "red"];
 
 function RuleForm({

@@ -32,6 +32,7 @@ export function formatMonitorType(type: string): string {
     PING: "ICMP Ping",
     SMTP: "SMTP Email",
     BROWSER: "Browser Check",
+    WHOIS: "WHOIS / Domain",
   };
   return map[type] ?? type;
 }

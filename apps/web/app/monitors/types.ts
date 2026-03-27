@@ -126,6 +126,8 @@ export type MonitorFormData = {
   scheduleDays: string;
   scheduleStartHour: number;
   scheduleEndHour: number;
+  /** Per-monitor HTTP/TCP/SSL request timeout in milliseconds (overrides default 5000ms) */
+  timeoutMs: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

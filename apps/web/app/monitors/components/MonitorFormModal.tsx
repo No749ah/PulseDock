@@ -1242,6 +1242,37 @@ export function MonitorFormModal({
           </div>
         )}
 
+        {/* Request Timeout Override */}
+        {(formData.type === "HTTP" || formData.type === "TCP" || formData.type === "SSL_CERT" || formData.type === "BROWSER") && (
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Request Timeout</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Override the default {formData.type === "BROWSER" ? "15,000ms" : "5,000ms"} request timeout. Useful for slow endpoints or strict SLA requirements. Leave blank to use the default.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="500"
+                max="60000"
+                step="500"
+                placeholder={formData.type === "BROWSER" ? "15000" : "5000"}
+                value={(formData as MonitorFormData).timeoutMs ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                  onSetFormData({ ...formData, timeoutMs: val && val >= 500 ? val : null });
+                }}
+                className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <span className="text-sm text-text-muted">ms</span>
+              {(formData as MonitorFormData).timeoutMs && (formData as MonitorFormData).timeoutMs! > 0 && (
+                <span className="text-xs text-accent">✓ Times out after {(formData as MonitorFormData).timeoutMs}ms</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Anomaly Detection */}
         {(formData.type === "HTTP" || formData.type === "TCP") && (
           <div>

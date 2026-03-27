@@ -120,6 +120,7 @@ function MonitorsPageInner() {
     sliLatencyTarget: number | "";
     sliLatencyWindow: number;
     rtoMinutes: number | undefined;
+    timeoutMs: number | null;
     cronExpression: string;
     scheduleEnabled: boolean;
     scheduleDays: string;
@@ -155,6 +156,7 @@ function MonitorsPageInner() {
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
     rtoMinutes: undefined,
+    timeoutMs: null,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -610,6 +612,7 @@ function MonitorsPageInner() {
           sliLatencyWindow: formData.sliLatencyWindow,
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           ...(formData.rtoMinutes !== undefined ? { rtoMinutes: formData.rtoMinutes } : {}),
+          ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : {}),
         }),
       });
       setShowModal(false);
@@ -617,7 +620,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -672,6 +675,7 @@ function MonitorsPageInner() {
           sliLatencyWindow: formData.sliLatencyWindow,
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           rtoMinutes: formData.rtoMinutes ?? null,
+          ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : { timeoutMs: null }),
         }),
       });
       setShowModal(false);
@@ -1313,7 +1317,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1486,7 +1490,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);

@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 03:20 UTC)
+- **Build/Test:** ✅ Clean build + 3753 API (+8 response-size tests) + 10 e2e + 12 agent = 3775 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (03:20 UTC cycle):**
+  - [x] **Response Size Bytes Tracking** — `responseSizeBytes Int?` on MonitorRun (Prisma migration 20260328030900). HTTP runner computes UTF-8 byte length on every request. Stored in MonitorRun, returned in GET /v1/monitors/:id/runs API, included in CSV export. Frontend: "Size" column in check history table (HTTP/BROWSER monitors, hidden on mobile, auto-formats to B/KB/MB). Response Size Trend card on performance tab: latest/avg/range stats + bar sparkline of last 60 checks with color-coded deviation from average (warning when >30% off). 8 new tests.
+
 ## Status Summary (2026-03-28 02:02 UTC)
 - **Build/Test:** ✅ Clean build + 3745 API (+13 mattermost/zulip tests) + 756 web + 10 e2e + 12 agent = 4523 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

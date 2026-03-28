@@ -4752,6 +4752,8 @@ export class MonitorsService {
       baseUrl: string;
       selectedPaths: string[];
       intervalSec?: number;
+      folderId?: string;
+      alertChannelIds?: string[];
     },
   ): Promise<{ created: number; monitors: unknown[] }> {
     const { suggestions } = await this.previewFromOpenApi({
@@ -4769,6 +4771,8 @@ export class MonitorsService {
         target: s.url,
         type: 'HTTP' as MonitorType,
         intervalSec: opts.intervalSec ?? 60,
+        folderId: opts.folderId ?? null,
+        alertChannelIds: opts.alertChannelIds,
         config: {
           method: s.method,
           expectedStatus: s.expectedStatus,

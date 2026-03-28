@@ -65,6 +65,8 @@ export interface MonitorRun {
   level?: "green" | "yellow" | "red";
   /** First 500 chars of response body on failure, for debugging */
   responseBody?: string | null;
+  /** HTTP redirect chain: URLs followed before reaching final response */
+  redirectChain?: string[];
 }
 
 export interface AlertChannel {

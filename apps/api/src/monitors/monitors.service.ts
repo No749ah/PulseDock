@@ -1133,6 +1133,7 @@ export class MonitorsService {
         timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
         securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
         responseSizeBytes: (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? null,
+        redirectChain: (r as typeof r & { redirectChain?: string[] }).redirectChain ?? [],
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true, level: 'green' } : opts?.status === 'failed' ? { ok: false } : opts?.status === 'degraded' ? { ok: true, level: 'yellow' } : {}) } }),
@@ -2956,6 +2957,53 @@ export class MonitorsService {
       warning,
       healthy,
       certs,
+    };
+  }
+
+  /**
+   * Returns redirect chain statistics for a monitor based on the last 100 runs.
+   */
+  async redirectChainStats(userId: string, monitorId: string): Promise<{
+    hasRedirects: boolean;
+    avgRedirects: number;
+    maxRedirects: number;
+    commonChains: Array<{ chain: string[]; count: number }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 100,
+      select: { redirectChain: true },
+    });
+
+    const withRedirects = runs.filter(r => (r as typeof r & { redirectChain: string[] }).redirectChain.length > 0);
+    if (withRedirects.length === 0) {
+      return { hasRedirects: false, avgRedirects: 0, maxRedirects: 0, commonChains: [] };
+    }
+
+    const counts: Record<string, { chain: string[]; count: number }> = {};
+    for (const r of withRedirects) {
+      const chain = (r as typeof r & { redirectChain: string[] }).redirectChain;
+      const key = JSON.stringify(chain);
+      if (!counts[key]) counts[key] = { chain, count: 0 };
+      counts[key].count++;
+    }
+
+    const commonChains = Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const totalRedirects = withRedirects.reduce((sum, r) => sum + (r as typeof r & { redirectChain: string[] }).redirectChain.length, 0);
+    const maxRedirects = withRedirects.reduce((max, r) => Math.max(max, (r as typeof r & { redirectChain: string[] }).redirectChain.length), 0);
+
+    return {
+      hasRedirects: true,
+      avgRedirects: Math.round((totalRedirects / withRedirects.length) * 10) / 10,
+      maxRedirects,
+      commonChains,
     };
   }
 }

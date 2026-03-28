@@ -1472,6 +1472,59 @@ export default function MonitorDetailPage() {
                     </Card>
                   );
                 })()}
+                {/* G. Redirect Stats (HTTP/BROWSER only) */}
+                {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (() => {
+                  const redirectRuns = runs.filter((r) => r.redirectChain && r.redirectChain.length > 0);
+                  if (redirectRuns.length === 0) return null;
+                  const counts: Record<string, { chain: string[]; count: number }> = {};
+                  for (const r of redirectRuns) {
+                    const key = JSON.stringify(r.redirectChain);
+                    if (!counts[key]) counts[key] = { chain: r.redirectChain!, count: 0 };
+                    counts[key].count++;
+                  }
+                  const commonChains = Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 5);
+                  const totalHops = redirectRuns.reduce((s, r) => s + (r.redirectChain?.length ?? 0), 0);
+                  const avgHops = Math.round((totalHops / redirectRuns.length) * 10) / 10;
+                  const maxHops = redirectRuns.reduce((m, r) => Math.max(m, r.redirectChain?.length ?? 0), 0);
+                  return (
+                    <Card className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Redirect Stats
+                        </h2>
+                        <span className="text-xs text-text-muted">{redirectRuns.length} runs with redirects</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Has Redirects", value: "Yes", sub: `${redirectRuns.length} of ${runs.length} runs` },
+                          { label: "Avg Hops", value: `${avgHops}`, sub: "hops per redirected run" },
+                          { label: "Max Hops", value: `${maxHops}`, sub: "most hops in a single run" },
+                        ].map(({ label, value, sub }) => (
+                          <div key={label} className="p-3 rounded-lg bg-surface-2 border border-border">
+                            <p className="text-xs text-text-muted uppercase tracking-wider">{label}</p>
+                            <p className="text-lg font-bold tabular-nums mt-0.5 text-amber-400">{value}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{sub}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Common chains</p>
+                        {commonChains.map(({ chain, count }, i) => (
+                          <div key={i} className="p-2 rounded-lg bg-surface-2 border border-border text-xs font-mono text-text-secondary break-all">
+                            <span className="text-amber-400 font-medium mr-2">{count}×</span>
+                            {chain.map((url, j) => (
+                              <span key={j}>
+                                {j > 0 && <span className="text-text-muted mx-1">→</span>}
+                                <span>{url}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  );
+                })()}
             </>
             )}
           </div>
@@ -3100,6 +3153,9 @@ export default function MonitorDetailPage() {
                         {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
                           <TableHeader className="hidden md:table-cell">Size</TableHeader>
                         )}
+                        {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                          <TableHeader className="hidden md:table-cell">Redirects</TableHeader>
+                        )}
                         <TableHeader>Message</TableHeader>
                       </tr>
                     </TableHead>
@@ -3114,16 +3170,18 @@ export default function MonitorDetailPage() {
                           run.timings.downloadMs !== null
                         );
                         const showWaterfall = hasTimings && (monitor?.type === "HTTP" || monitor?.type === "BROWSER");
+                        const hasRedirectChain = !!(run.redirectChain && run.redirectChain.length > 0);
+                        const isExpandable = showWaterfall || hasRedirectChain;
                         return (
                         <React.Fragment key={run.id}>
                         <TableRow
-                          className={showWaterfall ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
-                          onClick={showWaterfall ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
+                          className={isExpandable ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
+                          onClick={isExpandable ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
                         >
                           <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                             <span className="flex items-center gap-1">
                               {relativeTime(run.checkedAt)}
-                              {showWaterfall && (
+                              {isExpandable && (
                                 <ChevronDown className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                               )}
                             </span>
@@ -3154,6 +3212,15 @@ export default function MonitorDetailPage() {
                                 : "—"}
                             </TableCell>
                           )}
+                          {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                            <TableCell className="text-sm font-mono hidden md:table-cell whitespace-nowrap">
+                              {run.redirectChain && run.redirectChain.length > 0 ? (
+                                <span className="text-amber-400 font-medium">→ {run.redirectChain.length}</span>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell
                             className="text-sm text-text-secondary max-w-[300px] truncate"
                             title={run.message}
@@ -3163,14 +3230,31 @@ export default function MonitorDetailPage() {
                         </TableRow>
                         {isExpanded && showWaterfall && run.timings && (
                           <TableRow>
-                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
                               <TimingWaterfall timings={run.timings} totalMs={run.latencyMs} />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {isExpanded && run.redirectChain && run.redirectChain.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
+                              <div className="text-xs text-text-secondary py-1">
+                                <span className="font-medium text-amber-400 mr-2">Redirect chain:</span>
+                                <span className="font-mono break-all">
+                                  {run.redirectChain.map((url, i) => (
+                                    <span key={i}>
+                                      {i > 0 && <span className="text-text-muted mx-1">→</span>}
+                                      <span>{url}</span>
+                                    </span>
+                                  ))}
+                                </span>
+                              </div>
                             </TableCell>
                           </TableRow>
                         )}
                         {run.responseBody && (
                           <TableRow>
-                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
                               <ResponseBodyViewer body={run.responseBody} />
                             </TableCell>
                           </TableRow>

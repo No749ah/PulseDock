@@ -471,6 +471,10 @@ export class ChecksService {
         responseSizeBytes: typeof (result as PluginExecutionResult).responseSizeBytes === 'number'
           ? (result as PluginExecutionResult).responseSizeBytes
           : null,
+        // HTTP redirect chain (URLs followed before reaching final response)
+        redirectChain: Array.isArray((result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain)
+          ? (result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain!
+          : [],
       },
     });
 

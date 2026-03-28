@@ -1469,4 +1469,16 @@ export class MonitorsController {
   ): Promise<{ pinned: boolean }> {
     return this.monitorsService.togglePin(req.user.id, id);
   }
+
+  @Get(':id/redirect-chain-stats')
+  @ApiOperation({ summary: 'Redirect chain statistics for a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Redirect chain statistics.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  redirectChainStats(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.monitorsService.redirectChainStats(req.user.id, id);
+  }
 }

@@ -1,3 +1,12 @@
+## Status Summary (2026-03-28 01:02 UTC)
+- **Build/Test:** ✅ Clean build + 3732 API (+10 rocketchat/apprise tests) + 756 web + 10 e2e + 12 agent = 4510 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (01:02 UTC cycle):**
+  - [x] **Rocket.Chat alert channel** — POST to Incoming Webhook URL, Slack-compatible attachment payload with color-coded status (red/yellow/green), facts list (monitor name/type/latency/target). Self-hosted-friendly. 4 new tests.
+  - [x] **Apprise alert channel** — POST to Apprise API `/notify` or `/notify/{tag}` endpoint. Maps level to Apprise severity type (failure/warning/success). Optional tag config for service scoping. Trailing-slash guard on serverUrl. 6 new tests.
+
 ## Status Summary (2026-03-27 20:20 UTC)
 - **Build/Test:** ✅ Clean build + 3707 API (+11 ntfy/gotify tests) + 747 web + 10 e2e + 12 agent = 4476 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

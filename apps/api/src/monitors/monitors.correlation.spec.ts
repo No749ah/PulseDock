@@ -1,188 +1,282 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * Unit tests for MonitorsService.monitorCorrelation()
+ *
+ * Tests pairwise Jaccard-similarity failure-window analysis across monitors.
+ */
 
-// Minimal MonitorsService stub for testing monitorCorrelation
-const makePrisma = (monitors: { id: string; name: string; type: string }[], runs: { monitorId: string; checkedAt: Date; level: string }[]) => ({
-  monitor: {
-    findMany: vi.fn().mockResolvedValue(monitors),
-  },
-  monitorRun: {
-    findMany: vi.fn().mockResolvedValue(runs),
-  },
-});
+import { describe, it, expect, vi } from 'vitest';
+import { MonitorsService } from './monitors.service';
+import { ChecksService } from '../checks/checks.service';
+import { AuditService } from '../common/audit.service';
+import { RealtimeEvents } from '../realtime/realtime.events';
+import { VersionDetectionService } from './version-detection.service';
 
-// Inline a self-contained version of the algorithm for unit testing
-async function monitorCorrelation(
-  prisma: ReturnType<typeof makePrisma>,
-  userId: string,
-  days: number = 7,
-) {
-  const clampedDays = Math.min(90, Math.max(1, days));
-  const since = new Date(Date.now() - clampedDays * 86_400_000);
-  const BUCKET_MS = 5 * 60 * 1000;
+// ─── Factory helpers ─────────────────────────────────────────────────────────
 
-  const monitors = await prisma.monitor.findMany({
-    where: { userId, enabled: true },
-    select: { id: true, name: true, type: true },
-  });
-
-  if (monitors.length < 2) {
-    return { monitors: monitors.map((m: typeof monitors[0]) => ({ id: m.id, name: m.name, type: m.type })), pairs: [], groups: [] };
-  }
-
-  const monitorIds = monitors.map((m: typeof monitors[0]) => m.id);
-
-  const runs = await prisma.monitorRun.findMany({
-    where: { monitorId: { in: monitorIds }, checkedAt: { gte: since }, level: { in: ['yellow', 'red'] } },
-    select: { monitorId: true, checkedAt: true },
-  });
-
-  const failureWindows = new Map<string, Set<number>>();
-  for (const id of monitorIds) failureWindows.set(id, new Set());
-  for (const run of runs) {
-    const bucket = Math.floor((run as { monitorId: string; checkedAt: Date }).checkedAt.getTime() / BUCKET_MS);
-    failureWindows.get((run as { monitorId: string; checkedAt: Date }).monitorId)?.add(bucket);
-  }
-
-  const pairs: Array<{ aId: string; bId: string; similarity: number; sharedWindows: number; aWindows: number; bWindows: number }> = [];
-
-  for (let i = 0; i < monitorIds.length; i++) {
-    for (let j = i + 1; j < monitorIds.length; j++) {
-      const aId = monitorIds[i];
-      const bId = monitorIds[j];
-      const aSet = failureWindows.get(aId)!;
-      const bSet = failureWindows.get(bId)!;
-      if (aSet.size === 0 && bSet.size === 0) continue;
-      let intersection = 0;
-      const [small, large] = aSet.size <= bSet.size ? [aSet, bSet] : [bSet, aSet];
-      for (const key of small) { if (large.has(key)) intersection++; }
-      const union = aSet.size + bSet.size - intersection;
-      if (union === 0) continue;
-      const similarity = intersection / union;
-      if (similarity > 0.1) {
-        pairs.push({ aId, bId, similarity: Math.round(similarity * 1000) / 1000, sharedWindows: intersection, aWindows: aSet.size, bWindows: bSet.size });
-      }
-    }
-  }
-  pairs.sort((a, b) => b.similarity - a.similarity);
-
-  const parent = new Map<string, string>();
-  const find = (x: string): string => {
-    if (!parent.has(x)) parent.set(x, x);
-    if (parent.get(x) !== x) parent.set(x, find(parent.get(x)!));
-    return parent.get(x)!;
-  };
-  const unionFn = (a: string, b: string) => {
-    const ra = find(a); const rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
-  };
-  for (const p of pairs) { if (p.similarity >= 0.4) unionFn(p.aId, p.bId); }
-
-  const groupMap = new Map<string, string[]>();
-  for (const id of monitorIds) {
-    if ((failureWindows.get(id)?.size ?? 0) === 0) continue;
-    const root = find(id);
-    if (!groupMap.has(root)) groupMap.set(root, []);
-    groupMap.get(root)!.push(id);
-  }
-
-  const monitorNames = new Map(monitors.map((m: typeof monitors[0]) => [m.id, m.name]));
-  const groups: Array<{ monitorIds: string[]; avgSimilarity: number; label: string }> = [];
-  for (const [, members] of groupMap) {
-    if (members.length < 2) continue;
-    let totalSim = 0; let count = 0;
-    for (let i = 0; i < members.length; i++) {
-      for (let j = i + 1; j < members.length; j++) {
-        const p = pairs.find(x => (x.aId === members[i] && x.bId === members[j]) || (x.aId === members[j] && x.bId === members[i]));
-        if (p) { totalSim += p.similarity; count++; }
-      }
-    }
-    groups.push({
-      monitorIds: members,
-      avgSimilarity: count > 0 ? Math.round((totalSim / count) * 1000) / 1000 : 0,
-      label: members.slice(0, 2).map(id => monitorNames.get(id) ?? id).join(' + ') + (members.length > 2 ? ` +${members.length - 2} more` : ''),
-    });
-  }
-  groups.sort((a, b) => b.avgSimilarity - a.avgSimilarity);
-
-  return { monitors: monitors.map((m: typeof monitors[0]) => ({ id: m.id, name: m.name, type: m.type })), pairs, groups };
+function makeMonitorRow(id: string, name: string) {
+  return { id, name, type: 'HTTP', enabled: true, userId: 'user-1' };
 }
 
-describe('monitorCorrelation', () => {
+/** Build a mock run at `ts` (Date) for monitorId */
+function makeRun(monitorId: string, ts: Date) {
+  return { monitorId, checkedAt: ts };
+}
+
+function makePrisma(monitors: ReturnType<typeof makeMonitorRow>[], runs: ReturnType<typeof makeRun>[]) {
+  return {
+    monitor: {
+      findMany: vi.fn().mockResolvedValue(monitors),
+    },
+    monitorRun: {
+      findMany: vi.fn().mockResolvedValue(runs),
+    },
+  };
+}
+
+function makeService(prisma: ReturnType<typeof makePrisma>) {
+  return new MonitorsService(
+    prisma as never,
+    { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
+    { log: vi.fn() } as unknown as AuditService,
+    { emitMonitorUpdate: vi.fn(), emitCheckResult: vi.fn() } as unknown as RealtimeEvents,
+    {} as unknown as VersionDetectionService,
+  );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Build N timestamps spaced `stepMs` apart, starting from `baseMs` */
+function buildTimestamps(baseMs: number, count: number, stepMs = 5 * 60 * 1000) {
+  return Array.from({ length: count }, (_, i) => new Date(baseMs + i * stepMs));
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe('MonitorsService.monitorCorrelation()', () => {
+  const NOW = Date.now();
+  const BASE = NOW - 3 * 86_400_000; // 3 days ago
+
   it('returns empty pairs when fewer than 2 monitors', async () => {
-    const prisma = makePrisma([{ id: 'm1', name: 'A', type: 'HTTP' }], []);
-    const result = await monitorCorrelation(prisma as unknown as ReturnType<typeof makePrisma>, 'u1', 7);
+    const prisma = makePrisma([makeMonitorRow('m1', 'Alpha')], []);
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.monitors).toHaveLength(1);
     expect(result.pairs).toHaveLength(0);
     expect(result.groups).toHaveLength(0);
-    expect(result.monitors).toHaveLength(1);
   });
 
-  it('returns empty pairs when no monitors have failures', async () => {
-    const prisma = makePrisma(
-      [{ id: 'm1', name: 'A', type: 'HTTP' }, { id: 'm2', name: 'B', type: 'HTTP' }],
-      [],
-    );
-    const result = await monitorCorrelation(prisma as unknown as ReturnType<typeof makePrisma>, 'u1', 7);
+  it('returns empty pairs when no monitors exist', async () => {
+    const prisma = makePrisma([], []);
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.monitors).toHaveLength(0);
     expect(result.pairs).toHaveLength(0);
+    expect(result.groups).toHaveLength(0);
   });
 
-  it('computes high similarity for monitors failing at the same time', async () => {
-    const BASE = 1_000_000_000_000;
-    const BUCKET = 5 * 60 * 1000;
-    // Both monitors fail in the same 5-minute window
+  it('returns empty pairs when both monitors have no failures', async () => {
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
+      [], // no failure runs
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.pairs).toHaveLength(0);
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it('returns high similarity (1.0) when two monitors fail in identical 5-min buckets', async () => {
+    const timestamps = buildTimestamps(BASE, 10);
     const runs = [
-      { monitorId: 'm1', checkedAt: new Date(BASE + 0 * BUCKET), level: 'red' },
-      { monitorId: 'm1', checkedAt: new Date(BASE + 1 * BUCKET), level: 'red' },
-      { monitorId: 'm2', checkedAt: new Date(BASE + 0 * BUCKET), level: 'red' },
-      { monitorId: 'm2', checkedAt: new Date(BASE + 1 * BUCKET), level: 'red' },
+      ...timestamps.map(ts => makeRun('m1', ts)),
+      ...timestamps.map(ts => makeRun('m2', ts)),
     ];
     const prisma = makePrisma(
-      [{ id: 'm1', name: 'Alpha', type: 'HTTP' }, { id: 'm2', name: 'Beta', type: 'HTTP' }],
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
       runs,
     );
-    const result = await monitorCorrelation(prisma as unknown as ReturnType<typeof makePrisma>, 'u1', 7);
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
     expect(result.pairs).toHaveLength(1);
-    expect(result.pairs[0].similarity).toBe(1); // perfect overlap
-    expect(result.pairs[0].sharedWindows).toBe(2);
+    expect(result.pairs[0].similarity).toBe(1);
+    expect(result.pairs[0].aId).toBe('m1');
+    expect(result.pairs[0].bId).toBe('m2');
   });
 
-  it('does not include pair with similarity <= 0.1', async () => {
-    const BASE = 1_000_000_000_000;
-    const BUCKET = 5 * 60 * 1000;
-    // m1 fails in 10 buckets, m2 fails in 1 of those (Jaccard = 1/10 = 0.1 → excluded)
-    const runs = Array.from({ length: 10 }, (_, i) => ({
-      monitorId: 'm1', checkedAt: new Date(BASE + i * BUCKET), level: 'red' as const,
-    }));
-    runs.push({ monitorId: 'm2', checkedAt: new Date(BASE + 0 * BUCKET), level: 'red' });
+  it('returns similarity 0 (no pair) when two monitors never fail at the same time', async () => {
+    // m1 fails in first 5 buckets, m2 in next 5 completely different buckets
+    const BUCKET_MS = 5 * 60 * 1000;
+    const ts1 = buildTimestamps(BASE, 5, BUCKET_MS);
+    const ts2 = buildTimestamps(BASE + 5 * BUCKET_MS, 5, BUCKET_MS);
+    const runs = [
+      ...ts1.map(ts => makeRun('m1', ts)),
+      ...ts2.map(ts => makeRun('m2', ts)),
+    ];
     const prisma = makePrisma(
-      [{ id: 'm1', name: 'Alpha', type: 'HTTP' }, { id: 'm2', name: 'Beta', type: 'HTTP' }],
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
       runs,
     );
-    const result = await monitorCorrelation(prisma as unknown as ReturnType<typeof makePrisma>, 'u1', 7);
-    // Jaccard = 1 / (10 + 1 - 1) = 1/10 = 0.1, excluded (> 0.1 required)
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    // Jaccard similarity = 0 → pair should not be included (threshold 0.1)
     expect(result.pairs).toHaveLength(0);
   });
 
-  it('groups highly-correlated monitors (>=0.4 similarity) into clusters', async () => {
-    const BASE = 1_000_000_000_000;
-    const BUCKET = 5 * 60 * 1000;
-    const shared = Array.from({ length: 5 }, (_, i) => i * BUCKET);
+  it('filters pairs below 0.1 Jaccard threshold', async () => {
+    // m1 has 100 failure buckets, m2 shares only 5 → Jaccard = 5/100 = 0.05 < 0.1
+    const BUCKET_MS = 5 * 60 * 1000;
+    const ts1 = buildTimestamps(BASE, 100, BUCKET_MS);
+    const ts2 = ts1.slice(0, 5); // m2 only shares 5 buckets
     const runs = [
-      ...shared.map(t => ({ monitorId: 'm1', checkedAt: new Date(BASE + t), level: 'red' as const })),
-      ...shared.map(t => ({ monitorId: 'm2', checkedAt: new Date(BASE + t), level: 'red' as const })),
-      ...shared.map(t => ({ monitorId: 'm3', checkedAt: new Date(BASE + t), level: 'red' as const })),
+      ...ts1.map(ts => makeRun('m1', ts)),
+      ...ts2.map(ts => makeRun('m2', ts)),
     ];
     const prisma = makePrisma(
-      [
-        { id: 'm1', name: 'A', type: 'HTTP' },
-        { id: 'm2', name: 'B', type: 'HTTP' },
-        { id: 'm3', name: 'C', type: 'HTTP' },
-      ],
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
       runs,
     );
-    const result = await monitorCorrelation(prisma as unknown as ReturnType<typeof makePrisma>, 'u1', 7);
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    // 5/(100+5-5) = 5/100 = 0.05 → below threshold
+    expect(result.pairs).toHaveLength(0);
+  });
+
+  it('returns pair with partial overlap and correct similarity', async () => {
+    const BUCKET_MS = 5 * 60 * 1000;
+    const base10 = buildTimestamps(BASE, 10, BUCKET_MS);
+    // m1 uses base10, m2 shares first 5 → Jaccard = 5/(10+5-5) = 5/10 = 0.5
+    const runs = [
+      ...base10.map(ts => makeRun('m1', ts)),
+      ...base10.slice(0, 5).map(ts => makeRun('m2', ts)),
+    ];
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
+      runs,
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.pairs).toHaveLength(1);
+    expect(result.pairs[0].similarity).toBe(0.5);
+    expect(result.pairs[0].sharedWindows).toBe(5);
+    expect(result.pairs[0].aWindows).toBe(10);
+    expect(result.pairs[0].bWindows).toBe(5);
+  });
+
+  it('groups highly correlated monitors (similarity >= 0.4) together', async () => {
+    const timestamps = buildTimestamps(BASE, 20);
+    const runs = [
+      ...timestamps.map(ts => makeRun('m1', ts)),
+      ...timestamps.map(ts => makeRun('m2', ts)),
+      ...timestamps.map(ts => makeRun('m3', ts)),
+    ];
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'A'), makeMonitorRow('m2', 'B'), makeMonitorRow('m3', 'C')],
+      runs,
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    // All 3 monitors share the same failure windows → all pairs similarity = 1.0
+    expect(result.pairs).toHaveLength(3);
+    // They should all be grouped together
     expect(result.groups).toHaveLength(1);
     expect(result.groups[0].monitorIds).toHaveLength(3);
     expect(result.groups[0].avgSimilarity).toBe(1);
-    expect(result.groups[0].label).toContain('+1 more');
+  });
+
+  it('does not group monitors with similarity < 0.4', async () => {
+    const BUCKET_MS = 5 * 60 * 1000;
+    // m1 has 10 buckets, m2 shares 2 → Jaccard = 2/(10+2-2) = 2/10 = 0.2 → pair included but not grouped
+    const ts1 = buildTimestamps(BASE, 10, BUCKET_MS);
+    const ts2 = ts1.slice(0, 2);
+    const runs = [
+      ...ts1.map(ts => makeRun('m1', ts)),
+      ...ts2.map(ts => makeRun('m2', ts)),
+    ];
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta')],
+      runs,
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.pairs).toHaveLength(1);
+    expect(result.pairs[0].similarity).toBe(0.2);
+    // similarity < 0.4 → no group
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it('clamps days to 1 minimum', async () => {
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'A'), makeMonitorRow('m2', 'B')],
+      [],
+    );
+    const svc = makeService(prisma);
+    await svc.monitorCorrelation('user-1', 0); // should clamp to 1
+
+    // Verify findMany was called with a since date ~1 day ago (not 0)
+    const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const since: Date = call.where.checkedAt.gte;
+    const ageMs = Date.now() - since.getTime();
+    expect(ageMs).toBeLessThan(2 * 86_400_000); // < 2 days
+    expect(ageMs).toBeGreaterThan(0.5 * 86_400_000); // > 0.5 days
+  });
+
+  it('clamps days to 90 maximum', async () => {
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'A'), makeMonitorRow('m2', 'B')],
+      [],
+    );
+    const svc = makeService(prisma);
+    await svc.monitorCorrelation('user-1', 999); // should clamp to 90
+
+    const call = (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const since: Date = call.where.checkedAt.gte;
+    const ageMs = Date.now() - since.getTime();
+    expect(ageMs).toBeLessThan(91 * 86_400_000);
+    expect(ageMs).toBeGreaterThan(89 * 86_400_000);
+  });
+
+  it('returns monitors list in result even when no pairs found', async () => {
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'Alpha'), makeMonitorRow('m2', 'Beta'), makeMonitorRow('m3', 'Gamma')],
+      [],
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    expect(result.monitors).toHaveLength(3);
+    expect(result.monitors.map(m => m.name)).toContain('Alpha');
+    expect(result.monitors.map(m => m.name)).toContain('Beta');
+  });
+
+  it('sorts pairs by similarity descending', async () => {
+    const BUCKET_MS = 5 * 60 * 1000;
+    const ts = buildTimestamps(BASE, 20, BUCKET_MS);
+    // m1+m2: full overlap (sim=1), m1+m3: partial (sim~0.5), m2+m3: partial (sim~0.5)
+    const runs = [
+      ...ts.map(t => makeRun('m1', t)),
+      ...ts.map(t => makeRun('m2', t)),
+      ...ts.slice(0, 10).map(t => makeRun('m3', t)),
+    ];
+    const prisma = makePrisma(
+      [makeMonitorRow('m1', 'A'), makeMonitorRow('m2', 'B'), makeMonitorRow('m3', 'C')],
+      runs,
+    );
+    const svc = makeService(prisma);
+    const result = await svc.monitorCorrelation('user-1', 7);
+
+    // First pair should have highest similarity
+    expect(result.pairs[0].similarity).toBeGreaterThanOrEqual(result.pairs[1]?.similarity ?? 0);
+    if (result.pairs.length > 2) {
+      expect(result.pairs[1].similarity).toBeGreaterThanOrEqual(result.pairs[2].similarity);
+    }
   });
 });

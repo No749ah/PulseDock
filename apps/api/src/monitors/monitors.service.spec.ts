@@ -3130,6 +3130,52 @@ describe('bulkAction() — update-interval / update-timeout / update-confirmatio
   });
 });
 
+// ── bulkAction() — pause ───────────────────────────────────────────────────────
+
+describe('bulkAction() — pause', () => {
+  function makePausePrisma() {
+    const m = makeMonitor();
+    const p = makePrisma(m);
+    p.monitor.findMany.mockResolvedValue([m]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p.monitor as any).updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    return { p, svc: makeService(p) };
+  }
+
+  it('pause with default 60 minutes sets pausedUntil ~60min from now', async () => {
+    const { p, svc } = makePausePrisma();
+    const before = Date.now();
+    const result = await svc.bulkAction('user-1', ['monitor-1'], 'pause');
+    const after = Date.now();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateCall = (p.monitor as any).updateMany.mock.calls[0][0];
+    const pausedUntil: Date = updateCall.data.pausedUntil;
+    expect(pausedUntil.getTime()).toBeGreaterThanOrEqual(before + 60 * 60 * 1000 - 100);
+    expect(pausedUntil.getTime()).toBeLessThanOrEqual(after + 60 * 60 * 1000 + 100);
+    expect(result).toEqual({ ok: true, affected: 1 });
+  });
+
+  it('pause with explicit duration clamps to 1-1440 minutes', async () => {
+    const { p, svc } = makePausePrisma();
+    await svc.bulkAction('user-1', ['monitor-1'], 'pause', undefined, 5000);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateCall = (p.monitor as any).updateMany.mock.calls[0][0];
+    const pausedUntil: Date = updateCall.data.pausedUntil;
+    // 1440 minutes max
+    const maxMs = 1440 * 60 * 1000;
+    expect(pausedUntil.getTime() - Date.now()).toBeLessThanOrEqual(maxMs + 500);
+  });
+
+  it('pause with 0 duration clamps to 1 minute', async () => {
+    const { p, svc } = makePausePrisma();
+    await svc.bulkAction('user-1', ['monitor-1'], 'pause', undefined, 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateCall = (p.monitor as any).updateMany.mock.calls[0][0];
+    const pausedUntil: Date = updateCall.data.pausedUntil;
+    expect(pausedUntil.getTime() - Date.now()).toBeLessThanOrEqual(2 * 60 * 1000);
+  });
+});
+
 // ── parseGitlabTarget() — plain group/project path (line 542) ────────────────
 
 describe('testVersionConnection() — gitlab plain group/project target (line 542)', () => {

@@ -686,7 +686,7 @@ export class MonitorsService {
    * @param action - One of: 'enable' | 'disable' | 'delete' | 'run'
    * @returns { ok, affected } with count of successfully processed monitors
    */
-  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations', tagId?: string, value?: number) {
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations' | 'pause', tagId?: string, value?: number) {
     if (!ids.length) return { ok: true, affected: 0 };
     // Verify ownership of all IDs first
     const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
@@ -767,6 +767,15 @@ export class MonitorsService {
       const safeValue = Math.max(1, Math.min(10, Math.round(value)));
       await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { confirmations: safeValue } });
       await this.audit.log('monitor.bulk_update_confirmations', userId, userId, { ids: ownedIds, confirmations: safeValue });
+      return { ok: true, affected: ownedIds.length };
+    }
+
+    // Bulk pause: value = duration in minutes (1-1440, default 60)
+    if (action === 'pause') {
+      const durationMin = value !== undefined ? Math.max(1, Math.min(1440, Math.round(value))) : 60;
+      const pausedUntil = new Date(Date.now() + durationMin * 60 * 1000);
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { pausedUntil } });
+      await this.audit.log('monitor.bulk_pause', userId, userId, { ids: ownedIds, durationMin, pausedUntil: pausedUntil.toISOString() });
       return { ok: true, affected: ownedIds.length };
     }
 

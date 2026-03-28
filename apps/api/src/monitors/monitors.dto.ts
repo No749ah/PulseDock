@@ -557,8 +557,8 @@ export class BulkActionDto {
   @IsString({ each: true })
   ids!: string[];
 
-  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag', 'update-interval', 'update-timeout', 'update-confirmations'])
-  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations';
+  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag', 'update-interval', 'update-timeout', 'update-confirmations', 'pause'])
+  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations' | 'pause';
 
   /** Tag ID — required when action is 'add-tag' or 'remove-tag' */
   @IsOptional()

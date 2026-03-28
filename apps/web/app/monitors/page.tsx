@@ -743,7 +743,7 @@ function MonitorsPageInner() {
     }
   };
 
-  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag" | "update-interval" | "update-timeout" | "update-confirmations") => {
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag" | "update-interval" | "update-timeout" | "update-confirmations" | "pause") => {
     if (!selectedIds.size) return;
     if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
     if ((action === "add-tag" || action === "remove-tag") && !bulkTagId) {
@@ -758,8 +758,8 @@ function MonitorsPageInner() {
     try {
       const body: Record<string, unknown> = { ids: Array.from(selectedIds), action };
       if (action === "add-tag" || action === "remove-tag") body.tagId = bulkTagId;
-      if (action === "update-interval" || action === "update-timeout" || action === "update-confirmations") {
-        body.value = Number(bulkValue);
+      if (action === "update-interval" || action === "update-timeout" || action === "update-confirmations" || action === "pause") {
+        body.value = Number(bulkValue) || (action === "pause" ? 60 : undefined);
       }
       const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
         method: "POST",
@@ -789,7 +789,8 @@ function MonitorsPageInner() {
       }
       setSelectedIds(new Set());
       const tagName = allTags.find((t) => t.id === bulkTagId)?.name;
-      const actionLabel = action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : action === "run" ? "queued for check" : action === "add-tag" ? `tagged "${tagName}"` : `tag "${tagName}" removed`;
+      const pauseMin = action === "pause" ? (bulkValue ? Number(bulkValue) : 60) : 0;
+      const actionLabel = action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : action === "run" ? "queued for check" : action === "pause" ? `paused for ${pauseMin}m` : action === "add-tag" ? `tagged "${tagName}"` : `tag "${tagName}" removed`;
       success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${actionLabel}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
@@ -1535,6 +1536,9 @@ function MonitorsPageInner() {
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => handleBulkAction("run")} disabled={bulkLoading} className="flex items-center gap-1.5">
                   <PlayCircle className="w-3.5 h-3.5" />Run now
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("pause")} disabled={bulkLoading} className="flex items-center gap-1.5" title={`Pause for ${bulkValue || 60} minutes`}>
+                  <PauseCircle className="w-3.5 h-3.5" />Pause
                 </Button>
                 {allTags.length > 0 && (
                   <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">

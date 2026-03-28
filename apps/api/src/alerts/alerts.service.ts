@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { isChannelActive } from './alert-channel-schedule';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
 import type { AlertChannel, Monitor, MonitorLevel, MonitorRun } from '../types';
@@ -1063,6 +1064,7 @@ export class AlertsService {
       groupByFolder: l.alertChannel.groupByFolder,
       groupByTag: l.alertChannel.groupByTag,
       messageTemplate: l.alertChannel.messageTemplate ?? null,
+      scheduleJson: l.alertChannel.scheduleJson ?? null,
     }));
 
     const isFlapping = context?.isFlapping ?? false;
@@ -1095,6 +1097,11 @@ export class AlertsService {
     const isRecovery = run.level === 'green';
 
     for (const channel of channels) {
+      // Check per-channel active schedule — silently drop if outside window
+      if (!isChannelActive((channel as AlertChannel & { scheduleJson?: unknown }).scheduleJson)) {
+        this.logger.log(`[AlertSchedule] Channel ${channel.id} (${channel.name}) is outside active window — skipping`);
+        continue;
+      }
       try {
         const trigger = isFlapping ? 'monitor_flapping' : isRecovery ? 'monitor_recovery' : 'monitor_failure';
         if (isRecovery || isFlapping) {

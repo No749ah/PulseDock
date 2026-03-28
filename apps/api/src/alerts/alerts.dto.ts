@@ -35,6 +35,16 @@ export class CreateAlertChannelDto {
   @IsString()
   @MaxLength(1000)
   messageTemplate?: string;
+
+  @IsOptional()
+  @IsObject()
+  scheduleJson?: {
+    enabled: boolean;
+    timezone: string;
+    days: number[];
+    startHour: number;
+    endHour: number;
+  } | null;
 }
 
 export class UpdateAlertChannelDto {
@@ -74,6 +84,16 @@ export class UpdateAlertChannelDto {
   @IsString()
   @MaxLength(1000)
   messageTemplate?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  scheduleJson?: {
+    enabled: boolean;
+    timezone: string;
+    days: number[];
+    startHour: number;
+    endHour: number;
+  } | null;
 }
 
 export class TestAlertChannelDto {

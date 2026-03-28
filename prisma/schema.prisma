@@ -290,6 +290,9 @@ model AlertChannel {
   groupByTag       Boolean  @default(false)  // group alerts from same tag
   /// Custom message template with {{token}} substitution. null = use default message.
   messageTemplate  String?  @db.Text
+  /// JSON schedule config. null = always active. Format: { enabled: boolean, timezone: string, days: number[], startHour: number, endHour: number }
+  /// days: 0=Sun, 1=Mon, ..., 6=Sat. hours are 0–23 in the given timezone.
+  scheduleJson     Json?
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]

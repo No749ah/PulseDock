@@ -20,6 +20,14 @@ import { brand } from '../../lib/brand';
 
 type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
+type ChannelSchedule = {
+  enabled: boolean;
+  timezone: string;
+  days: number[];
+  startHour: number;
+  endHour: number;
+};
+
 type AlertChannel = {
   id: string;
   name: string;
@@ -32,6 +40,7 @@ type AlertChannel = {
   groupByFolder?: boolean;
   groupByTag?: boolean;
   messageTemplate?: string | null;
+  scheduleJson?: ChannelSchedule | null;
 };
 
 function ChannelTypeIcon({ type }: { type: AlertType }) {
@@ -108,6 +117,78 @@ type DeliveryHistory = {
 
 const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
+const TIMEZONES = [
+  'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Moscow',
+  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Shanghai', 'Asia/Tokyo',
+  'Australia/Sydney', 'Pacific/Auckland',
+];
+
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function ChannelScheduleSection({
+  enabled, setEnabled,
+  timezone, setTimezone,
+  days, setDays,
+  startHour, setStartHour,
+  endHour, setEndHour,
+}: {
+  enabled: boolean; setEnabled: (v: boolean) => void;
+  timezone: string; setTimezone: (v: string) => void;
+  days: number[]; setDays: (v: number[]) => void;
+  startHour: number; setStartHour: (v: number) => void;
+  endHour: number; setEndHour: (v: number) => void;
+}) {
+  function toggleDay(d: number) {
+    setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort());
+  }
+  return (
+    <div className="border-t border-border pt-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Active Schedule</p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-4 h-4 accent-accent" />
+          <span className="text-xs text-text-secondary">Restrict to time window</span>
+        </label>
+      </div>
+      {enabled && (
+        <div className="space-y-3 bg-surface-elevated rounded-lg p-3">
+          <div className="flex flex-wrap gap-1">
+            {DAY_LABELS.map((label, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => toggleDay(i)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${days.includes(i) ? 'bg-accent text-white' : 'bg-surface text-text-secondary border border-border hover:border-accent'}`}
+              >{label}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={timezone}
+              onChange={e => setTimezone(e.target.value)}
+              className="flex-1 text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-secondary w-12">From</span>
+            <select value={startHour} onChange={e => setStartHour(Number(e.target.value))} className="text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+              {Array.from({length: 24}, (_, h) => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+            </select>
+            <span className="text-xs text-text-secondary">to</span>
+            <select value={endHour} onChange={e => setEndHour(Number(e.target.value))} className="text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+              {Array.from({length: 24}, (_, h) => <option key={h+1} value={h+1}>{String(h+1).padStart(2,'0')}:00</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-text-muted">Alerts outside this window are silently dropped — not queued or delayed.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AlertsPage() {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -177,7 +258,19 @@ export default function AlertsPage() {
   const [editGroupByTag, setEditGroupByTag] = useState(false);
   // Channel-level message template (applies to all channel types)
   const [createChannelMsgTemplate, setCreateChannelMsgTemplate] = useState('');
+  // Schedule state — create modal
+  const [createScheduleEnabled, setCreateScheduleEnabled] = useState(false);
+  const [createScheduleTz, setCreateScheduleTz] = useState('UTC');
+  const [createScheduleDays, setCreateScheduleDays] = useState<number[]>([1,2,3,4,5]);
+  const [createScheduleStart, setCreateScheduleStart] = useState(9);
+  const [createScheduleEnd, setCreateScheduleEnd] = useState(18);
   const [editChannelMsgTemplate, setEditChannelMsgTemplate] = useState('');
+  // Schedule state — edit modal
+  const [editScheduleEnabled, setEditScheduleEnabled] = useState(false);
+  const [editScheduleTz, setEditScheduleTz] = useState('UTC');
+  const [editScheduleDays, setEditScheduleDays] = useState<number[]>([1,2,3,4,5]);
+  const [editScheduleStart, setEditScheduleStart] = useState(9);
+  const [editScheduleEnd, setEditScheduleEnd] = useState(18);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -222,6 +315,11 @@ export default function AlertsPage() {
     setCreateGroupByFolder(true);
     setCreateGroupByTag(false);
     setCreateChannelMsgTemplate('');
+    setCreateScheduleEnabled(false);
+    setCreateScheduleTz('UTC');
+    setCreateScheduleDays([1,2,3,4,5]);
+    setCreateScheduleStart(9);
+    setCreateScheduleEnd(18);
   }
 
   function previewCreateTemplate(template: string) {
@@ -423,6 +521,7 @@ export default function AlertsPage() {
           groupByFolder: createGroupByFolder,
           groupByTag: createGroupByTag,
           ...(createChannelMsgTemplate.trim() && { messageTemplate: createChannelMsgTemplate.trim() }),
+          scheduleJson: createScheduleEnabled ? { enabled: true, timezone: createScheduleTz, days: createScheduleDays, startHour: createScheduleStart, endHour: createScheduleEnd } : null,
         }),
       });
       setWizardOpen(false);
@@ -567,6 +666,12 @@ export default function AlertsPage() {
     setEditGroupByFolder(channel.groupByFolder ?? true);
     setEditGroupByTag(channel.groupByTag ?? false);
     setEditChannelMsgTemplate((channel as AlertChannel & { messageTemplate?: string | null }).messageTemplate ?? '');
+    const sched = channel.scheduleJson;
+    setEditScheduleEnabled(sched?.enabled ?? false);
+    setEditScheduleTz(sched?.timezone ?? 'UTC');
+    setEditScheduleDays(sched?.days ?? [1,2,3,4,5]);
+    setEditScheduleStart(sched?.startHour ?? 9);
+    setEditScheduleEnd(sched?.endHour ?? 18);
     setEditOpen(true);
   }
 
@@ -584,6 +689,7 @@ export default function AlertsPage() {
           groupByFolder: editGroupByFolder,
           groupByTag: editGroupByTag,
           messageTemplate: editChannelMsgTemplate.trim() || null,
+          scheduleJson: editScheduleEnabled ? { enabled: true, timezone: editScheduleTz, days: editScheduleDays, startHour: editScheduleStart, endHour: editScheduleEnd } : null,
         }),
       });
       setEditOpen(false);
@@ -1066,6 +1172,14 @@ export default function AlertsPage() {
                   Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
                 </div>
               </div>
+              {/* Alert Schedule */}
+              <ChannelScheduleSection
+                enabled={createScheduleEnabled} setEnabled={setCreateScheduleEnabled}
+                timezone={createScheduleTz} setTimezone={setCreateScheduleTz}
+                days={createScheduleDays} setDays={setCreateScheduleDays}
+                startHour={createScheduleStart} setStartHour={setCreateScheduleStart}
+                endHour={createScheduleEnd} setEndHour={setCreateScheduleEnd}
+              />
               </>
             )}
 
@@ -1402,6 +1516,15 @@ export default function AlertsPage() {
                   Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
                 </div>
               </div>
+
+              {/* Alert Schedule */}
+              <ChannelScheduleSection
+                enabled={editScheduleEnabled} setEnabled={setEditScheduleEnabled}
+                timezone={editScheduleTz} setTimezone={setEditScheduleTz}
+                days={editScheduleDays} setDays={setEditScheduleDays}
+                startHour={editScheduleStart} setStartHour={setEditScheduleStart}
+                endHour={editScheduleEnd} setEndHour={setEditScheduleEnd}
+              />
             </div>
           </Modal>
 
@@ -1625,7 +1748,14 @@ export default function AlertsPage() {
                     <TableCell className={visibleCols.name ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <ChannelTypeIcon type={c.type} />
-                        <span className="font-medium text-text-primary">{c.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-text-primary">{c.name}</span>
+                          {c.scheduleJson?.enabled && (
+                            <span className="text-[10px] text-text-muted flex items-center gap-0.5">
+                              🕐 {['Su','Mo','Tu','We','Th','Fr','Sa'].filter((_,i) => c.scheduleJson!.days.includes(i)).join('')} {String(c.scheduleJson.startHour).padStart(2,'0')}:00–{String(c.scheduleJson.endHour).padStart(2,'0')}:00 {c.scheduleJson.timezone}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className={visibleCols.type ? '' : 'hidden'}>

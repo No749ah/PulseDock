@@ -37,6 +37,8 @@ export interface AlertChannel {
   groupByTag: boolean;
   /** Custom {{token}} message template. null = use default message. */
   messageTemplate: string | null;
+  /** JSON schedule config. null = always active. */
+  scheduleJson?: unknown;
 }
 
 export interface Monitor {

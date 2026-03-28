@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post, Put, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { ReportsService } from './reports.service';
 import { ScheduledReportResponseDto, UpsertReportDto } from './reports.dto';
@@ -47,5 +47,17 @@ export class ReportsController {
   @ApiResponse({ status: 204, description: 'Report sent' })
   async sendNow(@Req() req: AuthRequest) {
     await this.reportsService.sendNow(req.user.id);
+  }
+
+  @Get('digest')
+  @ApiOperation({ summary: 'Operations digest', description: 'Returns a full on-demand operations digest for the given period (7, 30, or 90 days).' })
+  @ApiQuery({ name: 'period', required: false, description: 'Period in days: 7, 30, or 90', example: 7 })
+  @ApiResponse({ status: 200, description: 'Digest data' })
+  async getDigest(
+    @Req() req: AuthRequest,
+    @Query('period', new ParseIntPipe({ optional: true })) period?: number,
+  ) {
+    const p = [7, 30, 90].includes(period ?? 0) ? (period as number) : 7;
+    return this.reportsService.getDigest(req.user.id, p);
   }
 }

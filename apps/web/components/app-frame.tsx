@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   BarChart2,
   Bell,
+  BookOpen,
   ClipboardList,
   ScrollText,
   CalendarClock,
@@ -98,6 +99,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
       { href: '/mttr', label: 'Reliability Analytics', icon: Timer },
       { href: '/reports', label: 'Reports', icon: BarChart2 },
+      { href: '/reports/digest', label: 'Digest', icon: BookOpen },
     ],
   },
 

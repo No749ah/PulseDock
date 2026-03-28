@@ -405,3 +405,266 @@ export async function runSmtpCheck(
     socket.on('data', handleData);
   });
 }
+
+/**
+ * FTP connectivity check.
+ * Connects to FTP host:port (default 21), reads the 220 banner, optionally checks TLS (AUTH TLS).
+ * @param target - FTP host/host:port (or ftp:// URL)
+ * @param config - { checkTls?: boolean } — if true, negotiates AUTH TLS after banner
+ * @param timeoutMs - connection timeout in ms
+ */
+export async function runFtpCheck(
+  target: string,
+  config: Record<string, unknown>,
+  timeoutMs = 10000,
+): Promise<PluginExecutionResult> {
+  const normalized = target.trim().replace(/^ftps?:\/\//i, '');
+  const parts = normalized.split(':');
+  const host = parts[0];
+  const port = parts.length >= 2 ? Number(parts[1]) : 21;
+  const checkTls = Boolean(config.checkTls ?? false);
+
+  if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    return {
+      ok: false,
+      statusCode: 400,
+      latencyMs: null,
+      message: 'Invalid FTP target. Use host:port (e.g. ftp.example.com:21)',
+      level: 'red' as const,
+    };
+  }
+
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let settled = false;
+    let bannerReceived = false;
+    let authTlsSent = false;
+
+    const finish = (ok: boolean, message: string, level: 'green' | 'yellow' | 'red') => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      clearTimeout(timer);
+      resolve({ ok, statusCode: ok ? 220 : 500, latencyMs: Date.now() - started, message, level });
+    };
+
+    const timer = setTimeout(() => finish(false, `FTP timeout connecting to ${host}:${port}`, 'red'), timeoutMs);
+    const socket = net.createConnection({ host, port });
+
+    socket.once('error', (err) => finish(false, `FTP error: ${err.message}`, 'red'));
+
+    socket.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      const lines = text.split('\r\n').filter(Boolean);
+
+      for (const line of lines) {
+        const code = parseInt(line.slice(0, 3), 10);
+
+        // Banner: 220
+        if (!bannerReceived && code === 220) {
+          bannerReceived = true;
+          if (checkTls) {
+            authTlsSent = true;
+            socket.write('AUTH TLS\r\n');
+          } else {
+            socket.write('QUIT\r\n');
+            finish(true, `FTP ok (${host}:${port}) — banner: ${line.slice(4).trim()}`, 'green');
+          }
+          continue;
+        }
+
+        // AUTH TLS response
+        if (authTlsSent) {
+          if (code === 234) {
+            socket.write('QUIT\r\n');
+            finish(true, `FTP ok (${host}:${port}) — TLS supported (234)`, 'green');
+          } else if (code === 500 || code === 502 || code === 504) {
+            socket.write('QUIT\r\n');
+            finish(true, `FTP ok (${host}:${port}) — TLS not supported (${code})`, 'yellow');
+          } else if (code >= 400) {
+            finish(false, `FTP AUTH TLS failed (${code}) on ${host}:${port}`, 'red');
+          }
+          continue;
+        }
+
+        if (code === 221) continue; // QUIT ack
+
+        if (!bannerReceived && code >= 400) {
+          finish(false, `FTP banner error (${code}) from ${host}:${port}`, 'red');
+        }
+      }
+    });
+  });
+}
+
+/**
+ * IMAP connectivity check.
+ * Connects to IMAP host:port (default 143), reads the greeting (* OK), optionally checks STARTTLS.
+ * @param target - IMAP host/host:port (or imap:// URL)
+ * @param config - { checkTls?: boolean } — if true, sends STARTTLS command after greeting
+ * @param timeoutMs - connection timeout in ms
+ */
+export async function runImapCheck(
+  target: string,
+  config: Record<string, unknown>,
+  timeoutMs = 10000,
+): Promise<PluginExecutionResult> {
+  const normalized = target.trim().replace(/^imaps?:\/\//i, '');
+  const parts = normalized.split(':');
+  const host = parts[0];
+  const port = parts.length >= 2 ? Number(parts[1]) : 143;
+  const checkTls = Boolean(config.checkTls ?? false);
+
+  if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    return {
+      ok: false,
+      statusCode: 400,
+      latencyMs: null,
+      message: 'Invalid IMAP target. Use host:port (e.g. mail.example.com:143)',
+      level: 'red' as const,
+    };
+  }
+
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let settled = false;
+    let greetingReceived = false;
+    let startTlsSent = false;
+
+    const finish = (ok: boolean, message: string, level: 'green' | 'yellow' | 'red') => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      clearTimeout(timer);
+      resolve({ ok, statusCode: ok ? 200 : 500, latencyMs: Date.now() - started, message, level });
+    };
+
+    const timer = setTimeout(() => finish(false, `IMAP timeout connecting to ${host}:${port}`, 'red'), timeoutMs);
+    const socket = net.createConnection({ host, port });
+
+    socket.once('error', (err) => finish(false, `IMAP error: ${err.message}`, 'red'));
+
+    socket.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      const lines = text.split('\r\n').filter(Boolean);
+
+      for (const line of lines) {
+        // Greeting: * OK [...]
+        if (!greetingReceived && line.startsWith('* OK')) {
+          greetingReceived = true;
+          if (checkTls) {
+            startTlsSent = true;
+            socket.write('a001 STARTTLS\r\n');
+          } else {
+            socket.write('a001 LOGOUT\r\n');
+            finish(true, `IMAP ok (${host}:${port}) — ${line.slice(5, 60).trim()}`, 'green');
+          }
+          continue;
+        }
+
+        // STARTTLS response: a001 OK Begin TLS...
+        if (startTlsSent && line.startsWith('a001')) {
+          if (line.includes('OK')) {
+            socket.write('a002 LOGOUT\r\n');
+            finish(true, `IMAP ok (${host}:${port}) — STARTTLS accepted`, 'green');
+          } else if (line.includes('NO') || line.includes('BAD')) {
+            socket.write('a002 LOGOUT\r\n');
+            finish(true, `IMAP ok (${host}:${port}) — STARTTLS not supported`, 'yellow');
+          }
+          continue;
+        }
+
+        // Greeting error
+        if (!greetingReceived && line.startsWith('* BYE')) {
+          finish(false, `IMAP rejected: ${line.slice(6, 80).trim()}`, 'red');
+        }
+      }
+    });
+  });
+}
+
+/**
+ * POP3 connectivity check.
+ * Connects to POP3 host:port (default 110), reads the +OK greeting, optionally checks STLS.
+ * @param target - POP3 host/host:port (or pop3:// URL)
+ * @param config - { checkTls?: boolean } — if true, sends STLS command after greeting
+ * @param timeoutMs - connection timeout in ms
+ */
+export async function runPop3Check(
+  target: string,
+  config: Record<string, unknown>,
+  timeoutMs = 10000,
+): Promise<PluginExecutionResult> {
+  const normalized = target.trim().replace(/^pop3s?:\/\//i, '');
+  const parts = normalized.split(':');
+  const host = parts[0];
+  const port = parts.length >= 2 ? Number(parts[1]) : 110;
+  const checkTls = Boolean(config.checkTls ?? false);
+
+  if (!host || !Number.isInteger(port) || port <= 0 || port > 65535) {
+    return {
+      ok: false,
+      statusCode: 400,
+      latencyMs: null,
+      message: 'Invalid POP3 target. Use host:port (e.g. mail.example.com:110)',
+      level: 'red' as const,
+    };
+  }
+
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let settled = false;
+    let greetingReceived = false;
+    let stlsSent = false;
+
+    const finish = (ok: boolean, message: string, level: 'green' | 'yellow' | 'red') => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      clearTimeout(timer);
+      resolve({ ok, statusCode: ok ? 200 : 500, latencyMs: Date.now() - started, message, level });
+    };
+
+    const timer = setTimeout(() => finish(false, `POP3 timeout connecting to ${host}:${port}`, 'red'), timeoutMs);
+    const socket = net.createConnection({ host, port });
+
+    socket.once('error', (err) => finish(false, `POP3 error: ${err.message}`, 'red'));
+
+    socket.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      const lines = text.split('\r\n').filter(Boolean);
+
+      for (const line of lines) {
+        // Greeting: +OK [...]
+        if (!greetingReceived && line.startsWith('+OK')) {
+          greetingReceived = true;
+          if (checkTls) {
+            stlsSent = true;
+            socket.write('STLS\r\n');
+          } else {
+            socket.write('QUIT\r\n');
+            finish(true, `POP3 ok (${host}:${port}) — ${line.slice(4, 60).trim()}`, 'green');
+          }
+          continue;
+        }
+
+        // STLS response
+        if (stlsSent) {
+          if (line.startsWith('+OK')) {
+            socket.write('QUIT\r\n');
+            finish(true, `POP3 ok (${host}:${port}) — STLS accepted`, 'green');
+          } else if (line.startsWith('-ERR')) {
+            socket.write('QUIT\r\n');
+            finish(true, `POP3 ok (${host}:${port}) — STLS not supported`, 'yellow');
+          }
+          continue;
+        }
+
+        // Error greeting
+        if (!greetingReceived && line.startsWith('-ERR')) {
+          finish(false, `POP3 rejected: ${line.slice(5, 80).trim()}`, 'red');
+        }
+      }
+    });
+  });
+}

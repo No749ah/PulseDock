@@ -1,7 +1,7 @@
 export interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3";
   target: string;
   intervalSec: number;
   enabled: boolean;

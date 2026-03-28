@@ -65,6 +65,9 @@ export function targetPlaceholder(type: string): string {
     case "DNS": return "example.com or example.com:A";
     case "PING": return "example.com or 192.168.1.1";
     case "SMTP": return "mail.example.com:25 or smtp.example.com:587";
+    case "FTP": return "ftp.example.com:21";
+    case "IMAP": return "mail.example.com:143 or mail.example.com:993";
+    case "POP3": return "mail.example.com:110 or mail.example.com:995";
     case "BROWSER": return "https://example.com";
     case "WHOIS": return "example.com";
     default: return "https://api.example.com/health";

@@ -22,7 +22,7 @@ import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 // Extracted runner modules
 import { runHttpCheck } from './runners/http.runner';
 import { runBrowserCheck } from './runners/http.runner';
-import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck } from './runners/network.runner';
+import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck, runFtpCheck, runImapCheck, runPop3Check } from './runners/network.runner';
 import { runWhoisCheck } from './runners/whois.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
@@ -166,6 +166,12 @@ export class ChecksService {
         return runBrowserCheck(monitor.target, httpConfig, monitor.timeoutMs);
       case 'WHOIS':
         return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
+      case 'FTP':
+        return runFtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'IMAP':
+        return runImapCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'POP3':
+        return runPop3Check(monitor.target, monitor.config, monitor.timeoutMs);
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }

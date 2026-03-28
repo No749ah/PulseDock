@@ -1771,6 +1771,23 @@ export class MonitorsController {
     return this.monitorsService.latencyHistory(req.user.id, id, days ? parseInt(days, 10) : 30);
   }
 
+  // ─── Monitor Correlation Analysis ─────────────────────────────────────────────────
+
+  @Get('correlation')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Monitor failure correlation analysis',
+    description: 'Computes pairwise Jaccard similarity of failure windows across all monitors. Identifies which monitors tend to fail together, enabling faster root cause analysis. Groups highly-correlated monitors (≥40% similarity) into failure clusters.',
+  })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Look-back period in days (1–90, default 7)' })
+  @ApiResponse({ status: 200, description: 'Correlation analysis returned.' })
+  correlation(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    return this.monitorsService.monitorCorrelation(req.user.id, days ? parseInt(days, 10) : 7);
+  }
+
   // ─── Failure Pattern Analysis ─────────────────────────────────────────────────────
 
   @Get(':id/failure-patterns')

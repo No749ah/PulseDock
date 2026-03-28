@@ -5101,6 +5101,134 @@ export class MonitorsService {
       };
     }
   }
+
+  // ─── Monitor Correlation Analysis ─────────────────────────────────────────────
+
+  /**
+   * Computes pairwise Jaccard similarity of failure windows across all monitors.
+   * Two monitors are correlated if they tend to be in a failing state (level ≠ 'green') at the same time.
+   *
+   * @param userId  Requesting user
+   * @param days    Look-back period in days (1–90, default 7)
+   */
+  async monitorCorrelation(userId: string, days: number = 7): Promise<{
+    monitors: Array<{ id: string; name: string; type: string }>;
+    pairs: Array<{
+      aId: string;
+      bId: string;
+      similarity: number;
+      sharedWindows: number;
+      aWindows: number;
+      bWindows: number;
+    }>;
+    groups: Array<{
+      monitorIds: string[];
+      avgSimilarity: number;
+      label: string;
+    }>;
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+    const since = new Date(Date.now() - clampedDays * 86_400_000);
+    const BUCKET_MS = 5 * 60 * 1000; // 5-minute buckets
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true },
+    });
+
+    if (monitors.length < 2) {
+      return { monitors: monitors.map(m => ({ id: m.id, name: m.name, type: m.type })), pairs: [], groups: [] };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: since },
+        level: { in: ['yellow', 'red'] },
+      },
+      select: { monitorId: true, checkedAt: true },
+    });
+
+    // Build failure window sets (5-min buckets)
+    const failureWindows = new Map<string, Set<number>>();
+    for (const id of monitorIds) failureWindows.set(id, new Set());
+    for (const run of runs) {
+      const bucket = Math.floor(run.checkedAt.getTime() / BUCKET_MS);
+      failureWindows.get(run.monitorId)?.add(bucket);
+    }
+
+    // Compute pairwise Jaccard similarity
+    const pairs: Array<{
+      aId: string; bId: string; similarity: number;
+      sharedWindows: number; aWindows: number; bWindows: number;
+    }> = [];
+
+    for (let i = 0; i < monitorIds.length; i++) {
+      for (let j = i + 1; j < monitorIds.length; j++) {
+        const aId = monitorIds[i];
+        const bId = monitorIds[j];
+        const aSet = failureWindows.get(aId)!;
+        const bSet = failureWindows.get(bId)!;
+        if (aSet.size === 0 && bSet.size === 0) continue;
+        let intersection = 0;
+        const [small, large] = aSet.size <= bSet.size ? [aSet, bSet] : [bSet, aSet];
+        for (const key of small) { if (large.has(key)) intersection++; }
+        const unionSize = aSet.size + bSet.size - intersection;
+        if (unionSize === 0) continue;
+        const similarity = intersection / unionSize;
+        if (similarity > 0.1) {
+          pairs.push({ aId, bId, similarity: Math.round(similarity * 1000) / 1000, sharedWindows: intersection, aWindows: aSet.size, bWindows: bSet.size });
+        }
+      }
+    }
+    pairs.sort((a, b) => b.similarity - a.similarity);
+
+    // Group via union-find (threshold 0.4)
+    const parent = new Map<string, string>();
+    const findRoot = (x: string): string => {
+      if (!parent.has(x)) parent.set(x, x);
+      if (parent.get(x) !== x) parent.set(x, findRoot(parent.get(x)!));
+      return parent.get(x)!;
+    };
+    const mergeRoots = (a: string, b: string) => {
+      const ra = findRoot(a); const rb = findRoot(b);
+      if (ra !== rb) parent.set(ra, rb);
+    };
+    for (const p of pairs) { if (p.similarity >= 0.4) mergeRoots(p.aId, p.bId); }
+
+    const groupMap = new Map<string, string[]>();
+    for (const id of monitorIds) {
+      if ((failureWindows.get(id)?.size ?? 0) === 0) continue;
+      const root = findRoot(id);
+      if (!groupMap.has(root)) groupMap.set(root, []);
+      groupMap.get(root)!.push(id);
+    }
+
+    const monitorNames = new Map(monitors.map(m => [m.id, m.name]));
+    const groups: Array<{ monitorIds: string[]; avgSimilarity: number; label: string }> = [];
+    for (const [, members] of groupMap) {
+      if (members.length < 2) continue;
+      let totalSim = 0; let count = 0;
+      for (let i = 0; i < members.length; i++) {
+        for (let j = i + 1; j < members.length; j++) {
+          const p = pairs.find(x =>
+            (x.aId === members[i] && x.bId === members[j]) ||
+            (x.aId === members[j] && x.bId === members[i]));
+          if (p) { totalSim += p.similarity; count++; }
+        }
+      }
+      groups.push({
+        monitorIds: members,
+        avgSimilarity: count > 0 ? Math.round((totalSim / count) * 1000) / 1000 : 0,
+        label: members.slice(0, 2).map(id => monitorNames.get(id) ?? id).join(' + ') + (members.length > 2 ? ` +${members.length - 2} more` : ''),
+      });
+    }
+    groups.sort((a, b) => b.avgSimilarity - a.avgSimilarity);
+
+    return { monitors: monitors.map(m => ({ id: m.id, name: m.name, type: m.type })), pairs, groups };
+  }
 }
 
 export interface SuggestedMonitor {

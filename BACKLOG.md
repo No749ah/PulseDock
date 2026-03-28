@@ -1,12 +1,13 @@
-## Status Summary (2026-03-28 06:02 UTC)
-- **Build/Test:** ✅ Clean build + 3775 API (+8 ssl-summary/webhook tests) + 10 e2e + 12 agent = 3797 total; 0 TS errors; all routes 200
+## Status Summary (2026-03-28 06:15 UTC)
+- **Build/Test:** ✅ Clean build + 3781 API (+6 dependency suppression tests) + 10 e2e + 12 agent = 3803 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
 - **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
 - **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:15 UTC cycle):**
+  - [x] **Monitor Dependency Chaining** — `MonitorDependency` model. Full CRUD API `GET/POST/DELETE /v1/monitors/:id/dependencies`. Alert suppression: child alerts are silenced when any parent dependency is in outage. Frontend Dependencies tab on monitor detail. 6 new tests covering suppression edge cases (no deps, parent outage, parent ok, recovery, multi-parent, no runs).
 - **Last changes (06:02 UTC cycle):**
   - [x] **SSL Certificate Dashboard** — `/ssl` page: unified SSL certificate overview across all SSL monitors. Shows days remaining, expiry date, color-coded severity (green >30d / yellow 10-30d / red <10d), folder grouping, search/filter, CSV export. New `GET /v1/monitors/ssl-summary` API. Sidebar nav link. 4 new tests.
   - [x] **Per-Monitor Status Webhooks** — `statusWebhookUrl` + `statusWebhookSecret` on Monitor model (Prisma migration). Fires HTTPS POST on every level change. HMAC-SHA256 signature. Config in monitor form Advanced Settings. 4 new tests.
-  - [⏳] **Monitor Dependency Chaining** — In progress (subagent): suppress child alerts when parent monitor is in outage.
 
 ## Status Summary (2026-03-28 03:20 UTC)
 - **Build/Test:** ✅ Clean build + 3753 API (+8 response-size tests) + 10 e2e + 12 agent = 3775 total; 0 TS errors; all routes 200

@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 14:25 UTC)
+- **Build/Test:** ✅ Clean build + 4028 API + 756 web + 10 CLI + 12 agent = 4806 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (14:25 UTC cycle):**
+  - [x] **Fix 7 failing tests in monitors.import-openapi.spec.ts** — Implemented missing `previewFromOpenApi` (parses OpenAPI 3.x + Swagger 2.x JSON, resolves path params, applies maxPaths limit, maps methods to expected status codes) and `importFromOpenApi` (filters by selectedPaths, creates monitors with config, passes folderId/alertChannelIds) on `MonitorsService`. Fixed `jest`→`vi` (vitest) in spec file's `importFromOpenApi` describe block. All 7 tests now pass. 4028 API tests total (0 failures).
+
 ## Status Summary (2026-03-28 12:20 UTC)
 - **Build/Test:** ✅ Clean build + 4008 API (+41 coverage tests) + 10 CLI + 12 agent = 4030 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

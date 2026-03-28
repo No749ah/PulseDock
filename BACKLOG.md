@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 11:17 UTC)
+- **Build/Test:** ✅ Clean build + 3967 API (+18 recurrence tests) + 10 CLI + 12 agent = 3989 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 13 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-noon
+- **Last changes (11:17 UTC cycle):**
+  - [x] **Recurring Maintenance Windows** — Added `recurrence` (NONE/DAILY/WEEKLY/MONTHLY), `recurrenceDays` (comma-sep day-of-week 0–6), `durationMinutes`, `recurrenceEndsAt` fields to `MaintenanceWindow` Prisma model. Exported pure `isWindowActive()` function supporting all 4 recurrence modes with UTC time-of-day evaluation. `listActive()` now fetches all windows and evaluates via `isWindowActive()` instead of DB-range query (required for recurring windows). `isMonitorInMaintenance()` updated to match. Frontend: new `RecurrenceForm` component with recurrence type select, weekly day-of-week pill buttons (Mon/Tue/…), recurrence-ends-at date picker, contextual info banner, and purple recurring badge in table. Column for recurrence pattern in window list. 18 new unit tests: 12 for `isWindowActive()` edge cases (NONE/DAILY/WEEKLY/MONTHLY, recurrenceEndsAt, empty days, derived duration, before first occurrence) + 6 service/integration tests.
+
 ## Status Summary (2026-03-28 10:20 UTC)
 - **Build/Test:** ✅ Clean build + 3930 API + 756 web + 10 CLI + 12 agent = 4708 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

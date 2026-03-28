@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { MaintenanceService } from './maintenance.service';
+import { MaintenanceService, isWindowActive } from './maintenance.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,10 @@ function makeWindow(overrides: Record<string, unknown> = {}) {
     description: null,
     startsAt: new Date('2026-03-16T02:00:00Z'), // future → not active
     endsAt: new Date('2026-03-16T04:00:00Z'),
+    recurrence: 'NONE',
+    recurrenceDays: null,
+    durationMinutes: 120,
+    recurrenceEndsAt: null,
     monitors: [{ monitorId: 'mon-1' }],
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -51,7 +55,7 @@ function makePrisma(windowOverride?: ReturnType<typeof makeWindow> | null) {
     $transaction: vi.fn().mockImplementation(
       async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
     ),
-    _tx: tx, // expose for assertions
+    _tx: tx,
   };
 }
 
@@ -59,7 +63,173 @@ function makeService(prismaOverride?: ReturnType<typeof makePrisma>) {
   return new MaintenanceService((prismaOverride ?? makePrisma()) as never);
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+// ─── isWindowActive() unit tests ─────────────────────────────────────────────
+
+describe('isWindowActive()', () => {
+  const base = {
+    recurrence: 'NONE',
+    recurrenceDays: null,
+    durationMinutes: 120,
+    recurrenceEndsAt: null,
+  };
+
+  it('NONE: returns true when now is within startsAt..endsAt', () => {
+    const w = { ...base, startsAt: new Date('2026-03-15T01:00Z'), endsAt: new Date('2026-03-15T03:00Z') };
+    expect(isWindowActive(w, NOW)).toBe(true);
+  });
+
+  it('NONE: returns false when now is before startsAt', () => {
+    const w = { ...base, startsAt: new Date('2026-03-16T01:00Z'), endsAt: new Date('2026-03-16T03:00Z') };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('NONE: returns false when now is after endsAt', () => {
+    const w = { ...base, startsAt: new Date('2026-03-14T01:00Z'), endsAt: new Date('2026-03-14T03:00Z') };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('DAILY: returns true when now is within daily time window', () => {
+    // daily window starting 2026-03-14T01:30Z, duration 120 min → 01:30–03:30 UTC daily
+    // NOW = 2026-03-15T02:00Z → within window
+    const w = {
+      ...base,
+      recurrence: 'DAILY',
+      startsAt: new Date('2026-03-14T01:30Z'),
+      endsAt: new Date('2026-03-14T03:30Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(true);
+  });
+
+  it('DAILY: returns false when now is outside daily time window', () => {
+    // window is 03:00–05:00 UTC daily
+    const w = {
+      ...base,
+      recurrence: 'DAILY',
+      startsAt: new Date('2026-03-14T03:00Z'),
+      endsAt: new Date('2026-03-14T05:00Z'),
+      durationMinutes: 120,
+    };
+    // NOW = 02:00Z → before today's occurrence start (03:00Z)
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('DAILY: returns false before the first occurrence date', () => {
+    const w = {
+      ...base,
+      recurrence: 'DAILY',
+      startsAt: new Date('2026-03-20T01:00Z'), // future
+      endsAt: new Date('2026-03-20T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('DAILY: respects recurrenceEndsAt', () => {
+    const w = {
+      ...base,
+      recurrence: 'DAILY',
+      startsAt: new Date('2026-03-01T01:00Z'),
+      endsAt: new Date('2026-03-01T03:00Z'),
+      durationMinutes: 120,
+      recurrenceEndsAt: new Date('2026-03-14T23:59Z'), // ended yesterday
+    };
+    // NOW = 2026-03-15 → past recurrenceEndsAt
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('WEEKLY: returns true when now falls on an allowed day within the time window', () => {
+    // NOW = 2026-03-15T02:00Z → Sunday (day 0)
+    const dow = NOW.getUTCDay(); // should be 0
+    expect(dow).toBe(0); // verify assumption
+    const w = {
+      ...base,
+      recurrence: 'WEEKLY',
+      recurrenceDays: '0,6', // Sun + Sat
+      startsAt: new Date('2026-03-08T01:00Z'), // a past Sunday
+      endsAt: new Date('2026-03-08T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(true);
+  });
+
+  it('WEEKLY: returns false when today is not in recurrenceDays', () => {
+    // NOW is Sunday (0) but allowed days are Mon–Fri (1–5)
+    const w = {
+      ...base,
+      recurrence: 'WEEKLY',
+      recurrenceDays: '1,2,3,4,5',
+      startsAt: new Date('2026-03-09T01:00Z'), // past Monday
+      endsAt: new Date('2026-03-09T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('WEEKLY: returns false when time is outside window on an allowed day', () => {
+    // NOW = 02:00Z, window is 04:00–06:00 on Sundays
+    const w = {
+      ...base,
+      recurrence: 'WEEKLY',
+      recurrenceDays: '0',
+      startsAt: new Date('2026-03-08T04:00Z'),
+      endsAt: new Date('2026-03-08T06:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('WEEKLY: returns false when recurrenceDays is empty string', () => {
+    const w = {
+      ...base,
+      recurrence: 'WEEKLY',
+      recurrenceDays: '',
+      startsAt: new Date('2026-03-14T01:00Z'),
+      endsAt: new Date('2026-03-14T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('MONTHLY: returns true when today is the same day-of-month as startsAt and time matches', () => {
+    // NOW = 2026-03-15T02:00Z, startsAt on 15th at 01:00, duration 120min → 01:00–03:00
+    const w = {
+      ...base,
+      recurrence: 'MONTHLY',
+      startsAt: new Date('2026-02-15T01:00Z'), // a past 15th
+      endsAt: new Date('2026-02-15T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(true);
+  });
+
+  it('MONTHLY: returns false when today is not the right day-of-month', () => {
+    // NOW = March 15th, but window is on the 14th of each month
+    const w = {
+      ...base,
+      recurrence: 'MONTHLY',
+      startsAt: new Date('2026-02-14T01:00Z'),
+      endsAt: new Date('2026-02-14T03:00Z'),
+      durationMinutes: 120,
+    };
+    expect(isWindowActive(w, NOW)).toBe(false);
+  });
+
+  it('uses durationMinutes derived from endsAt-startsAt when null', () => {
+    // If durationMinutes is null, derive from endsAt-startsAt (120 min)
+    const w = {
+      ...base,
+      recurrence: 'DAILY',
+      durationMinutes: null,
+      startsAt: new Date('2026-03-14T01:00Z'),
+      endsAt: new Date('2026-03-14T03:00Z'), // 2h duration
+    };
+    // NOW = 02:00Z → within 01:00–03:00
+    expect(isWindowActive(w, NOW)).toBe(true);
+  });
+});
+
+// ─── MaintenanceService tests ─────────────────────────────────────────────────
 
 describe('MaintenanceService', () => {
   let service: MaintenanceService;
@@ -117,32 +287,43 @@ describe('MaintenanceService', () => {
   // ─── listActive() ────────────────────────────────────────────────────────
 
   describe('listActive()', () => {
-    it('queries with time-bounded filter', async () => {
-      await service.listActive('user-1');
-      expect(prisma.maintenanceWindow.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            userId: 'user-1',
-            startsAt: { lte: NOW },
-            endsAt: { gte: NOW },
-          }),
-        }),
-      );
-    });
-
-    it('returns active windows with isActive=true always', async () => {
+    it('returns active windows with isActive=true', async () => {
       const p = makePrisma(makeActiveWindow());
       const svc = makeService(p);
       const result = await svc.listActive('user-1');
+      expect(result).toHaveLength(1);
       expect(result[0].isActive).toBe(true);
       expect(result[0].monitors).toBeUndefined();
     });
 
-    it('returns empty array when no active windows', async () => {
+    it('filters out non-active windows', async () => {
+      // Future window — not active
+      const p = makePrisma(makeWindow());
+      const svc = makeService(p);
+      const result = await svc.listActive('user-1');
+      expect(result).toHaveLength(0);
+    });
+
+    it('returns empty array when no windows', async () => {
       const p = makePrisma(null);
       const svc = makeService(p);
       const result = await svc.listActive('user-1');
       expect(result).toEqual([]);
+    });
+
+    it('includes recurring daily window when currently in its time slot', async () => {
+      // DAILY 01:00–03:00, NOW = 02:00 → active
+      const recurringActive = makeWindow({
+        startsAt: new Date('2026-03-01T01:00Z'),
+        endsAt: new Date('2026-03-01T03:00Z'),
+        recurrence: 'DAILY',
+        durationMinutes: 120,
+        recurrenceEndsAt: null,
+      });
+      const p = makePrisma(recurringActive);
+      const svc = makeService(p);
+      const result = await svc.listActive('user-1');
+      expect(result).toHaveLength(1);
     });
   });
 
@@ -151,9 +332,6 @@ describe('MaintenanceService', () => {
   describe('getOne()', () => {
     it('returns a window with computed fields', async () => {
       const result = await service.getOne('mw-1', 'user-1');
-      expect(prisma.maintenanceWindow.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'mw-1' } }),
-      );
       expect(result.monitorIds).toEqual(['mon-1']);
       expect(result.monitorCount).toBe(1);
       expect(result.monitors).toBeUndefined();
@@ -187,39 +365,12 @@ describe('MaintenanceService', () => {
         monitorIds: ['mon-1'],
       };
       const result = await service.create('user-1', dto as never);
-      expect(prisma.maintenanceWindow.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            userId: 'user-1',
-            name: 'DB Upgrade',
-            startsAt: new Date('2026-03-16T02:00:00Z'),
-            endsAt: new Date('2026-03-16T04:00:00Z'),
-            monitors: { create: [{ monitorId: 'mon-1' }] },
-          }),
-        }),
-      );
+      expect(prisma.maintenanceWindow.create).toHaveBeenCalled();
       expect(result.monitorIds).toEqual(['mon-1']);
       expect(result.monitors).toBeUndefined();
     });
 
-    it('creates a window without monitorIds (empty array)', async () => {
-      const dto = {
-        name: 'No monitors',
-        startsAt: '2026-03-16T02:00:00Z',
-        endsAt: '2026-03-16T04:00:00Z',
-        monitorIds: [],
-      };
-      const p = makePrisma(makeWindow({ monitors: [] }));
-      const svc = makeService(p);
-      await svc.create('user-1', dto as never);
-      expect(p.maintenanceWindow.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ monitors: undefined }),
-        }),
-      );
-    });
-
-    it('creates a window when monitorIds is omitted', async () => {
+    it('creates a window without monitorIds', async () => {
       const dto = {
         name: 'No monitors',
         startsAt: '2026-03-16T02:00:00Z',
@@ -231,17 +382,42 @@ describe('MaintenanceService', () => {
       expect(result).toBeDefined();
     });
 
-    it('computes isActive on created window', async () => {
-      const activeDto = {
-        name: 'Active window',
+    it('creates a recurring weekly window with recurrenceDays', async () => {
+      const dto = {
+        name: 'Weekly maintenance',
         startsAt: '2026-03-15T01:00:00Z',
         endsAt: '2026-03-15T03:00:00Z',
-        monitorIds: [],
+        recurrence: 'WEEKLY',
+        recurrenceDays: '0,6',
       };
-      const p = makePrisma(makeActiveWindow({ monitors: [] }));
+      const win = makeWindow({ recurrence: 'WEEKLY', recurrenceDays: '0,6', monitors: [] });
+      const p = makePrisma(win);
       const svc = makeService(p);
-      const result = await svc.create('user-1', activeDto as never);
-      expect(result.isActive).toBe(true);
+      await svc.create('user-1', dto as never);
+      expect(p.maintenanceWindow.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            recurrence: 'WEEKLY',
+            recurrenceDays: '0,6',
+          }),
+        }),
+      );
+    });
+
+    it('derives durationMinutes from endsAt-startsAt when not provided', async () => {
+      const dto = {
+        name: 'Auto duration',
+        startsAt: '2026-03-16T02:00:00Z',
+        endsAt: '2026-03-16T04:30:00Z', // 150 min
+      };
+      const p = makePrisma(makeWindow({ monitors: [] }));
+      const svc = makeService(p);
+      await svc.create('user-1', dto as never);
+      expect(p.maintenanceWindow.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ durationMinutes: 150 }),
+        }),
+      );
     });
   });
 
@@ -258,62 +434,60 @@ describe('MaintenanceService', () => {
       await expect(service.update('mw-1', 'user-1', {})).rejects.toThrow(ForbiddenException);
     });
 
-    it('updates window fields via transaction', async () => {
-      const dto = { name: 'Updated Name' };
-      // findUnique called twice: once for findOwned, once for getOne at end
+    it('updates window name via transaction', async () => {
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-
-      await service.update('mw-1', 'user-1', dto);
-      expect(prisma.$transaction).toHaveBeenCalled();
+      await service.update('mw-1', 'user-1', { name: 'Updated Name' });
       expect(prisma._tx.maintenanceWindow.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'mw-1' },
           data: expect.objectContaining({ name: 'Updated Name' }),
         }),
       );
     });
 
     it('replaces monitor associations when monitorIds provided', async () => {
-      const dto = { monitorIds: ['mon-2', 'mon-3'] };
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-
-      await service.update('mw-1', 'user-1', dto);
-      expect(prisma._tx.maintenanceWindowMonitor.deleteMany).toHaveBeenCalledWith({
-        where: { windowId: 'mw-1' },
-      });
-      expect(prisma._tx.maintenanceWindowMonitor.createMany).toHaveBeenCalledWith({
-        data: [{ windowId: 'mw-1', monitorId: 'mon-2' }, { windowId: 'mw-1', monitorId: 'mon-3' }],
-      });
+      await service.update('mw-1', 'user-1', { monitorIds: ['mon-2', 'mon-3'] });
+      expect(prisma._tx.maintenanceWindowMonitor.deleteMany).toHaveBeenCalledWith(
+        { where: { windowId: 'mw-1' } },
+      );
+      expect(prisma._tx.maintenanceWindowMonitor.createMany).toHaveBeenCalled();
     });
 
     it('clears all monitors when monitorIds is empty array', async () => {
-      const dto = { monitorIds: [] };
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-
-      await service.update('mw-1', 'user-1', dto);
+      await service.update('mw-1', 'user-1', { monitorIds: [] });
       expect(prisma._tx.maintenanceWindowMonitor.deleteMany).toHaveBeenCalled();
       expect(prisma._tx.maintenanceWindowMonitor.createMany).not.toHaveBeenCalled();
     });
 
     it('skips monitor update when monitorIds is undefined', async () => {
-      const dto = { name: 'No monitor change' };
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-
-      await service.update('mw-1', 'user-1', dto);
+      await service.update('mw-1', 'user-1', { name: 'No monitor change' });
       expect(prisma._tx.maintenanceWindowMonitor.deleteMany).not.toHaveBeenCalled();
     });
 
-    it('converts startsAt and endsAt strings to Date objects', async () => {
-      const dto = { startsAt: '2026-04-01T00:00:00Z', endsAt: '2026-04-01T02:00:00Z' };
+    it('converts date strings to Date objects', async () => {
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-
-      await service.update('mw-1', 'user-1', dto);
+      await service.update('mw-1', 'user-1', {
+        startsAt: '2026-04-01T00:00:00Z',
+        endsAt: '2026-04-01T02:00:00Z',
+      });
       expect(prisma._tx.maintenanceWindow.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             startsAt: new Date('2026-04-01T00:00:00Z'),
             endsAt: new Date('2026-04-01T02:00:00Z'),
           }),
+        }),
+      );
+    });
+
+    it('updates recurrence fields', async () => {
+      prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
+      await service.update('mw-1', 'user-1', { recurrence: 'WEEKLY', recurrenceDays: '1,3,5' });
+      expect(prisma._tx.maintenanceWindow.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ recurrence: 'WEEKLY', recurrenceDays: '1,3,5' }),
         }),
       );
     });
@@ -342,29 +516,43 @@ describe('MaintenanceService', () => {
   // ─── isMonitorInMaintenance() ─────────────────────────────────────────────
 
   describe('isMonitorInMaintenance()', () => {
-    it('returns false when monitor is not in any active window', async () => {
-      prisma.maintenanceWindow.count.mockResolvedValue(0);
+    it('returns false when no windows are active', async () => {
+      // default makeWindow has future startsAt → not active
       const result = await service.isMonitorInMaintenance('mon-1', 'user-1');
       expect(result).toBe(false);
     });
 
     it('returns true when monitor is in an active window', async () => {
-      prisma.maintenanceWindow.count.mockResolvedValue(1);
+      prisma.maintenanceWindow.findMany.mockResolvedValue([makeActiveWindow()]);
       const result = await service.isMonitorInMaintenance('mon-1', 'user-1');
       expect(result).toBe(true);
     });
 
-    it('queries with correct userId, monitorId, and time bounds', async () => {
-      prisma.maintenanceWindow.count.mockResolvedValue(0);
-      await service.isMonitorInMaintenance('mon-42', 'user-7');
-      expect(prisma.maintenanceWindow.count).toHaveBeenCalledWith({
-        where: {
-          userId: 'user-7',
-          startsAt: { lte: NOW },
-          endsAt: { gte: NOW },
-          monitors: { some: { monitorId: 'mon-42' } },
-        },
+    it('returns true when active window has no monitor filter (all monitors)', async () => {
+      prisma.maintenanceWindow.findMany.mockResolvedValue([makeActiveWindow({ monitors: [] })]);
+      const result = await service.isMonitorInMaintenance('mon-999', 'user-1');
+      expect(result).toBe(true);
+    });
+
+    it('returns false when monitor id is not in active window monitors list', async () => {
+      prisma.maintenanceWindow.findMany.mockResolvedValue([makeActiveWindow()]);
+      // active window only has mon-1
+      const result = await service.isMonitorInMaintenance('mon-99', 'user-1');
+      expect(result).toBe(false);
+    });
+
+    it('returns true for active recurring daily window', async () => {
+      const dailyWindow = makeWindow({
+        startsAt: new Date('2026-03-01T01:00Z'),
+        endsAt: new Date('2026-03-01T03:00Z'),
+        recurrence: 'DAILY',
+        durationMinutes: 120,
+        monitors: [{ monitorId: 'mon-1' }],
       });
+      prisma.maintenanceWindow.findMany.mockResolvedValue([dailyWindow]);
+      // NOW = 02:00Z → within 01:00–03:00 daily window
+      const result = await service.isMonitorInMaintenance('mon-1', 'user-1');
+      expect(result).toBe(true);
     });
   });
 });

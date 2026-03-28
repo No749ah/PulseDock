@@ -522,14 +522,22 @@ model NotificationPreference {
 }
 
 model MaintenanceWindow {
-  id          String    @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  startsAt    DateTime
-  endsAt      DateTime
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  userId              String
+  name                String
+  description         String?
+  startsAt            DateTime
+  endsAt              DateTime
+  /// Recurrence pattern: NONE (one-shot), DAILY, WEEKLY, MONTHLY
+  recurrence          String    @default("NONE")
+  /// Comma-separated day-of-week numbers for WEEKLY recurrence (0=Sun … 6=Sat)
+  recurrenceDays      String?
+  /// Duration in minutes used to compute the end time of each recurrence occurrence
+  durationMinutes     Int?
+  /// Optional date after which no new recurrence occurrences are generated
+  recurrenceEndsAt    DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitors MaintenanceWindowMonitor[]

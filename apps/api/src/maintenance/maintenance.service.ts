@@ -2,6 +2,76 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../common/prisma.service';
 import { CreateMaintenanceWindowDto, UpdateMaintenanceWindowDto } from './maintenance.dto';
 
+/**
+ * Determines whether a recurring or one-shot maintenance window is currently active
+ * given the current time.
+ *
+ * Recurrence rules:
+ * - NONE: active iff startsAt <= now <= endsAt
+ * - DAILY: every day, from startsAt's time-of-day for durationMinutes
+ * - WEEKLY: on the days in recurrenceDays[], from startsAt's time-of-day for durationMinutes
+ * - MONTHLY: on the same day-of-month as startsAt, from startsAt's time-of-day for durationMinutes
+ *
+ * recurrenceEndsAt stops new occurrences from being generated.
+ *
+ * @param window  - MaintenanceWindow record (plain shape with recurrence fields)
+ * @param now     - Point in time to evaluate (default: current time)
+ * @returns true when the window is active right now
+ */
+export function isWindowActive(
+  window: {
+    startsAt: Date;
+    endsAt: Date;
+    recurrence: string;
+    recurrenceDays: string | null;
+    durationMinutes: number | null;
+    recurrenceEndsAt: Date | null;
+  },
+  now: Date = new Date(),
+): boolean {
+  const { startsAt, endsAt, recurrence, recurrenceDays, durationMinutes, recurrenceEndsAt } = window;
+
+  if (recurrence === 'NONE') {
+    return startsAt <= now && endsAt >= now;
+  }
+
+  // Recurring: don't start before the first occurrence
+  if (now < startsAt) return false;
+  // Recurring: don't apply after recurrenceEndsAt
+  if (recurrenceEndsAt && now > recurrenceEndsAt) return false;
+
+  const duration = durationMinutes ?? Math.round((endsAt.getTime() - startsAt.getTime()) / 60000);
+  const startHour = startsAt.getUTCHours();
+  const startMin = startsAt.getUTCMinutes();
+
+  // Build the start of the current occurrence window in UTC
+  const todayOccurrenceStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), startHour, startMin, 0, 0),
+  );
+  const todayOccurrenceEnd = new Date(todayOccurrenceStart.getTime() + duration * 60000);
+
+  if (recurrence === 'DAILY') {
+    return now >= todayOccurrenceStart && now <= todayOccurrenceEnd;
+  }
+
+  if (recurrence === 'WEEKLY') {
+    const allowedDays = (recurrenceDays ?? '')
+      .split(',')
+      .map((d) => parseInt(d.trim(), 10))
+      .filter((d) => !isNaN(d));
+    if (allowedDays.length === 0) return false;
+    const dow = now.getUTCDay();
+    return allowedDays.includes(dow) && now >= todayOccurrenceStart && now <= todayOccurrenceEnd;
+  }
+
+  if (recurrence === 'MONTHLY') {
+    const domMatch = now.getUTCDate() === startsAt.getUTCDate();
+    return domMatch && now >= todayOccurrenceStart && now <= todayOccurrenceEnd;
+  }
+
+  return false;
+}
+
 @Injectable()
 export class MaintenanceService {
   constructor(private readonly prisma: PrismaService) {}
@@ -42,13 +112,15 @@ export class MaintenanceService {
       ...w,
       monitorIds: w.monitors.map((m) => m.monitorId),
       monitorCount: w.monitors.length,
-      isActive: w.startsAt <= now && w.endsAt >= now,
+      isActive: isWindowActive(w, now),
       monitors: undefined,
     }));
   }
 
   /**
-   * Returns only the currently active maintenance windows (started in the past, ends in the future).
+   * Returns only the currently active maintenance windows (started in the past, ends in the future),
+   * including recurring windows that are currently in an active occurrence.
+   *
    * Used by the alert suppression logic in `ChecksService`.
    *
    * @param userId - Owner's user ID
@@ -56,22 +128,21 @@ export class MaintenanceService {
    */
   async listActive(userId: string) {
     const now = new Date();
+    // Fetch all windows for this user (recurring ones can't be filtered by DB alone)
     const windows = await this.prisma.maintenanceWindow.findMany({
-      where: {
-        userId,
-        startsAt: { lte: now },
-        endsAt: { gte: now },
-      },
+      where: { userId },
       include: { monitors: { select: { monitorId: true } } },
       orderBy: { endsAt: 'asc' },
     });
-    return windows.map((w) => ({
-      ...w,
-      monitorIds: w.monitors.map((m) => m.monitorId),
-      monitorCount: w.monitors.length,
-      isActive: true,
-      monitors: undefined,
-    }));
+    return windows
+      .filter((w) => isWindowActive(w, now))
+      .map((w) => ({
+        ...w,
+        monitorIds: w.monitors.map((m) => m.monitorId),
+        monitorCount: w.monitors.length,
+        isActive: true,
+        monitors: undefined,
+      }));
   }
 
   /**
@@ -79,48 +150,58 @@ export class MaintenanceService {
    *
    * @param id     - MaintenanceWindow ID
    * @param userId - Owner's user ID
-   * @returns Maintenance window with computed activity metadata
+   * @returns Window with computed activity metadata
    * @throws NotFoundException / ForbiddenException via `findOwned`
    */
   async getOne(id: string, userId: string) {
-    const w = await this.findOwned(id, userId);
-    const now = new Date();
-    return {
-      ...w,
-      monitorIds: w.monitors.map((m) => m.monitorId),
-      monitorCount: w.monitors.length,
-      isActive: w.startsAt <= now && w.endsAt >= now,
-      monitors: undefined,
-    };
-  }
-
-  /**
-   * Creates a new maintenance window, optionally linking it to one or more monitors.
-   *
-   * @param userId - Owner's user ID
-   * @param dto    - Window payload (name, description, startsAt, endsAt, monitorIds)
-   * @returns Created maintenance window with computed activity metadata
-   */
-  async create(userId: string, dto: CreateMaintenanceWindowDto) {
-    const { monitorIds = [], ...rest } = dto;
-    const window = await this.prisma.maintenanceWindow.create({
-      data: {
-        ...rest,
-        startsAt: new Date(dto.startsAt),
-        endsAt: new Date(dto.endsAt),
-        userId,
-        monitors: monitorIds.length
-          ? { create: monitorIds.map((monitorId) => ({ monitorId })) }
-          : undefined,
-      },
-      include: { monitors: { select: { monitorId: true } } },
-    });
+    const window = await this.findOwned(id, userId);
     const now = new Date();
     return {
       ...window,
       monitorIds: window.monitors.map((m) => m.monitorId),
       monitorCount: window.monitors.length,
-      isActive: window.startsAt <= now && window.endsAt >= now,
+      isActive: isWindowActive(window, now),
+      monitors: undefined,
+    };
+  }
+
+  /**
+   * Creates a new maintenance window, optionally linking specific monitors.
+   *
+   * @param userId - Owner's user ID
+   * @param dto    - Create payload
+   * @returns Newly created maintenance window
+   */
+  async create(userId: string, dto: CreateMaintenanceWindowDto) {
+    const { monitorIds, ...rest } = dto;
+    const duration =
+      dto.durationMinutes ??
+      Math.round((new Date(dto.endsAt).getTime() - new Date(dto.startsAt).getTime()) / 60000);
+
+    const window = await this.prisma.maintenanceWindow.create({
+      data: {
+        userId,
+        name: rest.name,
+        description: rest.description,
+        startsAt: new Date(rest.startsAt),
+        endsAt: new Date(rest.endsAt),
+        recurrence: rest.recurrence ?? 'NONE',
+        recurrenceDays: rest.recurrenceDays ?? null,
+        durationMinutes: duration,
+        recurrenceEndsAt: rest.recurrenceEndsAt ? new Date(rest.recurrenceEndsAt) : null,
+        monitors: monitorIds?.length
+          ? { createMany: { data: monitorIds.map((monitorId) => ({ monitorId })) } }
+          : undefined,
+      },
+      include: { monitors: { select: { monitorId: true } } },
+    });
+
+    const now = new Date();
+    return {
+      ...window,
+      monitorIds: window.monitors.map((m) => m.monitorId),
+      monitorCount: window.monitors.length,
+      isActive: isWindowActive(window, now),
       monitors: undefined,
     };
   }
@@ -140,6 +221,16 @@ export class MaintenanceService {
     await this.findOwned(id, userId);
     const { monitorIds, ...rest } = dto;
 
+    // Compute durationMinutes if start/end are being updated and duration not explicit
+    let durationMinutes: number | undefined;
+    if (rest.durationMinutes !== undefined) {
+      durationMinutes = rest.durationMinutes;
+    } else if (rest.startsAt && rest.endsAt) {
+      durationMinutes = Math.round(
+        (new Date(rest.endsAt).getTime() - new Date(rest.startsAt).getTime()) / 60000,
+      );
+    }
+
     await this.prisma.$transaction(async (tx) => {
       if (monitorIds !== undefined) {
         await tx.maintenanceWindowMonitor.deleteMany({ where: { windowId: id } });
@@ -152,9 +243,16 @@ export class MaintenanceService {
       await tx.maintenanceWindow.update({
         where: { id },
         data: {
-          ...rest,
+          ...(rest.name !== undefined ? { name: rest.name } : {}),
+          ...(rest.description !== undefined ? { description: rest.description } : {}),
           ...(rest.startsAt ? { startsAt: new Date(rest.startsAt) } : {}),
           ...(rest.endsAt ? { endsAt: new Date(rest.endsAt) } : {}),
+          ...(rest.recurrence !== undefined ? { recurrence: rest.recurrence } : {}),
+          ...(rest.recurrenceDays !== undefined ? { recurrenceDays: rest.recurrenceDays } : {}),
+          ...(durationMinutes !== undefined ? { durationMinutes } : {}),
+          ...(rest.recurrenceEndsAt !== undefined
+            ? { recurrenceEndsAt: rest.recurrenceEndsAt ? new Date(rest.recurrenceEndsAt) : null }
+            : {}),
         },
       });
     });
@@ -178,20 +276,24 @@ export class MaintenanceService {
 
   /**
    * Returns whether a monitor is currently covered by an active maintenance window.
+   * Supports recurring windows.
+   *
    * @param monitorId - Monitor ID to check
    * @param userId - Owner's user ID
-   * @returns `true` when at least one active maintenance window includes the monitor
+   * @returns `true` when at least one active maintenance window includes the monitor (or has no monitor filter)
    */
   async isMonitorInMaintenance(monitorId: string, userId: string): Promise<boolean> {
     const now = new Date();
-    const count = await this.prisma.maintenanceWindow.count({
-      where: {
-        userId,
-        startsAt: { lte: now },
-        endsAt: { gte: now },
-        monitors: { some: { monitorId } },
-      },
+    const windows = await this.prisma.maintenanceWindow.findMany({
+      where: { userId },
+      include: { monitors: { select: { monitorId: true } } },
     });
-    return count > 0;
+
+    for (const w of windows) {
+      if (!isWindowActive(w, now)) continue;
+      const monitorIds = w.monitors.map((m) => m.monitorId);
+      if (monitorIds.length === 0 || monitorIds.includes(monitorId)) return true;
+    }
+    return false;
   }
 }

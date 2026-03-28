@@ -634,6 +634,10 @@ function MonitorsPageInner() {
           ...((formData as typeof formData & { metricUnit?: string | null }).metricUnit ? { metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit } : {}),
           ...((formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== null && (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== undefined ? { metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin } : {}),
           ...((formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== null && (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== undefined ? { metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax } : {}),
+          ...((formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery ? { graphqlQuery: (formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery } : {}),
+          ...((formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ? { graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables } : {}),
+          ...((formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ? { graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath } : {}),
+          ...((formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ? { graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue } : {}),
         }),
       });
       setShowModal(false);
@@ -706,6 +710,10 @@ function MonitorsPageInner() {
           metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit ?? null,
           metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin ?? null,
           metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax ?? null,
+          graphqlQuery: (formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery ?? null,
+          graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ?? null,
+          graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ?? null,
+          graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ?? null,
         }),
       });
       setShowModal(false);

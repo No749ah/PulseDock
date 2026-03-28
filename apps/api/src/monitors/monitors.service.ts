@@ -253,6 +253,10 @@ export class MonitorsService {
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
     headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -317,6 +321,10 @@ export class MonitorsService {
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
         ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
+        ...(body.graphqlQuery !== undefined ? { graphqlQuery: body.graphqlQuery ?? null } : {}),
+        ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
+        ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
+        ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -442,6 +450,10 @@ export class MonitorsService {
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
     headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -512,6 +524,10 @@ export class MonitorsService {
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
         ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
+        ...(body.graphqlQuery !== undefined ? { graphqlQuery: body.graphqlQuery ?? null } : {}),
+        ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
+        ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
+        ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
       },
     });
 

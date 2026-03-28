@@ -323,6 +323,27 @@ export class CreateMonitorDto {
   @Type(() => HeaderAssertionDto)
   headerAssertions?: HeaderAssertionDto[];
 
+  // GraphQL monitor fields
+  @IsOptional()
+  @IsString()
+  @MaxLength(10_000)
+  graphqlQuery?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5_000)
+  graphqlVariables?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  graphqlDataPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_000)
+  graphqlExpectedValue?: string | null;
+
 }
 
 export class UpdateMonitorDto {
@@ -548,6 +569,27 @@ export class UpdateMonitorDto {
   @ValidateNested({ each: true })
   @Type(() => HeaderAssertionDto)
   headerAssertions?: HeaderAssertionDto[];
+
+  // GraphQL monitor fields
+  @IsOptional()
+  @IsString()
+  @MaxLength(10_000)
+  graphqlQuery?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5_000)
+  graphqlVariables?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  graphqlDataPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_000)
+  graphqlExpectedValue?: string | null;
 
 }
 

@@ -240,6 +240,7 @@ export function MonitorFormModal({
               <option value="BROWSER">Browser / Page Check</option>
               <option value="WHOIS">WHOIS Domain Expiry</option>
               <option value="CT_LOG">CT Log Monitor</option>
+              <option value="GRAPHQL">GraphQL API Monitor</option>
             </select>
           </div>
 
@@ -719,6 +720,71 @@ export function MonitorFormModal({
               <label htmlFor="ctLogAlertOnWildcard" className="text-sm text-text-primary cursor-pointer">
                 Alert on wildcard certificates
               </label>
+            </div>
+          </>
+        )}
+
+        {/* GraphQL-specific config */}
+        {formData.type === "GRAPHQL" && (
+          <>
+            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">GraphQL Monitor</span> — sends a POST request to your GraphQL endpoint with the configured query.
+                Checks for HTTP errors, GraphQL errors in the response, and optionally validates a specific field value.
+                Default query: <code className="bg-surface-2 px-1 rounded">{"{ __typename }"}</code> (introspection health check).
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                GraphQL Query
+              </label>
+              <textarea
+                rows={4}
+                value={(formData as unknown as { graphqlQuery?: string }).graphqlQuery ?? ""}
+                onChange={(e) => onSetFormData({ ...formData, graphqlQuery: e.target.value || null } as typeof formData & { graphqlQuery?: string | null })}
+                className={`${inputClass} font-mono text-xs`}
+                placeholder={"{ __typename }"}
+              />
+              <p className="text-xs text-text-secondary mt-1">Leave empty to use the default introspection health check.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Variables (JSON)
+              </label>
+              <textarea
+                rows={2}
+                value={(formData as unknown as { graphqlVariables?: string }).graphqlVariables ?? ""}
+                onChange={(e) => onSetFormData({ ...formData, graphqlVariables: e.target.value || null } as typeof formData & { graphqlVariables?: string | null })}
+                className={`${inputClass} font-mono text-xs`}
+                placeholder='{ "id": "123" }'
+              />
+              <p className="text-xs text-text-secondary mt-1">Optional JSON variables to pass with the query.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Expected Field (JSONPath)
+              </label>
+              <input
+                type="text"
+                value={(formData as unknown as { graphqlDataPath?: string }).graphqlDataPath ?? ""}
+                onChange={(e) => onSetFormData({ ...formData, graphqlDataPath: e.target.value || null } as typeof formData & { graphqlDataPath?: string | null })}
+                className={inputClass}
+                placeholder="$.data.__typename"
+              />
+              <p className="text-xs text-text-secondary mt-1">Optional JSONPath to a field that must exist in the response (e.g. <code className="bg-surface-2 px-1 rounded">$.data.status.health</code>).</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Expected Value
+              </label>
+              <input
+                type="text"
+                value={(formData as unknown as { graphqlExpectedValue?: string }).graphqlExpectedValue ?? ""}
+                onChange={(e) => onSetFormData({ ...formData, graphqlExpectedValue: e.target.value || null } as typeof formData & { graphqlExpectedValue?: string | null })}
+                className={inputClass}
+                placeholder="ok"
+              />
+              <p className="text-xs text-text-secondary mt-1">Optional: if set, the value at the field path must exactly match this string. Leave empty to just assert the field exists.</p>
             </div>
           </>
         )}

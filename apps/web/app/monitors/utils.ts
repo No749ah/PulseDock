@@ -84,6 +84,10 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     metricUnit: (monitor as typeof monitor & { metricUnit?: string | null }).metricUnit ?? null,
     metricAlertMin: (monitor as typeof monitor & { metricAlertMin?: number | null }).metricAlertMin ?? null,
     metricAlertMax: (monitor as typeof monitor & { metricAlertMax?: number | null }).metricAlertMax ?? null,
+    graphqlQuery: (monitor as typeof monitor & { graphqlQuery?: string | null }).graphqlQuery ?? null,
+    graphqlVariables: (monitor as typeof monitor & { graphqlVariables?: string | null }).graphqlVariables ?? null,
+    graphqlDataPath: (monitor as typeof monitor & { graphqlDataPath?: string | null }).graphqlDataPath ?? null,
+    graphqlExpectedValue: (monitor as typeof monitor & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ?? null,
     // Pre-request auth step
     preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
     preAuthBody: String(monitor.config?.preAuthBody ?? ""),
@@ -93,7 +97,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
 }
 
 export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataExtended {
-  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3", "CT_LOG"] as string[]).includes(t.type)
+  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"] as string[]).includes(t.type)
     ? (t.type as MonitorFormData["type"])
     : "HTTP";
   const cfg = (t.config ?? {}) as Record<string, unknown>;

@@ -1,4 +1,4 @@
-export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
+export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG' | 'GRAPHQL';
 export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 
@@ -89,6 +89,10 @@ export interface Monitor {
   statusWebhookUrl?: string | null;
   statusWebhookSecret?: string | null;
   headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+  graphqlQuery?: string | null;
+  graphqlVariables?: string | null;
+  graphqlDataPath?: string | null;
+  graphqlExpectedValue?: string | null;
   createdAt: string;
 }
 

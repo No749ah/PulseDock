@@ -29,6 +29,7 @@ enum MonitorType {
   IMAP
   POP3
   CT_LOG
+  GRAPHQL
 }
 
 model User {
@@ -169,6 +170,11 @@ model Monitor {
   metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
   // Header Assertions: assert response headers exist/equal/contain on every HTTP check
   headerAssertions    Json?       // Array of { header: string, op: 'exists'|'equals'|'contains'|'not-exists', value?: string }
+  // GraphQL monitor fields
+  graphqlQuery        String?     // GraphQL query/mutation to send (e.g. "{ __typename }" for introspection health)
+  graphqlVariables    String?     // JSON string of variables to pass with the query
+  graphqlDataPath     String?     // JSONPath to expected field in response data (e.g. "$.data.__typename")
+  graphqlExpectedValue String?    // Expected string value at graphqlDataPath (null = just check field exists)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

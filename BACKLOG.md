@@ -14,6 +14,16 @@
 - **Last changes (08:19 UTC cycle):**
   - [x] **Monitor Trend Analysis** — `GET /v1/monitors/trends` endpoint computing week-over-week uptime% and avg latency deltas for all monitors. Returns `uptimeTrend` / `latencyTrend` as `improving | degrading | stable | new` with numeric deltas. `/monitors/trends` frontend page: 4 summary stat cards (total/degrading/improving/new), full sortable table with trend badges, colored delta arrows, previous-period context values. Sidebar nav "Trends" link in Monitoring section. 5 new unit tests.
 
+## Status Summary (2026-03-28 08:21 UTC)
+- **Build/Test:** ✅ Clean build + 3860 API + 756 web + 10 CLI + 12 agent = 4638 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:21 UTC cycle):**
+  - [x] **Monitor Trends Page** — `GET /v1/monitors/trends`: week-over-week uptime + latency trend analysis per monitor (improving/degrading/stable/new). `/monitors/trends` frontend page: sortable table with TrendingUp/TrendingDown/Minus icons, delta %, current vs prior 7-day stats, color-coded badges. Sidebar nav link. 8 new unit tests.
+  - [x] **FTP/IMAP/POP3 test coverage** — 28 new tests in `network.runner.spec.ts` covering: banner+TLS happy paths, STARTTLS/STLS yes/no responses, invalid input, default port fallbacks, protocol prefix stripping (ftp://, imap://, pop3://), connection error paths. File now has 85 tests.
+  - [x] **Mail protocol config display cards** — FTP/IMAP/POP3 monitor detail page now shows a config card (host, port, TLS mode, encryption label) matching the existing SMTP config card design.
+
 ## Status Summary (2026-03-28 08:05 UTC)
 - **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

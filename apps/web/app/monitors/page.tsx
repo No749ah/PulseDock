@@ -28,6 +28,24 @@ import { BadgeModal } from "./components/BadgeModal";
 import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+
+// Transaction monitor step type (mirrors backend TransactionStep)
+export interface TransactionStepAssertion {
+  type: "status" | "body_contains" | "json_path" | "header_exists" | "latency_lt";
+  value: string;
+  expected?: string;
+}
+export interface TransactionStep {
+  id: string;
+  name: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  extract?: Record<string, string>;
+  assertions?: TransactionStepAssertion[];
+  timeoutMs?: number;
+}
 import { QuickAddModal } from "./components/QuickAddModal";
 import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
 import { OpenApiImportModal } from "./components/OpenApiImportModal";
@@ -55,7 +73,7 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL", "TRANSACTION"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
@@ -595,6 +613,11 @@ function MonitorsPageInner() {
         if (f.preAuthExtractCookie?.trim()) config.preAuthExtractCookie = f.preAuthExtractCookie.trim();
         if (f.preAuthExtractToken?.trim()) config.preAuthExtractToken = f.preAuthExtractToken.trim();
       }
+    }
+    if (formData.type === "TRANSACTION") {
+      const f = formData as typeof formData & { transactionSteps?: TransactionStep[]; transactionContinueOnFailure?: boolean };
+      config.transactionSteps = f.transactionSteps ?? [];
+      if (f.transactionContinueOnFailure) config.continueOnFailure = true;
     }
     return config;
   };
@@ -2704,15 +2727,15 @@ function MonitorsPageInner() {
 
       {showOpenApiImport && (
         <OpenApiImportModal
-          userId={user?.id}
           onClose={() => setShowOpenApiImport(false)}
-          onCreated={async () => {
+          onImported={async () => {
             const u = getUser();
             if (u) {
               const monitorsData = await api<MonitorItem[]>("/v1/monitors", u.id).catch(() => [] as MonitorItem[]);
               setMonitors(monitorsData);
             }
             success("Monitors imported from OpenAPI spec");
+            setShowOpenApiImport(false);
           }}
         />
       )}

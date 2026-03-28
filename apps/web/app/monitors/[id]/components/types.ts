@@ -1,7 +1,7 @@
 export interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG" | "GRAPHQL" | "TRANSACTION";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -46,6 +46,16 @@ export interface MonitorItem {
   metricAlertMin?: number | null;
   /** Alert yellow when captured metric value exceeds this maximum */
   metricAlertMax?: number | null;
+  /** Header assertions — array of { header, op, value? } to evaluate on every HTTP check */
+  headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+  /** GraphQL query to send (GRAPHQL monitors) */
+  graphqlQuery?: string | null;
+  /** JSON string of variables to pass with the GraphQL query */
+  graphqlVariables?: string | null;
+  /** JSONPath to a field in the GraphQL response to validate */
+  graphqlDataPath?: string | null;
+  /** Expected string value at graphqlDataPath */
+  graphqlExpectedValue?: string | null;
 }
 
 export interface SloReport {

@@ -18,7 +18,7 @@ import { AppFrame } from '../../../components/app-frame';
 import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
-import { Table, TableHead, TableBody, TableRow, TableCell } from '../../components/Table';
+import { Table, TableHead, TableBody, TableRow, TableCell, TableHeader } from '../../components/Table';
 import { getUser } from '../../../components/auth';
 import { api } from '../../../lib/api';
 import { useToast } from '../../../components/ui/toast';
@@ -112,7 +112,7 @@ function StatCard({
 
 export default function AlertNoisePage() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { error: showError } = useToast();
   const [data, setData] = useState<NoiseAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -128,11 +128,10 @@ export default function AlertNoisePage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await api(`/v1/alert-channels/noise-analysis?days=${periodDays}`);
-      if (!res.ok) throw new Error('Failed to load');
-      setData(await res.json());
+      const data = await api<NoiseAnalysis>(`/v1/alert-channels/noise-analysis?days=${periodDays}`);
+      setData(data);
     } catch {
-      showToast('Failed to load noise analysis', 'error');
+      showError('Failed to load noise analysis');
     } finally {
       setLoading(false);
     }
@@ -235,12 +234,12 @@ export default function AlertNoisePage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell header>Monitor</TableCell>
-                  <TableCell header>Noise</TableCell>
-                  <TableCell header className="hidden sm:table-cell">Total Alerts</TableCell>
-                  <TableCell header className="hidden md:table-cell">Alerts/Day</TableCell>
-                  <TableCell header className="hidden lg:table-cell">Config</TableCell>
-                  <TableCell header>Details</TableCell>
+                  <TableHeader>Monitor</TableHeader>
+                  <TableHeader>Noise</TableHeader>
+                  <TableHeader className="hidden sm:table-cell">Total Alerts</TableHeader>
+                  <TableHeader className="hidden md:table-cell">Alerts/Day</TableHeader>
+                  <TableHeader className="hidden lg:table-cell">Config</TableHeader>
+                  <TableHeader>Details</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -282,7 +281,7 @@ export default function AlertNoisePage() {
                             {m.currentConfig.confirmations}× confirm
                           </span>
                           {m.currentConfig.flapDetection && (
-                            <Badge variant="secondary" className="text-xs">Flap ✓</Badge>
+                            <Badge variant="default" className="text-xs">Flap ✓</Badge>
                           )}
                           <span className="text-xs text-white/40">
                             {m.currentConfig.intervalSec}s

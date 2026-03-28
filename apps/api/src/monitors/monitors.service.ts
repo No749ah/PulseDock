@@ -5406,6 +5406,291 @@ export class MonitorsService {
    * Runs a one-off HTTP check against the given URL without creating or storing a monitor.
    * Rate limited to 10 requests per user per minute.
    */
+  /**
+   * Fleet-wide anomaly report: detects significant behavioral changes per monitor
+   * comparing the current period against the prior period of the same duration.
+   *
+   * @param userId - Owner of the monitors
+   * @param hours - Lookback window in hours (24 | 48 | 168 = 1d / 2d / 7d, default 24)
+   * @returns List of monitors with detected anomalies, sorted by severity
+   */
+  async anomalyReport(userId: string, hours: 24 | 48 | 168 = 24): Promise<{
+    generatedAt: string;
+    periodHours: number;
+    totalMonitors: number;
+    anomaliesFound: number;
+    anomalies: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      anomalyTypes: string[];
+      details: Array<{
+        type: string;
+        description: string;
+        currentValue: number | null;
+        previousValue: number | null;
+        changePct: number | null;
+      }>;
+      currentPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+      previousPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+    }>;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true },
+    });
+
+    const now = new Date();
+    const currentFrom = new Date(now.getTime() - hours * 3_600_000);
+    const previousFrom = new Date(now.getTime() - hours * 2 * 3_600_000);
+
+    const monitorIds = monitors.map((m) => m.id);
+    if (monitorIds.length === 0) {
+      return {
+        generatedAt: now.toISOString(),
+        periodHours: hours,
+        totalMonitors: 0,
+        anomaliesFound: 0,
+        anomalies: [],
+      };
+    }
+
+    // Load all runs in both periods in bulk
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: previousFrom },
+      },
+      select: {
+        monitorId: true,
+        ok: true,
+        latencyMs: true,
+        checkedAt: true,
+        level: true,
+      },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Partition runs into current and previous periods
+    const currentRuns = new Map<string, typeof allRuns>();
+    const previousRuns = new Map<string, typeof allRuns>();
+
+    for (const run of allRuns) {
+      if (run.checkedAt >= currentFrom) {
+        if (!currentRuns.has(run.monitorId)) currentRuns.set(run.monitorId, []);
+        currentRuns.get(run.monitorId)!.push(run);
+      } else {
+        if (!previousRuns.has(run.monitorId)) previousRuns.set(run.monitorId, []);
+        previousRuns.get(run.monitorId)!.push(run);
+      }
+    }
+
+    type AnomalyDetail = {
+      type: string;
+      description: string;
+      currentValue: number | null;
+      previousValue: number | null;
+      changePct: number | null;
+    };
+
+    const computePeriodStats = (runs: typeof allRuns) => {
+      if (runs.length === 0) return { uptimePct: null, avgLatencyMs: null, failureCount: 0, totalChecks: 0 };
+      const total = runs.length;
+      const ok = runs.filter((r) => r.ok).length;
+      const latencies = runs.map((r) => r.latencyMs).filter((l): l is number => l !== null);
+      const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length) : null;
+      return {
+        uptimePct: Math.round((ok / total) * 10000) / 100,
+        avgLatencyMs,
+        failureCount: total - ok,
+        totalChecks: total,
+      };
+    };
+
+    const anomalies: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      anomalyTypes: string[];
+      details: AnomalyDetail[];
+      currentPeriod: ReturnType<typeof computePeriodStats>;
+      previousPeriod: ReturnType<typeof computePeriodStats>;
+    }> = [];
+
+    for (const monitor of monitors) {
+      const curr = currentRuns.get(monitor.id) ?? [];
+      const prev = previousRuns.get(monitor.id) ?? [];
+
+      // Need at least some data in current period to report
+      if (curr.length < 2) continue;
+
+      const currStats = computePeriodStats(curr);
+      const prevStats = computePeriodStats(prev);
+
+      const details: AnomalyDetail[] = [];
+      const anomalyTypes: string[] = [];
+
+      // ── 1. Uptime regression ───────────────────────────────────────────
+      if (currStats.uptimePct !== null && prevStats.uptimePct !== null && prevStats.uptimePct > 0) {
+        const drop = prevStats.uptimePct - currStats.uptimePct;
+        if (drop >= 5) {
+          anomalyTypes.push('uptime_regression');
+          details.push({
+            type: 'uptime_regression',
+            description: `Uptime dropped ${drop.toFixed(1)}% (${prevStats.uptimePct}% → ${currStats.uptimePct}%)`,
+            currentValue: currStats.uptimePct,
+            previousValue: prevStats.uptimePct,
+            changePct: -drop,
+          });
+        }
+      } else if (currStats.uptimePct !== null && currStats.uptimePct < 95 && prev.length === 0) {
+        // New data: currently degraded
+        anomalyTypes.push('currently_degraded');
+        details.push({
+          type: 'currently_degraded',
+          description: `Monitor is currently degraded (${currStats.uptimePct}% uptime)`,
+          currentValue: currStats.uptimePct,
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 2. Latency regression ─────────────────────────────────────────
+      if (currStats.avgLatencyMs !== null && prevStats.avgLatencyMs !== null && prevStats.avgLatencyMs > 0) {
+        const increase = ((currStats.avgLatencyMs - prevStats.avgLatencyMs) / prevStats.avgLatencyMs) * 100;
+        if (increase >= 25) {
+          anomalyTypes.push('latency_regression');
+          details.push({
+            type: 'latency_regression',
+            description: `Avg latency increased ${increase.toFixed(0)}% (${prevStats.avgLatencyMs}ms → ${currStats.avgLatencyMs}ms)`,
+            currentValue: currStats.avgLatencyMs,
+            previousValue: prevStats.avgLatencyMs,
+            changePct: increase,
+          });
+        }
+      }
+
+      // ── 3. New flapping (rapid status changes in current period) ──────
+      let statusChanges = 0;
+      let lastOk: boolean | null = null;
+      for (const run of curr) {
+        if (lastOk !== null && run.ok !== lastOk) statusChanges++;
+        lastOk = run.ok;
+      }
+      const flapRate = curr.length > 0 ? statusChanges / curr.length : 0;
+      if (flapRate >= 0.1 && statusChanges >= 3) {
+        anomalyTypes.push('flapping');
+        details.push({
+          type: 'flapping',
+          description: `Monitor is flapping: ${statusChanges} status changes in ${curr.length} checks (${(flapRate * 100).toFixed(0)}% change rate)`,
+          currentValue: statusChanges,
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 4. Failure burst (sudden cluster of failures) ────────────────
+      const recentCurr = curr.slice(-Math.min(10, curr.length));
+      const recentFailRate = recentCurr.length > 0 ? recentCurr.filter((r) => !r.ok).length / recentCurr.length : 0;
+      if (recentFailRate >= 0.5 && recentCurr.length >= 3 && currStats.uptimePct !== null && currStats.uptimePct >= 95) {
+        // Overall period fine but recent spike
+        anomalyTypes.push('failure_burst');
+        details.push({
+          type: 'failure_burst',
+          description: `Recent failure burst: ${recentCurr.filter((r) => !r.ok).length}/${recentCurr.length} of last checks failed`,
+          currentValue: Math.round(recentFailRate * 100),
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 5. Recovery from major outage ────────────────────────────────
+      if (prevStats.uptimePct !== null && currStats.uptimePct !== null) {
+        const improvement = currStats.uptimePct - prevStats.uptimePct;
+        if (prevStats.uptimePct < 90 && currStats.uptimePct >= 99) {
+          anomalyTypes.push('recovered');
+          details.push({
+            type: 'recovered',
+            description: `Recovered from outage (${prevStats.uptimePct}% → ${currStats.uptimePct}% uptime)`,
+            currentValue: currStats.uptimePct,
+            previousValue: prevStats.uptimePct,
+            changePct: improvement,
+          });
+        }
+      }
+
+      // ── 6. Latency improvement (notable) ─────────────────────────────
+      if (currStats.avgLatencyMs !== null && prevStats.avgLatencyMs !== null && prevStats.avgLatencyMs > 0) {
+        const decrease = ((prevStats.avgLatencyMs - currStats.avgLatencyMs) / prevStats.avgLatencyMs) * 100;
+        if (decrease >= 30) {
+          anomalyTypes.push('latency_improvement');
+          details.push({
+            type: 'latency_improvement',
+            description: `Latency improved ${decrease.toFixed(0)}% (${prevStats.avgLatencyMs}ms → ${currStats.avgLatencyMs}ms)`,
+            currentValue: currStats.avgLatencyMs,
+            previousValue: prevStats.avgLatencyMs,
+            changePct: -decrease,
+          });
+        }
+      }
+
+      if (anomalyTypes.length === 0) continue;
+
+      // ── Compute severity ──────────────────────────────────────────────
+      let severity: 'critical' | 'high' | 'medium' | 'low' = 'low';
+      if (
+        anomalyTypes.includes('uptime_regression') &&
+        currStats.uptimePct !== null &&
+        currStats.uptimePct < 90
+      ) {
+        severity = 'critical';
+      } else if (
+        anomalyTypes.includes('uptime_regression') ||
+        anomalyTypes.includes('failure_burst') ||
+        anomalyTypes.includes('currently_degraded')
+      ) {
+        severity = 'high';
+      } else if (anomalyTypes.includes('latency_regression') || anomalyTypes.includes('flapping')) {
+        severity = 'medium';
+      }
+
+      anomalies.push({
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        monitorType: monitor.type,
+        severity,
+        anomalyTypes,
+        details,
+        currentPeriod: currStats,
+        previousPeriod: prevStats,
+      });
+    }
+
+    // Sort: critical first, then high, medium, low
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    anomalies.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return {
+      generatedAt: now.toISOString(),
+      periodHours: hours,
+      totalMonitors: monitors.length,
+      anomaliesFound: anomalies.length,
+      anomalies,
+    };
+  }
+
   async runPlayground(dto: PlaygroundDto, userId: string): Promise<PlaygroundResult> {
     // Rate limit
     const now = Date.now();

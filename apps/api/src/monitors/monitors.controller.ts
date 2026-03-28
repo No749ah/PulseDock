@@ -1876,6 +1876,26 @@ export class MonitorsController {
     return this.monitorsService.fleetHealthReport(req.user.id);
   }
 
+  // ─── Anomaly Report ────────────────────────────────────────────────────
+
+  @Get('anomaly-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fleet-wide anomaly report',
+    description:
+      'Detects significant behavioral changes across all monitors by comparing the current period against the prior period of equal duration. Identifies uptime regressions, latency spikes, flapping, failure bursts, and recoveries. Results sorted by severity (critical → low).',
+  })
+  @ApiQuery({ name: 'hours', required: false, type: Number, enum: [24, 48, 168], description: 'Lookback window in hours: 24 (1d), 48 (2d), or 168 (7d). Default: 24.' })
+  @ApiResponse({ status: 200, description: 'Anomaly report returned.' })
+  anomalyReport(
+    @Req() req: { user: { id: string } },
+    @Query('hours', new DefaultValuePipe(24)) hours: string,
+  ) {
+    const h = parseInt(hours as string, 10);
+    const validH = ([24, 48, 168] as const).includes(h as 24 | 48 | 168) ? (h as 24 | 48 | 168) : 24;
+    return this.monitorsService.anomalyReport(req.user.id, validH);
+  }
+
   // ─── Config Change History ──────────────────────────────────────────────
 
   @Get(':id/config-history')

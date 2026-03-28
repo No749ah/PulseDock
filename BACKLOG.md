@@ -71,6 +71,18 @@
   - [x] **GraphQL monitor detail card** — Config card on monitor detail page showing endpoint, query, data path, expected value for GRAPHQL monitors (matching FTP/IMAP/POP3 pattern).
   - Services restarted. All pages 200.
 
+## Status Summary (2026-03-28 21:25 UTC)
+- **Build/Test:** ✅ Clean build + 4135 API + 757 web + 10 CLI + 12 agent = 4914 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:25 UTC cycle):**
+  - [x] **Fix AppFrame missing title prop** — `monitors/correlation/page.tsx` was missing required `title` prop on `AppFrame`. Fixed: 0 web TS errors.
+  - [x] **13 tests: monitorCorrelation()** — Jaccard-similarity failure-window analysis: empty results for <2 monitors, zero pairs when no failures, similarity=1.0 for identical failure buckets, pairs below 0.1 threshold filtered, partial overlap similarity calculation, union-find grouping at ≥0.4, day-clamping (1–90), sort order.
+  - [x] **11 tests: fleetHealthReport()** — Fleet health aggregation: empty fleet, summary counts, elite/critical tier placement, at-risk detection, coverage gaps (alert channel/SLA/description), top/worst performers, type distribution, grade assignment, disabled monitor counts.
+  - [x] **6 tests: runMonitor() GRAPHQL + TRANSACTION dispatch** — added to `checks.service.spec.ts`: GraphQL success/errors/500, TRANSACTION no-steps (empty config, missing key), saves MonitorRun on failure.
+  - [x] **Committed pending MonitorConfigChange feature** — Prisma schema (`MonitorConfigChange` model), service integration (`computeMonitorDiff`/`buildSummary` calls in `update()`), mock fix in `monitors.service.spec.ts`, frontend config-history tab in `[id]/page.tsx`.
+
 ## Status Summary (2026-03-28 17:25 UTC)
 - **Build/Test:** ✅ Clean build + 4070 API + 757 web + 10 CLI + 12 agent = 4849 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

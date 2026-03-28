@@ -191,6 +191,9 @@ export class MonitorsService {
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      throttleMs: (m as typeof m & { throttleMs?: number | null }).throttleMs ?? null,
+      maxChecksPerHour: (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+      geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
       createdAt: m.createdAt.toISOString(),
     };
   }

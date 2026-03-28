@@ -52,6 +52,7 @@ export interface MonitorItem {
   pinned?: boolean;
   pausedUntil?: string | null;
   mutedUntil?: string | null;
+  geoRegions?: string[];
 }
 
 export interface MonitorRun {

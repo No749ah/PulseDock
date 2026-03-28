@@ -430,6 +430,19 @@ export default function MonitorDetailPage() {
     }
   }, [loading, monitor, chartPeriod, loadChartData]);
 
+  // Load geo stats when geo tab becomes active
+  useEffect(() => {
+    if (activeMainTab !== "geo" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setGeoStatsLoading(true);
+    api<{ regions: GeoRegionStat[]; hasGeoData: boolean }>(`/v1/monitors/${id}/geo-stats`, user.id)
+      .then((data) => setGeoStats(data))
+      .catch(() => setGeoStats({ regions: [], hasGeoData: false }))
+      .finally(() => setGeoStatsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id]);
+
   // Load runs with optional status filter (resets pagination)
   const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
     const user = getUser();
@@ -1165,6 +1178,20 @@ export default function MonitorDetailPage() {
               </span>
             )}
           </button>
+          {/* Geo tab — only if geoRegions configured */}
+          {monitor.geoRegions && monitor.geoRegions.length > 0 && (
+            <button
+              onClick={() => setActiveMainTab("geo")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "geo"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Geo
+            </button>
+          )}
         </div>
 
         {/* SLO Tab Content */}
@@ -2244,6 +2271,72 @@ export default function MonitorDetailPage() {
             </Card>
           );
         })()}
+
+        {/* Geo Distribution Tab */}
+        {activeMainTab === "geo" && (
+          <Card className="p-6 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                Geo Distribution
+              </h2>
+              <p className="text-xs text-text-muted mt-1">
+                Per-region latency and availability for the last 7 days. Regions: {(monitor.geoRegions ?? []).join(", ")}.
+              </p>
+            </div>
+
+            {geoStatsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              </div>
+            ) : !geoStats || !geoStats.hasGeoData ? (
+              <div className="text-center py-10 space-y-2">
+                <Globe className="w-10 h-10 mx-auto text-text-muted opacity-40" />
+                <p className="text-sm text-text-muted">No geo data yet.</p>
+                <p className="text-xs text-text-muted opacity-75">Run some checks to see per-region stats. Checks are tagged with regions in round-robin order.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-text-muted border-b border-border">
+                      <th className="pb-2 pr-4 font-medium">Region</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Total Runs</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Uptime %</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Avg Latency</th>
+                      <th className="pb-2 font-medium text-right">P95 Latency</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {geoStats.regions.map((r) => {
+                      const latencyColor = (ms: number | null) => {
+                        if (ms === null) return "text-text-muted";
+                        if (ms < 200) return "text-success";
+                        if (ms < 500) return "text-warning";
+                        return "text-error";
+                      };
+                      return (
+                        <tr key={r.region} className="hover:bg-white/5 transition-colors">
+                          <td className="py-2.5 pr-4 font-mono text-text-primary">{r.region}</td>
+                          <td className="py-2.5 pr-4 text-right text-text-secondary">{r.totalRuns}</td>
+                          <td className={`py-2.5 pr-4 text-right font-medium ${r.uptimePct >= 99 ? "text-success" : r.uptimePct >= 95 ? "text-warning" : "text-error"}`}>
+                            {r.uptimePct.toFixed(1)}%
+                          </td>
+                          <td className={`py-2.5 pr-4 text-right ${latencyColor(r.avgLatencyMs)}`}>
+                            {r.avgLatencyMs !== null ? `${r.avgLatencyMs}ms` : "—"}
+                          </td>
+                          <td className={`py-2.5 text-right ${latencyColor(r.p95LatencyMs)}`}>
+                            {r.p95LatencyMs !== null ? `${r.p95LatencyMs}ms` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Annotations Tab */}
         {activeMainTab === "annotations" && (

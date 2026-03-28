@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { MonitorsService } from './monitors.service';
 
@@ -17,13 +18,6 @@ function makeService(overrides: {
   // Build a minimal service with only what geoStats uses
   const svc = new MonitorsService(
     prismaMock as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
     null as never,
     null as never,
     null as never,

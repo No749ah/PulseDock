@@ -1,3 +1,14 @@
+## Status Summary (2026-03-28 08:05 UTC)
+- **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:05 UTC cycle):**
+  - [x] **Fix TS errors** — `alerts.controller.ts` used wrong `alertDeliveryLogs` field name (should be `deliveryLogs`). Fixed + updated spec mock. `activity/page.tsx` getUser called as Promise (sync fn). `ssl/page.tsx` Badge `secondary` variant + toast signature + AppFrame missing title + TableHeader children optionality. `mttr/page.tsx` showToast shape mismatch. `monitors/[id]/components/types.ts` missing `pinned`/`redirectChain`/`timeoutMs` fields. `monitors/types.ts` missing `MonitorFormDataExtended` fields. 0 TS errors after fixes.
+  - [x] **Monitor health column visibility + sort** — Health column now in `visibleCols` toggle system (default on), sortable by click on header. Sort by health score uses `healthScores[id].score` with `-1` fallback for no-data. Column picker includes Health. `visColCount` colspan calculation updated.
+  - [x] **MTTR/MTTF reliability analytics page** — `/mttr` page with trend chart, per-monitor breakdown table (incidents, downtime, MTTR, MTTF), period selector (7d/30d/90d/1y), sortable columns, worst performers highlighted. `GET /v1/incidents/mttr-report` API + 5 new tests.
+  - [x] **CT Log monitor type** — Certificate Transparency monitoring via crt.sh API. Tracks new certificates issued for a domain. Alerts on unexpected issuance.
+
 ## Status Summary (2026-03-28 07:55 UTC)
 - **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -25,6 +25,9 @@ enum MonitorType {
   SMTP
   BROWSER
   WHOIS
+  FTP
+  IMAP
+  POP3
 }
 
 model User {

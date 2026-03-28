@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 21:21 UTC)
+- **Build/Test:** ✅ Clean build + 4135 API + 757 web + 10 CLI + 12 agent = 4914 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 31+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:21 UTC cycle):**
+  - [x] **Monitor Config Change History** — `MonitorConfigChange` Prisma model (migration `add_monitor_config_history`). `computeMonitorDiff()` + `buildSummary()` pure helpers tracking 30+ scalar fields. Every `monitor.update()` call now records a field-level diff when ≥1 tracked field changes. `GET /v1/monitors/:id/config-history` API endpoint (limit=50, max 200, newest first). "Config History" tab on monitor detail page: expandable entries showing which fields changed, with strikethrough-red (before) and green (after) diff table, human-readable field labels. 11 unit tests for pure helpers. Full enterprise-grade audit trail.
+
 ## Status Summary (2026-03-28 20:20 UTC)
 - **Build/Test:** ✅ Clean build + 4095 API + 757 web + 10 CLI + 12 agent = 4874 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

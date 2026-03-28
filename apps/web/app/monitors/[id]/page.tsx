@@ -3234,7 +3234,8 @@ export default function MonitorDetailPage() {
          monitor.scheduleEnabled ||
          (monitor.confirmations != null && monitor.confirmations > 1) ||
          monitor.autoIncident ||
-         monitor.runbookUrl ? (
+         monitor.runbookUrl ||
+         (monitor.timeoutMs && monitor.timeoutMs > 0) ? (
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
@@ -3287,6 +3288,13 @@ export default function MonitorDetailPage() {
                   <span className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">Auto Incidents</span>
                   <span className="text-text-primary font-medium capitalize">{(monitor.autoIncidentSeverity ?? "MEDIUM").toLowerCase()} severity</span>
                   <span className="text-[10px] text-text-secondary">Auto-creates on outage</span>
+                </div>
+              )}
+              {monitor.timeoutMs && monitor.timeoutMs > 0 && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Request Timeout</span>
+                  <span className="text-text-primary font-medium">{monitor.timeoutMs}ms</span>
+                  <span className="text-[10px] text-text-secondary">Custom timeout override</span>
                 </div>
               )}
               {monitor.runbookUrl && (

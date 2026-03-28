@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 02:15 UTC)
+- **Build/Test:** ✅ Clean build + 3745 API + 10 e2e + 12 agent = 3767 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (02:15 UTC cycle):**
+  - **Multi-Monitor Comparison** — `POST /v1/monitors/compare` (2–5 monitors, configurable period). Frontend `/monitors/compare` page: monitor picker, period selector, comparison table (uptime%, avg latency, incidents, downtime, MTTR, total checks), uptime bar chart, latency bar chart, "Best"/"Needs attention" badges. Sidebar nav link added. 13 new tests.
+
 ## Status Summary (2026-03-28 01:02 UTC)
 - **Build/Test:** ✅ Clean build + 3732 API (+10 rocketchat/apprise tests) + 756 web + 10 e2e + 12 agent = 4510 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -119,6 +127,10 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-28 02:15 UTC)
+
+- [x] **Multi-Monitor Comparison** — `POST /v1/monitors/compare` (2–5 monitors, period 1d/7d/30d/90d). Frontend `/monitors/compare` page: multi-select monitor picker, period selector, comparison table (uptime%, avg latency, incidents, downtime, MTTR, total checks), uptime progress bar chart, latency bar chart (normalized to max), "Best"/"Needs attention" badges on top/bottom performers. Sidebar nav link. 13 new tests. *(2026-03-28)*
 
 ## Recently Completed (2026-03-27 16:20 UTC)
 

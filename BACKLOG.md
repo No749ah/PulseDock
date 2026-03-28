@@ -1,3 +1,14 @@
+## Status Summary (2026-03-28 17:45 UTC)
+- **Build/Test:** ✅ Clean build + 4077 API + 757 web + 10 CLI + 12 agent = 4856 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 24 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (17:45 UTC cycle):**
+  - [x] **Monitor Infrastructure Topology** — `GET /v1/monitors/dependency-graph` returns full graph with nodes (live status, 7d uptime, latencyMs, isMuted, blast radius inDegree, outDegree) and directed edges. `/monitors/dependencies` frontend: SVG topology graph with hover highlights (blast radius, dependency chains), status-colored nodes, layered layout algorithm, isolated monitors grid, status legend. Added to Monitors sidebar nav as "Topology". 7 new unit tests.
+  - [x] **Alert Analytics period selector** — `GET /v1/alert-channels/analytics?days=N` now accepts 7/14/30/90 day windows. Frontend: pill switcher (7d/14d/30d/90d), period reflected in chart title and top-monitors label.
+  - [x] **Alert Delivery CSV Export** — `GET /v1/alert-channels/deliveries/export?days=N` — exports up to 10k delivery log rows as CSV. "Export CSV" button added to both Alert Analytics and Alert History pages.
+  - Services restarted. All 24 pages 200.
+
 ## Status Summary (2026-03-28 16:15 UTC)
 - **Build/Test:** ✅ Clean build + 4049 API + 757 web + 10 CLI + 12 agent = 4828 tests; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

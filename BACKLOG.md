@@ -1,3 +1,14 @@
+## Status Summary (2026-03-28 14:37 UTC)
+- **Build/Test:** ✅ Clean build + 4806 tests (193 files); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (14:37 UTC cycle):**
+  - [x] **OpenAPI/Swagger import** — (from previous subagent) `POST /v1/monitors/import-from-openapi/preview` + `POST /v1/monitors/import-from-openapi`. Backend: pure JSON/YAML parser (no new deps), OpenAPI 3.x + Swagger 2.x support, `{param}` placeholder replacement, method→expectedStatus mapping. Frontend: 3-step modal (URL/paste → checkbox table → success). 7 new tests.
+  - [x] **Fix monitor type filter gaps** — Added `CT_LOG` and `GRAPHQL` to `filterTypes` default set in monitors page (3 places). Added `FTP`, `IMAP`, `POP3`, `CT_LOG`, `GRAPHQL` to `formatMonitorType()`. Added all missing types to AdvancedFiltersPanel type checkboxes.
+  - [x] **GraphQL monitor detail card** — Config card on monitor detail page showing endpoint, query, data path, expected value for GRAPHQL monitors (matching FTP/IMAP/POP3 pattern).
+  - Services restarted. All pages 200.
+
 ## Status Summary (2026-03-28 14:25 UTC)
 - **Build/Test:** ✅ Clean build + 4028 API + 756 web + 10 CLI + 12 agent = 4806 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -191,6 +191,25 @@ function MonitorsPageInner() {
   // quick add (bulk URL) modal
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
+  // config export modal
+  const [showConfigExport, setShowConfigExport] = useState(false);
+  const [configExportFormat, setConfigExportFormat] = useState<"json" | "yaml">("json");
+  const [configExportIncludeAlerts, setConfigExportIncludeAlerts] = useState(false);
+  const [configExporting, setConfigExporting] = useState(false);
+
+  // config import modal
+  const [showConfigImport, setShowConfigImport] = useState(false);
+  const [configImportContent, setConfigImportContent] = useState("");
+  const [configImportFormat, setConfigImportFormat] = useState<"json" | "yaml">("json");
+  const [configImportDryRun, setConfigImportDryRun] = useState(false);
+  const [configImportOverwrite, setConfigImportOverwrite] = useState(false);
+  const [configImporting, setConfigImporting] = useState(false);
+  const configImportFileRef = useRef<HTMLInputElement>(null);
+  const [configImportResult, setConfigImportResult] = useState<{
+    created: number; updated: number; skipped: number; errors: string[];
+    monitors: { name: string; id?: string; action: string; error?: string }[];
+  } | null>(null);
+
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [monitorDeps, setMonitorDeps] = useState<Map<string, { id: string; name: string; type: string }[]>>(new Map());
@@ -990,6 +1009,76 @@ function MonitorsPageInner() {
     }
   };
 
+  const handleConfigExport = async () => {
+    if (configExporting) return;
+    setConfigExporting(true);
+    try {
+      const selectedList = Array.from(selectedIds);
+      const params = new URLSearchParams({ format: configExportFormat });
+      if (configExportIncludeAlerts) params.set("includeAlertChannels", "true");
+      if (selectedList.length > 0) params.set("ids", selectedList.join(","));
+
+      const resp = await fetch(`${API_BASE}/v1/monitors/export?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!resp.ok) throw new Error(`Export failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.${configExportFormat}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowConfigExport(false);
+      success(`Monitors exported as ${configExportFormat.toUpperCase()}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setConfigExporting(false);
+    }
+  };
+
+  const handleConfigImport = async () => {
+    if (configImporting || !configImportContent.trim()) return;
+    setConfigImporting(true);
+    setConfigImportResult(null);
+    try {
+      const result = await api<{
+        created: number; updated: number; skipped: number; errors: string[];
+        monitors: { name: string; id?: string; action: string; error?: string }[];
+      }>("/v1/monitors/import-config", user?.id, {
+        method: "POST",
+        body: JSON.stringify({
+          format: configImportFormat,
+          content: configImportContent,
+          dryRun: configImportDryRun,
+          overwriteExisting: configImportOverwrite,
+        }),
+      });
+      setConfigImportResult(result);
+      if (!configImportDryRun) {
+        const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+        setMonitors(monitorsData);
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setConfigImporting(false);
+    }
+  };
+
+  const handleConfigImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    setConfigImportContent(text);
+    if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
+      setConfigImportFormat("yaml");
+    } else {
+      setConfigImportFormat("json");
+    }
+  };
+
   const unassignedChannels = allChannels.filter(
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
@@ -1309,6 +1398,26 @@ function MonitorsPageInner() {
               >
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">Import from…</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowConfigExport(true); }}
+                className="flex items-center gap-2"
+                title="Export monitor configs as JSON or YAML (GitOps)"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export Config</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowConfigImport(true); setConfigImportResult(null); setConfigImportContent(""); }}
+                className="flex items-center gap-2"
+                title="Import monitor configs from JSON or YAML"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import Config</span>
               </Button>
               <Button
                 variant="secondary"
@@ -2332,6 +2441,140 @@ function MonitorsPageInner() {
           onClose={() => setShowQuickAdd(false)}
           onSubmit={handleQuickAdd}
         />
+      )}
+
+      {/* ── Config Export Modal ─────────────────────────────────────────── */}
+      {showConfigExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowConfigExport(false)}>
+          <div className="bg-surface border border-border rounded-xl w-full max-w-md p-6 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-primary">Export Monitor Config</h2>
+              <button onClick={() => setShowConfigExport(false)} className="text-muted hover:text-primary"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-muted">Export monitor configurations as JSON or YAML for GitOps, backups, or migrations.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted uppercase tracking-wide">Format</label>
+                <div className="flex gap-2 mt-1">
+                  {(["json", "yaml"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setConfigExportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${configExportFormat === f ? "border-accent bg-accent/10 text-accent" : "border-border text-muted hover:border-accent/40"}`}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={configExportIncludeAlerts} onChange={e => setConfigExportIncludeAlerts(e.target.checked)} className="w-4 h-4 accent-accent" />
+                <span className="text-sm text-secondary">Include alert channel names</span>
+              </label>
+              {selectedIds.size > 0 && (
+                <p className="text-xs text-accent">↳ Exporting {selectedIds.size} selected monitor{selectedIds.size !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowConfigExport(false)} className="flex-1">Cancel</Button>
+              <Button size="sm" onClick={handleConfigExport} disabled={configExporting} className="flex-1 flex items-center justify-center gap-2">
+                <Download className="w-4 h-4" />
+                {configExporting ? "Exporting…" : selectedIds.size > 0 ? `Export ${selectedIds.size} Selected` : "Export All"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Config Import Modal ─────────────────────────────────────────── */}
+      {showConfigImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowConfigImport(false)}>
+          <div className="bg-surface border border-border rounded-xl w-full max-w-lg p-6 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-primary">Import Monitor Config</h2>
+              <button onClick={() => setShowConfigImport(false)} className="text-muted hover:text-primary"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-muted">Import monitors from a JSON or YAML config file (GitOps format).</p>
+
+            {!configImportResult ? (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  {(["json", "yaml"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setConfigImportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${configImportFormat === f ? "border-accent bg-accent/10 text-accent" : "border-border text-muted hover:border-accent/40"}`}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input type="file" ref={configImportFileRef} accept=".json,.yaml,.yml" className="hidden" onChange={handleConfigImportFile} />
+                  <Button variant="secondary" size="sm" onClick={() => configImportFileRef.current?.click()} className="flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Choose File
+                  </Button>
+                  <span className="text-xs text-muted">or paste below</span>
+                </div>
+
+                <textarea
+                  value={configImportContent}
+                  onChange={e => setConfigImportContent(e.target.value)}
+                  placeholder={`Paste ${configImportFormat.toUpperCase()} config here…`}
+                  rows={8}
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm font-mono text-secondary placeholder:text-muted focus:outline-none focus:border-accent resize-none"
+                />
+
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={configImportDryRun} onChange={e => setConfigImportDryRun(e.target.checked)} className="w-4 h-4 accent-accent" />
+                    <span className="text-sm text-secondary">Dry Run</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={configImportOverwrite} onChange={e => setConfigImportOverwrite(e.target.checked)} className="w-4 h-4 accent-accent" />
+                    <span className="text-sm text-secondary">Overwrite existing</span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button variant="secondary" size="sm" onClick={() => setShowConfigImport(false)} className="flex-1">Cancel</Button>
+                  <Button size="sm" onClick={handleConfigImport} disabled={configImporting || !configImportContent.trim()} className="flex-1 flex items-center justify-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    {configImporting ? "Importing…" : configImportDryRun ? "Dry Run" : "Import"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex gap-4 text-sm">
+                  <span className="text-green-400">✓ {configImportResult.created} created</span>
+                  {configImportResult.updated > 0 && <span className="text-blue-400">↺ {configImportResult.updated} updated</span>}
+                  <span className="text-muted">— {configImportResult.skipped} skipped</span>
+                  {configImportResult.errors.length > 0 && <span className="text-red-400">✕ {configImportResult.errors.length} errors</span>}
+                </div>
+                {configImportDryRun && <p className="text-xs text-amber-400">Dry run — no changes were made.</p>}
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                  {configImportResult.monitors.map((m, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                      <span className="text-secondary truncate">{m.name}</span>
+                      <span className={`text-xs ml-2 shrink-0 ${m.action === "created" ? "text-green-400" : m.action === "updated" ? "text-blue-400" : m.action === "skipped" ? "text-muted" : "text-red-400"}`}>
+                        {m.action}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {configImportResult.errors.length > 0 && (
+                  <div className="text-xs text-red-400 space-y-1">
+                    {configImportResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
+                )}
+                <Button size="sm" onClick={() => setShowConfigImport(false)} className="w-full">Done</Button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </AppFrame>
   );

@@ -396,13 +396,27 @@ export class MonitorsController {
   }
 
   @Get('export')
-  @ApiOperation({
-    summary: 'Export monitors',
-    description: 'Returns all monitors as a portable JSON document (no IDs or timestamps). Suitable for backup and re-import.',
-  })
-  @ApiResponse({ status: 200, description: 'Export document returned.' })
-  exportMonitors(@Req() req: { user: { id: string } }) {
-    return this.monitorsService.exportMonitors(req.user.id);
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Export monitor configurations as JSON or YAML' })
+  @ApiQuery({ name: 'format', required: false, description: 'json (default) or yaml' })
+  @ApiQuery({ name: 'ids', required: false, description: 'Comma-separated monitor IDs to export (omit = all)' })
+  @ApiQuery({ name: 'includeAlertChannels', required: false, description: 'Include alert channel names (default: false)' })
+  async exportMonitorsConfig(
+    @Req() req: { user: { id: string } },
+    @Res() res: Response,
+    @Query('format') format?: string,
+    @Query('ids') ids?: string,
+    @Query('includeAlertChannels') includeAlertChannels?: string,
+  ) {
+    const result = await this.monitorsService.exportMonitorsConfig(req.user.id, {
+      format: format === 'yaml' ? 'yaml' : 'json',
+      ids: ids ? ids.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+      includeAlertChannels: includeAlertChannels === 'true',
+    });
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(result.content);
   }
 
   @Post('import')
@@ -414,6 +428,23 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Import result returned.' })
   importMonitors(@Req() req: { user: { id: string } }, @Body() body: ImportMonitorsDto) {
     return this.monitorsService.importMonitors(req.user.id, body.monitors);
+  }
+
+  @Post('import-config')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Import monitor configurations from JSON or YAML' })
+  @ApiResponse({ status: 200, description: 'Import result returned.' })
+  importMonitorsConfig(
+    @Req() req: { user: { id: string } },
+    @Body() body: { format: string; content: string; dryRun?: boolean; overwriteExisting?: boolean },
+  ) {
+    return this.monitorsService.importMonitorsConfig(req.user.id, {
+      format: body.format === 'yaml' ? 'yaml' : 'json',
+      content: body.content,
+      dryRun: body.dryRun ?? false,
+      overwriteExisting: body.overwriteExisting ?? false,
+    });
   }
 
   @Post('import-external')

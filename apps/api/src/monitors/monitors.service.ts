@@ -507,22 +507,30 @@ export class MonitorsService {
    * @param userId - The authenticated user's ID
    * @returns Export envelope with version, timestamp, and monitor list
    */
-  async exportMonitors(userId: string) {
-    const monitors = await this.list(userId);
-    return {
-      version: '1',
-      exportedAt: new Date().toISOString(),
-      monitors: monitors.map((m) => ({
-        name: m.name,
-        type: m.type,
-        target: m.target,
-        intervalSec: m.intervalSec,
-        timeoutMs: m.timeoutMs,
-        confirmations: m.confirmations,
-        config: m.config,
-        enabled: m.enabled,
-      })),
-    };
+  async exportMonitors(userId: string, opts?: { format?: 'json' | 'yaml'; ids?: string[]; includeAlertChannels?: boolean }) {
+    // Legacy: called without opts returns plain JSON object for backward compat
+    if (!opts || (!opts.format && !opts.ids && !opts.includeAlertChannels)) {
+      const monitors = await this.list(userId);
+      return {
+        version: '1',
+        exportedAt: new Date().toISOString(),
+        monitors: monitors.map((m) => ({
+          name: m.name,
+          type: m.type,
+          target: m.target,
+          intervalSec: m.intervalSec,
+          timeoutMs: m.timeoutMs,
+          confirmations: m.confirmations,
+          config: m.config,
+          enabled: m.enabled,
+        })),
+      };
+    }
+    return this.exportMonitorsConfig(userId, {
+      format: opts.format ?? 'json',
+      ids: opts.ids,
+      includeAlertChannels: opts.includeAlertChannels ?? false,
+    });
   }
 
   /**
@@ -2957,6 +2965,138 @@ export class MonitorsService {
       warning,
       healthy,
       certs,
+    };
+  }
+
+  // ─── Export / Import (GitOps) ─────────────────────────────────────────────
+
+  /**
+   * Exports monitor configurations as JSON or YAML (GitOps format).
+   */
+  async exportMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; ids?: string[]; includeAlertChannels: boolean }) {
+    const where = opts.ids?.length ? { userId, id: { in: opts.ids } } : { userId };
+    const monitors = await this.prisma.monitor.findMany({
+      where,
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { name: true } } } },
+        monitorTags: { include: { tag: true } },
+        folder: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const exported = monitors.map(m => ({
+      name: m.name,
+      type: m.type,
+      target: m.target,
+      intervalSec: m.intervalSec,
+      enabled: m.enabled,
+      timeoutMs: m.timeoutMs,
+      retryCount: m.retryCount ?? 0,
+      confirmations: m.confirmations ?? 1,
+      tags: m.monitorTags.map((t: { tag: { name: string } }) => t.tag.name),
+      folder: m.folder?.name ?? null,
+      config: (m.configJson ?? {}) as Record<string, unknown>,
+      slaTarget: m.slaTarget ?? null,
+      ...(opts.includeAlertChannels && {
+        alertChannelNames: m.monitorAlerts.map((ma: { alertChannel: { name: string } }) => ma.alertChannel.name),
+      }),
+    }));
+
+    const payload = { version: '1', exportedAt: new Date().toISOString(), monitors: exported };
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (opts.format === 'yaml') {
+      const yaml = await import('js-yaml');
+      return {
+        content: yaml.dump(payload),
+        contentType: 'application/yaml',
+        filename: `pulsedock-monitors-${dateStr}.yaml`,
+      };
+    }
+
+    return {
+      content: JSON.stringify(payload, null, 2),
+      contentType: 'application/json',
+      filename: `pulsedock-monitors-${dateStr}.json`,
+    };
+  }
+
+  /**
+   * Imports monitor configurations from a JSON or YAML config string.
+   */
+  async importMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; content: string; dryRun?: boolean; overwriteExisting?: boolean }) {
+    let parsed: { version: string; monitors: unknown[] };
+
+    try {
+      if (opts.format === 'yaml') {
+        const yaml = await import('js-yaml');
+        parsed = yaml.load(opts.content) as typeof parsed;
+      } else {
+        parsed = JSON.parse(opts.content) as typeof parsed;
+      }
+    } catch {
+      throw new BadRequestException('Invalid config format — could not parse JSON/YAML');
+    }
+
+    if (!parsed?.monitors || !Array.isArray(parsed.monitors)) {
+      throw new BadRequestException('Invalid config: missing monitors array');
+    }
+
+    const results: { name: string; id?: string; action: 'created' | 'updated' | 'skipped' | 'error'; error?: string }[] = [];
+
+    for (const raw of parsed.monitors) {
+      const m = raw as Record<string, unknown>;
+      if (!m.name || !m.type || !m.target) {
+        results.push({ name: String(m.name ?? 'unknown'), action: 'error', error: 'Missing required fields: name, type, target' });
+        continue;
+      }
+
+      const existing = await this.prisma.monitor.findFirst({ where: { userId, name: String(m.name) } });
+
+      if (existing && !opts.overwriteExisting) {
+        results.push({ name: String(m.name), id: existing.id, action: 'skipped' });
+        continue;
+      }
+
+      if (opts.dryRun) {
+        results.push({ name: String(m.name), action: existing ? 'updated' : 'created' });
+        continue;
+      }
+
+      const data = {
+        userId,
+        name: String(m.name),
+        type: String(m.type) as MonitorType,
+        target: String(m.target),
+        intervalSec: Number(m.intervalSec ?? 60),
+        enabled: Boolean(m.enabled ?? true),
+        timeoutMs: Number(m.timeoutMs ?? 5000),
+        retryCount: Number(m.retryCount ?? 0),
+        confirmations: Number(m.confirmations ?? 1),
+        slaTarget: m.slaTarget ? Number(m.slaTarget) : null,
+        configJson: ((m.config as Record<string, unknown>) ?? {}) as Prisma.InputJsonValue,
+      };
+
+      try {
+        if (existing && opts.overwriteExisting) {
+          const updated = await this.prisma.monitor.update({ where: { id: existing.id }, data });
+          results.push({ name: String(m.name), id: updated.id, action: 'updated' });
+        } else {
+          const created = await this.prisma.monitor.create({ data });
+          results.push({ name: String(m.name), id: created.id, action: 'created' });
+        }
+      } catch (e) {
+        results.push({ name: String(m.name), action: 'error', error: e instanceof Error ? e.message : 'Unknown error' });
+      }
+    }
+
+    return {
+      created: results.filter(r => r.action === 'created').length,
+      updated: results.filter(r => r.action === 'updated').length,
+      skipped: results.filter(r => r.action === 'skipped').length,
+      errors: results.filter(r => r.action === 'error').map(r => `${r.name}: ${r.error}`),
+      monitors: results,
     };
   }
 

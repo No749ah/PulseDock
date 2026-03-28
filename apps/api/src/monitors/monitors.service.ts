@@ -5229,6 +5229,294 @@ export class MonitorsService {
 
     return { monitors: monitors.map(m => ({ id: m.id, name: m.name, type: m.type })), pairs, groups };
   }
+
+
+  // ─── Fleet Health Report ─────────────────────────────────────────────────
+
+  /**
+   * Aggregates a comprehensive health overview of the entire monitor fleet.
+   * Returns reliability tiers, risk monitors, incident velocity, coverage gaps,
+   * type distribution, and fleet-level score.
+   */
+  async fleetHealthReport(userId: string): Promise<{
+    generatedAt: string;
+    fleetScore: number;
+    fleetGrade: string;
+    summary: {
+      total: number;
+      enabled: number;
+      up: number;
+      degraded: number;
+      down: number;
+      noData: number;
+    };
+    reliabilityTiers: {
+      tier: string;
+      label: string;
+      count: number;
+      color: string;
+      monitors: Array<{ id: string; name: string; uptimePct: number; score: number; grade: string }>;
+    }[];
+    atRisk: Array<{
+      id: string;
+      name: string;
+      reason: string;
+      severity: 'critical' | 'high' | 'medium';
+      uptimePct: number;
+      score: number;
+    }>;
+    incidentVelocity: {
+      last7d: number;
+      last30d: number;
+      trend: 'improving' | 'stable' | 'worsening';
+      weeklyBreakdown: Array<{ week: string; count: number }>;
+    };
+    typeDistribution: Array<{ type: string; count: number; avgUptime: number }>;
+    coverageGaps: {
+      noAlertChannel: number;
+      noSlaTarget: number;
+      noDescription: number;
+      totalGapScore: number;
+    };
+    topPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+    worstPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+  }> {
+    const now = new Date();
+    const since30d = new Date(now.getTime() - 30 * 86_400_000);
+    const since7d = new Date(now.getTime() - 7 * 86_400_000);
+
+    // Load all monitors
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        enabled: true,
+        slaTarget: true,
+        description: true,
+        monitorAlerts: { select: { monitorId: true } },
+      },
+    });
+
+    const total = monitors.length;
+    const enabled = monitors.filter((m) => m.enabled).length;
+
+    // Load last 30d runs for all monitors in one query
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { userId, checkedAt: { gte: since30d } },
+      select: { monitorId: true, ok: true, checkedAt: true, latencyMs: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by monitorId
+    const runsByMonitor = new Map<string, typeof allRuns>();
+    for (const run of allRuns) {
+      if (!runsByMonitor.has(run.monitorId)) runsByMonitor.set(run.monitorId, []);
+      runsByMonitor.get(run.monitorId)!.push(run);
+    }
+
+    // Compute per-monitor stats
+    interface MonitorStats {
+      id: string;
+      name: string;
+      type: string;
+      uptimePct: number;
+      score: number;
+      grade: string;
+      hasAlertChannel: boolean;
+      hasSlaTarget: boolean;
+      hasDescription: boolean;
+      lastStatus: 'up' | 'degraded' | 'down' | 'noData';
+    }
+
+    const statsMap: MonitorStats[] = [];
+
+    for (const m of monitors) {
+      if (!m.enabled) continue;
+      const runs = runsByMonitor.get(m.id) ?? [];
+      const recentRuns = runs.filter((r) => r.checkedAt >= since7d);
+
+      let uptimePct = 100;
+      let lastStatus: MonitorStats['lastStatus'] = 'noData';
+
+      if (runs.length > 0) {
+        const ok30d = runs.filter((r) => r.ok).length;
+        uptimePct = Math.round((ok30d / runs.length) * 10000) / 100;
+        const last = runs[runs.length - 1];
+        lastStatus = last.ok ? 'up' : 'down';
+      }
+
+      if (recentRuns.length > 0) {
+        const recentFailed = recentRuns.filter((r) => !r.ok).length;
+        const recentPct = recentFailed / recentRuns.length;
+        if (recentPct > 0 && recentPct < 0.5) lastStatus = 'degraded';
+      }
+
+      // Score: simplified health (0–100)
+      const clamped = Math.max(0, uptimePct - 90);
+      const score = runs.length === 0 ? 50 : Math.min(100, Math.round((clamped / 10) * 100));
+
+      const grade =
+        score >= 95 ? 'A' :
+        score >= 85 ? 'B' :
+        score >= 70 ? 'C' :
+        score >= 55 ? 'D' : 'F';
+
+      statsMap.push({
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        uptimePct,
+        score,
+        grade,
+        hasAlertChannel: m.monitorAlerts.length > 0,
+        hasSlaTarget: m.slaTarget !== null,
+        hasDescription: !!m.description?.trim(),
+        lastStatus,
+      });
+    }
+
+    // Fleet summary
+    const up = statsMap.filter((s) => s.lastStatus === 'up').length;
+    const degraded = statsMap.filter((s) => s.lastStatus === 'degraded').length;
+    const down = statsMap.filter((s) => s.lastStatus === 'down').length;
+    const noData = statsMap.filter((s) => s.lastStatus === 'noData').length;
+
+    // Fleet score: weighted average
+    const fleetScore = statsMap.length === 0 ? 100 :
+      Math.round(statsMap.reduce((acc, s) => acc + s.score, 0) / statsMap.length);
+    const fleetGrade =
+      fleetScore >= 95 ? 'A' :
+      fleetScore >= 85 ? 'B' :
+      fleetScore >= 70 ? 'C' :
+      fleetScore >= 55 ? 'D' : 'F';
+
+    // Reliability tiers
+    const tierDefs = [
+      { tier: 'elite', label: 'Elite (≥99.9%)', min: 99.9, color: 'green' },
+      { tier: 'strong', label: 'Strong (99–99.9%)', min: 99, color: 'blue' },
+      { tier: 'acceptable', label: 'Acceptable (95–99%)', min: 95, color: 'yellow' },
+      { tier: 'at-risk', label: 'At Risk (90–95%)', min: 90, color: 'orange' },
+      { tier: 'critical', label: 'Critical (<90%)', min: 0, color: 'red' },
+    ];
+
+    const reliabilityTiers = tierDefs.map((td, i) => {
+      const maxUptime = i === 0 ? 100 : tierDefs[i - 1].min;
+      const inTier = statsMap.filter(
+        (s) => s.uptimePct >= td.min && s.uptimePct < (i === 0 ? 101 : maxUptime),
+      );
+      return {
+        tier: td.tier,
+        label: td.label,
+        count: inTier.length,
+        color: td.color,
+        monitors: inTier.slice(0, 5).map((s) => ({
+          id: s.id,
+          name: s.name,
+          uptimePct: s.uptimePct,
+          score: s.score,
+          grade: s.grade,
+        })),
+      };
+    });
+
+    // At-risk monitors
+    const atRisk = statsMap
+      .filter((s) => s.uptimePct < 99.9 || s.lastStatus === 'down' || s.lastStatus === 'degraded')
+      .sort((a, b) => a.uptimePct - b.uptimePct)
+      .slice(0, 10)
+      .map((s) => {
+        let reason = '';
+        let severity: 'critical' | 'high' | 'medium' = 'medium';
+        if (s.lastStatus === 'down') { reason = 'Currently down'; severity = 'critical'; }
+        else if (s.lastStatus === 'degraded') { reason = 'Intermittent failures'; severity = 'high'; }
+        else if (s.uptimePct < 95) { reason = `Low uptime: ${s.uptimePct}%`; severity = 'high'; }
+        else { reason = `Uptime below 99.9%: ${s.uptimePct}%`; severity = 'medium'; }
+        return { id: s.id, name: s.name, reason, severity, uptimePct: s.uptimePct, score: s.score };
+      });
+
+    // Incident velocity (incidents created in last 30d, grouped by week)
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId, createdAt: { gte: since30d } },
+      select: { createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const last7dIncidents = incidents.filter((i) => i.createdAt >= since7d).length;
+    const last30dIncidents = incidents.length;
+
+    // Weekly breakdown (last 4 weeks)
+    const weeklyBreakdown: Array<{ week: string; count: number }> = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekStart = new Date(now.getTime() - (w + 1) * 7 * 86_400_000);
+      const weekEnd = new Date(now.getTime() - w * 7 * 86_400_000);
+      const label = `${weekStart.toISOString().slice(5, 10)}`;
+      const count = incidents.filter((i) => i.createdAt >= weekStart && i.createdAt < weekEnd).length;
+      weeklyBreakdown.push({ week: label, count });
+    }
+
+    // Trend: compare last 7d incidents vs prior 7d
+    const prior7dStart = new Date(now.getTime() - 14 * 86_400_000);
+    const prior7dIncidents = incidents.filter(
+      (i) => i.createdAt >= prior7dStart && i.createdAt < since7d,
+    ).length;
+    const incidentTrend =
+      last7dIncidents < prior7dIncidents ? 'improving' :
+      last7dIncidents > prior7dIncidents ? 'worsening' : 'stable';
+
+    // Type distribution
+    const typeMap = new Map<string, { count: number; totalUptime: number }>();
+    for (const s of statsMap) {
+      if (!typeMap.has(s.type)) typeMap.set(s.type, { count: 0, totalUptime: 0 });
+      const entry = typeMap.get(s.type)!;
+      entry.count++;
+      entry.totalUptime += s.uptimePct;
+    }
+    const typeDistribution = Array.from(typeMap.entries())
+      .map(([type, v]) => ({
+        type,
+        count: v.count,
+        avgUptime: v.count > 0 ? Math.round((v.totalUptime / v.count) * 100) / 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Coverage gaps
+    const noAlertChannel = statsMap.filter((s) => !s.hasAlertChannel).length;
+    const noSlaTarget = statsMap.filter((s) => !s.hasSlaTarget).length;
+    const noDescription = statsMap.filter((s) => !s.hasDescription).length;
+    const totalGapScore = statsMap.length === 0 ? 0 :
+      Math.round(((noAlertChannel * 2 + noSlaTarget + noDescription) / (statsMap.length * 4)) * 100);
+
+    // Top/worst performers
+    const sorted = [...statsMap].filter((s) => s.lastStatus !== 'noData').sort((a, b) => b.uptimePct - a.uptimePct);
+    const topPerformers = sorted.slice(0, 5).map((s) => ({
+      id: s.id, name: s.name, uptimePct: s.uptimePct, grade: s.grade,
+    }));
+    const worstPerformers = sorted.slice(-5).reverse().map((s) => ({
+      id: s.id, name: s.name, uptimePct: s.uptimePct, grade: s.grade,
+    }));
+
+    return {
+      generatedAt: now.toISOString(),
+      fleetScore,
+      fleetGrade,
+      summary: { total, enabled, up, degraded, down, noData },
+      reliabilityTiers,
+      atRisk,
+      incidentVelocity: {
+        last7d: last7dIncidents,
+        last30d: last30dIncidents,
+        trend: incidentTrend,
+        weeklyBreakdown,
+      },
+      typeDistribution,
+      coverageGaps: { noAlertChannel, noSlaTarget, noDescription, totalGapScore },
+      topPerformers,
+      worstPerformers,
+    };
+  }
+
 }
 
 export interface SuggestedMonitor {

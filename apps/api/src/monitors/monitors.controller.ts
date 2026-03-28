@@ -1827,4 +1827,18 @@ export class MonitorsController {
   ) {
     return this.monitorsService.simulateAlerts(req.user.id, id, body);
   }
+
+  // ─── Fleet Health Report ────────────────────────────────────────────────
+
+  @Get('fleet-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fleet health report',
+    description:
+      'Returns an executive-level health overview of the entire monitor fleet: fleet score/grade, reliability tiers, at-risk monitors, incident velocity trend, type distribution, coverage gaps, and top/worst performers.',
+  })
+  @ApiResponse({ status: 200, description: 'Fleet health report returned.' })
+  fleetHealthReport(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.fleetHealthReport(req.user.id);
+  }
 }

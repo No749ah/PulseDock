@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 08:35 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:35 UTC cycle):**
+  - [x] **Monitor Geo-Distribution (full)** — Prisma migration: `geoRegions String[]` on Monitor, `geoRegion String?` on MonitorRun. Backend: round-robin geo tagging in ChecksService, `GET /v1/monitors/:id/geo-stats?periodDays=7` returns per-region uptime%, avgLatencyMs, p95LatencyMs. DTOs with validation (max 10 regions, 50 chars each). Frontend: Geo Regions comma input in Advanced Settings of monitor form. Geo tab on monitor detail page with per-region stats table (color-coded latency). 5 new geo-stats unit tests, all passing.
+
 ## Status Summary (2026-03-28 08:28 UTC)
 - **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

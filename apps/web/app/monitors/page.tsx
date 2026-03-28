@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -1852,6 +1852,14 @@ function MonitorsPageInner() {
                               {(monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled && (
                                 <span title="Business hours schedule active" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30 whitespace-nowrap">
                                   📅
+                                </span>
+                              )}
+                              {monitor.geoRegions && monitor.geoRegions.length > 0 && (
+                                <span
+                                  title={`Geo regions: ${monitor.geoRegions.join(", ")}`}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/30 whitespace-nowrap cursor-help"
+                                >
+                                  <Globe className="w-3 h-3" />
                                 </span>
                               )}
                             </div>

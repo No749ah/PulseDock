@@ -297,6 +297,7 @@ export default function MonitorDetailPage() {
   };
   const [geoStats, setGeoStats] = useState<{ regions: GeoRegionStat[]; hasGeoData: boolean } | null>(null);
   const [geoStatsLoading, setGeoStatsLoading] = useState(false);
+  const [geoPeriod, setGeoPeriod] = useState<1 | 7 | 30>(7);
 
   // Check history pagination + filter
   const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed"|"degraded">("all");
@@ -430,18 +431,18 @@ export default function MonitorDetailPage() {
     }
   }, [loading, monitor, chartPeriod, loadChartData]);
 
-  // Load geo stats when geo tab becomes active
+  // Load geo stats when geo tab becomes active or period changes
   useEffect(() => {
     if (activeMainTab !== "geo" || !monitor) return;
     const user = getUser();
     if (!user) return;
     setGeoStatsLoading(true);
-    api<{ regions: GeoRegionStat[]; hasGeoData: boolean }>(`/v1/monitors/${id}/geo-stats`, user.id)
+    api<{ regions: GeoRegionStat[]; hasGeoData: boolean }>(`/v1/monitors/${id}/geo-stats?periodDays=${geoPeriod}`, user.id)
       .then((data) => setGeoStats(data))
       .catch(() => setGeoStats({ regions: [], hasGeoData: false }))
       .finally(() => setGeoStatsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMainTab, id]);
+  }, [activeMainTab, id, geoPeriod]);
 
   // Load runs with optional status filter (resets pagination)
   const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
@@ -2275,14 +2276,33 @@ export default function MonitorDetailPage() {
         {/* Geo Distribution Tab */}
         {activeMainTab === "geo" && (
           <Card className="p-6 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                Geo Distribution
-              </h2>
-              <p className="text-xs text-text-muted mt-1">
-                Per-region latency and availability for the last 7 days. Regions: {(monitor.geoRegions ?? []).join(", ")}.
-              </p>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  Geo Distribution
+                </h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Per-region latency and availability. Regions: {(monitor.geoRegions ?? []).join(", ")}.
+                </p>
+              </div>
+              {/* Period selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted font-medium">Period:</span>
+                {([1, 7, 30] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setGeoPeriod(p)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      geoPeriod === p
+                        ? "bg-accent text-white"
+                        : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                    }`}
+                  >
+                    {p}d
+                  </button>
+                ))}
+              </div>
             </div>
 
             {geoStatsLoading ? (
@@ -2290,10 +2310,11 @@ export default function MonitorDetailPage() {
                 <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
               </div>
             ) : !geoStats || !geoStats.hasGeoData ? (
-              <div className="text-center py-10 space-y-2">
-                <Globe className="w-10 h-10 mx-auto text-text-muted opacity-40" />
-                <p className="text-sm text-text-muted">No geo data yet.</p>
-                <p className="text-xs text-text-muted opacity-75">Run some checks to see per-region stats. Checks are tagged with regions in round-robin order.</p>
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-elevated/40">
+                <Globe className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-text-secondary">
+                  No geo data yet. Configure geo regions in monitor settings to enable multi-region analysis.
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -2301,35 +2322,39 @@ export default function MonitorDetailPage() {
                   <thead>
                     <tr className="text-left text-xs text-text-muted border-b border-border">
                       <th className="pb-2 pr-4 font-medium">Region</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Total Runs</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Checks</th>
                       <th className="pb-2 pr-4 font-medium text-right">Uptime %</th>
                       <th className="pb-2 pr-4 font-medium text-right">Avg Latency</th>
                       <th className="pb-2 font-medium text-right">P95 Latency</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {geoStats.regions.map((r) => {
-                      const latencyColor = (ms: number | null) => {
-                        if (ms === null) return "text-text-muted";
-                        if (ms < 200) return "text-success";
-                        if (ms < 500) return "text-warning";
-                        return "text-error";
-                      };
-                      return (
-                        <tr key={r.region} className="hover:bg-white/5 transition-colors">
-                          <td className="py-2.5 pr-4 font-mono text-text-primary">{r.region}</td>
-                          <td className="py-2.5 pr-4 text-right text-text-secondary">{r.totalRuns}</td>
-                          <td className={`py-2.5 pr-4 text-right font-medium ${r.uptimePct >= 99 ? "text-success" : r.uptimePct >= 95 ? "text-warning" : "text-error"}`}>
-                            {r.uptimePct.toFixed(1)}%
-                          </td>
-                          <td className={`py-2.5 pr-4 text-right ${latencyColor(r.avgLatencyMs)}`}>
-                            {r.avgLatencyMs !== null ? `${r.avgLatencyMs}ms` : "—"}
-                          </td>
-                          <td className={`py-2.5 text-right ${latencyColor(r.p95LatencyMs)}`}>
-                            {r.p95LatencyMs !== null ? `${r.p95LatencyMs}ms` : "—"}
-                          </td>
-                        </tr>
-                      );
+                    {[...geoStats.regions]
+                      .sort((a, b) => a.uptimePct - b.uptimePct)
+                      .map((r) => {
+                        const latencyColor = (ms: number | null) => {
+                          if (ms === null) return "text-text-muted";
+                          if (ms < 200) return "text-success";
+                          if (ms < 500) return "text-warning";
+                          return "text-danger";
+                        };
+                        const uptimeColor =
+                          r.uptimePct >= 99 ? "text-success" : r.uptimePct >= 95 ? "text-warning" : "text-danger";
+                        return (
+                          <tr key={r.region} className="hover:bg-white/5 transition-colors">
+                            <td className="py-2.5 pr-4 font-mono text-text-primary">{r.region}</td>
+                            <td className="py-2.5 pr-4 text-right text-text-secondary tabular-nums">{r.totalRuns}</td>
+                            <td className={`py-2.5 pr-4 text-right font-medium tabular-nums ${uptimeColor}`}>
+                              {r.uptimePct.toFixed(1)}%
+                            </td>
+                            <td className={`py-2.5 pr-4 text-right tabular-nums ${latencyColor(r.avgLatencyMs)}`}>
+                              {r.avgLatencyMs !== null ? `${r.avgLatencyMs}ms` : "—"}
+                            </td>
+                            <td className={`py-2.5 text-right tabular-nums ${latencyColor(r.p95LatencyMs)}`}>
+                              {r.p95LatencyMs !== null ? `${r.p95LatencyMs}ms` : "—"}
+                            </td>
+                          </tr>
+                        );
                     })}
                   </tbody>
                 </table>

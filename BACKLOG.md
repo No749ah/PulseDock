@@ -1,3 +1,13 @@
+## Status Summary (2026-03-28 02:02 UTC)
+- **Build/Test:** ✅ Clean build + 3745 API (+13 mattermost/zulip tests) + 756 web + 10 e2e + 12 agent = 4523 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (02:02 UTC cycle):**
+  - [x] **Mattermost alert channel** — POST to Mattermost Incoming Webhook URL. Slack-compatible attachment payload with color-coded status (#36a64f green/#ffa500 yellow/#cc0000 red), facts list (monitor name/type/latency/target), configurable channel override and username display name. Self-hosted-friendly. 6 new tests.
+  - [x] **Zulip alert channel** — POST to Zulip bot REST API `/api/v1/messages`. Supports stream messages (stream + topic) and direct messages (DM to user email). Basic auth with bot email + API key. Formatted Zulip markdown content with level emoji and facts. Trailing-slash guard on serverUrl. 7 new tests.
+  - [x] **Fix TS error (Monitor.level)** — `monitors.controller.ts` compare endpoint was selecting `level` from Monitor model (field doesn't exist on Monitor, only on MonitorRun). Fixed Prisma select and return mapping.
+
 ## Status Summary (2026-03-28 02:15 UTC)
 - **Build/Test:** ✅ Clean build + 3745 API + 10 e2e + 12 agent = 3767 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

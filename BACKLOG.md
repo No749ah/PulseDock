@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 09:19 UTC)
+- **Build/Test:** ✅ Clean build + 3905 API (+5 coverage tests) + 756 web + 10 CLI + 12 agent = 4683 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:19 UTC cycle):**
+  - [x] **Monitor Coverage Analysis** — `GET /v1/monitors/coverage` endpoint computing per-monitor configuration completeness. Scoring: alert channels (2pt, most critical), SLA target (1pt), description (1pt), runbook URL (1pt) = 0–100% per monitor + fleet aggregate. `/monitors/coverage` frontend page: overall score with color-coded gauge, 5 criteria stat cards with progress bars (alerts, SLA, description, runbook, tags), sortable gap table with ✓/✗ indicators, row highlighting for worst monitors, score footer showing methodology. Sidebar nav "Coverage" link. 5 new unit tests.
+
 ## Status Summary (2026-03-28 09:02 UTC)
 - **Build/Test:** ✅ Clean build + 3900 API (was 3889 → +11 with simulate-alerts) + 756 web + 10 CLI + 12 agent = 4678 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -489,6 +489,24 @@ export class MonitorsController {
     return this.monitorsService.getSslSummary(req.user.id);
   }
 
+  // ─── Security Headers Fleet Summary ──────────────────────────────────────
+
+  @Get('security-headers')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Security headers fleet summary',
+    description:
+      'Aggregates the latest security header audit results from all HTTP and BROWSER monitors. ' +
+      'Returns grade distribution (A–F), per-header fleet coverage rates, and per-monitor rows ' +
+      'sorted by score ascending (worst first) so you can quickly triage the most at-risk endpoints. ' +
+      'Only monitors that have had at least one successful check with security header auditing enabled ' +
+      'will have audit data; others are included with grade=null.',
+  })
+  @ApiResponse({ status: 200, description: 'Security headers fleet summary returned.' })
+  securityHeadersSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getSecurityHeadersSummary(req.user.id);
+  }
+
   @Get('heatmap')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Uptime heatmap', description: 'Returns a per-monitor × per-day uptime heatmap for the last N days (1-90). Each cell contains uptimePct, total checks, and failed checks. Monitors ordered by pinned-first then creation date.' })

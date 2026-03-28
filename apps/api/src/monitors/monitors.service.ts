@@ -3475,6 +3475,170 @@ export class MonitorsService {
   }
 
   /**
+   * Security headers fleet summary.
+   *
+   * Aggregates the latest `securityAuditJson` from each HTTP/BROWSER monitor
+   * and returns a fleet-level overview: grade distribution, per-header coverage
+   * rate, and per-monitor rows sorted by score ascending (worst first).
+   *
+   * @param userId - Owner's user ID
+   */
+  async getSecurityHeadersSummary(userId: string): Promise<{
+    total: number;
+    gradeA: number;
+    gradeB: number;
+    gradeC: number;
+    gradeD: number;
+    gradeF: number;
+    noData: number;
+    avgScore: number | null;
+    headerCoverage: Array<{ name: string; presentCount: number; totalCount: number; coveragePct: number; severity: string }>;
+    monitors: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      folderId: string | null;
+      folderName: string | null;
+      enabled: boolean;
+      grade: string | null;
+      score: number | null;
+      checkedAt: string | null;
+      headers: Array<{ name: string; present: boolean; severity: string }>;
+    }>;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['HTTP', 'BROWSER'] } },
+      select: {
+        id: true,
+        name: true,
+        target: true,
+        enabled: true,
+        folderId: true,
+        folder: { select: { name: true } },
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          where: { ok: true },
+          select: { securityAuditJson: true, checkedAt: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    type HeaderResult = { name: string; present: boolean; severity: string; value?: string | null; description?: string; recommendation?: string };
+    type AuditJson = { grade: string; score: number; headers: HeaderResult[] };
+
+    const rows: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      folderId: string | null;
+      folderName: string | null;
+      enabled: boolean;
+      grade: string | null;
+      score: number | null;
+      checkedAt: string | null;
+      headers: Array<{ name: string; present: boolean; severity: string }>;
+    }> = [];
+
+    let totalScore = 0;
+    let scoredCount = 0;
+    const gradeCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    const headerAccum: Map<string, { present: number; total: number; severity: string }> = new Map();
+
+    for (const m of monitors) {
+      const run = m.runs[0] ?? null;
+      const audit = run?.securityAuditJson as AuditJson | null | undefined;
+
+      if (audit && typeof audit === 'object' && 'grade' in audit) {
+        const grade = String(audit.grade ?? 'F').toUpperCase();
+        gradeCounts[grade] = (gradeCounts[grade] ?? 0) + 1;
+        totalScore += typeof audit.score === 'number' ? audit.score : 0;
+        scoredCount++;
+
+        // Accumulate per-header coverage
+        if (Array.isArray(audit.headers)) {
+          for (const h of audit.headers as HeaderResult[]) {
+            const existing = headerAccum.get(h.name);
+            if (existing) {
+              existing.total++;
+              if (h.present) existing.present++;
+            } else {
+              headerAccum.set(h.name, { present: h.present ? 1 : 0, total: 1, severity: h.severity ?? 'info' });
+            }
+          }
+        }
+
+        rows.push({
+          monitorId: m.id,
+          name: m.name,
+          target: m.target ?? '',
+          folderId: m.folderId,
+          folderName: m.folder?.name ?? null,
+          enabled: m.enabled,
+          grade,
+          score: typeof audit.score === 'number' ? audit.score : null,
+          checkedAt: run?.checkedAt?.toISOString() ?? null,
+          headers: Array.isArray(audit.headers)
+            ? (audit.headers as HeaderResult[]).map((h) => ({ name: h.name, present: h.present, severity: h.severity ?? 'info' }))
+            : [],
+        });
+      } else {
+        rows.push({
+          monitorId: m.id,
+          name: m.name,
+          target: m.target ?? '',
+          folderId: m.folderId,
+          folderName: m.folder?.name ?? null,
+          enabled: m.enabled,
+          grade: null,
+          score: null,
+          checkedAt: null,
+          headers: [],
+        });
+      }
+    }
+
+    // Sort: monitors with data first, sorted by score ascending (worst first), then no-data
+    rows.sort((a, b) => {
+      if (a.score === null && b.score === null) return a.name.localeCompare(b.name);
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      return a.score - b.score;
+    });
+
+    const headerCoverage = Array.from(headerAccum.entries()).map(([name, v]) => ({
+      name,
+      presentCount: v.present,
+      totalCount: v.total,
+      coveragePct: v.total > 0 ? Math.round((v.present / v.total) * 100) : 0,
+      severity: v.severity,
+    }));
+    // Sort critical first, then warning, then others; within severity sort by coverage ascending (most missing first)
+    const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+    headerCoverage.sort((a, b) => {
+      const so = (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
+      if (so !== 0) return so;
+      return a.coveragePct - b.coveragePct;
+    });
+
+    const noData = monitors.length - scoredCount;
+
+    return {
+      total: monitors.length,
+      gradeA: gradeCounts['A'] ?? 0,
+      gradeB: gradeCounts['B'] ?? 0,
+      gradeC: gradeCounts['C'] ?? 0,
+      gradeD: gradeCounts['D'] ?? 0,
+      gradeF: gradeCounts['F'] ?? 0,
+      noData,
+      avgScore: scoredCount > 0 ? Math.round(totalScore / scoredCount) : null,
+      headerCoverage,
+      monitors: rows,
+    };
+  }
+
+  /**
    * Batch health scores for all monitors belonging to a user.
    * Skips the per-monitor latency computation for performance — gives full 30 pts.
    */

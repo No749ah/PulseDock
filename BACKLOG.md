@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 18:20 UTC)
+- **Build/Test:** ✅ Clean build + 4082 API + 757 web + 10 CLI + 12 agent = 4861 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (18:20 UTC cycle):**
+  - [x] **Monitor Failure Correlation Analysis** — `GET /v1/monitors/correlation?days=N` (1–90d, default 7d). Buckets failures into 5-minute windows, computes Jaccard similarity (|A∩B|/|A∪B|) for all monitor pairs. Returns pairs with >10% similarity sorted descending + union-find clusters (≥40% similarity). `/monitors/correlation` frontend: period selector (24h/7d/14d/30d), 4 stat cards (monitors analyzed, correlated pairs, failure clusters, avg similarity), amber failure cluster cards showing which monitors group together, sortable pairs table with visual similarity bars + level badges (High/Medium/Low/Weak), methodology explanation footer. Sidebar nav link added. 5 new unit tests.
+
 ## Status Summary (2026-03-28 17:45 UTC)
 - **Build/Test:** ✅ Clean build + 4077 API + 757 web + 10 CLI + 12 agent = 4856 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

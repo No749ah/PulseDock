@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 09:37 UTC)
+- **Build/Test:** ✅ Clean build + 3920 API (+5 SLA dashboard tests) + 756 web + 10 CLI + 12 agent = 4698 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:37 UTC cycle):**
+  - [x] **SLA Management Dashboard** — `GET /v1/monitors/sla-dashboard` endpoint computing per-monitor SLA compliance for current calendar month: uptime%, error budget used/remaining, compliant/atRisk/breached status, rolling 3-month history. `/monitors/sla` frontend page: 4 summary stat cards (Compliant/At Risk/Breached/No Target), sortable table with monitor info + SLA target pill + uptime% (color-coded) + error budget progress bar + 3-month history badges + compliance status badges. Inline SLA target editing via popover with preset values (99.0–99.99%) or custom input, saves via PATCH. Sidebar nav "SLA Dashboard" link. 5 new unit tests covering compliance true/false, null target handling, error budget calculation, and summary counts.
+
 ## Status Summary (2026-03-28 09:36 UTC)
 - **Build/Test:** ✅ Clean build + 3915 API (+5 postmortem tests) + 756 web + 10 CLI + 12 agent = 4693 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

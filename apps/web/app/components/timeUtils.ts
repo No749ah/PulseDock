@@ -34,6 +34,10 @@ export function formatMonitorType(type: string): string {
     BROWSER: "Browser Check",
     WHOIS: "WHOIS / Domain",
     CT_LOG: "CT Log Monitor",
+    FTP: "FTP Check",
+    IMAP: "IMAP Check",
+    POP3: "POP3 Check",
+    GRAPHQL: "GraphQL API",
   };
   return map[type] ?? type;
 }

@@ -128,6 +128,12 @@ export function AdvancedFiltersPanel({
               { key: "BROWSER", label: "Browser" },
               { key: "GIT_RELEASE", label: "Git Release" },
               { key: "DOCKER_IMAGE", label: "Docker" },
+              { key: "WHOIS", label: "WHOIS" },
+              { key: "FTP", label: "FTP" },
+              { key: "IMAP", label: "IMAP" },
+              { key: "POP3", label: "POP3" },
+              { key: "CT_LOG", label: "CT Log" },
+              { key: "GRAPHQL", label: "GraphQL" },
             ] as const).map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer group">
                 <input

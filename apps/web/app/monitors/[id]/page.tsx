@@ -4183,6 +4183,50 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* GraphQL config */}
+        {monitor.type === "GRAPHQL" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              GraphQL Configuration
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Endpoint</span>
+                <span className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1 rounded break-all block">
+                  {monitor.target}
+                </span>
+              </div>
+              {Boolean(monitor.graphqlQuery) && (
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Query</span>
+                  <pre className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1.5 rounded overflow-x-auto whitespace-pre-wrap break-all">
+                    {monitor.graphqlQuery ?? ""}
+                  </pre>
+                </div>
+              )}
+              {Boolean(monitor.graphqlDataPath) && (
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <span className="text-xs text-text-secondary block mb-0.5">Data Path</span>
+                    <span className="font-mono text-xs text-accent bg-surface-elevated px-2 py-1 rounded">
+                      {monitor.graphqlDataPath ?? ""}
+                    </span>
+                  </div>
+                  {Boolean(monitor.graphqlExpectedValue) && (
+                    <div>
+                      <span className="text-xs text-text-secondary block mb-0.5">Expected Value</span>
+                      <span className="font-mono text-xs text-emerald-400 bg-surface-elevated px-2 py-1 rounded">
+                        {monitor.graphqlExpectedValue ?? ""}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
         {/* Response time trend (LineSparkline) — only for monitors that produce latency */}
         {!["HEARTBEAT", "GIT_RELEASE", "DOCKER_IMAGE"].includes(monitor.type) && (
           

@@ -241,6 +241,7 @@ export class MonitorsService {
     statusWebhookUrl?: string | null;
     throttleMs?: number;
     maxChecksPerHour?: number;
+    geoRegions?: string[];
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -298,6 +299,7 @@ export class MonitorsService {
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -416,6 +418,7 @@ export class MonitorsService {
     statusWebhookUrl?: string | null;
     throttleMs?: number | null;
     maxChecksPerHour?: number | null;
+    geoRegions?: string[];
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -479,6 +482,7 @@ export class MonitorsService {
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
       },
     });
 
@@ -3372,6 +3376,129 @@ export class MonitorsService {
     return { monitors: result, dates };
   }
 
+  // ─── Global Status Timeline ───────────────────────────────────────────────
+
+  /**
+   * Returns a multi-monitor status timeline for a given period.
+   * Each monitor has a list of segments: { start, end, level } computed from
+   * the status-transition history of its MonitorRuns.
+   *
+   * Used by the /monitors/timeline frontend page.
+   */
+  async statusTimeline(userId: string, hours: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      segments: Array<{ start: string; end: string; level: 'green' | 'yellow' | 'red' }>;
+      currentLevel: string;
+      uptimePct: number;
+    }>;
+    from: string;
+    to: string;
+    totalHours: number;
+  }> {
+    const clampedHours = Math.min(168, Math.max(1, hours)); // 1h–7d
+    const to = new Date();
+    const from = new Date(to.getTime() - clampedHours * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folder: { select: { name: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], from: from.toISOString(), to: to.toISOString(), totalHours: clampedHours };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Load all runs within the window + a small lookback buffer for the preceding state
+    const bufferFrom = new Date(from.getTime() - 30 * 60 * 1000); // 30min lookback
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: bufferFrom },
+      },
+      select: { monitorId: true, checkedAt: true, level: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by monitor
+    const runsByMonitor = new Map<string, Array<{ checkedAt: Date; level: string }>>();
+    for (const m of monitors) runsByMonitor.set(m.id, []);
+    for (const r of runs) {
+      runsByMonitor.get(r.monitorId)?.push({ checkedAt: r.checkedAt, level: r.level ?? 'green' });
+    }
+
+    const result = monitors.map(m => {
+      const monitorRuns = runsByMonitor.get(m.id) ?? [];
+
+      // Filter to only runs within window (use buffer runs to establish initial state)
+      const bufferRuns = monitorRuns.filter(r => r.checkedAt < from);
+      const windowRuns = monitorRuns.filter(r => r.checkedAt >= from);
+
+      // Determine starting state from most recent buffer run (or 'green' if none)
+      const initialLevel = bufferRuns.length > 0
+        ? (bufferRuns[bufferRuns.length - 1].level as 'green' | 'yellow' | 'red')
+        : 'green';
+
+      // Build segments from state transitions
+      const segments: Array<{ start: string; end: string; level: 'green' | 'yellow' | 'red' }> = [];
+
+      if (windowRuns.length === 0) {
+        // No data in window
+        segments.push({ start: from.toISOString(), end: to.toISOString(), level: initialLevel });
+      } else {
+        let segStart = from;
+        let currentLevel: 'green' | 'yellow' | 'red' = initialLevel;
+
+        for (const run of windowRuns) {
+          const runLevel = run.level as 'green' | 'yellow' | 'red';
+          if (runLevel !== currentLevel) {
+            segments.push({ start: segStart.toISOString(), end: run.checkedAt.toISOString(), level: currentLevel });
+            segStart = run.checkedAt;
+            currentLevel = runLevel;
+          }
+        }
+        // Final segment to end of window
+        segments.push({ start: segStart.toISOString(), end: to.toISOString(), level: currentLevel });
+      }
+
+      // Calculate uptime% from window runs
+      const windowTotal = windowRuns.length;
+      const windowOk = windowRuns.filter(r => r.level === 'green').length;
+      const uptimePct = windowTotal > 0 ? Math.round((windowOk / windowTotal) * 10000) / 100 : 100;
+      const currentLevel = windowRuns.length > 0
+        ? windowRuns[windowRuns.length - 1].level
+        : initialLevel;
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        folder: m.folder?.name ?? null,
+        segments,
+        currentLevel,
+        uptimePct,
+      };
+    });
+
+    return {
+      monitors: result,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      totalHours: clampedHours,
+    };
+  }
+
   // ─── CT Log History ──────────────────────────────────────────────────────
 
   async ctLogHistory(userId: string, monitorId: string): Promise<{
@@ -3591,5 +3718,72 @@ export class MonitorsService {
     });
 
     return { monitors: result, generatedAt: now.toISOString() };
+  }
+
+  // ─── Geo-Distribution Stats ───────────────────────────────────────────────────────
+
+  async geoStats(
+    userId: string,
+    monitorId: string,
+    periodDays = 7,
+  ): Promise<{
+    regions: Array<{
+      region: string;
+      totalRuns: number;
+      okRuns: number;
+      uptimePct: number;
+      avgLatencyMs: number | null;
+      p95LatencyMs: number | null;
+    }>;
+    hasGeoData: boolean;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId,
+        checkedAt: { gte: since },
+        geoRegion: { not: null },
+      },
+      select: { ok: true, latencyMs: true, geoRegion: true },
+    });
+
+    if (runs.length === 0) {
+      return { regions: [], hasGeoData: false };
+    }
+
+    // Group by region
+    const regionMap = new Map<string, { ok: number; total: number; latencies: number[] }>();
+    for (const run of runs) {
+      const region = run.geoRegion!;
+      if (!regionMap.has(region)) regionMap.set(region, { ok: 0, total: 0, latencies: [] });
+      const entry = regionMap.get(region)!;
+      entry.total++;
+      if (run.ok) entry.ok++;
+      if (run.latencyMs !== null) entry.latencies.push(run.latencyMs);
+    }
+
+    const regions = Array.from(regionMap.entries()).map(([region, data]) => {
+      const uptimePct = data.total > 0 ? Math.round((data.ok / data.total) * 1000) / 10 : 0;
+      const avgLatencyMs = data.latencies.length > 0
+        ? Math.round(data.latencies.reduce((a, b) => a + b, 0) / data.latencies.length)
+        : null;
+
+      let p95LatencyMs: number | null = null;
+      if (data.latencies.length > 0) {
+        const sorted = [...data.latencies].sort((a, b) => a - b);
+        const p95Index = Math.ceil(sorted.length * 0.95) - 1;
+        p95LatencyMs = sorted[Math.max(0, p95Index)];
+      }
+
+      return { region, totalRuns: data.total, okRuns: data.ok, uptimePct, avgLatencyMs, p95LatencyMs };
+    });
+
+    return { regions, hasGeoData: true };
   }
 }

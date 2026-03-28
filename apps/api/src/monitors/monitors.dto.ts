@@ -261,6 +261,14 @@ export class CreateMonitorDto {
   @Max(360)
   maxChecksPerHour?: number;
 
+  @ApiPropertyOptional({ description: 'Geo region tags for simulated multi-region monitoring (max 10 regions, 50 chars each). Round-robin assignment to runs.', example: ['us-east-1', 'eu-west-1', 'ap-southeast-1'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @ArrayMaxSize(10)
+  geoRegions?: string[];
+
 }
 
 export class UpdateMonitorDto {
@@ -450,6 +458,13 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(360)
   maxChecksPerHour?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @ArrayMaxSize(10)
+  geoRegions?: string[];
 
 }
 

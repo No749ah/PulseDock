@@ -160,6 +160,7 @@ model Monitor {
   // Rate Limiting / Throttling
   throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
   maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
+  geoRegions          String[]    @default([])  // configured regions to round-robin through (e.g. ["us-east-1", "eu-west-1"])
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -274,6 +275,7 @@ model MonitorRun {
   securityAuditJson Json? // Security headers audit: { grade, score, headers[] } — only on HTTP monitors with checkSecurityHeaders=true
   responseSizeBytes Int?  // UTF-8 byte length of the response body; populated for HTTP/BROWSER monitors
   redirectChain String[] // HTTP redirect chain: URLs followed before reaching final response
+  geoRegion    String?  // simulated geo region tag (e.g. "us-east-1", "eu-west-1", "ap-southeast-1")
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)

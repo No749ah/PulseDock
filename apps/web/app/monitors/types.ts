@@ -138,6 +138,8 @@ export type MonitorFormData = {
   throttleMs?: number | null;
   /** Hard cap on checks per hour. Max 360. */
   maxChecksPerHour?: number | null;
+  /** Geo region tags for simulated multi-region monitoring (round-robin). */
+  geoRegions?: string[];
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

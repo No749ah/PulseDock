@@ -457,6 +457,16 @@ export class ChecksService {
     }
     // ─────────────────────────────────────────────────────────────────────────────────
 
+    // ── Geo-region round-robin tagging ───────────────────────────────────────────────
+    // Pick the next region from monitor.geoRegions (if configured) using round-robin
+    let geoRegion: string | null = null;
+    const monitorWithGeo = monitor as typeof monitor & { geoRegions?: string[] };
+    if (monitorWithGeo.geoRegions && monitorWithGeo.geoRegions.length > 0) {
+      const runCount = await this.prisma.monitorRun.count({ where: { monitorId: monitor.id } });
+      geoRegion = monitorWithGeo.geoRegions[runCount % monitorWithGeo.geoRegions.length];
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     const created = await this.prisma.monitorRun.create({
       data: {
         userId: monitor.userId,
@@ -484,6 +494,8 @@ export class ChecksService {
         redirectChain: Array.isArray((result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain)
           ? (result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain!
           : [],
+        // Geo region tag (round-robin from monitor.geoRegions if configured)
+        geoRegion,
       },
     });
 

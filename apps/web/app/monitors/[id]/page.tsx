@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo">("overview");
 
   // Annotations
   type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
@@ -285,6 +285,18 @@ export default function MonitorDetailPage() {
   const [newEventType, setNewEventType] = useState<"deploy"|"note"|"incident"|"maintenance"|"config">("note");
   const [addingEvent, setAddingEvent] = useState(false);
   const [eventError, setEventError] = useState("");
+
+  // Geo distribution stats
+  type GeoRegionStat = {
+    region: string;
+    totalRuns: number;
+    okRuns: number;
+    uptimePct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+  };
+  const [geoStats, setGeoStats] = useState<{ regions: GeoRegionStat[]; hasGeoData: boolean } | null>(null);
+  const [geoStatsLoading, setGeoStatsLoading] = useState(false);
 
   // Check history pagination + filter
   const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed"|"degraded">("all");

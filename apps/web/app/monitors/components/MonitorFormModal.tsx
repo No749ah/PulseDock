@@ -1385,6 +1385,28 @@ export function MonitorFormModal({
               <p className="text-xs text-text-muted mt-1">Hard cap regardless of interval. Max 360.</p>
             </div>
           </div>
+
+          {/* Geo Regions */}
+          <div className="border-t border-border pt-4 mt-2">
+            <label className="block text-sm font-semibold text-text-primary mb-1">Geo Regions</label>
+            <input
+              type="text"
+              placeholder="e.g. us-east-1, eu-west-1, ap-southeast-1"
+              value={((formData as MonitorFormData).geoRegions ?? []).join(", ")}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const regions = raw
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s.length > 0);
+                onSetFormData({ ...formData, geoRegions: regions });
+              }}
+              className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Geo-tag your checks for regional analytics. Enter region names separated by commas.
+            </p>
+          </div>
         </div>
 
         {/* Auto-Incident */}

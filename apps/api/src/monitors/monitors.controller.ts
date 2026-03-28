@@ -442,6 +442,25 @@ export class MonitorsController {
     return this.monitorsService.uptimeHeatmap(req.user.id, days);
   }
 
+  @Get('status-timeline')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Multi-monitor status timeline',
+    description:
+      'Returns a Gantt-style status timeline for all monitors. Each monitor has a list of segments ' +
+      '(start, end, level) showing when it was green/yellow/red. Use hours param to control window size (1-168h, default 24h). ' +
+      'Ideal for visualizing correlated outages across services.',
+  })
+  @ApiQuery({ name: 'hours', required: false, description: 'Window size in hours: 1–168 (default 24)' })
+  @ApiResponse({ status: 200, description: 'Status timeline returned.' })
+  statusTimeline(
+    @Req() req: { user: { id: string } },
+    @Query('hours') hoursParam?: string,
+  ) {
+    const hours = Math.min(168, Math.max(1, parseInt(hoursParam ?? '24', 10) || 24));
+    return this.monitorsService.statusTimeline(req.user.id, hours);
+  }
+
   @Get('trends')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Monitor trend analysis', description: 'Returns week-over-week uptime and latency trends for all monitors. Compares current 7 days vs prior 7 days.' })
@@ -1584,5 +1603,25 @@ export class MonitorsController {
     @Param('id') id: string,
   ) {
     return this.monitorsService.ctLogHistory(req.user.id, id);
+  }
+
+  // ─── Geo Distribution Stats ───────────────────────────────────────────────────────
+
+  @Get(':id/geo-stats')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Geo-distribution stats for a monitor',
+    description: 'Returns per-region latency and availability stats for monitors with geoRegions configured.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'periodDays', required: false, type: Number, description: 'Number of days to look back (default 7)' })
+  @ApiResponse({ status: 200, description: 'Geo stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  geoStats(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.geoStats(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 7);
   }
 }

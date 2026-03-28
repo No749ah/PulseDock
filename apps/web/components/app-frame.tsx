@@ -53,6 +53,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Monitoring',
     items: [
       { href: '/monitors', label: 'Uptime Checks', icon: Activity },
+      { href: '/monitors/compare', label: 'Compare', icon: BarChart2 },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],
   },

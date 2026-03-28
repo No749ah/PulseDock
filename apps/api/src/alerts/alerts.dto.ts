@@ -7,8 +7,8 @@ export class CreateAlertChannelDto {
   @MaxLength(255)
   name!: string;
 
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise'])
-  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip'])
+  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
   @IsObject()
   config!: Record<string, unknown>;
@@ -45,8 +45,8 @@ export class UpdateAlertChannelDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise'])
-  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip'])
+  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
   @IsOptional()
   @IsObject()

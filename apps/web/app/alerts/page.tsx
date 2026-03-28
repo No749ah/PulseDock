@@ -18,7 +18,7 @@ import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { brand } from '../../lib/brand';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
 type AlertChannel = {
   id: string;
@@ -65,6 +65,10 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <MessageSquare className={`${iconClass} text-orange-400`} />;
     case 'apprise':
       return <Bell className={`${iconClass} text-violet-400`} />;
+    case 'mattermost':
+      return <MessageSquare className={`${iconClass} text-blue-400`} />;
+    case 'zulip':
+      return <MessageSquare className={`${iconClass} text-green-400`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -383,6 +387,25 @@ export default function AlertsPage() {
       if (b?.trim()) cfg.tag = b.trim();
       return cfg;
     }
+    if (type === 'mattermost') {
+      const cfg: Record<string, unknown> = { webhookUrl: a };
+      if (b?.trim()) cfg.channel = b.trim();
+      if (secret?.trim()) cfg.username = secret.trim();
+      return cfg;
+    }
+    if (type === 'zulip') {
+      // a=serverUrl, b=botEmail, secret=botApiKey, username=stream/dmTo, avatarUrl=topic, mentionRoleId=messageType
+      const cfg: Record<string, unknown> = { serverUrl: a, botEmail: b ?? '', botApiKey: secret ?? '' };
+      const msgType = extras?.mentionRoleId?.trim() || 'stream';
+      cfg.messageType = msgType;
+      if (msgType === 'stream') {
+        if (extras?.username?.trim()) cfg.stream = extras.username.trim();
+        if (extras?.avatarUrl?.trim()) cfg.topic = extras.avatarUrl.trim();
+      } else {
+        if (extras?.username?.trim()) cfg.dmTo = extras.username.trim();
+      }
+      return cfg;
+    }
     return { to: a };
   }
 
@@ -521,6 +544,17 @@ export default function AlertsPage() {
       setEditA(String(channel.config.serverUrl ?? ''));
       setEditB(String(channel.config.tag ?? ''));
       setEditSecret('');
+    } else if (channel.type === 'mattermost') {
+      setEditA(String(channel.config.webhookUrl ?? ''));
+      setEditB(String(channel.config.channel ?? ''));
+      setEditSecret(String(channel.config.username ?? ''));
+    } else if (channel.type === 'zulip') {
+      setEditA(String(channel.config.serverUrl ?? ''));
+      setEditB(String(channel.config.botEmail ?? ''));
+      setEditSecret(String(channel.config.botApiKey ?? ''));
+      setEditUsername(String(channel.config.stream ?? channel.config.dmTo ?? ''));
+      setEditAvatarUrl(String(channel.config.topic ?? ''));
+      setEditMentionRoleId(String(channel.config.messageType ?? 'stream'));
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -658,6 +692,8 @@ export default function AlertsPage() {
                     { value: 'matrix', label: 'Matrix / Element (self-hosted)' },
                     { value: 'rocketchat', label: 'Rocket.Chat (self-hosted)' },
                     { value: 'apprise', label: 'Apprise (universal gateway)' },
+                    { value: 'mattermost', label: 'Mattermost (self-hosted)' },
+                    { value: 'zulip', label: 'Zulip (self-hosted)' },
                   ]}
                 />
               </div>
@@ -667,11 +703,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : form.type === 'ntfy' ? <span>Paste the full <strong>ntfy topic URL</strong> (e.g. <code className="text-accent text-xs">https://ntfy.sh/my-alerts</code>). Add an access token if your topic is protected.</span> : form.type === 'gotify' ? <span>Enter your <strong>Gotify server URL</strong> and <strong>App Token</strong>. Create a Gotify app to get the token.</span> : form.type === 'matrix' ? <span>Enter your Matrix <strong>homeserver URL</strong>, <strong>access token</strong>, and <strong>room ID</strong>. Get the access token from Element → Settings → Help &amp; About. Room ID looks like <code className="text-accent text-xs">!abc:matrix.org</code>.</span> : form.type === 'rocketchat' ? <span>Paste your Rocket.Chat <strong>Incoming Webhook URL</strong>. Create it in Rocket.Chat Admin → Integrations → New Incoming Webhook.</span> : form.type === 'apprise' ? <span>Enter your <strong>Apprise API server URL</strong> (e.g. <code className="text-accent text-xs">http://apprise:8000</code>). Optionally specify a tag to route to specific services.</span> : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : form.type === 'ntfy' ? <span>Paste the full <strong>ntfy topic URL</strong> (e.g. <code className="text-accent text-xs">https://ntfy.sh/my-alerts</code>). Add an access token if your topic is protected.</span> : form.type === 'gotify' ? <span>Enter your <strong>Gotify server URL</strong> and <strong>App Token</strong>. Create a Gotify app to get the token.</span> : form.type === 'matrix' ? <span>Enter your Matrix <strong>homeserver URL</strong>, <strong>access token</strong>, and <strong>room ID</strong>. Get the access token from Element → Settings → Help &amp; About. Room ID looks like <code className="text-accent text-xs">!abc:matrix.org</code>.</span> : form.type === 'rocketchat' ? <span>Paste your Rocket.Chat <strong>Incoming Webhook URL</strong>. Create it in Rocket.Chat Admin → Integrations → New Incoming Webhook.</span> : form.type === 'apprise' ? <span>Enter your <strong>Apprise API server URL</strong> (e.g. <code className="text-accent text-xs">http://apprise:8000</code>). Optionally specify a tag to route to specific services.</span> : form.type === 'mattermost' ? <span>Paste your Mattermost <strong>Incoming Webhook URL</strong>. Create it in Mattermost → Integrations → Incoming Webhooks → Add.</span> : form.type === 'zulip' ? <span>Enter your Zulip <strong>server URL</strong>, bot email, and bot API key. Create a bot in Zulip → Personal settings → Bots → Add a new bot.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : form.type === 'mattermost' ? 'Mattermost Webhook URL' : form.type === 'zulip' ? 'Zulip Server URL' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
@@ -759,6 +795,61 @@ export default function AlertsPage() {
                     <input className={inputClass} placeholder="e.g. alerts" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
                     <p className="mt-1 text-xs text-text-secondary">Apprise tag to scope delivery. Must be pre-configured in your Apprise config. Leave blank to notify all services.</p>
                   </div>
+                )}
+                {form.type === 'mattermost' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Channel override <span className="font-normal text-text-secondary">(optional)</span></label>
+                      <input className={inputClass} placeholder="e.g. #alerts" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Override the default channel from the webhook config. Include the # prefix.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Username override <span className="font-normal text-text-secondary">(optional)</span></label>
+                      <input className={inputClass} placeholder="PulseDock" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Display name for the bot. Defaults to &quot;PulseDock&quot;.</p>
+                    </div>
+                  </>
+                )}
+                {form.type === 'zulip' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot email <span className="text-red-400">*</span></label>
+                      <input className={inputClass} placeholder="pulsedock-bot@yourorg.zulipchat.com" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">The bot&apos;s email address from Zulip → Personal settings → Bots.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot API key <span className="text-red-400">*</span></label>
+                      <input className={inputClass} type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Message type</label>
+                      <select className={inputClass} value={form.mentionRoleId || 'stream'} onChange={(e) => setForm({ ...form, mentionRoleId: e.target.value })}>
+                        <option value="stream">Stream (channel message)</option>
+                        <option value="direct">Direct message (DM)</option>
+                      </select>
+                    </div>
+                    {(!form.mentionRoleId || form.mentionRoleId === 'stream') && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Stream name <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="general" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">The stream (channel) to post to. Defaults to &quot;general&quot;.</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Topic <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="PulseDock Alerts" value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">The topic (thread) within the stream. Defaults to &quot;PulseDock Alerts&quot;.</p>
+                        </div>
+                      </>
+                    )}
+                    {form.mentionRoleId === 'direct' && (
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Recipient email</label>
+                        <input className={inputClass} placeholder="user@yourorg.zulipchat.com" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                        <p className="mt-1 text-xs text-text-secondary">Email address of the user to DM.</p>
+                      </div>
+                    )}
+                  </>
                 )}
                 {form.type === 'webhook' && (
                   <>
@@ -984,7 +1075,7 @@ export default function AlertsPage() {
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : form.type === 'mattermost' ? 'Mattermost Webhook URL' : form.type === 'zulip' ? 'Zulip Server URL' : 'URL'}: {form.a ? 'configured' : 'missing'}
                 </p>
                 {form.type === 'telegram' && (
                   <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
@@ -1025,7 +1116,7 @@ export default function AlertsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : selected?.type === 'ntfy' ? 'Topic URL' : selected?.type === 'gotify' ? 'Server URL' : selected?.type === 'matrix' ? 'Homeserver URL' : selected?.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : selected?.type === 'apprise' ? 'Apprise Server URL' : 'URL'}
+                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : selected?.type === 'ntfy' ? 'Topic URL' : selected?.type === 'gotify' ? 'Server URL' : selected?.type === 'matrix' ? 'Homeserver URL' : selected?.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : selected?.type === 'apprise' ? 'Apprise Server URL' : selected?.type === 'mattermost' ? 'Mattermost Webhook URL' : selected?.type === 'zulip' ? 'Zulip Server URL' : 'URL'}
                 </label>
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>

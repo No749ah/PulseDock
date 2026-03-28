@@ -1,7 +1,7 @@
 import * as tls from 'tls';
 import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -132,6 +132,58 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Bulk action applied.' })
   bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
     return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId, body.value);
+  }
+
+  @Post('compare')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Compare multiple monitors side by side' })
+  @ApiResponse({ status: 200, description: 'Comparison data returned.' })
+  async compare(
+    @Req() req: { user: { id: string } },
+    @Body() body: { monitorIds: string[]; period?: string },
+  ) {
+    const { monitorIds, period = '30d' } = body;
+    if (!Array.isArray(monitorIds) || monitorIds.length < 2 || monitorIds.length > 5) {
+      throw new BadRequestException('Provide 2–5 monitor IDs');
+    }
+
+    const results = await Promise.all(
+      monitorIds.map(async (id) => {
+        const monitor = await this.prisma.monitor.findFirst({
+          where: { id, userId: req.user.id },
+          select: { id: true, name: true, type: true, target: true, enabled: true },
+        });
+        if (!monitor) return null;
+
+        const lastRun = await this.prisma.monitorRun.findFirst({
+          where: { monitorId: id, userId: req.user.id },
+          orderBy: { checkedAt: 'desc' },
+          select: { level: true },
+        });
+
+        const validPeriods = ['1d', '7d', '30d', '90d'];
+        const safePeriod = validPeriods.includes(period) ? (period as '1d' | '7d' | '30d' | '90d') : '30d';
+        const uptime = await this.monitorsService.monitorUptime(req.user.id, id, safePeriod);
+
+        return {
+          id: monitor.id,
+          name: monitor.name,
+          type: monitor.type,
+          target: monitor.target,
+          level: lastRun?.level ?? 'green',
+          enabled: monitor.enabled,
+          uptimePct: uptime.uptimePct,
+          avgLatencyMs: uptime.avgLatencyMs,
+          incidents: uptime.incidents,
+          totalDowntimeSec: uptime.totalDowntimeSec,
+          mttrSec: uptime.mttrSec,
+          totalChecks: uptime.totalChecks,
+        };
+      }),
+    );
+
+    return { monitors: results.filter(Boolean), period };
   }
 
   @Post('version-test')

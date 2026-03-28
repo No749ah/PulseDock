@@ -3261,4 +3261,212 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── Mattermost ──────────────────────────────────────────────────────────────
+  describe('Mattermost channel', () => {
+    it('POSTs attachment payload to webhookUrl', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => 'ok' });
+      const channel = makeChannel({
+        type: 'mattermost',
+        config: { webhookUrl: 'https://mattermost.example.com/hooks/abc123' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://mattermost.example.com/hooks/abc123');
+      const body = JSON.parse(init.body as string) as { username: string; attachments: Array<{ color: string; title: string }> };
+      expect(body.attachments).toHaveLength(1);
+      expect(body.username).toBe('PulseDock');
+    });
+
+    it('uses custom username and channel when configured', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => 'ok' });
+      const channel = makeChannel({
+        type: 'mattermost',
+        config: { webhookUrl: 'https://mattermost.example.com/hooks/abc', username: 'MyBot', channel: '#ops' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as { username: string; channel: string };
+      expect(body.username).toBe('MyBot');
+      expect(body.channel).toBe('#ops');
+    });
+
+    it('uses red color for down level', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => 'ok' });
+      const channel = makeChannel({
+        type: 'mattermost',
+        config: { webhookUrl: 'https://mm.example.com/hooks/x' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.send(channel, 'Down', {
+        monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
+        run: { level: 'red', message: 'Connection refused', latencyMs: null, checkedAt: new Date().toISOString() },
+      });
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as { attachments: Array<{ color: string }> };
+      expect(body.attachments[0].color).toBe('#cc0000');
+    });
+
+    it('uses green color for recovered level', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => 'ok' });
+      const channel = makeChannel({
+        type: 'mattermost',
+        config: { webhookUrl: 'https://mm.example.com/hooks/x' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.send(channel, 'Recovered', {
+        monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
+        run: { level: 'green', message: 'OK', latencyMs: 45, checkedAt: new Date().toISOString() },
+      });
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as { attachments: Array<{ color: string }> };
+      expect(body.attachments[0].color).toBe('#36a64f');
+    });
+
+    it('throws on non-OK response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: async () => 'Internal Server Error' });
+      const channel = makeChannel({
+        type: 'mattermost',
+        config: { webhookUrl: 'https://mm.example.com/hooks/x' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Mattermost webhook returned 500');
+    });
+
+    it('does not send if webhookUrl is missing', async () => {
+      const channel = makeChannel({ type: 'mattermost', config: {} });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Zulip ────────────────────────────────────────────────────────────────────
+  describe('Zulip channel', () => {
+    const zulipConfig = {
+      serverUrl: 'https://myorg.zulipchat.com',
+      botEmail: 'pulsedock-bot@myorg.zulipchat.com',
+      botApiKey: 'abc123def456',
+      stream: 'alerts',
+      topic: 'PulseDock Alerts',
+    };
+
+    it('POSTs form-encoded message to /api/v1/messages with Basic auth', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"id":1,"msg":"","result":"success"}' });
+      const channel = makeChannel({ type: 'zulip', config: zulipConfig });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://myorg.zulipchat.com/api/v1/messages');
+      expect((init.headers as Record<string, string>)['content-type']).toBe('application/x-www-form-urlencoded');
+      const authHeader = (init.headers as Record<string, string>)['authorization'] ?? '';
+      expect(authHeader.startsWith('Basic ')).toBe(true);
+      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+      expect(decoded).toBe('pulsedock-bot@myorg.zulipchat.com:abc123def456');
+    });
+
+    it('sends stream message with correct type and topic', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"id":1,"result":"success"}' });
+      const channel = makeChannel({ type: 'zulip', config: zulipConfig });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const params = new URLSearchParams(init.body as string);
+      expect(params.get('type')).toBe('stream');
+      expect(params.get('to')).toBe('alerts');
+      expect(params.get('topic')).toBe('PulseDock Alerts');
+    });
+
+    it('sends direct message when messageType is direct', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"id":1,"result":"success"}' });
+      const channel = makeChannel({
+        type: 'zulip',
+        config: { ...zulipConfig, messageType: 'direct', dmTo: 'user@myorg.zulipchat.com' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const params = new URLSearchParams(init.body as string);
+      expect(params.get('type')).toBe('direct');
+      expect(params.get('to')).toBe('user@myorg.zulipchat.com');
+      expect(params.has('topic')).toBe(false);
+    });
+
+    it('defaults to stream type when messageType is not set', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"id":1,"result":"success"}' });
+      const channel = makeChannel({
+        type: 'zulip',
+        config: { serverUrl: zulipConfig.serverUrl, botEmail: zulipConfig.botEmail, botApiKey: zulipConfig.botApiKey },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const params = new URLSearchParams(init.body as string);
+      expect(params.get('type')).toBe('stream');
+    });
+
+    it('strips trailing slash from serverUrl', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '{"id":1,"result":"success"}' });
+      const channel = makeChannel({
+        type: 'zulip',
+        config: { ...zulipConfig, serverUrl: 'https://myorg.zulipchat.com/' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).not.toContain('//api');
+      expect(url).toBe('https://myorg.zulipchat.com/api/v1/messages');
+    });
+
+    it('throws on non-OK response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 401, text: async () => 'Unauthorized' });
+      const channel = makeChannel({ type: 'zulip', config: zulipConfig });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Zulip API returned 401');
+    });
+
+    it('does not send if serverUrl is missing', async () => {
+      const channel = makeChannel({ type: 'zulip', config: { botEmail: 'x@y.com', botApiKey: 'key' } });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
 });

@@ -644,6 +644,122 @@ export class AlertsService {
       }
       return;
     }
+
+    // ── Mattermost ─────────────────────────────────────────────────────────────
+    // POST to Mattermost Incoming Webhook URL (compatible with self-hosted + cloud).
+    // Sends an attachment with color-coded status and key facts.
+    if (channel.type === 'mattermost' && typeof channel.config.webhookUrl === 'string') {
+      const ctx = extra as {
+        run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string };
+        monitor?: { name?: string; type?: string; target?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'RECOVERED' : level === 'yellow' ? 'DEGRADED' : 'DOWN';
+      const color = level === 'green' ? '#36a64f' : level === 'yellow' ? '#ffa500' : '#cc0000';
+      const emoji = level === 'green' ? ':white_check_mark:' : level === 'yellow' ? ':warning:' : ':red_circle:';
+      const username = typeof channel.config.username === 'string' && channel.config.username.trim() ? channel.config.username.trim() : 'PulseDock';
+      const iconUrl = typeof channel.config.iconUrl === 'string' && channel.config.iconUrl.trim() ? channel.config.iconUrl.trim() : undefined;
+
+      const fields: Array<{ short: boolean; title: string; value: string }> = [];
+      if (monitor?.name) fields.push({ title: 'Monitor', value: monitor.name, short: true });
+      if (monitor?.type) fields.push({ title: 'Type', value: monitor.type.replace('_', ' '), short: true });
+      if (run?.latencyMs != null) fields.push({ title: 'Latency', value: `${run.latencyMs}ms`, short: true });
+      if (monitor?.target) fields.push({ title: 'Target', value: monitor.target, short: false });
+
+      const payload: Record<string, unknown> = {
+        username,
+        attachments: [
+          {
+            fallback: `${emoji} [PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}: ${run?.message ?? text}`,
+            color,
+            title: `${emoji} ${monitor?.name ?? 'Monitor'} — ${levelLabel}`,
+            text: run?.message ?? text,
+            fields,
+            footer: 'PulseDock',
+            ts: run?.checkedAt ? Math.floor(new Date(run.checkedAt).getTime() / 1000) : Math.floor(Date.now() / 1000),
+          },
+        ],
+      };
+      if (iconUrl) payload.icon_url = iconUrl;
+      if (typeof channel.config.channel === 'string' && channel.config.channel.trim()) {
+        payload.channel = channel.config.channel.trim();
+      }
+
+      const mmResp = await fetch(channel.config.webhookUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!mmResp.ok) {
+        const mmBody = await mmResp.text().catch(() => '');
+        throw new Error(`Mattermost webhook returned ${mmResp.status}: ${mmBody}`);
+      }
+      return;
+    }
+
+    // ── Zulip ──────────────────────────────────────────────────────────────────
+    // POST to Zulip bot via REST API.
+    // Supports stream messages (type=stream, to=stream-name, topic=subject) and
+    // DM messages (type=direct, to=user-email).
+    if (
+      channel.type === 'zulip' &&
+      typeof channel.config.serverUrl === 'string' &&
+      typeof channel.config.botEmail === 'string' &&
+      typeof channel.config.botApiKey === 'string'
+    ) {
+      const ctx = extra as {
+        run?: { level?: string; message?: string; latencyMs?: number };
+        monitor?: { name?: string; type?: string; target?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'RECOVERED' : level === 'yellow' ? 'DEGRADED' : 'DOWN';
+      const emoji = level === 'green' ? ':check_mark:' : level === 'yellow' ? ':warning:' : ':red_circle:';
+
+      const baseUrl = (channel.config.serverUrl as string).replace(/\/$/, '');
+      const messageType = typeof channel.config.messageType === 'string' && channel.config.messageType === 'direct' ? 'direct' : 'stream';
+      const streamName = typeof channel.config.stream === 'string' && channel.config.stream.trim() ? channel.config.stream.trim() : 'general';
+      const topic = typeof channel.config.topic === 'string' && channel.config.topic.trim() ? channel.config.topic.trim() : 'PulseDock Alerts';
+      const dmTo = typeof channel.config.dmTo === 'string' && channel.config.dmTo.trim() ? channel.config.dmTo.trim() : channel.config.botEmail;
+
+      const facts: string[] = [];
+      if (monitor?.name) facts.push(`**Monitor:** ${monitor.name}`);
+      if (monitor?.type) facts.push(`**Type:** ${monitor.type.replace('_', ' ')}`);
+      if (run?.latencyMs != null) facts.push(`**Latency:** ${run.latencyMs}ms`);
+      if (monitor?.target) facts.push(`**Target:** ${monitor.target}`);
+
+      const content =
+        `${emoji} **[PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}**\n` +
+        (run?.message ?? text) +
+        (facts.length > 0 ? '\n\n' + facts.join(' | ') : '');
+
+      const params = new URLSearchParams({
+        type: messageType,
+        to: messageType === 'direct' ? dmTo : streamName,
+        content,
+      });
+      if (messageType === 'stream') params.set('topic', topic);
+
+      const credentials = Buffer.from(`${channel.config.botEmail}:${channel.config.botApiKey}`).toString('base64');
+      const zulipResp = await fetch(`${baseUrl}/api/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'authorization': `Basic ${credentials}`,
+        },
+        body: params.toString(),
+      });
+      if (!zulipResp.ok) {
+        const zulipBody = await zulipResp.text().catch(() => '');
+        throw new Error(`Zulip API returned ${zulipResp.status}: ${zulipBody}`);
+      }
+      return;
+    }
   }
 
   /**

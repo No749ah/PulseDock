@@ -1,3 +1,13 @@
+## Status Summary (2026-03-28 07:25 UTC)
+- **Build/Test:** ✅ Clean build + 3812 API (+6 heatmap tests) + 10 e2e + 12 agent = 3834 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:25 UTC cycle):**
+  - [x] **Uptime Heatmap Page** — `GET /v1/monitors/heatmap?days=N` API (1-90 day window). `/monitors/heatmap` frontend: color-coded per-monitor × per-day grid (green ≥99.9% / yellow 95-99% / orange 80-95% / red <80% / grey no-data), period selector (7/14/30/60/90d), folder grouping, search filter, summary cards (avg uptime, perfect days, most issues monitor), hover tooltips, sidebar nav link. 6 new tests.
+  - [x] **FTP/IMAP/POP3 monitor types** — `runFtpCheck()` (banner + optional AUTH TLS), `runImapCheck()` (banner + optional STARTTLS), `runPop3Check()` (banner + optional STLS). All wired in ChecksService + DTOs. UI form support.
+  - [x] **Fix MonitorType union drift** — `types.ts` was missing FTP/IMAP/POP3 while Prisma schema had them. Fixed.
+
 ## Status Summary (2026-03-28 06:58 UTC)
 - **Build/Test:** ✅ Clean build + 3801 API (+6 export/import tests) + 10 e2e + 12 agent = 3823 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

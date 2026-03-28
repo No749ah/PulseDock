@@ -134,6 +134,7 @@ export function AdvancedFiltersPanel({
               { key: "POP3", label: "POP3" },
               { key: "CT_LOG", label: "CT Log" },
               { key: "GRAPHQL", label: "GraphQL" },
+              { key: "TRANSACTION", label: "Transaction" },
             ] as const).map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer group">
                 <input

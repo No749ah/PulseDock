@@ -529,6 +529,23 @@ export class MonitorsController {
     return this.monitorsService.monitorTrends(req.user.id);
   }
 
+  @Get('dependency-graph')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Monitor dependency graph',
+    description:
+      'Returns a full dependency topology graph for all monitors. ' +
+      'Nodes include live status, latency, and 7-day uptime. ' +
+      'Edges represent alert-suppression dependencies (source depends on target). ' +
+      'inDegree = blast radius (how many monitors would be suppressed if this one goes down). ' +
+      'outDegree = how many dependencies this monitor has. ' +
+      'Useful for rendering infrastructure topology maps and understanding failure blast radius.',
+  })
+  @ApiResponse({ status: 200, description: 'Dependency graph data returned.' })
+  dependencyGraph(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.dependencyGraph(req.user.id);
+  }
+
   @Get('export')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Export monitor configurations as JSON or YAML' })

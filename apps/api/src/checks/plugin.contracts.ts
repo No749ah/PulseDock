@@ -91,6 +91,11 @@ export interface PluginExecutionResult {
     actual?: string | null;
     message: string;
   }> | null;
+  /**
+   * Arbitrary structured metadata for specialized monitor types.
+   * Used by TRANSACTION monitors to store per-step results.
+   */
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface PluginConfigField {

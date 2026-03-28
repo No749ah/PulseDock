@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp, XCircle, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { getUser } from '../../../components/auth';
 import { api } from '../../../lib/api';
@@ -40,6 +40,7 @@ interface AnalyticsData {
   topMonitors: TopMonitor[];
   channelStats: ChannelStat[];
   totals: { success: number; failed: number; total: number };
+  periodDays: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -61,14 +62,14 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 // ─── Mini Bar Chart ───────────────────────────────────────────────────────────
 
-function DailyBarChart({ data }: { data: DailyCount[] }) {
+function DailyBarChart({ data, periodDays }: { data: DailyCount[]; periodDays: number }) {
   if (data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.total), 1);
 
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-5">
-      <h3 className="text-sm font-semibold text-text-primary mb-4">Alert Deliveries — Last 30 Days</h3>
-      <div className="flex items-end gap-[3px] h-32">
+      <h3 className="text-sm font-semibold text-text-primary mb-4">Alert Deliveries — Last {periodDays} Days</h3>
+      <div className="flex items-end gap-[2px] h-32">
         {data.map((d) => {
           const totalH = Math.max((d.total / max) * 100, d.total > 0 ? 4 : 0);
           const failedH = d.total > 0 ? (d.failed / d.total) * totalH : 0;
@@ -98,8 +99,8 @@ function DailyBarChart({ data }: { data: DailyCount[] }) {
         })}
       </div>
       <div className="flex justify-between text-xs text-text-secondary mt-2">
-        <span>{formatDate(data[0].date)}</span>
-        <span>{formatDate(data[data.length - 1].date)}</span>
+        <span>{data.length > 0 ? formatDate(data[0].date) : ''}</span>
+        <span>{data.length > 0 ? formatDate(data[data.length - 1].date) : ''}</span>
       </div>
       <div className="flex gap-4 mt-3 text-xs text-text-secondary">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-500/70 inline-block" /> Success</span>
@@ -152,13 +153,15 @@ function ChannelReliability({ stats }: { stats: ChannelStat[] }) {
 
 // ─── Top Alerting Monitors ────────────────────────────────────────────────────
 
-function TopMonitors({ monitors }: { monitors: TopMonitor[] }) {
+function TopMonitors({ monitors, periodDays }: { monitors: TopMonitor[]; periodDays: number }) {
   if (monitors.length === 0) return null;
   const max = monitors[0].count;
 
   return (
     <div className="rounded-xl border border-border bg-surface-1 p-5">
-      <h3 className="text-sm font-semibold text-text-primary mb-4">Top Alerting Monitors <span className="text-text-secondary font-normal">(last 30d)</span></h3>
+      <h3 className="text-sm font-semibold text-text-primary mb-4">
+        Top Alerting Monitors <span className="text-text-secondary font-normal">(last {periodDays}d)</span>
+      </h3>
       <div className="space-y-3">
         {monitors.map((m, i) => (
           <div key={m.monitorId} className="flex items-center gap-3">
@@ -184,22 +187,63 @@ function TopMonitors({ monitors }: { monitors: TopMonitor[] }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const PERIOD_OPTIONS = [
+  { label: '7d', value: 7 },
+  { label: '14d', value: 14 },
+  { label: '30d', value: 30 },
+  { label: '90d', value: 90 },
+];
+
 export default function AlertAnalyticsPage() {
   const router = useRouter();
   const { error: toastError } = useToast();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<number>(30);
+  const [userId, setUserId] = useState<string>('');
+
+  const loadData = async (days: number, uid: string) => {
+    setLoading(true);
+    try {
+      const result = await api<AnalyticsData>(`/v1/alert-channels/analytics?days=${days}`, uid);
+      setData(result);
+    } catch {
+      toastError('Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const user = getUser();
     if (!user) { router.push('/login'); return; }
-
-    api<AnalyticsData>('/v1/alert-channels/analytics')
-      .then(setData)
-      .catch(() => toastError('Failed to load analytics'))
-      .finally(() => setLoading(false));
+    setUserId(user.id);
+    loadData(period, user.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  const handlePeriodChange = (days: number) => {
+    setPeriod(days);
+    loadData(days, userId);
+  };
+
+  const handleExport = () => {
+    const user = getUser();
+    if (!user) return;
+    // Trigger CSV download via direct link
+    const token = localStorage.getItem('auth_token') ?? '';
+    const url = `/api/v1/alert-channels/deliveries/export?days=${period}`;
+    // Use fetch to download
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `alert-deliveries-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+      })
+      .catch(() => toastError('Export failed'));
+  };
 
   const successRate = data && data.totals.total > 0
     ? Math.round((data.totals.success / data.totals.total) * 1000) / 10
@@ -216,6 +260,34 @@ export default function AlertAnalyticsPage() {
         { label: 'Alert Analytics' },
       ]}
     >
+      {/* Period selector + export */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-1 p-1">
+          {PERIOD_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => handlePeriodChange(opt.value)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                period === opt.value
+                  ? 'bg-accent text-white'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {data && data.totals.total > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-surface-1 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-20 text-text-secondary text-sm">Loading analytics…</div>
       ) : !data || data.totals.total === 0 ? (
@@ -233,7 +305,7 @@ export default function AlertAnalyticsPage() {
             <StatCard
               label="Total Deliveries"
               value={data.totals.total.toLocaleString()}
-              sub="last 30 days"
+              sub={`last ${data.periodDays} days`}
             />
             <StatCard
               label="Success Rate"
@@ -255,13 +327,13 @@ export default function AlertAnalyticsPage() {
 
           {/* Alert trend */}
           {data.dailyCounts.length > 0 && (
-            <DailyBarChart data={data.dailyCounts} />
+            <DailyBarChart data={data.dailyCounts} periodDays={data.periodDays} />
           )}
 
           {/* Two-column: channel stats + top monitors */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ChannelReliability stats={data.channelStats} />
-            <TopMonitors monitors={data.topMonitors} />
+            <TopMonitors monitors={data.topMonitors} periodDays={data.periodDays} />
           </div>
 
           {/* Insight callout */}

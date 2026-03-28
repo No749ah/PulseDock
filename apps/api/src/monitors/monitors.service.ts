@@ -3990,6 +3990,183 @@ export class MonitorsService {
     return { monitors: result, generatedAt: now.toISOString() };
   }
 
+  // ─── Dependency Graph ────────────────────────────────────────────────────────────
+
+  /**
+   * Returns a full dependency graph for all monitors belonging to the user.
+   *
+   * The graph is returned as nodes (monitors with live status) and directed edges
+   * (monitorId → dependsOnId, meaning "monitorId's alerts are suppressed when dependsOnId is down").
+   *
+   * Also computes, per-node, how many other monitors depend on it (inDegree = blast radius)
+   * and how many dependencies it has itself (outDegree).
+   *
+   * @param userId - The owner's user ID
+   * @returns Nodes, edges, and summary stats
+   */
+  async dependencyGraph(userId: string): Promise<{
+    nodes: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
+      latencyMs: number | null;
+      uptimePct7d: number | null;
+      isMuted: boolean;
+      inDegree: number;  // how many monitors depend on this one
+      outDegree: number; // how many dependencies this monitor has
+    }>;
+    edges: Array<{
+      source: string;  // monitorId (the dependent)
+      target: string;  // dependsOnId (the dependency)
+    }>;
+    summary: {
+      totalMonitors: number;
+      totalEdges: number;
+      isolatedNodes: number; // monitors with no dependencies and no dependents
+      monitorsByStatus: { up: number; down: number; degraded: number; paused: number; noData: number };
+    };
+    generatedAt: string;
+  }> {
+    const now = new Date();
+
+    // Fetch all monitors for this user
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      include: {
+        folder: { select: { name: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return {
+        nodes: [],
+        edges: [],
+        summary: { totalMonitors: 0, totalEdges: 0, isolatedNodes: 0, monitorsByStatus: { up: 0, down: 0, degraded: 0, paused: 0, noData: 0 } },
+        generatedAt: now.toISOString(),
+      };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Fetch latest run per monitor
+    const latestRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId: { in: monitorIds } },
+      orderBy: { checkedAt: 'desc' },
+      distinct: ['monitorId'],
+      select: { monitorId: true, ok: true, level: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Compute 7-day uptime per monitor
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weeklyRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: weekAgo },
+      },
+      select: { monitorId: true, ok: true },
+    });
+
+    const weeklyByMonitor = new Map<string, { total: number; ok: number }>();
+    for (const run of weeklyRuns) {
+      const entry = weeklyByMonitor.get(run.monitorId) ?? { total: 0, ok: 0 };
+      entry.total++;
+      if (run.ok) entry.ok++;
+      weeklyByMonitor.set(run.monitorId, entry);
+    }
+
+    // Fetch all dependency edges for these monitors
+    const allEdges = await this.prisma.monitorDependency.findMany({
+      where: {
+        OR: [
+          { monitorId: { in: monitorIds } },
+          { dependsOnId: { in: monitorIds } },
+        ],
+      },
+      select: { monitorId: true, dependsOnId: true },
+    });
+
+    // Compute in/out degrees
+    const inDegreeMap = new Map<string, number>();  // dependsOnId → count of dependents
+    const outDegreeMap = new Map<string, number>(); // monitorId → count of dependencies
+
+    for (const edge of allEdges) {
+      inDegreeMap.set(edge.dependsOnId, (inDegreeMap.get(edge.dependsOnId) ?? 0) + 1);
+      outDegreeMap.set(edge.monitorId, (outDegreeMap.get(edge.monitorId) ?? 0) + 1);
+    }
+
+    // Build run lookup
+    const runByMonitor = new Map(latestRuns.map(r => [r.monitorId, r]));
+
+    // Build nodes
+    const statusCount = { up: 0, down: 0, degraded: 0, paused: 0, noData: 0 };
+    const nodes = monitors.map(m => {
+      const run = runByMonitor.get(m.id);
+      const weekly = weeklyByMonitor.get(m.id);
+      const isMuted = m.mutedUntil != null && new Date(m.mutedUntil) > now;
+
+      let status: 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
+      if (!m.enabled) {
+        status = 'paused';
+        statusCount.paused++;
+      } else if (!run) {
+        status = 'no-data';
+        statusCount.noData++;
+      } else if (run.level === 'green' && run.ok) {
+        status = 'up';
+        statusCount.up++;
+      } else if (run.level === 'yellow') {
+        status = 'degraded';
+        statusCount.degraded++;
+      } else {
+        status = 'down';
+        statusCount.down++;
+      }
+
+      const uptimePct7d = weekly && weekly.total > 0
+        ? Math.round((weekly.ok / weekly.total) * 10000) / 100
+        : null;
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type as string,
+        enabled: m.enabled,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        status,
+        latencyMs: run?.latencyMs ?? null,
+        uptimePct7d,
+        isMuted,
+        inDegree: inDegreeMap.get(m.id) ?? 0,
+        outDegree: outDegreeMap.get(m.id) ?? 0,
+      };
+    });
+
+    const nodeIds = new Set(monitorIds);
+    const edges = allEdges
+      .filter(e => nodeIds.has(e.monitorId) && nodeIds.has(e.dependsOnId))
+      .map(e => ({ source: e.monitorId, target: e.dependsOnId }));
+
+    const isolatedNodes = nodes.filter(n => n.inDegree === 0 && n.outDegree === 0).length;
+
+    return {
+      nodes,
+      edges,
+      summary: {
+        totalMonitors: monitors.length,
+        totalEdges: edges.length,
+        isolatedNodes,
+        monitorsByStatus: { up: statusCount.up, down: statusCount.down, degraded: statusCount.degraded, paused: statusCount.paused, noData: statusCount.noData },
+      },
+      generatedAt: now.toISOString(),
+    };
+  }
+
   // ─── Geo-Distribution Stats ───────────────────────────────────────────────────────
 
   async geoStats(

@@ -30,6 +30,7 @@ enum MonitorType {
   POP3
   CT_LOG
   GRAPHQL
+  TRANSACTION
 }
 
 model User {

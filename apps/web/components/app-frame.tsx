@@ -67,6 +67,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },
       { href: '/monitors/coverage', label: 'Coverage', icon: ShieldCheck },
       { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
+      { href: '/monitors/dependencies', label: 'Topology', icon: GitBranch },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],

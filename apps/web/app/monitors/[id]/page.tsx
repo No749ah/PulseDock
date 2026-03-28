@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric" | "transaction">("overview");
 
   // Custom Metric state
   type MetricPoint = { checkedAt: string; value: number; level: string };
@@ -1193,6 +1193,19 @@ export default function MonitorDetailPage() {
             >
               <Shield className="w-3.5 h-3.5" />
               CT Logs
+            </button>
+          )}
+          {monitor.type === "TRANSACTION" && (
+            <button
+              onClick={() => setActiveMainTab("transaction")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "transaction"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              Steps
             </button>
           )}
           {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
@@ -2784,6 +2797,93 @@ export default function MonitorDetailPage() {
                           <p className="text-xs text-text-secondary mt-1 leading-relaxed">{msg}</p>
                         )}
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* Transaction Steps Tab */}
+        {(activeMainTab as string) === "transaction" && monitor.type === "TRANSACTION" && ((): React.ReactNode => {
+          const txRuns = runs.slice(0, 20);
+
+          const levelColor = (level: string) => {
+            if (level === "green") return "text-success";
+            if (level === "yellow") return "text-warning";
+            return "text-error";
+          };
+
+          const levelBg = (level: string) => {
+            if (level === "green") return "bg-success/10 border-success/20";
+            if (level === "yellow") return "bg-warning/10 border-warning/20";
+            return "bg-error/10 border-error/20";
+          };
+
+          return (
+            <Card className="p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Transaction Run History</h2>
+                <p className="text-xs text-text-muted mt-1">Last {txRuns.length} transaction runs. Expand a row to see per-step details.</p>
+              </div>
+
+              {txRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No transaction runs yet — trigger a manual check to see step-by-step results.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {txRuns.map((run) => {
+                  const txResult = ((run as typeof run & { metadata?: { transactionResult?: { steps: Array<{ stepId: string; name: string; ok: boolean; statusCode?: number; latencyMs: number; assertionFailures: string[]; error?: string }> } } }).metadata)?.transactionResult;
+                  const [expanded, setExpanded] = React.useState(false);
+                  return (
+                    <div key={run.id} className={`rounded-lg border ${levelBg(run.level ?? "red")} overflow-hidden`}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:brightness-110 transition-all"
+                        onClick={() => setExpanded((v) => !v)}
+                      >
+                        <span className={`text-xs font-bold uppercase ${levelColor(run.level ?? "red")}`}>{run.level}</span>
+                        <span className="text-xs text-text-primary">{new Date(run.checkedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="text-xs text-text-secondary ml-auto">{run.latencyMs != null ? `${run.latencyMs}ms total` : "—"}</span>
+                        <span className="text-xs text-text-muted">{txResult ? `${txResult.steps.filter((s) => s.ok).length}/${txResult.steps.length} steps passed` : run.message}</span>
+                        <span className="text-text-muted text-xs ml-1">{expanded ? "▲" : "▼"}</span>
+                      </button>
+                      {expanded && txResult && (
+                        <div className="border-t border-current/10 p-3">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-text-muted">
+                                <th className="text-left py-1 pr-3">#</th>
+                                <th className="text-left py-1 pr-3">Step</th>
+                                <th className="text-left py-1 pr-3">Status</th>
+                                <th className="text-left py-1 pr-3">Latency</th>
+                                <th className="text-left py-1">Issues</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {txResult.steps.map((step, si) => (
+                                <tr key={step.stepId} className="border-t border-current/5">
+                                  <td className="py-1.5 pr-3 text-text-muted">{si + 1}</td>
+                                  <td className="py-1.5 pr-3 font-medium text-text-primary">{step.name}</td>
+                                  <td className={`py-1.5 pr-3 font-bold ${step.ok ? "text-success" : "text-error"}`}>
+                                    {step.ok ? "✓" : "✗"} {step.statusCode ?? "—"}
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-text-secondary">{step.latencyMs}ms</td>
+                                  <td className="py-1.5 text-text-muted">
+                                    {step.error && <span className="text-error">{step.error}</span>}
+                                    {step.assertionFailures.length > 0 && step.assertionFailures.map((f, fi) => (
+                                      <div key={fi} className="text-warning">{f}</div>
+                                    ))}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

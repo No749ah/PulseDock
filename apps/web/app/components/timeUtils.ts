@@ -38,6 +38,7 @@ export function formatMonitorType(type: string): string {
     IMAP: "IMAP Check",
     POP3: "POP3 Check",
     GRAPHQL: "GraphQL API",
+    TRANSACTION: "Transaction",
   };
   return map[type] ?? type;
 }
@@ -76,6 +77,7 @@ export function targetPlaceholder(type: string): string {
     case "BROWSER": return "https://example.com";
     case "WHOIS": return "example.com";
     case "CT_LOG": return "example.com";
+    case "TRANSACTION": return "my-login-flow";
     default: return "https://api.example.com/health";
   }
 }
@@ -96,6 +98,7 @@ export function targetHelperText(type: string): string {
     case "BROWSER": return "Fetches the page with a browser-like User-Agent. Optionally assert expected text or CSS selector presence.";
     case "WHOIS": return "Queries the WHOIS registry for the domain expiry date. Alerts when expiry is approaching.";
     case "CT_LOG": return "Monitors Certificate Transparency logs via crt.sh. Detects new certificates issued for your domain.";
+    case "TRANSACTION": return "A label for this transaction flow (e.g. 'login-flow'). The actual steps are configured below.";
     default: return "PulseDock will send an HTTP request to this URL and check the response.";
   }
 }

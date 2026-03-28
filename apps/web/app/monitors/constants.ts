@@ -39,7 +39,7 @@ export const VERSION_NOTIFY_OPTIONS = [
   { value: "VERSION_MAJOR", label: "Major updates only" },
 ];
 
-export const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"] as const;
+export const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL", "TRANSACTION"] as const;
 
 export const DEFAULT_FORM_DATA = {
   name: "",

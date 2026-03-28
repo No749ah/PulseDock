@@ -26,6 +26,7 @@ import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck, runF
 import { runWhoisCheck } from './runners/whois.runner';
 import { runCtLogCheck } from './runners/ct-log.runner';
 import { runGraphQLCheck } from './runners/graphql.runner';
+import { runTransactionCheck } from './runners/transaction.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -200,6 +201,18 @@ export class ChecksService {
           expectedValue: monitor.graphqlExpectedValue ?? undefined,
           timeoutMs: monitor.timeoutMs ?? 30_000,
         });
+      case 'TRANSACTION': {
+        const txConfig = (monitor.config ?? {}) as {
+          transactionSteps?: unknown[];
+          initialVars?: Record<string, string>;
+          continueOnFailure?: boolean;
+        };
+        return runTransactionCheck(
+          (txConfig.transactionSteps ?? []) as import('./runners/transaction.runner').TransactionStep[],
+          txConfig.initialVars ?? {},
+          txConfig.continueOnFailure ?? false,
+        );
+      }
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }

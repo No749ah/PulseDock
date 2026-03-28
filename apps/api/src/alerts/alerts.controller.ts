@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '../common/auth.guard';
 import { AlertsService } from './alerts.service';
@@ -193,10 +194,13 @@ export class AlertsController {
   @Get('analytics')
   @ApiOperation({
     summary: 'Get alert delivery analytics',
-    description: 'Returns aggregated analytics from alert delivery logs: daily counts, top alerting monitors, channel reliability stats.',
+    description: 'Returns aggregated analytics from alert delivery logs: daily counts, top alerting monitors, channel reliability stats. Use the `days` param (7/14/30/90) to control the time window.',
   })
+  @ApiQuery({ name: 'days', required: false, description: 'Period in days: 7, 14, 30 (default), or 90' })
   @ApiResponse({ status: 200, description: 'Alert analytics returned.' })
-  async analytics(@Req() req: { user: { id: string } }) {
+  async analytics(@Req() req: { user: { id: string } }, @Query('days') daysParam?: string) {
+    const periodDays = [7, 14, 30, 90].includes(parseInt(daysParam ?? '30', 10)) ? parseInt(daysParam ?? '30', 10) : 30;
+
     const channels = await this.prisma.alertChannel.findMany({
       where: { userId: req.user.id },
       select: { id: true, name: true, type: true },
@@ -204,21 +208,21 @@ export class AlertsController {
     const channelIds = channels.map((c) => c.id);
 
     if (channelIds.length === 0) {
-      return { dailyCounts: [], topMonitors: [], channelStats: [], totals: { success: 0, failed: 0, total: 0 } };
+      return { dailyCounts: [], topMonitors: [], channelStats: [], totals: { success: 0, failed: 0, total: 0 }, periodDays };
     }
 
-    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sinceDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 
-    // Fetch all delivery logs for the past 30 days
+    // Fetch all delivery logs for the configured period
     const logs = await this.prisma.alertDeliveryLog.findMany({
-      where: { alertChannelId: { in: channelIds }, createdAt: { gte: since30d } },
+      where: { alertChannelId: { in: channelIds }, createdAt: { gte: sinceDate } },
       select: { alertChannelId: true, status: true, monitorId: true, monitorName: true, createdAt: true, durationMs: true },
       orderBy: { createdAt: 'asc' },
     });
 
-    // Daily counts (last 30 days)
+    // Daily counts (for the selected period)
     const dayBuckets = new Map<string, { success: number; failed: number }>();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = periodDays - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
       dayBuckets.set(key, { success: 0, failed: 0 });
@@ -277,7 +281,7 @@ export class AlertsController {
       { success: 0, failed: 0, total: 0 },
     );
 
-    return { dailyCounts, topMonitors, channelStats, totals };
+    return { dailyCounts, topMonitors, channelStats, totals, periodDays };
   }
 
   @Get('noise-analysis')
@@ -343,6 +347,70 @@ export class AlertsController {
         groupedCount: l.groupedCount,
       })),
     };
+  }
+
+  @Get('deliveries/export')
+  @ApiOperation({
+    summary: 'Export alert delivery history as CSV',
+    description: 'Exports the last 10,000 alert delivery log entries as a CSV file. Optional `days` filter (default 30, max 365).',
+  })
+  @ApiQuery({ name: 'days', required: false, description: 'Number of days to export (1–365, default 30)' })
+  @ApiResponse({ status: 200, description: 'CSV file download.' })
+  async exportDeliveries(@Req() req: { user: { id: string } }, @Query('days') daysParam: string | undefined, @Res() res: Response) {
+    const days = Math.min(365, Math.max(1, parseInt(daysParam ?? '30', 10) || 30));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      select: { id: true, name: true, type: true },
+    });
+    const channelIds = channels.map(c => c.id);
+    const channelMap = new Map(channels.map(c => [c.id, { name: c.name, type: c.type }]));
+
+    if (channelIds.length === 0) {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="alert-deliveries-${new Date().toISOString().slice(0, 10)}.csv"`);
+      res.send('timestamp,channel_name,channel_type,status,monitor_name,trigger,duration_ms,error\n');
+      return;
+    }
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { alertChannelId: { in: channelIds }, createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
+    });
+
+    const escapeCsv = (v: string | null | undefined): string => {
+      if (v == null) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const header = 'timestamp,channel_id,channel_name,channel_type,status,monitor_id,monitor_name,trigger,duration_ms,error,is_grouped,grouped_count';
+    const rows = logs.map(l => {
+      const ch = channelMap.get(l.alertChannelId);
+      return [
+        escapeCsv(l.createdAt.toISOString()),
+        escapeCsv(l.alertChannelId),
+        escapeCsv(ch?.name),
+        escapeCsv(ch?.type),
+        escapeCsv(l.status),
+        escapeCsv(l.monitorId),
+        escapeCsv(l.monitorName),
+        escapeCsv(l.trigger),
+        escapeCsv(l.durationMs != null ? String(l.durationMs) : null),
+        escapeCsv(l.errorMessage),
+        escapeCsv(l.isGrouped ? 'true' : 'false'),
+        escapeCsv(l.groupedCount != null ? String(l.groupedCount) : '1'),
+      ].join(',');
+    });
+
+    const csv = [header, ...rows].join('\n');
+    const filename = `alert-deliveries-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
   }
 
   @Get(':id/delivery-stats')

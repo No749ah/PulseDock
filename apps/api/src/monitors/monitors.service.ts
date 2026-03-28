@@ -1,4 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import * as tls from 'tls';
+import * as https from 'https';
+import * as http from 'http';
+import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { CronExpressionParser } from 'cron-parser';
@@ -8,6 +11,8 @@ import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
+import type { PlaygroundDto, PlaygroundResult } from './playground.dto';
+import { extractByPath } from '../checks/version-extractor.util';
 
 @Injectable()
 export class MonitorsService {
@@ -4783,6 +4788,116 @@ export class MonitorsService {
 
     return { created: monitors.length, monitors };
   }
+
+  // ─── Playground rate-limit: in-memory map userId → timestamps ───────────────
+  private readonly _playgroundTimestamps = new Map<string, number[]>();
+
+  /**
+   * Runs a one-off HTTP check against the given URL without creating or storing a monitor.
+   * Rate limited to 10 requests per user per minute.
+   */
+  async runPlayground(dto: PlaygroundDto, userId: string): Promise<PlaygroundResult> {
+    // Rate limit
+    const now = Date.now();
+    const windowMs = 60_000;
+    const maxPerWindow = 10;
+    const timestamps = (this._playgroundTimestamps.get(userId) ?? []).filter((t) => now - t < windowMs);
+    if (timestamps.length >= maxPerWindow) {
+      throw new HttpException('Playground rate limit exceeded: max 10 requests per minute', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    timestamps.push(now);
+    this._playgroundTimestamps.set(userId, timestamps);
+
+    const url = dto.url?.trim() ?? '';
+    if (!/^https?:\/\//i.test(url)) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: 0,
+        responseHeaders: {},
+        bodyExcerpt: '',
+        assertions: {},
+        error: 'URL must start with http:// or https://',
+      };
+    }
+
+    const timeoutMs = Math.min(dto.timeoutMs ?? 10000, 30000);
+    const method = (dto.method ?? 'GET').toUpperCase();
+    const followRedirects = dto.followRedirects !== false;
+    const checkSsl = dto.checkSsl !== false;
+    const isHttps = url.startsWith('https://');
+
+    try {
+      const { statusCode, body, latencyMs, timings, responseHeaders, redirectChain } =
+        await playgroundHttpRequest(url, { method, timeoutMs, headers: dto.headers ?? {}, body: dto.body, followRedirects });
+
+      const bodyExcerpt = body.slice(0, 500);
+      const contentType = responseHeaders['content-type']?.split(';')[0]?.trim();
+
+      // ─── JSON path evaluation ──────────────────────────────────────────────
+      let bodyJsonPathResult: string | undefined;
+      if (dto.bodyJsonPath) {
+        try {
+          const parsed: unknown = JSON.parse(body);
+          const normalizedPath = dto.bodyJsonPath.replace(/^\$\.?/, '');
+          const extracted = extractByPath(parsed, normalizedPath);
+          bodyJsonPathResult = extracted !== undefined ? String(extracted) : undefined;
+        } catch {
+          bodyJsonPathResult = undefined;
+        }
+      }
+
+      // ─── SSL Info ─────────────────────────────────────────────────────────
+      let sslInfo: PlaygroundResult['sslInfo'];
+      if (isHttps && checkSsl) {
+        try {
+          sslInfo = await getPlaygroundSslInfo(url, timeoutMs);
+        } catch {
+          // SSL info is optional — don't fail the whole result
+        }
+      }
+
+      // ─── Assertions ───────────────────────────────────────────────────────
+      const assertions: PlaygroundResult['assertions'] = {};
+      if (dto.expectedStatus !== undefined) {
+        assertions.statusOk = statusCode === dto.expectedStatus;
+      }
+      if (dto.bodyContains !== undefined) {
+        assertions.bodyContainsOk = body.includes(dto.bodyContains);
+      }
+      if (dto.bodyJsonPath !== undefined && dto.bodyJsonPathExpected !== undefined) {
+        assertions.bodyJsonPathOk = bodyJsonPathResult === dto.bodyJsonPathExpected;
+      }
+
+      const assertionsFailed = Object.values(assertions).some((v) => v === false);
+      const httpOk = statusCode >= 200 && statusCode < 300;
+      const ok = httpOk && !assertionsFailed;
+
+      return {
+        ok,
+        statusCode,
+        latencyMs,
+        timings,
+        redirectChain,
+        responseHeaders,
+        bodyExcerpt,
+        bodyJsonPathResult,
+        contentType,
+        sslInfo,
+        assertions,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: 0,
+        responseHeaders: {},
+        bodyExcerpt: '',
+        assertions: {},
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
 }
 
 export interface SuggestedMonitor {
@@ -4938,4 +5053,150 @@ export function simulateAlertRules(runs: SimulateRun[], config: SimulateConfig):
     noiseScore,
     timeline,
   };
+}
+
+
+// ─── Playground HTTP Request Helper ──────────────────────────────────────────
+interface PlaygroundHttpResult {
+  statusCode: number;
+  body: string;
+  latencyMs: number;
+  timings: { dnsMs?: number; tcpMs?: number; tlsMs?: number; ttfbMs?: number; downloadMs?: number };
+  responseHeaders: Record<string, string>;
+  redirectChain: string[];
+}
+
+async function playgroundTimedRequest(
+  url: string,
+  options: { method: string; timeoutMs: number; headers: Record<string, string>; body?: string },
+): Promise<Omit<PlaygroundHttpResult, 'redirectChain'>> {
+  return new Promise((resolve, reject) => {
+    const startMs = Date.now();
+    let dnsStart: number | null = null;
+    let dnsMs: number | undefined;
+    let tcpStart: number | null = null;
+    let tcpMs: number | undefined;
+    let tlsStart: number | null = null;
+    let tlsMs: number | undefined;
+    let ttfbMs: number | undefined;
+    let bodyStart: number | null = null;
+    let downloadMs: number | undefined;
+
+    let urlObj: URL;
+    try { urlObj = new URL(url); } catch { reject(new Error(`Invalid URL: ${url}`)); return; }
+
+    const isHttps = urlObj.protocol === 'https:';
+    const lib: typeof https | typeof http = isHttps ? https : http;
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port !== '' ? parseInt(urlObj.port, 10) : isHttps ? 443 : 80,
+      path: (urlObj.pathname || '/') + urlObj.search,
+      method: options.method,
+      headers: { 'User-Agent': 'PulseDock-Playground/1.0', ...options.headers },
+      timeout: options.timeoutMs,
+    };
+    const chunks: Buffer[] = [];
+    const req = lib.request(requestOptions, (res) => {
+      ttfbMs = Date.now() - startMs;
+      bodyStart = Date.now();
+      res.on('data', (chunk: Buffer) => { chunks.push(chunk); });
+      res.on('end', () => {
+        downloadMs = bodyStart !== null ? Date.now() - bodyStart : undefined;
+        const latencyMs = Date.now() - startMs;
+        const body = Buffer.concat(chunks).toString('utf8');
+        const responseHeaders: Record<string, string> = {};
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (v !== undefined) responseHeaders[k] = Array.isArray(v) ? v.join(', ') : (v as string);
+        }
+        resolve({ statusCode: res.statusCode ?? 0, body, latencyMs, timings: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }, responseHeaders });
+      });
+      res.on('error', reject);
+    });
+    req.on('socket', (socket) => {
+      dnsStart = Date.now();
+      socket.on('lookup', () => { if (dnsStart !== null) { dnsMs = Date.now() - dnsStart; } tcpStart = Date.now(); });
+      socket.on('connect', () => {
+        if (tcpStart !== null) { tcpMs = Date.now() - tcpStart; } else if (dnsStart !== null) { tcpMs = Date.now() - dnsStart; }
+        if (isHttps) tlsStart = Date.now();
+      });
+      socket.on('secureConnect', () => { if (tlsStart !== null) { tlsMs = Date.now() - tlsStart; } });
+    });
+    req.on('timeout', () => { req.destroy(new Error(`Request timed out after ${options.timeoutMs}ms`)); });
+    req.on('error', reject);
+    if (options.body && ['POST', 'PUT', 'PATCH'].includes(options.method)) { req.write(options.body); }
+    req.end();
+  });
+}
+
+async function playgroundHttpRequest(
+  url: string,
+  options: { method: string; timeoutMs: number; headers: Record<string, string>; body?: string; followRedirects: boolean },
+): Promise<PlaygroundHttpResult> {
+  const redirectChain: string[] = [];
+  let currentUrl = url;
+  let totalLatencyMs = 0;
+  let currentMethod = options.method;
+  let currentBody = options.body;
+  const maxRedirects = options.followRedirects ? 10 : 0;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const result = await playgroundTimedRequest(currentUrl, { ...options, method: currentMethod, body: currentBody });
+    totalLatencyMs += result.latencyMs;
+    const isRedirect = result.statusCode >= 301 && result.statusCode <= 308;
+    const location = result.responseHeaders['location'];
+    if (isRedirect && location && options.followRedirects) {
+      redirectChain.push(currentUrl);
+      try { currentUrl = new URL(location, currentUrl).href; } catch { return { ...result, latencyMs: totalLatencyMs, redirectChain }; }
+      if ([301, 302, 303].includes(result.statusCode) && currentMethod !== 'GET') { currentMethod = 'GET'; currentBody = undefined; }
+      continue;
+    }
+    return { ...result, latencyMs: totalLatencyMs, redirectChain };
+  }
+  throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
+}
+
+// ─── Playground SSL Helper ─────────────────────────────────────────────────
+async function getPlaygroundSslInfo(
+  url: string,
+  timeoutMs: number,
+): Promise<{ daysRemaining: number; issuer: string; expiresAt: string; valid: boolean }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    const port = parsed.port ? parseInt(parsed.port, 10) : 443;
+
+    const socket = tls.connect(
+      { host: hostname, port, servername: hostname, rejectUnauthorized: false },
+      () => {
+        const cert = socket.getPeerCertificate();
+        socket.end();
+
+        if (!cert || !cert.valid_to) {
+          reject(new Error('No certificate returned'));
+          return;
+        }
+
+        const expiresAt = new Date(cert.valid_to);
+        const now = new Date();
+        const daysRemaining = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const valid = daysRemaining > 0 && cert.valid_from ? new Date(cert.valid_from) <= now : daysRemaining > 0;
+        const issuerO = Array.isArray(cert.issuer?.O) ? cert.issuer.O[0] : cert.issuer?.O;
+        const issuerCN = Array.isArray(cert.issuer?.CN) ? cert.issuer.CN[0] : cert.issuer?.CN;
+        const issuer = (issuerO ?? issuerCN ?? 'Unknown') as string;
+
+        resolve({
+          daysRemaining,
+          issuer,
+          expiresAt: expiresAt.toISOString().split('T')[0],
+          valid,
+        });
+      },
+    );
+
+    socket.setTimeout(timeoutMs, () => {
+      socket.destroy(new Error('TLS connection timed out'));
+    });
+
+    socket.on('error', reject);
+  });
 }

@@ -17,6 +17,7 @@ import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
 import { OpenApiImportDto, OpenApiPreviewDto } from './import-openapi.dto';
+import { PlaygroundDto } from './playground.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -114,6 +115,17 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Check triggered.' })
   runNow(@Req() req: { user: { id: string } }, @Body() body: RunMonitorDto) {
     return this.monitorsService.runNow(req.user.id, body.monitorId);
+  }
+
+  @Post('playground')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Playground check', description: 'Run a one-off HTTP check against any URL and see the full result (status, headers, latency, body, SSL info, timing breakdown) without creating a monitor.' })
+  @ApiResponse({ status: 200, description: 'Playground result returned.' })
+  @ApiResponse({ status: 429, description: 'Rate limit exceeded.' })
+  runPlayground(@Req() req: { user: { id: string } }, @Body() body: PlaygroundDto) {
+    return this.monitorsService.runPlayground(body, req.user.id);
   }
 
   @Post(':id/snooze')

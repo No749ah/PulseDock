@@ -1474,6 +1474,87 @@ export function MonitorFormModal({
           />
         </div>
 
+        {/* Custom Metric Capture — HTTP/BROWSER only */}
+        {(formData.type === "HTTP" || formData.type === "BROWSER") && (
+          <div className="border border-border rounded-lg p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Custom Metric Capture</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Extract a numeric value from the JSON response body on every check. Track business metrics (queue depth, error count, active users) without a separate metrics system.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">JSON Path <span className="text-white/40">(e.g. $.queue.depth, $.metrics.errors)</span></label>
+                <input
+                  type="text"
+                  placeholder="$.queue.depth"
+                  value={(formData as MonitorFormData).metricPath ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, metricPath: e.target.value || null })}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                />
+              </div>
+              {(formData as MonitorFormData).metricPath && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1">Metric Name</label>
+                      <input
+                        type="text"
+                        placeholder="Queue Depth"
+                        value={(formData as MonitorFormData).metricName ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, metricName: e.target.value || null })}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1">Unit <span className="text-white/40">(optional)</span></label>
+                      <input
+                        type="text"
+                        placeholder="items"
+                        value={(formData as MonitorFormData).metricUnit ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, metricUnit: e.target.value || null })}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-1">Alert thresholds <span className="text-white/40">(optional — turns check yellow when outside range)</span></label>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Min</span>
+                        <input
+                          type="number"
+                          placeholder="—"
+                          value={(formData as MonitorFormData).metricAlertMin ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
+                            onSetFormData({ ...formData, metricAlertMin: val !== null && !isNaN(val) ? val : null });
+                          }}
+                          className="w-24 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Max</span>
+                        <input
+                          type="number"
+                          placeholder="—"
+                          value={(formData as MonitorFormData).metricAlertMax ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
+                            onSetFormData({ ...formData, metricAlertMax: val !== null && !isNaN(val) ? val : null });
+                          }}
+                          className="w-24 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">

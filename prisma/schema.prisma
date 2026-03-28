@@ -161,6 +161,12 @@ model Monitor {
   throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
   maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
   geoRegions          String[]    @default([])  // configured regions to round-robin through (e.g. ["us-east-1", "eu-west-1"])
+  // Custom Metric Capture (HTTP/BROWSER monitors only)
+  metricPath          String?     // JSONPath to extract from response body (e.g. "$.queue.depth")
+  metricName          String?     // Human-readable label for the captured metric (e.g. "Queue Depth")
+  metricUnit          String?     // Optional unit label (e.g. "items", "ms", "%")
+  metricAlertMin      Float?      // Alert yellow when captured value < this (null = no min alert)
+  metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -276,6 +282,7 @@ model MonitorRun {
   responseSizeBytes Int?  // UTF-8 byte length of the response body; populated for HTTP/BROWSER monitors
   redirectChain String[] // HTTP redirect chain: URLs followed before reaching final response
   geoRegion    String?  // simulated geo region tag (e.g. "us-east-1", "eu-west-1", "ap-southeast-1")
+  capturedMetricValue Float?   // numeric value extracted from response body via monitor.metricPath
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)

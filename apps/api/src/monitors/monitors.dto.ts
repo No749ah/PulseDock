@@ -269,6 +269,34 @@ export class CreateMonitorDto {
   @ArrayMaxSize(10)
   geoRegions?: string[];
 
+  @ApiPropertyOptional({ description: 'JSONPath expression to extract a numeric metric from the HTTP response body (e.g. "$.queue.depth", "$.metrics.errors"). HTTP/BROWSER monitors only.', example: '$.queue.depth' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  metricPath?: string | null;
+
+  @ApiPropertyOptional({ description: 'Human-readable label for the captured metric (e.g. "Queue Depth", "Error Rate"). Shown in charts and alerts.', example: 'Queue Depth' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  metricName?: string | null;
+
+  @ApiPropertyOptional({ description: 'Optional unit label appended to captured metric values (e.g. "items", "ms", "%", "req/s").', example: 'items' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  metricUnit?: string | null;
+
+  @ApiPropertyOptional({ description: 'Alert yellow when captured metric value drops below this minimum threshold.', example: 0 })
+  @IsOptional()
+  @IsNumber()
+  metricAlertMin?: number | null;
+
+  @ApiPropertyOptional({ description: 'Alert yellow when captured metric value exceeds this maximum threshold.', example: 1000 })
+  @IsOptional()
+  @IsNumber()
+  metricAlertMax?: number | null;
+
 }
 
 export class UpdateMonitorDto {
@@ -465,6 +493,29 @@ export class UpdateMonitorDto {
   @MaxLength(50, { each: true })
   @ArrayMaxSize(10)
   geoRegions?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  metricPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  metricName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  metricUnit?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  metricAlertMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  metricAlertMax?: number | null;
 
 }
 
@@ -687,4 +738,40 @@ export class ImportFromComposeDto {
   @IsString()
   @MaxLength(102400)
   compose!: string;
+}
+
+export class SimulateAlertsDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  flapDetection?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(10)
+  flapWindow?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(5)
+  flapThreshold?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
 }

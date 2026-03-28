@@ -245,6 +245,11 @@ export class MonitorsService {
     throttleMs?: number;
     maxChecksPerHour?: number;
     geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -303,6 +308,11 @@ export class MonitorsService {
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
         ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
+        ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
+        ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
+        ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
+        ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
+        ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -422,6 +432,11 @@ export class MonitorsService {
     throttleMs?: number | null;
     maxChecksPerHour?: number | null;
     geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -486,6 +501,11 @@ export class MonitorsService {
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
         ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
+        ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
+        ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
+        ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
+        ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
+        ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
       },
     });
 
@@ -4135,6 +4155,104 @@ export class MonitorsService {
 
     return suggestions;
   }
+
+  // ─── Alert Rules Simulator ────────────────────────────────────────────────
+
+  async simulateAlerts(
+    userId: string,
+    monitorId: string,
+    config: {
+      confirmations?: number;
+      flapDetection?: boolean;
+      flapWindow?: number;
+      flapThreshold?: number;
+      scheduleStartHour?: number;
+      scheduleEndHour?: number;
+    },
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId,
+        checkedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        userId,
+      },
+      orderBy: { checkedAt: 'asc' },
+      take: 10000,
+      select: { ok: true, checkedAt: true },
+    });
+
+    const result = simulateAlertRules(
+      runs.map((r) => ({ ok: r.ok, checkedAt: r.checkedAt.toISOString() })),
+      config,
+    );
+
+    return {
+      ...result,
+      currentConfig: {
+        confirmations: monitor.confirmations,
+        flapDetection: monitor.flapDetectionEnabled,
+        flapWindow: monitor.flapWindow,
+        flapThreshold: monitor.flapThreshold,
+      },
+    };
+  }
+
+  /**
+   * Returns the time-series history of captured metric values for a monitor.
+   * Only meaningful for HTTP/BROWSER monitors with metricPath configured.
+   * Returns up to `limit` data points (default 200) ordered by checkedAt desc.
+   */
+  async metricHistory(userId: string, monitorId: string, opts: { limit?: number; periodDays?: number } = {}): Promise<{
+    metricName: string | null;
+    metricUnit: string | null;
+    metricPath: string | null;
+    metricAlertMin: number | null;
+    metricAlertMax: number | null;
+    points: Array<{ checkedAt: string; value: number; level: string }>;
+    stats: { min: number | null; max: number | null; avg: number | null; latest: number | null; count: number };
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { metricPath: true, metricName: true, metricUnit: true, metricAlertMin: true, metricAlertMax: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const { limit = 200, periodDays = 30 } = opts;
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since }, capturedMetricValue: { not: null } },
+      orderBy: { checkedAt: 'desc' },
+      take: limit,
+      select: { checkedAt: true, capturedMetricValue: true, level: true },
+    });
+
+    const points = runs
+      .filter((r): r is typeof r & { capturedMetricValue: number } => r.capturedMetricValue !== null)
+      .map((r) => ({ checkedAt: r.checkedAt.toISOString(), value: r.capturedMetricValue, level: r.level }));
+
+    const values = points.map((p) => p.value);
+    const stats = {
+      min: values.length > 0 ? Math.min(...values) : null,
+      max: values.length > 0 ? Math.max(...values) : null,
+      avg: values.length > 0 ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100 : null,
+      latest: points[0]?.value ?? null,
+      count: points.length,
+    };
+
+    return {
+      metricName: monitor.metricName,
+      metricUnit: monitor.metricUnit,
+      metricPath: monitor.metricPath,
+      metricAlertMin: monitor.metricAlertMin,
+      metricAlertMax: monitor.metricAlertMax,
+      points,
+      stats,
+    };
+  }
 }
 
 export interface SuggestedMonitor {
@@ -4143,4 +4261,141 @@ export interface SuggestedMonitor {
   target: string;
   reason: string;
   intervalSec: number;
+}
+
+// ─── Pure simulation function (exported for unit tests) ────────────────────
+
+export interface SimulateRun {
+  ok: boolean;
+  checkedAt: string;
+}
+
+export interface SimulateConfig {
+  confirmations?: number;
+  flapDetection?: boolean;
+  flapWindow?: number;
+  flapThreshold?: number;
+  scheduleStartHour?: number;
+  scheduleEndHour?: number;
+}
+
+export interface SimulateAlertsResult {
+  totalRuns: number;
+  totalFails: number;
+  uptimePct: number;
+  alertsFired: number;
+  recoverysFired: number;
+  flappingAlertsFired: number;
+  alertsPerDay: number;
+  noiseScore: 'low' | 'medium' | 'high';
+  timeline: Array<{
+    timestamp: string;
+    type: 'alert' | 'recovery' | 'flapping';
+    reason: string;
+  }>;
+}
+
+export function simulateAlertRules(runs: SimulateRun[], config: SimulateConfig): SimulateAlertsResult {
+  const confirmations = config.confirmations ?? 1;
+  const flapDetection = config.flapDetection ?? false;
+  const flapWindow = config.flapWindow ?? 5;
+  const flapThreshold = config.flapThreshold ?? 3;
+  const hasSchedule =
+    config.scheduleStartHour !== undefined && config.scheduleStartHour !== null &&
+    config.scheduleEndHour !== undefined && config.scheduleEndHour !== null;
+  const scheduleStartHour = config.scheduleStartHour ?? 0;
+  const scheduleEndHour = config.scheduleEndHour ?? 23;
+
+  let consecutiveFails = 0;
+  let lastState: 'ok' | 'fail' = 'ok';
+  const timeline: SimulateAlertsResult['timeline'] = [];
+  let alertsFired = 0;
+  let recoverysFired = 0;
+  let flappingAlertsFired = 0;
+  let totalFails = 0;
+
+  for (let i = 0; i < runs.length; i++) {
+    const run = runs[i];
+
+    if (!run.ok) {
+      consecutiveFails++;
+      totalFails++;
+    } else {
+      consecutiveFails = 0;
+    }
+
+    if (consecutiveFails >= confirmations && lastState !== 'fail') {
+      // Check schedule filter
+      if (hasSchedule) {
+        const hour = new Date(run.checkedAt).getUTCHours();
+        let inWindow: boolean;
+        if (scheduleStartHour <= scheduleEndHour) {
+          inWindow = hour >= scheduleStartHour && hour < scheduleEndHour;
+        } else {
+          // wraps midnight
+          inWindow = hour >= scheduleStartHour || hour < scheduleEndHour;
+        }
+        if (!inWindow) {
+          // skip alert but still track state so recovery works
+          lastState = 'fail';
+          continue;
+        }
+      }
+
+      // Flap detection: count state changes in last flapWindow runs
+      if (flapDetection) {
+        const windowStart = Math.max(0, i - flapWindow + 1);
+        const windowRuns = runs.slice(windowStart, i + 1);
+        let stateChanges = 0;
+        for (let j = 1; j < windowRuns.length; j++) {
+          if (windowRuns[j].ok !== windowRuns[j - 1].ok) stateChanges++;
+        }
+        if (stateChanges >= flapThreshold) {
+          timeline.push({
+            timestamp: run.checkedAt,
+            type: 'flapping',
+            reason: `Flapping detected: ${stateChanges} state changes in last ${windowRuns.length} runs`,
+          });
+          flappingAlertsFired++;
+          lastState = 'fail';
+          continue;
+        }
+      }
+
+      timeline.push({
+        timestamp: run.checkedAt,
+        type: 'alert',
+        reason: `${consecutiveFails} consecutive failure${consecutiveFails > 1 ? 's' : ''}`,
+      });
+      alertsFired++;
+      lastState = 'fail';
+    } else if (run.ok && lastState === 'fail') {
+      timeline.push({
+        timestamp: run.checkedAt,
+        type: 'recovery',
+        reason: 'Monitor recovered',
+      });
+      recoverysFired++;
+      lastState = 'ok';
+    }
+  }
+
+  const totalRuns = runs.length;
+  const uptimePct =
+    totalRuns > 0 ? Math.round(((totalRuns - totalFails) / totalRuns) * 10000) / 100 : 100;
+  const alertsPerDay = Math.round((alertsFired / 7) * 10) / 10;
+  const noiseScore: 'low' | 'medium' | 'high' =
+    alertsPerDay < 1 ? 'low' : alertsPerDay <= 3 ? 'medium' : 'high';
+
+  return {
+    totalRuns,
+    totalFails,
+    uptimePct,
+    alertsFired,
+    recoverysFired,
+    flappingAlertsFired,
+    alertsPerDay,
+    noiseScore,
+    timeline,
+  };
 }

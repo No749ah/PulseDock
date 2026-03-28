@@ -141,6 +141,16 @@ export type MonitorFormData = {
   maxChecksPerHour?: number | null;
   /** Geo region tags for simulated multi-region monitoring (round-robin). */
   geoRegions?: string[];
+  /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */
+  metricPath?: string | null;
+  /** Human-readable label for the captured metric */
+  metricName?: string | null;
+  /** Optional unit label for the captured metric (e.g. "items", "ms", "%") */
+  metricUnit?: string | null;
+  /** Alert yellow when captured metric value drops below this minimum */
+  metricAlertMin?: number | null;
+  /** Alert yellow when captured metric value exceeds this maximum */
+  metricAlertMax?: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

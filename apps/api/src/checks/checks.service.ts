@@ -138,11 +138,24 @@ export class ChecksService {
   }
 
   private async dispatchCheck(monitor: Monitor) {
-    // Merge top-level trackedHeaders field into config for HTTP/BROWSER runners
-    const monitorWithHeaders = monitor as typeof monitor & { trackedHeaders?: string | null };
-    const httpConfig = monitorWithHeaders.trackedHeaders
-      ? { ...monitor.config, trackedHeaders: monitorWithHeaders.trackedHeaders }
-      : monitor.config;
+    // Merge top-level trackedHeaders + metric capture fields into config for HTTP/BROWSER runners
+    const monitorExt = monitor as typeof monitor & {
+      trackedHeaders?: string | null;
+      metricPath?: string | null;
+      metricName?: string | null;
+      metricUnit?: string | null;
+      metricAlertMin?: number | null;
+      metricAlertMax?: number | null;
+    };
+    const httpConfig = {
+      ...monitor.config,
+      ...(monitorExt.trackedHeaders ? { trackedHeaders: monitorExt.trackedHeaders } : {}),
+      ...(monitorExt.metricPath ? { metricPath: monitorExt.metricPath } : {}),
+      ...(monitorExt.metricName ? { metricName: monitorExt.metricName } : {}),
+      ...(monitorExt.metricUnit ? { metricUnit: monitorExt.metricUnit } : {}),
+      ...(monitorExt.metricAlertMin !== null && monitorExt.metricAlertMin !== undefined ? { metricAlertMin: monitorExt.metricAlertMin } : {}),
+      ...(monitorExt.metricAlertMax !== null && monitorExt.metricAlertMax !== undefined ? { metricAlertMax: monitorExt.metricAlertMax } : {}),
+    };
 
     switch (monitor.type) {
       case 'HTTP':
@@ -164,7 +177,7 @@ export class ChecksService {
       case 'SMTP':
         return runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'BROWSER':
-        return runBrowserCheck(monitor.target, httpConfig, monitor.timeoutMs);
+        return runBrowserCheck(monitor.target, httpConfig as Record<string, unknown>, monitor.timeoutMs);
       case 'WHOIS':
         return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
       case 'FTP':
@@ -496,6 +509,10 @@ export class ChecksService {
           : [],
         // Geo region tag (round-robin from monitor.geoRegions if configured)
         geoRegion,
+        // Custom metric value captured from response body via metricPath JSONPath
+        capturedMetricValue: typeof (result as PluginExecutionResult).capturedMetricValue === 'number'
+          ? (result as PluginExecutionResult).capturedMetricValue
+          : null,
       },
     });
 

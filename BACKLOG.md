@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 09:02 UTC)
+- **Build/Test:** ✅ Clean build + 3900 API (was 3889 → +11 with simulate-alerts) + 756 web + 10 CLI + 12 agent = 4678 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:02 UTC cycle):**
+  - [x] **Alert Rules Simulator** — `POST /v1/monitors/:id/simulate-alerts` endpoint. Pure function `simulateAlertRules()` replays last 7 days of check history through configurable alert rules (confirmations, flap detection with window/threshold, business hours schedule filter). Returns alertsFired, recoverysFired, flappingAlertsFired, alertsPerDay, noiseScore (low/medium/high), full timeline, and currentConfig. New "Simulate" tab on monitor detail page: left column with settings sliders/toggles (confirmations 1-5, flap detection toggle + window/threshold, business hours toggle + start/end hour), right column with noise score badge, stats grid, scrollable timeline. "Apply to Monitor" button with confirmation dialog PATCHes monitor settings. 6 new unit tests covering: single failure, confirmations threshold, recovery alerts, flap detection, schedule filtering, all-ok runs.
+
 ## Status Summary (2026-03-28 08:48 UTC)
 - **Build/Test:** ✅ Clean build + 3889 API + 756 web + 10 CLI + 12 agent = 4667 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

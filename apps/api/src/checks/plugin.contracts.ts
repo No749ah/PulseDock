@@ -75,6 +75,11 @@ export interface PluginExecutionResult {
    * Populated for HTTP/BROWSER monitors on every successful check.
    */
   responseSizeBytes?: number | null;
+  /**
+   * Numeric value extracted from the response body via the monitor's metricPath JSONPath.
+   * Only populated when metricPath is configured and the extraction succeeds.
+   */
+  capturedMetricValue?: number | null;
 }
 
 export interface PluginConfigField {

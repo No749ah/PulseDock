@@ -624,6 +624,11 @@ function MonitorsPageInner() {
           statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
           ...((formData as typeof formData & { throttleMs?: number | null }).throttleMs != null ? { throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs } : {}),
           ...((formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour != null ? { maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour } : {}),
+          ...((formData as typeof formData & { metricPath?: string | null }).metricPath ? { metricPath: (formData as typeof formData & { metricPath?: string | null }).metricPath } : {}),
+          ...((formData as typeof formData & { metricName?: string | null }).metricName ? { metricName: (formData as typeof formData & { metricName?: string | null }).metricName } : {}),
+          ...((formData as typeof formData & { metricUnit?: string | null }).metricUnit ? { metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit } : {}),
+          ...((formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== null && (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== undefined ? { metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin } : {}),
+          ...((formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== null && (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== undefined ? { metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax } : {}),
         }),
       });
       setShowModal(false);
@@ -691,6 +696,11 @@ function MonitorsPageInner() {
           statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
           throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs ?? null,
           maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+          metricPath: (formData as typeof formData & { metricPath?: string | null }).metricPath ?? null,
+          metricName: (formData as typeof formData & { metricName?: string | null }).metricName ?? null,
+          metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit ?? null,
+          metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin ?? null,
+          metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax ?? null,
         }),
       });
       setShowModal(false);

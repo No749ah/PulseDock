@@ -79,6 +79,11 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     statusWebhookSecret: "",
     throttleMs: (monitor as typeof monitor & { throttleMs?: number | null }).throttleMs ?? null,
     maxChecksPerHour: (monitor as typeof monitor & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+    metricPath: (monitor as typeof monitor & { metricPath?: string | null }).metricPath ?? null,
+    metricName: (monitor as typeof monitor & { metricName?: string | null }).metricName ?? null,
+    metricUnit: (monitor as typeof monitor & { metricUnit?: string | null }).metricUnit ?? null,
+    metricAlertMin: (monitor as typeof monitor & { metricAlertMin?: number | null }).metricAlertMin ?? null,
+    metricAlertMax: (monitor as typeof monitor & { metricAlertMax?: number | null }).metricAlertMax ?? null,
     // Pre-request auth step
     preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
     preAuthBody: String(monitor.config?.preAuthBody ?? ""),

@@ -12,7 +12,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, SimulateAlertsDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
@@ -268,6 +268,29 @@ export class MonitorsController {
   @ApiResponse({ status: 404, description: 'Monitor not found.' })
   checkRate(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.monitorsService.checkRate(req.user.id, id);
+  }
+
+  @Get(':id/metric-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get custom metric capture history',
+    description: 'Returns time-series of numeric values captured from HTTP response body via the monitor metricPath JSONPath. Only populated when metricPath is configured.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max data points (default 200)' })
+  @ApiQuery({ name: 'periodDays', required: false, description: 'Rolling window in days (default 30)' })
+  @ApiResponse({ status: 200, description: 'Metric history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  metricHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.metricHistory(req.user.id, id, {
+      limit: limit ? Math.min(500, Math.max(1, parseInt(limit, 10))) : undefined,
+      periodDays: periodDays ? Math.min(365, Math.max(1, parseInt(periodDays, 10))) : undefined,
+    });
   }
 
   @Get(':id/runs')
@@ -1655,5 +1678,25 @@ export class MonitorsController {
     @Query('periodDays') periodDays?: string,
   ) {
     return this.monitorsService.failurePatterns(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 30);
+  }
+
+  // ─── Alert Rules Simulator ────────────────────────────────────────────────
+
+  @Post(':id/simulate-alerts')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Simulate alert rules',
+    description: 'Replays the last 7 days of check history through a configurable alert ruleset. Returns how many alerts would have fired, a noise score, and a timeline of simulated events.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Simulation result returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  simulateAlerts(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: SimulateAlertsDto,
+  ) {
+    return this.monitorsService.simulateAlerts(req.user.id, id, body);
   }
 }

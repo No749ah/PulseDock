@@ -385,7 +385,11 @@ export async function runHttpCheck(
     ? config['assertResponseHeader'].trim().toLowerCase() : undefined;
   const assertResponseHeaderValue = typeof config['assertResponseHeaderValue'] === 'string'
     ? config['assertResponseHeaderValue'] : undefined;
-  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize;
+  // ─── Custom Metric Capture ────────────────────────────────────────────────────
+  const metricPath = typeof config['metricPath'] === 'string' && config['metricPath'].trim() ? config['metricPath'].trim() : undefined;
+  const metricAlertMin = typeof config['metricAlertMin'] === 'number' ? config['metricAlertMin'] : undefined;
+  const metricAlertMax = typeof config['metricAlertMax'] === 'number' ? config['metricAlertMax'] : undefined;
+  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize || !!metricPath;
   const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
   const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
   const requestHeaders: Record<string, string> = {};
@@ -495,6 +499,22 @@ export async function runHttpCheck(
     const capturedHeaders: Record<string, string | null> | null = trackedHeaderNames.length > 0
       ? Object.fromEntries(trackedHeaderNames.map((h) => [h, responseHeaders[h] ?? null]))
       : null;
+
+    // ─── Custom Metric Extraction ─────────────────────────────────────────────
+    let capturedMetricValue: number | null = null;
+    if (metricPath && body) {
+      try {
+        const parsed = JSON.parse(body);
+        const normPath = metricPath.startsWith('$.') ? metricPath.slice(2) : metricPath.startsWith('$') ? metricPath.slice(1) : metricPath;
+        const extracted = extractByPath(parsed, normPath);
+        const numVal = Number(extracted);
+        if (!isNaN(numVal) && isFinite(numVal)) {
+          capturedMetricValue = numVal;
+        }
+      } catch {
+        // body is not JSON or path extraction failed — capturedMetricValue stays null
+      }
+    }
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
@@ -656,6 +676,7 @@ export async function runHttpCheck(
         securityHeadersAudit: securityAudit,
         responseBodyHash,
         responseSizeBytes,
+        ...(capturedMetricValue !== null ? { capturedMetricValue } : {}),
         ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
@@ -675,6 +696,45 @@ export async function runHttpCheck(
       };
     }
 
+    // ─── Metric alert check ───────────────────────────────────────────────────
+    if (capturedMetricValue !== null && metricPath) {
+      const metricName = typeof config['metricName'] === 'string' ? config['metricName'] : metricPath;
+      const metricUnit = typeof config['metricUnit'] === 'string' ? config['metricUnit'] : '';
+      const valueStr = `${capturedMetricValue}${metricUnit ? ' ' + metricUnit : ''}`;
+      if (metricAlertMin !== undefined && capturedMetricValue < metricAlertMin) {
+        return {
+          ok: true,
+          statusCode,
+          latencyMs,
+          message: `Degraded — ${metricName} = ${valueStr} (below min ${metricAlertMin})`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          responseBodyHash,
+          responseSizeBytes,
+          capturedMetricValue,
+          ...(redirectChain.length > 0 ? { redirectChain } : {}),
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
+      if (metricAlertMax !== undefined && capturedMetricValue > metricAlertMax) {
+        return {
+          ok: true,
+          statusCode,
+          latencyMs,
+          message: `Degraded — ${metricName} = ${valueStr} (above max ${metricAlertMax})`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          responseBodyHash,
+          responseSizeBytes,
+          capturedMetricValue,
+          ...(redirectChain.length > 0 ? { redirectChain } : {}),
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
+    }
+
     // Compute message suffix for security audit grade and redirect info
     const secGradeSuffix = securityAudit ? ` [Security: ${securityAudit.grade}]` : '';
     const redirectSuffix = redirectChain.length > 0 ? ` [${redirectChain.length} redirect${redirectChain.length > 1 ? 's' : ''}]` : '';
@@ -691,6 +751,7 @@ export async function runHttpCheck(
       securityHeadersAudit: securityAudit,
       responseBodyHash,
       responseSizeBytes,
+      ...(capturedMetricValue !== null ? { capturedMetricValue } : {}),
       ...(redirectChain.length > 0 ? { redirectChain } : {}),
       ...(capturedHeaders ? { capturedHeaders } : {}),
     };

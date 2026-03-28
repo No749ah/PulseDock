@@ -1,3 +1,13 @@
+## Status Summary (2026-03-28 16:15 UTC)
+- **Build/Test:** ✅ Clean build + 4049 API + 757 web + 10 CLI + 12 agent = 4828 tests; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (16:15 UTC cycle):**
+  - [x] **REPEAT_EVERY_N alert mode** — New `notifyOn=REPEAT_EVERY_N` option per alert link. Repeats alerts at configurable interval (default 30 min, 1–1440 min) while monitor stays down. Always fires on first failure, skips on recovery. `repeatIntervalMin` column on `MonitorAlert`. Frontend: interval input in AlertPanel when REPEAT_EVERY_N selected. 7 new tests.
+  - [x] **Alert Noise Analysis Dashboard** — `GET /v1/alert-channels/noise-analysis?days=N` (1–30d, default 7d). Analyzes delivery history per monitor: alertsPerDay → noise score (low/medium/high/critical), noiseReasons, recommendations (raise confirmations, enable flap detection, increase interval, add retries), currentConfig. `/alerts/noise` frontend: 4 summary stat cards, period selector, monitor table sorted by noise score, expandable rows with reasons + recommendations + config + quick-action buttons (View/Edit/Simulate). Sidebar nav link. 8 new tests.
+  - Services restarted. All pages 200.
+
 ## Status Summary (2026-03-28 14:57 UTC)
 - **Build/Test:** ✅ Clean build + 4055 API + 756 web + 10 CLI + 12 agent = 4833 tests; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

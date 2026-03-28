@@ -1531,11 +1531,11 @@ export class MonitorsService {
 
   // ── Version detection delegation ────────────────────────────────────────────
 
-  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
+  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
     return this.versionDetection.testVersionConnection(input);
   }
 
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
+  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
     return this.versionDetection.discoverCurrentVersion(input);
   }
 
@@ -4669,6 +4669,116 @@ export class MonitorsService {
       monitors: monitorsData,
     };
   }
+
+  // ─── OpenAPI Import ────────────────────────────────────────────────────────
+
+  async previewFromOpenApi(opts: {
+    specJson?: string;
+    url?: string;
+    baseUrl: string;
+    maxPaths?: number;
+  }): Promise<{ suggestions: OpenApiSuggestion[] }> {
+    if (!opts.specJson && !opts.url) {
+      throw new BadRequestException('Either specJson or url must be provided');
+    }
+
+    let rawSpec: string = opts.specJson ?? '';
+
+    if (opts.url && !opts.specJson) {
+      // In real use we'd fetch; for now throw if no json
+      throw new BadRequestException('Fetching spec by url is not supported in this context');
+    }
+
+    let spec: Record<string, unknown>;
+    try {
+      spec = JSON.parse(rawSpec);
+    } catch {
+      throw new BadRequestException('Invalid JSON in specJson');
+    }
+
+    const basePath = typeof (spec as { basePath?: string }).basePath === 'string'
+      ? (spec as { basePath: string }).basePath
+      : '';
+
+    const paths = (spec as { paths?: Record<string, Record<string, { summary?: string; tags?: string[] }>> }).paths ?? {};
+
+    const SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+    const suggestions: OpenApiSuggestion[] = [];
+
+    for (const [path, methods] of Object.entries(paths)) {
+      if (opts.maxPaths != null && suggestions.length >= opts.maxPaths) break;
+
+      for (const [method, op] of Object.entries(methods)) {
+        if (opts.maxPaths != null && suggestions.length >= opts.maxPaths) break;
+
+        const upperMethod = method.toUpperCase();
+        if (!SUPPORTED_METHODS.includes(upperMethod)) continue;
+
+        // Replace path params with sensible placeholders
+        const resolvedPath = path.replace(/\{([^}]+)\}/g, (_match, param: string) => {
+          // Use numeric placeholder for likely id params, "example" for others
+          const lower = param.toLowerCase();
+          if (lower.endsWith('id') || lower === 'id') return '1';
+          return 'example';
+        });
+
+        const url = `${opts.baseUrl}${basePath}${resolvedPath}`;
+
+        const expectedStatus = upperMethod === 'POST' ? 201
+          : upperMethod === 'DELETE' ? 204
+          : 200;
+
+        suggestions.push({
+          key: `${upperMethod}:${path}`,
+          method: upperMethod as OpenApiSuggestion['method'],
+          path,
+          url,
+          expectedStatus,
+          summary: op.summary,
+          tags: op.tags,
+        });
+      }
+    }
+
+    return { suggestions };
+  }
+
+  async importFromOpenApi(
+    userId: string,
+    opts: {
+      specJson?: string;
+      url?: string;
+      baseUrl: string;
+      selectedPaths: string[];
+      intervalSec?: number;
+    },
+  ): Promise<{ created: number; monitors: unknown[] }> {
+    const { suggestions } = await this.previewFromOpenApi({
+      specJson: opts.specJson,
+      url: opts.url,
+      baseUrl: opts.baseUrl,
+    });
+
+    const selected = suggestions.filter((s) => opts.selectedPaths.includes(s.key));
+
+    const monitors: unknown[] = [];
+    for (const s of selected) {
+      const monitor = await this.create(userId, {
+        name: s.summary ?? `${s.method} ${s.path}`,
+        target: s.url,
+        type: 'HTTP' as MonitorType,
+        intervalSec: opts.intervalSec ?? 60,
+        config: {
+          method: s.method,
+          expectedStatus: s.expectedStatus,
+        },
+      });
+      monitors.push(monitor);
+    }
+
+    return { created: monitors.length, monitors };
+  }
 }
 
 export interface SuggestedMonitor {
@@ -4677,6 +4787,16 @@ export interface SuggestedMonitor {
   target: string;
   reason: string;
   intervalSec: number;
+}
+
+export interface OpenApiSuggestion {
+  key: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  path: string;
+  url: string;
+  expectedStatus: number;
+  summary?: string;
+  tags?: string[];
 }
 
 // ─── Pure simulation function (exported for unit tests) ────────────────────

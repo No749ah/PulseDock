@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 08:40 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:40 UTC cycle):**
+  - [x] **Geo-Region Frontend UI** — Monitor form: upgraded geo regions input from plain text to tag-style pill input (Enter/comma to add, ×-button to remove, max 10 tags, 50 chars each, hint text). Monitor detail page: geo tab now has 1d/7d/30d period selector (default 7d, refetches on change), table sorted by uptime% ascending (worst-first), proper "no geo data" info box matching spec, fixed color classes (text-danger). Monitors list: globe icon indicator with tooltip showing configured region names for monitors with geoRegions.length > 0. No regressions.
+
 ## Status Summary (2026-03-28 08:35 UTC)
 - **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -200,7 +200,7 @@ export class MonitorsController {
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max runs to return (1-500, default 100)' })
   @ApiQuery({ name: 'before', required: false, description: 'Cursor: return runs older than this checkedAt ISO timestamp' })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed (default: all)' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed | degraded (default: all)' })
   @ApiResponse({ status: 200, description: 'Run history returned.' })
   monitorRuns(
     @Req() req: { user: { id: string } },

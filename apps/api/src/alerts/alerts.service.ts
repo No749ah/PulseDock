@@ -555,6 +555,95 @@ export class AlertsService {
       }
       return;
     }
+
+    // ── Rocket.Chat ──────────────────────────────────────────────────────────
+    // Config: { webhookUrl: string }
+    // webhookUrl is the Rocket.Chat Incoming Webhook URL (e.g. https://chat.example.com/hooks/TOKEN)
+    // Rocket.Chat supports the same payload format as Slack incoming webhooks.
+    if (channel.type === 'rocketchat' && typeof channel.config.webhookUrl === 'string') {
+      const ctx = extra as {
+        monitor?: { name?: string; type?: string; target?: string };
+        run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const color = level === 'green' ? '#3fb950' : level === 'yellow' ? '#d29922' : '#f85149';
+
+      const fields: Array<{ title: string; value: string; short: boolean }> = [];
+      if (monitor?.name) fields.push({ title: 'Monitor', value: monitor.name, short: true });
+      if (monitor?.type) fields.push({ title: 'Type', value: monitor.type.replace('_', ' '), short: true });
+      if (run?.latencyMs != null) fields.push({ title: 'Latency', value: `${run.latencyMs}ms`, short: true });
+      if (monitor?.target) fields.push({ title: 'Target', value: monitor.target, short: false });
+
+      const rcPayload = {
+        text: `${emoji} **PulseDock Alert** — ${monitor?.name ?? 'Monitor'} is ${statusLabel}`,
+        attachments: [
+          {
+            color,
+            title: `${statusLabel}: ${monitor?.name ?? 'Monitor'}`,
+            text: run?.message ?? text,
+            fields,
+            ts: new Date().toISOString(),
+            footer: 'PulseDock',
+          },
+        ],
+      };
+
+      const rcResp = await fetch(channel.config.webhookUrl as string, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(rcPayload),
+      });
+      if (!rcResp.ok) {
+        const rcBody = await rcResp.text().catch(() => '');
+        throw new Error(`Rocket.Chat webhook returned ${rcResp.status}: ${rcBody}`);
+      }
+      return;
+    }
+
+    // ── Apprise ───────────────────────────────────────────────────────────────
+    // Config: { serverUrl: string, tag?: string }
+    // Apprise is a universal notification gateway. POST to /notify/{tag} or /notify.
+    // serverUrl: base URL of your Apprise API (e.g. http://apprise:8000)
+    // tag: optional tag name to scope which services are notified (must be pre-configured in Apprise)
+    if (channel.type === 'apprise' && typeof channel.config.serverUrl === 'string') {
+      const ctx = extra as {
+        run?: { level?: string; message?: string };
+        monitor?: { name?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const appriseType = level === 'green' ? 'success' : level === 'yellow' ? 'warning' : 'failure';
+
+      const baseUrl = (channel.config.serverUrl as string).replace(/\/$/, '');
+      const tag = typeof channel.config.tag === 'string' && channel.config.tag.trim() ? channel.config.tag.trim() : null;
+      const appriseUrl = tag ? `${baseUrl}/notify/${encodeURIComponent(tag)}` : `${baseUrl}/notify`;
+
+      const apprisePayload = {
+        title: `[PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}`,
+        body: run?.message ?? text,
+        type: appriseType,
+        // Apprise API supports 'info', 'success', 'warning', 'failure'
+      };
+
+      const appriseResp = await fetch(appriseUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(apprisePayload),
+      });
+      if (!appriseResp.ok) {
+        const appriseBody = await appriseResp.text().catch(() => '');
+        throw new Error(`Apprise returned ${appriseResp.status}: ${appriseBody}`);
+      }
+      return;
+    }
   }
 
   /**

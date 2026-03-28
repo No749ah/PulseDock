@@ -287,7 +287,7 @@ export default function MonitorDetailPage() {
   const [eventError, setEventError] = useState("");
 
   // Check history pagination + filter
-  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed">("all");
+  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed"|"degraded">("all");
   const [runsHasMore, setRunsHasMore] = useState(false);
   const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
   const [runsTotal, setRunsTotal] = useState<number | null>(null);
@@ -419,7 +419,7 @@ export default function MonitorDetailPage() {
   }, [loading, monitor, chartPeriod, loadChartData]);
 
   // Load runs with optional status filter (resets pagination)
-  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed") => {
+  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
     const user = getUser();
     if (!user) return;
     setRunsStatusFilter(statusFilter);
@@ -2978,7 +2978,7 @@ export default function MonitorDetailPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Status filter pills */}
                 <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-surface">
-                  {(["all", "ok", "failed"] as const).map((f) => (
+                  {(["all", "ok", "degraded", "failed"] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => loadFilteredRuns(f)}
@@ -2988,7 +2988,7 @@ export default function MonitorDetailPage() {
                           : "text-text-muted hover:text-text-secondary"
                       }`}
                     >
-                      {f === "all" ? "All" : f === "ok" ? "OK" : "Failed"}
+                      {f === "all" ? "All" : f === "ok" ? "OK" : f === "degraded" ? "Degraded" : "Failed"}
                     </button>
                   ))}
                 </div>
@@ -3029,7 +3029,7 @@ export default function MonitorDetailPage() {
               {runs.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
                   {runsStatusFilter !== "all"
-                    ? `No ${runsStatusFilter === "ok" ? "successful" : "failed"} checks found.`
+                    ? `No ${runsStatusFilter === "ok" ? "successful" : runsStatusFilter === "degraded" ? "degraded" : "failed"} checks found.`
                     : "No runs yet — this monitor hasn't checked yet."}
                 </div>
               ) : (

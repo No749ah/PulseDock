@@ -1095,8 +1095,9 @@ export class MonitorsService {
       if (!isNaN(d.getTime())) where.checkedAt = { lt: d };
     }
 
-    if (opts?.status === 'ok') where.ok = true;
+    if (opts?.status === 'ok') { where.ok = true; (where as Record<string, unknown>)['level'] = 'green'; }
     else if (opts?.status === 'failed') where.ok = false;
+    else if (opts?.status === 'degraded') { where.ok = true; (where as Record<string, unknown>)['level'] = 'yellow'; }
 
     const runs = await this.prisma.monitorRun.findMany({
       where,
@@ -1122,7 +1123,7 @@ export class MonitorsService {
         securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
       })),
       hasMore,
-      total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
+      total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true, level: 'green' } : opts?.status === 'failed' ? { ok: false } : opts?.status === 'degraded' ? { ok: true, level: 'yellow' } : {}) } }),
       nextCursor: hasMore ? page[page.length - 1]?.checkedAt.toISOString() : null,
     };
   }

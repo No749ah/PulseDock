@@ -3104,4 +3104,161 @@ describe('AlertsService', () => {
     });
   });
 
+  // ── Rocket.Chat ────────────────────────────────────────────────────────────
+  describe('Rocket.Chat channel', () => {
+    it('sends a POST to the Rocket.Chat webhook URL', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '' });
+      const channel = makeChannel({
+        type: 'rocketchat',
+        config: { webhookUrl: 'https://chat.example.com/hooks/TOKEN123' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://chat.example.com/hooks/TOKEN123');
+      expect(init.method).toBe('POST');
+      const body = JSON.parse(init.body as string) as { text: string; attachments: { color: string }[] };
+      expect(body.text).toContain('PulseDock');
+      expect(body.attachments).toHaveLength(1);
+    });
+
+    it('uses level-appropriate color in attachment', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => '' });
+      const channel = makeChannel({
+        type: 'rocketchat',
+        config: { webhookUrl: 'https://chat.example.com/hooks/TOKEN' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.send(channel, 'test', {
+        monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
+        run: { level: 'green', message: 'Recovered', latencyMs: 50, checkedAt: new Date().toISOString() },
+      });
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as { attachments: { color: string }[] };
+      expect(body.attachments[0].color).toBe('#3fb950'); // green
+    });
+
+    it('throws on non-OK response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: async () => 'Internal Server Error' });
+      const channel = makeChannel({
+        type: 'rocketchat',
+        config: { webhookUrl: 'https://chat.example.com/hooks/TOKEN' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Rocket.Chat webhook returned 500');
+    });
+
+    it('does not send if webhookUrl is missing', async () => {
+      const channel = makeChannel({ type: 'rocketchat', config: {} });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Apprise ────────────────────────────────────────────────────────────────
+  describe('Apprise channel', () => {
+    it('sends a POST to /notify when no tag is configured', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 204, text: async () => '' });
+      const channel = makeChannel({
+        type: 'apprise',
+        config: { serverUrl: 'http://apprise:8000' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('http://apprise:8000/notify');
+      expect(init.method).toBe('POST');
+      const body = JSON.parse(init.body as string) as { title: string; type: string };
+      expect(body.title).toContain('PulseDock');
+      expect(body.type).toBe('failure'); // default level red
+    });
+
+    it('routes to /notify/{tag} when tag is configured', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 204, text: async () => '' });
+      const channel = makeChannel({
+        type: 'apprise',
+        config: { serverUrl: 'http://apprise:8000', tag: 'production' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('http://apprise:8000/notify/production');
+    });
+
+    it('uses correct Apprise type for recovered level', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 204, text: async () => '' });
+      const channel = makeChannel({
+        type: 'apprise',
+        config: { serverUrl: 'http://apprise:8000' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.send(channel, 'Recovered', {
+        monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
+        run: { level: 'green', message: 'OK', latencyMs: 30, checkedAt: new Date().toISOString() },
+      });
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as { type: string };
+      expect(body.type).toBe('success');
+    });
+
+    it('strips trailing slash from serverUrl', async () => {
+      fetchMock.mockResolvedValue({ ok: true, status: 204, text: async () => '' });
+      const channel = makeChannel({
+        type: 'apprise',
+        config: { serverUrl: 'http://apprise:8000/', tag: 'alerts' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('http://apprise:8000/notify/alerts');
+      expect(url).not.toContain('//notify');
+    });
+
+    it('throws on non-OK response', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Bad Request' });
+      const channel = makeChannel({
+        type: 'apprise',
+        config: { serverUrl: 'http://apprise:8000' },
+      });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await expect(service.notifyTest(channel)).rejects.toThrow('Apprise returned 400');
+    });
+
+    it('does not send if serverUrl is missing', async () => {
+      const channel = makeChannel({ type: 'apprise', config: {} });
+      const prisma = makePrisma();
+      const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
+
+      await service.notifyTest(channel);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
 });

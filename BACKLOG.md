@@ -22,6 +22,14 @@
 - **Last changes (08:19 UTC cycle):**
   - [x] **Monitor Trend Analysis** — `GET /v1/monitors/trends` endpoint computing week-over-week uptime% and avg latency deltas for all monitors. Returns `uptimeTrend` / `latencyTrend` as `improving | degrading | stable | new` with numeric deltas. `/monitors/trends` frontend page: 4 summary stat cards (total/degrading/improving/new), full sortable table with trend badges, colored delta arrows, previous-period context values. Sidebar nav "Trends" link in Monitoring section. 5 new unit tests.
 
+## Status Summary (2026-03-28 08:32 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total (+6 timeline tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:32 UTC cycle):**
+  - [x] **Global Status Timeline** — `GET /v1/monitors/status-timeline?hours=N` (1–168h, default 24h). Returns per-monitor segments (start/end/level) computed from state transitions. `/monitors/timeline` frontend: Gantt-style horizontal timeline bars (green/yellow/red), time axis with adaptive tick intervals, period selector (1h/3h/6h/12h/24h/48h/7d), search + level filter, summary stat cards (total/operational/degraded/down), avg uptime footer, clickable rows to monitor detail. Sidebar nav link. 6 new unit tests.
+
 ## Status Summary (2026-03-28 08:21 UTC)
 - **Build/Test:** ✅ Clean build + 3860 API + 756 web + 10 CLI + 12 agent = 4638 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

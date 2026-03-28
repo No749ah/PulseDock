@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 08:28 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:28 UTC cycle):**
+  - [x] **Geo-region tagging** — `geoRegions` field on Monitor (array of strings, max 10, 50 chars each). Round-robin region assignment to MonitorRun.geoRegion on each check. `GET /v1/monitors/:id/geo-stats?periodDays=7` returns per-region uptime%, avgLatencyMs, p95LatencyMs. Prisma migration applied. DTOs updated. 11 new tests (geo-stats + status-timeline specs).
+
 ## Status Summary (2026-03-28 08:15 UTC)
 - **Build/Test:** ✅ Clean build + 3832 API + 756 web + 10 CLI + 12 agent = 4610 total (5 new check-rate tests); 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

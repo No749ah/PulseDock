@@ -19,7 +19,7 @@ import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
 import { brand } from "../../lib/brand";
-import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin } from "./types";
+import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin, MonitorFormDataExtended } from "./types";
 import { CHANNEL_TYPE_COLORS, NOTIFY_ON_LABELS } from "./constants";
 import { buildEditFormData, buildFormDataFromTemplate } from "./utils";
 import { AlertPanel } from "./components/AlertPanel";
@@ -57,16 +57,16 @@ function MonitorsPageInner() {
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
   });
-  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval">("name");
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval" | "health">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid" | "grouped">("table");
   // Column visibility (persisted to localStorage)
   const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem("monitor-col-visibility");
-      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
+      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true, latency: true, health: true };
     } catch {
-      return { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
+      return { type: true, target: true, interval: true, trend: true, alerts: true, latency: true, health: true };
     }
   });
   const [showColPicker, setShowColPicker] = useState(false);
@@ -92,41 +92,7 @@ function MonitorsPageInner() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [showTemplates, setShowTemplates] = useState(true);
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
-  const [formData, setFormData] = useState<{
-    name: string;
-    description: string;
-    runbookUrl: string;
-    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
-    target: string;
-    intervalSec: number;
-    confirmations: number;
-    retryCount: number;
-    enabled: boolean;
-    pluginId: string;
-    expectedText: string;
-    heartbeatTimeoutMin: number;
-    heartbeatToken: string;
-    folderId: string;
-    slaTarget: number | "";
-    slaPeriodDays: number;
-    autoIncident: boolean;
-    autoIncidentSeverity: string;
-    flapDetectionEnabled: boolean;
-    flapWindow: number;
-    flapThreshold: number;
-    latencyAlertMs: number | null;
-    anomalyDetection: boolean;
-    anomalyMultiplier: number;
-    sliLatencyTarget: number | "";
-    sliLatencyWindow: number;
-    rtoMinutes: number | undefined;
-    timeoutMs: number | null;
-    cronExpression: string;
-    scheduleEnabled: boolean;
-    scheduleDays: string;
-    scheduleStartHour: number;
-    scheduleEndHour: number;
-  }>({
+  const [formData, setFormData] = useState<MonitorFormDataExtended>({
     name: "",
     description: "", runbookUrl: "",
     type: "HTTP",
@@ -145,6 +111,8 @@ function MonitorsPageInner() {
     autoIncident: false,
     autoIncidentSeverity: "MEDIUM",
     flapDetectionEnabled: true,
+    flapWindow: 10,
+    flapThreshold: 50,
     latencyAlertMs: null,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
@@ -1200,6 +1168,11 @@ function MonitorsPageInner() {
         return dir * a.type.localeCompare(b.type);
       case "interval":
         return dir * (a.intervalSec - b.intervalSec);
+      case "health": {
+        const ha = healthScores[a.id]?.score ?? -1;
+        const hb = healthScores[b.id]?.score ?? -1;
+        return dir * (ha - hb);
+      }
       default:
         return 0;
     }
@@ -1338,7 +1311,7 @@ function MonitorsPageInner() {
                   {showColPicker && (
                     <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
                       <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
-                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["latency", "Latency"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
+                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["latency", "Latency"], ["trend", "Trend"], ["alerts", "Alerts"], ["health", "Health"] ] as [string, string][]).map(([col, label]) => (
                         <button
                           key={col}
                           onClick={() => toggleCol(col)}
@@ -1799,7 +1772,12 @@ function MonitorsPageInner() {
                       </TableHeader>}
                       {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
                       {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
-                      <TableHeader className="hidden md:table-cell">Health</TableHeader>
+                      {visibleCols.health && <TableHeader className="hidden md:table-cell">
+                        <button onClick={() => handleSort("health")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Health
+                          {sortBy === "health" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>}
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Last Check
@@ -1817,7 +1795,7 @@ function MonitorsPageInner() {
                       const recentRuns = [...monitorRuns].sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()).slice(0, 5);
                       const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
                       // count visible columns for colspan
-                      const visColCount = [visibleCols.type, visibleCols.target, visibleCols.interval, visibleCols.latency, visibleCols.trend, visibleCols.alerts].filter(Boolean).length;
+                      const visColCount = [visibleCols.type, visibleCols.target, visibleCols.interval, visibleCols.latency, visibleCols.trend, visibleCols.alerts, visibleCols.health].filter(Boolean).length;
                       const totalCols = 1 + 1 + 1 + visColCount + 2; // expand + checkbox + name + vis + lastCheck + actions
                       return (
                         <React.Fragment key={monitor.id}>
@@ -1972,7 +1950,7 @@ function MonitorsPageInner() {
                             </button>
                           </TableCell>}
                           {/* Health score badge */}
-                          <TableCell className="hidden md:table-cell">
+                          {visibleCols.health && <TableCell className="hidden md:table-cell">
                             {(() => {
                               const hs = healthScores[monitor.id];
                               if (!hs) return <span className="text-text-muted text-xs">—</span>;
@@ -1991,7 +1969,7 @@ function MonitorsPageInner() {
                                 </span>
                               );
                             })()}
-                          </TableCell>
+                          </TableCell>}
                           <TableCell>
                             <div className="flex items-center gap-2 group-hover/row:opacity-0 group-hover/row:pointer-events-none transition-opacity">
                               <Button

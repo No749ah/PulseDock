@@ -134,7 +134,7 @@ export default function SslInventoryPage() {
       const data = await api<SslSummary>('/v1/monitors/ssl-summary', u.id);
       setSummary(data);
     } catch {
-      toast?.({ type: 'error', title: 'Failed to load certificate inventory' });
+      toast?.('Failed to load certificate inventory', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -220,7 +220,7 @@ export default function SslInventoryPage() {
 
   if (loading) {
     return (
-      <AppFrame breadcrumbs={[{ label: 'SSL Certificates' }]}>
+      <AppFrame title="SSL Certificates" breadcrumbs={[{ label: 'SSL Certificates' }]}>
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
         </div>
@@ -229,7 +229,7 @@ export default function SslInventoryPage() {
   }
 
   return (
-    <AppFrame breadcrumbs={[{ label: 'SSL Certificates' }]}>
+    <AppFrame title="SSL Certificates" breadcrumbs={[{ label: 'SSL Certificates' }]}>
       <FadeIn>
         <div className="space-y-6 max-w-7xl mx-auto">
           {/* ─── Header ──────────────────────────────────────────────────────── */}
@@ -405,7 +405,7 @@ export default function SslInventoryPage() {
                           </span>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge variant={cert.type === 'SSL_CERT' ? 'default' : 'secondary'}>
+                          <Badge variant="default">
                             {cert.type === 'SSL_CERT' ? 'SSL Cert' : cert.type === 'HTTP' ? 'HTTP' : 'Browser'}
                           </Badge>
                         </TableCell>

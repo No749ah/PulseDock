@@ -32,6 +32,8 @@ export interface MonitorItem {
   scheduleStartHour?: number | null;
   scheduleEndHour?: number | null;
   shareToken?: string | null;
+  pinned?: boolean;
+  timeoutMs?: number | null;
 }
 
 export interface SloReport {
@@ -117,6 +119,8 @@ export interface MonitorRun {
   securityAuditJson?: unknown | null;
   /** UTF-8 byte length of the response body. Only for HTTP/BROWSER monitors. */
   responseSizeBytes?: number | null;
+  /** Redirect chain captured during HTTP check (array of URLs). */
+  redirectChain?: string[] | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

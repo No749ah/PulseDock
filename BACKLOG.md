@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 07:55 UTC)
+- **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:55 UTC cycle):**
+  - [x] **MTTR/MTTF Reliability Analytics Page** — Dedicated `/mttr` page with full reliability engineering view. Backend: `GET /v1/incidents/mttr-report` endpoint with overall MTTR/MTTF stats, per-monitor breakdown, and weekly trend data. Frontend: period selector (7d/30d/90d/365d), 4 stat cards (MTTR, MTTF, Total Incidents, Resolution Rate), sortable per-monitor table with color-coded MTTR, Recharts bar chart for weekly trend. Dark glassmorphism design. Added to sidebar nav under Insights. 5 new unit tests.
+
 ## Status Summary (2026-03-28 07:43 UTC)
 - **Build/Test:** ✅ Clean build + 3822 API + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

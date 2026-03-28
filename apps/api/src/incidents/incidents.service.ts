@@ -264,6 +264,137 @@ export class IncidentsService {
   }
 
   /**
+   * Returns MTTR (Mean Time to Recovery) and MTTF (Mean Time to Failure) analytics
+   * for the authenticated user's incidents over the given period.
+   *
+   * @param userId     - Owner's user ID
+   * @param periodDays - Number of days to look back (1–365, default 30)
+   */
+  async mttrReport(userId: string, periodDays: number = 30) {
+    const days = Math.min(Math.max(1, periodDays), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId, createdAt: { gte: since } },
+      include: {
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const resolvedIncidents = incidents.filter((i) => i.resolvedAt !== null && i.status === 'RESOLVED');
+
+    // ── Overall MTTR ──────────────────────────────────────────────────────────
+    const durations = resolvedIncidents.map(
+      (i) => (i.resolvedAt!.getTime() - i.createdAt.getTime()) / 60_000,
+    );
+    const mttrMinutes =
+      durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+    const longestIncidentMinutes = durations.length > 0 ? Math.max(...durations) : null;
+    const shortestIncidentMinutes = durations.length > 0 ? Math.min(...durations) : null;
+
+    // ── Overall MTTF ─────────────────────────────────────────────────────────
+    // Group resolved incidents by monitor; average gaps between resolvedAt[i] and createdAt[i+1]
+    const resolvedByMonitor = new Map<string, typeof resolvedIncidents>();
+    for (const inc of resolvedIncidents) {
+      for (const im of inc.monitors) {
+        const mid = im.monitor.id;
+        if (!resolvedByMonitor.has(mid)) resolvedByMonitor.set(mid, []);
+        resolvedByMonitor.get(mid)!.push(inc);
+      }
+    }
+
+    const mttfGaps: number[] = [];
+    for (const monIncidents of resolvedByMonitor.values()) {
+      const sorted = [...monIncidents].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const gap = (sorted[i + 1].createdAt.getTime() - sorted[i].resolvedAt!.getTime()) / 60_000;
+        if (gap > 0) mttfGaps.push(gap);
+      }
+    }
+    const mttfMinutes =
+      mttfGaps.length > 0 ? mttfGaps.reduce((a, b) => a + b, 0) / mttfGaps.length : null;
+
+    // ── byMonitor ─────────────────────────────────────────────────────────────
+    const allByMonitor = new Map<
+      string,
+      { monitorId: string; monitorName: string; incidents: typeof incidents }
+    >();
+    for (const inc of incidents) {
+      for (const im of inc.monitors) {
+        const mid = im.monitor.id;
+        if (!allByMonitor.has(mid)) {
+          allByMonitor.set(mid, { monitorId: mid, monitorName: im.monitor.name, incidents: [] });
+        }
+        allByMonitor.get(mid)!.incidents.push(inc);
+      }
+    }
+
+    const byMonitor = Array.from(allByMonitor.values()).map(({ monitorId, monitorName, incidents: mi }) => {
+      const resolvedMon = mi.filter((i) => i.resolvedAt !== null && i.status === 'RESOLVED');
+      const monDurations = resolvedMon.map(
+        (i) => (i.resolvedAt!.getTime() - i.createdAt.getTime()) / 60_000,
+      );
+      const monMttr =
+        monDurations.length > 0
+          ? monDurations.reduce((a, b) => a + b, 0) / monDurations.length
+          : null;
+      return {
+        monitorId,
+        monitorName,
+        mttrMinutes: monMttr,
+        incidentCount: mi.length,
+        resolvedCount: resolvedMon.length,
+        avgDurationMinutes: monMttr,
+      };
+    });
+
+    // ── Trend by ISO week (Monday start) ─────────────────────────────────────
+    const getWeekStart = (date: Date): string => {
+      const d = new Date(date);
+      const day = d.getUTCDay(); // 0 = Sunday
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setUTCDate(d.getUTCDate() + diff);
+      d.setUTCHours(0, 0, 0, 0);
+      return d.toISOString().split('T')[0];
+    };
+
+    const weekMap = new Map<string, { durations: number[]; count: number }>();
+    for (const inc of incidents) {
+      const week = getWeekStart(inc.createdAt);
+      if (!weekMap.has(week)) weekMap.set(week, { durations: [], count: 0 });
+      const entry = weekMap.get(week)!;
+      entry.count++;
+      if (inc.resolvedAt !== null && inc.status === 'RESOLVED') {
+        entry.durations.push((inc.resolvedAt.getTime() - inc.createdAt.getTime()) / 60_000);
+      }
+    }
+
+    const trend = Array.from(weekMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([week, { durations, count }]) => ({
+        week,
+        mttrMinutes:
+          durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null,
+        incidentCount: count,
+      }));
+
+    return {
+      overall: {
+        mttrMinutes,
+        mttfMinutes,
+        totalIncidents: incidents.length,
+        resolvedIncidents: resolvedIncidents.length,
+        avgDurationMinutes: mttrMinutes,
+        longestIncidentMinutes,
+        shortestIncidentMinutes,
+      },
+      byMonitor,
+      trend,
+    };
+  }
+
+  /**
    * Returns the last 50 incidents (with updates + monitor names) for a public status page.
    * No authentication required — exposes only non-sensitive fields.
    * Used by the public status-page API and incident-history widgets.

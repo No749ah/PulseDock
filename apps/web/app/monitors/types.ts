@@ -171,4 +171,15 @@ export type MonitorFormDataExtended = MonitorFormData & {
   preAuthBody?: string;
   preAuthExtractCookie?: string;
   preAuthExtractToken?: string;
+  // Response size constraints
+  minResponseBodyBytes?: number;
+  maxResponseBodyBytes?: number;
+  // Header assertion
+  assertResponseHeader?: string;
+  assertResponseHeaderValue?: string;
+  // Redirect behavior
+  followRedirects?: boolean;
+  maxRedirects?: number;
+  // Header tracking
+  trackedHeaders?: string;
 };

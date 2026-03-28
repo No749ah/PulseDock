@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   HttpCode,
   HttpStatus,
@@ -80,6 +81,18 @@ export class IncidentsController {
   @ApiResponse({ status: 401, description: 'Not authenticated — Bearer token missing or expired.' })
   findAll(@Req() req: AuthenticatedRequest) {
     return this.incidents.findAll(req.user.sub);
+  }
+
+  @Get('mttr-report')
+  @ApiOperation({ summary: 'MTTR/MTTF reliability report', description: 'Returns Mean Time to Recovery, Mean Time to Failure, and trend data for the authenticated user\'s incidents.' })
+  @ApiResponse({ status: 200, description: 'MTTR/MTTF report with overall stats, per-monitor breakdown, and weekly trend.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  mttrReport(
+    @Req() req: AuthenticatedRequest,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    const days = periodDays ? parseInt(periodDays, 10) : 30;
+    return this.incidents.mttrReport(req.user.sub, isNaN(days) ? 30 : days);
   }
 
   @Get(':id')

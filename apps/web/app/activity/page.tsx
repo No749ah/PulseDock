@@ -129,7 +129,7 @@ function CheckFeedItem({ item }: { item: CheckItem }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-text-primary truncate">{item.monitorName}</span>
-          <Badge variant={item.level === 'green' ? 'success' : item.level === 'yellow' ? 'warning' : 'danger'} size="sm">
+          <Badge variant={item.level === 'green' ? 'success' : item.level === 'yellow' ? 'warning' : 'danger'}>
             {item.level === 'green' ? 'Recovered' : item.level === 'yellow' ? 'Degraded' : 'Down'}
           </Badge>
           {item.status > 0 && (
@@ -165,7 +165,7 @@ function EventFeedItem({ item }: { item: EventItem }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-text-primary truncate">{item.monitorName}</span>
-          <Badge variant="default" size="sm">{item.eventType}</Badge>
+          <Badge variant="default">{item.eventType}</Badge>
         </div>
         <p className="text-xs text-text-secondary mt-0.5">{item.message}</p>
       </div>
@@ -194,7 +194,7 @@ function IncidentFeedItem({ item }: { item: IncidentItem }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-text-primary truncate">{item.title}</span>
-          <Badge variant={isOpen ? 'danger' : 'success'} size="sm">
+          <Badge variant={isOpen ? 'danger' : 'success'}>
             {item.status.replace('_', ' ')}
           </Badge>
           <span className={`text-xs font-medium ${severityColor(item.severity)}`}>{item.severity}</span>
@@ -236,10 +236,9 @@ export default function ActivityPage() {
   const loaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getUser().then(u => {
-      if (!u) { router.replace('/login'); return; }
-      setUser(u);
-    });
+    const u = getUser();
+    if (!u) { router.replace('/login'); return; }
+    setUser(u);
   }, [router]);
 
   const fetchFeed = useCallback(async (reset = false) => {
@@ -290,7 +289,7 @@ export default function ActivityPage() {
   if (!user) return null;
 
   return (
-    <AppFrame>
+    <AppFrame title="Activity Feed">
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-8">
           <FadeIn>
@@ -308,7 +307,7 @@ export default function ActivityPage() {
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
-                  size="sm"
+                 
                   onClick={() => setShowFilters(f => !f)}
                   className="gap-1.5"
                   aria-expanded={showFilters}
@@ -319,7 +318,7 @@ export default function ActivityPage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                 
                   onClick={() => { setCursor(null); fetchFeed(true); }}
                   disabled={loading}
                   aria-label="Refresh feed"

@@ -15,6 +15,7 @@ import {
   CalendarClock,
   ShieldCheck,
   Layers,
+  Timer,
 
   ChevronDown,
   Folder,
@@ -80,6 +81,8 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Insights',
     items: [
       { href: '/activity', label: 'Activity Feed', icon: Activity },
+      { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
+      { href: '/mttr', label: 'Reliability Analytics', icon: Timer },
       { href: '/reports', label: 'Reports', icon: BarChart2 },
     ],
   },

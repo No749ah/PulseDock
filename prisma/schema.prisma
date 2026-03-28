@@ -330,9 +330,11 @@ model AlertChannel {
 model MonitorAlert {
   monitorId      String
   alertChannelId String
-  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
+  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | REPEAT_EVERY_N | VERSION_ANY | VERSION_MAJOR
   notifyOn       String    @default("ON_CHANGE")
   lastNotifiedAt DateTime?
+  /// Repeat interval in minutes when notifyOn = REPEAT_EVERY_N (1–1440). null = use default 30min.
+  repeatIntervalMin Int?
   /// Optional escalation policy for this monitor↔channel link
   escalationPolicyId String?
   /// Timestamp when the first escalation step fired for the current outage

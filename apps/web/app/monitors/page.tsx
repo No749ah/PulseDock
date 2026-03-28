@@ -439,14 +439,24 @@ function MonitorsPageInner() {
     }
   };
 
-  const updateNotifyOn = async (channelId: string, notifyOn: string) => {
+  const updateNotifyOn = async (channelId: string, notifyOn: string, repeatIntervalMin?: number | null) => {
     if (!alertPanelMonitor) return;
     try {
+      const body: Record<string, unknown> = { notifyOn };
+      if (notifyOn === "REPEAT_EVERY_N" && repeatIntervalMin != null) {
+        body.repeatIntervalMin = repeatIntervalMin;
+      } else if (notifyOn !== "REPEAT_EVERY_N") {
+        body.repeatIntervalMin = null;
+      }
       await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, user?.id, {
         method: "PATCH",
-        body: JSON.stringify({ notifyOn }),
+        body: JSON.stringify(body),
       });
-      setAssignedChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, notifyOn } : c));
+      setAssignedChannels((prev) => prev.map((c) =>
+        c.id === channelId
+          ? { ...c, notifyOn, ...(repeatIntervalMin != null ? { repeatIntervalMin } : {}) }
+          : c
+      ));
       const updatedMonitors = await api<MonitorItem[]>("/v1/monitors", user?.id);
       setMonitors(updatedMonitors);
     } catch (e) {

@@ -964,6 +964,7 @@ export class MonitorsService {
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
       notifyOn: a.notifyOn,
+      repeatIntervalMin: a.repeatIntervalMin ?? null,
       // Nested shape expected by frontend
       alertChannelId: a.alertChannelId,
       alertChannel: { id: a.alertChannel.id, name: a.alertChannel.name, type: a.alertChannel.type },
@@ -983,7 +984,7 @@ export class MonitorsService {
    * @returns { ok: true } on success
    * @throws NotFoundException if monitor or channel not found / not owned by user
    */
-  async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string) {
+  async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string, repeatIntervalMin?: number) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
@@ -995,9 +996,13 @@ export class MonitorsService {
     const defaultNotifyOn = isVersion ? 'VERSION_ANY' : 'ON_CHANGE';
     const resolvedNotifyOn = notifyOn ?? defaultNotifyOn;
 
+    const repeatVal = (resolvedNotifyOn === 'REPEAT_EVERY_N' && repeatIntervalMin != null)
+      ? Math.min(1440, Math.max(1, repeatIntervalMin))
+      : null;
+
     await this.prisma.monitorAlert.upsert({
       where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
-      create: { monitorId, alertChannelId: channelId, notifyOn: resolvedNotifyOn },
+      create: { monitorId, alertChannelId: channelId, notifyOn: resolvedNotifyOn, repeatIntervalMin: repeatVal },
       update: {},
     });
 
@@ -1020,7 +1025,7 @@ export class MonitorsService {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
-    const validValues = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'VERSION_ANY', 'VERSION_MAJOR'];
+    const validValues = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'REPEAT_EVERY_N', 'VERSION_ANY', 'VERSION_MAJOR'];
     if (!validValues.includes(notifyOn)) throw new BadRequestException(`Invalid notifyOn value: ${notifyOn}`);
 
     await this.prisma.monitorAlert.update({
@@ -1029,6 +1034,27 @@ export class MonitorsService {
     });
 
     await this.audit.log('monitor.alert.update', userId, userId, { monitorId, channelId, notifyOn });
+    return { ok: true };
+  }
+
+  /**
+   * Updates the repeat interval (minutes) for a REPEAT_EVERY_N channel assignment.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID
+   * @param intervalMin - Minutes between repeat alerts (1–1440), or null to use default (30 min)
+   */
+  async updateMonitorAlertRepeatInterval(userId: string, monitorId: string, channelId: string, intervalMin: number | null) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const clamped = intervalMin != null ? Math.min(1440, Math.max(1, intervalMin)) : null;
+    await this.prisma.monitorAlert.update({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      data: { repeatIntervalMin: clamped },
+    });
+
+    await this.audit.log('monitor.alert.repeat_interval_set', userId, userId, { monitorId, channelId, intervalMin: clamped });
     return { ok: true };
   }
 

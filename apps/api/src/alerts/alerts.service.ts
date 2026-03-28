@@ -1130,6 +1130,16 @@ export class AlertsService {
           const hoursSince = (alertNow.getTime() - lastNotified.getTime()) / 3_600_000;
           return hoursSince >= 24;
         }
+        case 'REPEAT_EVERY_N': {
+          // Repeat while monitor stays down, at configurable interval (default 30 min)
+          // Always fire on first failure (no lastNotifiedAt), then repeat every N minutes
+          if (run.level === 'green') return false; // never repeat on green
+          const lastNotified = l.lastNotifiedAt;
+          if (!lastNotified) return true; // first failure → always fire
+          const intervalMin = l.repeatIntervalMin ?? 30;
+          const intervalMs = Math.max(1, intervalMin) * 60_000;
+          return alertNow.getTime() - lastNotified.getTime() >= intervalMs;
+        }
         case 'VERSION_ANY':
           // Version monitors: fire when not up-to-date (yellow or red)
           return isVersionMonitor && run.level !== 'green';
@@ -1141,13 +1151,13 @@ export class AlertsService {
       }
     });
 
-    // Update lastNotifiedAt for DAILY_DIGEST channels that are firing
-    const dailyDigestIds = eligibleLinks
-      .filter((l) => (l.notifyOn as string) === 'DAILY_DIGEST')
+    // Update lastNotifiedAt for DAILY_DIGEST and REPEAT_EVERY_N channels that are firing
+    const trackLastNotifiedIds = eligibleLinks
+      .filter((l) => (l.notifyOn as string) === 'DAILY_DIGEST' || (l.notifyOn as string) === 'REPEAT_EVERY_N')
       .map((l) => l.alertChannelId);
-    if (dailyDigestIds.length > 0) {
+    if (trackLastNotifiedIds.length > 0) {
       await this.prisma.monitorAlert.updateMany({
-        where: { monitorId: monitor.id, alertChannelId: { in: dailyDigestIds } },
+        where: { monitorId: monitor.id, alertChannelId: { in: trackLastNotifiedIds } },
         data: { lastNotifiedAt: alertNow },
       });
     }

@@ -650,9 +650,9 @@ export class MonitorsController {
     @Req() req: { user: { id: string } },
     @Param('id') id: string,
     @Param('channelId') channelId: string,
-    @Body() body: { notifyOn?: string },
+    @Body() body: { notifyOn?: string; repeatIntervalMin?: number },
   ) {
-    return this.monitorsService.addMonitorAlert(req.user.id, id, channelId, body?.notifyOn);
+    return this.monitorsService.addMonitorAlert(req.user.id, id, channelId, body?.notifyOn, body?.repeatIntervalMin);
   }
 
   @Patch(':id/alerts/:channelId')
@@ -665,13 +665,16 @@ export class MonitorsController {
     @Req() req: { user: { id: string } },
     @Param('id') id: string,
     @Param('channelId') channelId: string,
-    @Body() body: { notifyOn?: string; escalationPolicyId?: string | null },
+    @Body() body: { notifyOn?: string; escalationPolicyId?: string | null; repeatIntervalMin?: number | null },
   ) {
     if (body.notifyOn !== undefined) {
       await this.monitorsService.updateMonitorAlertNotifyOn(req.user.id, id, channelId, body.notifyOn);
     }
     if ('escalationPolicyId' in body) {
       await this.monitorsService.updateMonitorAlertEscalationPolicy(req.user.id, id, channelId, body.escalationPolicyId ?? null);
+    }
+    if ('repeatIntervalMin' in body) {
+      await this.monitorsService.updateMonitorAlertRepeatInterval(req.user.id, id, channelId, body.repeatIntervalMin ?? null);
     }
     return { ok: true };
   }

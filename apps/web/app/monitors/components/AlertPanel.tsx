@@ -1,4 +1,6 @@
-import React from "react";
+'use client';
+
+import React, { useState } from "react";
 import { Bell, BellOff, AlertCircle, X, Plus } from "lucide-react";
 import { Button } from "../../components/Button";
 import type { MonitorItem, AlertChannel } from "../types";
@@ -14,7 +16,7 @@ interface AlertPanelProps {
   onClose: () => void;
   onAssign: (channelId: string) => void;
   onUnassign: (channelId: string) => void;
-  onUpdateNotifyOn: (channelId: string, notifyOn: string) => void;
+  onUpdateNotifyOn: (channelId: string, notifyOn: string, repeatIntervalMin?: number | null) => void;
 }
 
 export function AlertPanel({
@@ -29,6 +31,14 @@ export function AlertPanel({
   onUnassign,
   onUpdateNotifyOn,
 }: AlertPanelProps) {
+  // Track local repeat interval state per channel
+  const [repeatIntervals, setRepeatIntervals] = useState<Record<string, number>>({});
+
+  const getRepeatInterval = (channel: AlertChannel): number => {
+    if (repeatIntervals[channel.id] !== undefined) return repeatIntervals[channel.id];
+    return (channel as AlertChannel & { repeatIntervalMin?: number | null }).repeatIntervalMin ?? 30;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
@@ -95,6 +105,10 @@ export function AlertPanel({
                     {assignedChannels.map((channel) => {
                       const isVersion = monitor.type === "GIT_RELEASE" || monitor.type === "DOCKER_IMAGE";
                       const options = isVersion ? VERSION_NOTIFY_OPTIONS : UPTIME_NOTIFY_OPTIONS;
+                      const currentNotifyOn = channel.notifyOn ?? (isVersion ? "VERSION_ANY" : "ON_CHANGE");
+                      const isRepeatMode = currentNotifyOn === "REPEAT_EVERY_N";
+                      const repeatMin = getRepeatInterval(channel);
+
                       return (
                         <div key={channel.id} className="rounded-lg bg-surface-elevated border border-border/50 overflow-hidden">
                           <div className="flex items-center justify-between px-3 pt-3 pb-2">
@@ -113,17 +127,50 @@ export function AlertPanel({
                               <X className="w-3 h-3" />
                             </button>
                           </div>
-                          <div className="px-3 pb-3">
-                            <label className="block text-[10px] text-text-secondary uppercase tracking-wide mb-1">Notify when</label>
-                            <select
-                              value={channel.notifyOn ?? (isVersion ? "VERSION_ANY" : "ON_CHANGE")}
-                              onChange={(e) => onUpdateNotifyOn(channel.id, e.target.value)}
-                              className="w-full text-xs bg-bg border border-border rounded-lg px-2 py-1.5 text-text-primary focus:outline-none focus:border-accent"
-                            >
-                              {options.map((o) => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                              ))}
-                            </select>
+                          <div className="px-3 pb-3 space-y-2">
+                            <div>
+                              <label className="block text-[10px] text-text-secondary uppercase tracking-wide mb-1">Notify when</label>
+                              <select
+                                value={currentNotifyOn}
+                                onChange={(e) => {
+                                  const newVal = e.target.value;
+                                  if (newVal === "REPEAT_EVERY_N") {
+                                    onUpdateNotifyOn(channel.id, newVal, repeatMin);
+                                  } else {
+                                    onUpdateNotifyOn(channel.id, newVal, null);
+                                  }
+                                }}
+                                className="w-full text-xs bg-bg border border-border rounded-lg px-2 py-1.5 text-text-primary focus:outline-none focus:border-accent"
+                              >
+                                {options.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {isRepeatMode && (
+                              <div className="flex items-center gap-2">
+                                <label className="text-[10px] text-text-secondary uppercase tracking-wide whitespace-nowrap">
+                                  Interval (min)
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={1440}
+                                  value={repeatMin}
+                                  onChange={(e) => {
+                                    const val = Math.min(1440, Math.max(1, parseInt(e.target.value) || 30));
+                                    setRepeatIntervals((prev) => ({ ...prev, [channel.id]: val }));
+                                  }}
+                                  onBlur={() => {
+                                    onUpdateNotifyOn(channel.id, "REPEAT_EVERY_N", repeatMin);
+                                  }}
+                                  className="w-20 text-xs bg-bg border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent"
+                                />
+                                <span className="text-[10px] text-text-secondary">
+                                  Re-alerts every {repeatMin} min while down
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

@@ -150,8 +150,12 @@ describe('ChecksService — status webhook', () => {
     // Allow microtasks (void async call) to resolve
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    // Find the call to our specific webhook URL (there may be other fetch calls for alert channels, etc.)
+    const webhookCalls = fetchMock.mock.calls.filter(
+      (c) => (c as [string, RequestInit])[0] === 'https://hook.example.com/cb',
+    );
+    expect(webhookCalls.length).toBeGreaterThanOrEqual(1);
+    const [url, opts] = webhookCalls[0] as [string, RequestInit];
     expect(url).toBe('https://hook.example.com/cb');
     expect(opts.method).toBe('POST');
     const parsed = JSON.parse(opts.body as string) as Record<string, unknown>;
@@ -169,8 +173,11 @@ describe('ChecksService — status webhook', () => {
     await service.runMonitor(monitor as Parameters<typeof service.runMonitor>[0]);
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const parsed = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string) as Record<string, unknown>;
+    const webhookCall = fetchMock.mock.calls.find(
+      (c) => (c as [string, RequestInit])[0] === 'https://hook.example.com/cb',
+    );
+    expect(webhookCall).toBeDefined();
+    const parsed = JSON.parse((webhookCall as [string, RequestInit])[1].body as string) as Record<string, unknown>;
     expect(parsed.level).toBe('green');
     expect(parsed.previousLevel).toBe('red');
   });
@@ -186,8 +193,11 @@ describe('ChecksService — status webhook', () => {
     await service.runMonitor(monitor as Parameters<typeof service.runMonitor>[0]);
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const opts = (fetchMock.mock.calls[0] as [string, RequestInit])[1];
+    const webhookCall = fetchMock.mock.calls.find(
+      (c) => (c as [string, RequestInit])[0] === 'https://hook.example.com/cb',
+    );
+    expect(webhookCall).toBeDefined();
+    const opts = (webhookCall as [string, RequestInit])[1];
     const sig = (opts.headers as Record<string, string>)['X-PulseDock-Signature'];
     expect(sig).toBeDefined();
     expect(sig).toMatch(/^sha256=[a-f0-9]{64}$/);
@@ -201,7 +211,11 @@ describe('ChecksService — status webhook', () => {
     await service.runMonitor(monitor as Parameters<typeof service.runMonitor>[0]);
     await new Promise((r) => setTimeout(r, 50));
 
-    const opts = (fetchMock.mock.calls[0] as [string, RequestInit])[1];
+    const webhookCall = fetchMock.mock.calls.find(
+      (c) => (c as [string, RequestInit])[0] === 'https://hook.example.com/cb',
+    );
+    expect(webhookCall).toBeDefined();
+    const opts = (webhookCall as [string, RequestInit])[1];
     expect((opts.headers as Record<string, string>)['X-PulseDock-Signature']).toBeUndefined();
   });
 

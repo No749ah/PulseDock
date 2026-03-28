@@ -4369,6 +4369,132 @@ export class MonitorsService {
       stats,
     };
   }
+
+  /**
+   * SLA compliance dashboard for all enabled monitors.
+   * Returns current-month uptime, error budget usage, and 3-month history.
+   */
+  async slaDashboard(userId: string) {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+      },
+    });
+
+    // Helper: compute uptime % for a monitor in a given period
+    const computeUptime = async (
+      monitorId: string,
+      from: Date,
+      to: Date,
+    ): Promise<{ totalRuns: number; failedRuns: number; uptimePct: number }> => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const totalRuns = runs.length;
+      const failedRuns = runs.filter((r) => !r.ok).length;
+      const uptimePct = totalRuns === 0 ? 100 : ((totalRuns - failedRuns) / totalRuns) * 100;
+      return { totalRuns, failedRuns, uptimePct: Math.round(uptimePct * 10000) / 10000 };
+    };
+
+    // Build 3-month history labels
+    const historyMonths: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      historyMonths.push({ label, start: d, end });
+    }
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = m.slaTarget != null ? Number(m.slaTarget) : null;
+
+        // Current month stats
+        const { totalRuns, failedRuns, uptimePct } = await computeUptime(m.id, monthStart, now);
+
+        // Compliance
+        let compliant: boolean | null = null;
+        let errorBudgetUsedPct: number | null = null;
+        let budgetRemainingPct: number | null = null;
+
+        if (slaTarget != null) {
+          compliant = uptimePct >= slaTarget;
+          const allowedDown = 100 - slaTarget;
+          if (allowedDown <= 0) {
+            errorBudgetUsedPct = uptimePct < 100 ? 100 : 0;
+          } else {
+            errorBudgetUsedPct = Math.min(100, Math.max(0, ((100 - uptimePct) / allowedDown) * 100));
+            errorBudgetUsedPct = Math.round(errorBudgetUsedPct * 100) / 100;
+          }
+          budgetRemainingPct = Math.round((100 - errorBudgetUsedPct) * 100) / 100;
+        }
+
+        // Monthly history (last 3 months)
+        const monthlyHistory = await Promise.all(
+          historyMonths.map(async (hm) => {
+            const { uptimePct: hUptime } = await computeUptime(m.id, hm.start, hm.end);
+            const hCompliant = slaTarget != null ? hUptime >= slaTarget : null;
+            return {
+              month: hm.label,
+              uptimePct: Math.round(hUptime * 10000) / 10000,
+              compliant: hCompliant,
+            };
+          }),
+        );
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          folder: m.folderId,
+          slaTarget,
+          uptimePct,
+          compliant,
+          errorBudgetUsedPct,
+          budgetRemainingPct,
+          totalRuns,
+          failedRuns,
+          monthlyHistory,
+        };
+      }),
+    );
+
+    // Summary
+    const compliantCount = monitorsData.filter((m) => m.compliant === true && (m.slaTarget == null || m.uptimePct - (m.slaTarget ?? 0) >= 0.1)).length;
+    const atRiskCount = monitorsData.filter(
+      (m) => m.slaTarget != null && m.compliant === true && m.uptimePct - (m.slaTarget ?? 0) < 0.1,
+    ).length;
+    const breachedCount = monitorsData.filter((m) => m.compliant === false).length;
+    const noTargetCount = monitorsData.filter((m) => m.slaTarget == null).length;
+
+    const currentMonthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      generatedAt: now.toISOString(),
+      period: {
+        start: monthStart.toISOString(),
+        end: now.toISOString(),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        atRisk: atRiskCount,
+        breached: breachedCount,
+        noTarget: noTargetCount,
+        currentMonth: currentMonthLabel,
+      },
+      monitors: monitorsData,
+    };
+  }
 }
 
 export interface SuggestedMonitor {

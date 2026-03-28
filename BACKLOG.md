@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 09:36 UTC)
+- **Build/Test:** ✅ Clean build + 3915 API (+5 postmortem tests) + 756 web + 10 CLI + 12 agent = 4693 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:36 UTC cycle):**
+  - [x] **Incident Post-Mortem Auto-Generation** — `POST /v1/incidents/:id/generate-postmortem` generates a structured markdown post-mortem from incident data: duration, severity, timeline of updates, per-monitor check failure stats, and all standard sections (Summary, Impact, Timeline, Root Cause, Contributing Factors, Resolution, Action Items, Lessons Learned). Auto-saves to `postmortemNotes` if not already set. Frontend: "✨ Auto-generate" button in post-mortem section of each incident row, populates edit form pre-filled with generated content. 5 new unit tests.
+
 ## Status Summary (2026-03-28 09:19 UTC)
 - **Build/Test:** ✅ Clean build + 3905 API (+5 coverage tests) + 756 web + 10 CLI + 12 agent = 4683 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

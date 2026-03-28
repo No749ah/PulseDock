@@ -163,6 +163,22 @@ export class IncidentsController {
     });
   }
 
+  @Post(':id/generate-postmortem')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Auto-generate incident post-mortem',
+    description: 'Generates a structured post-mortem markdown document from incident data: duration, affected monitors, check failure stats, timeline updates, and all standard post-mortem sections. If postmortemNotes is not yet set, the generated content is saved automatically.',
+  })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 200, description: 'Generated post-mortem markdown returned.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
+  generatePostmortem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.incidents.generatePostmortem(req.user.sub, id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an incident', description: 'Permanently deletes an incident and all its timeline updates.' })

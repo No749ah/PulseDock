@@ -297,6 +297,7 @@ export default function IncidentsPage() {
   const [postmortemEditId, setPostmortemEditId] = useState<string | null>(null);
   const [postmortemForm, setPostmortemForm] = useState({ rootCause: '', postmortemNotes: '' });
   const [savingPostmortem, setSavingPostmortem] = useState(false);
+  const [generatingPostmortem, setGeneratingPostmortem] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -444,6 +445,26 @@ export default function IncidentsPage() {
       toastError('Failed to save post-mortem');
     } finally {
       setSavingPostmortem(false);
+    }
+  }
+
+  async function generatePostmortem(incidentId: string) {
+    const user = getUser();
+    if (!user) return;
+    setGeneratingPostmortem(incidentId);
+    try {
+      const result = await api<{ markdown: string; saved: boolean }>(`/v1/incidents/${incidentId}/generate-postmortem`, user.id, { method: 'POST' });
+      // Fill the form with the generated content
+      setPostmortemForm((prev) => ({
+        ...prev,
+        postmortemNotes: result.markdown,
+      }));
+      setPostmortemEditId(incidentId);
+      success(result.saved ? 'Post-mortem generated and saved' : 'Post-mortem generated — review and save');
+    } catch {
+      toastError('Failed to generate post-mortem');
+    } finally {
+      setGeneratingPostmortem(null);
     }
   }
 
@@ -838,6 +859,8 @@ export default function IncidentsPage() {
                         onSavePostmortem={() => savePostmortem(incident.id)}
                         onPostmortemChange={setPostmortemForm}
                         savingPostmortem={savingPostmortem}
+                        onGeneratePostmortem={() => generatePostmortem(incident.id)}
+                        generatingPostmortem={generatingPostmortem === incident.id}
                       />
                     ))}
                   </div>
@@ -867,6 +890,8 @@ export default function IncidentsPage() {
                         onSavePostmortem={() => savePostmortem(incident.id)}
                         onPostmortemChange={setPostmortemForm}
                         savingPostmortem={savingPostmortem}
+                        onGeneratePostmortem={() => generatePostmortem(incident.id)}
+                        generatingPostmortem={generatingPostmortem === incident.id}
                       />
                     ))}
                   </div>
@@ -907,6 +932,8 @@ function IncidentRow({
   onSavePostmortem,
   onPostmortemChange,
   savingPostmortem,
+  onGeneratePostmortem,
+  generatingPostmortem,
 }: {
   incident: Incident;
   expanded: boolean;
@@ -921,6 +948,8 @@ function IncidentRow({
   onSavePostmortem: () => void;
   onPostmortemChange: (form: { rootCause: string; postmortemNotes: string }) => void;
   savingPostmortem: boolean;
+  onGeneratePostmortem: () => void;
+  generatingPostmortem: boolean;
 }) {
   return (
     <Card className="p-0 overflow-hidden">
@@ -1060,14 +1089,24 @@ function IncidentRow({
           <div className="border-t border-border/50 pt-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Post-Mortem</p>
-              {postmortemEditId !== incident.id && (
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={onOpenPostmortem}
-                  className="text-xs text-accent hover:underline"
+                  onClick={onGeneratePostmortem}
+                  disabled={generatingPostmortem}
+                  className="text-xs text-text-muted hover:text-accent transition-colors disabled:opacity-50"
+                  title="Auto-generate post-mortem from incident data"
                 >
-                  {incident.rootCause || incident.postmortemNotes ? 'Edit' : '+ Add Post-Mortem'}
+                  {generatingPostmortem ? '⏳ Generating…' : '✨ Auto-generate'}
                 </button>
-              )}
+                {postmortemEditId !== incident.id && (
+                  <button
+                    onClick={onOpenPostmortem}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    {incident.rootCause || incident.postmortemNotes ? 'Edit' : '+ Add Post-Mortem'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {postmortemEditId === incident.id ? (

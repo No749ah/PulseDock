@@ -397,6 +397,160 @@ export class IncidentsService {
   /**
    * Returns the last 50 incidents (with updates + monitor names) for a public status page.
    * No authentication required — exposes only non-sensitive fields.
+  // ─── Auto-Generate Post-Mortem ───────────────────────────────────────────────────
+
+  /**
+   * Generates a structured post-mortem markdown document from incident data.
+   * Fills in duration, affected monitors, timeline of updates, check history
+   * during the outage window, and pre-populates all standard sections.
+   * If postmortemNotes is not already set, saves the generated content.
+   */
+  async generatePostmortem(userId: string, incidentId: string): Promise<{
+    markdown: string;
+    saved: boolean;
+  }> {
+    const incident = await this.prisma.incident.findFirst({
+      where: { id: incidentId, userId },
+      include: {
+        updates: { orderBy: { createdAt: 'asc' } },
+        monitors: { include: { monitor: { select: { id: true, name: true, type: true, target: true } } } },
+      },
+    });
+    if (!incident) throw new NotFoundException('Incident not found');
+
+    const createdAt = incident.createdAt;
+    const resolvedAt = incident.resolvedAt;
+    const durationMs = resolvedAt ? resolvedAt.getTime() - createdAt.getTime() : null;
+    const durationStr = durationMs !== null ? this.formatDuration(durationMs) : 'Ongoing';
+
+    // Fetch check history for affected monitors during the incident window
+    const monitorIds = incident.monitors.map((m) => m.monitorId);
+    const windowEnd = resolvedAt ?? new Date();
+    const windowStart = new Date(createdAt.getTime() - 5 * 60 * 1000); // 5 min before incident
+
+    let checkStats: Array<{ monitorId: string; name: string; totalRuns: number; failedRuns: number; firstFailure: Date | null }> = [];
+    if (monitorIds.length > 0) {
+      checkStats = await Promise.all(
+        incident.monitors.map(async (m) => {
+          const [totalRuns, failedRuns, firstFailureRow] = await Promise.all([
+            this.prisma.monitorRun.count({ where: { monitorId: m.monitorId, checkedAt: { gte: windowStart, lte: windowEnd } } }),
+            this.prisma.monitorRun.count({ where: { monitorId: m.monitorId, ok: false, checkedAt: { gte: windowStart, lte: windowEnd } } }),
+            this.prisma.monitorRun.findFirst({ where: { monitorId: m.monitorId, ok: false, checkedAt: { gte: windowStart } }, orderBy: { checkedAt: 'asc' }, select: { checkedAt: true } }),
+          ]);
+          return { monitorId: m.monitorId, name: m.monitor.name, totalRuns, failedRuns, firstFailure: firstFailureRow?.checkedAt ?? null };
+        }),
+      );
+    }
+
+    const fmt = (d: Date) => d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+    const affectedSection = checkStats.length > 0
+      ? checkStats.map((s) => {
+          const pct = s.totalRuns > 0 ? Math.round((s.failedRuns / s.totalRuns) * 100) : 0;
+          return `- **${s.name}**: ${s.failedRuns}/${s.totalRuns} checks failed (${pct}%)${s.firstFailure ? `, first failure at ${fmt(s.firstFailure)}` : ''}`;
+        }).join('\n')
+      : '_No monitors linked to this incident._';
+
+    const timelineSection = incident.updates.length > 0
+      ? incident.updates.map((u) => `- **${fmt(u.createdAt)}** — [${u.status}] ${u.body}`).join('\n')
+      : '_No timeline updates recorded._';
+
+    const markdown = `# Post-Mortem: ${incident.title}
+
+**Incident ID:** ${incident.id}
+**Severity:** ${incident.severity}
+**Status:** ${incident.status}
+**Created:** ${fmt(createdAt)}
+**Resolved:** ${resolvedAt ? fmt(resolvedAt) : 'Not yet resolved'}
+**Duration:** ${durationStr}
+
+---
+
+## Summary
+
+> _Briefly describe what happened, who was affected, and what the impact was._
+
+${incident.description ? incident.description : '_No description provided — add a summary here._'}
+
+---
+
+## Impact
+
+${affectedSection}
+
+---
+
+## Timeline
+
+${timelineSection}
+
+---
+
+## Root Cause
+
+${incident.rootCause ? incident.rootCause : '> _What was the root cause? (e.g., "A configuration change at 14:32 UTC caused the API to reject all connections")_'}
+
+---
+
+## Contributing Factors
+
+> _What conditions made this incident possible or worse? (e.g., lack of tests, missing monitoring, capacity planning gaps)_
+
+-
+
+---
+
+## Resolution
+
+> _How was the incident resolved? What steps were taken?_
+
+-
+
+---
+
+## Action Items
+
+> _What will be done to prevent recurrence? Be specific with owner and deadline._
+
+| Action | Owner | Due Date | Status |
+|--------|-------|----------|--------|
+| | | | |
+
+---
+
+## Lessons Learned
+
+${incident.postmortemNotes ? incident.postmortemNotes : '> _What did we learn? What went well? What could be improved?_'}
+
+---
+
+_Generated automatically by PulseDock on ${fmt(new Date())}_
+`;
+
+    // Save to postmortemNotes if not already set
+    let saved = false;
+    if (!incident.postmortemNotes) {
+      await this.prisma.incident.update({
+        where: { id: incidentId },
+        data: { postmortemNotes: markdown },
+      });
+      saved = true;
+    }
+
+    return { markdown, saved };
+  }
+
+  private formatDuration(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  }
+
+  /**
    * Used by the public status-page API and incident-history widgets.
    *
    * @param targetUserId - The workspace owner whose incidents are displayed

@@ -1446,6 +1446,14 @@ export class MonitorsController {
     return this.monitorsService.getSloSummary(req.user.id);
   }
 
+  @Get('sla-dashboard')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLA compliance dashboard for all monitors', description: 'Returns SLA compliance stats, error budget, and monthly history for all enabled monitors.' })
+  @ApiResponse({ status: 200, description: 'SLA dashboard data.' })
+  slaDashboard(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.slaDashboard(req.user.id);
+  }
+
   @Get(':id/status-transitions')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

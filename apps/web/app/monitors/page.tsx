@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe, Settings } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -150,6 +150,11 @@ function MonitorsPageInner() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkTagId, setBulkTagId] = useState<string>("");
   const [bulkValue, setBulkValue] = useState<string>("");
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditForm, setBulkEditForm] = useState<{
+    intervalSec: string; confirmations: string; retryCount: string;
+    latencyAlertMs: string; slaTarget: string; flapDetectionEnabled: string; enabled: string;
+  }>({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
   const [pauseMenuId, setPauseMenuId] = useState<string | null>(null);
@@ -812,6 +817,40 @@ function MonitorsPageInner() {
       success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${actionLabel}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkEdit = async () => {
+    if (!selectedIds.size) return;
+    setBulkLoading(true);
+    try {
+      const body: Record<string, unknown> = { ids: Array.from(selectedIds) };
+      if (bulkEditForm.intervalSec) body.intervalSec = parseInt(bulkEditForm.intervalSec, 10);
+      if (bulkEditForm.confirmations) body.confirmations = parseInt(bulkEditForm.confirmations, 10);
+      if (bulkEditForm.retryCount !== "") body.retryCount = parseInt(bulkEditForm.retryCount, 10);
+      if (bulkEditForm.latencyAlertMs) body.latencyAlertMs = parseInt(bulkEditForm.latencyAlertMs, 10);
+      if (bulkEditForm.slaTarget) body.slaTarget = parseFloat(bulkEditForm.slaTarget);
+      if (bulkEditForm.flapDetectionEnabled !== "") body.flapDetectionEnabled = bulkEditForm.flapDetectionEnabled === "true";
+      if (bulkEditForm.enabled !== "") body.enabled = bulkEditForm.enabled === "true";
+      const result = await api<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }>("/v1/monitors/bulk-edit", user?.id, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      // Optimistic updates for enabled field
+      if (body.enabled !== undefined) {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, enabled: body.enabled as boolean } : m));
+      }
+      if (body.intervalSec !== undefined) {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, intervalSec: body.intervalSec as number } : m));
+      }
+      setShowBulkEditModal(false);
+      setBulkEditForm({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
+      setSelectedIds(new Set());
+      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} updated`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Bulk edit failed");
     } finally {
       setBulkLoading(false);
     }
@@ -1701,6 +1740,9 @@ function MonitorsPageInner() {
                       Set confirms
                     </Button>
                   </div>
+                <Button size="sm" variant="secondary" onClick={() => setShowBulkEditModal(true)} disabled={bulkLoading} className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+                  <Settings className="w-3.5 h-3.5" />Bulk Edit
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
                   <Trash2 className="w-3.5 h-3.5" />Delete
                 </Button>
@@ -2457,6 +2499,84 @@ function MonitorsPageInner() {
           onCopySuccess={success}
         />
       )}
+      {/* ── Bulk Edit Modal ─────────────────────────────────────────────── */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkEditModal(false)}>
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-text-primary">Bulk Edit</h2>
+                <p className="text-sm text-text-secondary mt-0.5">Update {selectedIds.size} monitor{selectedIds.size !== 1 ? "s" : ""}. Leave fields blank to keep existing values.</p>
+              </div>
+              <button onClick={() => setShowBulkEditModal(false)} className="p-1.5 rounded-lg hover:bg-surface-elevated text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Check interval (sec)</label>
+                  <input type="number" min="10" max="86400" placeholder="e.g. 60"
+                    value={bulkEditForm.intervalSec}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, intervalSec: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Confirmations (1–10)</label>
+                  <input type="number" min="1" max="10" placeholder="e.g. 1"
+                    value={bulkEditForm.confirmations}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, confirmations: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Retry count (0–3)</label>
+                  <input type="number" min="0" max="3" placeholder="e.g. 1"
+                    value={bulkEditForm.retryCount}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, retryCount: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Latency alert (ms)</label>
+                  <input type="number" min="1" max="60000" placeholder="e.g. 2000"
+                    value={bulkEditForm.latencyAlertMs}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, latencyAlertMs: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">SLA target (%)</label>
+                  <input type="number" min="0" max="100" step="0.01" placeholder="e.g. 99.9"
+                    value={bulkEditForm.slaTarget}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, slaTarget: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Enabled</label>
+                  <select value={bulkEditForm.enabled} onChange={(e) => setBulkEditForm((f) => ({ ...f, enabled: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                    <option value="">— no change —</option>
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Flap Detection</label>
+                <select value={bulkEditForm.flapDetectionEnabled} onChange={(e) => setBulkEditForm((f) => ({ ...f, flapDetectionEnabled: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                  <option value="">— no change —</option>
+                  <option value="true">Enabled</option>
+                  <option value="false">Disabled</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setShowBulkEditModal(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleBulkEdit} disabled={bulkLoading} className="flex-1">
+                {bulkLoading ? "Updating…" : `Update ${selectedIds.size} monitor${selectedIds.size !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showQuickAdd && (
         <QuickAddModal
           folders={folders}

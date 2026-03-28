@@ -39,6 +39,8 @@ export interface AlertChannel {
   messageTemplate: string | null;
   /** JSON schedule config. null = always active. */
   scheduleJson?: unknown;
+  /** If set, batch DOWN/DEGRADED alerts for this many seconds before delivering (max 300). */
+  batchWindowSec?: number | null;
 }
 
 export interface Monitor {

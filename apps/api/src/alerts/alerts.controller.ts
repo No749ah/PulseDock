@@ -35,6 +35,7 @@ export class AlertsController {
     groupByTag: boolean;
     messageTemplate?: string | null;
     scheduleJson?: import('@prisma/client').Prisma.JsonValue | null;
+    batchWindowSec?: number | null;
   }): import('../types').AlertChannel {
     return {
       id: c.id,
@@ -49,6 +50,7 @@ export class AlertsController {
       groupByTag: c.groupByTag,
       messageTemplate: c.messageTemplate ?? null,
       scheduleJson: c.scheduleJson ?? null,
+      batchWindowSec: c.batchWindowSec ?? null,
     };
   }
 
@@ -74,6 +76,7 @@ export class AlertsController {
       groupByTag: c.groupByTag,
       messageTemplate: c.messageTemplate ?? null,
       scheduleJson: c.scheduleJson ?? null,
+      batchWindowSec: c.batchWindowSec ?? null,
       deliveryCount: c._count.deliveryLogs,
     }));
   }
@@ -108,6 +111,7 @@ export class AlertsController {
       groupByTag: body.groupByTag ?? false,
       messageTemplate: (body as { messageTemplate?: string }).messageTemplate ?? null,
       scheduleJson: ('scheduleJson' in body ? ((body as { scheduleJson?: unknown }).scheduleJson ?? Prisma.JsonNull) : Prisma.JsonNull) as Prisma.InputJsonValue,
+      batchWindowSec: body.batchWindowSec ?? null,
     };
     const channel = await this.prisma.alertChannel.create({ data: createData });
 
@@ -126,6 +130,7 @@ export class AlertsController {
       groupByTag: channel.groupByTag,
       messageTemplate: channel.messageTemplate ?? null,
       scheduleJson: channel.scheduleJson ?? null,
+      batchWindowSec: channel.batchWindowSec ?? null,
     };
   }
 
@@ -148,6 +153,7 @@ export class AlertsController {
       ...(body.groupByTag !== undefined && { groupByTag: body.groupByTag }),
       ...('messageTemplate' in body && { messageTemplate: (body as { messageTemplate?: string | null }).messageTemplate ?? null }),
       scheduleJson: ('scheduleJson' in body ? ((body as { scheduleJson?: unknown }).scheduleJson ?? Prisma.JsonNull) : (current.scheduleJson ?? Prisma.JsonNull)) as Prisma.InputJsonValue,
+      ...('batchWindowSec' in body && { batchWindowSec: body.batchWindowSec ?? null }),
     };
     const updated = await this.prisma.alertChannel.update({ where: { id }, data: updateData });
 
@@ -165,6 +171,7 @@ export class AlertsController {
       groupByTag: updated.groupByTag,
       messageTemplate: updated.messageTemplate ?? null,
       scheduleJson: updated.scheduleJson ?? null,
+      batchWindowSec: updated.batchWindowSec ?? null,
     };
   }
 

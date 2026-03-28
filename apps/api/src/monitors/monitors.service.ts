@@ -837,6 +837,83 @@ export class MonitorsService {
   }
 
   /**
+   * Bulk edit multiple monitors at once — updates any combination of fields across all selected monitors.
+   * Only fields explicitly provided in the body are updated (undefined = skip).
+   * @param userId - The authenticated user's ID
+   * @param body - IDs + field overrides to apply
+   * @returns Count of affected monitors and list of errors per monitor ID
+   */
+  async bulkEdit(userId: string, body: {
+    ids: string[];
+    intervalSec?: number;
+    timeoutMs?: number;
+    confirmations?: number;
+    retryCount?: number;
+    flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
+    slaTarget?: number | null;
+    enabled?: boolean;
+    folderId?: string | null;
+    alertChannelIds?: string[];
+  }): Promise<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }> {
+    if (!body.ids.length) return { ok: true, affected: 0, errors: [] };
+
+    // Verify ownership
+    const monitors = await this.prisma.monitor.findMany({ where: { id: { in: body.ids }, userId }, select: { id: true } });
+    const ownedIds = monitors.map((m) => m.id);
+    if (!ownedIds.length) return { ok: true, affected: 0, errors: [] };
+
+    // Build the update data — only include fields that were provided
+    const data: Record<string, unknown> = {};
+    if (body.intervalSec !== undefined) data.intervalSec = Math.max(10, Math.min(86400, body.intervalSec));
+    if (body.timeoutMs !== undefined) data.timeoutMs = Math.max(100, Math.min(60000, body.timeoutMs));
+    if (body.confirmations !== undefined) data.confirmations = Math.max(1, Math.min(10, body.confirmations));
+    if (body.retryCount !== undefined) data.retryCount = Math.max(0, Math.min(3, body.retryCount));
+    if (body.flapDetectionEnabled !== undefined) data.flapDetectionEnabled = body.flapDetectionEnabled;
+    if (body.latencyAlertMs !== undefined) data.latencyAlertMs = body.latencyAlertMs;
+    if (body.slaTarget !== undefined) data.slaTarget = body.slaTarget;
+    if (body.enabled !== undefined) data.enabled = body.enabled;
+    if (body.folderId !== undefined) data.folderId = body.folderId;
+
+    const errors: Array<{ id: string; error: string }> = [];
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.monitor.updateMany({
+        where: { id: { in: ownedIds }, userId },
+        data: data as Parameters<typeof this.prisma.monitor.updateMany>[0]['data'],
+      });
+    }
+
+    // Alert channels require per-monitor updates (replace existing assignments)
+    if (body.alertChannelIds !== undefined) {
+      for (const monitorId of ownedIds) {
+        try {
+          await this.prisma.monitorAlert.deleteMany({ where: { monitorId } });
+          if (body.alertChannelIds.length > 0) {
+            await this.prisma.monitorAlert.createMany({
+              data: body.alertChannelIds.map((alertChannelId) => ({ monitorId, alertChannelId })),
+            });
+          }
+        } catch (err) {
+          errors.push({ id: monitorId, error: err instanceof Error ? err.message : 'Failed to update alert channels' });
+        }
+      }
+    }
+
+    await this.audit.log('monitor.bulk_edit', userId, userId, {
+      ids: ownedIds,
+      fields: Object.keys(data),
+      alertChannelIds: body.alertChannelIds,
+    });
+
+    for (const monitorId of ownedIds) {
+      this.realtime.monitorUpdated(userId, { id: monitorId });
+    }
+
+    return { ok: true, affected: ownedIds.length, errors };
+  }
+
+  /**
    * Returns all alert channels assigned to a specific monitor.
    * @param userId - The authenticated user's ID
    * @param monitorId - The monitor to list alerts for

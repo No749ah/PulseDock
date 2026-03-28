@@ -1,3 +1,10 @@
+## Status Summary (2026-03-28 09:50 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API (+5 batch tests) + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Latest:** feat: alert batching / digest mode — batchWindowSec per AlertChannel, in-memory queue, batched delivery with monitor list; recoveries always immediate
+
 ## Status Summary (2026-03-28 09:37 UTC)
 - **Build/Test:** ✅ Clean build + 3920 API (+5 SLA dashboard tests) + 756 web + 10 CLI + 12 agent = 4698 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

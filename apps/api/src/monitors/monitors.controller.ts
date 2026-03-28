@@ -12,7 +12,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, SimulateAlertsDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, BulkEditDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, SimulateAlertsDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
@@ -132,6 +132,19 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Bulk action applied.' })
   bulk(@Req() req: { user: { id: string } }, @Body() body: BulkActionDto) {
     return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId, body.value);
+  }
+
+  @Patch('bulk-edit')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Bulk edit monitors',
+    description: 'Update one or more fields across multiple monitors at once. Only provided fields are updated — omit a field to leave it unchanged.',
+  })
+  @ApiResponse({ status: 200, description: 'Bulk edit applied. Returns count of affected monitors and any per-monitor errors.' })
+  bulkEdit(@Req() req: { user: { id: string } }, @Body() body: BulkEditDto) {
+    return this.monitorsService.bulkEdit(req.user.id, body);
   }
 
   @Post('compare')

@@ -41,6 +41,7 @@ type AlertChannel = {
   groupByTag?: boolean;
   messageTemplate?: string | null;
   scheduleJson?: ChannelSchedule | null;
+  batchWindowSec?: number | null;
   deliveryCount?: number;
 };
 
@@ -337,6 +338,10 @@ export default function AlertsPage() {
   const [editGroupWindowMin, setEditGroupWindowMin] = useState(5);
   const [editGroupByFolder, setEditGroupByFolder] = useState(true);
   const [editGroupByTag, setEditGroupByTag] = useState(false);
+  // Batch window state (create form)
+  const [createBatchWindowSec, setCreateBatchWindowSec] = useState(0);
+  // Batch window state (edit form)
+  const [editBatchWindowSec, setEditBatchWindowSec] = useState(0);
   // Channel-level message template (applies to all channel types)
   const [createChannelMsgTemplate, setCreateChannelMsgTemplate] = useState('');
   // Schedule state — create modal
@@ -624,6 +629,7 @@ export default function AlertsPage() {
           groupWindowSec: createGroupWindowMin * 60,
           groupByFolder: createGroupByFolder,
           groupByTag: createGroupByTag,
+          ...(createBatchWindowSec > 0 && { batchWindowSec: createBatchWindowSec }),
           ...(createChannelMsgTemplate.trim() && { messageTemplate: createChannelMsgTemplate.trim() }),
           scheduleJson: createScheduleEnabled ? { enabled: true, timezone: createScheduleTz, days: createScheduleDays, startHour: createScheduleStart, endHour: createScheduleEnd } : null,
         }),
@@ -769,6 +775,7 @@ export default function AlertsPage() {
     setEditGroupWindowMin(Math.round((channel.groupWindowSec ?? 300) / 60));
     setEditGroupByFolder(channel.groupByFolder ?? true);
     setEditGroupByTag(channel.groupByTag ?? false);
+    setEditBatchWindowSec(channel.batchWindowSec ?? 0);
     setEditChannelMsgTemplate((channel as AlertChannel & { messageTemplate?: string | null }).messageTemplate ?? '');
     const sched = channel.scheduleJson;
     setEditScheduleEnabled(sched?.enabled ?? false);
@@ -792,6 +799,7 @@ export default function AlertsPage() {
           groupWindowSec: editGroupWindowMin * 60,
           groupByFolder: editGroupByFolder,
           groupByTag: editGroupByTag,
+          batchWindowSec: editBatchWindowSec > 0 ? editBatchWindowSec : null,
           messageTemplate: editChannelMsgTemplate.trim() || null,
           scheduleJson: editScheduleEnabled ? { enabled: true, timezone: editScheduleTz, days: editScheduleDays, startHour: editScheduleStart, endHour: editScheduleEnd } : null,
         }),
@@ -1260,6 +1268,30 @@ export default function AlertsPage() {
                 )}
               </div>
 
+              {/* Batch Window */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Batch Window</p>
+                <p className="text-xs text-text-muted">Collect alerts for this many seconds before delivering as one batched message. 0 = disabled. Good for reducing noise when multiple monitors fail simultaneously.</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Batch window (seconds)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    className={inputClass}
+                    value={createBatchWindowSec}
+                    onChange={(e) => setCreateBatchWindowSec(Math.max(0, Math.min(300, Number(e.target.value))))}
+                    placeholder="0 (disabled)"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={() => setCreateBatchWindowSec(30)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">30s</button>
+                    <button type="button" onClick={() => setCreateBatchWindowSec(60)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">1m</button>
+                    <button type="button" onClick={() => setCreateBatchWindowSec(300)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">5m</button>
+                    {createBatchWindowSec > 0 && <button type="button" onClick={() => setCreateBatchWindowSec(0)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-red-400 transition-colors">clear</button>}
+                  </div>
+                </div>
+              </div>
+
               {/* Channel-level Message Template */}
               <div className="border-t border-border pt-4 space-y-3">
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Custom Message Template</p>
@@ -1602,6 +1634,30 @@ export default function AlertsPage() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Batch Window (edit) */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Batch Window</p>
+                <p className="text-xs text-text-muted">Collect alerts for this many seconds before delivering as one batched message. 0 = disabled. Good for reducing noise when multiple monitors fail simultaneously.</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Batch window (seconds)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    className={inputClass}
+                    value={editBatchWindowSec}
+                    onChange={(e) => setEditBatchWindowSec(Math.max(0, Math.min(300, Number(e.target.value))))}
+                    placeholder="0 (disabled)"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={() => setEditBatchWindowSec(30)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">30s</button>
+                    <button type="button" onClick={() => setEditBatchWindowSec(60)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">1m</button>
+                    <button type="button" onClick={() => setEditBatchWindowSec(300)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">5m</button>
+                    {editBatchWindowSec > 0 && <button type="button" onClick={() => setEditBatchWindowSec(0)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-red-400 transition-colors">clear</button>}
+                  </div>
+                </div>
               </div>
 
               {/* Channel-level Message Template */}

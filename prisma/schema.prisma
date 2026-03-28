@@ -310,6 +310,7 @@ model AlertChannel {
   /// JSON schedule config. null = always active. Format: { enabled: boolean, timezone: string, days: number[], startHour: number, endHour: number }
   /// days: 0=Sun, 1=Mon, ..., 6=Sat. hours are 0–23 in the given timezone.
   scheduleJson     Json?
+  batchWindowSec   Int?  // if set, batch DOWN/DEGRADED alerts for this many seconds before delivering (max 300)
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]

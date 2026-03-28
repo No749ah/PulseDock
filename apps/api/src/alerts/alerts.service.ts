@@ -13,6 +13,15 @@ export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
   private readonly realtime: Pick<RealtimeEvents, 'alertTriggered'>;
 
+  /** In-memory batch queue for alert batching / digest mode (resets on restart — acceptable). */
+  readonly alertBatchQueue = new Map<string, {
+    channelId: string;
+    channel: AlertChannel;
+    windowMs: number;
+    alerts: Array<{ monitorName: string; level: string; message: string; timestamp: Date }>;
+    timer: ReturnType<typeof setTimeout>;
+  }>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
@@ -764,6 +773,97 @@ export class AlertsService {
   }
 
   /**
+   * Queues an alert for batch delivery. If no timer is running for the channel, starts one.
+   * Only called for DOWN/DEGRADED events when batchWindowSec > 0.
+   */
+  queueBatchAlert(
+    channel: AlertChannel,
+    monitorName: string,
+    level: string,
+    message: string,
+  ): void {
+    const batchWindowSec = channel.batchWindowSec ?? 0;
+    if (batchWindowSec <= 0) return;
+    const windowMs = batchWindowSec * 1000;
+    const existing = this.alertBatchQueue.get(channel.id);
+    if (existing) {
+      existing.alerts.push({ monitorName, level, message, timestamp: new Date() });
+      this.logger.debug(`[BatchAlert] Queued alert for channel ${channel.id} (${channel.name}), total: ${existing.alerts.length}`);
+    } else {
+      const timer = setTimeout(() => { this.flushBatch(channel.id); }, windowMs);
+      this.alertBatchQueue.set(channel.id, {
+        channelId: channel.id,
+        channel,
+        windowMs,
+        alerts: [{ monitorName, level, message, timestamp: new Date() }],
+        timer,
+      });
+      this.logger.debug(`[BatchAlert] Started batch window (${batchWindowSec}s) for channel ${channel.id} (${channel.name})`);
+    }
+  }
+
+  /**
+   * Flushes the pending batch for a channel and delivers a batched notification.
+   */
+  async flushBatch(channelId: string): Promise<void> {
+    const batch = this.alertBatchQueue.get(channelId);
+    if (!batch || batch.alerts.length === 0) {
+      this.alertBatchQueue.delete(channelId);
+      return;
+    }
+    this.alertBatchQueue.delete(channelId);
+    clearTimeout(batch.timer);
+
+    const { channel, alerts, windowMs } = batch;
+    const n = alerts.length;
+    const windowSec = Math.round(windowMs / 1000);
+    const subject = `🔴 ${n} monitor${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`;
+
+    this.logger.log(`[BatchAlert] Flushing ${n} batched alert(s) for channel ${channel.id} (${channel.name})`);
+
+    if (channel.type === 'email') {
+      const rows = alerts.map(a =>
+        `<tr><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.monitorName}</td><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.level.toUpperCase()}</td><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.message}</td></tr>`
+      ).join('');
+      const html = `<h2 style="color:#f85149;">${subject}</h2><table style="border-collapse:collapse;width:100%;font-family:monospace;font-size:13px;"><thead><tr><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Monitor</th><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Level</th><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Message</th></tr></thead><tbody>${rows}</tbody></table><p style="color:#666;font-size:12px;margin-top:12px;">Batched from last ${windowSec}s — PulseDock</p>`;
+      const textFallback = `${subject}\n\n${alerts.map(a => `• ${a.monitorName} — ${a.level.toUpperCase()}: ${a.message}`).join('\n')}\n\nBatched from last ${windowSec}s`;
+      try {
+        await this.mailer.sendAlertEmail(
+          channel.config.to as string,
+          textFallback,
+          { batchedHtml: html, batchedAlerts: alerts, subject },
+        );
+      } catch (err) {
+        this.logger.error(`[BatchAlert] Email batch delivery failed for channel ${channel.id}`, err instanceof Error ? err.stack : String(err));
+      }
+      return;
+    }
+
+    // Slack / Discord / Webhook / others: text-based batched message
+    const bulletLines = alerts.map(a => `• ${a.monitorName} — ${a.message}`).join('\n');
+    const footerLine = `_Batched from last ${windowSec}s_`;
+
+    let batchText: string;
+    if (channel.type === 'slack') {
+      batchText = `${subject}\n${bulletLines}\n${footerLine}`;
+    } else if (channel.type === 'discord') {
+      batchText = `**${subject}**\n${bulletLines}\n${footerLine}`;
+    } else {
+      batchText = `${subject}\n${bulletLines}\nBatched from last ${windowSec}s`;
+    }
+
+    try {
+      await this.sendWithRetry(channel, batchText, {
+        batchedAlerts: alerts,
+        batchWindowSec: windowSec,
+        subject,
+      }, { monitorId: 'batch', monitorName: subject, trigger: 'batch_flush' });
+    } catch (err) {
+      this.logger.error(`[BatchAlert] Batch delivery failed for channel ${channel.id}`, err instanceof Error ? err.stack : String(err));
+    }
+  }
+
+  /**
    * Retry helper with exponential backoff.
    * Delays: 1s → 2s → 4s (2^(attempt-1) seconds).
    * Logs each failed attempt. Throws after maxRetries exhausted.
@@ -1065,6 +1165,7 @@ export class AlertsService {
       groupByTag: l.alertChannel.groupByTag,
       messageTemplate: l.alertChannel.messageTemplate ?? null,
       scheduleJson: l.alertChannel.scheduleJson ?? null,
+      batchWindowSec: l.alertChannel.batchWindowSec ?? null,
     }));
 
     const isFlapping = context?.isFlapping ?? false;
@@ -1105,12 +1206,15 @@ export class AlertsService {
       try {
         const trigger = isFlapping ? 'monitor_flapping' : isRecovery ? 'monitor_recovery' : 'monitor_failure';
         if (isRecovery || isFlapping) {
-          // Recovery and flapping alerts always send directly
+          // Recovery and flapping alerts always send directly — never batched
           await this.sendWithRetry(channel, text, extra, {
             monitorId: monitor.id,
             monitorName: monitor.name,
             trigger,
           });
+        } else if ((channel.batchWindowSec ?? 0) > 0) {
+          // Non-recovery with batch window — queue for batch delivery
+          this.queueBatchAlert(channel, monitor.name, run.level, run.message ?? run.level);
         } else {
           // Non-recovery failure alerts go through grouping
           await this.notifyWithGrouping(channel, monitor, run, text, extra);

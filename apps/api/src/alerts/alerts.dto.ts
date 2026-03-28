@@ -45,6 +45,12 @@ export class CreateAlertChannelDto {
     startHour: number;
     endHour: number;
   } | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  batchWindowSec?: number;
 }
 
 export class UpdateAlertChannelDto {
@@ -94,6 +100,12 @@ export class UpdateAlertChannelDto {
     startHour: number;
     endHour: number;
   } | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  batchWindowSec?: number | null;
 }
 
 export class TestAlertChannelDto {

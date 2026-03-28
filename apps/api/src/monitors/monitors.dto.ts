@@ -685,6 +685,75 @@ export class BulkActionDto {
   value?: number;
 }
 
+export class BulkEditDto {
+  @ApiProperty({ description: 'Monitor IDs to update', type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @ApiPropertyOptional({ description: 'New check interval in seconds (min 10)', minimum: 10, maximum: 86400 })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(86400)
+  intervalSec?: number;
+
+  @ApiPropertyOptional({ description: 'Request timeout in milliseconds (min 100)', minimum: 100 })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(60000)
+  timeoutMs?: number;
+
+  @ApiPropertyOptional({ description: 'Consecutive failures before alerting (1-10)', minimum: 1, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
+
+  @ApiPropertyOptional({ description: 'Auto-retry count on failure (0-3)', minimum: 0, maximum: 3 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  retryCount?: number;
+
+  @ApiPropertyOptional({ description: 'Enable/disable flap detection' })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Latency alert threshold in ms (null to clear)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  latencyAlertMs?: number | null;
+
+  @ApiPropertyOptional({ description: 'SLA target uptime percentage (null to clear)', minimum: 0, maximum: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  slaTarget?: number | null;
+
+  @ApiPropertyOptional({ description: 'Enable or disable monitors' })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Folder ID to move monitors to (null = remove from folder)', nullable: true })
+  @IsOptional()
+  folderId?: string | null;
+
+  @ApiPropertyOptional({ description: 'Alert channel IDs to assign to all selected monitors (replaces existing)' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  alertChannelIds?: string[];
+}
+
 export class ImportExternalDto {
   @IsIn(['uptime-robot', 'better-uptime', 'uptime-kuma', 'csv'])
   source!: 'uptime-robot' | 'better-uptime' | 'uptime-kuma' | 'csv';

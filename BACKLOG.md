@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 09:57 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:57 UTC cycle):**
+  - [x] **NOC Wallboard Mode** — Full-screen monitor status grid at `/dashboard/wallboard`. Dark bg, no sidebar/header, auto-refresh every 30s (configurable via `?refresh=N`). Cards show name, status dot (animated for down/degraded), type badge, uptime 24h, avg latency, last check time. Color-coded borders/glows (red=down, yellow=degraded, green=up). Down monitors pulsing red with alert banner. Sorting: down → degraded → up → alphabetical. Header: PulseDock logo, live clock, total/down/degraded counts, last updated time. URL params: `?refresh=`, `?tag=`, `?cols=`. Fullscreen toggle. Sidebar nav link added under Overview. "Wallboard" button added to dashboard header controls.
+
 ## Status Summary (2026-03-28 09:50 UTC)
 - **Build/Test:** ✅ Clean build + 3925 API (+5 batch tests) + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

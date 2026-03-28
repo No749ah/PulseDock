@@ -17,6 +17,7 @@ import {
   Layers,
   Timer,
   TrendingUp,
+  Tv,
 
   ChevronDown,
   Folder,
@@ -52,6 +53,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: Gauge },
+      { href: '/dashboard/wallboard', label: 'Wallboard', icon: Tv },
     ],
   },
   {

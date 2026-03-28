@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 20:20 UTC)
+- **Build/Test:** ✅ Clean build + 4095 API + 757 web + 10 CLI + 12 agent = 4874 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 31 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (20:20 UTC cycle):**
+  - [x] **SLA Compliance Report** — `GET /v1/monitors/sla-compliance-report?months=N` (1–12 months). Per-monitor monthly breakdown: uptime%, totalChecks, failedChecks, downtimeMinutes, incidents, errorBudgetUsedPct, compliant flag. Fleet-level weighted uptime + compliance rate. Frontend: "Compliance Report" button on `/monitors/sla` with month selector (1mo/3mo/6mo/12mo pills). Opens print-ready HTML report in new tab: cover summary cards, per-monitor stat grids, monthly table with color-coded rows (green=compliant, red=breach). Users can File→Print→Save as PDF for client-ready compliance documentation. 6 new unit tests.
+
 ## Status Summary (2026-03-28 19:20 UTC)
 - **Build/Test:** ✅ Clean build + 4089 API + 757 web + 10 CLI + 12 agent = 4868 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

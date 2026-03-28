@@ -525,7 +525,7 @@ function MonitorsPageInner() {
       if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
-      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; assertResponseHeader?: string; assertResponseHeaderValue?: string; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number };
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; assertResponseHeader?: string; assertResponseHeaderValue?: string; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number; preAuthUrl?: string; preAuthBody?: string; preAuthExtractCookie?: string; preAuthExtractToken?: string };
       if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
       if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
@@ -568,6 +568,13 @@ function MonitorsPageInner() {
           if (f.authApiKeyValue) config.authApiKeyValue = f.authApiKeyValue;
           config.authApiKeyIn = f.authApiKeyIn ?? 'header';
         }
+      }
+      // Pre-request auth step
+      if (f.preAuthUrl?.trim()) {
+        config.preAuthUrl = f.preAuthUrl.trim();
+        if (f.preAuthBody?.trim()) config.preAuthBody = f.preAuthBody.trim();
+        if (f.preAuthExtractCookie?.trim()) config.preAuthExtractCookie = f.preAuthExtractCookie.trim();
+        if (f.preAuthExtractToken?.trim()) config.preAuthExtractToken = f.preAuthExtractToken.trim();
       }
     }
     return config;

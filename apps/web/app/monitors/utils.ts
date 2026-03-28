@@ -75,6 +75,11 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
     trackedHeaders: (monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders ?? "",
     timeoutMs: (monitor as typeof monitor & { timeoutMs?: number | null }).timeoutMs ?? null,
+    // Pre-request auth step
+    preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
+    preAuthBody: String(monitor.config?.preAuthBody ?? ""),
+    preAuthExtractCookie: String(monitor.config?.preAuthExtractCookie ?? ""),
+    preAuthExtractToken: String(monitor.config?.preAuthExtractToken ?? ""),
   };
 }
 

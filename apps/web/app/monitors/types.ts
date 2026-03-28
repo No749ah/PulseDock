@@ -160,4 +160,9 @@ export type MonitorFormDataExtended = MonitorFormData & {
   authApiKeyName?: string;
   authApiKeyValue?: string;
   authApiKeyIn?: string;
+  // Pre-request auth step
+  preAuthUrl?: string;
+  preAuthBody?: string;
+  preAuthExtractCookie?: string;
+  preAuthExtractToken?: string;
 };

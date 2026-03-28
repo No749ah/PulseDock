@@ -297,6 +297,70 @@ async function runTimedRequestWithRedirects(
   throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
 }
 
+/**
+ * Performs a pre-authentication step: POSTs credentials to a login endpoint and
+ * extracts a session cookie or bearer token to use in the main request.
+ *
+ * @param preAuthUrl - Login endpoint URL (e.g. https://app.example.com/api/auth/login)
+ * @param preAuthBody - JSON string or object for the POST body
+ * @param preAuthExtractCookie - Cookie name to extract from Set-Cookie header
+ * @param preAuthExtractToken - Dot-path (e.g. "data.token") to extract bearer from JSON response body
+ * @param timeoutMs - Timeout in ms for the auth request
+ * @returns { cookie, bearerToken } — at most one will be set
+ */
+async function runPreAuth(
+  preAuthUrl: string,
+  preAuthBody: string,
+  preAuthExtractCookie: string | undefined,
+  preAuthExtractToken: string | undefined,
+  timeoutMs: number,
+): Promise<{ cookie: string | null; bearerToken: string | null; error: string | null }> {
+  try {
+    const result = await runTimedRequest(preAuthUrl, {
+      method: 'POST',
+      timeoutMs,
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock/1.0' },
+      body: preAuthBody,
+    });
+
+    let cookie: string | null = null;
+    let bearerToken: string | null = null;
+
+    // Extract cookie from Set-Cookie header
+    if (preAuthExtractCookie) {
+      const setCookie = result.responseHeaders['set-cookie'] ?? '';
+      const allCookies = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie);
+      const cookieRegex = new RegExp(`(?:^|;\\s*)${preAuthExtractCookie}=([^;]+)`, 'i');
+      const match = allCookies.match(cookieRegex);
+      if (match) cookie = `${preAuthExtractCookie}=${match[1]}`;
+    }
+
+    // Extract bearer token from response body via dot-path
+    if (preAuthExtractToken && result.body) {
+      try {
+        const parsed = JSON.parse(result.body) as unknown;
+        const extracted = extractByPath(parsed, preAuthExtractToken);
+        if (typeof extracted === 'string' && extracted.trim()) {
+          bearerToken = extracted.trim();
+        }
+      } catch {
+        // non-JSON response — token extraction fails silently, main check will fail auth
+      }
+    }
+
+    if (!cookie && !bearerToken) {
+      const hint = preAuthExtractCookie
+        ? `cookie "${preAuthExtractCookie}" not found in Set-Cookie`
+        : `token path "${preAuthExtractToken}" not found in response`;
+      return { cookie: null, bearerToken: null, error: `Pre-auth succeeded (HTTP ${result.statusCode}) but ${hint}` };
+    }
+
+    return { cookie, bearerToken, error: null };
+  } catch (err) {
+    return { cookie: null, bearerToken: null, error: `Pre-auth request failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
 export async function runHttpCheck(
   url: string,
   timeoutMs = 5000,
@@ -376,6 +440,34 @@ export async function runHttpCheck(
 
   const followRedirects = config['followRedirects'] !== false; // default: follow redirects
   const maxRedirects = typeof config['maxRedirects'] === 'number' ? Math.min(Math.max(0, config['maxRedirects']), 20) : 10;
+
+  // ─── Pre-Request Authentication Step ─────────────────────────────────────────
+  // When preAuthUrl is set, POST credentials first to obtain a session cookie or
+  // bearer token, then inject it into the main request automatically.
+  const preAuthUrl = typeof config['preAuthUrl'] === 'string' && config['preAuthUrl'].trim() ? config['preAuthUrl'].trim() : undefined;
+  if (preAuthUrl) {
+    const preAuthBody = typeof config['preAuthBody'] === 'string' ? config['preAuthBody']
+      : (config['preAuthBody'] && typeof config['preAuthBody'] === 'object' ? JSON.stringify(config['preAuthBody']) : '{}');
+    const preAuthExtractCookie = typeof config['preAuthExtractCookie'] === 'string' && config['preAuthExtractCookie'].trim()
+      ? config['preAuthExtractCookie'].trim() : undefined;
+    const preAuthExtractToken = typeof config['preAuthExtractToken'] === 'string' && config['preAuthExtractToken'].trim()
+      ? config['preAuthExtractToken'].trim() : undefined;
+
+    const { cookie, bearerToken, error } = await runPreAuth(
+      preAuthUrl, preAuthBody, preAuthExtractCookie, preAuthExtractToken, Math.min(timeoutMs, 10000),
+    );
+    if (error) {
+      return { ok: false, statusCode: 0, latencyMs: 0, message: `Pre-auth failed: ${error}`, level: 'red' as const };
+    }
+    if (cookie) {
+      // Merge with any existing Cookie header
+      const existing = requestHeaders['Cookie'] ?? requestHeaders['cookie'] ?? '';
+      requestHeaders['Cookie'] = existing ? `${existing}; ${cookie}` : cookie;
+    }
+    if (bearerToken) {
+      requestHeaders['Authorization'] = `Bearer ${bearerToken}`;
+    }
+  }
 
   try {
     const timedResult = followRedirects

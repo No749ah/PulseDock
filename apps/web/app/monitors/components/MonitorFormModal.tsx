@@ -624,6 +624,66 @@ export function MonitorFormModal({
                 </div>
               </div>
             )}
+            {/* Pre-Request Authentication Step */}
+            <div className="space-y-3 p-3 rounded-lg border border-border/60 bg-surface-elevated/40">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-text-secondary">Pre-Request Auth Step</label>
+                <span className="text-[10px] uppercase tracking-wider bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">Optional</span>
+              </div>
+              <p className="text-xs text-text-muted">Login first, then carry the session cookie or token to the main check. Useful for apps behind authentication.</p>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Login URL <span className="text-[10px] text-text-muted">(POST)</span></label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { preAuthUrl?: string }).preAuthUrl ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, preAuthUrl: e.target.value } as typeof formData & { preAuthUrl?: string })}
+                  className={inputClass}
+                  placeholder="https://app.example.com/api/auth/login"
+                  autoComplete="off"
+                />
+              </div>
+              {(formData as unknown as { preAuthUrl?: string }).preAuthUrl?.trim() && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Login Payload <span className="text-[10px] text-text-muted">(JSON body)</span></label>
+                    <textarea
+                      rows={2}
+                      value={(formData as unknown as { preAuthBody?: string }).preAuthBody ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, preAuthBody: e.target.value } as typeof formData & { preAuthBody?: string })}
+                      className={`${inputClass} font-mono text-xs resize-y`}
+                      placeholder={'{"email":"monitor@example.com","password":"secret"}'}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1">Extract Cookie <span className="text-[10px] text-text-muted">(name)</span></label>
+                      <input
+                        type="text"
+                        value={(formData as unknown as { preAuthExtractCookie?: string }).preAuthExtractCookie ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, preAuthExtractCookie: e.target.value } as typeof formData & { preAuthExtractCookie?: string })}
+                        className={inputClass}
+                        placeholder="session"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1">Extract Token <span className="text-[10px] text-text-muted">(JSON path)</span></label>
+                      <input
+                        type="text"
+                        value={(formData as unknown as { preAuthExtractToken?: string }).preAuthExtractToken ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, preAuthExtractToken: e.target.value } as typeof formData & { preAuthExtractToken?: string })}
+                        className={inputClass}
+                        placeholder="data.accessToken"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-text-muted">Set either <em>Extract Cookie</em> (cookie name from Set-Cookie) or <em>Extract Token</em> (JSON dot-path to bearer token) — not both.</p>
+                </>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
                 Request Headers <span className="text-xs text-text-muted">(optional)</span>

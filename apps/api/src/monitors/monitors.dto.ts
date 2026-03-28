@@ -78,17 +78,19 @@ export class CreateMonitorDto {
   @ApiPropertyOptional({
     description: [
       'Monitor-type-specific configuration. For HTTP monitors: method, requestHeaders, requestBody, expectedStatus, bodyContains, responseTimeThresholdMs.',
+      'Pre-request auth step: preAuthUrl, preAuthBody, preAuthExtractCookie (cookie name) OR preAuthExtractToken (dot-path to JWT/token in JSON response).',
       'For HEARTBEAT: timeoutMin, token.',
       'For SSL_CERT: warnDays.',
       'For GIT_RELEASE/DOCKER_IMAGE: token, host, appVersionEndpoint, appAuthType.',
     ].join(' '),
     example: {
-      method: 'POST',
-      requestHeaders: { 'Authorization': 'Bearer <token>', 'Content-Type': 'application/json' },
-      requestBody: '{"ping":true}',
-      expectedStatus: [200, 201],
-      bodyContains: '"ok":true',
+      method: 'GET',
+      expectedStatus: 200,
+      bodyContains: '"status":"ok"',
       responseTimeThresholdMs: 2000,
+      preAuthUrl: 'https://app.example.com/api/auth/login',
+      preAuthBody: '{"email":"monitor@example.com","password":"secret"}',
+      preAuthExtractToken: 'data.accessToken',
     },
   })
   @IsOptional()

@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 07:43 UTC)
+- **Build/Test:** ✅ Clean build + 3822 API + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:43 UTC cycle):**
+  - [x] **Certificate Transparency (CT) Log Monitor** — New `CT_LOG` monitor type. Queries crt.sh for certificates issued for a domain. Runner with lookback window filtering, unique domain extraction (CN + SAN), green/yellow/red level mapping. `GET /v1/monitors/:id/ct-log-history` API endpoint. Frontend: form with lookback days slider, subdomain + wildcard alert checkboxes, explanation blurb. Detail page CT Logs tab with color-coded history. Prisma migration. 5 new unit tests.
+
 ## Status Summary (2026-03-28 07:42 UTC)
 - **Build/Test:** ✅ Clean build + 3822 API (+5 delivery-stats tests) + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

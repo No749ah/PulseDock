@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from '../common/auth.guard';
@@ -278,6 +278,20 @@ export class AlertsController {
     );
 
     return { dailyCounts, topMonitors, channelStats, totals };
+  }
+
+  @Get('noise-analysis')
+  @ApiOperation({
+    summary: 'Alert noise analysis',
+    description: 'Analyzes alert delivery patterns to identify noisy monitors and provide actionable recommendations to reduce alert fatigue.',
+  })
+  @ApiResponse({ status: 200, description: 'Noise analysis report returned.' })
+  async noiseAnalysis(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    const periodDays = Math.min(30, Math.max(1, parseInt(days ?? '7', 10) || 7));
+    return this.alertsService.noiseAnalysis(req.user.id, periodDays);
   }
 
   @Get('deliveries')

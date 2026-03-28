@@ -1840,4 +1840,202 @@ export class AlertsService {
     }
     return results;
   }
+
+  /**
+   * Analyzes alert delivery patterns to identify noisy monitors and provide
+   * actionable recommendations to reduce alert fatigue.
+   *
+   * @param userId - The authenticated user ID
+   * @param periodDays - Number of days to analyze (default 7, max 30)
+   * @returns Noise analysis report with per-monitor stats and recommendations
+   */
+  async noiseAnalysis(userId: string, periodDays = 7): Promise<{
+    summary: {
+      totalAlerts: number;
+      uniqueMonitors: number;
+      noisyMonitors: number;
+      noisyPercent: number;
+      avgAlertsPerMonitor: number;
+      topNoisyCount: number;
+    };
+    monitors: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      totalAlerts: number;
+      failedDeliveries: number;
+      alertsPerDay: number;
+      noiseScore: 'low' | 'medium' | 'high' | 'critical';
+      noiseReason: string[];
+      recommendations: string[];
+      currentConfig: {
+        confirmations: number;
+        flapDetection: boolean;
+        intervalSec: number;
+        retryCount: number;
+      };
+    }>;
+    periodDays: number;
+  }> {
+    const clampedDays = Math.min(30, Math.max(1, periodDays));
+    const since = new Date(Date.now() - clampedDays * 86_400_000);
+
+    // Pull all delivery logs for this user within the period, grouped by monitor
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: {
+        createdAt: { gte: since },
+        alertChannel: { userId },
+      },
+      select: {
+        id: true,
+        monitorId: true,
+        monitorName: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Group deliveries by monitorId
+    const byMonitor = new Map<string, { monitorName: string; total: number; failed: number; timestamps: Date[] }>();
+    for (const log of logs) {
+      if (!log.monitorId) continue;
+      const entry = byMonitor.get(log.monitorId) ?? {
+        monitorName: log.monitorName ?? log.monitorId,
+        total: 0,
+        failed: 0,
+        timestamps: [],
+      };
+      entry.total += 1;
+      if (log.status === 'failed') entry.failed += 1;
+      entry.timestamps.push(log.createdAt);
+      byMonitor.set(log.monitorId, entry);
+    }
+
+    if (byMonitor.size === 0) {
+      return {
+        summary: { totalAlerts: 0, uniqueMonitors: 0, noisyMonitors: 0, noisyPercent: 0, avgAlertsPerMonitor: 0, topNoisyCount: 0 },
+        monitors: [],
+        periodDays: clampedDays,
+      };
+    }
+
+    // Fetch monitor configs for the monitors we found
+    const monitorIds = [...byMonitor.keys()];
+    const monitors = await this.prisma.monitor.findMany({
+      where: { id: { in: monitorIds }, userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        confirmations: true,
+        flapDetectionEnabled: true,
+        intervalSec: true,
+        retryCount: true,
+      },
+    });
+    const monitorMap = new Map(monitors.map((m) => [m.id, m]));
+
+    const monitorResults: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      totalAlerts: number;
+      failedDeliveries: number;
+      alertsPerDay: number;
+      noiseScore: 'low' | 'medium' | 'high' | 'critical';
+      noiseReason: string[];
+      recommendations: string[];
+      currentConfig: { confirmations: number; flapDetection: boolean; intervalSec: number; retryCount: number };
+    }> = [];
+
+    for (const [monitorId, stats] of byMonitor.entries()) {
+      const config = monitorMap.get(monitorId);
+      const alertsPerDay = stats.total / clampedDays;
+      const noiseReasons: string[] = [];
+      const recommendations: string[] = [];
+
+      // Classify noise
+      if (alertsPerDay > 20) noiseReasons.push('Extremely high alert volume (>20/day)');
+      else if (alertsPerDay > 10) noiseReasons.push('High alert volume (>10/day)');
+      else if (alertsPerDay > 3) noiseReasons.push('Elevated alert volume (>3/day)');
+
+      if (config) {
+        if ((config.confirmations ?? 1) <= 1 && alertsPerDay > 3) {
+          noiseReasons.push('No confirmation threshold — every failure fires an alert');
+          recommendations.push('Set confirmations to 2–3 to require consecutive failures before alerting');
+        }
+        if (!config.flapDetectionEnabled && alertsPerDay > 5) {
+          noiseReasons.push('Flap detection disabled — up/down oscillation triggers many alerts');
+          recommendations.push('Enable flap detection to suppress alerts when monitor rapidly oscillates');
+        }
+        if ((config.intervalSec ?? 60) < 60 && alertsPerDay > 5) {
+          noiseReasons.push(`Very frequent check interval (${config.intervalSec}s) amplifies noise`);
+          recommendations.push('Consider increasing check interval to 60–300s to reduce check frequency');
+        }
+        if ((config.retryCount ?? 0) === 0 && alertsPerDay > 3) {
+          recommendations.push('Add 1–2 retries to absorb transient network blips before alerting');
+        }
+      }
+
+      if (stats.failed > 0) {
+        const failPct = Math.round((stats.failed / stats.total) * 100);
+        if (failPct > 20) {
+          noiseReasons.push(`${failPct}% of deliveries failed — channel may be misconfigured`);
+          recommendations.push('Check alert channel configuration — high delivery failure rate');
+        }
+      }
+
+      if (recommendations.length === 0 && noiseReasons.length === 0) {
+        recommendations.push('Alert volume looks healthy — no immediate action needed');
+      }
+
+      let noiseScore: 'low' | 'medium' | 'high' | 'critical' = 'low';
+      if (alertsPerDay > 20) noiseScore = 'critical';
+      else if (alertsPerDay > 10) noiseScore = 'high';
+      else if (alertsPerDay > 3) noiseScore = 'medium';
+
+      monitorResults.push({
+        monitorId,
+        monitorName: stats.monitorName,
+        monitorType: config?.type ?? 'HTTP',
+        totalAlerts: stats.total,
+        failedDeliveries: stats.failed,
+        alertsPerDay: Math.round(alertsPerDay * 10) / 10,
+        noiseScore,
+        noiseReason: noiseReasons,
+        recommendations,
+        currentConfig: {
+          confirmations: config?.confirmations ?? 1,
+          flapDetection: config?.flapDetectionEnabled ?? false,
+          intervalSec: config?.intervalSec ?? 60,
+          retryCount: config?.retryCount ?? 0,
+        },
+      });
+    }
+
+    // Sort by noise score (critical → high → medium → low) then by totalAlerts desc
+    const scoreOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+    monitorResults.sort(
+      (a, b) =>
+        scoreOrder[b.noiseScore] - scoreOrder[a.noiseScore] || b.totalAlerts - a.totalAlerts,
+    );
+
+    const noisyMonitors = monitorResults.filter((m) => m.noiseScore === 'high' || m.noiseScore === 'critical').length;
+    const totalAlerts = logs.length;
+    const topNoisyCount = monitorResults[0]?.totalAlerts ?? 0;
+
+    return {
+      summary: {
+        totalAlerts,
+        uniqueMonitors: byMonitor.size,
+        noisyMonitors,
+        noisyPercent: byMonitor.size > 0 ? Math.round((noisyMonitors / byMonitor.size) * 100) : 0,
+        avgAlertsPerMonitor: byMonitor.size > 0 ? Math.round((totalAlerts / byMonitor.size) * 10) / 10 : 0,
+        topNoisyCount,
+      },
+      monitors: monitorResults,
+      periodDays: clampedDays,
+    };
+  }
 }

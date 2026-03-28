@@ -2960,6 +2960,114 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* FTP config */}
+        {monitor.type === "FTP" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              FTP Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "21"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">AUTH TLS (FTPS)</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Protocol</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "FTPS Explicit" : "Plain FTP"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* IMAP config */}
+        {monitor.type === "IMAP" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              IMAP Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "143"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">STARTTLS</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Encryption</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "STARTTLS" : "Plain (port 143) or IMAPS (port 993)"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* POP3 config */}
+        {monitor.type === "POP3" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              POP3 Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "110"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">STLS</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Encryption</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "STLS" : "Plain (port 110) or POP3S (port 995)"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Browser / Page Check config */}
         {monitor.type === "BROWSER" && (
           <Card className="p-4 space-y-3">

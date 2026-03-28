@@ -442,6 +442,14 @@ export class MonitorsController {
     return this.monitorsService.uptimeHeatmap(req.user.id, days);
   }
 
+  @Get('trends')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Monitor trend analysis', description: 'Returns week-over-week uptime and latency trends for all monitors. Compares current 7 days vs prior 7 days.' })
+  @ApiResponse({ status: 200, description: 'Trend data returned.' })
+  monitorTrends(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.monitorTrends(req.user.id);
+  }
+
   @Get('export')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Export monitor configurations as JSON or YAML' })

@@ -3464,4 +3464,132 @@ export class MonitorsService {
       isThrottled,
     };
   }
+
+  /**
+   * Week-over-week trend analysis for all monitors.
+   * Compares current 7 days vs prior 7 days: uptime% and avg latency.
+   * Returns trend direction: 'improving' | 'degrading' | 'stable' | 'new'
+   */
+  async monitorTrends(userId: string): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folder: string | null;
+      currentUptimePct: number | null;
+      previousUptimePct: number | null;
+      uptimeDelta: number | null;
+      uptimeTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentAvgLatencyMs: number | null;
+      previousAvgLatencyMs: number | null;
+      latencyDeltaPct: number | null;
+      latencyTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentChecks: number;
+      previousChecks: number;
+    }>;
+    generatedAt: string;
+  }> {
+    const now = new Date();
+    const currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const previousStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, enabled: true, folderId: true, folder: { select: { name: true } } },
+      orderBy: { pinned: 'desc' },
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], generatedAt: now.toISOString() };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Fetch all runs for both periods in one query
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: previousStart },
+      },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Group by monitorId and period
+    const byMonitor = new Map<string, { current: typeof allRuns; previous: typeof allRuns }>();
+    for (const id of monitorIds) {
+      byMonitor.set(id, { current: [], previous: [] });
+    }
+    for (const run of allRuns) {
+      const bucket = byMonitor.get(run.monitorId);
+      if (!bucket) continue;
+      if (run.checkedAt >= currentStart) {
+        bucket.current.push(run);
+      } else {
+        bucket.previous.push(run);
+      }
+    }
+
+    const UPTIME_DELTA_THRESHOLD = 2; // pp — less than 2pp change = stable
+    const LATENCY_DELTA_THRESHOLD = 10; // % — less than 10% change = stable
+
+    const result = monitors.map(m => {
+      const { current, previous } = byMonitor.get(m.id) ?? { current: [], previous: [] };
+
+      const calcUptime = (runs: typeof allRuns) => {
+        if (runs.length === 0) return null;
+        return Math.round((runs.filter(r => r.ok).length / runs.length) * 1000) / 10;
+      };
+      const calcAvgLatency = (runs: typeof allRuns) => {
+        const withLatency = runs.filter(r => r.latencyMs != null);
+        if (withLatency.length === 0) return null;
+        return Math.round(withLatency.reduce((s, r) => s + r.latencyMs!, 0) / withLatency.length);
+      };
+
+      const currentUptimePct = calcUptime(current);
+      const previousUptimePct = calcUptime(previous);
+      const currentAvgLatencyMs = calcAvgLatency(current);
+      const previousAvgLatencyMs = calcAvgLatency(previous);
+
+      const uptimeDelta = (currentUptimePct != null && previousUptimePct != null)
+        ? Math.round((currentUptimePct - previousUptimePct) * 10) / 10
+        : null;
+
+      const latencyDeltaPct = (currentAvgLatencyMs != null && previousAvgLatencyMs != null && previousAvgLatencyMs > 0)
+        ? Math.round(((currentAvgLatencyMs - previousAvgLatencyMs) / previousAvgLatencyMs) * 1000) / 10
+        : null;
+
+      const uptimeTrend: 'improving' | 'degrading' | 'stable' | 'new' =
+        previous.length === 0 ? 'new' :
+        uptimeDelta == null ? 'stable' :
+        uptimeDelta > UPTIME_DELTA_THRESHOLD ? 'improving' :
+        uptimeDelta < -UPTIME_DELTA_THRESHOLD ? 'degrading' : 'stable';
+
+      const latencyTrend: 'improving' | 'degrading' | 'stable' | 'new' =
+        previous.length === 0 ? 'new' :
+        latencyDeltaPct == null ? 'stable' :
+        latencyDeltaPct < -LATENCY_DELTA_THRESHOLD ? 'improving' :  // lower latency = improving
+        latencyDeltaPct > LATENCY_DELTA_THRESHOLD ? 'degrading' : 'stable';
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        enabled: m.enabled,
+        folder: m.folder?.name ?? null,
+        currentUptimePct,
+        previousUptimePct,
+        uptimeDelta,
+        uptimeTrend,
+        currentAvgLatencyMs,
+        previousAvgLatencyMs,
+        latencyDeltaPct,
+        latencyTrend,
+        currentChecks: current.length,
+        previousChecks: previous.length,
+      };
+    });
+
+    return { monitors: result, generatedAt: now.toISOString() };
+  }
 }

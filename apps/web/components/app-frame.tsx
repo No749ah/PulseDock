@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Layers,
   Timer,
+  TrendingUp,
 
   ChevronDown,
   Folder,
@@ -58,6 +59,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors', label: 'Uptime Checks', icon: Activity },
       { href: '/monitors/compare', label: 'Compare', icon: BarChart2 },
       { href: '/monitors/heatmap', label: 'Heatmap', icon: Layers },
+      { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],

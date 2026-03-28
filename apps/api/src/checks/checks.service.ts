@@ -138,7 +138,7 @@ export class ChecksService {
   }
 
   private async dispatchCheck(monitor: Monitor) {
-    // Merge top-level trackedHeaders + metric capture fields into config for HTTP/BROWSER runners
+    // Merge top-level trackedHeaders + metric capture fields + headerAssertions into config for HTTP/BROWSER runners
     const monitorExt = monitor as typeof monitor & {
       trackedHeaders?: string | null;
       metricPath?: string | null;
@@ -146,6 +146,7 @@ export class ChecksService {
       metricUnit?: string | null;
       metricAlertMin?: number | null;
       metricAlertMax?: number | null;
+      headerAssertions?: unknown | null;
     };
     const httpConfig = {
       ...monitor.config,
@@ -155,6 +156,7 @@ export class ChecksService {
       ...(monitorExt.metricUnit ? { metricUnit: monitorExt.metricUnit } : {}),
       ...(monitorExt.metricAlertMin !== null && monitorExt.metricAlertMin !== undefined ? { metricAlertMin: monitorExt.metricAlertMin } : {}),
       ...(monitorExt.metricAlertMax !== null && monitorExt.metricAlertMax !== undefined ? { metricAlertMax: monitorExt.metricAlertMax } : {}),
+      ...(Array.isArray(monitorExt.headerAssertions) && monitorExt.headerAssertions.length > 0 ? { headerAssertions: monitorExt.headerAssertions } : {}),
     };
 
     switch (monitor.type) {
@@ -513,6 +515,10 @@ export class ChecksService {
         capturedMetricValue: typeof (result as PluginExecutionResult).capturedMetricValue === 'number'
           ? (result as PluginExecutionResult).capturedMetricValue
           : null,
+        // Header assertion failures (present when headerAssertions configured and at least one fails)
+        headerAssertionsFailed: Array.isArray((result as PluginExecutionResult).headerAssertionsFailed) && (result as PluginExecutionResult).headerAssertionsFailed!.length > 0
+          ? ((result as PluginExecutionResult).headerAssertionsFailed as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
       },
     });
 

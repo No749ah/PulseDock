@@ -285,6 +285,7 @@ model MonitorRun {
   redirectChain String[] // HTTP redirect chain: URLs followed before reaching final response
   geoRegion    String?  // simulated geo region tag (e.g. "us-east-1", "eu-west-1", "ap-southeast-1")
   capturedMetricValue Float?   // numeric value extracted from response body via monitor.metricPath
+  headerAssertionsFailed Json?  // Array of header assertion failures: [{ header, op, expected?, actual?, message }]
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)

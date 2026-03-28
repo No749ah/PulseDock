@@ -133,6 +133,14 @@ export interface MonitorRun {
   responseSizeBytes?: number | null;
   /** Redirect chain captured during HTTP check (array of URLs). */
   redirectChain?: string[] | null;
+  /** Header assertion failures — populated when headerAssertions are configured and at least one fails */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

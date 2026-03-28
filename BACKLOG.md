@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 10:10 UTC)
+- **Build/Test:** ✅ Clean build + 3930 API (+5 header assertion tests) + 756 web + 10 CLI + 12 agent = 4708 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (10:10 UTC cycle):**
+  - [x] **HTTP Header Assertions** — New `headerAssertions` field on Monitor model (JSON array of `{ header, op, value? }`). Supports 4 operators: `exists`, `not-exists`, `equals`, `contains`. HTTP runner evaluates assertions after successful status check — failures set `ok=false`, `level=yellow` with detailed failure messages. `HeaderAssertionDto` with validation (max 100 char header, max 500 char value). `evaluateHeaderAssertions()` exported as testable pure function. `headerAssertionsFailed` stored on MonitorRun for historical tracking. Frontend: Header Assertions UI in monitor form Advanced Settings — add/remove rows with header name, operator select, value input; suggestion chips for common security headers (HSTS, X-Frame-Options, CSP, X-Content-Type-Options). Monitor detail page: expandable amber "⚠ N header assertion(s) failed" section on runs with failures. 5 new unit tests. 2 Prisma migrations.
+
 ## Status Summary (2026-03-28 09:57 UTC)
 - **Build/Test:** ✅ Clean build + 3925 API + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -1152,6 +1152,119 @@ export function MonitorFormModal({
               )}
             </div>
 
+            {/* Header Assertions */}
+            {(() => {
+              const assertions: Array<{ header: string; op: string; value?: string }> =
+                (formData as unknown as { headerAssertions?: Array<{ header: string; op: string; value?: string }> }).headerAssertions ?? [];
+              const setAssertions = (next: Array<{ header: string; op: string; value?: string }>) =>
+                onSetFormData({ ...formData, headerAssertions: next } as typeof formData & { headerAssertions?: Array<{ header: string; op: string; value?: string }> });
+
+              const SUGGESTIONS = [
+                { header: 'strict-transport-security', op: 'exists' },
+                { header: 'x-frame-options', op: 'exists' },
+                { header: 'content-security-policy', op: 'exists' },
+                { header: 'x-content-type-options', op: 'equals', value: 'nosniff' },
+              ];
+
+              const inputClass = "w-full px-2 py-1.5 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent";
+
+              return (
+                <div className="flex flex-col gap-2 p-3 rounded-lg bg-surface-2 border border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                      🔍 Header Assertions
+                    </span>
+                    {assertions.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={() => setAssertions([...assertions, { header: '', op: 'exists' }])}
+                        className="text-xs text-accent hover:text-accent/80 transition-colors font-medium"
+                      >
+                        + Add assertion
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary">Assert specific response headers on every check — alert yellow when a header is missing, has the wrong value, or contains unexpected content.</p>
+
+                  {/* Suggestion chips */}
+                  {assertions.length === 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {SUGGESTIONS.map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAssertions([...assertions, s])}
+                          className="text-xs px-2 py-1 rounded bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+                        >
+                          {s.header}: {s.op}{s.value ? `: ${s.value}` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Assertion rows */}
+                  {assertions.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={a.header}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], header: e.target.value };
+                          setAssertions(next);
+                        }}
+                        className={inputClass + " flex-1"}
+                        placeholder="header name (e.g. x-frame-options)"
+                      />
+                      <select
+                        value={a.op}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], op: e.target.value };
+                          setAssertions(next);
+                        }}
+                        className={inputClass + " w-36 shrink-0"}
+                      >
+                        <option value="exists">exists</option>
+                        <option value="not-exists">does not exist</option>
+                        <option value="equals">equals</option>
+                        <option value="contains">contains</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={a.value ?? ''}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], value: e.target.value || undefined };
+                          setAssertions(next);
+                        }}
+                        disabled={a.op === 'exists' || a.op === 'not-exists'}
+                        className={inputClass + " flex-1 disabled:opacity-40 disabled:cursor-not-allowed"}
+                        placeholder="expected value"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAssertions(assertions.filter((_, j) => j !== i))}
+                        className="text-text-muted hover:text-danger transition-colors text-sm font-bold shrink-0 w-5"
+                        title="Remove assertion"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {assertions.length > 0 && assertions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setAssertions([...assertions, { header: '', op: 'exists' }])}
+                      className="text-xs text-text-muted hover:text-accent transition-colors self-start"
+                    >
+                      + Add another
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Redirect Following */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input

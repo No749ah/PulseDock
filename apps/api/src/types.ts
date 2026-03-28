@@ -88,6 +88,7 @@ export interface Monitor {
   headerBaselineSetAt?: string | null;
   statusWebhookUrl?: string | null;
   statusWebhookSecret?: string | null;
+  headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   createdAt: string;
 }
 

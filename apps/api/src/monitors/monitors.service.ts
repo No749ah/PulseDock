@@ -118,6 +118,7 @@ export class MonitorsService {
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -191,6 +192,7 @@ export class MonitorsService {
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       throttleMs: (m as typeof m & { throttleMs?: number | null }).throttleMs ?? null,
       maxChecksPerHour: (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
       geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
@@ -250,6 +252,7 @@ export class MonitorsService {
     metricUnit?: string | null;
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -313,6 +316,7 @@ export class MonitorsService {
         ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
+        ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -437,6 +441,7 @@ export class MonitorsService {
     metricUnit?: string | null;
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -506,6 +511,7 @@ export class MonitorsService {
         ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
+        ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
       },
     });
 
@@ -1254,6 +1260,7 @@ export class MonitorsService {
         securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
         responseSizeBytes: (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? null,
         redirectChain: (r as typeof r & { redirectChain?: string[] }).redirectChain ?? [],
+        headerAssertionsFailed: (r as typeof r & { headerAssertionsFailed?: unknown }).headerAssertionsFailed ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true, level: 'green' } : opts?.status === 'failed' ? { ok: false } : opts?.status === 'degraded' ? { ok: true, level: 'yellow' } : {}) } }),

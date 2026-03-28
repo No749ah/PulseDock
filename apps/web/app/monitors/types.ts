@@ -63,6 +63,8 @@ export interface MonitorItem {
   metricAlertMin?: number | null;
   /** Alert yellow when captured metric value exceeds this maximum */
   metricAlertMax?: number | null;
+  /** Header assertions — array of { header, op, value? } to evaluate on every HTTP check */
+  headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
 }
 
 export interface MonitorRun {
@@ -78,6 +80,14 @@ export interface MonitorRun {
   responseBody?: string | null;
   /** HTTP redirect chain: URLs followed before reaching final response */
   redirectChain?: string[];
+  /** Header assertion failures — populated when headerAssertions are configured and at least one fails */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export interface AlertChannel {
@@ -209,4 +219,6 @@ export type MonitorFormDataExtended = MonitorFormData & {
   maxRedirects?: number;
   // Header tracking
   trackedHeaders?: string;
+  // Header assertions
+  headerAssertions?: Array<{ header: string; op: string; value?: string }>;
 };

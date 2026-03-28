@@ -4433,7 +4433,8 @@ export default function MonitorDetailPage() {
                         );
                         const showWaterfall = hasTimings && (monitor?.type === "HTTP" || monitor?.type === "BROWSER");
                         const hasRedirectChain = !!(run.redirectChain && run.redirectChain.length > 0);
-                        const isExpandable = showWaterfall || hasRedirectChain;
+                        const hasHeaderAssertionFailures = !!(run.headerAssertionsFailed && run.headerAssertionsFailed.length > 0);
+                        const isExpandable = showWaterfall || hasRedirectChain || hasHeaderAssertionFailures;
                         return (
                         <React.Fragment key={run.id}>
                         <TableRow
@@ -4510,6 +4511,24 @@ export default function MonitorDetailPage() {
                                     </span>
                                   ))}
                                 </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {run.headerAssertionsFailed && run.headerAssertionsFailed.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
+                              <div className="text-xs py-1.5">
+                                <span className="font-medium text-amber-400 mr-2">
+                                  ⚠ {run.headerAssertionsFailed.length} header assertion{run.headerAssertionsFailed.length === 1 ? '' : 's'} failed
+                                </span>
+                                <ul className="mt-1 space-y-0.5">
+                                  {run.headerAssertionsFailed.map((f, i) => (
+                                    <li key={i} className="text-text-secondary font-mono">
+                                      {f.message}
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
                             </TableCell>
                           </TableRow>

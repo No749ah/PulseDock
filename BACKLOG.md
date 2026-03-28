@@ -5,6 +5,14 @@
 - **Branch:** heartbeat/2026-03-28-am
 - **Latest:** feat: alert batching / digest mode — batchWindowSec per AlertChannel, in-memory queue, batched delivery with monitor list; recoveries always immediate
 
+## Status Summary (2026-03-28 09:55 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API (+10 new tests) + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:55 UTC cycle):**
+  - [x] **Monitor Bulk Edit** — `PATCH /v1/monitors/bulk-edit` endpoint updating multiple fields across selected monitors at once: intervalSec, timeoutMs, confirmations, retryCount, flapDetectionEnabled, latencyAlertMs, slaTarget, enabled, folderId, alertChannelIds. `BulkEditDto` with validation. Only provided fields are updated — omit a field to keep existing values. Per-monitor alertChannelIds replacement with individual error tracking. Frontend: "Bulk Edit" button in the bulk action bar (appears when monitors are selected). Modal with 6-field form (interval, confirmations, retry count, latency alert, SLA target, enabled/flap dropdowns) + optimistic UI updates. `Settings` icon from lucide. 5 new unit tests covering empty ids, scalar field updates, channel replacement, channel clear, and no-field skip.
+
 ## Status Summary (2026-03-28 09:37 UTC)
 - **Build/Test:** ✅ Clean build + 3920 API (+5 SLA dashboard tests) + 756 web + 10 CLI + 12 agent = 4698 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

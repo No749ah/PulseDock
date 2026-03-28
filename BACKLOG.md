@@ -28,6 +28,15 @@
   - [x] **GraphQL monitor detail card** — Config card on monitor detail page showing endpoint, query, data path, expected value for GRAPHQL monitors (matching FTP/IMAP/POP3 pattern).
   - Services restarted. All pages 200.
 
+## Status Summary (2026-03-28 17:25 UTC)
+- **Build/Test:** ✅ Clean build + 4070 API + 757 web + 10 CLI + 12 agent = 4849 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (17:25 UTC cycle):**
+  - [x] **Fix 17 web TypeScript errors** — `alerts/noise/page.tsx`: `showToast` → `useToast().error()`, `res: unknown` → typed `api<NoiseAnalysis>()`, `TableCell header` → `TableHeader`, Badge `"secondary"` → `"default"`. `monitors/[id]/components/types.ts`: added missing `graphqlQuery`, `graphqlVariables`, `graphqlDataPath`, `graphqlExpectedValue`, `headerAssertions` fields to local `MonitorItem` type. `monitors/page.tsx`: `OpenApiImportModal` props fixed (`userId` removed, `onCreated` → `onImported`). Web now has 0 TS errors.
+  - [x] **Fix transaction.runner.spec.ts ESM spy failure** — Rewrote all 8 `runTransactionCheck` tests using `vi.hoisted()` + `vi.mock('http', ...)` + `vi.mock('https', ...)` factory mocks (same pattern as whois.runner.spec.ts). All 21 tests now pass. 4070 API tests total (0 failures).
+
 ## Status Summary (2026-03-28 14:25 UTC)
 - **Build/Test:** ✅ Clean build + 4028 API + 756 web + 10 CLI + 12 agent = 4806 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

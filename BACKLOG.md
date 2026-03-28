@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 06:47 UTC)
+- **Build/Test:** ✅ Clean build + 3795 API (+6 redirect-chain tests) + 10 e2e + 12 agent = 3817 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:47 UTC cycle):**
+  - [x] **HTTP Redirect Chain Tracking** — `redirectChain String[]` on MonitorRun (Prisma migration). Captured from `runHttpWithRedirects()` on every HTTP/BROWSER check. `GET /v1/monitors/:id/redirect-chain-stats` API (avg/max hops, top-5 common chains). Frontend: amber "→ N" column in check history, full chain on row expand, Redirect Stats card on Performance tab. 5 new tests.
+
 ## Status Summary (2026-03-28 06:40 UTC)
 - **Build/Test:** ✅ Clean build + 3789 API (+8 schedule tests) + 10 e2e + 12 agent = 3811 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 23:17 UTC)
+- **Build/Test:** ✅ Clean build + 4163 API + 757 web + 10 CLI + 12 agent = 4942 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 33+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-late
+- **Last changes (23:17 UTC cycle):**
+  - [x] **Monitor Anomaly Report** — `GET /v1/monitors/anomaly-report?hours=24|48|168`. Compares current period vs prior period of equal duration per monitor. Detects: uptime regression (≥5% drop), latency regression (≥25% increase), flapping (≥10% status change rate + ≥3 changes), failure bursts (recent 10 checks ≥50% failures while overall period was healthy), recovery from outage (previous <90% → current ≥99%), latency improvement (≥30% faster). Severity scoring: critical (<90% uptime regression), high (uptime regression / failure burst / currently degraded), medium (latency regression / flapping), low (recovery / improvement). Results sorted critical first. `/monitors/anomaly` frontend: period selector (24h/48h/7d), 4 severity summary cards (clickable filter), anomaly list with expandable rows showing period comparison stats grid (uptime/latency/failures/checks for both periods) + per-anomaly change description + % delta. Sidebar nav link. 11 new unit tests.
+
 ## Status Summary (2026-03-28 22:17 UTC)
 - **Build/Test:** ✅ Clean build + 4152 API + 757 web + 10 CLI + 12 agent = 4931 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
